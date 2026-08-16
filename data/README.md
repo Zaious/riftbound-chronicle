@@ -1,5 +1,7 @@
 # Card data
 
+> **Licensing note**: card names, rules text, and game mechanics in this file are Riot Games' copyrighted content, not this repository's. They're reproduced here under Riot's [Developer Portal policy](https://developer.riotgames.com/policies/riftbound) for the approved "Card libraries" use case. This repo's MIT license (see [`../LICENSE`](../LICENSE)) covers the skill and tooling around this data, not the card content itself.
+
 `riftcodex_cards_raw.json` — full official English rules text for Riftbound cards, harvested from `api.riftcodex.com` (an unauthenticated public API run by an unaffiliated fan project — "RIFTCODEX — An unofficial fan project. Not affiliated with Riot Games.").
 
 This is the `riftbound` skill's own bundled local dataset — read it directly rather than fetching per card question (see `../skill/SKILL.md`'s "route, don't snapshot" section).

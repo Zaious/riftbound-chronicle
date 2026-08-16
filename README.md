@@ -42,4 +42,6 @@ Unofficial fan project. Not affiliated with, endorsed by, or sponsored by Riot G
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+This repo's own original work — the skill methodology in `skill/` and the harvester scripts referenced in it — is MIT, see [LICENSE](LICENSE).
+
+**`data/riftcodex_cards_raw.json` is not covered by that grant.** Card names, rules text, and game mechanics are Riot Games' copyrighted content, reproduced here under Riot's [Developer Portal policy](https://developer.riotgames.com/policies/riftbound) for the approved "Card libraries" use case — that's permission to use it, not ownership that this repository can relicense. If you build on this repo, the MIT grant covers the skill and tooling; the bundled card data carries Riot's rights regardless of what this repo's own license says. See [`data/README.md`](data/README.md) for the data's actual provenance (harvested via the unofficial riftcodex.com API, itself unaffiliated with Riot).

@@ -1,6 +1,8 @@
 ### Rek'Sai - Void Burrower (Fury+Order)
 
-Legend ability: `When you conquer, you may exhaust me to reveal the top 2 cards of your Main Deck. You may play one. Then recycle the rest.` **Rek'Sai - Breacher** (Fury): `Accelerate. Assault. Friendly units played from anywhere other than a player's hand have Accelerate.` **Rek'Sai - Swarm Queen** (Order): `When I attack, you may reveal the top 2 cards of your Main Deck. You may play one. Then recycle the rest. If the played card is a unit, you may play it here.`
+> Errata-corrected 2026-08-17 (`references/errata_overlay.json`, Spiritforged Errata, 2026-01-14) — Swarm Queen's ability text below reflects the official wording fix. No mechanical change from the pre-errata text; the analysis is unaffected.
+
+Legend ability: `When you conquer, you may exhaust me to reveal the top 2 cards of your Main Deck. You may play one. Then recycle the rest.` **Rek'Sai - Breacher** (Fury): `Accelerate. Assault. Friendly units played from anywhere other than a player's hand have Accelerate.` **Rek'Sai - Swarm Queen** (Order): `When I attack, you may reveal the top 2 cards of your Main Deck. You may banish one, then play it. If it is a unit, you may play it here. Recycle the rest.`
 
 Archetype: aggro. The Legend's trigger is conquer itself — the same act that scores — so the ability doesn't wait for a setup turn or a resource threshold, it fires the instant you win a battlefield and immediately hands you more material to keep pushing. Swarm Queen moves that same reveal-2-play-1 effect even earlier, onto the attack step, so the deck is digging for extra bodies before the fight is even resolved. Neither Champion asks you to wait or bank anything; both convert combat actions directly into more combat actions.
 

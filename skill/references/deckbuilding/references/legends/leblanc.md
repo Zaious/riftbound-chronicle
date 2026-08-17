@@ -1,6 +1,8 @@
 ### LeBlanc - Deceiver (Mind+Order)
 
-Legend ability: `When you conquer or hold, you may discard 1 and exhaust me to play a ready Reflection unit token there. It becomes a copy of another unit there. Give it Temporary.` **LeBlanc - Everywhere At Once** (Mind): `Backline. Your Temporary effects at my battlefield don't trigger.` **LeBlanc - Fragmented** (Order): `Assault. Deathknell — Draw 1. If it's your Beginning Phase, draw 2 instead.`
+> Errata-corrected 2026-08-17 (`references/errata_overlay.json`, Unleashed Errata Updates, 2026-04-03) — the Legend ability text below reflects the official wording fix. No mechanical change from the pre-errata text; the analysis is unaffected.
+
+Legend ability: `When you conquer or hold, you may discard 1 and exhaust me to play a ready Reflection unit token there. Then do this: It becomes a copy of another unit there. Give it Temporary.` **LeBlanc - Everywhere At Once** (Mind): `Backline. Your Temporary effects at my battlefield don't trigger.` **LeBlanc - Fragmented** (Order): `Assault. Deathknell — Draw 1. If it's your Beginning Phase, draw 2 instead.`
 
 **Archetype**: Control. The Legend's trigger requires you to already be conquering or holding — it's a reward layered on top of already winning the core objective, not a way to establish a first foothold. That structurally means this Legend snowballs an existing lead rather than creating one, the defining shape of a hold-and-grind plan. Fragmented adds permission to trade freely (Deathknell refunds a card, more so in the Beginning Phase) which softens the cost of defending a held position rather than pulling toward a separate aggro race. Everywhere At Once is a defensive stat-shield (Backline) but notably suppresses Temporary effects at her own battlefield — since the Legend's own Reflection token is Temporary, she works best holding a different battlefield than the one generating clones, a real internal tension worth flagging rather than glossing over.
 

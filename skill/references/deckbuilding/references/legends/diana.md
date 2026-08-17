@@ -1,7 +1,9 @@
 ### Diana - Scorn of the Moon (Mind+Chaos)
 
+> Errata-corrected 2026-08-17 (`references/errata_overlay.json`, Vendetta Errata Updates, 2026-07-24) — Lunari's ability text below reflects the official wording fix. No mechanical change from the pre-errata text; the analysis is unaffected.
+
 Legend ability: `Reaction: Exhaust: Add 1 Energy. Spend this Energy only during showdowns. (Abilities that add resources can't be reacted to.)`
-Diana - Lunari (Mind): `When a showdown begins here, you may pay 1 Energy. If you do, Predict, then reveal the top card of your Main Deck. If it's a spell, draw it.`
+Diana - Lunari (Mind): `When a showdown begins here, you may pay 1 Energy to Predict, then reveal the top card of your Main Deck. If it's a spell, draw it.`
 Diana - No Longer Human (Chaos): `Ambush (...) When you play a spell, give me +2 Might this turn.`
 
 **Archetype:** Control-leaning reactive tempo. The Legend generates energy that can only be spent during Showdowns, and No Longer Human's Ambush lets her be played reactively into a battlefield that's already being contested — neither piece wants to commit proactively ahead of time; both wait for the opponent to initiate combat and then answer it. That's a fundamentally different shape from forcing early decisions: this deck is content to let a fight come to it, provided it has saved-up resources to spend the moment it does.

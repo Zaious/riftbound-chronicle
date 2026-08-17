@@ -1,7 +1,9 @@
 ### Draven - Glorious Executioner (Fury+Chaos)
 
+> Errata-corrected 2026-08-17 (`references/errata_overlay.json`, Vendetta Errata Updates, 2026-07-24) — Vanquisher's ability text below reflects the official wording fix (the pay-and-effect are combined into one sentence). No mechanical change from the pre-errata text; the analysis is unaffected.
+
 Legend ability: `When you win a combat, draw 1. (You win if only your units remain after combat.)`
-Draven - Vanquisher (Fury): `When I win a combat, play a Gold gear token exhausted. When I attack or defend, you may pay a Fury rune. If you do, give me +2 Might this turn.`
+Draven - Vanquisher (Fury): `When I win a combat, play a Gold gear token exhausted. When I attack or defend, you may pay a Fury rune to give me +2 Might this turn.`
 Draven - Audacious (Chaos): `Deflect (...) The first time I win a combat each turn, you score 1 point. When I die in combat, choose an opponent. They score 1 point.`
 
 **Archetype:** Aggro, and about as literally as this game's text gets. Every trigger in this kit — Legend, Vanquisher, Audacious alike — fires immediately off "when you win a combat," with no delay, no trash condition, no end-of-turn timer. This is a deck whose entire identity is picking fights and winning them, repeatedly, as fast as possible.

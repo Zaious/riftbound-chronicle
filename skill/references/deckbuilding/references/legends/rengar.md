@@ -1,6 +1,8 @@
 ### Rengar - Pridestalker (Fury+Body)
 
-Legend ability: `When you play a unit, give a unit +1 might this turn.` **Rengar - Unseen** (Fury): `Accelerate. Assault 2. Deflect. Ganking.` **Rengar - Trophy Hunter** (Body): `Ambush. I can be played to a battlefield where there are enemy units (even if you don't have units there).`
+> Errata-corrected 2026-08-17 (`references/errata_overlay.json`, Unleashed Errata Updates, 2026-04-03) — Trophy Hunter's ability text below reflects the official wording fix (ties the effect explicitly to the Ambush keyword rather than describing it as a separate "can be played" permission). No mechanical change from the pre-errata text; the analysis is unaffected.
+
+Legend ability: `When you play a unit, give a unit +1 might this turn.` **Rengar - Unseen** (Fury): `Accelerate. Assault 2. Deflect. Ganking.` **Rengar - Trophy Hunter** (Body): `Ambush. I can Ambush to a battlefield where there are enemy units, even if you don't have units there.`
 
 Archetype: aggro. The Legend triggers off simply playing a unit — immediate, unconditional, and repeatable every time a body hits the board — which rewards a wide, cheap, frequently-refilled curve rather than any single big payoff. Unseen backs this up with a stack of combat keywords rather than a conditional trigger: Accelerate means it's ready to fight the turn it's played, Assault 2 makes it hit harder while attacking, Deflect protects it from being answered mid-attack, and Ganking lets it keep re-threatening different battlefields — all immediate-use tools, nothing that needs a turn to set up. Trophy Hunter's Ambush lets it drop straight into a battlefield the opponent already occupies, forcing a fight on arrival instead of waiting to build up local presence first.
 

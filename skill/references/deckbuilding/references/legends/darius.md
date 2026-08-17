@@ -1,6 +1,6 @@
 ### Darius - Hand of Noxus (Fury+Order)
 
-> Tier 2-confirmed 2026-08-17 (`references/verification-log.md`) — the archetype call below was corrected after real coverage described most Darius lists as "tempo-engine decks, not pure aggro," a label this book's aggro/control/combo framework doesn't have a slot for. Reported here as the real label, not force-fit into the three.
+> Tier 2-confirmed 2026-08-17, re-verified with real citations 2026-08-17 (`references/verification-log.md`) — real coverage does describe this deck with tempo-forward language (riftbound.gg: "develop a ton of tempo") and identifies `OGN-242` (Baited Hook) as the deck's build-around core piece — that part is solidly confirmed with a real, checkable citation. The specific framing "tempo, not pure aggro" is softer than the label the entry originally used, though: a second real, independent source (RiftStorm.gg) describes the exact same deck as "Fury/Order beatdown" with "aggressive bodies," using aggro-coded language directly. Real community labeling for this deck isn't a clean single consensus between "tempo" and "aggro" — report both rather than pick one as the settled real label.
 
 Legend ability: `Exhaust: Reaction, Legion — Add 1 Energy. (Abilities that add resources can't be reacted to. Get the effect if you've played a card this turn.)`
 Darius - Trifarian (Fury): `When you play your second card in a turn, give me +2 Might this turn and ready me.`

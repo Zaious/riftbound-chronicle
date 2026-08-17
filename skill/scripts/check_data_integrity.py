@@ -16,6 +16,7 @@ Usage:
 Exit code 0 if every check passes, 1 otherwise. Prints a report either way.
 """
 
+import datetime
 import json
 import sys
 from collections import Counter
@@ -24,6 +25,7 @@ from pathlib import Path
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 RAW_CARDS_PATH = DATA_DIR / "riftcodex_cards_raw.json"
 ERRATA_PATH = DATA_DIR / "errata_overlay.json"
+FRESHNESS_WARNING_DAYS = 90
 
 REQUIRED_ERRATA_ENTRY_FIELDS = {"official_name", "document", "card_ids", "old_text", "new_text", "verification"}
 VALID_VERIFICATION_VALUES = {"live-fetched", "spot-checked"}
@@ -56,6 +58,30 @@ def check_raw_cards(errors, warnings):
     return cards
 
 
+def check_freshness(overlay, warnings):
+    """Warn (don't fail the build) when the overlay's own last_verified date is stale --
+    an old date isn't necessarily wrong, but it's a signal a human should go re-check
+    the Rules Hub for a new errata wave before trusting local data blindly, per this
+    project's own 'route, don't snapshot' rule."""
+    last_verified = overlay.get("last_verified")
+    if not last_verified:
+        warnings.append("errata_overlay.json has no top-level last_verified date")
+        return
+    try:
+        verified_date = datetime.date.fromisoformat(last_verified)
+    except ValueError:
+        warnings.append(f"errata_overlay.json's last_verified value {last_verified!r} isn't a valid ISO date")
+        return
+    age_days = (datetime.date.today() - verified_date).days
+    if age_days > FRESHNESS_WARNING_DAYS:
+        warnings.append(
+            f"errata_overlay.json was last verified {age_days} days ago ({last_verified}) -- "
+            f"over the {FRESHNESS_WARNING_DAYS}-day threshold; check the Rules Hub for a newer errata wave before trusting this file as current"
+        )
+    else:
+        print(f"[info] errata_overlay.json last verified {age_days} day(s) ago ({last_verified}), within the {FRESHNESS_WARNING_DAYS}-day freshness window.")
+
+
 def check_errata_overlay(errors, warnings):
     if not ERRATA_PATH.exists():
         errors.append(f"Missing {ERRATA_PATH}")
@@ -63,6 +89,8 @@ def check_errata_overlay(errors, warnings):
 
     with open(ERRATA_PATH, encoding="utf-8") as f:
         overlay = json.load(f)
+
+    check_freshness(overlay, warnings)
 
     doc_slugs = {d["slug"] for d in overlay.get("errata_documents", [])}
     if not doc_slugs:

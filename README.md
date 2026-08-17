@@ -32,7 +32,7 @@ This isn't just game content — it's a small case study in a few things that ma
 
 ## Card data
 
-`skill/data/riftcodex_cards_raw.json` — 1451 cards' worth of full official English rules text, sourced from the unofficial [riftcodex.com](https://riftcodex.com) API. Details, coverage, and known gaps are in [`skill/data/README.md`](skill/data/README.md).
+`skill/data/riftcodex_cards_raw.json` — 1,451 rows of full official English rules text, sourced from the unofficial [riftcodex.com](https://riftcodex.com) API. That's rows, not distinct cards — 1,304 unique `riftbound_id`s, the rest are reprint/variant printings (Metal, Overnumbered, Alternate Art, etc.) of a card already counted. Details, coverage, and known gaps are in [`skill/data/README.md`](skill/data/README.md).
 
 ## Using this as a Claude Code skill
 

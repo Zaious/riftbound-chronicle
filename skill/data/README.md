@@ -8,7 +8,7 @@ This is the `riftbound` skill's own bundled local dataset — read it directly r
 
 ## What's in it
 
-- 1451 cards as of the 2026-08-16 harvest.
+- 1,451 rows as of the 2026-08-16 harvest — that's rows/printings, not distinct cards: 1,304 unique `riftbound_id`s, with 147 of those ids appearing more than once across the 1,451 rows (294 rows total) as separate reprint/variant printings of the same card (Metal, Overnumbered, Alternate Art, etc.), each with its own row. See `extract_legend_packets.py`'s `is_reprint_variant()` for how this repo's own tooling filters those back down to one canonical row per real card.
 - Coverage: OGN (Origins), OGS (Proving Grounds), SFD (Spiritforged), UNL (Unleashed), VEN (Vendetta), plus promo pools OPP (Organized Play, 133 cards), PR (general Promo, 13), JDG (Judge Promo, 3).
 - Not covered: RAD (Radiance, unreleased as of this harvest), ARC and FND (riftcodex doesn't carry these at all).
 - Each card has `text.plain` and `text.rich` (HTML) rules text using `:rb_*:` icon tokens (e.g. `:rb_energy_1:`, `:rb_rune_fury:`) for keyword/mana symbols — these are riftcodex's own placeholder syntax, not a standard.

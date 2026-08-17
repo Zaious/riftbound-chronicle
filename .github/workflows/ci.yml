@@ -20,6 +20,9 @@ jobs:
       - name: Broken relative markdown links
         run: python3 skill/scripts/check_links.py
 
+      - name: Domain stats reproducibility smoke test
+        run: python3 skill/scripts/compute_domain_stats.py
+
       - name: Legend packet extraction smoke test
         run: |
           python3 skill/scripts/extract_legend_packets.py --out /tmp/legend_packets_ci.json

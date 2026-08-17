@@ -46,10 +46,17 @@ Immediate next step: the catalog currently has 3 of 46 Legends checked against r
 
 ## Compliance
 
-Unofficial fan project. Not affiliated with, endorsed by, or sponsored by Riot Games. Built to stay inside Riot's [Developer Portal policy](https://developer.riotgames.com/policies/riftbound) for Riftbound apps — in particular, the deckbuilding book deliberately never makes a win-rate, play-rate, or Tier claim, since Riot's policy explicitly restricts apps that publish or retain metagame-defining data.
+> Riftbound Chronicle was created under Riot Games' "Legal Jibber Jabber" policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
+
+Unofficial fan project, not affiliated with Riot Games. This project deliberately never publishes or retains a win-rate, play-rate, or matchup-differential claim — Riot's [Developer Portal policy](https://developer.riotgames.com/policies/riftbound) explicitly restricts apps from publishing or retaining that kind of metagame-defining data, and the deckbuilding methodology and `verification-log.md` are built to stay clear of it as a design constraint, not an afterthought.
+
+**Two compliance items are open, not resolved — stated plainly here rather than implied as settled:**
+
+- **Product registration.** Riot's policy requires registering any player-facing product "regardless of whether or not your product uses official documented APIs." An application has been submitted; as of this writing it has been pending for an extended period with no indication of an active review timeline. A pending application is not an approval, and this project operates without confirmed registration status while it waits.
+- **Card data source.** The bundled dataset is harvested from `api.riftcodex.com`, an unaffiliated fan project — not Riot's own API. Riot's policy states an app "may only use Riftbound assets (including cards) provided by the Riot API. No external or unofficial materials." This project doesn't currently meet that condition. Deck builders and card libraries are listed among Riot's approved use cases in principle, but that approval is conditioned specifically on API-sourced assets, which this repo doesn't yet use — see the License section below and [`skill/data/README.md`](skill/data/README.md) for the full provenance.
 
 ## License
 
 This repo's own original work — the skill methodology in `skill/` and the harvester scripts referenced in it — is MIT, see [LICENSE](LICENSE).
 
-**`skill/data/riftcodex_cards_raw.json` is not covered by that grant.** Card names, rules text, and game mechanics are Riot Games' copyrighted content, reproduced here under Riot's [Developer Portal policy](https://developer.riotgames.com/policies/riftbound) for the approved "Card libraries" use case — that's permission to use it, not ownership that this repository can relicense. If you build on this repo, the MIT grant covers the skill and tooling; the bundled card data carries Riot's rights regardless of what this repo's own license says. See [`skill/data/README.md`](skill/data/README.md) for the data's actual provenance (harvested via the unofficial riftcodex.com API, itself unaffiliated with Riot).
+**`skill/data/riftcodex_cards_raw.json` is not covered by that grant, and its standing under Riot's policy is unresolved rather than cleared — see Compliance above.** Card names, rules text, and game mechanics are Riot Games' copyrighted content regardless of what this repo's own license says about the surrounding code. If you build on this repo, the MIT grant covers the skill and tooling; the bundled card data carries Riot's rights, and its sourcing from an unofficial mirror rather than Riot's own API is a known, open compliance gap, not a settled permission — make your own determination before relying on it beyond personal/hobbyist use. See [`skill/data/README.md`](skill/data/README.md) for the data's actual provenance.

@@ -15,6 +15,8 @@ Don't skip logging a *confirmation* (Tier 1 held up, no gap found) — a log of 
 
 **When a pattern shows up more than once** (e.g. the same *kind* of gap recurring across several unrelated Legends), that's the signal to stop patching entries one at a time and go fix the method — see the "Method-level" rows below for the two patterns already confirmed at method-level after just three checks.
 
+**When a Tier 2 check confirms a real strategy that depends on a specific supporting card, note which set that card is from as part of the row** — not as a legality call (that's `regional-legality-model.md`'s job, and duplicating it here would drift), just as a fact worth having on hand. This is what lets the ban-substitution workflow (deckbuilding.md) actually run later for a region that doesn't have that set yet, instead of the Tier 2 finding just silently going unused for that region. Don't skip this because the Legend itself happens to already be Taiwan-legal (OGN/OGS/ARC) — its *supporting cards* can still be from a later set even when the Legend isn't.
+
 ## Log
 
 | Date | Legend checked | Tier 1 claim | Tier 2 finding | Divergence type | Resolution |

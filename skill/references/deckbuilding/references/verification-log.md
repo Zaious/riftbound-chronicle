@@ -1,0 +1,35 @@
+> Reference: running log of Tier 1 (structural, text-only) vs. Tier 2 (real-play-confirmed) divergence checks. This file exists so that verification work compounds instead of evaporating — every check either confirms Tier 1 held up, or surfaces a gap, and gaps are worth more than confirmations because they're what actually improves the method.
+> x-source: original(2026-08-17, first three entries from a deliberate spot-check requested to test whether Tier 1's structural derivation reliably matches real established play, before committing to full Tier 2 verification of the 46-entry catalog)
+> last-verified: 2026-08-17
+
+# Verification log
+
+## How this file works
+
+Every row is one Tier 1-vs-Tier 2 check on one Legend (or one claim). **Divergence type** sorts each finding into where the fix belongs:
+
+- **Entry-level** — the finding only affects that one Legend's catalog entry. Fix it there; nothing else needs to change.
+- **Method-level** — the finding reveals a blind spot in the Tier 1 *process itself*, not just one Legend's write-up. These get promoted into the main deckbuilding book's methodology section (with a citation back to the row that revealed them), because the same blind spot will recur on every future Legend the method is run against, not just this one.
+
+Don't skip logging a *confirmation* (Tier 1 held up, no gap found) — a log of failures only tells you what's broken; a log that also records successes is what lets you eventually say "Tier 1 is reliable for X kind of question, less reliable for Y kind," which is worth knowing before trusting it on a new Legend.
+
+**When a pattern shows up more than once** (e.g. the same *kind* of gap recurring across several unrelated Legends), that's the signal to stop patching entries one at a time and go fix the method — see the "Method-level" rows below for the two patterns already confirmed at method-level after just three checks.
+
+## Log
+
+| Date | Legend checked | Tier 1 claim | Tier 2 finding | Divergence type | Resolution |
+|---|---|---|---|---|---|
+| 2026-08-17 | Darius, Hand of Noxus | Archetype: Aggro (immediate, same-turn-condition kit, no reactive gate) | Real community coverage: "most Darius lists are tempo-engine decks, not pure aggro" — a distinct label the three-archetype framework has no slot for. (A second, independent data point for the same gap was already sitting in this book's own Annie worked example, unnoticed until this row: the real Houston RQ-winning Annie list is described by its own sources as "a Fury/Chaos **tempo** shell," not "aggro" or "control" — the skill had already recorded evidence of this exact framework gap before this check went looking for it.) | **Method-level** — the aggro/control/combo framework is this book's own vocabulary, not guaranteed to match every real community distinction (tempo vs. aggro is a real, commonly-used split it doesn't capture) | Promoted to deckbuilding.md's "Three archetypes" section: when Tier 2 surfaces a real label outside the three, report it plainly instead of force-fitting |
+| 2026-08-17 | Viktor, Herald of the Arcane | Archetype: Control (steady token replenishment); both Champions presented as roughly comparable control sub-styles | Real coverage: described as "off-tempo" (compatible direction, different label); competitive lists skew heavily toward one Champion (Order) rather than treating both as comparably played | **Entry-level**, plus a secondary methodological note: don't imply parity between two Champion options just because both are textually plausible — see the Master Yi row below, where this became the method-level finding once it recurred | Entry not yet rewritten (holding for the full Tier 2 pass) — flagging here so it isn't lost |
+| 2026-08-17 | Master Yi, Wuju Bladesman | "The two Champions don't clearly reinforce each other" — presented as a genuine fork into two comparably-weighted lanes (Meditative: control/hoard; Honed: aggro/mobility) | Real practice has converged on a single, extensively-proven "solo-hold-one-Battlefield" strategy (Top 8 at every Unleashed Regional Qualifier as of verification), built on Ambush synergy with cards *outside* the Legend+Champion kit — Honed supports that one strategy rather than defining a competing lane | **Method-level** — Tier 1 structurally cannot tell a real Champion-fork from an apparent one, because the deciding factor often lives in synergy with the wider card pool, which is outside Legend+Champion text by definition. This is the second time in three checks a "genuine split" claim didn't hold up as stated (see Viktor row) | Promoted to deckbuilding.md's methodology section: every "this Legend splits by Champion" claim in this book or in `legend-construction-logic.md` is an unverified Tier-1 hypothesis until Tier 2-confirmed — this applies to every currently-split-labeled entry in the catalog, not only Master Yi's |
+
+## Standing methodological notes (promoted from this log)
+
+Both currently live in the main deckbuilding book's "Deriving a specific Legend's identity" section, cited back to this file — this section is a pointer, not a duplicate, to avoid drift between the two copies:
+
+1. The aggro/control/combo framework is this project's own vocabulary; real community discourse sometimes uses finer or different labels (tempo, off-tempo, etc.) — report the real label when Tier 2 surfaces one, don't force it into the three.
+2. A Champion-split conclusion from Tier 1 alone is a hypothesis about two possible decks, not a claim that real deckbuilders treat both as comparably viable — this is unverifiable by Tier 1's own scope, not just under-researched.
+
+## Not yet checked
+
+The other 43 entries in `legend-construction-logic.md` have not been Tier 2-verified. Given 2 of 3 checked so far surfaced a real divergence, treat every unchecked entry's archetype call and any "splits by Champion" claim as a working hypothesis, not a settled answer — say so if asked about one of them before it's been through this log.

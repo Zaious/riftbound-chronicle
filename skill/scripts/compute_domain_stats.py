@@ -115,8 +115,13 @@ def main():
             hits = sum(1 for c in in_domain if pattern.search(c["text"].get("plain") or ""))
             pcts[key] = round(100 * hits / n)
 
-        mights = [c["attributes"]["might"] for c in in_domain if c["attributes"].get("might") is not None]
-        six_plus_pct = round(100 * sum(1 for m in mights if m >= 6) / n) if n else 0
+        # Might only exists on Unit-type cards -- percentaging "6+ Might" against the whole
+        # domain (including Spells/Gear/Battlefields/Legends, which structurally can't have
+        # a Might value) silently dilutes it by however much of the domain isn't Units. Use
+        # the Unit subset as the denominator for this one, same as avg Might already does.
+        units = [c for c in in_domain if c["classification"]["type"] == "Unit"]
+        mights = [c["attributes"]["might"] for c in units if c["attributes"].get("might") is not None]
+        six_plus_pct = round(100 * sum(1 for m in mights if m >= 6) / len(mights)) if mights else 0
         avg_might = round(statistics.mean(mights), 1) if mights else None
 
         print(

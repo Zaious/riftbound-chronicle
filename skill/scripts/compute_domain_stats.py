@@ -57,7 +57,7 @@ MECHANIC_PATTERNS = {
     "draw": re.compile(r"\bdraw \d+\b", re.I),
     "destroy_removal": re.compile(r"\bkill\b|\bbanish\b", re.I),
     "death_benefit": re.compile(r"\bdeathknell\b|when .{0,25}\bdies\b", re.I),
-    "gear_synergy": re.compile(r"\bequipment\b", re.I),
+    "gear_synergy": re.compile(r"\bgear\b|\bequipment\b", re.I),
     "opponent_weakening": re.compile(r"-\d+\s*:rb_might:", re.I),
     "movement": re.compile(r"\bmove\b|\bmoves\b|\bmoved\b", re.I),
     "trash_recursion": re.compile(r"\btrash\b", re.I),

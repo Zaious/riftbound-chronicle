@@ -17,4 +17,4 @@ This is the `riftbound` skill's own bundled local dataset — read it directly r
 
 ## Regenerating
 
-The harvest script lives in the private `riftbound-tw` project (`scripts/harvest_riftcodex.js`, `npm run harvest:en-text`) since that's where the rest of this game's data tooling lives, even though this specific dataset has zero coupling to that project's own private card database. It writes here by default (`P:\MyOpenSource\riftbound-chronicle\data\riftcodex_cards_raw.json`); `CARD_RAW_OUTPUT_DIR` can redirect it for one-off testing.
+The harvest script lives in the private `riftbound-tw` project (`scripts/harvest_riftcodex.js`, `npm run harvest:en-text`) since that's where the rest of this game's data tooling lives, even though this specific dataset has zero coupling to that project's own private card database. It writes here by default (`P:\MyOpenSource\riftbound-chronicle\skill\data\riftcodex_cards_raw.json`); `CARD_RAW_OUTPUT_DIR` can redirect it for one-off testing.

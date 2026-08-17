@@ -7,12 +7,14 @@ Built and battle-tested as the deckbuilding/gameplay brain behind [Riftbound Chr
 ## What's actually in here
 
 ```
-skill/     the Claude Code skill itself (SKILL.md + references/)
-data/      a bundled English card database (see data/README.md)
-scripts/   data-extraction tooling the skill's content is generated from
+skill/
+  SKILL.md       the router
+  references/    deckbuilding/ and gameplay/ books
+  data/          a bundled English card database (see skill/data/README.md)
+  scripts/       data-extraction tooling the skill's content is generated from
 ```
 
-`skill/` is a small library, not one giant prompt: a thin `SKILL.md` router plus two independent books —
+Everything the skill needs lives inside `skill/` itself — data and scripts included, not as repo-root siblings — so copying or symlinking that one folder anywhere gives a fully self-contained, portable skill; nothing has to be separately carried along by hand. `skill/` is a small library, not one giant prompt: a thin `SKILL.md` router plus two independent books —
 
 - **`references/deckbuilding/`** — pre-game methodology (archetype theory, curve/rune ratios, Legend-first deckbuilding, a hypergeometric draw-probability table computed against the game's actual setup rules, a full ban-substitution workflow for "does this classic decklist still work" that also covers "this card isn't out in my region yet"). Two things worth calling out specifically:
   - [`regional-legality-model.md`](skill/references/deckbuilding/references/regional-legality-model.md) generalizes something first noticed in Taiwan's launch — a new region's day-one card pool doesn't just have fewer sets than the pioneer market, it inherits a ban list calibrated against a card pool it doesn't even have access to yet. That's a structural pattern, not a Taiwan quirk, and it'll recur every time this game (or most any live-service TCG) enters a new market.
@@ -30,7 +32,7 @@ This isn't just game content — it's a small case study in a few things that ma
 
 ## Card data
 
-`data/riftcodex_cards_raw.json` — 1451 cards' worth of full official English rules text, sourced from the unofficial [riftcodex.com](https://riftcodex.com) API. Details, coverage, and known gaps are in [`data/README.md`](data/README.md).
+`skill/data/riftcodex_cards_raw.json` — 1451 cards' worth of full official English rules text, sourced from the unofficial [riftcodex.com](https://riftcodex.com) API. Details, coverage, and known gaps are in [`skill/data/README.md`](skill/data/README.md).
 
 ## Using this as a Claude Code skill
 
@@ -50,4 +52,4 @@ Unofficial fan project. Not affiliated with, endorsed by, or sponsored by Riot G
 
 This repo's own original work — the skill methodology in `skill/` and the harvester scripts referenced in it — is MIT, see [LICENSE](LICENSE).
 
-**`data/riftcodex_cards_raw.json` is not covered by that grant.** Card names, rules text, and game mechanics are Riot Games' copyrighted content, reproduced here under Riot's [Developer Portal policy](https://developer.riotgames.com/policies/riftbound) for the approved "Card libraries" use case — that's permission to use it, not ownership that this repository can relicense. If you build on this repo, the MIT grant covers the skill and tooling; the bundled card data carries Riot's rights regardless of what this repo's own license says. See [`data/README.md`](data/README.md) for the data's actual provenance (harvested via the unofficial riftcodex.com API, itself unaffiliated with Riot).
+**`skill/data/riftcodex_cards_raw.json` is not covered by that grant.** Card names, rules text, and game mechanics are Riot Games' copyrighted content, reproduced here under Riot's [Developer Portal policy](https://developer.riotgames.com/policies/riftbound) for the approved "Card libraries" use case — that's permission to use it, not ownership that this repository can relicense. If you build on this repo, the MIT grant covers the skill and tooling; the bundled card data carries Riot's rights regardless of what this repo's own license says. See [`skill/data/README.md`](skill/data/README.md) for the data's actual provenance (harvested via the unofficial riftcodex.com API, itself unaffiliated with Riot).

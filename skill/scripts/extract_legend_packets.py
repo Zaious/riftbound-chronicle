@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract one clean, deduplicated data packet per Legend from data/riftcodex_cards_raw.json.
+Extract one clean, deduplicated data packet per Legend from skill/data/riftcodex_cards_raw.json.
 
 Written because this exact logic was hand-derived three separate times while building
 legend-construction-logic.md, and the same bugs got re-discovered each time:
@@ -23,7 +23,7 @@ legend-construction-logic.md, and the same bugs got re-discovered each time:
   don't assume every tag-matched card is a legitimate Champion for that Legend.
 
 Usage:
-    python3 scripts/extract_legend_packets.py [--data PATH] [--out PATH]
+    python3 skill/scripts/extract_legend_packets.py [--data PATH] [--out PATH]
 
 Output: a JSON array, one object per Legend:
     {

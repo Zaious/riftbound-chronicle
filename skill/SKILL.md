@@ -1,6 +1,6 @@
 ---
 name: riftbound
-x-source: "original(2026-08-16 restructured from the flat riftbound-tw-deckbuilder skill into a discipline-style library so a second book, gameplay, could be added without blending two different skills into one file; scrubbed of private-repo paths the same day so this library mirrors cleanly into a public copy — see 'Public library, private companion' below)"
+x-source: "original(2026-08-16 restructured from an earlier flat, single-file deckbuilder skill into a discipline-style library so a second book, gameplay, could be added without blending two different skills into one file; scrubbed of private-repo paths the same day so this library mirrors cleanly into a public copy — see 'Public library, private companion' below)"
 description: |
   Library entry point for Riftbound (Riot's TCG) knowledge — deckbuilding methodology (pre-game, static) and gameplay methodology (in-game, live decisions). Route to the matching book before answering; don't answer from general TCG intuition. Use when the user asks for deck-building help, wants a decklist evaluated or improved, asks whether a deck still works after a ban-list update, wants a theme-deck-guide written, OR asks how to play a turn/showdown correctly, how the chain/priority works, whether to attack or hold a battlefield, how to mulligan a hand, or wants a play reviewed. Trigger even without "deck" or "play" in the wording — "這副牌能組嗎", "禁卡後還能玩嗎", "這個連鎖我該怎麼接", "要不要進攻這個戰場", "手牌要重抽嗎", "易大師這個組合強嗎" all count.
 ---

@@ -17,4 +17,4 @@ This is the `riftbound` skill's own bundled local dataset — read it directly r
 
 ## Regenerating
 
-The harvest script lives in the private `riftbound-tw` project (`scripts/harvest_riftcodex.js`, `npm run harvest:en-text`) since that's where the rest of this game's data tooling lives, even though this specific dataset has zero coupling to that project's own private card database. It writes here by default (`P:\MyOpenSource\riftbound-chronicle\skill\data\riftcodex_cards_raw.json`); `CARD_RAW_OUTPUT_DIR` can redirect it for one-off testing.
+The harvest script that produced this file isn't part of this public repo — it lives in the maintainer's own site tooling, unrelated to any card data specific to that deployment. To regenerate or refresh this dataset yourself: page through `api.riftcodex.com`'s public card endpoint (unauthenticated, ~15 pages at 100/page as of this harvest, gentle rate limiting recommended since there's no documented limit) and write the result to `riftcodex_cards_raw.json` in this folder. `scripts/extract_legend_packets.py` is the part of that pipeline that *is* in this repo — it consumes this file's format directly.

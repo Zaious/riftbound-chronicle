@@ -1,0 +1,11 @@
+### Akali - Rogue Assassin (Fury+Calm)
+
+Legend ability: `Empower 3 Energy, a rainbow rune (...) Action: Exhaust: If it's your turn, move a friendly unit in a showdown to base and if I'm Empowered, ready it.`
+Akali, Deadly Weapon (Fury): `Empower 2 Energy, a Fury rune. When I move, you may deal 1 to a unit at a battlefield I moved to or from. If I'm Empowered, deal 2 instead. Empowered: I have +1 Might.`
+Akali, Silent (Calm): `I can't be chosen by enemy spells and abilities unless I'm in combat. When I move to a battlefield, give me +2 Might this turn.`
+
+**Archetype:** Aggro, with a skirmishing/hit-and-run texture rather than a flat board-flood. The Legend ability lets you pull a unit out of a Showdown back to base — on its face a defensive escape valve — but once Empowered it also readies that unit, turning a retreat into a free extra action rather than just damage avoidance. Both Champions key off movement itself as the trigger: Deadly Weapon pings a unit for 1-2 damage every time it moves, Silent gets +2 might every time it moves to a battlefield. None of this rewards patience or holding; all of it rewards repeatedly repositioning to force new, favorable fights.
+
+**Core unfolding:** Early game wants Akali moving between battlefields as soon as she's down, since both Champion payoffs trigger off movement rather than a turn-count or resource threshold — even a single early move nets chip damage (Deadly Weapon) or a temporary stat spike (Silent) that can decide a close Showdown. Once the Empower cost is paid, the Legend ability upgrades from "dodge a losing fight" to "dodge a losing fight and get the unit back for another action" — meaning a unit can contest one battlefield, retreat before a bad trade resolves, and be ready to threaten a different battlefield the same cycle. That loop is what the deck is building toward: not one big swing, but a constant churn of winnable skirmishes across multiple battlefields, each one topped up by move-triggered damage or stat gain.
+
+**Win condition:** Wins Showdowns outright through move-triggered pings and stat bumps, then uses the Empowered retreat to avoid losing units in fights it doesn't like — there's no hold-based scoring text anywhere in this kit, so the plan is pure conquest via favorable, repeatable combat, not attrition or resource accumulation.

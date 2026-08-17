@@ -1,0 +1,11 @@
+### Diana - Scorn of the Moon (Mind+Chaos)
+
+Legend ability: `Reaction: Exhaust: Add 1 Energy. Spend this Energy only during showdowns. (Abilities that add resources can't be reacted to.)`
+Diana - Lunari (Mind): `When a showdown begins here, you may pay 1 Energy. If you do, Predict, then reveal the top card of your Main Deck. If it's a spell, draw it.`
+Diana - No Longer Human (Chaos): `Ambush (...) When you play a spell, give me +2 Might this turn.`
+
+**Archetype:** Control-leaning reactive tempo. The Legend generates energy that can only be spent during Showdowns, and No Longer Human's Ambush lets her be played reactively into a battlefield that's already being contested — neither piece wants to commit proactively ahead of time; both wait for the opponent to initiate combat and then answer it. That's a fundamentally different shape from forcing early decisions: this deck is content to let a fight come to it, provided it has saved-up resources to spend the moment it does.
+
+**Core unfolding:** Early game means holding back spells and energy rather than dumping them, since the showdown-only energy pool is dead outside combat and No Longer Human is structurally meant to enter during an already-started fight rather than proactively. Once a Showdown begins, Lunari's trigger turns that fight into a card-advantage opportunity — paying 1 energy to preview the top card and draw it if it's a spell — so repeated Showdowns gradually accumulate resources rather than any single fight deciding the game. No Longer Human then converts spent spells directly into a same-turn might swing right as she ambushes in, letting saved-up reaction energy and Lunari's card advantage fund a favorable fight in the moment it matters. (Chaos's stated weakness — can't hold a permanent unit advantage — fits this reactive-rather-than-entrenched shape: the deck answers fights as they come rather than sitting on fixed board superiority.)
+
+**Win condition:** Primarily wins Showdowns outright through reactive combat tricks funded by saved showdown-energy and spell-triggered might swings; Lunari's draw is a secondary resource-advantage engine that indirectly supplies more of those same combat wins over a longer game, rather than a hold-based or direct-scoring mechanism.

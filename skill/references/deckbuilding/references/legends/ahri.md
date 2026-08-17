@@ -1,0 +1,11 @@
+### Ahri - Nine-Tailed Fox (Calm+Mind)
+
+Legend ability: `When an enemy unit attacks a battlefield you control, give it -1 Might this turn, to a minimum of 1 Might.`
+Ahri, Inquisitive (Mind): `When I attack or defend, give an enemy unit here -2 Might this turn, to a minimum of 1 Might.`
+Ahri - Alluring (Calm): `When I hold, you score 1 point.`
+
+**Archetype:** Control. The Legend ability only fires reactively, when an enemy attacks a battlefield you already control — it's a defensive stat-tax, not a proactive threat, and it structurally assumes you're the one sitting on ground the opponent has to come dislodge. Alluring converts that sitting-still posture directly into points: `When I hold, you score 1 point` is the single most literal "holding is the win condition" line in this batch — no conquer step needed, just still being there. Inquisitive stacks a second, larger debuff (-2 might) onto the same defensive shape. Nothing here rewards moving first or racing; everything rewards surviving the attack that comes to you.
+
+**Core unfolding:** Early game is about getting units onto Battlefields you intend to keep, since the Legend ability is worthless until you already control ground worth defending — there's no early-aggression payoff to chase. Once a board position is established, every enemy attack into your held battlefield eats a -1 might penalty from the Legend before combat math even starts, and if Inquisitive is present, a further -2 on top when she's involved — stacking debuffs make your existing defenders survive fights they'd otherwise lose, which is what lets the position keep being "held" turn after turn. With Alluring in the Champion slot, each of those successfully-defended holds is a direct point, so the deck doesn't need a big finishing turn at all — it just needs to keep not losing the ground it already has. (Calm's stated design intent, "the peace of holding," maps onto Alluring's text about as literally as the Domain table gets.)
+
+**Win condition:** Holding uncontested (or successfully defended) battlefields converts straight into points via Alluring — this is a hold-to-score plan, not a combat-attrition or resource-engine one. The might-debuffs exist purely to make holding survivable against attacks, not to win Showdowns outright for their own sake.

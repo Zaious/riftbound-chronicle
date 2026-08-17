@@ -1,0 +1,9 @@
+### Shen - Eye of Twilight (Calm+Order)
+
+Legend ability: `Action: Exhaust: Give a friendly unit Tank this turn.` **Shen, Scourge of Shadows** (Calm): `When I hold, if there is exactly one other unit you control here, draw 1.` **Shen, Leader of the Kinkou Order** (Order): `Shield. When I hold, if there is exactly one other unit you control here, you score 1 point.`
+
+Archetype: control, and unusually explicitly so. The Legend ability is a proactive protective tool (an Action, player-timed, not conditional) that grants Tank to shield a chosen unit from being finished off — defensive utility, not a scoring or tempo trigger in itself. Both Champions share an identical, precise condition: holding with exactly one other unit present. That specificity actively punishes going wide at that battlefield and instead demands a tight, minimal two-unit garrison — the opposite instinct from an aggro flood plan.
+
+Core unfolding: early game is about getting Shen and exactly one partner to a battlefield and sitting there, using the Legend's Tank grant to protect whichever of the two is more exposed to being finished in combat. Once established, every turn that exact two-unit configuration continues holding, Scourge of Shadows draws a card or Leader of the Kinkou Order scores a point outright — a repeatable, do-nothing-else payoff that rewards not losing the position over playing more into it. There's no separate "closing out" phase distinct from the holding phase itself; with Leader chosen, the deck is quite literally scoring every turn the hold condition is met.
+
+Win condition: holding uncontested, converted directly into points by Leader of the Kinkou Order (among the most literal hold-equals-score mechanics available) or into card advantage by Scourge of Shadows for a slower, resource-driven version of the same plan.

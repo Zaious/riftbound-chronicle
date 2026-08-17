@@ -1,386 +1,297 @@
-# Riftbound Chronicle 獨立審計報告
+# Riftbound Chronicle 獨立審計報告（修復後複驗）
 
-**審計日期：** 2026-08-17（Asia/Taipei）  
-**審計對象：** `riftbound-chronicle`  
-**審計版本：** `8e0b4dd`（`main`）  
-**審計性質：** 唯讀、獨立技術與內容審計  
+**複驗日期：** 2026-08-18（Asia/Taipei）
+**審計對象：** `riftbound-chronicle`
+**目前版本：** `65e587b`（`main`）
+**基線版本：** `8e0b4dd`（2026-08-17 初始審計）
+**審計性質：** 唯讀複驗、規則來源校對、資料與文件完整性審計
 **報告語言：** 繁體中文
 
 ---
 
-## 1. 執行摘要
+## 1. 結論先行
 
-`riftbound-chronicle` 的產品概念有明確價值：它不是把卡牌資料塞進一個大型提示詞，而是將牌組構築、實戰操作、區域合法性與個別 Legend 推導拆成可按需載入的知識庫。尤其「依比賽所在地的官方產品上市日判定區域卡池」這項洞察，已獲現行 Tournament Rules 601.2.b 直接支持，是本專案最具辨識度且應保留的核心。
+本次複驗確認，基線審計指出的三個 P0 問題中，來源權威模型與 Gameplay 程序已大幅修復；合法性、可攜性、可重現性與合規文件也都有實質改善。但目前仍不能把本 repository 當成「免查官方來源的競賽裁定工具」。原因不是原本的 Core／Tournament 優先級再度混淆，而是複驗仍找到一個直接的舊卡文殘留，以及數個會讓合法性回答自相矛盾的文件快照。
 
-然而，本次審計也確認三項會阻止它安全成為競賽規則／卡文權威來源的重大問題：
+**複驗評分：6/10。**
+**發布判定：Conditional — 可作研究與教育型知識庫；不可宣稱競賽最終裁定或完整當前卡文權威。**
 
-1. 規則權威層級沒有被完整實作，Gameplay 書仍包含多項會導致錯誤裁定的流程描述。
-2. 隨附資料庫沒有套用大部分官方勘誤；63 項官方勘誤中，50 項仍呈現舊文字或舊語意，占 79.4%。
-3. README 與 Skill 對「完整官方卡文」、「本地資料沒有準確度損失」、「政策即為使用許可」等敘述超過現有證據能支持的程度。
+目前最重要的兩個未關閉事項：
 
-### 總體結論
+1. [`reksai.md`](../../skill/references/deckbuilding/references/legends/reksai.md) 的 Rek'Sai／Void Burrower Legend 仍保留 Spiritforged errata 前的 `You may play one. Then recycle the rest.`；官方 overlay 已要求 `You may banish one, then play it. Recycle the rest.`。這是可直接改變遊戲結果的 P0 卡文錯誤。
+2. 合法性修復沒有同步所有文件：`deckbuilding.md` 的 front matter／Taiwan 環境摘要與 `regional-legality-model.md` 的 Global Standard 範例仍把 ARC 寫成 legal set；同一組文件又在其他段落正確說明 ARC 不是 Standard set。這會產生互相衝突的合法性答案。
 
-**整體評分：5/10。**
+其餘主要結果：
 
-本專案適合作為「有潛力的知識工程原型」與「可繼續發展的 Riftbound 助手骨架」，但目前不應標示為可供競賽裁定、完整官方卡文查詢或免查官方來源的成熟 Skill。在完成本報告 P0 修復前，建議在 README 與 `SKILL.md` 明確加入「規則與卡文仍在校正，不應作為賽事最終裁定」警語。
+- `SKILL.md` 已明列 event addendum → Tournament Rules → Core Rules 的競賽優先級，並把 FAQ／Core／errata 分成不同問題軸。
+- Gameplay 的 Burn Out、Open／Showdown 限制、chain 結算、priority shortcut、Showdown／combat、damage assignment、No Result、control 與 mulligan 程序，已逐項對到官方 PDF 條文。
+- `errata_overlay.json` 已收錄四波共 63 項官方勘誤，但只有 16 項標記為 live-fetched，47 項仍為 spot-checked；且尚未有 CI 逐項驗證衍生 Markdown 是否真的使用 `new_text`。
+- 路徑與基本資料管線已有 CI；但 raw harvester 仍不在公開 repository，Domain 統計的舊 `965` 數字仍與目前可重跑的 `949` population 不一致。
+- 合規文字已由「政策即許可」改為明確揭露註冊待審與非官方資料來源；這改善了文件誠實度，但不等於實際取得 Riot 註冊或資料來源核准。
 
 ---
 
-## 2. 審計範圍與限制
+## 2. 審計範圍與複驗方法
 
 ### 2.1 納入範圍
 
-- 根目錄 README、授權與公開承諾。
-- `skill/SKILL.md` 的路由、來源權威與本地資料策略。
-- Deckbuilding 與 Gameplay 兩本知識書。
-- 區域合法性模型、Legend catalogue 與 verification log。
-- 隨附 `riftcodex_cards_raw.json` 的資料量、重複狀態與官方勘誤新鮮度。
-- `extract_legend_packets.py` 的可執行性與輸出結構。
-- 相對路徑、文件連結、自包含性與可重現性。
-- Riot Riftbound Developer Policy 的公開合規敘述。
+- 根目錄 `README.md`、授權與合規聲明。
+- `skill/SKILL.md` 的路由、來源權威與 freshness 規則。
+- `skill/references/gameplay/gameplay.md`。
+- Deckbuilding、Legend catalogue、regional legality 與 verification log。
+- `skill/data/riftcodex_cards_raw.json`、`skill/data/errata_overlay.json` 與資料說明。
+- `skill/scripts/`、GitHub Actions CI、相對連結與不同 working directory 的可攜性。
+- 2026-07-16 官方 Core Rules／Tournament Rules PDF，以及 Rules Hub、FAQ、四波官方 errata 與 ban-list 頁面。
 
-### 2.2 未納入範圍
+### 2.2 複驗程序
 
-- 不對 Riot、RiftCodex 或本專案做法律意見或著作權效力判決。
-- 不逐一判定全部 46 份 Legend 策略文章的競技強度；本次審計評估其資料基礎、方法、證據與可重現性。
-- 不以未公開的台灣代理商後台、銷售數據或私人營運資料證實上市與缺貨主張。
-- 不評估網站部署、前端介面或非本 repository 內容。
+1. 以 `git diff 8e0b4dd..65e587b` 盤點基線審計後的所有修復提交。
+2. 重新讀取官方 PDF 的關鍵條文，而不是只依賴 PDF 文字抽取：Core 117、310、339–340、431.2、465–466；Tournament 104、204.4、401.5、402.1、503.9、601.1–601.3。
+3. 重新檢查 Rules Hub 的 FAQ／errata／ban list freshness 與競賽優先級。
+4. 重新執行 repository 內的資料完整性、連結、Domain 統計與 Legend packet 檢查。
+5. 對 63 項 overlay 的 `old_text` 做衍生文件殘留檢查，並逐一抽查有命中的卡文。
+6. 檢查跨文件的 ARC 合法性、日期、資料量與「完整／不會過期」等公開承諾是否一致。
 
-### 2.3 方法
+### 2.3 限制
 
-本次審計採取以下程序：
-
-1. 盤點 repository 結構、分支、工作樹與最新提交。
-2. 閱讀所有主要路由與方法文件，建立可驗證主張清單。
-3. 依官方來源重新建立規則權威層級。
-4. 將 Gameplay 與 Deckbuilding 主張逐條對照 Tournament Rules、Core Rules、最新 FAQ、Rules Hub 與官方勘誤。
-5. 統計資料庫 rows、唯一 ID、重複 ID 群組、set 分布與空白文字狀態。
-6. 將四波官方勘誤的新舊文字正規化後與本地基礎卡牌資料比對，並人工複核非精確命中項目。
-7. 執行 Legend packet 抽取器並檢查 packet 數量與 Champion 配對數。
-8. 檢查公開文件路徑、可攜性、來源可追溯性、重現管線與政策敘述。
+- 本報告不作著作權或法律意見；只判斷 repository 的公開敘述是否超過其證據。
+- 不把社群文章當成官方規則；社群資料只能作 Tier 2 方法驗證。
+- 外部網頁與產品註冊狀態會變動；本報告的官方來源基準日為 2026-08-18。
 
 ---
 
-## 3. 規則權威模型與審計更正
+## 3. 官方規則權威模型（本次正式採用）
 
-### 3.1 本報告採用的權威模型
+Core Rules 不是所有競賽問題的最高來源。兩條軸必須分開：
 
-Riftbound 不能只用一份 Core Rules 作為所有問題的最高來源。現行來源必須分成兩條軸處理。
+### 3.1 競賽程序軸
 
-#### 競賽程序軸
-
-1. 特定賽事官方 addendum。
+1. 適用於該賽事的官方 event addendum。
 2. Tournament Rules。
-3. Core Rules 中未被競賽文件修改的部分。
+3. Core Rules 中未被上述競賽文件修改的部分。
+4. 實際 sanctioned event 的 Head Judge 裁定。
 
-Tournament Rules 104.1 明定：當 Tournament Rules 與 Core Rules 衝突或補充 Core 未包含的資訊時，競賽以 Tournament Rules 為準。104.3 又明定特定賽事 addendum 可進一步優先於 Tournament Rules。
+Tournament Rules 104.1 明定其與 Core Rules 衝突或補充時，以 Tournament Rules 為準；104.3 明定特定賽事 addendum 再優先；204.4 將 Head Judge 定為競賽規則與程序的最終權威。這是本次複驗的競賽基準。
 
-#### 遊戲規則與卡文軸
+### 3.2 遊戲機制與卡文軸
 
-1. 現行官方 FAQ／clarification 在其明示優先範圍內。
+1. 在明示範圍內適用的最新官方 FAQ／clarification。
 2. 最新 Core Rules。
-3. 套用官方 errata 後的卡文；依 Core Rules Golden Rule，卡文可覆寫一般規則。
+3. 套用官方 errata 的卡文；卡文若與一般規則衝突，依 Golden Rule 以卡文為準。
 
-2026-08-14 發布的 Vendetta Rules FAQ 明定：若該 FAQ 與當時 Core Rules 不同，FAQ 優先；下一版 Core Rules 發布後，新的 Core Rules 再優先於舊 FAQ。
-
-實際賽事中，Tournament Rules 204.4 將 Head Judge 定義為競賽規則與程序的最終權威。
-
-### 3.2 對先前審計的正式更正
-
-先前以 Core Rules 103.2 的「Main Deck 至少 40 張」判定本專案「正好 40 張」錯誤，這個判定不成立。
-
-Tournament Rules 402.1 與 601.1.b 均明定：**競賽 Constructed Main Deck 必須正好 40 張，且包含 Chosen Champion。** 因此：
-
-- [`deckbuilding.md` 的正好 40 張敘述](../../skill/references/deckbuilding/deckbuilding.md#L43)正確。
-- Chosen Champion 在遊戲設置時移到 Champion Zone，因此機率表使用 shuffled population `N=39` 的基礎正確。
-- 原本針對「正好 40 張」的負面發現正式撤回。
-
-這次更正不會使其餘 Gameplay 錯誤自動失效：Tournament Rules 只在衝突或補充的競賽事項上優先；沒有被其修改的遊戲引擎仍須依 Core Rules 與更新的官方 FAQ 判斷。
+2026-08-14 Vendetta FAQ 明示在下一版 Core Rules 發布前，FAQ 與當時 Core Rules 不同時以 FAQ 為準。因此「Core PDF 高於一切」不是可接受的路由規則；本 repository 目前的 `SKILL.md` 已正確拆開這兩條軸。
 
 ---
 
-## 4. 評分
+## 4. 可重現驗證結果
 
-| 面向 | 分數 | 判定 |
-|---|---:|---|
-| 產品定位與知識架構 | 8/10 | 分書、薄路由與按需讀取方向良好 |
-| 規則權威治理 | 4/10 | 已知道 Rules Hub，但沒有實作完整 precedence |
-| Gameplay 規則正確性 | 3/10 | 多項核心流程會產生錯誤裁定 |
-| 卡牌資料新鮮度 | 2/10 | 79.4% 已公布勘誤仍是舊文字／語意 |
-| 區域與賽制合法性 | 6/10 | 核心洞察正確，但缺同名重印與低 OPL 例外 |
-| Skill 可攜性 | 5/10 | 結構可攜，但資源路徑依賴目前工作目錄 |
-| 可重現性與驗證 | 4/10 | 抽取器可用，但 raw harvester、測試與 CI 缺席 |
-| 公開合規準備度 | 3/10 | 有權利意識，但政策與許可敘述過度 |
-| **整體** | **5/10** | **有價值的原型，尚非可靠的競賽知識產品** |
-
----
-
-## 5. 審計發現
-
-嚴重度定義：
-
-- **P0 — 阻斷：** 可能直接產生錯誤裁定、錯誤卡文或重大公開風險，發布前必須修正。
-- **P1 — 重大：** 會使合法性、可攜性、可重現性或公開承諾失真。
-- **P2 — 一般：** 文件矛盾、來源不足或維護成本問題。
-- **P3 — 改善：** 不直接破壞結果，但可提升品質。
-
-### F-01 — P0：來源權威策略不完整，且把官方查詢降級成「少見例外」
-
-**位置：** [`skill/SKILL.md`](../../skill/SKILL.md#L19)
-
-`SKILL.md` 有正確指出 Rules Hub 是現行來源，但第 27–29 行仍把基本規則視為穩定快照，並稱 live web fetch 是「rare escalation path」及本地資料已足以避免網路查詢。這與目前實際來源狀態不符：
-
-- Tournament Rules 可覆寫 Core 的競賽規則。
-- 2026-08-14 FAQ 比 2026-07-16 Core／Tournament PDF 更新，且明示可優先於 Core。
-- 卡文勘誤沒有完整進入本地資料。
-
-**影響：** Agent 會在最需要查官方來源的時候，反而被路由到已知過期的本地資料。
-
-**建議：** 將來源選擇改為 freshness 與題型驅動，而非 local-first 絕對化：
-
-- 競賽問題必讀 Tournament Rules／event addendum。
-- 非平凡互動先檢查 Rules Hub 最新 FAQ 日期是否晚於本地 rules snapshot。
-- 任何出現在官方 errata 索引中的卡，必須先套用 errata overlay。
-- 本地資料只有在來源版本、抓取日期、官方勘誤版本與驗證狀態均可證明時才能作為快速路徑。
-
-### F-02 — P0：Gameplay 書包含多項錯誤流程
-
-**位置：** [`gameplay.md`](../../skill/references/gameplay/gameplay.md)
-
-| 位置 | 現行敘述 | 正確規則與影響 |
+| 檢查 | 結果 | 複驗證據 |
 |---|---|---|
-| [第 20 行](../../skill/references/gameplay/gameplay.md#L20) | Main Deck 空時，對手得分「instead of drawing」 | Core 431.2：先盡可能完成動作、回收 Trash、指定對手得 1 分，再完成原動作；Draw Phase 範例最後仍抽 1 |
-| [第 32 行](../../skill/references/gameplay/gameplay.md#L32) | Open State 只有 Action 卡可玩 | Core 310.1.a：Neutral Open 預設可出牌／啟動能力；Core 806.1 的 Action 是額外允許 Showdown 時機 |
-| [第 36 行](../../skill/references/gameplay/gameplay.md#L36) | 雙方連續 pass 後整條 chain 關閉 | Core 339.1、340.1–340.3：全員 pass 後只結算最新 Finalized Chain Item；chain 尚有項目就繼續處理 |
-| [第 38 行](../../skill/references/gameplay/gameplay.md#L38) | Holding priority 合法且常正確 | 策略可能成立，但 Tournament 503.9.b 預設出牌後視為 pass；必須明確宣告 retain priority |
-| [第 46 行](../../skill/references/gameplay/gameplay.md#L46) | 移到無人控制戰場立即取得控制 | Core 345–348：開啟 Non-Combat Showdown；Showdown 關閉並完成清理後才建立控制 |
-| [第 50–51 行](../../skill/references/gameplay/gameplay.md#L50) | 先加總 Might，再開 spell window | Core 464–465：Combat Showdown／互動先進行；Showdown 關閉後才進入 Combat Damage Step 並加總 Might |
-| [第 52 行](../../skill/references/gameplay/gameplay.md#L52) | 雙方同時分配傷害 | Core 465.2.c：從 Attacker 開始依序分配；全部分配完成後才同時造成傷害 |
-| [第 53 行](../../skill/references/gameplay/gameplay.md#L53) | Might 較高者勝，平手全部單位死亡 | Core 466.3：勝負依清理後是否只有一方仍有單位判定；防止、替代、回手等都可能改變結果，沒有通用的平手全滅規則 |
-| [第 55 行](../../skill/references/gameplay/gameplay.md#L55) | 攻擊者只能靠「摧毀全部防守者」取得戰場 | 控制依最後剩餘單位建立，不限定摧毀；移動、Recall、替代效果與防守方反向征服都可能影響結果 |
-| [第 63 行](../../skill/references/gameplay/gameplay.md#L63) | 先 bottom，再抽替代牌 | Core 117：先把最多兩張牌 set aside、抽同數量，最後才 Recycle 到牌庫底；數量正確但程序順序錯誤 |
-| [第 71 行](../../skill/references/gameplay/gameplay.md#L71) | 看見對手 first plays 後再重評 mulligan | Mulligan 在遊戲開始前完成；能參考的是公開 Legend，以及 open-decklist 賽事在 match 開始提供的牌表，不可能參考已發生的第一手操作 |
+| 資料完整性 | PASS | `1451 rows`、`1304 unique riftbound_id`、`147 duplicate-id groups`；overlay 4 documents／63 entries；script exit 0 |
+| Markdown 相對連結 | PASS（有限） | 檢查 55 份 Markdown、89 個相對連結，0 broken；fragment anchor 本身未驗證 |
+| Domain 統計 | PASS（可重跑） | `compute_domain_stats.py` 產生 949-card population 與六 Domain 表；這是新定義的 population，不應再稱舊 965 |
+| Legend packet | PASS | 48 packets；每個 packet 正好 2 個 Champions；從 `%TEMP%` working directory 以絕對 script path 執行亦成功 |
+| 官方 errata 數量 | PASS（結構）／PARTIAL（語意） | overlay 63/63；16 live-fetched、47 spot-checked；尚無 63 項 `new_text` 的自動語意 gate |
+| Git 工作樹 | PASS | 複驗期間只修改本審計報告；`git diff --check` 無 whitespace error |
 
-**額外缺口：** 若 Gameplay 書定位包含 sanctioned play，還應涵蓋 Tournament 401.5 open decklist、503.9 shortcuts、506 triggered ability accountability／missed trigger，以及 Head Judge appeal 流程。
+---
 
-### F-03 — P0：隨附卡牌資料未套用多數官方勘誤
+## 5. 發現與修復狀態
 
-**位置：** [`riftcodex_cards_raw.json`](../../skill/data/riftcodex_cards_raw.json)、[`skill/data/README.md`](../../skill/data/README.md)、[`skill/SKILL.md`](../../skill/SKILL.md#L28)
+嚴重度：P0 會直接造成錯誤裁定或錯誤卡文；P1 會使合法性、可攜性、可重現性或公開承諾失真；P2 為文件一致性／維護風險。
 
-本次將四波官方 errata 的 63 個條目與本地基礎卡牌紀錄比對。比對時正規化標點、空白、HTML 與 RiftCodex icon token，優先選擇非 alternate-art、非 overnumbered、非 promo 的基礎紀錄。
+| 編號 | 基線問題 | 目前狀態 | 判定 |
+|---|---|---|---|
+| F-01 | 來源權威模型把 Core／local snapshot 放在不當位置 | 已加入雙軸 precedence、FAQ、errata overlay 與 Head Judge 限制 | **Closed** |
+| F-02 | Gameplay 多項錯誤流程 | 主要程序已依官方 PDF 重寫並補 Tournament procedure notes | **Closed** |
+| F-03 | 63 項官方勘誤多數未套用 | overlay 已有 63 項，但 Rek'Sai／Void Burrower 仍有一處衍生舊卡文 | **P0 Partial** |
+| F-04 | legality 缺 same-name、overnumbered、OPL、2v2 等維度 | 模型已補齊；多個摘要仍殘留 ARC legal-set 舊說法，日期也未同步 | **P1 Partial** |
+| F-05 | 相對路徑依賴工作目錄 | 主要內部路徑改用 `${CLAUDE_SKILL_DIR}`；off-cwd smoke test 通過 | **Closed** |
+| F-06 | raw harvester、CI、統計不可重現 | CI／scripts／citations 已加入；harvester 仍不公開，舊統計文字仍漂移 | **P1 Partial** |
+| F-07 | 合規敘述把 policy 說成既成 permission | README 已揭露註冊待審與非官方 API gap | **Documentation Closed; operational open** |
+| F-08 | 文件矛盾、壞路徑、過強成熟度語氣 | 路徑已修、連結通過；ARC／完整卡池／不會過期等矛盾仍在 | **P2 Partial** |
 
-| 官方勘誤波次 | 條目 | 已是新文字 | 舊文字／舊語意 |
-|---|---:|---:|---:|
-| Origins | 31 | 9 | 22 |
-| Spiritforged | 16 | 4 | 12 |
-| Unleashed | 8 | 0 | 8 |
-| Vendetta | 8 | 0 | 8 |
-| **合計** | **63** | **13** | **50** |
+---
 
-其中 48 項精確命中官方舊文字；Rengar, Trophy Hunter 與 Resonating Strike 因 reminder text／符號格式不同未精確命中，但人工複核確認仍保留舊語意，故計入舊資料。
+## 6. 詳細複驗結果
 
-已確認受影響的衍生內容包括：
+### F-01 — 來源權威模型：已關閉
 
-- [`deckbuilding.md` Annie 範例](../../skill/references/deckbuilding/deckbuilding.md#L80)仍是 `ready 2 runes`；官方已改成 `ready up to 2 runes`。
-- [`teemo.md`](../../skill/references/deckbuilding/references/legends/teemo.md#L3)仍使用被實質修改的 Strategist 觸發條件。
-- [`rengar.md`](../../skill/references/deckbuilding/references/legends/rengar.md#L3)仍使用舊版 Trophy Hunter Ambush 敘述。
-- Draven, Vanquisher、Emperor's Dais、Stalking Wolf、Astral Heron、Gangplank, Naval、Guards!、Relentless Pursuit、Death from Below、Bone Skewer、Mirror Image 等仍命中官方舊文字。
+`SKILL.md` 現在明列：
 
-**影響：** 「從主卡文做結構推導，因此不會過期」的前提不成立。推導方法可能穩定，但輸入文字已改變，所有以舊卡文生成的 Legend catalogue 與 worked example 都需要失效重建。
+- competitive procedure：event addendum → Tournament Rules → Core Rules；
+- game mechanics／card text：current FAQ → latest Core → errata-applied card text；
+- ban list 與 card errata 必須做 freshness check，不能把 local snapshot 當永久真相；
+- routine card lookup 可 local-first，但 overlay 缺漏或過期時要升級到 Rules Hub。
 
-**建議：** 不應只重新抓一次 RiftCodex；應建立官方 errata overlay，保留來源 URL、發布日期、舊文、新文、套用狀態與最後驗證時間，並在 CI 中要求 63/63 全部命中新文字或有明確人工豁免。
+這已直接修正基線審計最核心的錯誤：不能只讀 Core Rules PDF，也不能把 live official lookup 寫成罕見例外。此部分可接受，但仍應在後續加入一個可機器檢查的「官方日期晚於 local snapshot 時失敗」gate。
 
-### F-04 — P1：合法性模型抓到區域核心，但缺少正式例外
+### F-02 — Gameplay：已關閉
 
-**位置：** [`deckbuilding.md`](../../skill/references/deckbuilding/deckbuilding.md#L15)、[`regional-legality-model.md`](../../skill/references/deckbuilding/references/regional-legality-model.md)
+重新對照後，以下內容與官方條文一致：
 
-#### 已證實正確
+- Core 431.2：Burn Out 先盡可能執行原動作，再 recycle trash、讓對手得 1 分，最後完成原動作；
+- Core 310.1.a／308.1.a／806.1：Neutral Open 不等於只有 Action；Showdown 的 Action／Reaction 限制是另一層；
+- Core 339.1、340.1：一輪全 pass 只結算最新 chain item，不會一次清空整條 chain；
+- Tournament 503.9.b：放入 spell／ability 預設視為 pass，除非明示 retain priority；
+- Core 344–348、464–466：Non-Combat Showdown、combat spell window、Might 計算、依序分配／同時造成 damage、No Result 與 cleanup 後 control；
+- Core 117.1–117.3：set aside → draw replacement → recycle 的 mulligan 順序；
+- Tournament 401.5：open decklist 是 Head Judge 的賽事政策，且只能在 match 開始／局間查看，不能 gameplay 中查看。
 
-- Tournament Rules 601.2.b 明定：在 set release parity 達成前，區域卡牌合法性依賽事所在地的官方產品上市日執行。
-- 因此「台灣與 Global Standard 必須分開建模」的方向正確。
-- 競賽主牌正好 40 張、1 Legend、12 Runes、3 張名稱各異的 Battlefields，方向正確。
+目前沒有在 Gameplay 主文中再找到基線列出的那批程序錯誤。這個結論只代表規則文字已校正，不代表每一張卡的互動都已完成 FAQ 級驗證。
 
-#### 需要修正
+### F-03 — 官方 errata：仍是 P0，尚未關閉
 
-1. [`deckbuilding.md` 第 37 行](../../skill/references/deckbuilding/deckbuilding.md#L37)將 ARC 列為 Global Standard legal set；Tournament Rules 601.3.c 的正式清單為 OGS、OGN、SFD、UNL、VEN，沒有 ARC。
-2. Tournament Rules 601.2.a 允許與合法 set 卡牌同名的重印版本，因此 ARC 中的同名重印可能可用；正確理由是 same-name legality，而不是把 ARC 本身升格為 Standard set。
-3. 601.2.c 規定超出正常編號範圍的 overnumbered reprint 不會自行取得該 set 的 format legality。
-4. 601.2.d.2 規定：低 OPL 若使用官方預組的完全相同配置，可使用其中禁卡；修改任何內容或加入 sideboard 即失去豁免。
-5. 1v1 Constructed 與 2v2 Constructed 有不同 ban list；Master Yi, Wuju Bladesman 目前只在 2v2 Constructed 被禁。
-6. Tournament Rules 601.1.c 將 sideboard 上限更新為 10 張，且 copy limit 計算 Main Deck 與 sideboard 合計。
+`skill/data/errata_overlay.json` 現在有四份官方文件、63 entries，結構檢查通過。原始 JSON 保持為未修改的 RiftCodex snapshot，overlay 作為修正層，這個設計是正確的。
 
-**建議資料模型：**
+但複驗以 overlay 的 `old_text` 對 `skill/references/**/*.md` 做殘留搜尋，仍命中：
 
 ```text
-legality = format
-         + region
-         + event_date
-         + official_launch_date
-         + same_name_reprint
-         + overnumbered_rule
-         + format_ban_list
-         + OPL
-         + exact_preconstructed_exception
-         + event_addendum
+skill/references/deckbuilding/references/legends/reksai.md:5
+Legend ability: When you conquer, you may exhaust me to reveal the top 2 cards of your Main Deck. You may play one. Then recycle the rest.
 ```
 
-### F-05 — P1：Skill 的資源路徑不是真正可攜
+官方 Spiritforged errata 的 `Void Burrower` 新文字是：`You may banish one, then play it. Recycle the rest.` 這不是純排版差異，而是把卡片移入／移出牌庫的區域改變，會改變牌局結果。該檔案的標註也只說 Swarm Queen 已修正，沒有處理同一頁上的 Legend ability。
 
-**位置：** [`skill/SKILL.md`](../../skill/SKILL.md#L14)
+此外，overlay 的 47 個 spot-checked entry 並非 47 個都在本次 session 逐一 live-fetch；目前資料本身已誠實揭露這點，但不能把它等同於 63/63 官方頁面逐項重驗。
 
-`SKILL.md` 指示執行 `ls references/` 並讀取 `references/<book>/<book>.md`、`data/...`。這些相對路徑會以 Claude Code 當前工作目錄解析，而不是自動以 `SKILL.md` 所在目錄解析。將 `skill/` 複製到任意專案的 `.claude/skills/riftbound/` 後，若從專案根目錄執行，`references/` 很可能不存在。
+**必要修復：**
 
-Claude Code 官方文件提供 `${CLAUDE_SKILL_DIR}`，用途正是從任意安裝層級可靠定位 Skill 自身的 script 與 supporting files。
+1. 修正 `reksai.md` 的 Void Burrower Legend ability，並重新檢查其後的分析是否依賴「play one」的舊語意。
+2. 在 CI 增加 overlay→derived Markdown 的殘留檢查；至少要求每個被引用的 `official_name` 不得再含 `old_text`，或附可審核的人工豁免。
+3. 把 63 項的 live／spot-checked 範圍、人工豁免與最後驗證日期放入機器可讀欄位。
 
-**建議：** 所有內部資源路徑統一改成：
+### F-04 — 合法性模型：核心已修，文件仍矛盾
 
-```text
-${CLAUDE_SKILL_DIR}/references/
-${CLAUDE_SKILL_DIR}/data/riftcodex_cards_raw.json
-${CLAUDE_SKILL_DIR}/scripts/extract_legend_packets.py
-```
+本次確認模型已補上 Tournament Rules 601.2–601.3 的主要維度：
 
-並增加從不同 working directory 安裝與呼叫的 smoke test。
+- format（1v1／2v2 與不同 ban list）；
+- region、event date、official launch date；
+- same-name reprint（601.2.a）；
+- overnumbered reprint（601.2.c）；
+- ban list、OPL 與 low-OPL exact preconstructed exception（601.2.d.2）；
+- sideboard 上限 10 張與 Main Deck + sideboard copy limit（601.1.c）；
+- event addendum。
 
-### F-06 — P1：資料與研究結論不可完整重現
+但跨文件複驗仍找到三個殘留：
 
-**位置：** [`README.md`](../../README.md#L17)、[`skill/data/README.md`](../../skill/data/README.md#L18)、[`verification-log.md`](../../skill/references/deckbuilding/references/verification-log.md)
+1. `skill/references/deckbuilding/deckbuilding.md` front matter 的 Summary 仍寫 Taiwan `OGN + OGS + ARC`。
+2. 同檔 Environment 摘要仍寫 `Taiwan — ... OGN + OGS + ARC only`。
+3. `skill/references/deckbuilding/references/regional-legality-model.md` Global Standard 範例仍列 `OGN, OGS, ARC, SFD, UNL, VEN`，但官方 Tournament Rules 601.3.c 的現行清單只有 OGS、OGN、SFD、UNL、VEN；ARC 只能透過 same-name rule 取得合法性，不能被列為 Standard set。
 
-#### 已驗證的正面結果
+另有日期問題：Taiwan 段落仍標 `last verification 2026-07-19`，但同一 repository 內容已寫 Taiwan OGN 於 2026-08-07 發售；這是明顯的 snapshot 時序矛盾。
 
-- `extract_legend_packets.py` 可執行。
-- 輸出 48 個 Legend packet。
-- 每個 packet 均配對到正好兩個 Champion。
-- 程式對 RiftCodex 重複列、alternate-art、overnumbered、signature 與 Kennen/Yordle 誤配做了具體防禦，這是良好的資料清理設計。
+**必要修復：** 統一所有摘要與 worked example 的 ARC 說法，將「legal set」與「ARC same-name printing」分開；同步更新 Taiwan／Global 的 `last-verified` 與資料來源。
 
-#### 不可重現部分
+### F-05 — 可攜性：已關閉，但應保留 smoke test
 
-- 產生 `riftcodex_cards_raw.json` 的 raw harvester 不在公開 repository，而在維護者私人站點工具中。
-- README 稱 `skill/` 自包含且 scripts included，但公開使用者無法用 repository 內容重建或更新 raw dataset。
-- Domain personality 的「965 張卡統計」沒有提交可重跑程式、輸入 snapshot、輸出報表或 checksum。
-- `verification-log.md` 的 Top 8、主流 Champion 選擇與社群共識等主張沒有來源 URL、文章標題、作者與存取日期。
-- repository 沒有 test suite、CI、schema validation、link checker 或 freshness gate。
+`SKILL.md` 的主要內部讀取路徑已改用 `${CLAUDE_SKILL_DIR}`。`extract_legend_packets.py` 從 repository 外的 temporary working directory 以絕對 script path 執行成功，證明目前 scripts 不依賴當前目錄。
 
-**資料統計補充：** `riftcodex_cards_raw.json` 有 1,451 rows、1,304 個唯一 `riftbound_id`，以及 147 組重複 ID。README 應使用「rows／records／printings」，而不是讓讀者理解成 1,451 張不同卡牌。
+仍建議把這個 off-cwd 測試固定進 CI，因為 `${CLAUDE_SKILL_DIR}` 是宿主工具提供的 substitution，並非一般 shell 的環境變數；文件應保持這個語意，不要把它改寫成要求使用者自行設定的 `$CLAUDE_SKILL_DIR`。
 
-### F-07 — P1：公開合規聲明超過政策可支持範圍
+### F-06 — 可重現性：實質改善，但仍部分開放
 
-**位置：** [`README.md`](../../README.md#L47)、[`skill/data/README.md`](../../skill/data/README.md#L3)
+已完成：
 
-README 表示資料在 Riot Developer Portal policy 下重製，並稱該政策是「permission to use it」。但現行 Riftbound Developer Policy 同時規定：
+- data schema／errata 結構檢查；
+- Markdown 相對連結檢查；
+- Domain stats 可重跑 script；
+- Legend packet extractor CI smoke test；
+- verification log 補上 URL、標題、平台／作者與日期。
 
-- 面向玩家的產品即使不使用官方 API 也需要註冊。
-- 卡牌與 Riftbound assets 應使用 Riot API 提供的版本，不得使用外部或非官方材料。
-- App 必須顯示指定的 Legal Jibber Jabber 聲明。
-- Deck builder／card library 是可接受 use case，但仍須遵守註冊、資料與品牌條件。
+仍未完成：
 
-本 repository 明載資料來自非官方 `api.riftcodex.com`。這不等於本報告判定其一定侵權或違規，但足以說明「政策就是授權」不是目前證據能安全支持的公開陳述。
+- 產生 `riftcodex_cards_raw.json` 的 raw harvester 不在公開 repository；目前 README 只給手動 API 分頁說明，不能由 clean clone 產生相同 snapshot；
+- `compute_domain_stats.py` 現在明確重算 949-card population，但 `deckbuilding.md` 的 x-source 仍提到舊的 965-card analysis；
+- `verification-log.md` 仍明載 46 個 catalogue entries 中 43 個未 Tier-2 verified，Annie 的非 Battlefield supporting-card substitution 也仍是 open item；
+- CI 驗證 schema／可執行性，不驗證卡文語意、官方頁面 freshness 或每個 derived file 是否跟 overlay 同步。
 
-**建議：**
+因此本項由基線 4/10 提升，但尚不能稱「完全自包含、可完整重建」。
 
-- 移除 `that's permission to use it`。
-- 改成中性 provenance：資料權利屬 Riot、來源為非官方鏡像、使用者與部署者須自行確認 Riot 最新政策及產品註冊／核准狀態。
-- 加入 Riot 指定的完整 Legal Jibber Jabber 聲明。
-- 若已有 Developer Portal 產品核准，記錄可公開的核准範圍；不要從「approved use case」推導個別 repository 已獲核准。
+### F-07 — 合規：文件修復完成，實際狀態仍開放
 
-### F-08 — P2：文件矛盾與壞路徑降低可信度
+README 與 data README 已正確做到：
 
-1. [`skill/data/README.md` 第 3 行](../../skill/data/README.md#L3)的 `../LICENSE` 解析為 `skill/LICENSE`，實際 LICENSE 位於 repository root，應為 `../../LICENSE`。
-2. 同檔第 7 行的 `../skill/SKILL.md` 會解析為不存在的 `skill/skill/SKILL.md`；正確相對位置是 `../SKILL.md`。
-3. 同檔第 20 行保留 `P:\MyOpenSource\...` 私人絕對路徑，與 [`README.md` 第 30 行](../../README.md#L30)的「zero private paths」承諾矛盾。
-4. [`deckbuilding.md` 第 70 行](../../skill/references/deckbuilding/deckbuilding.md#L70)稱刻意不做每位 Legend 的靜態條目，第 93 行卻指向 46 份預寫條目；應改成「不把 Tier 2／meta 快照固化，但保留 Tier 1 結構假說」。
-5. README 稱 46-entry index 是 full roster；實際架構是 index 46 份，加上 Annie 與 Kai'Sa 兩個 worked examples，合計覆蓋 48 位。應直接說明此分工，避免把 46 與 48 混成兩種 roster 數字。
-6. README 的 `battle-tested`、`real established play` 與「不會過期」語氣，比 verification log 的 3/46 catalogue checks 更強，應降調到實際證據層級。
+- 加入指定 Legal Jibber Jabber；
+- 明確說明 product registration 仍 pending、pending 不等於 approval；
+- 明確說明資料來自非官方 RiftCodex，而 Riot policy 要求 Riftbound assets 來自 Riot API；
+- 不再把 approved use case 推導成此 repository 已獲個別核准；
+- 不再使用「that's permission to use it」這類過度結論。
 
----
+這是文件層面的關閉。但從政策條件來看，產品註冊尚未確認、card data source 仍不是 Riot API；所以公開產品仍不能宣稱已完成合規或已獲 Riot 授權。這不是 repository 內文案可自行解決的技術問題。
 
-## 6. 值得保留的設計
+### F-08 — 文件一致性：部分關閉
 
-### 6.1 薄路由、多本知識書
+`check_links.py` 已找到 89 個相對連結且 0 broken，先前的壞路徑問題已改善。但該檢查不解析 fragment anchors，也不做語意一致性。
 
-`SKILL.md` 不直接塞入全部知識，而是先判斷 Deckbuilding 或 Gameplay，再讀完整對應書。這比單一巨大 prompt 更容易維護，也減少不相關上下文。
+以下成熟度／覆蓋語氣仍應降調：
 
-### 6.2 區域上市與禁卡的雙軸思考
+- README 的 `battle-tested`；
+- README／Legend index 的「derived from primary text, so it can't go stale」；
+- `SKILL.md` 與 README 對「every card across every set」的語氣，與 data README 明列「不含 RAD、ARC、FND」不完全一致；
+- regional legality 的 ARC 與日期矛盾（已列於 F-04）。
 
-專案正確看見「實體產品是否在該地區上市」與「該卡是否被禁」是兩個獨立維度。Tournament Rules 601.2.b 證明此方向不是台灣社群自行創造的 house rule，而是官方競賽制度的一部分。
-
-### 6.3 推導與驗證分層
-
-將卡文結構推導標為 Tier 1，將實戰與社群／賽事驗證標為 Tier 2，是合理的 epistemic design。問題在於目前輸入卡文與 Tier 2 證據不夠可靠，不是分層概念本身錯誤。
-
-### 6.4 資料抽取器的防禦性
-
-抽取器明確處理重複 row、metadata 旗標與 Champion tag 誤配，顯示維護者確實分析過資料來源的具體失敗模式。這部分應保留並補測試，而不是重寫成黑箱生成流程。
-
-### 6.5 避免 metagame-defining 數據
-
-專案避免公開 win rate、play rate、matchup differential 與 Tier 排名，方向符合 Riot Developer Policy 對 metagame-defining data 的限制。
+這些不是單純文風問題：在規則型 skill 中，讀者會把「不會過期／every card」理解成 freshness guarantee，與 raw snapshot、errata overlay、43/46 未驗證的實際狀態不相稱。
 
 ---
 
-## 7. 修復路線圖
+## 7. 修復後評分
 
-### Phase 0 — 立即停止錯誤擴散
-
-1. README／SKILL 加入暫時警語：Gameplay 與 card text 正在校正，不供賽事最終裁定。
-2. 將官方來源權威矩陣寫進 `SKILL.md`。
-3. 修正 Gameplay 的 Burn Out、Open／Action、chain、Showdown、combat、mulligan 程序。
-4. 建立官方 errata overlay，重新生成所有依賴卡文的 Legend 內容。
-
-**完成標準：** 本報告 F-01、F-02、F-03 全部關閉；63/63 errata 均命中新文字或有書面人工豁免。
-
-### Phase 1 — 合法性與競賽層
-
-1. 將 legality 從 set allowlist 改成 format／region／date／same-name／ban／OPL 組合模型。
-2. 加入 1v1、2v2、sideboard 及 exact preconstructed exception。
-3. 修正 ARC 的說明：同名重印可合法，不等於 ARC 是 Standard set。
-4. 將 Tournament shortcuts、open decklists、missed triggers 加入 Gameplay 競賽附錄。
-
-**完成標準：** 為 Tournament 402.1、503.9、506、601.1–601.3 建立可執行 assertion tests。
-
-### Phase 2 — 可攜性與可重現性
-
-1. 所有 Skill 內部路徑改用 `${CLAUDE_SKILL_DIR}`。
-2. 公開 raw harvester，或明確撤回「可自行重建／完整自包含」的承諾。
-3. 提交 schema validator、duplicate report、link checker 與 CI。
-4. 將 Domain 統計轉為可重跑 script 與固定輸入 snapshot。
-5. verification log 每筆補來源 URL、標題、作者／平台、發布與存取日期、支持範圍。
-
-**完成標準：** 從任意工作目錄安裝 Skill 都能通過 smoke test；乾淨 clone 可重建所有衍生資料；所有 Markdown 連結通過檢查。
-
-### Phase 3 — 公開承諾與合規
-
-1. 移除未有證據支持的 `permission`、`full official text`、`no accuracy gain` 等絕對語句。
-2. 加入 Riot 指定聲明與產品註冊狀態說明。
-3. 將第三方資料的 provenance、權利歸屬、更新責任與已知差距分開描述。
-4. 釐清 public library 與 private companion 的實際邊界，移除所有私人絕對路徑。
+| 面向 | 分數 | 複驗判定 |
+|---|---:|---|
+| 產品定位與知識架構 | 8/10 | 分書、薄路由與 Tier 分層仍是強項，但成熟度語氣偏強 |
+| 規則權威治理 | 8/10 | precedence 已正確寫入，尚缺自動 freshness gate |
+| Gameplay 規則正確性 | 8/10 | 基線錯誤已逐項修復並對到 PDF；卡片互動仍需 FAQ 級查證 |
+| 卡牌資料新鮮度 | 5/10 | 63 項 overlay 已建立，但有 Rek'Sai 衍生舊文，47 項非逐項 live-fetched |
+| 區域與賽制合法性 | 6/10 | dimensions 已補齊，但 ARC 與日期矛盾仍會造成錯答 |
+| Skill 可攜性 | 8/10 | `${CLAUDE_SKILL_DIR}` 路徑與 off-cwd smoke test 通過 |
+| 可重現性與驗證 | 6/10 | CI／scripts 已存在；raw harvest 與 semantic freshness gate 仍缺 |
+| 公開合規準備度 | 5/10 | 文件誠實，註冊與資料來源條件尚未解決 |
+| **整體** | **6/10** | **研究／教育型知識庫可用；競賽權威發布尚未通過** |
 
 ---
 
-## 8. 建議驗收清單
+## 8. 必要修復順序
 
-- [ ] `SKILL.md` 明列 event addendum、Tournament Rules、FAQ、Core、errata 的適用範圍與優先關係。
-- [ ] 競賽 Constructed 測試確認 Main Deck 正好 40 張、Chosen Champion 包含在內。
-- [ ] Gameplay 測試覆蓋 Burn Out、Neutral／Showdown Open、chain 單項結算與完整關閉。
-- [ ] Combat 測試覆蓋依序分配、同時造成、prevention／replacement 與清理後勝負。
-- [ ] Mulligan 文件使用 set aside → draw → recycle 的正確順序。
-- [ ] Retain priority 明確提示 Tournament 503.9.b 宣告要求。
-- [ ] 63 項官方 errata 全部命中新文字或有可審核豁免。
-- [ ] Annie、Teemo、Rengar 與其他受勘誤影響的衍生內容已重新生成。
-- [ ] Standard set 清單不再把 ARC 當成正式 Standard set。
-- [ ] Legality tests 包含 same-name reprint、overnumbered、regional launch、2v2 ban 與低 OPL 預組例外。
-- [ ] 所有 Skill 相對路徑改用 `${CLAUDE_SKILL_DIR}`。
-- [ ] raw data 更新方式可公開重現，或文件不再宣稱可重建。
-- [ ] verification log 的外部主張均有可追溯來源。
-- [ ] README 不再將 Developer Policy 描述為個別資料集的既成授權。
-- [ ] Riot 指定 Legal Jibber Jabber 聲明已加入。
-- [ ] CI 包含 schema、duplicates、errata freshness、links 與 extractor tests。
+### P0 — 發布前必做
+
+1. 修正 `reksai.md` 的 Void Burrower 舊卡文。
+2. 增加 errata overlay 對衍生 Markdown 的語意／舊文字殘留檢查。
+3. 對 overlay 的 63 項 entry 建立可審核的 live／spot-checked／豁免狀態，不能只驗 JSON schema。
+
+### P1 — 讓合法性與重現性可信
+
+1. 清除所有 `OGN + OGS + ARC` 與 Global `..., ARC, ...` 的 legal-set 摘要；保留 ARC 但只放在 same-name reprint 說明。
+2. 更新 Taiwan／Global 的 `last-verified` 與官方來源日期。
+3. 將舊 965 統計改成 949，或附明確的 historical population label，避免讀者把兩者當同一張表。
+4. 公開 raw harvester、輸入 snapshot checksum 與產出版本，或正式撤回「clean clone 可完整重建」的承諾。
+5. 加入 official source date／errata freshness gate。
+
+### P2 — 提升長期維護品質
+
+1. 增加 Markdown fragment anchor checker。
+2. 把 `battle-tested`、`can't go stale`、`every card across every set` 改為與現有證據一致的限定說法。
+3. 完成剩餘 43/46 Legend 的 Tier-2 verification，並把 open substitution item 分開追蹤。
 
 ---
 
-## 9. 官方來源
+## 9. 驗收清單
 
-審計以 2026-08-17 可取得的下列官方來源為準。官方網頁與 PDF 可能更新，後續驗收應先比較版本日期與文件內容。
+- [ ] `reksai.md` 不再含 Void Burrower 的 errata 前文字。
+- [ ] 63/63 errata 有 `new_text`、來源頁、驗證狀態與最後驗證日期；衍生檔沒有未豁免的 `old_text`。
+- [ ] `SKILL.md` 保留 event addendum → Tournament Rules → Core Rules 的競賽優先級。
+- [ ] Gameplay 的 Burn Out、chain、Showdown、combat、mulligan 與 Tournament notes 通過條文對照。
+- [ ] 所有合法性摘要只列 OGS、OGN、SFD、UNL、VEN 為現行 Standard set；ARC 僅以 same-name reprint 規則描述。
+- [ ] 1v1／2v2 ban list、regional launch、same-name、overnumbered、OPL 與 sideboard assertion tests 存在。
+- [ ] Taiwan／Global snapshot 日期與官方 release／ban／FAQ 日期一致。
+- [ ] raw data 更新方式可由 clean clone 重建，或文件清楚標為不可重建 snapshot。
+- [ ] 949 Domain population 與所有引用數字一致。
+- [ ] CI 同時覆蓋 schema、links、anchors、extractor、errata semantic residue 與 freshness。
+- [ ] README 不宣稱已獲 Riot 個別授權或已完成產品註冊。
+
+---
+
+## 10. 官方來源
 
 1. [Riftbound Rules Hub](https://playriftbound.com/en-us/rules-hub/)
 2. [Riftbound Tournament Rules — 2026-07-16 PDF](https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/503da65669ced10598d62925a6f6bc15111af726.pdf)
@@ -393,15 +304,13 @@ README 表示資料在 Riot Developer Portal policy 下重製，並稱該政策�
 9. [Vendetta Errata Updates](https://playriftbound.com/en-us/news/announcements/vendetta-errata-updates/)
 10. [July Ban List Updates](https://playriftbound.com/en-us/news/announcements/july-ban-list-updates/)
 11. [Riot Riftbound Developer API Policy](https://developer.riotgames.com/policies/riftbound)
-12. [Southeast Asia Enters the Rift](https://playriftbound.com/en-us/news/announcements/southeast-asia-enters-the-rift/)
-13. [Korea Enters the Rift](https://playriftbound.com/en-us/news/announcements/korea-enters-the-rift/)
-14. [Claude Code Skills documentation](https://code.claude.com/docs/en/slash-commands)
 
 ---
 
-## 10. 最終意見
+## 11. 最終意見
 
-`riftbound-chronicle` 的主要問題不是「沒有想法」，而是它已經用成熟產品的語氣描述一套仍在驗證中的知識系統。區域合法性模型、分書架構、Tier 1／Tier 2 方法與資料抽取器都值得繼續投資；但規則型 AI 的可信度取決於最弱的來源治理環節，而目前這個環節正是過期卡文、錯誤 Gameplay 快照與不完整的競賽 precedence。
+這次修復已把專案從「規則來源與 Gameplay 不能安全引用」提升到「方法清楚、主要流程可核對、可作研究／教育使用」的狀態。最值得肯定的是，它已接受原本的 Core-only 錯誤，改成明確的 Tournament precedence 與 FAQ／errata 分層；這正是 Riftbound 這類 live rules system 必須有的設計。
 
-若先完成 P0 修復，再補齊合法性與可重現性，本專案有機會從 5/10 的研究原型提升為真正可公開依賴的 Riftbound 知識 Skill。在此之前，最誠實且最安全的定位是：**具潛力、方法清楚，但仍需官方來源覆核的社群知識庫。**
+但複驗仍不能給出通過結論：一處已知的 Rek'Sai 舊卡文足以阻止「卡文已完整套用」的宣稱；ARC 與日期矛盾足以阻止「合法性模型已一致」的宣稱；raw harvester、semantic errata gate 與 Riot 實際註冊／API 條件仍未完成。
 
+因此目前最準確的公開定位是：**具備正確競賽規則優先級的社群研究型 Riftbound 知識庫；回答競賽裁定、當前卡文或合法性問題時，仍須查閱適用的 Riot 官方來源與 Head Judge。**

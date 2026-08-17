@@ -128,6 +128,40 @@ def cross_check_errata_against_raw(cards, errors, warnings):
         warnings.append(f"{unresolved} errata entries have card_ids that don't resolve against the raw dataset's set_id+collector_number shape -- worth a manual look, not necessarily wrong (id shape conventions can differ).")
 
 
+SKILL_DIR = Path(__file__).resolve().parent.parent
+
+
+def check_errata_residue_in_docs(errors, warnings):
+    """Fail if any derived Markdown file still contains an errata entry's old_text
+    verbatim -- this is exactly the failure mode a re-audit caught by hand
+    (reksai.md's Legend ability line kept 2026-01-14's pre-errata wording after
+    the entry's Champion text was fixed but the Legend text, sharing the same
+    errata entry under the card's own title, was missed). A grep a human runs
+    once doesn't stay run; this runs every time."""
+    if not ERRATA_PATH.exists():
+        return
+
+    with open(ERRATA_PATH, encoding="utf-8") as f:
+        overlay = json.load(f)
+
+    md_files = [p for p in SKILL_DIR.rglob("*.md")]
+    hits = 0
+    for entry in overlay.get("entries", []):
+        old_text = entry.get("old_text", "")
+        if not old_text:
+            continue
+        for md_file in md_files:
+            content = md_file.read_text(encoding="utf-8")
+            if old_text in content:
+                hits += 1
+                errors.append(
+                    f"{md_file.relative_to(SKILL_DIR.parent)} still contains the pre-errata text for "
+                    f"{entry['official_name']!r} ({entry['document']}) verbatim -- should be the errata_overlay.json new_text instead"
+                )
+
+    print(f"[info] errata residue check: scanned {len(md_files)} markdown files against {len(overlay.get('entries', []))} old_text strings, {hits} hit(s).")
+
+
 def main():
     errors = []
     warnings = []
@@ -135,6 +169,7 @@ def main():
     cards = check_raw_cards(errors, warnings)
     check_errata_overlay(errors, warnings)
     cross_check_errata_against_raw(cards, errors, warnings)
+    check_errata_residue_in_docs(errors, warnings)
 
     if warnings:
         print("\n[warnings]")

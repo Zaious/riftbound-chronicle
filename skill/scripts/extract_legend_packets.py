@@ -37,6 +37,8 @@ Output: a JSON array, one object per Legend:
       "legend_name": str,
       "champion_tag": str,
       "domains": [str, str],
+      "standard_sets": [str, ...],       # every Standard set printing this Legend, release order
+      "earliest_standard_set": str|None, # the one that decides regional legality
       "legend_ability": str,   # icon tokens converted to {name} form, e.g. {energy_1}
       "champions": [ {"name": str, "domain": [str], "text": str}, ... ]
     }
@@ -142,13 +144,48 @@ def index_champions_by_tag(all_cards):
     return by_tag
 
 
+# Standard-format sets in release order. Promo pools (OPP/PR/JDG) and the
+# non-Standard ARC/FND are deliberately absent -- they never confer Standard
+# legality on their own (Tournament Rules 601.3.c), only via the same-name
+# reprint rule (601.2.a). RAD is listed so a future harvest that includes it
+# sorts correctly, even though it isn't legal until its 2026-10-23 release.
+STANDARD_SET_ORDER = ["OGN", "OGS", "SFD", "UNL", "VEN", "RAD"]
+
+
+def index_legend_printings(all_cards):
+    """For every Legend identity (tag, falling back to base name), the set of
+    Standard-format set_ids it has ever been printed in, in release order.
+
+    Deliberately computed across ALL rows for that identity -- including
+    reprint variants and promo rows -- rather than from whichever single row
+    dedupe_by_identity happened to keep, because that kept row is often an OPP
+    promo reprint (its riftbound_id's numeric suffix betrays the original
+    set's size, e.g. opp-255-298 is a promo of OGN-255), and a promo pool is
+    exactly the wrong thing to report as "the set this Legend belongs to" for
+    legality purposes. What matters for Tournament Rules 601.2.a is which
+    Standard set(s) carry a card of this name at all."""
+    by_identity = {}
+    for card in all_cards:
+        if card["classification"].get("type") != "Legend":
+            continue
+        tags = card.get("tags") or []
+        key = tags[0] if tags else base_name(card["name"])
+        set_id = (card.get("set") or {}).get("set_id")
+        if set_id in STANDARD_SET_ORDER:
+            by_identity.setdefault(key, set()).add(set_id)
+    return {k: sorted(v, key=STANDARD_SET_ORDER.index) for k, v in by_identity.items()}
+
+
 def build_packets(all_cards):
     legends = extract_legends(all_cards)
     champions_by_tag = index_champions_by_tag(all_cards)
+    printings_by_identity = index_legend_printings(all_cards)
 
     packets = []
     for legend in legends:
         tag = (legend.get("tags") or [None])[0]
+        identity_key = tag if tag else base_name(legend["name"])
+        standard_sets = printings_by_identity.get(identity_key, [])
         legend_domains = set(legend["classification"].get("domain", []))
         candidates = champions_by_tag.get(tag, [])
 
@@ -190,6 +227,12 @@ def build_packets(all_cards):
             "legend_name": base_name(legend["name"]),
             "champion_tag": tag,
             "domains": legend["classification"].get("domain"),
+            # Every Standard set carrying a Legend of this name (release order),
+            # and the earliest of them -- the one that decides which regional
+            # legal pool this Legend first becomes buildable in. See
+            # index_legend_printings() for why this isn't just the kept row's set.
+            "standard_sets": standard_sets,
+            "earliest_standard_set": standard_sets[0] if standard_sets else None,
             "legend_ability": clean_text(legend["text"].get("plain")),
             "champions": champions,
         })

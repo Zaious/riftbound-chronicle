@@ -101,19 +101,29 @@ def check_list(legend_file, i, lst, card_keys, errors, warnings):
 
 
 def staleness(all_lists, as_of):
-    events = [(datetime.date.fromisoformat(d), l) for d, l, _ in FORMAT_EVENTS if datetime.date.fromisoformat(d) <= as_of]
+    # FORMAT_EVENTS rows are (date, label, kind, scope); scope is an environment tag or "*".
+    events = [(datetime.date.fromisoformat(d), l, s) for d, l, _, s in FORMAT_EVENTS if datetime.date.fromisoformat(d) <= as_of]
     if not events:
         return
-    latest = max(events)
-    stale = [(f, i, l) for f, i, l in all_lists if datetime.date.fromisoformat(l["event_date"]) < latest[0]]
+
+    def latest_for(env):
+        rel = [e for e in events if e[2] in ("*", env)]
+        return max(rel) if rel else None
+
+    stale = []
+    for f, i, l in all_lists:
+        le = latest_for(l["environment"])
+        if le and datetime.date.fromisoformat(l["event_date"]) < le[0]:
+            stale.append((f, i, l, le))
     if stale:
-        print(f"\n[warn] {len(stale)} list(s) predate the last format event ({latest[0]} {latest[1]}) -- still true historical records, but a primer/Tier 2 row citing them should say the environment has moved:")
-        for f, i, l in stale:
-            print(f"  - {f.name}[{i}] {l['environment']} {l['event_date']} {l['event']} {l['placement']}")
-    fut = [(datetime.date.fromisoformat(d), l) for d, l, _ in FUTURE_EVENTS if datetime.date.fromisoformat(d) > as_of]
+        print(f"\n[warn] {len(stale)} list(s) predate the last format event for their own environment -- still true historical records, but a primer/Tier 2 row citing them should say the environment has moved:")
+        for f, i, l, le in stale:
+            print(f"  - {f.name}[{i}] {l['environment']} {l['event_date']} {l['event']} {l['placement']}  (event: {le[0]} {le[1]})")
+    fut = [(datetime.date.fromisoformat(d), l, s) for d, l, _, s in FUTURE_EVENTS if datetime.date.fromisoformat(d) > as_of]
     if fut:
         nxt = min(fut)
-        print(f"[info] next known event {nxt[0]} ({nxt[1]}) will make all current global-vendetta lists stale.")
+        n = sum(1 for _, _, l in all_lists if nxt[2] in ("*", l["environment"]))
+        print(f"[info] next known event {nxt[0]} ({nxt[1]}, scope {nxt[2]}) will make {n} current list(s) in that scope stale.")
 
 
 def main():

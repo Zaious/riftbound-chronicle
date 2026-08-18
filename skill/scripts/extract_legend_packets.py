@@ -21,6 +21,13 @@ legend-construction-logic.md, and the same bugs got re-discovered each time:
   own -- a source-data mispairing, not a real Champion option. Filter candidate
   Champions to ones whose Domain is actually one of the Legend's own two Domains;
   don't assume every tag-matched card is a legitimate Champion for that Legend.
+- A Legend usually has exactly two Champion options, one per Domain -- but not
+  always. Some Legends have gotten a genuinely distinct additional Champion print in
+  a later set that shares a Domain with an earlier one (confirmed cases as of
+  2026-08-18: Fiora, Shen, Vex, Draven, Jayce, Master Yi (two, one per Domain),
+  Rengar, Vi -- see verification-log.md). Dedupe by (Domain, base name), not by
+  Domain alone, or the second real Champion in a shared Domain silently vanishes,
+  keeping whichever row happened to come first in the source data.
 
 Usage:
     python3 skill/scripts/extract_legend_packets.py [--data PATH] [--out PATH]
@@ -54,6 +61,15 @@ DEFAULT_OUT_PATH = Path(__file__).resolve().parent.parent / "legend_packets.json
 def base_name(name):
     """Strip a trailing parenthetical variant marker, e.g. 'X (Metal)' -> 'X'."""
     return re.sub(r"\s*\([^)]*\)\s*$", "", name).strip()
+
+
+def champion_identity_key(name):
+    """Normalize 'X - Y' and 'X, Y' to the same key -- raw rows format the same
+    Champion's name/title separator inconsistently across sets (older sets favor
+    ' - ', newer ones favor ', '), which is cosmetic, not a real distinct card.
+    Only used for the dedupe comparison; the stored/displayed name keeps whatever
+    format its winning row actually used."""
+    return re.sub(r"\s*-\s*", ", ", base_name(name)).strip().lower()
 
 
 def clean_text(text):
@@ -144,19 +160,28 @@ def build_packets(all_cards):
             if set(c["classification"].get("domain", [])) <= legend_domains
         ]
 
-        # A Legend has exactly two Champion options, one per Domain. Some data sets
-        # carry more than two rows per tag (further reprints); keep the first row
-        # seen per distinct Domain combination so exactly one entry per real option
-        # survives, regardless of how many reprints exist.
-        seen_domains = set()
+        # A Legend usually has two Champion options, one per Domain -- but not
+        # always: some Legends have gotten a genuinely distinct additional Champion
+        # print in a later set, sharing a Domain with an earlier one (e.g. Fiora,
+        # Victorious alongside Fiora, Worthy, both Order). Collapsing by Domain alone
+        # silently drops the second real Champion, keeping whichever row happened to
+        # come first in the source data -- this was a real, confirmed bug (see
+        # verification-log.md's Fiora/Shen/Vex rows and the 2026-08-18 pipeline audit
+        # that found 5 more affected Legends). Dedupe by (Domain, base name) instead,
+        # so distinct-named Champions in the same Domain both survive, and only true
+        # reprint-format duplicates (the same title appearing multiple times because
+        # of a "X - Y" vs "X, Y" formatting difference across raw rows) collapse.
+        seen = set()
         champions = []
         for card in candidates:
             domain_key = tuple(sorted(card["classification"].get("domain", [])))
-            if domain_key in seen_domains:
+            name = base_name(card["name"])
+            dedupe_key = (domain_key, champion_identity_key(card["name"]))
+            if dedupe_key in seen:
                 continue
-            seen_domains.add(domain_key)
+            seen.add(dedupe_key)
             champions.append({
-                "name": base_name(card["name"]),
+                "name": name,
                 "domain": card["classification"].get("domain"),
                 "text": clean_text(card["text"].get("plain")),
             })
@@ -184,7 +209,7 @@ def main():
 
     irregular = [p for p in packets if len(p["champions"]) != 2]
     if irregular:
-        print(f"[WARN] {len(irregular)} Legend(s) without exactly 2 Champions (source data gap or mispairing, not necessarily a bug in this script):", file=sys.stderr)
+        print(f"[WARN] {len(irregular)} Legend(s) without exactly 2 Champions -- verify each one by hand: could be a genuine extra Champion print (keep it, update downstream Tier 1 analysis), or a real data mispairing (see the Kennen/Yordle-tag case in this module's docstring):", file=sys.stderr)
         for p in irregular:
             print(f"  - {p['legend_name']}: {len(p['champions'])} found -> {[c['name'] for c in p['champions']]}", file=sys.stderr)
 

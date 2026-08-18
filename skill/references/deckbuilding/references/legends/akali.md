@@ -13,3 +13,5 @@ Akali, Silent (Calm): `I can't be chosen by enemy spells and abilities unless I'
 **Win condition:** Wins Showdowns outright through move-triggered pings and stat bumps, then uses the Empowered retreat to avoid losing units in fights it doesn't like — there's no hold-based scoring text anywhere in this kit, so the plan is pure conquest via favorable, repeatable combat, not attrition or resource accumulation.
 
 *(Tier 2 correction: real early coverage frames this in attrition terms instead — winning by making the opponent spend more resources per Showdown than Akali does, via repeated conquests rather than a single decisive combat. Given how young the Legend is (about 2.5 weeks of legal play at time of check), treat both framings as provisional until more tournament data accumulates.)*
+
+> **Taiwan (OGN+OGS + global bans):** this Legend is from VEN — **not in the Taiwan pool as of 2026-08-18**, so not buildable there yet regardless of the analysis above (Tournament Rules 601.2.a same-name reprint doesn't help: no OGN/OGS printing exists). Re-check `regional-legality-model.md` when Taiwan's next set is announced. Real Taiwan play: n/a until then.

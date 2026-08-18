@@ -53,14 +53,28 @@ FUTURE_EVENTS = [
     ("2026-10-23", "Radiance (RAD) release", "set"),
 ]
 
-ROW_RE = re.compile(r"^\| (\d{4}-\d{2}-\d{2})(?: \([^)]*\))? \| ([^|]+?) \|", re.MULTILINE)
+# Row shape: | date | `environment` | Legend | ...  (environment column added 2026-08-18)
+ROW_RE = re.compile(r"^\| (\d{4}-\d{2}-\d{2})(?: \([^)]*\))? \| `?([a-z0-9-]+)`? \| ([^|]+?) \|", re.MULTILINE)
+VALID_ENVIRONMENTS = {"global-vendetta", "taiwan-set1-banned"}  # keep in sync with data/tournament_lists/README.md
 
 
 def parse_rows(text):
+    """Return (date, environment, legend) per row; also validates the environment
+    column -- a row with a missing/unknown environment is a schema error, since
+    the whole point of the column is that a Taiwan reader can filter on it."""
     rows = []
+    bad = []
     for m in ROW_RE.finditer(text):
-        rows.append((datetime.date.fromisoformat(m.group(1)), m.group(2).strip()))
-    return rows
+        env = m.group(2)
+        if env not in VALID_ENVIRONMENTS:
+            bad.append((m.group(1), env, m.group(3).strip()))
+        rows.append((datetime.date.fromisoformat(m.group(1)), env, m.group(3).strip()))
+    # Rows the regex didn't match at all (e.g. environment column absent) show up
+    # as dated lines that start a table row but weren't captured.
+    dated_lines = re.findall(r"^\| \d{4}-\d{2}-\d{2}", text, re.MULTILINE)
+    if len(dated_lines) != len(rows):
+        bad.append(("?", "<column missing or malformed>", f"{len(dated_lines) - len(rows)} row(s) did not parse"))
+    return rows, bad
 
 
 def main():
@@ -71,9 +85,15 @@ def main():
     if not LOG.exists():
         print(f"FAILED: {LOG} not found")
         return 1
-    rows = parse_rows(LOG.read_text(encoding="utf-8"))
+    rows, bad = parse_rows(LOG.read_text(encoding="utf-8"))
     if not rows:
         print("FAILED: no dated rows parsed from verification-log.md -- table format changed?")
+        return 1
+    if bad:
+        print("[errors] Environment column problems (must be one of " + ", ".join(sorted(VALID_ENVIRONMENTS)) + "):")
+        for d, env, legend in bad:
+            print(f"  - {d} {legend}: environment {env!r}")
+        print(f"\nFAILED: {len(bad)} row(s) with a missing/unknown Environment.")
         return 1
 
     events = [(datetime.date.fromisoformat(d), lbl, k) for d, lbl, k in FORMAT_EVENTS + FUTURE_EVENTS]
@@ -83,21 +103,25 @@ def main():
         return 0
     latest = max(events, key=lambda e: e[0])
 
-    stale = [(d, legend) for d, legend in rows if d < latest[0]]
+    stale = [(d, env, legend) for d, env, legend in rows if d < latest[0]]
     fresh = len(rows) - len(stale)
 
+    by_env = {}
+    for _, env, _ in rows:
+        by_env[env] = by_env.get(env, 0) + 1
+    print(f"[info] rows by environment: {by_env}")
     print(f"[info] {len(rows)} Tier 2 rows; latest format event on/before {args.as_of}: {latest[0]} ({latest[1]}).")
     print(f"[info] {fresh} row(s) dated on/after that event, {len(stale)} row(s) predate it.")
 
     if stale:
         print(f"\n[warn] {len(stale)} Tier 2 row(s) predate the last format event ({latest[1]}) and have not been re-checked since -- their real-play claims (which Champion is played, tier standing, named archetypes) may no longer hold. Candidates for the next Tier 2 pass, oldest first:")
-        for d, legend in sorted(stale):
-            print(f"  - {d}  {legend}")
+        for d, env, legend in sorted(stale):
+            print(f"  - {d}  [{env}]  {legend}")
 
     upcoming = [e for e in [(datetime.date.fromisoformat(d), l, k) for d, l, k in FUTURE_EVENTS] if e[0] > args.as_of]
     if upcoming:
         nxt = min(upcoming, key=lambda e: e[0])
-        will_stale = sum(1 for d, _ in rows if d < nxt[0])
+        will_stale = sum(1 for d, _, _ in rows if d < nxt[0])
         print(f"\n[info] next known event: {nxt[0]} ({nxt[1]}) -- all {will_stale} current row(s) will predate it; plan a re-check pass around then. Preview with --as-of {nxt[0]}.")
 
     print("\nOK: freshness report generated (warnings above are advisory, not failures).")

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Warn when Tier 2 findings in verification-log.md predate a format-changing
-event and haven't been re-checked since.
+event for their own environment and haven't been re-checked since; note rows
+checked inside a set's launch window.
 
 Why this exists: the errata overlay has a 90-day freshness gate, but the
 Tier 2 log had none -- and Tier 2 findings go stale faster and less
@@ -19,10 +20,14 @@ single source of truth for "things that plausibly reshuffle real play";
 add a row when a set releases, a ban wave lands, or a rules revision
 changes a mechanic decks were built around.
 
-This is a WARNING gate, not a failure gate: a stale row isn't a wrong row,
-it's a row whose real-play claims are older than the last shake-up. The
-report is meant to drive the next Tier 2 pass, not block CI. It exits 0
-unless the log's own table can't be parsed.
+Events are scoped per environment: a global set release doesn't move
+Taiwan's OGN+OGS pool at all, and Taiwan's own launch date is the event that
+matters there. Ban waves and rules revisions are company-wide ("*").
+
+This is a WARNING gate for staleness, not a failure gate: a stale row isn't
+a wrong row, it's a row whose real-play claims are older than the last
+shake-up. It DOES fail on schema problems (a row with a missing or unknown
+Environment), because the column only helps if every row has it.
 
 Usage:
     python3 skill/scripts/check_tier2_freshness.py [--as-of YYYY-MM-DD]
@@ -40,18 +45,26 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 LOG = SKILL_DIR / "references" / "deckbuilding" / "references" / "verification-log.md"
 
-# (date, label, kind). Keep sorted by date. Only include events that have
-# actually happened by the file's last edit -- a future release goes in the
-# FUTURE_EVENTS list so --as-of can preview it without it counting today.
+# (date, label, kind, scope). scope is an environment tag or "*" for all.
+# Keep sorted by date. Only include events that have actually happened by the
+# file's last edit -- future releases go in FUTURE_EVENTS so --as-of can
+# preview them without their counting today.
 FORMAT_EVENTS = [
-    ("2026-03-31", "First Constructed ban wave", "ban"),
-    ("2026-07-16", "Core Rules + Tournament Rules revision", "rules"),
-    ("2026-07-24", "Ban list update + Vendetta errata", "ban"),
-    ("2026-07-31", "Vendetta (VEN) release", "set"),
+    ("2026-03-31", "First Constructed ban wave", "ban", "*"),
+    ("2026-07-16", "Core Rules + Tournament Rules revision", "rules", "*"),
+    ("2026-07-24", "Ban list update + Vendetta errata", "ban", "*"),
+    ("2026-07-31", "Vendetta (VEN) release", "set", "global-vendetta"),
+    ("2026-08-07", "Taiwan OGN launch (OGS Proving Grounds alongside)", "set", "taiwan-set1-banned"),
 ]
 FUTURE_EVENTS = [
-    ("2026-10-23", "Radiance (RAD) release", "set"),
+    ("2026-10-23", "Radiance (RAD) release", "set", "global-vendetta"),
 ]
+
+# Rows checked inside this many days of their environment's most recent *set*
+# event are flagged launch-window: the meta hasn't settled, so the row's value
+# is the dated baseline, not the conclusion. Same standard the log already
+# applied to Vendetta-launch Legends (Akali/Ambessa/Renekton, ~3 weeks in).
+LAUNCH_WINDOW_DAYS = 30
 
 # Row shape: | date | `environment` | Legend | ...  (environment column added 2026-08-18)
 ROW_RE = re.compile(r"^\| (\d{4}-\d{2}-\d{2})(?: \([^)]*\))? \| `?([a-z0-9-]+)`? \| ([^|]+?) \|", re.MULTILINE)
@@ -59,18 +72,13 @@ VALID_ENVIRONMENTS = {"global-vendetta", "taiwan-set1-banned"}  # keep in sync w
 
 
 def parse_rows(text):
-    """Return (date, environment, legend) per row; also validates the environment
-    column -- a row with a missing/unknown environment is a schema error, since
-    the whole point of the column is that a Taiwan reader can filter on it."""
-    rows = []
-    bad = []
+    """Return ([(date, environment, legend)], [schema problems])."""
+    rows, bad = [], []
     for m in ROW_RE.finditer(text):
         env = m.group(2)
         if env not in VALID_ENVIRONMENTS:
             bad.append((m.group(1), env, m.group(3).strip()))
         rows.append((datetime.date.fromisoformat(m.group(1)), env, m.group(3).strip()))
-    # Rows the regex didn't match at all (e.g. environment column absent) show up
-    # as dated lines that start a table row but weren't captured.
     dated_lines = re.findall(r"^\| \d{4}-\d{2}-\d{2}", text, re.MULTILINE)
     if len(dated_lines) != len(rows):
         bad.append(("?", "<column missing or malformed>", f"{len(dated_lines) - len(rows)} row(s) did not parse"))
@@ -96,33 +104,48 @@ def main():
         print(f"\nFAILED: {len(bad)} row(s) with a missing/unknown Environment.")
         return 1
 
-    events = [(datetime.date.fromisoformat(d), lbl, k) for d, lbl, k in FORMAT_EVENTS + FUTURE_EVENTS]
+    events = [(datetime.date.fromisoformat(d), lbl, k, s) for d, lbl, k, s in FORMAT_EVENTS + FUTURE_EVENTS]
     events = [e for e in events if e[0] <= args.as_of]
     if not events:
         print(f"[info] no format events on or before {args.as_of}; nothing to compare against.")
         return 0
-    latest = max(events, key=lambda e: e[0])
 
-    stale = [(d, env, legend) for d, env, legend in rows if d < latest[0]]
-    fresh = len(rows) - len(stale)
+    def latest_for(env, kind=None):
+        rel = [e for e in events if e[3] in ("*", env) and (kind is None or e[2] == kind)]
+        return max(rel, key=lambda e: e[0]) if rel else None
+
+    stale, launch = [], []
+    for d, env, legend in rows:
+        le = latest_for(env)
+        if le and d < le[0]:
+            stale.append((d, env, legend, le))
+        ls = latest_for(env, "set")
+        if ls and 0 <= (d - ls[0]).days < LAUNCH_WINDOW_DAYS:
+            launch.append((d, env, legend, ls, (d - ls[0]).days))
 
     by_env = {}
     for _, env, _ in rows:
         by_env[env] = by_env.get(env, 0) + 1
-    print(f"[info] rows by environment: {by_env}")
-    print(f"[info] {len(rows)} Tier 2 rows; latest format event on/before {args.as_of}: {latest[0]} ({latest[1]}).")
-    print(f"[info] {fresh} row(s) dated on/after that event, {len(stale)} row(s) predate it.")
+    print(f"[info] {len(rows)} Tier 2 rows by environment: {by_env}")
+    for env in sorted(by_env):
+        le = latest_for(env)
+        print(f"[info] {env}: latest format event on/before {args.as_of}: {le[0]} ({le[1]})")
+    print(f"[info] {len(rows) - len(stale)} row(s) dated on/after their environment's latest event, {len(stale)} predate it.")
 
     if stale:
-        print(f"\n[warn] {len(stale)} Tier 2 row(s) predate the last format event ({latest[1]}) and have not been re-checked since -- their real-play claims (which Champion is played, tier standing, named archetypes) may no longer hold. Candidates for the next Tier 2 pass, oldest first:")
-        for d, env, legend in sorted(stale):
-            print(f"  - {d}  [{env}]  {legend}")
+        print(f"\n[warn] {len(stale)} Tier 2 row(s) predate the last format event *for their own environment* and have not been re-checked since -- their real-play claims (which Champion is played, tier standing, named archetypes) may no longer hold. Candidates for the next Tier 2 pass, oldest first:")
+        for d, env, legend, le in sorted(stale):
+            print(f"  - {d}  [{env}]  {legend}  (event: {le[0]} {le[1]})")
+    if launch:
+        print(f"\n[note] {len(launch)} row(s) were checked within {LAUNCH_WINDOW_DAYS} days of their environment's latest set release -- launch-window rows: treat the finding as a dated baseline, not a settled read, and plan a re-check once the meta has had time to move:")
+        for d, env, legend, ls, days in sorted(launch):
+            print(f"  - {d}  [{env}]  {legend}  ({days} day(s) after {ls[1]})")
 
-    upcoming = [e for e in [(datetime.date.fromisoformat(d), l, k) for d, l, k in FUTURE_EVENTS] if e[0] > args.as_of]
+    upcoming = [e for e in [(datetime.date.fromisoformat(d), l, k, s) for d, l, k, s in FUTURE_EVENTS] if e[0] > args.as_of]
     if upcoming:
         nxt = min(upcoming, key=lambda e: e[0])
-        will_stale = sum(1 for d, _, _ in rows if d < nxt[0])
-        print(f"\n[info] next known event: {nxt[0]} ({nxt[1]}) -- all {will_stale} current row(s) will predate it; plan a re-check pass around then. Preview with --as-of {nxt[0]}.")
+        will_stale = sum(1 for d, env, _ in rows if d < nxt[0] and nxt[3] in ("*", env))
+        print(f"\n[info] next known event: {nxt[0]} ({nxt[1]}, scope {nxt[3]}) -- {will_stale} current row(s) in that scope will predate it; plan a re-check pass around then. Preview with --as-of {nxt[0]}.")
 
     print("\nOK: freshness report generated (warnings above are advisory, not failures).")
     return 0

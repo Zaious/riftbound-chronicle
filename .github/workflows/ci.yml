@@ -4,6 +4,17 @@ on:
   push:
   pull_request:
 
+# Every gate below is a real script under skill/scripts/ that exits non-zero on
+# failure -- never an inline assertion written only in this file. Reason: an
+# inline "every packet has exactly 2 Champions" assertion here once went red for
+# five consecutive commits while every locally-runnable script stayed green,
+# because the assertion existed nowhere a developer would run it. If a check is
+# worth having in CI, it's worth being runnable locally by the same command.
+#
+# All checks are also run once from a working directory OUTSIDE the repo, by
+# absolute path, to prove they don't depend on cwd (a portability audit item --
+# the skill is meant to be symlinked/copied anywhere).
+
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -14,19 +25,26 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Data integrity (errata schema, raw dataset shape)
+      - name: Data integrity (errata schema/freshness/residue, raw dataset shape, Domain population vs prose)
         run: python3 skill/scripts/check_data_integrity.py
 
-      - name: Broken relative markdown links
+      - name: Broken relative markdown links + fragment anchors
         run: python3 skill/scripts/check_links.py
 
       - name: Domain stats reproducibility smoke test
         run: python3 skill/scripts/compute_domain_stats.py
 
-      # Runs the extractor and validates its output shape. Lives in a real script
-      # (not an inline snippet here) so the exact same gate runs locally -- the
-      # previous inline version asserted "every packet has exactly 2 Champions,"
-      # which the extractor was fixed to stop assuming on 2026-08-18, and CI went
-      # red for five commits while every local script stayed green.
       - name: Legend packet extraction + shape check
         run: python3 skill/scripts/check_legend_packets.py
+
+      - name: Deck-primer worked examples follow the eight-section contract
+        run: python3 skill/scripts/check_deck_primer.py
+
+      - name: Off-cwd portability (same checks, run from /tmp by absolute path)
+        run: |
+          REPO="$GITHUB_WORKSPACE"
+          cd "$(mktemp -d)"
+          python3 "$REPO/skill/scripts/check_data_integrity.py"
+          python3 "$REPO/skill/scripts/check_links.py"
+          python3 "$REPO/skill/scripts/check_legend_packets.py"
+          python3 "$REPO/skill/scripts/check_deck_primer.py"

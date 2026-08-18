@@ -190,6 +190,61 @@ def check_errata_residue_in_docs(errors, warnings):
     print(f"[info] errata residue check: scanned {len(md_files)} markdown files against {len(overlay.get('entries', []))} old_text strings, {hits} hit(s).")
 
 
+def check_domain_population_matches_prose(errors, warnings):
+    """Fail if the Domain-personality population compute_domain_stats.py actually
+    computes from the bundled data doesn't match the number the deckbuilding book's
+    prose quotes for it. The number is a property of the data snapshot, not of the
+    script -- so it *should* change when the snapshot is refreshed, and when it
+    does, every prose reference has to move with it or the book is quoting a
+    stale figure as current (which is exactly what a prior audit found with the
+    retired 965-card number). Asserting the literal value in CI would be the wrong
+    fix (it'd just re-encode the snapshot); asserting code and prose agree is the
+    right one."""
+    import re
+    import sys as _sys
+    scripts_dir = Path(__file__).resolve().parent
+    if str(scripts_dir) not in _sys.path:
+        _sys.path.insert(0, str(scripts_dir))
+    try:
+        from compute_domain_stats import load_population
+    except Exception as e:  # noqa: BLE001
+        warnings.append(f"could not import compute_domain_stats to cross-check population: {e}")
+        return
+
+    computed = len(load_population())
+    book = SKILL_DIR / "references" / "deckbuilding" / "deckbuilding.md"
+    if not book.exists():
+        warnings.append("deckbuilding.md not found; skipping population cross-check")
+        return
+    text = book.read_text(encoding="utf-8")
+    # Only the figures the book states as *the population itself* -- matched by
+    # the specific phrasings the book uses for that ("N deduplicated cards",
+    # "N real distinct cards", "N-card population", "(N cards, this repo's own
+    # data)"), not any bare "N cards" (which would also catch per-category counts
+    # like "115 cards use gear" or the 109 dual-domain count, neither of which is
+    # the population). The retired 965 figure is deliberately excluded: the book
+    # mentions it only as a historical number that was replaced.
+    patterns = [
+        r"\b(\d{3,4}) deduplicated cards\b",
+        r"\b(\d{3,4}) real distinct cards\b",
+        r"\b(\d{3,4})-card population\b",
+        r"\((\d{3,4}) cards, this repo's own data\)",
+    ]
+    quoted = {int(m) for pat in patterns for m in re.findall(pat, text)}
+    quoted.discard(965)
+    if not quoted:
+        warnings.append("deckbuilding.md quotes no population figure to cross-check against compute_domain_stats.py")
+        return
+    mismatched = sorted(q for q in quoted if q != computed)
+    if mismatched:
+        errors.append(
+            f"deckbuilding.md quotes Domain-population figure(s) {mismatched} but compute_domain_stats.py "
+            f"currently computes {computed} from the bundled snapshot -- update the prose (every occurrence) "
+            f"or the snapshot changed without the book being told"
+        )
+    print(f"[info] domain population cross-check: script computes {computed}, deckbuilding.md quotes {sorted(quoted)}.")
+
+
 def main():
     errors = []
     warnings = []
@@ -198,6 +253,7 @@ def main():
     check_errata_overlay(errors, warnings)
     cross_check_errata_against_raw(cards, errors, warnings)
     check_errata_residue_in_docs(errors, warnings)
+    check_domain_population_matches_prose(errors, warnings)
 
     if warnings:
         print("\n[warnings]")

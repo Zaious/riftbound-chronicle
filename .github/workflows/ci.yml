@@ -40,6 +40,12 @@ jobs:
       - name: Deck-primer worked examples follow the eight-section contract
         run: python3 skill/scripts/check_deck_primer.py
 
+      # Advisory (exit 0): lists Tier 2 rows older than the last format event
+      # (set release / ban wave / rules revision) so the next re-check pass has a
+      # worklist. Not a failure -- stale isn't wrong, it's "worth re-checking".
+      - name: Tier 2 freshness report (advisory)
+        run: python3 skill/scripts/check_tier2_freshness.py
+
       - name: Off-cwd portability (same checks, run from /tmp by absolute path)
         run: |
           REPO="$GITHUB_WORKSPACE"

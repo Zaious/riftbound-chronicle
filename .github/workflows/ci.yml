@@ -46,6 +46,9 @@ jobs:
       - name: Tier 2 freshness report (advisory)
         run: python3 skill/scripts/check_tier2_freshness.py
 
+      - name: Tournament decklist store (shape, environment, cap, provenance)
+        run: python3 skill/scripts/check_tournament_lists.py
+
       - name: Off-cwd portability (same checks, run from /tmp by absolute path)
         run: |
           REPO="$GITHUB_WORKSPACE"
@@ -54,3 +57,4 @@ jobs:
           python3 "$REPO/skill/scripts/check_links.py"
           python3 "$REPO/skill/scripts/check_legend_packets.py"
           python3 "$REPO/skill/scripts/check_deck_primer.py"
+          python3 "$REPO/skill/scripts/check_tournament_lists.py"

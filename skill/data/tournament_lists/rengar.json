@@ -1,0 +1,47 @@
+{
+  "legend": "Rengar - Pridestalker",
+  "lists": [
+    {
+      "environment": "global-vendetta",
+      "event": "Riftbound Showdown Ottawa",
+      "event_date": "2026-08-08",
+      "placement": "1st",
+      "player": "Prismaticismism",
+      "source_url": "https://hextechanalytics.com/legends/rengar",
+      "source_name": "hextechanalytics.com",
+      "accessed": "2026-08-18",
+      "chosen_champion": "Rengar, Trophy Hunter",
+      "runes": {"Fury": 4, "Body": 8},
+      "battlefields": ["Emperor's Dais", "Seat of Power", "Star Spring"],
+      "main_deck": [
+        {"name": "Inferna", "count": 3},
+        {"name": "Irresistible Faefolk", "count": 3},
+        {"name": "Pit Rookie", "count": 3},
+        {"name": "Grim Apothecary", "count": 2},
+        {"name": "Pyke, Dockside Butcher", "count": 1},
+        {"name": "First Mate", "count": 2},
+        {"name": "Kinkou Initiate", "count": 3},
+        {"name": "Pakaa Cub", "count": 1},
+        {"name": "Nidalee, Cat Form", "count": 3},
+        {"name": "Kai'Sa, Survivor", "count": 3},
+        {"name": "Noxus Hopeful", "count": 3},
+        {"name": "Darius, Trifarian", "count": 1},
+        {"name": "Rengar, Trophy Hunter", "count": 1},
+        {"name": "Ferrous Forerunner", "count": 1},
+        {"name": "Sabotage", "count": 2},
+        {"name": "Punch First", "count": 3},
+        {"name": "Thrill of the Hunt", "count": 3},
+        {"name": "Rampage", "count": 2}
+      ],
+      "sideboard": [
+        {"name": "Decree of Strength", "count": 2},
+        {"name": "Sabotage", "count": 1},
+        {"name": "Brittle Steel", "count": 2},
+        {"name": "Rampage", "count": 1},
+        {"name": "Pyke, Dockside Butcher", "count": 2},
+        {"name": "Ferrous Forerunner", "count": 2}
+      ],
+      "notes": "The list the Rengar deck primer (gameplay.md) and the Rengar Tier 2 rows (verification-log.md) cite as the Vendetta-era competitive core. Player name transcribed as displayed on the source page."
+    }
+  ]
+}

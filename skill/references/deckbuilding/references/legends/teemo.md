@@ -1,6 +1,8 @@
 ### Teemo, Swift Scout (Mind+Chaos)
 
 > Errata-corrected 2026-08-17 (`references/errata_overlay.json`, Origins Card Errata, 2025-10-28) — Strategist's ability text below reflects the official correction: the "or I'm played from Hidden" trigger clause was removed (defend-only now), and the damage was changed from a loose "an enemy unit here" to an explicitly chosen single target. The original entry was written against the pre-errata text; the analysis below has been re-derived from the corrected wording, not just re-quoted.
+>
+> Tier 2-confirmed PARTIALLY CONFIRMED 2026-08-18 (`references/verification-log.md`) — the two Champions really do pull differently on paper, but this isn't a clean, currently-comparable fork. Real coverage: "there is only one list of Teemo with a strong performance at the moment," built on Strategist. Scout's own results are real but stale — they're from an earlier (Origins-format) meta, and current coverage says Scout "was unable to post the same results" as the format moved on. Some real tournament lists don't pick one Champion exclusively either — a Sydney RQ Top 8 list ran copies of both Strategist and Scout in the same deck, a different shape than "fork into two decks" entirely.
 
 Legend ability: `You may pay 1 Energy to hide a card with Hidden instead of a rainbow rune. 1 Energy, Exhaust: Put a Teemo unit you own into your hand from your Champion Zone or the board.` **Teemo, Strategist** (Mind): `Hidden... When I defend, choose an enemy unit here and reveal the top 5 cards of your Main Deck. Deal 1 to that unit for each card with Hidden revealed this way, then recycle the revealed cards.` **Teemo, Scout** (Chaos): `Hidden... When you play me, give me +3 might this turn.`
 

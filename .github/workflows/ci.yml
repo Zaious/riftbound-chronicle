@@ -40,6 +40,12 @@ jobs:
       - name: Deck-primer worked examples follow the eight-section contract
         run: python3 skill/scripts/check_deck_primer.py
 
+      - name: Deck Coach schema, roles, cases, and artifact regressions
+        run: python3 skill/scripts/check_deck_coach.py
+
+      - name: Deck Coach static prototype contract
+        run: python3 skill/scripts/check_deck_coach_prototype.py
+
       # Advisory (exit 0): lists Tier 2 rows older than the last format event
       # (set release / ban wave / rules revision) so the next re-check pass has a
       # worklist. Not a failure -- stale isn't wrong, it's "worth re-checking".
@@ -49,6 +55,18 @@ jobs:
       - name: Tournament decklist store (shape, environment, cap, provenance)
         run: python3 skill/scripts/check_tournament_lists.py
 
+      - name: P2-A manual-authority protocol regressions
+        run: python3 skill/scripts/check_p2a_protocol.py
+
+      - name: P2-A static prototype contract
+        run: python3 skill/scripts/check_p2a_prototype.py
+
+      - name: Rule Consult sources, cases, schema, and authority regressions
+        run: python3 skill/scripts/check_rule_consult.py
+
+      - name: Rule Consult static prototype contract
+        run: python3 skill/scripts/check_rule_consult_prototype.py
+
       - name: Off-cwd portability (same checks, run from /tmp by absolute path)
         run: |
           REPO="$GITHUB_WORKSPACE"
@@ -57,4 +75,10 @@ jobs:
           python3 "$REPO/skill/scripts/check_links.py"
           python3 "$REPO/skill/scripts/check_legend_packets.py"
           python3 "$REPO/skill/scripts/check_deck_primer.py"
+          python3 "$REPO/skill/scripts/check_deck_coach.py"
+          python3 "$REPO/skill/scripts/check_deck_coach_prototype.py"
           python3 "$REPO/skill/scripts/check_tournament_lists.py"
+          python3 "$REPO/skill/scripts/check_p2a_protocol.py"
+          python3 "$REPO/skill/scripts/check_p2a_prototype.py"
+          python3 "$REPO/skill/scripts/check_rule_consult.py"
+          python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"

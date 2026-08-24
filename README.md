@@ -3,6 +3,11 @@
 An evidence-aware AI assistant for building, learning, and practising physical
 **Riftbound** decks.
 
+[繁體中文](README.zh-TW.md) · [한국어](README.ko.md)
+
+Keywords: Riftbound AI agent, deck coach, rule consult, Player 2 agent, TCG
+deckbuilding, gameplay assistant, Claude Skill.
+
 The project is split into three systems with deliberately different authority:
 
 | System | Purpose | Authority boundary | Runnable artifact |
@@ -14,6 +19,11 @@ The project is split into three systems with deliberately different authority:
 The current Player 2 implementation is **P2-A**: the Agent recommends and
 explains an action, then waits for the human to confirm legality and the resulting
 state. The future **P2-S** simulator is documented but is not implemented.
+
+The repository name intentionally stays `riftbound-chronicle`: it is the product
+brand. Search terms such as `AI agent`, `deck coach`, and `rule consult` belong in
+the GitHub description, topics, README, and Skill metadata rather than replacing
+the brand name. See the [GitHub discovery metadata](docs/discovery/GITHUB_METADATA.md).
 
 ## Quick start
 
@@ -128,6 +138,21 @@ PDF from being treated as a complete or permanently current authority.
 
 See [Rule Consult method](skill/references/rule-consult/rule-consult.md).
 
+### Optional local rule PDFs
+
+The public repository does not commit Riot-owned rule PDFs. When exact clause
+work is needed, install the two official documents locally:
+
+```powershell
+python skill/scripts/bootstrap_rules.py --yes
+```
+
+This downloads Core Rules and Tournament Rules into the ignored
+`skill/.local/rules/` directory and writes a local SHA-256 lock file. A custom
+location is available through `RIFTBOUND_RULES_DIR` or `--rules-dir`. The Skill
+never silently downloads documents during a question; if the local pair is
+missing, it asks for the bootstrap or a current official source.
+
 ## Player2 Agent
 
 P2-A supports one person practising with two physical decks while the Agent
@@ -208,6 +233,7 @@ python skill/scripts/check_deck_coach_prototype.py
 python skill/scripts/check_rule_consult.py
 python skill/scripts/check_rule_consult_prototype.py
 python skill/scripts/check_prototype_ui.py
+python skill/scripts/check_rules_bootstrap.py
 python skill/scripts/check_p2a_protocol.py
 python skill/scripts/check_p2a_prototype.py
 ```

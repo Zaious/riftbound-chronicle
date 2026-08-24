@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 skill/legend_packets.json
+
+# Official rule PDFs are fetched locally by the opt-in bootstrap command.
+# Keep copyrighted source documents and their local lock file out of Git.
+skill/.local/rules/

@@ -4,6 +4,8 @@ Rule Consult is an unofficial rules research and explanation mode. It may answer
 
 Read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md` completely before researching a detailed or current interaction.
 
+For exact clause work, also read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.md` and check whether the local Core Rules and Tournament Rules PDFs exist. If they do not, stop at the supported source pointer and ask for the bootstrap or a current official link; do not invent page numbers or quote remembered wording.
+
 For an auditable consultation, use `${CLAUDE_SKILL_DIR}/scripts/rule_consult.py` and the schema at `${CLAUDE_SKILL_DIR}/schemas/rule-consultation.schema.json`. Resolve source identifiers through `${CLAUDE_SKILL_DIR}/data/rules_source_registry.json`; the registry records versions and authority, but any source marked `resolve_at_query_time` must still be checked live.
 
 ## Classify the question

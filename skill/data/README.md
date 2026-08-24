@@ -19,6 +19,7 @@ This is the `riftbound` skill's own bundled local dataset — read it directly r
 ## Also in this folder
 
 - `errata_overlay.json` — official Riot card errata as a corrections layer over the raw file (see `../SKILL.md`, "route, don't snapshot").
+- `rules_manifest.json` — official source pointers for the local-only Core Rules and Tournament Rules PDFs. The PDFs themselves are intentionally not in this repository; run `../scripts/bootstrap_rules.py --yes` when exact clause work needs a local copy.
 - `tournament_lists/` — a small, per-Legend, per-environment store of individually-sourced public tournament decklists (cap 8 per Legend per environment; two environments only; no rates or rankings ever derived from it — the compliance rules are in [`tournament_lists/README.md`](tournament_lists/README.md) and enforced by `scripts/check_tournament_lists.py`). Exists so Tier 2 rows and deck primers can cite specific real lists instead of re-scraping.
 
 ## Regenerating

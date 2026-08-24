@@ -70,6 +70,9 @@ jobs:
       - name: Shared prototype visual and bilingual contract
         run: python3 skill/scripts/check_prototype_ui.py
 
+      - name: Local official rules bootstrap contract (no PDF download)
+        run: python3 skill/scripts/check_rules_bootstrap.py
+
       - name: Off-cwd portability (same checks, run from /tmp by absolute path)
         run: |
           REPO="$GITHUB_WORKSPACE"
@@ -86,3 +89,4 @@ jobs:
           python3 "$REPO/skill/scripts/check_rule_consult.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"
+          python3 "$REPO/skill/scripts/check_rules_bootstrap.py"

@@ -28,6 +28,8 @@ If a request spans modes, choose the mode that owns the final output, then consu
 
 Before quoting current card text, legality, errata, or tournament procedure, read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md`. Use local data for routine lookup only within its documented freshness and provenance limits. Do not answer a live, time-sensitive question from memory.
 
+For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.md`. The public repository does not bundle the two official PDFs. If the ignored local Core Rules and Tournament Rules files are absent, ask the user to run `python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --yes` (or provide a current official Rules Hub source) before making a precision claim.
+
 ## Non-negotiable boundaries
 
 - This Skill is unofficial and never claims Riot endorsement or binding judge authority.
@@ -43,5 +45,6 @@ Before quoting current card text, legality, errata, or tournament procedure, rea
 - Bundled card snapshot and errata: `${CLAUDE_SKILL_DIR}/data/`
 - Deterministic validation and artifact tooling: `${CLAUDE_SKILL_DIR}/scripts/`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
+- Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
 
 A deployment may provide a sibling private companion Skill for approved/current data bindings. Keep deployment-specific paths, credentials, and publishing behavior out of this public portable folder.

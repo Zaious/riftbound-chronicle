@@ -1,0 +1,26 @@
+{
+  "schema_version": "riftbound-local-rules-manifest.v1",
+  "description": "Official source pointers for local-only rule documents. PDFs are never bundled in this repository.",
+  "source_registry": "rules_source_registry.json",
+  "documents": [
+    {
+      "document_id": "core-rules",
+      "filename": "riftbound-core-rules-2026-07-16.pdf",
+      "title": "Riftbound Core Rules",
+      "version": "2026-07-16",
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/e9ac8e3d33e0f78cef296f5945aba7bc1313b086.pdf",
+      "source_page": "https://playriftbound.com/en-us/rules-hub/",
+      "required": true
+    },
+    {
+      "document_id": "tournament-rules",
+      "filename": "riftbound-tournament-rules-2026-07-16.pdf",
+      "title": "Riftbound Tournament Rules",
+      "version": "2026-07-16",
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/503da65669ced10598d62925a6f6bc15111af726.pdf",
+      "source_page": "https://playriftbound.com/en-us/rules-hub/",
+      "required": true
+    }
+  ],
+  "precedence": "event addendum > Tournament Rules > Core Rules where unmodified > live Head Judge"
+}

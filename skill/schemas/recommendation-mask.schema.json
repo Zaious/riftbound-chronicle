@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:recommendation-mask:v1",
+  "title": "Deck Coach recommendation mask",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "deck_id", "generated_at", "environment", "format", "legend_domains", "deck_legality", "candidate_results", "eligible_pool", "live_check"],
+  "properties": {
+    "schema_version": {"const": "recommendation-mask.v1"},
+    "deck_id": {"type": "string"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "environment": {"type": "string"},
+    "format": {"type": "string"},
+    "legend_domains": {"type": "array"},
+    "deck_legality": {"type": "object"},
+    "candidate_results": {"type": "array"},
+    "eligible_pool": {"type": "object"},
+    "live_check": {"type": "object"}
+  }
+}

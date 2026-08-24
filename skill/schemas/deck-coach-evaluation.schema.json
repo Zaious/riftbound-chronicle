@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:deck-coach-evaluation:v1",
+  "title": "Deck Coach machine-readable evaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "case_id", "candidate_id", "generated_at", "grader", "dimensions", "metrics", "failures", "warnings", "overall"],
+  "properties": {
+    "schema_version": {"const": "deck-coach-evaluation.v1"},
+    "case_id": {"type": "string"},
+    "candidate_id": {"type": "string"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "grader": {"enum": ["deterministic-proxy", "human", "hybrid"]},
+    "dimensions": {"type": "object", "minProperties": 7},
+    "metrics": {"type": "object"},
+    "failures": {"type": "array", "items": {"type": "string"}},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "overall": {
+      "type": "object",
+      "required": ["score", "passed"],
+      "properties": {"score": {"type": "number", "minimum": 0, "maximum": 1}, "passed": {"type": "boolean"}}
+    }
+  }
+}

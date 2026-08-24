@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:deck-coach-session:v1",
+  "title": "Riftbound Chronicle Deck Coach Session",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "session_id", "created_at", "created_by", "status", "environment", "format", "legend", "chosen_champion", "decklist", "diagnosis", "primer"],
+  "properties": {
+    "schema_version": {"const": "deck-coach-session.v1"},
+    "mode": {"const": "deck-coach"},
+    "session_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "created_by": {"type": "string", "minLength": 1},
+    "status": {"enum": ["draft", "final"]},
+    "environment": {"type": "string", "minLength": 1},
+    "format": {"type": "string", "minLength": 1},
+    "legend": {"type": "string", "minLength": 1},
+    "chosen_champion": {"type": ["string", "null"]},
+    "decklist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "count", "roles", "notes"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "count": {"type": "integer", "minimum": 1},
+          "roles": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+    "diagnosis": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "core_loop", "strengths", "gaps", "proposed_changes", "role_coverage", "evidence"],
+          "properties": {
+            "identity": {"type": "string", "minLength": 1},
+            "core_loop": {"type": "string", "minLength": 1},
+            "strengths": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "gaps": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "proposed_changes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "role_coverage": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["present", "not_observed"],
+              "properties": {
+                "present": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+                "not_observed": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+              }
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["claim", "tier", "basis"],
+                "properties": {
+                  "claim": {"type": "string", "minLength": 1},
+                  "tier": {"enum": ["Tier 1", "Tier 2", "Tier 3"]},
+                  "basis": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "primer": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "core_loop", "mulligan_targets", "turn_priorities", "fight_or_hold", "common_lines", "common_mistakes", "evidence_ledger"],
+          "properties": {
+            "identity": {"type": "string", "minLength": 1},
+            "core_loop": {"type": "string", "minLength": 1},
+            "mulligan_targets": {"type": "string", "minLength": 1},
+            "turn_priorities": {"type": "string", "minLength": 1},
+            "fight_or_hold": {"type": "string", "minLength": 1},
+            "common_lines": {"type": "string", "minLength": 1},
+            "common_mistakes": {"type": "string", "minLength": 1},
+            "evidence_ledger": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "final"}}},
+      "then": {"properties": {"decklist": {"minItems": 1}, "diagnosis": {"type": "object"}, "primer": {"type": "object"}}}
+    }
+  ]
+}

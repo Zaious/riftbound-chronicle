@@ -1,0 +1,57 @@
+{
+  "schema_version": "deck-coach-environments.v1",
+  "last_checked": "2026-08-24",
+  "official_legality_source": "https://playriftbound.com/en-us/rules-hub/",
+  "ban_list_last_updated": "2026-07-16",
+  "ban_list_effective": "2026-07-24",
+  "live_check_required_for_real_event": true,
+  "formats": {
+    "1v1 Constructed": {
+      "banned_names": [
+        "Called Shot",
+        "Draven - Vanquisher",
+        "Fight or Flight",
+        "Scrapheap",
+        "Stealthy Pursuer",
+        "The Arena's Greatest",
+        "Aspirant's Climb",
+        "The Dreaming Tree",
+        "Obelisk of Power",
+        "Reaver's Row"
+      ]
+    },
+    "2v2 Constructed": {
+      "banned_names": [
+        "Master Yi - Wuju Bladesman",
+        "Called Shot",
+        "Draven - Vanquisher",
+        "Fight or Flight",
+        "Scrapheap",
+        "Stealthy Pursuer",
+        "The Arena's Greatest",
+        "Aspirant's Climb",
+        "The Dreaming Tree",
+        "Obelisk of Power",
+        "Reaver's Row"
+      ]
+    }
+  },
+  "environments": {
+    "global-vendetta": {
+      "label": "Global Standard — Vendetta",
+      "region": "global",
+      "legal_set_ids": ["OGS", "OGN", "SFD", "UNL", "VEN"],
+      "effective_from": "2026-07-31",
+      "stale_on_or_after": "2026-10-23",
+      "notes": "ARC/other printings are usable only when the same card name has a legal-set printing; preview-only future sets are excluded."
+    },
+    "taiwan-set1-banned": {
+      "label": "Taiwan — Set 1 pool with global bans",
+      "region": "taiwan",
+      "legal_set_ids": ["OGS", "OGN"],
+      "effective_from": "2026-08-07",
+      "stale_on_or_after": null,
+      "notes": "Regional physical pool is OGN + OGS. The applicable Constructed ban list is layered on top."
+    }
+  }
+}

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Structured Riftbound deck diagnosis and primer prototype" />
+    <title>Deck Coach · Riftbound Chronicle</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .pipeline-card{margin-top:18px;padding:13px;border:1px solid rgba(196,231,123,.22);background:var(--soft)}
+      .pipeline-card>strong{color:var(--lime);font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+      .pipeline-card>p{margin:5px 0 11px;color:var(--muted);font-size:8px;line-height:1.5}
+      .file-label{display:block;padding:8px;border:1px dashed #536047;color:#cbd7b4;text-align:center;cursor:pointer}
+      .file-label input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+      .pipeline-summary{display:grid;gap:5px;margin-top:10px}
+      .pipeline-summary span,.pipeline-summary div{padding:6px 7px;border-left:2px solid var(--lime);color:var(--muted);background:#10130e;font-size:8px;line-height:1.4}
+      .pipeline-summary b{color:var(--ink)}
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top"><span>DC</span><div><strong>Riftbound Chronicle</strong><small>Deck Coach</small></div></a>
+      <nav aria-label="Three assistant systems">
+        <a class="active" href="#top">Deck Coach</a>
+        <a href="../rule-consult/index.html">Rule Consult</a>
+        <a href="../p2a/index.html">Player 2 Agent</a>
+      </nav>
+      <div class="badge">Evidence-aware</div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div><p class="eyebrow">BUILD · DIAGNOSE · TEACH</p><h1>Give the list a plan.<br /><em>Give the player a map.</em></h1><p>Turn a supplied deck into a qualitative diagnosis and an eight-part pilot primer. Role coverage is a lens, not a score; recommendations remain evidence-tagged coaching hypotheses.</p></div>
+        <aside><span>Fixed output</span><ol><li>Deck identity</li><li>Core loop</li><li>Mulligan targets</li><li>Turn priorities</li><li>Fight or hold</li><li>Common lines</li><li>Common mistakes</li><li>Evidence ledger</li></ol></aside>
+      </section>
+
+      <nav class="mode-tabs" aria-label="Three system architecture">
+        <a class="active" href="#top"><b>01</b> Deck Coach</a>
+        <a href="../rule-consult/index.html"><b>02</b> Rule Consult</a>
+        <a href="../p2a/index.html"><b>03</b> Player 2 Agent</a>
+      </nav>
+
+      <section class="workspace">
+        <aside class="roles-panel">
+          <p class="eyebrow">QUALITATIVE LENS</p><h2>Role coverage</h2>
+          <p class="quiet">A role marked “not observed” is a question to investigate—not an automatic cut, quota, or defect.</p>
+          <div id="role-coverage" class="role-coverage"></div>
+          <div class="pipeline-card">
+            <strong>Closed-loop results</strong>
+            <p>Run the profiler CLI, then import its profile, mask, and evaluation JSON files here. This manual review page does not recompute card data.</p>
+            <label class="file-label">Import pipeline artifacts<input id="pipeline-import" type="file" accept="application/json,.json" multiple /></label>
+            <div id="pipeline-summary" class="pipeline-summary"><span>No computed profile imported</span></div>
+          </div>
+          <div class="boundary"><strong>No rate analysis</strong><p>No win rate, play rate, matchup percentage, tier ranking, or composite score.</p></div>
+        </aside>
+
+        <div class="flow">
+          <div id="status" class="status"><b>1</b><div><strong>Enter the deck context</strong><p>Anchor the review to a format and environment.</p></div></div>
+
+          <details id="context-panel" class="panel" open>
+            <summary><b>01</b><span><strong>Deck context</strong><small>What list are we reviewing?</small></span><i id="context-status">Required</i></summary>
+            <form id="context-form" class="form-grid">
+              <label>Environment<input name="environment" required placeholder="Set / event / local pool context" /></label>
+              <label>Format<input name="format" required value="1v1 Constructed" /></label>
+              <label>Legend<input name="legend" required placeholder="Legend name" /></label>
+              <label>Chosen champion<input name="champion" placeholder="Optional" /></label>
+              <label>Coach / test ID<input name="createdBy" required placeholder="Name or evaluation ID" /></label>
+              <div class="actions"><button class="primary" type="submit">Create review</button></div>
+            </form>
+          </details>
+
+          <details id="deck-panel" class="panel">
+            <summary><b>02</b><span><strong>Decklist & roles</strong><small>One card per line; tag only supportable roles</small></span><i id="deck-status">Locked</i></summary>
+            <form id="deck-form" class="form-grid locked">
+              <label class="wide">Decklist<textarea name="decklist" required rows="10" placeholder="3 Card Name | core_engine,closer&#10;2 Another Card | protection"></textarea><small class="hint">Syntax: count + card name, optionally followed by | and comma-separated role IDs.</small></label>
+              <div class="wide role-key" id="role-key"></div>
+              <div class="actions"><button class="secondary" type="submit">Parse decklist</button></div>
+            </form>
+          </details>
+
+          <details id="diagnosis-panel" class="panel">
+            <summary><b>03</b><span><strong>Diagnosis</strong><small>Separate observation from proposed tests</small></span><i id="diagnosis-status">Locked</i></summary>
+            <div class="agent-bridge"><div><strong>Coach Agent bridge</strong><p>Copy the deck brief into a Skill-enabled Deck Coach Agent. Verify current card text and legality before treating either as facts.</p></div><button id="copy-brief" class="secondary" type="button" disabled>Copy deck brief</button></div>
+            <form id="diagnosis-form" class="form-grid locked">
+              <label class="wide">Identity<textarea name="identity" rows="3" required placeholder="What the deck is trying to be"></textarea></label>
+              <label class="wide">Core loop<textarea name="coreLoop" rows="3" required placeholder="How setup becomes pressure and then a close"></textarea></label>
+              <label>Strengths<textarea name="strengths" rows="4" placeholder="One per line"></textarea></label>
+              <label>Gaps / questions<textarea name="gaps" rows="4" placeholder="One per line"></textarea></label>
+              <label class="wide">Proposed changes<textarea name="changes" rows="3" placeholder="One testable change per line"></textarea></label>
+              <label>Evidence tier<select name="tier"><option>Tier 1</option><option>Tier 2</option><option selected>Tier 3</option></select></label>
+              <label>Evidence basis<input name="basis" required placeholder="Card text, verified list, or hypothesis" /></label>
+              <div class="actions"><button class="secondary" type="submit">Save diagnosis</button></div>
+            </form>
+          </details>
+
+          <details id="primer-panel" class="panel">
+            <summary><b>04</b><span><strong>Pilot primer</strong><small>Complete all eight teaching sections</small></span><i id="primer-status">Locked</i></summary>
+            <form id="primer-form" class="primer-form locked">
+              <label>1. Identity<textarea name="identity" rows="3" required></textarea></label>
+              <label>2. Core loop<textarea name="core_loop" rows="3" required></textarea></label>
+              <label>3. Mulligan targets<textarea name="mulligan_targets" rows="3" required></textarea></label>
+              <label>4. Turn-by-turn priorities<textarea name="turn_priorities" rows="3" required></textarea></label>
+              <label>5. When to fight, when to hold<textarea name="fight_or_hold" rows="3" required></textarea></label>
+              <label>6. Common lines<textarea name="common_lines" rows="3" required></textarea></label>
+              <label>7. Common mistakes<textarea name="common_mistakes" rows="3" required></textarea></label>
+              <label>8. Evidence ledger<textarea name="evidence_ledger" rows="3" required placeholder="Tag major claims Tier 1 / Tier 2 / Tier 3"></textarea></label>
+              <div class="actions"><button class="primary" type="submit">Finalize primer</button></div>
+            </form>
+          </details>
+        </div>
+
+        <aside class="record-panel">
+          <header><div><p class="eyebrow">REVIEW RECORD</p><h2 id="record-title">No deck yet</h2></div><span id="card-count">0 entries</span></header>
+          <div id="record-empty" class="empty"><span>◇</span><p>The parsed list, diagnosis, and final primer will stay visible here.</p></div>
+          <div id="record" class="record"></div>
+          <div class="record-actions"><button id="export-json" class="secondary" disabled>Export JSON</button><button id="export-md" class="secondary" disabled>Export primer</button><button id="reset" class="text" disabled>Reset</button></div>
+        </aside>
+      </section>
+
+      <footer><p>Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.</p><p>Unofficial coaching prototype · No game-state operations · No metagame rates</p></footer>
+    </main>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

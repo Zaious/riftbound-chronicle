@@ -1,0 +1,180 @@
+{
+  "schema_version": "deck-coach-eval-suite.v2",
+  "last_reviewed": "2026-08-24",
+  "rubric": [
+    "card_and_rule_factual_accuracy",
+    "format_and_region_legality",
+    "deck_identity",
+    "core_loop_identification",
+    "recommendation_actionability",
+    "evidence_and_confidence",
+    "abstention_correctness"
+  ],
+  "cases": [
+    {
+      "case_id": "DC-RNG-GLOBAL-001",
+      "title": "Verified Rengar Vendetta list — global profile and primer",
+      "pass_threshold": 0.8,
+      "input": {
+        "schema_version": "deck-coach-input.v1",
+        "deck_id": "rengar-ottawa-2026-08-08",
+        "environment": "global-vendetta",
+        "format": "1v1 Constructed",
+        "player_level": "new",
+        "legend": "Rengar - Pridestalker",
+        "chosen_champion": "Rengar, Trophy Hunter",
+        "runes": {"Fury": 4, "Body": 8},
+        "battlefields": ["Emperor's Dais", "Seat of Power", "Star Spring"],
+        "main_deck": [
+          {"name": "Inferna", "count": 3}, {"name": "Irresistible Faefolk", "count": 3},
+          {"name": "Pit Rookie", "count": 3}, {"name": "Grim Apothecary", "count": 2},
+          {"name": "Pyke, Dockside Butcher", "count": 1}, {"name": "First Mate", "count": 2},
+          {"name": "Kinkou Initiate", "count": 3}, {"name": "Pakaa Cub", "count": 1},
+          {"name": "Nidalee, Cat Form", "count": 3}, {"name": "Kai'Sa, Survivor", "count": 3},
+          {"name": "Noxus Hopeful", "count": 3}, {"name": "Darius, Trifarian", "count": 1},
+          {"name": "Rengar, Trophy Hunter", "count": 1}, {"name": "Ferrous Forerunner", "count": 1},
+          {"name": "Sabotage", "count": 2}, {"name": "Punch First", "count": 3},
+          {"name": "Thrill of the Hunt", "count": 3}, {"name": "Rampage", "count": 2}
+        ],
+        "sideboard": [
+          {"name": "Decree of Strength", "count": 2}, {"name": "Sabotage", "count": 1},
+          {"name": "Brittle Steel", "count": 2}, {"name": "Rampage", "count": 1},
+          {"name": "Pyke, Dockside Butcher", "count": 2}, {"name": "Ferrous Forerunner", "count": 2}
+        ],
+        "owned_cards": null,
+        "source_environment": "global-vendetta",
+        "recommendation_candidates": [
+          {"name": "Inferna", "requested_count": 3, "source_environment": "global-vendetta", "cited_text": null},
+          {"name": "Fight or Flight", "requested_count": 1, "source_environment": "global-vendetta", "cited_text": null}
+        ]
+      },
+      "expected": {
+        "identity_tokens": ["Rengar", "Fury", "Body", "units"],
+        "must_identify_engine": ["Rengar - Pridestalker", "Rengar, Trophy Hunter", "Thrill of the Hunt"],
+        "must_mention_weakness": ["too few units"],
+        "forbidden_claims": ["Fight or Flight is legal", "Rengar has an official win rate", "Unseen is the required Chosen Champion"],
+        "acceptable_uncertainty": ["keep/ship rule"],
+        "expected_mask_reasons": ["banned_in_format"],
+        "expected_blocked_deck_entries": 0
+      },
+      "expert_reference": {
+        "identity": "Proactive Fury/Body unit-pressure deck that repeatedly converts unit plays into temporary Might and forces frequent Showdowns.",
+        "core_loop": "Develop cheap units, preserve enough unit plays to stack the Legend trigger into the relevant Showdown, and use Trophy Hunter or Thrill of the Hunt to change the contested battlefield.",
+        "mulligan_targets": "Prefer functional early unit density; exact keep/ship rules remain insufficiently sourced.",
+        "turn_priorities": "Establish early presence, concentrate later plays before the Showdown that matters, and avoid spending bodies after the contest is already won.",
+        "fight_or_hold": "Proactive by default, but hold the last reaction or unit until it changes the fight.",
+        "common_lines": "Faefolk pressure, Trophy Hunter Ambush, Pit Rookie double-value trigger, and Thrill of the Hunt reposition/replay lines.",
+        "common_mistakes": "Too few units, stacking every boost onto one answerable unit, or emptying the hand into a fight already won.",
+        "evidence_ledger": "Card-text claims are Tier 1; the Ottawa list and cited field guide are Tier 2; exact mulligan rules are Tier 3."
+      },
+      "sources": [
+        {"name": "Ottawa Showdown list", "path": "data/tournament_lists/rengar.json", "effective_date": "2026-08-08", "accessed": "2026-08-18"},
+        {"name": "Rengar worked primer", "path": "references/gameplay/gameplay.md", "effective_date": "2026-08-18", "accessed": "2026-08-24"},
+        {"name": "Official Rules Hub legality", "url": "https://playriftbound.com/en-us/rules-hub/", "effective_date": "2026-07-24", "accessed": "2026-08-24"}
+      ]
+    },
+    {
+      "case_id": "DC-RNG-TAIWAN-002",
+      "title": "Global Rengar list imported into Taiwan's Set 1 pool",
+      "pass_threshold": 0.75,
+      "input": {
+        "schema_version": "deck-coach-input.v1",
+        "deck_id": "rengar-global-list-in-taiwan",
+        "environment": "taiwan-set1-banned",
+        "format": "1v1 Constructed",
+        "player_level": "intermediate",
+        "legend": "Rengar - Pridestalker",
+        "chosen_champion": "Rengar, Trophy Hunter",
+        "runes": {"Fury": 4, "Body": 8},
+        "battlefields": ["Emperor's Dais", "Seat of Power", "Star Spring"],
+        "main_deck": [
+          {"name": "Inferna", "count": 3}, {"name": "Irresistible Faefolk", "count": 3},
+          {"name": "Pit Rookie", "count": 3}, {"name": "Rengar, Trophy Hunter", "count": 1},
+          {"name": "Punch First", "count": 3}, {"name": "Thrill of the Hunt", "count": 3}
+        ],
+        "sideboard": [],
+        "owned_cards": {"Fight or Flight": 0, "Ravenborn Tome": 1, "Inferna": 3},
+        "source_environment": "global-vendetta",
+        "recommendation_candidates": [
+          {"name": "Inferna", "requested_count": 3, "source_environment": "global-vendetta", "cited_text": null},
+          {"name": "Fight or Flight", "requested_count": 1, "source_environment": "taiwan-set1-banned", "cited_text": null}
+        ]
+      },
+      "expected": {
+        "identity_tokens": ["Rengar", "Fury", "Body", "units"],
+        "must_identify_engine": ["Rengar - Pridestalker", "Rengar, Trophy Hunter", "Thrill of the Hunt"],
+        "must_mention_weakness": ["blocked deck entry"],
+        "forbidden_claims": ["the global list is legal in Taiwan", "Inferna is an Origins card", "Fight or Flight is legal"],
+        "acceptable_uncertainty": ["strategic archetype label"],
+        "expected_mask_reasons": ["not_released_in_environment", "source_environment_mismatch", "banned_in_format", "not_enough_owned_copies"],
+        "expected_blocked_deck_entries": 10
+      },
+      "expert_reference": {
+        "identity": "The source deck is a Fury/Body Rengar unit-pressure list, but its identity cannot be transferred unchanged into the Taiwan pool.",
+        "core_loop": "Preserve the unit-play-to-Might loop; replace unavailable support by role only after checking the OGN/OGS pool.",
+        "mulligan_targets": "Rebuild early-unit density from the legal pool before proposing exact keeps.",
+        "turn_priorities": "No imported turn script is valid until the replacement package is known.",
+        "fight_or_hold": "The generic Rengar pressure posture is plausible; exact reaction density changes with replacements.",
+        "common_lines": "Global Trophy Hunter and Thrill lines are not available if their printings have no legal same-name printing in Taiwan's pool.",
+        "common_mistakes": "Relabelling a global list as Taiwan-legal, substituting by cost instead of role, or recommending cards the player does not own.",
+        "evidence_ledger": "Global list is Tier 2 for its own environment; Taiwan conclusions are mask-derived Tier 1 legality facts plus Tier 3 strategic hypotheses."
+      },
+      "sources": [
+        {"name": "Regional legality model", "path": "references/deckbuilding/references/regional-legality-model.md", "effective_date": "2026-08-18", "accessed": "2026-08-24"},
+        {"name": "Official Rules Hub legality", "url": "https://playriftbound.com/en-us/rules-hub/", "effective_date": "2026-07-24", "accessed": "2026-08-24"}
+      ]
+    },
+    {
+      "case_id": "DC-ANNIE-MASK-003",
+      "title": "Bans, collection, Domain identity, environment, and stale errata text",
+      "pass_threshold": 0.75,
+      "input": {
+        "schema_version": "deck-coach-input.v1",
+        "deck_id": "annie-mask-fixture",
+        "environment": "taiwan-set1-banned",
+        "format": "1v1 Constructed",
+        "player_level": "new",
+        "legend": "Annie - Dark Child (Starter)",
+        "chosen_champion": "Annie - Fiery",
+        "runes": {"Fury": 6, "Chaos": 6},
+        "battlefields": ["The Dreaming Tree"],
+        "main_deck": [
+          {"name": "Annie - Fiery", "count": 1},
+          {"name": "Ravenborn Tome", "count": 3},
+          {"name": "Fight or Flight", "count": 3}
+        ],
+        "sideboard": [],
+        "owned_cards": {"Ravenborn Tome": 1, "Clockwork Keeper": 3, "Inferna": 3},
+        "source_environment": "taiwan-set1-banned",
+        "recommendation_candidates": [
+          {"name": "Ravenborn Tome", "requested_count": 3, "source_environment": "taiwan-set1-banned", "cited_text": "The next spell you play deals 1 Bonus Damage."},
+          {"name": "Clockwork Keeper", "requested_count": 3, "source_environment": "taiwan-set1-banned", "cited_text": null},
+          {"name": "Inferna", "requested_count": 3, "source_environment": "global-vendetta", "cited_text": null}
+        ]
+      },
+      "expected": {
+        "identity_tokens": ["Annie", "Fury", "Chaos", "new"],
+        "must_identify_engine": ["Annie - Dark Child", "Annie - Fiery", "Ravenborn Tome"],
+        "must_mention_weakness": ["blocked deck entry"],
+        "forbidden_claims": ["Fight or Flight is legal", "The Dreaming Tree is legal", "Ravenborn Tome still has its printed wording"],
+        "acceptable_uncertainty": ["no verified card-by-card sequence"],
+        "expected_mask_reasons": ["banned_in_format", "not_enough_owned_copies", "outside_legend_domain_identity", "not_released_in_environment", "source_environment_mismatch", "stale_pre_errata_text"],
+        "expected_blocked_deck_entries": 2
+      },
+      "expert_reference": {
+        "identity": "Fury/Chaos Annie shell, but the supplied list is not legal because it contains a banned spell and battlefield.",
+        "core_loop": "Annie and Ravenborn Tome are declared anchors; their exact loop requires current errata text and a legal replacement shell.",
+        "mulligan_targets": "Do not produce keeps before repairing the list.",
+        "turn_priorities": "Teach the player only after the banned package is replaced.",
+        "fight_or_hold": "No matchup verdict is supportable from this short diagnostic fixture.",
+        "common_lines": "No verified card-by-card sequence should be asserted from this fixture.",
+        "common_mistakes": "Using banned cards, crossing Domain identity, ignoring collection counts, or quoting pre-errata text.",
+        "evidence_ledger": "Legality and errata are Tier 1 current-source checks; any repaired gameplay line remains Tier 3 until built and reviewed."
+      },
+      "sources": [
+        {"name": "Official Rules Hub legality", "url": "https://playriftbound.com/en-us/rules-hub/", "effective_date": "2026-07-24", "accessed": "2026-08-24"},
+        {"name": "Errata overlay", "path": "data/errata_overlay.json", "effective_date": "2026-08-17", "accessed": "2026-08-24"}
+      ]
+    }
+  ]
+}

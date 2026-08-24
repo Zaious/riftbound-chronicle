@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:deck-coach-input:v1",
+  "title": "Deck Coach closed-loop input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "deck_id", "environment", "format", "player_level", "legend", "main_deck"],
+  "properties": {
+    "schema_version": {"const": "deck-coach-input.v1"},
+    "deck_id": {"type": "string", "minLength": 1},
+    "environment": {"type": "string", "minLength": 1},
+    "format": {"enum": ["1v1 Constructed", "2v2 Constructed"]},
+    "player_level": {"enum": ["new", "intermediate", "advanced"]},
+    "legend": {"type": "string", "minLength": 1},
+    "chosen_champion": {"type": ["string", "null"]},
+    "runes": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "battlefields": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "main_deck": {"$ref": "#/$defs/cardList"},
+    "sideboard": {"$ref": "#/$defs/cardList"},
+    "owned_cards": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+      ]
+    },
+    "source_environment": {"type": ["string", "null"]},
+    "recommendation_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "requested_count", "source_environment", "cited_text"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "requested_count": {"type": "integer", "minimum": 1},
+          "source_environment": {"type": ["string", "null"]},
+          "cited_text": {"type": ["string", "null"]}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "cardList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "count"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "count": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

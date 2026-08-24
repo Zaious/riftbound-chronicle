@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:deck-profile:v1",
+  "title": "Deck Coach structured observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "deck_id", "generated_at", "context", "data_provenance", "resolution", "curve", "domain_requirements", "type_distribution", "battlefield_package", "feature_density", "role_distribution", "engine_cards", "confidence"],
+  "properties": {
+    "schema_version": {"const": "deck-profile.v1"},
+    "deck_id": {"type": "string"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "context": {"type": "object"},
+    "data_provenance": {"type": "object"},
+    "resolution": {"type": "object"},
+    "curve": {"type": "object"},
+    "domain_requirements": {"type": "object"},
+    "type_distribution": {"type": "object"},
+    "battlefield_package": {"type": "array"},
+    "feature_density": {"type": "object"},
+    "role_distribution": {"type": "object"},
+    "engine_cards": {"type": "object"},
+    "confidence": {"type": "object"}
+  }
+}

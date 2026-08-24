@@ -1,0 +1,14 @@
+{
+  "schema_version": "deck-coach-role-taxonomy.v1",
+  "principle": "Roles are qualitative diagnostic lenses. Presence is not a quota, missing is not automatically a flaw, and coverage is never converted into a score.",
+  "roles": [
+    {"role_id": "core_engine", "label": "Core engine", "description": "Cards that create or repeat the deck's defining loop."},
+    {"role_id": "battlefield_presence", "label": "Battlefield presence", "description": "Cards that establish, reinforce, or recover contestable boards."},
+    {"role_id": "mobility", "label": "Mobility", "description": "Cards that reposition units or change where pressure can be applied."},
+    {"role_id": "showdown_interaction", "label": "Showdown interaction", "description": "Cards that change the quality or outcome of an intended fight."},
+    {"role_id": "resource_economy", "label": "Resource economy", "description": "Cards that improve energy, rune, card, or action efficiency."},
+    {"role_id": "protection", "label": "Protection", "description": "Cards that preserve a key unit, engine, or planned line."},
+    {"role_id": "closer", "label": "Closer", "description": "Cards or packages that convert an advantage into the deck's endgame."},
+    {"role_id": "flex_replacement", "label": "Flex / replacement", "description": "Contextual slots and substitutes whose job depends on pool, budget, or expected environment."}
+  ]
+}

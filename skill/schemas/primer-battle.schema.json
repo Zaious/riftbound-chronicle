@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:primer-battle:v1",
+  "title": "Deck Coach primer battle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "battle_id", "case_id", "generated_at", "blind_labels", "candidate_a", "candidate_b", "automatic_preference", "expert_preference", "metric_delta"],
+  "properties": {
+    "schema_version": {"const": "primer-battle.v1"},
+    "battle_id": {"type": "string"},
+    "case_id": {"type": "string"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "blind_labels": {"const": true},
+    "candidate_a": {"type": "object"},
+    "candidate_b": {"type": "object"},
+    "automatic_preference": {"enum": ["A", "B", "tie"]},
+    "expert_preference": {"enum": ["A", "B", "tie", "not_scored"]},
+    "metric_delta": {"type": "object"}
+  }
+}

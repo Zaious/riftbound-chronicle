@@ -1,21 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant" data-locale="zh-Hant" data-system="rule-consult">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Unofficial cited Riftbound rules consultation prototype" />
-    <title>Rule Consult · Riftbound Chronicle</title>
+    <meta name="description" content="符文戰場 Riftbound 雙語非官方引證規則諮詢原型" />
+    <title>規則諮詢 Rule Consult · Riftbound Chronicle</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="../shared/theme.css" />
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top"><span class="mark">RC</span><span><strong>Riftbound Chronicle</strong><small>Three-system assistant</small></span></a>
+      <a class="brand" href="#top"><span class="mark">RC</span><span><strong>符文戰場編年史</strong><small>Riftbound Chronicle · Assistant Lab</small></span></a>
       <nav aria-label="Assistant systems">
         <a href="../deck-coach/index.html">Deck Coach</a>
         <a class="active" href="#top">Rule Consult</a>
         <a href="../p2a/index.html">Player 2 Agent</a>
       </nav>
-      <div class="badges"><span>Unofficial</span><span class="safe">No state effect</span></div>
+      <div class="topbar-actions"><span class="system-status">Unofficial</span><span class="system-status">No state effect</span><button class="language-toggle" id="language-toggle" type="button">EN</button></div>
     </header>
 
     <main id="top">
@@ -122,6 +123,7 @@
       <footer><p>Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.</p><p>Unofficial prototype · No automatic ruling enforcement · No game-state writes</p></footer>
     </main>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="../shared/i18n.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

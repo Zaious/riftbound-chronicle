@@ -207,6 +207,7 @@ python skill/scripts/check_deck_coach.py
 python skill/scripts/check_deck_coach_prototype.py
 python skill/scripts/check_rule_consult.py
 python skill/scripts/check_rule_consult_prototype.py
+python skill/scripts/check_prototype_ui.py
 python skill/scripts/check_p2a_protocol.py
 python skill/scripts/check_p2a_prototype.py
 ```

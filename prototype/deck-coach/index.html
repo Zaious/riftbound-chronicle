@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant" data-locale="zh-Hant" data-system="deck-coach">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Structured Riftbound deck diagnosis and primer prototype" />
-    <title>Deck Coach · Riftbound Chronicle</title>
+    <meta name="description" content="符文戰場 Riftbound 雙語牌組診斷與操作指南原型" />
+    <title>牌組教練 Deck Coach · Riftbound Chronicle</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="../shared/theme.css" />
     <style>
       .pipeline-card{margin-top:18px;padding:13px;border:1px solid rgba(196,231,123,.22);background:var(--soft)}
       .pipeline-card>strong{color:var(--lime);font-size:8px;letter-spacing:.08em;text-transform:uppercase}
@@ -19,13 +20,13 @@
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top"><span>DC</span><div><strong>Riftbound Chronicle</strong><small>Deck Coach</small></div></a>
+      <a class="brand" href="#top"><span class="mark">RC</span><span><strong>符文戰場編年史</strong><small>Riftbound Chronicle · Assistant Lab</small></span></a>
       <nav aria-label="Three assistant systems">
         <a class="active" href="#top">Deck Coach</a>
         <a href="../rule-consult/index.html">Rule Consult</a>
         <a href="../p2a/index.html">Player 2 Agent</a>
       </nav>
-      <div class="badge">Evidence-aware</div>
+      <div class="topbar-actions"><span class="system-status">Evidence-aware</span><button class="language-toggle" id="language-toggle" type="button">EN</button></div>
     </header>
 
     <main id="top">
@@ -120,6 +121,7 @@
       <footer><p>Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.</p><p>Unofficial coaching prototype · No game-state operations · No metagame rates</p></footer>
     </main>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="../shared/i18n.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

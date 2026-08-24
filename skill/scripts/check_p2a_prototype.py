@@ -37,6 +37,7 @@ REQUIRED_IDS = {
     "export-session",
     "reset-session",
     "status-banner",
+    "language-toggle",
 }
 REQUIRED_EVENT_TYPES = {"state_confirmed", "action_proposed", "action_confirmed"}
 FORBIDDEN_NETWORK_OR_STORAGE = {
@@ -105,10 +106,10 @@ def main():
     for asset in parser.scripts + parser.stylesheets:
         if not (PROTOTYPE / asset).resolve().is_file():
             errors.append(f"HTML references missing local asset: {asset}")
-    if parser.scripts != ["app.js"]:
-        errors.append(f"expected exactly one local script app.js, got {parser.scripts}")
-    if parser.stylesheets != ["styles.css"]:
-        errors.append(f"expected exactly one local stylesheet styles.css, got {parser.stylesheets}")
+    if parser.scripts != ["../shared/i18n.js", "app.js"]:
+        errors.append(f"expected shared i18n before local app.js, got {parser.scripts}")
+    if parser.stylesheets != ["styles.css", "../shared/theme.css"]:
+        errors.append(f"expected local layout followed by shared theme, got {parser.stylesheets}")
 
     hidden_fields = sorted(FORBIDDEN_HIDDEN_FIELD_NAMES & set(parser.names))
     if hidden_fields:

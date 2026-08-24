@@ -19,7 +19,7 @@ JS = PROTOTYPE / "app.js"
 CSS = PROTOTYPE / "styles.css"
 SCHEMA = REPO_ROOT / "skill" / "schemas" / "deck-coach-session.schema.json"
 ROLES = REPO_ROOT / "skill" / "data" / "deck_coach_roles.json"
-REQUIRED_IDS = {"context-form", "deck-form", "diagnosis-form", "primer-form", "role-coverage", "pipeline-import", "pipeline-summary", "copy-brief", "record", "export-json", "export-md", "reset"}
+REQUIRED_IDS = {"context-form", "deck-form", "diagnosis-form", "primer-form", "role-coverage", "pipeline-import", "pipeline-summary", "copy-brief", "record", "export-json", "export-md", "reset", "language-toggle"}
 FORBIDDEN = {"fetch(": "network request", "XMLHttpRequest": "network request", "WebSocket": "network connection", "localStorage": "persistent storage", "sessionStorage": "persistent storage"}
 
 
@@ -55,8 +55,8 @@ def main():
         errors.append(f"duplicate DOM ids: {duplicates}")
     if missing := REQUIRED_IDS - set(parser.ids):
         errors.append(f"missing workflow ids: {sorted(missing)}")
-    if parser.scripts != ["app.js"] or parser.stylesheets != ["styles.css"]:
-        errors.append("prototype must reference exactly local app.js and styles.css")
+    if parser.scripts != ["../shared/i18n.js", "app.js"] or parser.stylesheets != ["styles.css", "../shared/theme.css"]:
+        errors.append("prototype must load the shared bilingual shell before its local application assets")
     for asset in parser.scripts + parser.stylesheets:
         if not (PROTOTYPE / asset).is_file():
             errors.append(f"missing local asset: {asset}")

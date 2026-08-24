@@ -67,6 +67,9 @@ jobs:
       - name: Rule Consult static prototype contract
         run: python3 skill/scripts/check_rule_consult_prototype.py
 
+      - name: Shared prototype visual and bilingual contract
+        run: python3 skill/scripts/check_prototype_ui.py
+
       - name: Off-cwd portability (same checks, run from /tmp by absolute path)
         run: |
           REPO="$GITHUB_WORKSPACE"
@@ -82,3 +85,4 @@ jobs:
           python3 "$REPO/skill/scripts/check_p2a_prototype.py"
           python3 "$REPO/skill/scripts/check_rule_consult.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
+          python3 "$REPO/skill/scripts/check_prototype_ui.py"

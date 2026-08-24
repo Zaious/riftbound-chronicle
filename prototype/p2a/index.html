@@ -1,26 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant" data-locale="zh-Hant" data-system="player2-agent">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="P2-A manual-play prototype for Riftbound Chronicle" />
-    <title>Player 2 Agent · P2-A Prototype</title>
+    <meta name="description" content="符文戰場 Riftbound 雙語 P2-A 實體對練原型" />
+    <title>二號玩家代理 Player 2 Agent · P2-A</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="../shared/theme.css" />
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#top" aria-label="Riftbound Chronicle P2-A home">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
-        <span>
-          <strong>Riftbound Chronicle</strong>
-          <small>Player 2 Agent</small>
-        </span>
-      </a>
-      <div class="topbar-status" aria-label="Prototype status">
-        <span class="badge badge-accent">P2-A</span>
-        <span class="badge"><span class="status-dot"></span>Human authority</span>
-        <span class="badge badge-muted">P2-S off</span>
-      </div>
+      <a class="brand" href="#top" aria-label="Riftbound Chronicle P2-A home"><span class="mark">RC</span><span><strong>符文戰場編年史</strong><small>Riftbound Chronicle · Assistant Lab</small></span></a>
+      <nav aria-label="Three assistant systems">
+        <a href="../deck-coach/index.html">Deck Coach</a>
+        <a href="../rule-consult/index.html" target="_blank" rel="noreferrer">Rule Consult</a>
+        <a class="active" href="#top">Player 2 Agent</a>
+      </nav>
+      <div class="topbar-actions"><span class="system-status">Human authority</span><span class="system-status">P2-S off</span><button class="language-toggle" id="language-toggle" type="button">EN</button></div>
     </header>
 
     <main id="top" class="shell">
@@ -175,6 +171,7 @@
     </main>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="../shared/i18n.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

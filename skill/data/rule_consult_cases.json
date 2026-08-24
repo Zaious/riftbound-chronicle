@@ -1,0 +1,124 @@
+{
+  "schema_version": "rule-consult-cases.v1",
+  "ruleset_baseline": "2026-07-16 rules, effective 2026-07-24",
+  "last_verified": "2026-08-24",
+  "cases": [
+    {
+      "case_id": "RC-001",
+      "category": "general_mechanic",
+      "question": "During a mulligan, are the set-aside cards put on the bottom before replacements are drawn?",
+      "facts": ["The player selected up to two cards from the opening hand for the one mulligan opportunity."],
+      "expected": {
+        "conclusion_contains": ["draw replacement", "then", "bottom"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 117.1–117.3"
+    },
+    {
+      "case_id": "RC-002",
+      "category": "general_mechanic",
+      "question": "When both players pass on a closed chain, does the entire chain resolve?",
+      "facts": ["More than one finalized item remains on the chain."],
+      "expected": {
+        "conclusion_contains": ["newest", "one item", "priority"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 339.1, 340.1–340.4"
+    },
+    {
+      "case_id": "RC-003",
+      "category": "specific_interaction",
+      "question": "Can a player start a chain with a Unit while the game is in a neutral Open state?",
+      "facts": ["No Showdown is underway.", "The player has priority in a neutral Open state."],
+      "expected": {
+        "conclusion_contains": ["yes", "any card type"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 310.1.a"
+    },
+    {
+      "case_id": "RC-004",
+      "category": "specific_interaction",
+      "question": "During a Showdown, may a card without Action or Reaction be played merely because the chain is Open?",
+      "facts": ["A Showdown is currently underway."],
+      "expected": {
+        "conclusion_contains": ["no", "Action", "Reaction"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 308.1.a, 806.1"
+    },
+    {
+      "case_id": "RC-005",
+      "category": "general_mechanic",
+      "question": "In combat, is damage dealt as soon as the attacker finishes assigning it?",
+      "facts": ["Both sides still have units when the combat damage step begins."],
+      "expected": {
+        "conclusion_contains": ["attacker assigns", "defender assigns", "simultaneously"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16", "vendetta-patch-notes-2026-07-17"],
+      "locator": "Core Rules 465.2.c; current replacement-effect assignment rules"
+    },
+    {
+      "case_id": "RC-006",
+      "category": "general_mechanic",
+      "question": "Does moving onto an uncontrolled Battlefield grant control immediately?",
+      "facts": ["The move begins a Non-Combat Showdown."],
+      "expected": {
+        "conclusion_contains": ["no", "Showdown", "closes"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 344.2, 345, 348.2.a"
+    },
+    {
+      "case_id": "RC-007",
+      "category": "general_mechanic",
+      "question": "What happens when a player must draw from an empty Main Deck?",
+      "facts": ["The Main Deck is empty when the draw is attempted."],
+      "expected": {
+        "conclusion_contains": ["recycle", "opponent scores", "draw"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 431.2"
+    },
+    {
+      "case_id": "RC-008",
+      "category": "tournament_procedure",
+      "question": "If the Tournament Rules add to the Core Rules for a sanctioned event, which governs?",
+      "facts": ["The event has no more-specific addendum."],
+      "expected": {
+        "conclusion_contains": ["Tournament Rules", "govern"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["tournament-rules-2026-07-16", "core-rules-2026-07-16"],
+      "locator": "Tournament Rules 104.1; event addendum caveat 104.3"
+    },
+    {
+      "case_id": "RC-009",
+      "category": "tournament_procedure",
+      "question": "What penalty should a player receive for a disputed action at this event?",
+      "facts": ["No event-specific facts, infraction classification, or Head Judge determination were supplied."],
+      "expected": {
+        "conclusion_contains": ["cannot assign", "Head Judge"],
+        "confidence": "Low",
+        "escalation_required": true
+      },
+      "source_ids": ["tournament-rules-2026-07-16"],
+      "locator": "Tournament Rules 204.4 and applicable infraction procedure"
+    }
+  ]
+}

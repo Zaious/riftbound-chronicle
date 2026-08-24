@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:rule-consultation:v1",
+  "title": "Riftbound Chronicle Rule Consultation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "official_status",
+    "state_effect",
+    "consultation_id",
+    "created_at",
+    "created_by",
+    "status",
+    "question_type",
+    "question",
+    "format",
+    "ruleset_as_of",
+    "facts",
+    "assumptions",
+    "sources",
+    "answer"
+  ],
+  "properties": {
+    "schema_version": { "const": "rule-consultation.v1" },
+    "mode": { "const": "rule-consult" },
+    "official_status": { "const": "unofficial" },
+    "state_effect": { "const": "none" },
+    "consultation_id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "created_by": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "final"] },
+    "question_type": {
+      "enum": ["general_mechanic", "specific_interaction", "tournament_procedure", "source_conflict"]
+    },
+    "question": { "type": "string", "minLength": 1 },
+    "format": { "type": "string", "minLength": 1 },
+    "ruleset_as_of": { "type": "string", "minLength": 1 },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "origin"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "origin": { "enum": ["user", "official_source"] }
+  }
+}
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "material"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "material": { "type": "boolean" }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "locator", "accessed_at"],
+        "properties": {
+          "source_id": { "type": "string", "minLength": 1 },
+          "locator": { "type": "string", "minLength": 1 },
+          "accessed_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "answer": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conclusion",
+            "conditional",
+            "analysis_steps",
+            "confidence",
+            "confidence_reason",
+            "escalation_required",
+            "escalation_target",
+            "escalation_reason"
+          ],
+          "properties": {
+            "conclusion": { "type": "string", "minLength": 1 },
+            "conditional": { "type": "boolean" },
+            "analysis_steps": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "confidence": { "enum": ["High", "Medium", "Low"] },
+            "confidence_reason": { "type": "string", "minLength": 1 },
+            "escalation_required": { "type": "boolean" },
+            "escalation_target": { "enum": ["none", "more_facts", "head_judge", "riot_clarification"] },
+            "escalation_reason": { "type": "string" }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "final" } } },
+      "then": {
+        "properties": {
+          "facts": { "minItems": 1 },
+          "sources": { "minItems": 1 },
+          "answer": { "type": "object" }
+        }
+      }
+    }
+  ]
+}

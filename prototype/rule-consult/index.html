@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Unofficial cited Riftbound rules consultation prototype" />
+    <title>Rule Consult · Riftbound Chronicle</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top"><span class="mark">RC</span><span><strong>Riftbound Chronicle</strong><small>Three-system assistant</small></span></a>
+      <nav aria-label="Assistant systems">
+        <a href="../deck-coach/index.html">Deck Coach</a>
+        <a class="active" href="#top">Rule Consult</a>
+        <a href="../p2a/index.html">Player 2 Agent</a>
+      </nav>
+      <div class="badges"><span>Unofficial</span><span class="safe">No state effect</span></div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">CITED ANALYSIS · CALIBRATED CONFIDENCE</p>
+          <h1>Understand the ruling.<br /><em>Keep the authority honest.</em></h1>
+          <p>Build a consultation from supplied facts, explicit assumptions, current sources, and a reasoned conclusion. This prototype explains; it never becomes an official ruling or changes a game state.</p>
+        </div>
+        <div class="hero-contract">
+          <span class="contract-kicker">Output contract</span>
+          <ol><li>Most likely answer</li><li>Facts and assumptions</li><li>Rule basis</li><li>Analysis sequence</li><li>Confidence and escalation</li></ol>
+        </div>
+      </section>
+
+      <section class="consult-shell">
+        <aside class="source-rail">
+          <div class="section-label">AUTHORITY MAP</div>
+          <h2>Use the right ladder</h2>
+          <div class="axis-switch" role="group" aria-label="Authority axis">
+            <button class="active" type="button" data-axis="mechanics">Mechanics</button>
+            <button type="button" data-axis="procedure">Procedure</button>
+          </div>
+          <ol id="authority-ladder" class="authority-ladder"></ol>
+          <div class="community-card"><span>Supporting only</span><strong>Community rulings</strong><p>Useful for edge cases, but never outranks Riot sources or a live event's Head Judge.</p></div>
+          <a class="external-link" href="https://playriftbound.com/en-us/rules-hub/" target="_blank" rel="noreferrer">Open official Rules Hub ↗</a>
+        </aside>
+
+        <div class="workflow">
+          <div id="status" class="status"><span>1</span><div><strong>Define the question</strong><p>Start with the interaction and its rules context.</p></div></div>
+
+          <details class="panel" id="question-panel" open>
+            <summary><b>01</b><span><strong>Question</strong><small>Classify before researching</small></span><i id="question-status">Required</i></summary>
+            <form id="question-form" class="form-grid">
+              <label>Question type<select name="questionType"><option value="general_mechanic">General mechanic</option><option value="specific_interaction">Specific interaction</option><option value="tournament_procedure">Tournament procedure</option><option value="source_conflict">Source conflict</option></select></label>
+              <label>Format<input name="format" required value="1v1 Constructed" /></label>
+              <label>Ruleset as of<input name="ruleset" required value="2026-08-24" /></label>
+              <label>Consultant / operator<input name="createdBy" required placeholder="Name or test identifier" /></label>
+              <label class="wide">Question<textarea name="question" rows="4" required placeholder="Describe exactly what you want to know"></textarea></label>
+              <div class="actions"><button class="primary" type="submit">Create consultation</button></div>
+            </form>
+          </details>
+
+          <details class="panel" id="context-panel">
+            <summary><b>02</b><span><strong>Facts & assumptions</strong><small>Separate what is known from what is inferred</small></span><i id="context-status">Locked</i></summary>
+            <div class="split-forms locked" id="context-content">
+              <form id="fact-form">
+                <h3>Confirmed fact</h3>
+                <label>Origin<select name="origin"><option value="user">Supplied by user</option><option value="official_source">Confirmed in official source</option></select></label>
+                <label>Fact<textarea name="text" required rows="3" placeholder="One atomic fact"></textarea></label>
+                <button class="secondary" type="submit">Add fact</button>
+              </form>
+              <form id="assumption-form">
+                <h3>Assumption</h3>
+                <label>Assumption<textarea name="text" required rows="3" placeholder="A fact not yet established"></textarea></label>
+                <label class="check"><input type="checkbox" name="material" /><span><strong>Material assumption</strong><small>The answer may change if this is wrong</small></span></label>
+                <button class="secondary" type="submit">Add assumption</button>
+              </form>
+            </div>
+          </details>
+
+          <details class="panel" id="source-panel">
+            <summary><b>03</b><span><strong>Rule basis</strong><small>Register exact source and locator</small></span><i id="source-status">Locked</i></summary>
+            <form id="source-form" class="form-grid locked">
+              <label class="wide">Source<select name="sourceId" id="source-select"></select></label>
+              <label class="wide">Locator<input name="locator" required placeholder="Rule number, section, FAQ heading, or errata card" /></label>
+              <div class="source-preview wide" id="source-preview"></div>
+              <div class="actions"><button class="secondary" type="submit">Attach source</button></div>
+            </form>
+          </details>
+
+          <details class="panel" id="answer-panel">
+            <summary><b>04</b><span><strong>Analysis & answer</strong><small>Finalize confidence and escalation</small></span><i id="answer-status">Locked</i></summary>
+            <div class="agent-bridge"><div><strong>Agent research bridge</strong><p>Copy the structured brief into a Skill-enabled Rule Consult Agent, verify current official sources, then enter its answer below.</p></div><button id="copy-brief" class="secondary" type="button" disabled>Copy research brief</button></div>
+            <form id="answer-form" class="form-grid locked">
+              <label class="wide">Most likely answer<textarea name="conclusion" rows="4" required placeholder="Direct answer, conditional where necessary"></textarea></label>
+              <label class="wide">Analysis steps<textarea name="steps" rows="5" required placeholder="One resolution step per line"></textarea></label>
+              <label>Confidence<select name="confidence"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+              <label>Escalation<select name="escalationTarget"><option value="none">None</option><option value="more_facts">More facts needed</option><option value="head_judge">Event Head Judge</option><option value="riot_clarification">Riot clarification</option></select></label>
+              <label class="wide">Confidence reason<textarea name="confidenceReason" rows="2" required placeholder="Why this confidence is justified"></textarea></label>
+              <label class="wide">Escalation reason<textarea name="escalationReason" rows="2" placeholder="Required when escalation is selected"></textarea></label>
+              <label class="check wide"><input type="checkbox" name="conditional" /><span><strong>Conditional conclusion</strong><small>The result depends on stated assumptions or missing facts</small></span></label>
+              <div class="unofficial-lock wide"><span>!</span><div><strong>Unofficial consultation</strong><p>Finalizing does not create a binding ruling or change Player 2 Agent state.</p></div></div>
+              <div class="actions"><button class="primary" type="submit">Finalize consultation</button></div>
+            </form>
+          </details>
+
+          <article id="result" class="result" hidden>
+            <header><div><span id="result-confidence">Medium confidence</span><h2>Most likely answer</h2></div><b>UNOFFICIAL</b></header>
+            <p id="result-conclusion"></p>
+            <ol id="result-steps"></ol>
+            <div id="result-escalation" class="result-escalation"></div>
+          </article>
+        </div>
+
+        <aside class="record-rail">
+          <div class="record-head"><div><p class="section-label">CONSULTATION RECORD</p><h2>Evidence ledger</h2></div><span id="record-count">0 items</span></div>
+          <div id="record-empty" class="empty"><span>◇</span><p>Facts, assumptions, and sources will remain visibly separate here.</p></div>
+          <div id="record" class="record"></div>
+          <div class="record-actions"><button id="export" class="secondary" type="button" disabled>Export JSON</button><button id="reset" class="text-button" type="button" disabled>Reset</button></div>
+        </aside>
+      </section>
+
+      <footer><p>Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.</p><p>Unofficial prototype · No automatic ruling enforcement · No game-state writes</p></footer>
+    </main>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

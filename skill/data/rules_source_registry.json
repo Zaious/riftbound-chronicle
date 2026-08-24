@@ -1,0 +1,73 @@
+{
+  "schema_version": "riftbound-rules-source-registry.v1",
+  "last_checked": "2026-08-24",
+  "live_entrypoint": "rules-hub",
+  "sources": [
+    {
+      "source_id": "rules-hub",
+      "title": "Riftbound Rules Hub",
+      "authority": "official",
+      "kind": "discovery",
+      "scope": "current rules documents, legality, patch notes, and errata",
+      "url": "https://playriftbound.com/en-us/rules-hub/",
+      "version": "live",
+      "effective_date": null,
+      "resolve_at_query_time": true
+    },
+    {
+      "source_id": "core-rules-2026-07-16",
+      "title": "Riftbound Core Rules",
+      "authority": "official",
+      "kind": "core_rules",
+      "scope": "game mechanics, timing, resolution, cards, and abilities",
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/e9ac8e3d33e0f78cef296f5945aba7bc1313b086.pdf",
+      "version": "2026-07-16",
+      "effective_date": "2026-07-24",
+      "resolve_at_query_time": true
+    },
+    {
+      "source_id": "tournament-rules-2026-07-16",
+      "title": "Riftbound Tournament Rules",
+      "authority": "official",
+      "kind": "tournament_rules",
+      "scope": "sanctioned tournament procedure, deck construction, and adjudication",
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/503da65669ced10598d62925a6f6bc15111af726.pdf",
+      "version": "2026-07-16",
+      "effective_date": "2026-07-24",
+      "resolve_at_query_time": true
+    },
+    {
+      "source_id": "vendetta-patch-notes-2026-07-17",
+      "title": "Core Rules: Vendetta Patch Notes",
+      "authority": "official",
+      "kind": "official_clarification",
+      "scope": "Vendetta rules changes and clarifications reproduced in the current Core Rules",
+      "url": "https://playriftbound.com/en-us/news/announcements/core-rules-vendetta-patch-notes/",
+      "version": "2026-07-17",
+      "effective_date": "2026-07-24",
+      "resolve_at_query_time": false
+    },
+    {
+      "source_id": "vendetta-errata-2026-07-23",
+      "title": "Vendetta Errata Updates",
+      "authority": "official",
+      "kind": "errata",
+      "scope": "post-print card-text corrections published with Vendetta",
+      "url": "https://playriftbound.com/en-us/news/announcements/vendetta-errata-updates/",
+      "version": "2026-07-23",
+      "effective_date": "2026-07-24",
+      "resolve_at_query_time": false
+    },
+    {
+      "source_id": "riftjudge-community",
+      "title": "RiftJudge",
+      "authority": "community",
+      "kind": "community_rulings",
+      "scope": "supporting edge-case analysis; never overrides official sources or a Head Judge",
+      "url": "https://app.riftjudge.com/",
+      "version": "live",
+      "effective_date": null,
+      "resolve_at_query_time": true
+    }
+  ]
+}

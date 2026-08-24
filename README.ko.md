@@ -49,6 +49,21 @@ decklist + environment + player level
 
 mask는 선택한 환경에서 출시되지 않은 카드, 금지 카드, Legend의 Domain 정체성과 맞지 않는 카드, 보유하지 않은 카드, 오래된 errata를 사용하는 카드, 다른 환경의 대회 자료를 제외합니다. 실제 대회용 추천은 현재 공식 합법성 자료를 다시 확인해야 합니다.
 
+## Rift Atlas 덱 핸드오프
+
+저장소에는 사용자가 붙여 넣은 Rift Atlas 덱리스트를 Deck Coach의 input, profile, mask, 8개 섹션 primer scaffold와 brief로 바꾸는 오프라인 bridge가 포함되어 있습니다.
+
+```powershell
+python skill/scripts/riftatlas_bridge.py `
+  --source-url https://riftatlas.com/decks/community/DECK_ID `
+  --deck-file decklist.txt `
+  --environment global-vendetta `
+  --player-level new `
+  --output-dir riftatlas-output
+```
+
+URL은 출처 기록으로만 사용됩니다. bridge는 Rift Atlas를 스크랩하거나 private API를 호출하거나 게임을 자동화하지 않습니다. 상대 유지 관리자가 공개에 동의하기 전까지 협력 제안과 번체 중국어 sample은 공개 저장소에 넣지 않습니다.
+
 ## Rule Consult와 규칙 PDF
 
 Rule Consult는 사용자가 제공한 사실, 가정, 규칙 근거, 분석, 신뢰도와 escalation을 분리해 기록합니다. 결과에는 항상 `official_status: unofficial`, `state_effect: none`이 유지됩니다.

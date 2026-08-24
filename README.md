@@ -116,6 +116,27 @@ human expert preference as separate fields.
 See [Deck Coach evaluation plan](docs/evaluation/EVALUATION_PLAN.md) and the
 [Deck Coach method](skill/references/deck-coach/deck-coach.md).
 
+### Rift Atlas handoff
+
+The repository also includes an offline bridge for a user-pasted Rift Atlas
+decklist. It records a public deck URL as provenance, then writes the existing
+Deck Coach input, profile, recommendation mask, eight-section primer scaffold,
+and a human-readable brief:
+
+```powershell
+python skill/scripts/riftatlas_bridge.py `
+  --source-url https://riftatlas.com/decks/community/DECK_ID `
+  --deck-file decklist.txt `
+  --environment global-vendetta `
+  --player-level new `
+  --output-dir riftatlas-output
+```
+
+The adapter does not scrape Rift Atlas, call a private API, or automate
+gameplay. Partnership drafts and unaccepted localization material are kept
+outside the public repository until the other maintainer agrees to publish
+them.
+
 ## Rule Consult
 
 Rule Consult is for players who need a careful explanation, including detailed
@@ -234,6 +255,7 @@ python skill/scripts/check_rule_consult.py
 python skill/scripts/check_rule_consult_prototype.py
 python skill/scripts/check_prototype_ui.py
 python skill/scripts/check_rules_bootstrap.py
+python skill/scripts/check_riftatlas_bridge.py
 python skill/scripts/check_p2a_protocol.py
 python skill/scripts/check_p2a_prototype.py
 ```

@@ -46,5 +46,6 @@ For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.
 - Deterministic validation and artifact tooling: `${CLAUDE_SKILL_DIR}/scripts/`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
 - Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
+- Rift Atlas deck handoff adapter: `${CLAUDE_SKILL_DIR}/scripts/riftatlas_bridge.py` (user-pasted list, no upstream scraping)
 
 A deployment may provide a sibling private companion Skill for approved/current data bindings. Keep deployment-specific paths, credentials, and publishing behavior out of this public portable folder.

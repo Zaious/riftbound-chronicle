@@ -73,6 +73,9 @@ jobs:
       - name: Local official rules bootstrap contract (no PDF download)
         run: python3 skill/scripts/check_rules_bootstrap.py
 
+      - name: Rift Atlas bridge contract (offline, no upstream fetch)
+        run: python3 skill/scripts/check_riftatlas_bridge.py
+
       - name: Off-cwd portability (same checks, run from /tmp by absolute path)
         run: |
           REPO="$GITHUB_WORKSPACE"
@@ -90,3 +93,4 @@ jobs:
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"
           python3 "$REPO/skill/scripts/check_rules_bootstrap.py"
+          python3 "$REPO/skill/scripts/check_riftatlas_bridge.py"

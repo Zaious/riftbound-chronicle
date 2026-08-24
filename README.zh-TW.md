@@ -49,6 +49,21 @@ profile 會記錄傳奇、賽制、地區牌池、Energy 曲線、Domain、Power
 
 mask 會排除未發售、禁用、不符合傳奇 Domain、玩家沒有、使用過時勘誤，以及環境不一致的候選牌。這是日期化快照，正式建議仍要重新查核官方合法性。
 
+## Rift Atlas 牌組交接
+
+repo 內有離線 bridge，可把使用者貼上的 Rift Atlas 牌表轉成 Deck Coach 的 input、profile、mask、八段式 primer scaffold 與 brief：
+
+```powershell
+python skill/scripts/riftatlas_bridge.py `
+  --source-url https://riftatlas.com/decks/community/DECK_ID `
+  --deck-file decklist.txt `
+  --environment taiwan-set1-banned `
+  --player-level new `
+  --output-dir riftatlas-output
+```
+
+網址只作來源紀錄；bridge 不抓取 Rift Atlas、不呼叫私有 API，也不自動對戰。尚未被對方接受的合作提案與繁中化 sample 會留在本地，不放入公開 repo。
+
 ## Rule Consult 與規則書
 
 Rule Consult 將玩家提供的事實、假設、規則依據、分析、信心與升級處理分開保存，並固定標示 `official_status: unofficial`、`state_effect: none`。

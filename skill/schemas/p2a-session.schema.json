@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:riftbound-chronicle:p2a-session:v1",
+  "title": "Riftbound Chronicle P2-A Session",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "automation_level",
+    "p2s_enabled",
+    "state_authority",
+    "legality_authority",
+    "session_id",
+    "created_at",
+    "created_by",
+    "format",
+    "ruleset_version",
+    "decks",
+    "events"
+  ],
+  "properties": {
+    "schema_version": { "const": "p2a-session.v1" },
+    "mode": { "const": "player2-agent" },
+    "automation_level": { "const": "P2-A" },
+    "p2s_enabled": { "const": false },
+    "state_authority": { "const": "user_confirmed" },
+    "legality_authority": { "const": "user_confirmed" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "created_by": { "type": "string", "minLength": 1 },
+    "format": { "type": "string", "minLength": 1 },
+    "ruleset_version": { "type": "string", "minLength": 1 },
+    "decks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player1", "player2"],
+      "properties": {
+        "player1": { "type": "string", "minLength": 1 },
+        "player2": { "type": "string", "minLength": 1 }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/stateEvent" },
+          { "$ref": "#/$defs/proposalEvent" },
+          { "$ref": "#/$defs/confirmationEvent" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "baseEvent": {
+      "type": "object",
+      "required": ["seq", "type", "recorded_at"],
+      "properties": {
+        "seq": { "type": "integer", "minimum": 1 },
+        "type": { "type": "string" },
+        "recorded_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "stateEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEvent" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seq",
+            "type",
+            "recorded_at",
+            "authority",
+            "confirmed_by",
+            "turn",
+            "turn_player",
+            "phase",
+            "public_state",
+            "player2_private_hand",
+            "notes"
+          ],
+          "properties": {
+            "seq": { "type": "integer", "minimum": 1 },
+            "type": { "const": "state_confirmed" },
+            "recorded_at": { "type": "string", "format": "date-time" },
+            "authority": { "const": "user_confirmed" },
+            "confirmed_by": { "type": "string", "minLength": 1 },
+            "turn": { "type": "integer", "minimum": 0 },
+            "turn_player": { "enum": ["Player 1", "Player 2"] },
+            "phase": { "type": "string", "minLength": 1 },
+            "public_state": { "type": "string", "minLength": 1 },
+            "player2_private_hand": { "type": "string" },
+            "notes": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "proposalEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEvent" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seq",
+            "type",
+            "recorded_at",
+            "action_id",
+            "state_seq",
+            "objective",
+            "description",
+            "reason",
+            "alternative",
+            "assumptions",
+            "legality_status"
+          ],
+          "properties": {
+            "seq": { "type": "integer", "minimum": 1 },
+            "type": { "const": "action_proposed" },
+            "recorded_at": { "type": "string", "format": "date-time" },
+            "action_id": { "type": "string", "minLength": 1 },
+            "state_seq": { "type": "integer", "minimum": 1 },
+            "objective": { "type": "string", "minLength": 1 },
+            "description": { "type": "string", "minLength": 1 },
+            "reason": { "type": "string", "minLength": 1 },
+            "alternative": { "type": "string" },
+            "assumptions": { "type": "array", "items": { "type": "string" } },
+            "legality_status": { "const": "unverified" }
+          }
+        }
+      ]
+    },
+    "confirmationEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEvent" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "seq",
+            "type",
+            "recorded_at",
+            "action_id",
+            "legal",
+            "confirmed_by",
+            "resolution_summary",
+            "state_transition"
+          ],
+          "properties": {
+            "seq": { "type": "integer", "minimum": 1 },
+            "type": { "const": "action_confirmed" },
+            "recorded_at": { "type": "string", "format": "date-time" },
+            "action_id": { "type": "string", "minLength": 1 },
+            "legal": { "type": "boolean" },
+            "confirmed_by": { "type": "string", "minLength": 1 },
+            "resolution_summary": { "type": "string" },
+            "state_transition": { "enum": ["pending_user_snapshot", "none"] }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="P2-A manual-play prototype for Riftbound Chronicle" />
+    <title>Player 2 Agent · P2-A Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Riftbound Chronicle P2-A home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span>
+          <strong>Riftbound Chronicle</strong>
+          <small>Player 2 Agent</small>
+        </span>
+      </a>
+      <div class="topbar-status" aria-label="Prototype status">
+        <span class="badge badge-accent">P2-A</span>
+        <span class="badge"><span class="status-dot"></span>Human authority</span>
+        <span class="badge badge-muted">P2-S off</span>
+      </div>
+    </header>
+
+    <main id="top" class="shell">
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">PHYSICAL PLAY · MANUAL RESOLUTION</p>
+          <h1 id="page-title">The Agent chooses.<br /><em>You run the game.</em></h1>
+          <p class="hero-copy">
+            Record what the table looks like, bring in a Player 2 recommendation, then confirm legality and resolve it with the physical cards. Every handoff stays visible in the ledger.
+          </p>
+        </div>
+        <div class="authority-card">
+          <p class="authority-label">Authority contract</p>
+          <dl>
+            <div><dt>State</dt><dd>User confirmed</dd></div>
+            <div><dt>Legality</dt><dd>User confirmed</dd></div>
+            <div><dt>Resolution</dt><dd>Physical / manual</dd></div>
+            <div><dt>Rules engine</dt><dd>Not present</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <nav class="system-tabs" aria-label="Three system architecture">
+        <a href="../deck-coach/index.html"><b>01</b> Deck Coach</a>
+        <a href="../rule-consult/index.html" target="_blank" rel="noreferrer"><b>02</b> Rule Consult</a>
+        <span class="active"><b>03</b> Player 2 Agent</span>
+      </nav>
+
+      <section class="workspace" aria-label="P2-A workspace">
+        <aside class="rail">
+          <div class="rail-heading">
+            <p class="eyebrow">SESSION FLOW</p>
+            <span id="session-id-short">Not started</span>
+          </div>
+          <ol class="steps" id="flow-steps">
+            <li data-step="session" class="current"><span>1</span><div><strong>Create session</strong><small>Name the physical decks</small></div></li>
+            <li data-step="state"><span>2</span><div><strong>Confirm state</strong><small>Human describes the table</small></div></li>
+            <li data-step="proposal"><span>3</span><div><strong>Agent proposal</strong><small>Strategy, still unverified</small></div></li>
+            <li data-step="confirmation"><span>4</span><div><strong>Human check</strong><small>Confirm legality and resolve</small></div></li>
+            <li data-step="next-state"><span>5</span><div><strong>New state</strong><small>No automatic transition</small></div></li>
+          </ol>
+          <div class="boundary-note">
+            <strong>What this cannot do</strong>
+            <p>No shuffle, draw, phase advance, legal-action engine, effect resolution, scoring, or winner calculation.</p>
+          </div>
+        </aside>
+
+        <div class="panel-stack">
+          <div id="status-banner" class="status-banner" role="status" aria-live="polite">
+            <span class="status-icon">→</span>
+            <div><strong>Create a session to begin</strong><p>The ledger lives only in this browser tab until you export it.</p></div>
+          </div>
+
+          <details class="panel" id="session-panel" open>
+            <summary>
+              <span class="panel-number">01</span>
+              <span><strong>Physical session</strong><small>Identify the decks and rules context</small></span>
+              <span class="panel-state" id="session-panel-state">Required</span>
+            </summary>
+            <form id="session-form" class="form-grid">
+              <label>Player 1 deck<input name="player1" required placeholder="Human-operated deck" /></label>
+              <label>Player 2 deck<input name="player2" required placeholder="Agent-operated deck" /></label>
+              <label>Format<input name="format" required value="1v1 Constructed" /></label>
+              <label>Ruleset version<input name="ruleset" required placeholder="Rules Hub date or version" /></label>
+              <label>Human operator<input name="operator" required placeholder="Name or table identifier" /></label>
+              <div class="form-action"><button type="submit" class="button primary">Create P2-A session</button></div>
+            </form>
+          </details>
+
+          <details class="panel" id="state-panel">
+            <summary>
+              <span class="panel-number">02</span>
+              <span><strong>Human-confirmed state</strong><small>Public table plus Player 2's own information</small></span>
+              <span class="panel-state" id="state-panel-state">Locked</span>
+            </summary>
+            <form id="state-form" class="form-grid disabled-form">
+              <label>Turn<input name="turn" type="number" min="0" value="1" required /></label>
+              <label>Turn player<select name="turnPlayer"><option>Player 1</option><option>Player 2</option></select></label>
+              <label>Phase<input name="phase" required placeholder="Beginning, Main, End…" /></label>
+              <label>Confirmed by<input name="confirmedBy" required placeholder="Human operator" /></label>
+              <label class="wide">Public table state<textarea name="publicState" required rows="4" placeholder="Only information both players are allowed to know"></textarea></label>
+              <label class="wide private-field">Player 2 private hand<textarea name="player2Hand" rows="3" placeholder="Never enter Player 1 hidden information"></textarea><span>Visible to Player 2 Agent, not public</span></label>
+              <label class="wide">Notes<textarea name="notes" rows="2" placeholder="Optional uncertainties or physical reminders"></textarea></label>
+              <div class="form-action"><button type="submit" class="button primary">Confirm this state</button></div>
+            </form>
+          </details>
+
+          <details class="panel" id="proposal-panel">
+            <summary>
+              <span class="panel-number">03</span>
+              <span><strong>Player 2 proposal</strong><small>Bring in the Agent's strategic choice</small></span>
+              <span class="panel-state" id="proposal-panel-state">Locked</span>
+            </summary>
+            <div class="agent-bridge">
+              <div><strong>Agent bridge</strong><p>Copy the latest confirmed state into a Skill-enabled Agent, then record its recommendation here. The prototype never invents a legal-action set.</p></div>
+              <div class="bridge-actions">
+                <a href="../rule-consult/index.html" target="_blank" rel="noreferrer" class="button secondary rule-consult-link">Open Rule Consult</a>
+                <button type="button" id="copy-brief" class="button secondary" disabled>Copy Agent brief</button>
+              </div>
+            </div>
+            <p class="read-only-note">Rule Consult opens separately and cannot read or write this session. Bring back only the explanation; the human still confirms legality.</p>
+            <form id="proposal-form" class="form-grid disabled-form">
+              <label>Action ID<input name="actionId" required placeholder="p2-001" /></label>
+              <label>Immediate objective<input name="objective" required placeholder="Contest, develop, preserve…" /></label>
+              <label class="wide">Preferred action<textarea name="description" required rows="3" placeholder="The action Player 2 Agent recommends"></textarea></label>
+              <label class="wide">Why<textarea name="reason" required rows="3" placeholder="Strategic reason, not a legality claim"></textarea></label>
+              <label class="wide">Important alternative<textarea name="alternative" rows="2" placeholder="Best meaningful alternative or pass line"></textarea></label>
+              <label class="wide">Assumptions<textarea name="assumptions" rows="2" placeholder="One assumption per line"></textarea></label>
+              <div class="legality-lock"><span>!</span><div><strong>Legality: unverified</strong><p>A human must confirm before this becomes a physical action.</p></div></div>
+              <div class="form-action"><button type="submit" class="button primary">Record Agent proposal</button></div>
+            </form>
+          </details>
+
+          <details class="panel" id="confirmation-panel">
+            <summary>
+              <span class="panel-number">04</span>
+              <span><strong>Human legality check</strong><small>Confirm, physically resolve, then return</small></span>
+              <span class="panel-state" id="confirmation-panel-state">Locked</span>
+            </summary>
+            <form id="confirmation-form" class="form-grid disabled-form">
+              <label>Proposal<select name="actionId" id="proposal-select" required></select></label>
+              <label>Confirmed by<input name="confirmedBy" required placeholder="Human operator" /></label>
+              <fieldset class="wide decision-field">
+                <legend>Human determination</legend>
+                <label><input type="radio" name="legal" value="true" checked /><span><strong>Legal</strong><small>I will resolve this physically</small></span></label>
+                <label><input type="radio" name="legal" value="false" /><span><strong>Not legal</strong><small>Reject without changing state</small></span></label>
+              </fieldset>
+              <label class="wide">Physical resolution note<textarea name="resolution" rows="3" placeholder="What the human did at the table; this does not create the next state"></textarea></label>
+              <div class="form-action"><button type="submit" class="button primary">Record human confirmation</button></div>
+            </form>
+          </details>
+        </div>
+
+        <aside class="ledger-panel">
+          <div class="ledger-head">
+            <div><p class="eyebrow">AUDIT TRAIL</p><h2>Session ledger</h2></div>
+            <span id="event-count">0 events</span>
+          </div>
+          <div id="ledger-empty" class="ledger-empty"><span>◎</span><p>Confirmed states and decisions will appear here.</p></div>
+          <ol id="ledger" class="ledger" aria-live="polite"></ol>
+          <div class="ledger-actions">
+            <button type="button" id="export-session" class="button secondary" disabled>Export JSON</button>
+            <button type="button" id="reset-session" class="button text" disabled>Reset</button>
+          </div>
+        </aside>
+      </section>
+
+      <footer>
+        <p>Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.</p>
+        <p>Unofficial prototype · No Riot assets or card images are used on this screen.</p>
+      </footer>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

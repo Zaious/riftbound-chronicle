@@ -1,0 +1,32 @@
+{
+  "schema_version": "riftbound-rules-query-aliases.v1",
+  "groups": [
+    ["勘誤", "勘误", "errata", "corrected text"],
+    ["裁判", "judge", "裁判FAQ", "judge FAQ"],
+    ["官方FAQ", "official FAQ", "FAQ"],
+    ["核心規則", "核心规则", "Core Rules"],
+    ["賽事規則", "赛事规则", "Tournament Rules"],
+    ["禁限卡", "禁限卡表", "ban list", "banned"],
+    ["連鎖", "连锁", "結算鏈", "结算链", "chain"],
+    ["結算", "结算", "resolve", "resolution"],
+    ["全部結算", "全部结算", "resolve all"],
+    ["戰鬥", "战斗", "combat"],
+    ["傷害", "伤害", "damage"],
+    ["優先權", "优先权", "優先行動權", "优先行动权", "priority"],
+    ["移動", "移动", "move", "movement"],
+    ["重抽", "調度", "调度", "mulligan"],
+    ["戰場", "战场", "battlefield"],
+    ["主牌庫", "主牌库", "main deck"],
+    ["棄牌區", "弃牌区", "trash"],
+    ["回收", "recycle"],
+    ["法術對決", "法术对决", "對決", "对决", "showdown"],
+    ["普通開環", "普通开环", "neutral open"],
+    ["普通閉環", "普通闭环", "neutral closed"],
+    ["法術對決開環", "法术对决开环", "showdown open"],
+    ["法術對決閉環", "法术对决闭环", "showdown closed"],
+    ["開環", "开环", "open state"],
+    ["閉環", "闭环", "closed state"],
+    ["迅捷", "action"],
+    ["反應", "反应", "reaction"]
+  ]
+}

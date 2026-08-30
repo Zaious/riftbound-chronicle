@@ -1,7 +1,7 @@
 {
   "schema_version": "rule-consult-cases.v1",
   "ruleset_baseline": "2026-07-16 rules, effective 2026-07-24",
-  "last_verified": "2026-08-24",
+  "last_verified": "2026-08-26",
   "cases": [
     {
       "case_id": "RC-001",
@@ -119,6 +119,58 @@
       },
       "source_ids": ["tournament-rules-2026-07-16"],
       "locator": "Tournament Rules 204.4 and applicable infraction procedure"
+    },
+    {
+      "case_id": "RC-010",
+      "category": "source_conflict",
+      "question": "The Vendetta FAQ differs from the Core Rules wording. Which source should Rule Consult apply?",
+      "facts": ["The interaction is within the Vendetta FAQ's stated scope.", "No newer Core Rules revision has superseded that FAQ."],
+      "expected": {
+        "conclusion_contains": ["FAQ", "takes precedence", "Core Rules"],
+        "confidence": "Medium",
+        "escalation_required": false
+      },
+      "source_ids": ["vendetta-rules-faq-2026-08-14", "core-rules-2026-07-16"],
+      "locator": "Vendetta FAQ opening precedence statement; current Core Rules version/effective date"
+    },
+    {
+      "case_id": "RC-011",
+      "category": "source_conflict",
+      "question": "A Simplified Chinese translation appears to differ from the current English rule. Which wording controls?",
+      "facts": ["Both documents are current translations of the same rule.", "The English and Chinese readings materially differ."],
+      "expected": {
+        "conclusion_contains": ["English", "controls", "disclose"],
+        "confidence": "Medium",
+        "escalation_required": false
+      },
+      "source_ids": ["tournament-rules-2026-07-16", "tournament-rules-zh-cn-2026-07-17"],
+      "locator": "Tournament Rules 104.2; matching translated clause and page"
+    },
+    {
+      "case_id": "RC-012",
+      "category": "source_conflict",
+      "question": "May Rule Consult rely on the 2026-04-16 Unleashed judge FAQ for a current answer?",
+      "facts": ["A later 2026-05-11 edition is registered as its successor."],
+      "expected": {
+        "conclusion_contains": ["no", "superseded", "2026-05-11"],
+        "confidence": "Medium",
+        "escalation_required": false
+      },
+      "source_ids": ["unleashed-judge-faq-zh-cn-2026-05-11"],
+      "locator": "registry superseded_by relationship; current judge FAQ page"
+    },
+    {
+      "case_id": "RC-013",
+      "category": "specific_interaction",
+      "question": "Which text should be used when a printed Spiritforged card appears in an official errata document?",
+      "facts": ["The card and printing are within the errata document's stated scope."],
+      "expected": {
+        "conclusion_contains": ["corrected", "errata", "current card text"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["spiritforged-errata-2026-01-14", "spiritforged-errata-zh-cn-2026-01-14"],
+      "locator": "matching card entry in the official English errata and Chinese translation"
     }
   ]
 }

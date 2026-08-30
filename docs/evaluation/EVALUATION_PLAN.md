@@ -25,7 +25,7 @@ Do not use or publish metagame-defining win-rate or matchup-rate metrics.
 
 ## Rule Consult
 
-Current deterministic fixtures: `skill/data/rule_consult_cases.json` (9 mechanic, interaction, and tournament-procedure cases) against the dated source registry. The current check validates source selection, confidence/escalation invariants, and minimum semantic tokens; expert grading of free-form Agent answers remains a separate eval.
+Current deterministic fixtures: `skill/data/rule_consult_cases.json` covers mechanics, interactions, tournament procedure, source conflicts, translations, errata, and supersession against the dated source registry. `check_rules_index.py` separately tests bilingual retrieval, exact-locator ranking, authority labels, and stale-source masking. Expert grading of free-form Agent answers remains a separate eval.
 
 Build a versioned interaction-case corpus from current official rules, Tournament Rules, FAQs, errata, and clearly labeled community rulings.
 

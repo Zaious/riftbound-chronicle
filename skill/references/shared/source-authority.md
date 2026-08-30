@@ -27,6 +27,16 @@ Use, in order:
 
 A scoped FAQ may explicitly govern over the then-current Core Rules until a later revision supersedes it. Check dates and scope, not just document titles.
 
+For a current mechanics consultation, make the precedence check explicit:
+
+1. event addendum, if any;
+2. official FAQ or clarification that expressly covers the interaction;
+3. Tournament Rules for competition procedure, otherwise the current Core Rules;
+4. errata-applied current card text;
+5. community indexes and judge discussion as supporting evidence only.
+
+Do not treat a community mirror's ordering, translation, or repeated answer as a rule override. When official sources conflict, record both locators, state the scope/date problem, and lower confidence or escalate.
+
 ## Live official entrypoint
 
 The official Rules Hub is:
@@ -35,7 +45,18 @@ https://playriftbound.com/en-us/rules-hub/
 
 It routes to the current Core Rules, Tournament Rules, FAQs, ban lists, and errata. Follow current official links rather than trusting an old PDF URL or stale mirror.
 
-The machine-readable registry at `${CLAUDE_SKILL_DIR}/data/rules_source_registry.json` records the currently checked official documents and supporting community source. Use its `source_id` values in Rule Consult artifacts. A registry entry is provenance metadata, not a substitute for a live check when `resolve_at_query_time` is true.
+The machine-readable registry at `${CLAUDE_SKILL_DIR}/data/rules_source_registry.json` records authority, `locale`, `region`, `document_class`, `status`, and `superseded_by`. Use its `source_id` values in Rule Consult artifacts. A registry entry is provenance metadata, not a substitute for a live check when `resolve_at_query_time` is true.
+
+`status: superseded` is a hard current-answer exclusion. Follow `superseded_by`
+to the successor; retrieve the old source only to explain history. A Chinese
+judge FAQ is `authority: judge_guidance`, not official rules, even when its PDF
+is distributed on an official CDN. It may clarify intent but remains below an
+official FAQ, Tournament Rules, Core Rules, errata, and a live Head Judge.
+
+Official Simplified Chinese documents are useful for terminology and regional
+materials. They have `controlling_language: false`; Tournament Rules state that
+English controls a translation conflict. Region-specific documents such as a CN
+ban list still govern only the region and scope they declare.
 
 ## Local card data
 

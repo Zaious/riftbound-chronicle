@@ -6,7 +6,35 @@ Read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md` completely befo
 
 For exact clause work, also read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.md` and check whether the local Core Rules and Tournament Rules PDFs exist. If they do not, stop at the supported source pointer and ask for the bootstrap or a current official link; do not invent page numbers or quote remembered wording.
 
+For Open/Closed state, Showdown, Action/Reaction, Priority/Focus, Chain, or
+HOT/FEPR questions, also read `${CLAUDE_SKILL_DIR}/references/shared/rules-core.md`.
+After retrieving the controlling official text, use `rules_core.py` when the
+facts can be represented by its v1 schema. Treat a mismatch as a core
+conformance defect and report it; never prefer executable output over the
+official source.
+
 For an auditable consultation, use `${CLAUDE_SKILL_DIR}/scripts/rule_consult.py` and the schema at `${CLAUDE_SKILL_DIR}/schemas/rule-consultation.schema.json`. Resolve source identifiers through `${CLAUDE_SKILL_DIR}/data/rules_source_registry.json`; the registry records versions and authority, but any source marked `resolve_at_query_time` must still be checked live.
+
+## Retrieve before interpreting
+
+When the local corpus is installed, use `rules_index.py search` rather than
+free-form scanning. Search exact rule/card names first, then mechanic synonyms.
+For Chinese questions, retrieve Chinese terminology and the controlling English
+text where available. Confirm the cited page and surrounding clause in the PDF.
+
+Do not finalize from a single hit. Check, in order:
+
+1. whether the source is `active` and applies to the requested region/format;
+2. whether an official FAQ or errata specifically covers the interaction;
+3. the current Tournament/Core rule clause and relevant definitions;
+4. whether a translated result agrees with the controlling English text;
+5. whether every card is using corrected current text;
+6. whether the supplied facts are sufficient to apply the retrieved text.
+
+The search index returns evidence candidates, not legal actions or game-state
+transitions. Never cite a `superseded` source in a current consultation. Judge
+guidance may support Medium-confidence analysis but cannot by itself satisfy the
+final artifact's official-source requirement.
 
 ## Classify the question
 
@@ -42,6 +70,17 @@ Do not raise confidence merely because multiple community pages repeat one anoth
 - Never assign tournament penalties.
 - Never convert the consultation result into a P2-A state change. Return the analysis to the human, who decides what to record.
 - A community rulings database is supporting analysis, not an official source.
+
+### Judge-prep handoff (non-authoritative)
+
+Rule Consult may prepare a compact handoff for a live judge without becoming a judge. Use this when a player needs to ask a Head Judge a precise question at an event:
+
+- include the exact question, event/OPL, format, turn/phase or chain state, actors and controllers, targets, timing, card text/errata, and every material assumption;
+- attach official source locators first, then clearly label community sources as discovery or supporting analysis;
+- show competing readings and the fact that would distinguish them;
+- end with one neutral question for the Head Judge and a list of facts still needed.
+
+The handoff must never assign a penalty, claim an official ruling, promise a strategic result (for example, whether an action will win), or write game state. Tournament Rules distinguish rules/interaction questions from strategic-result questions; the latter may be declined or rephrased by a floor judge at higher organized-play levels. The live Head Judge remains the final authority.
 
 ## Currentness
 

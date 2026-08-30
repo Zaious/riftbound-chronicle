@@ -9,13 +9,19 @@ import sys
 from pathlib import Path
 
 from rule_consult import new_consultation, now_iso, validate_consultation
+from rules_core import CORE_RULESET, FAQ_AS_OF, summarize_result
 
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 REGISTRY = SKILL_DIR / "data" / "rules_source_registry.json"
 CASES = SKILL_DIR / "data" / "rule_consult_cases.json"
 SCHEMA = SKILL_DIR / "schemas" / "rule-consultation.schema.json"
-REQUIRED_KINDS = {"discovery", "core_rules", "tournament_rules", "official_clarification", "errata", "community_rulings"}
+REQUIRED_KINDS = {"discovery", "core_rules", "tournament_rules", "official_clarification", "errata", "judge_guidance", "community_rulings"}
+REQUIRED_SOURCE_FIELDS = {
+    "source_id", "title", "authority", "kind", "document_class", "locale", "region",
+    "status", "superseded_by", "scope", "url", "version", "effective_date",
+    "resolve_at_query_time", "controlling_language",
+}
 QUESTION_TYPES = {"general_mechanic", "specific_interaction", "tournament_procedure", "source_conflict"}
 
 
@@ -39,16 +45,35 @@ def main():
         errors.append("rules source registry has duplicate source_id values")
     if registry.get("live_entrypoint") not in source_ids:
         errors.append("registry live_entrypoint does not resolve")
+    if registry.get("schema_version") != "riftbound-rules-source-registry.v2":
+        errors.append("registry must use v2 source metadata")
+    if registry.get("controlling_locale") != "en-US":
+        errors.append("registry must record English as the controlling locale")
     kinds = {item.get("kind") for item in sources}
     if missing := REQUIRED_KINDS - kinds:
         errors.append(f"registry missing source kinds: {sorted(missing)}")
     for index, source in enumerate(sources):
-        if source.get("authority") not in {"official", "community"}:
+        if missing := REQUIRED_SOURCE_FIELDS - set(source):
+            errors.append(f"registry source {index} missing fields: {sorted(missing)}")
+        if source.get("authority") not in {"official", "judge_guidance", "community"}:
             errors.append(f"registry source {index} has invalid authority")
+        if source.get("status") not in {"active", "superseded", "supporting"}:
+            errors.append(f"registry source {index} has invalid status")
         if not str(source.get("url", "")).startswith("https://"):
             errors.append(f"registry source {index} has non-HTTPS URL")
         if source.get("authority") == "community" and source.get("kind") != "community_rulings":
             errors.append(f"community source {source.get('source_id')} has an official-looking kind")
+        if source.get("authority") == "judge_guidance" and source.get("document_class") != "judge_faq":
+            errors.append(f"judge guidance {source.get('source_id')} must be labeled judge_faq")
+        successor = source.get("superseded_by")
+        if source.get("status") == "superseded" and not successor:
+            errors.append(f"superseded source {source.get('source_id')} lacks superseded_by")
+        if successor and successor not in source_ids:
+            errors.append(f"source {source.get('source_id')} has unknown successor {successor}")
+        if successor == source.get("source_id"):
+            errors.append(f"source {source.get('source_id')} supersedes itself")
+        if source.get("locale") != "en-US" and source.get("controlling_language") is True:
+            errors.append(f"translated source {source.get('source_id')} cannot be controlling")
 
     case_ids = []
     category_seen = set()
@@ -89,6 +114,15 @@ def main():
     )
     valid["facts"].append({"text": "A supplied fact", "origin": "user"})
     valid["sources"].append({"source_id": "core-rules-2026-07-16", "locator": "fixture clause", "accessed_at": now_iso()})
+    valid["rules_core_check"] = summarize_result({
+        "valid": True,
+        "legal": True,
+        "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+        "input_state_hash": "sha256:" + "0" * 64,
+        "state_label": "neutral_open",
+        "reason_code": "ok",
+        "rule_locators": ["Core 310.1.a"],
+    })
     valid["status"] = "final"
     valid["answer"] = {
         "conclusion": "Most likely fixture answer.",
@@ -102,6 +136,10 @@ def main():
     }
     if found := validate_consultation(valid):
         errors.append(f"valid final consultation failed: {found}")
+
+    bad = copy.deepcopy(valid)
+    bad["rules_core_check"]["coverage"] = "complete_game"
+    expect_invalid("overstated executable coverage", bad, "coverage", errors)
 
     bad = copy.deepcopy(valid)
     bad["official_status"] = "official"

@@ -64,6 +64,9 @@ jobs:
       - name: Rule Consult sources, cases, schema, and authority regressions
         run: python3 skill/scripts/check_rule_consult.py
 
+      - name: Sovereign rules core timing and permission conformance
+        run: python3 skill/scripts/check_rules_core.py
+
       - name: Rule Consult static prototype contract
         run: python3 skill/scripts/check_rule_consult_prototype.py
 
@@ -90,6 +93,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_p2a_protocol.py"
           python3 "$REPO/skill/scripts/check_p2a_prototype.py"
           python3 "$REPO/skill/scripts/check_rule_consult.py"
+          python3 "$REPO/skill/scripts/check_rules_core.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"
           python3 "$REPO/skill/scripts/check_rules_bootstrap.py"

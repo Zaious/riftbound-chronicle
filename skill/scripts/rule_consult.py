@@ -19,6 +19,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from rules_core import summarize_result
+
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = SKILL_DIR / "data" / "rules_source_registry.json"
@@ -26,12 +28,13 @@ SCHEMA_VERSION = "rule-consultation.v1"
 QUESTION_TYPES = {"general_mechanic", "specific_interaction", "tournament_procedure", "source_conflict"}
 CONFIDENCE = {"High", "Medium", "Low"}
 ESCALATION_TARGETS = {"none", "more_facts", "head_judge", "riot_clarification"}
-ALLOWED_TOP = {
+REQUIRED_TOP = {
     "schema_version", "mode", "official_status", "state_effect",
     "consultation_id", "created_at", "created_by", "status",
     "question_type", "question", "format", "ruleset_as_of", "facts",
     "assumptions", "sources", "answer",
 }
+OPTIONAL_TOP = {"rules_core_check"}
 FORBIDDEN_KEYS = {
     "official_ruling", "binding_ruling", "penalty_assigned", "state_transition",
     "game_state_update", "legal_action_set", "winner",
@@ -82,8 +85,8 @@ def validate_consultation(value: Any) -> list[str]:
     if not isinstance(value, dict):
         return ["consultation must be a JSON object"]
 
-    missing = ALLOWED_TOP - set(value)
-    unknown = set(value) - ALLOWED_TOP
+    missing = REQUIRED_TOP - set(value)
+    unknown = set(value) - REQUIRED_TOP - OPTIONAL_TOP
     if missing:
         errors.append(f"missing top-level fields: {sorted(missing)}")
     if unknown:
@@ -141,6 +144,7 @@ def validate_consultation(value: Any) -> list[str]:
         sources = []
     seen_sources = set()
     official_count = 0
+    superseded_sources = []
     for index, source in enumerate(sources):
         if not isinstance(source, dict) or set(source) != {"source_id", "locator", "accessed_at"}:
             errors.append(f"sources[{index}] must contain exactly source_id, locator, and accessed_at")
@@ -148,14 +152,21 @@ def validate_consultation(value: Any) -> list[str]:
         source_id = source.get("source_id")
         if source_id not in known_sources:
             errors.append(f"sources[{index}] references unknown registry source {source_id!r}")
-        elif known_sources[source_id].get("authority") == "official":
-            official_count += 1
+        else:
+            metadata = known_sources[source_id]
+            if metadata.get("authority") == "official" and metadata.get("status") == "active":
+                official_count += 1
+            if metadata.get("status") == "superseded":
+                superseded_sources.append((source_id, metadata.get("superseded_by")))
         _nonempty(source.get("locator"), f"sources[{index}].locator", errors)
         _nonempty(source.get("accessed_at"), f"sources[{index}].accessed_at", errors)
         key = (source_id, source.get("locator"))
         if key in seen_sources:
             errors.append(f"sources[{index}] duplicates source and locator {key!r}")
         seen_sources.add(key)
+    if superseded_sources:
+        replacements = ", ".join(f"{source_id} -> {successor}" for source_id, successor in superseded_sources)
+        errors.append(f"consultation cites superseded sources: {replacements}")
 
     answer = value.get("answer")
     if answer is not None:
@@ -208,6 +219,22 @@ def validate_consultation(value: Any) -> list[str]:
     elif answer is not None:
         errors.append("draft consultation must keep answer null; use finalize to attach the answer")
 
+    check = value.get("rules_core_check")
+    if check is not None:
+        expected_fields = {
+            "core_version", "coverage", "ruleset", "input_state_hash",
+            "state_label", "outcome", "reason_code", "rule_locators", "result_hash",
+        }
+        if not isinstance(check, dict) or set(check) != expected_fields:
+            errors.append(f"rules_core_check must contain exactly {sorted(expected_fields)}")
+        else:
+            if check.get("coverage") != "timing_permission_v1":
+                errors.append("rules_core_check.coverage must be timing_permission_v1")
+            if check.get("outcome") not in {"supported_legal_timing", "supported_illegal_timing", "supported_procedure", "unsupported"}:
+                errors.append("rules_core_check.outcome is invalid")
+            if not isinstance(check.get("rule_locators"), list) or not all(isinstance(item, str) for item in check["rule_locators"]):
+                errors.append("rules_core_check.rule_locators must be an array of strings")
+
     return errors
 
 
@@ -235,6 +262,7 @@ def new_consultation(*, question_type: str, question: str, format_name: str, rul
         "assumptions": [],
         "sources": [],
         "answer": None,
+        "rules_core_check": None,
     }
     require_valid(value)
     return value
@@ -297,6 +325,9 @@ def build_parser() -> argparse.ArgumentParser:
     source.add_argument("path", type=Path)
     source.add_argument("--source-id", choices=sorted(registry_by_id()), required=True)
     source.add_argument("--locator", required=True)
+    core = sub.add_parser("core-check")
+    core.add_argument("path", type=Path)
+    core.add_argument("--result", type=Path, required=True)
     finalize = sub.add_parser("finalize")
     finalize.add_argument("path", type=Path)
     finalize.add_argument("--conclusion", required=True)
@@ -340,6 +371,14 @@ def main(argv: list[str] | None = None) -> int:
                 value["assumptions"].append({"text": args.text.strip(), "material": args.material})
             elif args.command == "source":
                 value["sources"].append({"source_id": args.source_id, "locator": args.locator.strip(), "accessed_at": now_iso()})
+            elif args.command == "core-check":
+                try:
+                    result = json.loads(args.result.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    raise ConsultationError(f"cannot load rules-core result: {exc}") from exc
+                if not isinstance(result, dict):
+                    raise ConsultationError("rules-core result must be a JSON object")
+                value["rules_core_check"] = summarize_result(result)
             elif args.command == "finalize":
                 target = args.escalation_target
                 value["status"] = "final"

@@ -111,6 +111,7 @@ def main():
         "No state effect",
         "never becomes an official ruling or changes a game state",
         "Community rulings",
+        "Judge-prep handoff",
         "Head Judge",
         "Riot Games does not endorse or sponsor this project",
     ]

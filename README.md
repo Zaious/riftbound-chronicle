@@ -254,25 +254,20 @@ Start with [product scope](docs/product/PRODUCT_SCOPE.md), then read the
 
 ## Validation
 
-Run the same deterministic checks used by CI:
+Run every deterministic gate, exactly as CI does — the loop discovers the
+checks on disk, so it cannot drift out of date the way a hand-copied list can
+(this list previously omitted four gates, including the rules-core ones):
 
 ```powershell
-python skill/scripts/check_data_integrity.py
-python skill/scripts/check_links.py
-python skill/scripts/check_deck_primer.py
-python skill/scripts/check_legend_packets.py
-python skill/scripts/check_tournament_lists.py
-python skill/scripts/check_deck_coach.py
-python skill/scripts/check_deck_coach_prototype.py
-python skill/scripts/check_rule_consult.py
-python skill/scripts/check_rule_consult_prototype.py
-python skill/scripts/check_prototype_ui.py
-python skill/scripts/check_rules_bootstrap.py
-python skill/scripts/check_rules_index.py
-python skill/scripts/check_riftatlas_bridge.py
-python skill/scripts/check_p2a_protocol.py
-python skill/scripts/check_p2a_prototype.py
+Get-ChildItem skill/scripts/check_*.py | ForEach-Object {
+  python $_.FullName
+  if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: $($_.Name)" }
+}
 ```
+
+`.github/workflows/ci.yml` is the authority on what runs on push; it also
+re-runs the suite from a directory outside the repository to prove the scripts
+do not depend on the working directory.
 
 ## Compliance
 

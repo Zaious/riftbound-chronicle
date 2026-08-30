@@ -64,6 +64,9 @@ jobs:
       - name: Rule Consult sources, cases, schema, and authority regressions
         run: python3 skill/scripts/check_rule_consult.py
 
+      - name: Bilingual rules-index retrieval, ranking, and stale masking
+        run: python3 skill/scripts/check_rules_index.py
+
       - name: Sovereign rules core timing and permission conformance
         run: python3 skill/scripts/check_rules_core.py
 
@@ -99,6 +102,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_p2a_protocol.py"
           python3 "$REPO/skill/scripts/check_p2a_prototype.py"
           python3 "$REPO/skill/scripts/check_rule_consult.py"
+          python3 "$REPO/skill/scripts/check_rules_index.py"
           python3 "$REPO/skill/scripts/check_rules_core.py"
           python3 "$REPO/skill/scripts/check_effect_ir.py"
           python3 "$REPO/skill/scripts/check_resolution_bridge.py"

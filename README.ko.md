@@ -102,19 +102,16 @@ P2-A는 상대의 숨은 정보를 보지 않고, 행동이 합법이라고 주�
 
 출처 우선순위는 현재 공식 규칙／대회 문서／errata／금지 목록, 공식 카드 텍스트, 신뢰할 수 있는 커뮤니티 자료, 명시된 추론, 그리고 알 수 없음입니다. 포함된 카드 snapshot은 비공식 RiftCodex API에서 가져온 것으로 1,451개 row와 1,304개의 unique card ID를 포함합니다. 자세한 내용은 [데이터 출처와 제한](skill/data/README.md)을 확인하세요.
 
+CI와 동일하게 모든 결정적 검사를 실행합니다. 이 루프는 디스크의 검사 스크립트를 직접 찾기 때문에, 손으로 옮겨 적은 목록처럼 낡을 수 없습니다(이전 목록은 규칙 코어 검사를 포함해 네 개를 빠뜨리고 있었습니다):
+
 ```powershell
-python skill/scripts/check_data_integrity.py
-python skill/scripts/check_links.py
-python skill/scripts/check_deck_coach.py
-python skill/scripts/check_deck_coach_prototype.py
-python skill/scripts/check_rule_consult.py
-python skill/scripts/check_rule_consult_prototype.py
-python skill/scripts/check_p2a_protocol.py
-python skill/scripts/check_p2a_prototype.py
-python skill/scripts/check_prototype_ui.py
-python skill/scripts/check_rules_bootstrap.py
-python skill/scripts/check_rules_index.py
+Get-ChildItem skill/scripts/check_*.py | ForEach-Object {
+  python $_.FullName
+  if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: $($_.Name)" }
+}
 ```
+
+푸시 시 실제로 실행되는 항목은 `.github/workflows/ci.yml`이 기준입니다. CI는 저장소 바깥 디렉터리에서 한 번 더 실행해 스크립트가 작업 디렉터리에 의존하지 않음을 확인합니다.
 
 ## 규정 준수와 라이선스
 

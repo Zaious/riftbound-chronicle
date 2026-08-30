@@ -102,19 +102,16 @@ P2-A 不會查看對手隱藏資訊、不會聲稱行動合法、不會推測結
 
 來源優先順序為：目前官方規則／賽事文件／勘誤／禁卡表、官方卡牌文字、可靠社群材料、明示推論，最後是未知。隨 repo 附帶的卡牌 snapshot 來自非官方 RiftCodex API，包含 1,451 rows、1,304 個 unique card IDs；請先閱讀 [資料來源與限制](skill/data/README.md)。
 
+跑完所有確定性關卡，跟 CI 一樣。這個迴圈直接掃描磁碟上的檢查腳本，所以不會像手抄清單那樣過期（先前的手抄版本就漏了四道，包含規則核心那幾道）：
+
 ```powershell
-python skill/scripts/check_data_integrity.py
-python skill/scripts/check_links.py
-python skill/scripts/check_deck_coach.py
-python skill/scripts/check_deck_coach_prototype.py
-python skill/scripts/check_rule_consult.py
-python skill/scripts/check_rule_consult_prototype.py
-python skill/scripts/check_p2a_protocol.py
-python skill/scripts/check_p2a_prototype.py
-python skill/scripts/check_prototype_ui.py
-python skill/scripts/check_rules_bootstrap.py
-python skill/scripts/check_rules_index.py
+Get-ChildItem skill/scripts/check_*.py | ForEach-Object {
+  python $_.FullName
+  if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: $($_.Name)" }
+}
 ```
+
+實際在 push 時跑哪些，以 `.github/workflows/ci.yml` 為準；CI 另外會從 repo 以外的目錄再跑一次，證明這些腳本不依賴當前工作目錄。
 
 ## 合規與授權
 

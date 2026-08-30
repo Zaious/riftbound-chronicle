@@ -11,10 +11,12 @@ Riftbound Chronicle is a portable knowledge and decision-support project with th
 
 The systems share card, rules, format, and evidence data. They do not share authority. A deck recommendation is not a ruling; a rules explanation is not a state transition; a Player 2 choice is not automatic rules enforcement.
 
-A fourth system, `play-reviewer`, is planned for decision-time replay analysis.
-It remains outside the active Skill router until the sovereign rules core can
-reconstruct the bounded interaction and legal timing set with tested coverage.
-See `../play-reviewer/PLAY_REVIEWER_PRODUCT_SPEC.md`.
+A fourth system, `match-analyst`, is planned for post-game log analysis. It has
+two projections over one normalized timeline: `review` evaluates rules and
+decision quality; `commentary` explains the match for players, readers, or
+viewers. It remains outside the active Skill router until the sovereign rules
+core can reconstruct the bounded interaction and legal timing set with tested
+coverage. See `../match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md`.
 
 ## Product outcomes
 

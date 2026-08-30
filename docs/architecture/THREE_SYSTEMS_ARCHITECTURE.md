@@ -4,8 +4,9 @@ Status: accepted baseline
 Date: 2026-08-24
 
 This document describes the three currently active modes. The planned fourth
-mode, Play Reviewer, is specified separately and is not routed until its
-rules-core activation gates pass.
+mode, Match Analyst, provides Review and Commentary projections over one
+normalized match timeline. It is specified separately and is not routed until
+its rules-core activation gates pass.
 
 ## Design principle
 

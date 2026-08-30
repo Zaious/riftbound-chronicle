@@ -60,9 +60,11 @@ items finalize oldest-first, while Finalized items resolve newest-first.
 - **Player 2 Agent:** when a sufficiently structured state exists, remove
   timing-impossible candidates before strategy ranking.  Card-effect coverage
   or missing facts can still require human legality confirmation.
-- **Play Reviewer (planned):** reconstruct response windows and distinguish a
-  rules execution error from a legal but strategically weak choice.  Missing
-  hidden information or timing facts must produce `unknown`, not a misplay.
+- **Match Analyst (planned):** reconstruct one perspective-safe timeline. Review
+  distinguishes a rules execution error from a legal but strategically weak
+  choice; Commentary explains confirmed sequences and turning points. Missing
+  hidden information or timing facts must produce `unknown`, not a misplay or
+  invented narration.
 
 ## Current coverage
 

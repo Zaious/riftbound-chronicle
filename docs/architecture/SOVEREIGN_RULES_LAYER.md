@@ -7,7 +7,7 @@ Date: 2026-08-30
 
 Chronicle owns a programmatic Riftbound rules layer.  It is shared
 infrastructure beneath Deck Coach, Rule Consult, Player 2 Agent, and the planned
-Play Reviewer.  It is not an adapter whose truth or availability belongs to a
+Match Analyst.  It is not an adapter whose truth or availability belongs to a
 third-party simulator.
 
 The first deliverable is a timing and permission kernel.  Full card resolution,
@@ -24,7 +24,7 @@ Chronicle source registry + executable conformance cases
               ↓
 Chronicle sovereign rules core
               ↓
-Deck Coach · Rule Consult · Player 2 · Play Reviewer
+Deck Coach · Rule Consult · Player 2 · Match Analyst
               ↓
 optional simulation / search / learning implementations
 ```
@@ -85,11 +85,13 @@ The Agent can rank candidates inside a mechanically permitted timing set when
 the supplied state is complete enough.  P2-A keeps human authority for physical
 operations and unsupported card interactions.
 
-### Play Reviewer
+### Match Analyst
 
-The planned Reviewer uses the same timeline to identify response windows and
-classify rules errors, missed opportunities, strategic mistakes, and
-insufficient-information cases separately.
+The planned Match Analyst uses one normalized timeline for two projections:
+Review identifies response windows and classifies rules errors, missed
+opportunities, strategic mistakes, and insufficient-information cases;
+Commentary turns the same confirmed events into play-by-play, sequence
+explanations, turning points, and match summaries without fabricating motive.
 
 ## Release boundary
 
@@ -154,7 +156,8 @@ types rather than free-text matching.
 - enumerate timing- and effect-legal actions from a perspective-safe state;
 - return an explanation trace, not only an action id;
 - let P2-A rank inside the supported legal set while retaining the human gate;
-- let Play Reviewer reconstruct response windows and abstain on missing facts;
+- let Match Analyst reconstruct response windows, produce Review and Commentary
+  from one timeline, and abstain on missing facts;
 - feed confirmed Reviewer corrections back into the conformance corpus.
 
 ### R5 — Search and learning research

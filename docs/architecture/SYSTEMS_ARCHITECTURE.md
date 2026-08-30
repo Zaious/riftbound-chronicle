@@ -1,16 +1,24 @@
-# Three-Systems Architecture
+# Systems Architecture
 
 Status: accepted baseline
 Date: 2026-08-24
 
-This document describes the three currently active modes. The planned fourth
-mode, Match Analyst, provides Review and Commentary projections over one
-normalized match timeline. It is specified separately and is not routed until
-its rules-core activation gates pass.
+**Four systems, three of them routed.** `deck-coach`, `rule-consult`, and
+`player2-agent` are active modes in `skill/SKILL.md`. `match-analyst` is fully
+specified but deliberately not routed until its activation gates pass; it
+provides Review and Commentary projections over one normalized match timeline.
+See [MATCH_ANALYST_PRODUCT_SPEC.md](../match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md)
+for the spec and the gate conditions.
+
+The filename deliberately carries no system count. The count has already gone
+from three to four, and the Match Analyst spec exists partly to stop a fifth
+from being invented (a live commentator must consume the same contract rather
+than become its own knowledge system). A number in a filename is a claim that
+expires.
 
 ## Design principle
 
-The project is one portable Skill with three operating modes, not three unrelated assistants and not one undifferentiated coach.
+The project is one portable Skill with three routed operating modes (and a fourth specified behind a gate), not a set of unrelated assistants and not one undifferentiated coach.
 
 ```text
                shared sovereign knowledge + rules core

@@ -1,9 +1,9 @@
-# Product Scope: Three Riftbound Assistant Systems
+# Product Scope: Riftbound Assistant Systems
 
 Status: development baseline
 Date: 2026-08-24
 
-Riftbound Chronicle is a portable knowledge and decision-support project with three distinct systems:
+Riftbound Chronicle is a portable knowledge and decision-support project with four distinct systems. Three are active modes in the Skill router:
 
 1. `deck-coach` teaches deck construction and how to pilot a finished list.
 2. `rule-consult` explains rules and analyzes interactions with citations and calibrated uncertainty.

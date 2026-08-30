@@ -250,7 +250,7 @@ docs/
 ```
 
 Start with [product scope](docs/product/PRODUCT_SCOPE.md), then read the
-[three-system architecture](docs/architecture/THREE_SYSTEMS_ARCHITECTURE.md).
+[systems architecture](docs/architecture/SYSTEMS_ARCHITECTURE.md).
 
 ## Validation
 

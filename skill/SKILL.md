@@ -24,11 +24,26 @@ If a request spans modes, choose the mode that owns the final output, then consu
 - A Player 2 decision that needs interaction research remains a `player2-agent` proposal informed by `rule-consult`.
 - A ruling explanation never becomes a state transition unless a human separately confirms and records it.
 
+## Sovereign rules core
+
+For a claim about Open/Closed state, Showdown, Action/Reaction timing,
+Priority, Focus, Pending/Finalized Chain Items, or HOT/FEPR, read
+`${CLAUDE_SKILL_DIR}/references/shared/rules-core.md`. When the supplied state
+is structured enough, use `${CLAUDE_SKILL_DIR}/scripts/rules_core.py` to derive
+the timing permission or next procedure instead of reconstructing it from
+general TCG intuition.
+
+The executable core is Chronicle-owned and versioned, but bounded. Its result
+is a consistency check under the stated rules baseline, not an authority that
+can override a current official rule or scoped FAQ. Unsupported card effects
+remain unknown. Player 2 outputs still require human confirmation unless a
+separately approved state-owning runtime is explicitly introduced.
+
 ## Shared source authority
 
 Before quoting current card text, legality, errata, or tournament procedure, read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md`. Use local data for routine lookup only within its documented freshness and provenance limits. Do not answer a live, time-sensitive question from memory.
 
-For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.md`. The public repository does not bundle the two official PDFs. If the ignored local Core Rules and Tournament Rules files are absent, ask the user to run `python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --yes` (or provide a current official Rules Hub source) before making a precision claim.
+For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.md`. The public repository does not bundle official PDFs. If the ignored local Core Rules and Tournament Rules files are absent, ask the user to run `python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --yes` (or provide a current official Rules Hub source) before making a precision claim. The optional `--include-zh-cn` pack supports bilingual retrieval; build and query its page-addressable index with `${CLAUDE_SKILL_DIR}/scripts/rules_index.py`.
 
 ## Non-negotiable boundaries
 
@@ -44,6 +59,8 @@ For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.
 
 - Bundled card snapshot and errata: `${CLAUDE_SKILL_DIR}/data/`
 - Deterministic validation and artifact tooling: `${CLAUDE_SKILL_DIR}/scripts/`
+- Chronicle-owned timing/permission core: `${CLAUDE_SKILL_DIR}/scripts/rules_core.py`
+- Executable rules-core cases: `${CLAUDE_SKILL_DIR}/data/rules_core_cases.json`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
 - Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
 - Rift Atlas deck handoff adapter: `${CLAUDE_SKILL_DIR}/scripts/riftatlas_bridge.py` (user-pasted list, no upstream scraping)

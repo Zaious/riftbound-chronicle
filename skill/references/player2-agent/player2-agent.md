@@ -22,6 +22,9 @@ Do not request, store, or use Player 1 hidden information.
 1. Restate the confirmed state and identify any missing fact that materially changes the choice.
 2. Use the Player 2 deck plan to identify the immediate objective.
 3. Compare candidate actions, including passing or preserving resources when relevant.
+   When the state includes phase, Showdown, Priority, Focus, Outstanding Tasks,
+   and Chain status, use the sovereign rules core to remove timing-impossible
+   candidates. Do not claim effect legality for unsupported card behavior.
 4. Propose a preferred action with reasoning, assumptions, and important alternatives.
 5. Mark legality as unverified and ask the human to confirm it.
 6. After confirmation, ask the human to perform and resolve the action physically.

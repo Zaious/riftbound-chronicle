@@ -14,6 +14,8 @@
 
 目前 Player 2 只有 **P2-A**：代理提出並解釋行動，玩家確認合法性並手動完成結算。P2-S 自動模擬器只有規劃文件，尚未實作。
 
+三個體系共用一層由 **Chronicle 自主掌控的規則核心**。第一版已用程式實作四種回合狀態、迅捷／反應、Priority／Focus 與 HOT／FEPR 的時機和權限判斷；它不依賴其他玩家模擬器，也不宣稱已能結算所有卡牌效果。架構與吸收邊界見[主權規則層](docs/architecture/SOVEREIGN_RULES_LAYER.md)。
+
 ## 快速開始
 
 需求：Git、Python 3.10 以上。展示頁不需要安裝套件或建置。
@@ -72,9 +74,12 @@ Rule Consult 將玩家提供的事實、假設、規則依據、分析、信心�
 
 ```powershell
 python skill/scripts/bootstrap_rules.py --yes
+python skill/scripts/bootstrap_rules.py --include-zh-cn --yes
+python skill/scripts/rules_index.py build
+python skill/scripts/rules_index.py search "連鎖 結算"
 ```
 
-它會把 Core Rules 與 Tournament Rules 下載到 Git ignored 的 `skill/.local/rules/`，並寫入本機 SHA-256 lock。也可以使用 `RIFTBOUND_RULES_DIR` 或 `--rules-dir` 指定其他路徑。Skill 不會在回答問題時偷偷下載；檔案不存在就要求先 bootstrap 或提供目前官方來源。
+預設下載英文 Core Rules 與 Tournament Rules；`--include-zh-cn` 另裝簡中規則、禁限卡、FAQ、勘誤與分級標示的裁判資料。檔案、SHA-256 lock 與頁碼索引都留在 Git ignored 的 `skill/.local/rules/`。查詢結果保留來源版本、語言、權威、頁碼與規則號碼，但不是自動裁定；翻譯衝突時英文優先，已被取代的來源預設不會出現在現行查詢。
 
 競賽程序順序：
 
@@ -108,6 +113,7 @@ python skill/scripts/check_p2a_protocol.py
 python skill/scripts/check_p2a_prototype.py
 python skill/scripts/check_prototype_ui.py
 python skill/scripts/check_rules_bootstrap.py
+python skill/scripts/check_rules_index.py
 ```
 
 ## 合規與授權

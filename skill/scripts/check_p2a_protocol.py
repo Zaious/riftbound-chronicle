@@ -13,6 +13,7 @@ from p2a_session import (
     new_session,
     validate_session,
 )
+from rules_core import CORE_RULESET, FAQ_AS_OF, summarize_result
 
 
 def expect_invalid(name, session, needle, failures):
@@ -49,6 +50,15 @@ def main():
         reason="It advances the stated deck plan",
         alternative="Pass and preserve resources",
         assumptions=["The human will confirm legality"],
+        rules_core_check=summarize_result({
+            "valid": True,
+            "legal": True,
+            "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+            "input_state_hash": "sha256:" + "0" * 64,
+            "state_label": "neutral_open",
+            "reason_code": "ok",
+            "rule_locators": ["Core 310.1.a"],
+        }),
     )
     session = add_confirmation(
         session,

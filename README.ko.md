@@ -14,6 +14,8 @@
 
 현재 Player 2는 **P2-A**만 구현되어 있습니다. Agent가 행동과 이유를 제안하고, 사람이 합법성을 확인한 뒤 실물 카드로 해결합니다. 자동 시뮬레이터인 P2-S는 문서로만 계획되어 있으며 구현되지 않았습니다.
 
+세 시스템은 **Chronicle이 직접 소유하고 관리하는 규칙 코어**를 공유합니다. 첫 버전은 네 가지 턴 상태, Action／Reaction, Priority／Focus, HOT／FEPR의 타이밍과 권한을 실행 가능한 코드로 다룹니다. 다른 팬 시뮬레이터에 런타임 의존성이 없으며 모든 카드 효과를 해결한다고 주장하지 않습니다. 자세한 내용은 [주권 규칙 레이어](docs/architecture/SOVEREIGN_RULES_LAYER.md)를 참고하세요.
+
 ## 빠른 시작
 
 필요 조건은 Git과 Python 3.10 이상입니다. 정적 데모에는 패키지 설치나 빌드가 필요하지 않습니다.
@@ -72,9 +74,12 @@ Rule Consult는 사용자가 제공한 사실, 가정, 규칙 근거, 분석, �
 
 ```powershell
 python skill/scripts/bootstrap_rules.py --yes
+python skill/scripts/bootstrap_rules.py --include-zh-cn --yes
+python skill/scripts/rules_index.py build
+python skill/scripts/rules_index.py search "chain resolution"
 ```
 
-Core Rules와 Tournament Rules가 Git에서 무시되는 `skill/.local/rules/`에 저장되고, 로컬 SHA-256 lock 파일이 생성됩니다. `RIFTBOUND_RULES_DIR` 또는 `--rules-dir`로 다른 경로를 지정할 수도 있습니다. Skill은 질문을 받을 때 몰래 다운로드하지 않습니다. 파일이 없으면 bootstrap 또는 최신 공식 출처를 요청합니다.
+기본 설치는 영어 Core Rules와 Tournament Rules이며, `--include-zh-cn`은 중국어 규칙·금지 목록·FAQ·정오표·별도 등급의 심판 자료를 추가합니다. PDF, SHA-256 lock, 페이지 단위 검색 인덱스는 Git에서 무시되는 `skill/.local/rules/`에 남습니다. 검색 결과는 자동 판정이 아니며 번역 충돌 시 영어가 우선하고 대체된 출처는 기본 검색에서 제외됩니다.
 
 대회 절차 우선순위는 다음과 같습니다.
 
@@ -108,6 +113,7 @@ python skill/scripts/check_p2a_protocol.py
 python skill/scripts/check_p2a_prototype.py
 python skill/scripts/check_prototype_ui.py
 python skill/scripts/check_rules_bootstrap.py
+python skill/scripts/check_rules_index.py
 ```
 
 ## 규정 준수와 라이선스

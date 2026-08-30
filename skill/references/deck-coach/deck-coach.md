@@ -10,6 +10,14 @@ Deck Coach owns deck construction, deck diagnosis, substitutions, deck primers, 
 
 Read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md` whenever the answer names current cards, legality, errata, or tournament procedure.
 
+When a primer asserts a concrete Action/Reaction sequence, response window,
+Priority/Focus decision, or Chain order, also read
+`${CLAUDE_SKILL_DIR}/references/shared/rules-core.md`. Represent the proposed
+timing state and run `rules_core.py validate-timing` where v1 coverage applies.
+If the sequence depends on unsupported card behavior, keep it provisional and
+route the detailed interaction through Rule Consult rather than filling the gap
+with fluent prose.
+
 ## Output ownership
 
 Deck Coach may explain the mechanics needed to understand advice. When the user asks for a detailed interaction determination, consult `rule-consult` and label that section as an unofficial rules analysis. Do not make a detailed ruling silently inside a strategy answer.

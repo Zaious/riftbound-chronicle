@@ -35,6 +35,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from rules_core import summarize_result
+
 
 SCHEMA_VERSION = "p2a-session.v1"
 ALLOWED_TOP_LEVEL = {
@@ -65,6 +67,11 @@ ALLOWED_EVENT_FIELDS = {
         "seq", "type", "recorded_at", "action_id", "legal", "confirmed_by",
         "resolution_summary", "state_transition",
     },
+}
+OPTIONAL_EVENT_FIELDS = {
+    "state_confirmed": set(),
+    "action_proposed": {"rules_core_check"},
+    "action_confirmed": set(),
 }
 FORBIDDEN_HIDDEN_KEYS = {
     "player1_hand",
@@ -168,7 +175,7 @@ def validate_session(session: Any) -> list[str]:
             continue
 
         missing_event = ALLOWED_EVENT_FIELDS[event_type] - set(event)
-        unknown_event = set(event) - ALLOWED_EVENT_FIELDS[event_type]
+        unknown_event = set(event) - ALLOWED_EVENT_FIELDS[event_type] - OPTIONAL_EVENT_FIELDS[event_type]
         if missing_event:
             errors.append(f"{label} missing fields: {sorted(missing_event)}")
         if unknown_event:
@@ -224,6 +231,16 @@ def validate_session(session: Any) -> list[str]:
                 errors.append(f"{label}.assumptions must be an array of strings")
             if event.get("legality_status") != "unverified":
                 errors.append(f"{label}.legality_status must be 'unverified'")
+            check = event.get("rules_core_check")
+            if check is not None:
+                expected_fields = {
+                    "core_version", "coverage", "ruleset", "input_state_hash",
+                    "state_label", "outcome", "reason_code", "rule_locators", "result_hash",
+                }
+                if not isinstance(check, dict) or set(check) != expected_fields:
+                    errors.append(f"{label}.rules_core_check has invalid shape")
+                elif check.get("coverage") != "timing_permission_v1":
+                    errors.append(f"{label}.rules_core_check coverage is invalid")
 
         elif event_type == "action_confirmed":
             action_id = event.get("action_id")
@@ -316,12 +333,13 @@ def add_proposal(
     session: dict[str, Any], *, action_id: str, objective: str,
     description: str, reason: str, alternative: str = "",
     assumptions: list[str] | None = None,
+    rules_core_check: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     state_seq = max(
         (event["seq"] for event in session.get("events", []) if event.get("type") == "state_confirmed"),
         default=0,
     )
-    return _append(session, {
+    event = {
         "type": "action_proposed",
         "action_id": action_id,
         "state_seq": state_seq,
@@ -331,7 +349,10 @@ def add_proposal(
         "alternative": alternative,
         "assumptions": assumptions or [],
         "legality_status": "unverified",
-    })
+    }
+    if rules_core_check is not None:
+        event["rules_core_check"] = rules_core_check
+    return _append(session, event)
 
 
 def add_confirmation(
@@ -407,6 +428,7 @@ def build_parser() -> argparse.ArgumentParser:
     propose.add_argument("--reason", required=True)
     propose.add_argument("--alternative", default="")
     propose.add_argument("--assumption", action="append", default=[])
+    propose.add_argument("--rules-core-result", type=Path)
 
     confirm = sub.add_parser("confirm", help="append a human legality confirmation")
     confirm.add_argument("path", type=Path)
@@ -454,6 +476,15 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 save_session(args.path, session)
             elif args.command == "propose":
+                core_check = None
+                if args.rules_core_result:
+                    try:
+                        core_result = json.loads(args.rules_core_result.read_text(encoding="utf-8"))
+                    except (OSError, json.JSONDecodeError) as exc:
+                        raise ProtocolError(f"cannot load rules-core result: {exc}") from exc
+                    if not isinstance(core_result, dict):
+                        raise ProtocolError("rules-core result must be a JSON object")
+                    core_check = summarize_result(core_result)
                 session = add_proposal(
                     session,
                     action_id=args.action_id,
@@ -462,6 +493,7 @@ def main(argv: list[str] | None = None) -> int:
                     reason=args.reason,
                     alternative=args.alternative,
                     assumptions=args.assumption,
+                    rules_core_check=core_check,
                 )
                 save_session(args.path, session)
             elif args.command == "confirm":

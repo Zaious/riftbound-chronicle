@@ -127,9 +127,26 @@
             "alternative": { "type": "string" },
             "assumptions": { "type": "array", "items": { "type": "string" } },
             "legality_status": { "const": "unverified" }
+            ,"rules_core_check": { "$ref": "#/$defs/rulesCoreCheck" }
           }
         }
       ]
+    },
+    "rulesCoreCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core_version", "coverage", "ruleset", "input_state_hash", "state_label", "outcome", "reason_code", "rule_locators", "result_hash"],
+      "properties": {
+        "core_version": {"const": "riftbound-rules-core-state.v1"},
+        "coverage": {"const": "timing_permission_v1"},
+        "ruleset": {"type": "object"},
+        "input_state_hash": {"type": "string"},
+        "state_label": {"type": "string", "minLength": 1},
+        "outcome": {"enum": ["supported_legal_timing", "supported_illegal_timing", "supported_procedure", "unsupported"]},
+        "reason_code": {"type": "string", "minLength": 1},
+        "rule_locators": {"type": "array", "items": {"type": "string"}},
+        "result_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
     },
     "confirmationEvent": {
       "allOf": [

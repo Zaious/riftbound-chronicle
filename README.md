@@ -20,6 +20,12 @@ The current Player 2 implementation is **P2-A**: the Agent recommends and
 explains an action, then waits for the human to confirm legality and the resulting
 state. The future **P2-S** simulator is documented but is not implemented.
 
+All systems share a **Chronicle-owned sovereign rules core**. Version 1 is an
+executable timing and permission kernel for the four turn states,
+Action/Reaction, Priority/Focus, and HOT/FEPR. It has no runtime dependency on
+another fan simulator and does not claim complete card-effect resolution. See
+the [sovereign rules-layer architecture](docs/architecture/SOVEREIGN_RULES_LAYER.md).
+
 The repository name intentionally stays `riftbound-chronicle`: it is the product
 brand. Search terms such as `AI agent`, `deck coach`, and `rule consult` belong in
 the GitHub description, topics, README, and Skill metadata rather than replacing
@@ -157,22 +163,29 @@ Rules, Core Rules where unmodified, then the live Head Judge. The versioned
 [source registry](skill/data/rules_source_registry.json) prevents the Core Rules
 PDF from being treated as a complete or permanently current authority.
 
-See [Rule Consult method](skill/references/rule-consult/rule-consult.md).
+See [Rule Consult method](skill/references/rule-consult/rule-consult.md) and the
+[rule corpus engineering note](docs/architecture/RULE_CORPUS_ENGINEERING.md).
 
 ### Optional local rule PDFs
 
 The public repository does not commit Riot-owned rule PDFs. When exact clause
-work is needed, install the two official documents locally:
+work is needed, install the controlling English pair locally. The optional
+Simplified Chinese pack adds regional rules, FAQs, errata, and separately
+labeled judge guidance:
 
 ```powershell
 python skill/scripts/bootstrap_rules.py --yes
+python skill/scripts/bootstrap_rules.py --include-zh-cn --yes
+python skill/scripts/rules_index.py build
+python skill/scripts/rules_index.py search "連鎖 結算"
 ```
 
-This downloads Core Rules and Tournament Rules into the ignored
-`skill/.local/rules/` directory and writes a local SHA-256 lock file. A custom
-location is available through `RIFTBOUND_RULES_DIR` or `--rules-dir`. The Skill
-never silently downloads documents during a question; if the local pair is
-missing, it asks for the bootstrap or a current official source.
+Selected PDFs go into the ignored `skill/.local/rules/` directory with a local
+SHA-256 lock and a page-addressable SQLite index. Results retain source,
+version, locale, authority, page, and rule locator; they are evidence candidates,
+not automated rulings. A custom location is available through
+`RIFTBOUND_RULES_DIR` or `--rules-dir`. English controls translation conflicts,
+and superseded sources are excluded from current search by default.
 
 ## Player2 Agent
 
@@ -255,6 +268,7 @@ python skill/scripts/check_rule_consult.py
 python skill/scripts/check_rule_consult_prototype.py
 python skill/scripts/check_prototype_ui.py
 python skill/scripts/check_rules_bootstrap.py
+python skill/scripts/check_rules_index.py
 python skill/scripts/check_riftatlas_bridge.py
 python skill/scripts/check_p2a_protocol.py
 python skill/scripts/check_p2a_prototype.py

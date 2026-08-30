@@ -154,6 +154,11 @@ program. Timing and effect states are exposed only when both pure transitions
 succeed; unsupported effects cannot silently remove a Chain Item, and a
 non-newest Finalized item cannot mutate effect state.
 
+The second R2 slice adds bounded target snapshots and linked-instruction gates.
+It can detect board/non-board target movement plus kind, location, and
+controller-relation failures; ignored targets do not mutate state, and a later
+`if_applied` instruction is skipped when its dependency was ignored or a no-op.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

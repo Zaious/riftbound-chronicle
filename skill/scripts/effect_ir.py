@@ -155,6 +155,27 @@ def validate_program(program: Any) -> list[str]:
         errors.append("effects must be a non-empty array")
     elif any(not isinstance(effect, dict) or not isinstance(effect.get("op"), str) for effect in effects):
         errors.append("each effect must be an object with op")
+    else:
+        seen: set[str] = set()
+        for index, effect in enumerate(effects):
+            effect_id = effect.get("effect_id", f"effect-{index}")
+            if not isinstance(effect_id, str) or not effect_id:
+                errors.append(f"effects[{index}].effect_id must be non-empty when supplied")
+                continue
+            if effect_id in seen:
+                errors.append(f"effects[{index}].effect_id is duplicated")
+            dependency = effect.get("depends_on")
+            if dependency is not None and dependency not in seen:
+                errors.append(f"effects[{index}].depends_on must reference an earlier effect")
+            if effect.get("dependency_mode", "if_applied") not in {"if_applied", "always"}:
+                errors.append(f"effects[{index}].dependency_mode is invalid")
+            target = effect.get("target")
+            if target is not None:
+                if not isinstance(target, dict) or not isinstance(target.get("object_id"), str):
+                    errors.append(f"effects[{index}].target must identify an object")
+                elif target.get("chosen_zone_class") not in {"board", "non_board"}:
+                    errors.append(f"effects[{index}].target.chosen_zone_class is required")
+            seen.add(effect_id)
     return errors
 
 
@@ -167,6 +188,41 @@ def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str 
         if object_id in battlefield["objects"]:
             return ("battlefield", battlefield_id, None)
     return None
+
+
+def zone_class(location: tuple[str, str, str | None] | None) -> str | None:
+    if location is None:
+        return None
+    if location[0] == "battlefield" or location[2] == "base":
+        return "board"
+    return "non_board"
+
+
+def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: str | None) -> tuple[bool, str]:
+    object_id = target["object_id"]
+    obj = state["objects"].get(object_id)
+    if obj is None:
+        return False, "target_object_missing"
+    location = find_location(state, object_id)
+    current_class = zone_class(location)
+    if current_class != target.get("chosen_zone_class"):
+        return False, "target_changed_board_zone_class"
+    required_kind = target.get("kind")
+    if required_kind is not None and obj.get("kind") != required_kind:
+        return False, "target_kind_requirement_failed"
+    required_location = target.get("location")
+    if required_location == "battlefield" and (location is None or location[0] != "battlefield"):
+        return False, "target_location_requirement_failed"
+    if required_location == "base" and (location is None or location[0] != "player" or location[2] != "base"):
+        return False, "target_location_requirement_failed"
+    relation = target.get("controller_relation")
+    if relation == "friendly" and controller is not None and obj.get("controller") != controller:
+        return False, "target_controller_requirement_failed"
+    if relation == "enemy" and controller is not None and obj.get("controller") == controller:
+        return False, "target_controller_requirement_failed"
+    if target.get("object_id") != target.get("bound_object_id", target.get("object_id")):
+        return False, "target_identity_changed"
+    return True, "ok"
 
 
 def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
@@ -295,8 +351,52 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
         return {**base, "valid": False, "committed": False, "errors": state_errors + program_errors, "trace": []}
     current = copy.deepcopy(state)
     trace = []
+    outcomes: dict[str, str] = {}
     for index, effect in enumerate(program["effects"]):
         before_hash = hash_value(current)
+        effect_id = effect.get("effect_id", f"effect-{index}")
+        dependency = effect.get("depends_on")
+        if dependency is not None and effect.get("dependency_mode", "if_applied") == "if_applied" and outcomes.get(dependency) != "applied":
+            event = {
+                "index": index,
+                "effect_id": effect_id,
+                "op": effect["op"],
+                "outcome": "skipped_linked_dependency",
+                "depends_on": dependency,
+                "rule_locators": ["Core 359.3.e.14"],
+                "before_state_hash": before_hash,
+                "after_state_hash": before_hash,
+            }
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        target = effect.get("target")
+        if target is not None:
+            legal_target, reason = evaluate_target(current, target, program.get("controller"))
+            if not legal_target:
+                event = {
+                    "index": index,
+                    "effect_id": effect_id,
+                    "op": effect["op"],
+                    "outcome": "ignored_illegal_target",
+                    "reason": reason,
+                    "target_object_id": target["object_id"],
+                    "rule_locators": ["Core 359.3.e.1–359.3.e.5", "Core 359.3.e.14"],
+                    "before_state_hash": before_hash,
+                    "after_state_hash": before_hash,
+                }
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            if effect.get("object_id") is not None and effect.get("object_id") != target["object_id"]:
+                return {
+                    **base,
+                    "valid": False,
+                    "committed": False,
+                    "failed_effect_index": index,
+                    "errors": ["effect object_id must match target.object_id"],
+                    "trace": trace,
+                }
         try:
             current, event = _apply_one(current, effect)
         except NotImplementedError as exc:
@@ -318,8 +418,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
                 "errors": [str(exc)],
                 "trace": trace,
             }
-        event.update({"index": index, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
+        event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
         trace.append(event)
+        outcomes[effect_id] = event["outcome"]
     return {
         **base,
         "valid": True,

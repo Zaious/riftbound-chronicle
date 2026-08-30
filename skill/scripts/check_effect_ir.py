@@ -55,6 +55,7 @@ def program(program_id, *effects):
         "schema_version": PROGRAM_VERSION,
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
         "program_id": program_id,
+        "controller": "p1",
         "effects": list(effects),
     }
 
@@ -109,6 +110,38 @@ def main() -> int:
     invalid["players"]["p1"]["zones"]["hand"].append("u1")
     if not any("exactly one" in item for item in validate_state(invalid)):
         failures.append("duplicate object occupancy was not rejected")
+
+    legal_target = program(
+        "legal-target",
+        {
+            "effect_id": "damage",
+            "op": "deal_damage",
+            "object_id": "u2",
+            "amount": 2,
+            "target": {"object_id": "u2", "chosen_zone_class": "board", "kind": "unit", "location": "base", "controller_relation": "enemy"},
+        },
+        {"effect_id": "draw", "depends_on": "damage", "op": "draw", "player": "p1", "count": 1},
+    )
+    targeted = apply_program(state, legal_target)
+    if not targeted.get("committed") or targeted["next_state"]["objects"]["u2"]["damage"] != 2 or targeted["next_state"]["players"]["p1"]["zones"]["hand"] != ["c1"]:
+        failures.append("legal target and linked instruction did not execute")
+
+    moved_target_state = base_state()
+    moved_target_state["players"]["p2"]["zones"]["base"].remove("u2")
+    moved_target_state["players"]["p2"]["zones"]["hand"].append("u2")
+    ignored = apply_program(moved_target_state, legal_target)
+    outcomes = [event["outcome"] for event in ignored.get("trace", [])]
+    if not ignored.get("committed") or outcomes != ["ignored_illegal_target", "skipped_linked_dependency"]:
+        failures.append(f"illegal target did not ignore and skip its linked instruction: {outcomes}")
+
+    no_op_link = apply_program(state, program(
+        "no-op-link",
+        {"effect_id": "exhaust", "op": "exhaust", "object_id": "u2"},
+        {"effect_id": "draw", "depends_on": "exhaust", "op": "draw", "player": "p1", "count": 1},
+    ))
+    no_op_outcomes = [event["outcome"] for event in no_op_link.get("trace", [])]
+    if no_op_outcomes != ["no_op", "skipped_linked_dependency"]:
+        failures.append(f"no-op linked action did not gate the dependent instruction: {no_op_outcomes}")
 
     print(f"[info] typed effect IR: {len(cases)} atomic operations plus sequence, unsupported, Burn Out, and state-invariant cases.")
     if failures:

@@ -31,9 +31,23 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `add_resource` | add Energy or domain-labelled Power | Core 429 |
 
 This version deliberately excludes Burn Out, simultaneous multi-card recycle,
-cost payment, kill/cleanup, targeting, countering, attachments, replacement
-effects, layers, triggers, scoring, and token creation. Those require additional
-state and ordering contracts; they are not simulated by approximation.
+cost payment, kill/cleanup, open-ended target choice and target groups,
+countering, attachments, replacement effects, layers, triggers, scoring, and
+token creation. Those require additional state and ordering contracts; they are
+not simulated by approximation.
+
+## Targets and linked instructions
+
+R2 v1 records the target's object id and board/non-board zone class at choice
+time. At execution it can additionally require kind, Base/Battlefield location,
+and friendly/enemy controller relation. A failed requirement produces
+`ignored_illegal_target` without mutating state.
+
+Effects may carry `effect_id` and reference an earlier effect with `depends_on`.
+The default `if_applied` mode implements a bounded “if you do”/linked-
+instruction gate: if the earlier instruction was ignored or a no-op, the later
+instruction records `skipped_linked_dependency`. This does not yet model every
+English linking template; card programs must cite and test the exact wording.
 
 ## Execution model
 

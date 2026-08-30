@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import apply_program, hash_value
+from effect_ir import apply_program, hash_value, perform_lethal_cleanup
 from rules_core import complete_resolution, state_hash
 
 
@@ -47,20 +47,37 @@ def resolve_with_program(
             "reason": effect_result.get("reason", "; ".join(effect_result.get("errors", [])) or "effect_program_failed"),
             "effect_result": effect_result,
         }
+    cleanup_result = perform_lethal_cleanup(
+        effect_result["next_state"],
+        attributed_sources=[program.get("source_object")] if program.get("source_object") else [],
+    )
+    if cleanup_result.get("committed") is not True:
+        return {
+            **base,
+            "valid": cleanup_result.get("valid", True),
+            "committed": False,
+            "stage": "cleanup",
+            "reason": cleanup_result.get("reason", "; ".join(cleanup_result.get("errors", [])) or "lethal_cleanup_failed"),
+            "effect_result": effect_result,
+            "cleanup_result": cleanup_result,
+        }
+    final_effect_state = cleanup_result["next_state"]
     return {
         **base,
         "valid": True,
         "committed": True,
         "next_timing_state": timing_result["next_state"],
         "next_timing_state_hash": timing_result["next_state_hash"],
-        "next_effect_state": effect_result["next_state"],
-        "next_effect_state_hash": effect_result["next_state_hash"],
+        "next_effect_state": final_effect_state,
+        "next_effect_state_hash": cleanup_result["next_state_hash"],
         "trace": {
             "effect": effect_result["trace"],
+            "cleanup": cleanup_result["trace"],
             "timing": timing_result["transition"],
         },
         "rule_locators": list(dict.fromkeys(
             [locator for event in effect_result["trace"] for locator in event.get("rule_locators", [])]
+            + [locator for event in cleanup_result["trace"] for locator in event.get("rule_locators", [])]
             + timing_result.get("rule_locators", [])
         )),
     }

@@ -166,6 +166,11 @@ It can detect board/non-board target movement plus kind, location, and
 controller-relation failures; ignored targets do not mutate state, and a later
 `if_applied` instruction is skipped when its dependency was ignored or a no-op.
 
+The third R2 slice adds supported active Kill and the lethal-damage portion of
+Cleanup. Non-token permanents move to owner Trash, killed tokens cease to exist,
+and passive lethal kills retain a simultaneous group plus source attribution.
+Death-trigger scheduling and the rest of Cleanup remain fail-closed gates.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

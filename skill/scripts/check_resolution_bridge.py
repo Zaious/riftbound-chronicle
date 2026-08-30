@@ -42,6 +42,11 @@ def main() -> int:
     if "next_timing_state" in unsupported or "next_effect_state" in unsupported:
         failures.append("failed combined resolution leaked a next state")
 
+    lethal_program = program("lethal", {"op": "deal_damage", "object_id": "u2", "amount": 4})
+    lethal_result = resolve_with_program(timing, "spell-1", effects, lethal_program)
+    if not lethal_result.get("committed") or "u2" not in lethal_result["next_effect_state"]["players"]["p2"]["zones"]["trash"]:
+        failures.append("combined resolution did not run the lethal cleanup slice")
+
     not_next = fixture(
         priority="p2",
         items=[

@@ -22,7 +22,7 @@ PROGRAM_VERSION = "riftbound-effect-program.v1"
 CORE_RULESET = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
-OBJECT_KINDS = {"unit", "gear", "spell", "rune", "token"}
+OBJECT_KINDS = {"unit", "gear", "spell", "rune"}
 SUPPORTED_OPS = {
     "draw",
     "recycle_one",
@@ -33,6 +33,7 @@ SUPPORTED_OPS = {
     "ready",
     "exhaust",
     "add_resource",
+    "kill",
 }
 
 OP_RULES = {
@@ -45,6 +46,7 @@ OP_RULES = {
     "ready": ["Core 415"],
     "exhaust": ["Core 414"],
     "add_resource": ["Core 429"],
+    "kill": ["Core 428"],
 }
 
 
@@ -129,6 +131,11 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.{field} must be a non-negative integer")
         if not isinstance(obj.get("exhausted"), bool):
             errors.append(f"objects.{object_id}.exhausted must be boolean")
+        death_triggers = obj.get("death_triggers", [])
+        if not isinstance(death_triggers, list) or not all(isinstance(item, str) and item for item in death_triggers):
+            errors.append(f"objects.{object_id}.death_triggers must be an array of non-empty strings")
+        if not isinstance(obj.get("is_token", False), bool):
+            errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         modifiers = obj.get("might_modifiers")
         if not isinstance(modifiers, list):
             errors.append(f"objects.{object_id}.might_modifiers must be an array")
@@ -260,9 +267,15 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             raise ValueError("recycle_one requires a known object")
         obj = new_state["objects"][object_id]
         _remove_from_location(new_state, object_id)
-        destination = "rune_deck" if obj["kind"] == "rune" else "main_deck"
-        new_state["players"][obj["owner"]]["zones"][destination].append(object_id)
-        trace.update({"object_id": object_id, "destination": f"{obj['owner']}.{destination}.bottom"})
+        if obj.get("is_token"):
+            del new_state["objects"][object_id]
+            destination = "ceased_to_exist"
+            trace.update({"object_id": object_id, "destination": destination})
+            trace["rule_locators"] = ["Core 416", "Core 186.1"]
+        else:
+            destination = "rune_deck" if obj["kind"] == "rune" else "main_deck"
+            new_state["players"][obj["owner"]]["zones"][destination].append(object_id)
+            trace.update({"object_id": object_id, "destination": f"{obj['owner']}.{destination}.bottom"})
 
     elif op == "move_board_object":
         object_id, destination = effect.get("object_id"), effect.get("destination")
@@ -332,10 +345,102 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         else:
             raise ValueError("power addition requires a domain")
 
+    elif op == "kill":
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("kill requires a known object")
+        obj = new_state["objects"][object_id]
+        location = find_location(new_state, object_id)
+        if location is None or not (location[0] == "battlefield" or location[2] == "base"):
+            raise ValueError("Kill applies only to a permanent on the board")
+        if obj.get("kind") not in {"unit", "gear"}:
+            raise ValueError("effect IR v1 only kills supported Unit/Gear permanents")
+        if obj.get("death_triggers"):
+            raise NotImplementedError("Kill requires death-trigger scheduling, which is outside effect IR v1")
+        _remove_from_location(new_state, object_id)
+        if obj.get("is_token"):
+            del new_state["objects"][object_id]
+            destination = "ceased_to_exist"
+            trace["rule_locators"] = ["Core 428", "Core 186.1"]
+        else:
+            new_state["players"][obj["owner"]]["zones"]["trash"].append(object_id)
+            destination = f"{obj['owner']}.trash"
+        trace.update({
+            "object_id": object_id,
+            "kill_mode": effect.get("kill_mode", "active"),
+            "destination": destination,
+            "attributed_sources": effect.get("attributed_sources", []),
+        })
+
     errors = validate_state(new_state)
     if errors:
         raise ValueError("effect produced invalid state: " + "; ".join(errors))
     return new_state, trace
+
+
+def current_might(obj: dict[str, Any]) -> int:
+    return obj["base_might"] + sum(modifier["amount"] for modifier in obj.get("might_modifiers", []))
+
+
+def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[str] | None = None) -> dict[str, Any]:
+    base = {
+        "schema_version": "riftbound-lethal-cleanup-result.v1",
+        "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+        "input_state_hash": hash_value(state),
+    }
+    errors = validate_state(state)
+    if errors:
+        return {**base, "valid": False, "committed": False, "errors": errors, "trace": []}
+    lethal = []
+    for object_id, obj in state["objects"].items():
+        location = find_location(state, object_id)
+        if obj["kind"] != "unit" or location is None or not (location[0] == "battlefield" or location[2] == "base"):
+            continue
+        might = current_might(obj)
+        if obj["damage"] > 0 and obj["damage"] >= might:
+            lethal.append((object_id, might, obj["damage"]))
+    if any(state["objects"][object_id].get("death_triggers") for object_id, _, _ in lethal):
+        return {
+            **base,
+            "valid": True,
+            "committed": False,
+            "unsupported": True,
+            "reason": "lethal cleanup requires death-trigger scheduling",
+            "lethal_objects": [object_id for object_id, _, _ in lethal],
+            "trace": [],
+        }
+    current = copy.deepcopy(state)
+    trace = []
+    group = [object_id for object_id, _, _ in sorted(lethal)]
+    for object_id, might, damage in sorted(lethal):
+        effect = {
+            "op": "kill",
+            "object_id": object_id,
+            "kill_mode": "passive_lethal_cleanup",
+            "attributed_sources": attributed_sources or [],
+        }
+        current, event = _apply_one(current, effect)
+        event.update({
+            "object_id": object_id,
+            "lethal_might": might,
+            "marked_damage": damage,
+            "simultaneous_group": group,
+            "before_state_hash": trace[-1]["after_state_hash"] if trace else hash_value(state),
+            "after_state_hash": hash_value(current),
+            "rule_locators": ["Core 142.4", "Core 323.3–323.5", "Core 428"],
+        })
+        trace.append(event)
+    return {
+        **base,
+        "valid": True,
+        "committed": True,
+        "unsupported": False,
+        "next_state": current,
+        "next_state_hash": hash_value(current),
+        "lethal_objects": group,
+        "trace": trace,
+        "coverage": "lethal_damage_slice_only",
+    }
 
 
 def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:

@@ -13,6 +13,7 @@ from effect_ir import (
     STATE_VERSION,
     apply_program,
     hash_value,
+    perform_lethal_cleanup,
     validate_state,
 )
 
@@ -143,7 +144,40 @@ def main() -> int:
     if no_op_outcomes != ["no_op", "skipped_linked_dependency"]:
         failures.append(f"no-op linked action did not gate the dependent instruction: {no_op_outcomes}")
 
-    print(f"[info] typed effect IR: {len(cases)} atomic operations plus sequence, unsupported, Burn Out, and state-invariant cases.")
+    killed = apply_program(state, program("kill", {"op": "kill", "object_id": "u2"}))
+    if not killed.get("committed") or "u2" not in killed["next_state"]["players"]["p2"]["zones"]["trash"]:
+        failures.append("active Kill did not move the Unit from board to owner Trash")
+
+    token_state = base_state()
+    token_state["objects"]["t1"] = {
+        "owner": "p1", "controller": "p1", "kind": "unit", "is_token": True,
+        "base_might": 1, "might_modifiers": [], "damage": 0, "exhausted": False,
+    }
+    token_state["players"]["p1"]["zones"]["base"].append("t1")
+    token_kill = apply_program(token_state, program("token-kill", {"op": "kill", "object_id": "t1"}))
+    if not token_kill.get("committed") or "t1" in token_kill["next_state"]["objects"]:
+        failures.append("killed token did not cease to exist after entering a non-board zone")
+
+    lethal_state = base_state()
+    lethal_state["objects"]["u2"]["damage"] = 4
+    cleanup = perform_lethal_cleanup(lethal_state, attributed_sources=["fixture-spell"])
+    if not cleanup.get("committed") or cleanup.get("lethal_objects") != ["u2"] or "u2" not in cleanup["next_state"]["players"]["p2"]["zones"]["trash"]:
+        failures.append("lethal cleanup did not passively kill the lethal Unit")
+
+    zero_might = base_state()
+    zero_might["objects"]["u2"]["base_might"] = 0
+    zero_cleanup = perform_lethal_cleanup(zero_might)
+    if zero_cleanup.get("lethal_objects"):
+        failures.append("zero-Might Unit without marked damage was incorrectly lethal")
+
+    trigger_state = base_state()
+    trigger_state["objects"]["u2"]["damage"] = 4
+    trigger_state["objects"]["u2"]["death_triggers"] = ["deathknell"]
+    trigger_cleanup = perform_lethal_cleanup(trigger_state)
+    if trigger_cleanup.get("committed") or trigger_cleanup.get("unsupported") is not True:
+        failures.append("death-trigger cleanup did not fail closed")
+
+    print(f"[info] typed effect IR: {len(cases) + 1} supported operations plus sequence, targets, linked effects, lethal cleanup, unsupported, Burn Out, and state invariants.")
     if failures:
         print("\n".join(f"FAILED: {failure}" for failure in failures))
         return 1

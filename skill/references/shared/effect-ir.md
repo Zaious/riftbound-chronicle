@@ -29,12 +29,25 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `ready` | ready a supported board object; already ready is a no-op | Core 415 |
 | `exhaust` | exhaust a supported board object; already exhausted is a no-op | Core 414 |
 | `add_resource` | add Energy or domain-labelled Power | Core 429 |
+| `kill` | kill a supported Unit/Gear permanent without death-trigger or replacement handling | Core 428 |
 
 This version deliberately excludes Burn Out, simultaneous multi-card recycle,
-cost payment, kill/cleanup, open-ended target choice and target groups,
-countering, attachments, replacement effects, layers, triggers, scoring, and
-token creation. Those require additional state and ordering contracts; they are
-not simulated by approximation.
+cost payment, the full Cleanup procedure, open-ended target choice and target
+groups, countering, attachments, replacement effects, layers, triggers,
+scoring, and token creation. Those require additional state and ordering
+contracts; they are not simulated by approximation.
+
+## Kill and lethal cleanup slice
+
+`kill` moves a supported non-token Unit or Gear from a board location to its
+owner's Trash. A killed token ceases to exist after entering the non-board zone.
+Objects with death-trigger metadata fail closed until trigger scheduling exists.
+
+`perform_lethal_cleanup` implements only Core 323.3–323.5: a board Unit is
+lethal when it has a non-zero marked damage value greater than or equal to its
+current Might. It passively kills every supported lethal Unit and records their
+simultaneous group and attribution. It does not claim to perform the remaining
+Cleanup steps.
 
 ## Targets and linked instructions
 
@@ -66,4 +79,6 @@ impossible-instruction semantics explicitly.
 effect program. The bridge probes both pure transitions and exposes next timing
 and effect states only if both succeed. An unsupported effect therefore cannot
 remove a Chain Item, and an item that is not next to resolve cannot mutate the
-effect state.
+effect state. The bridge runs the bounded lethal-cleanup slice after the effect
+program; unsupported death-trigger handling prevents both states from
+committing.

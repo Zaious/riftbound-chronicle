@@ -5,6 +5,13 @@ Date: 2026-08-30
 
 ## Decision
 
+> Two independent audits (2026-08-17, 2026-08-18) advised against building any
+> rules engine. That guidance was deliberately overridden, and the rejected
+> alternatives are recorded in
+> [ADR-0001](../decisions/ADR-0001-sovereign-rules-layer.md). Read it before
+> concluding this layer contradicts the audits.
+
+
 Chronicle owns a programmatic Riftbound rules layer.  It is shared
 infrastructure beneath Deck Coach, Rule Consult, Player 2 Agent, and the planned
 Match Analyst.  It is not an adapter whose truth or availability belongs to a

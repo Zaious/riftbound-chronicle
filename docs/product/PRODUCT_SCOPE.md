@@ -68,6 +68,8 @@ physical operations, incomplete card-effect legality, and resulting state.
 
 ## Explicit non-goals for the current implementation
 
+These non-goals are what the prior audits' "no rules engine" guidance was protecting; see [ADR-0001](../decisions/ADR-0001-sovereign-rules-layer.md) for why a bounded rules kernel is compatible with keeping them.
+
 - No complete automated Riftbound card-effect or gameplay engine.
 - No software-controlled shuffle, draw, phase progression, effect resolution, damage assignment, scoring, or win determination.
 - No claim that a bounded timing-permission result is an authoritative or

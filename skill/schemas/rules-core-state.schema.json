@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/rules-core-state.schema.json",
+  "title": "Chronicle Sovereign Rules Core State v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ruleset", "players", "turn_order", "turn_player", "phase", "showdown", "priority", "outstanding_tasks", "chain"],
+  "properties": {
+    "schema_version": {"const": "riftbound-rules-core-state.v1"},
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {
+        "core": {"type": "string", "format": "date"},
+        "faq_as_of": {"type": "string", "format": "date"}
+      }
+    },
+    "players": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "turn_order": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "turn_player": {"type": "string", "minLength": 1},
+    "phase": {"type": "string", "minLength": 1},
+    "showdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active", "kind", "focus"],
+      "properties": {
+        "active": {"type": "boolean"},
+        "kind": {"type": ["string", "null"], "enum": ["combat", "non_combat", null]},
+        "focus": {"type": ["string", "null"]}
+      }
+    },
+    "priority": {"type": ["string", "null"]},
+    "outstanding_tasks": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["initiated_by", "items", "consecutive_passes"],
+      "properties": {
+        "initiated_by": {"type": ["string", "null"], "enum": ["played_card", "activated_ability", "triggered_ability", "add_ability", null]},
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "controller", "object_kind", "timing", "status", "ability_kind"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "controller": {"type": "string", "minLength": 1},
+              "object_kind": {"enum": ["spell", "unit", "gear", "ability"]},
+              "timing": {"enum": ["default", "action", "reaction"]},
+              "status": {"enum": ["pending", "finalized"]},
+              "ability_kind": {"type": ["string", "null"], "enum": ["standard", "add", null]}
+            }
+          }
+        },
+        "consecutive_passes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}

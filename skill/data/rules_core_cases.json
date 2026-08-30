@@ -1,0 +1,104 @@
+{
+  "schema_version": "riftbound-rules-core-cases.v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "cases": [
+    {
+      "case_id": "RK-001",
+      "description": "Turn player may play a default-timing Unit in Neutral Open during Main",
+      "state": "neutral_open",
+      "action": {"actor": "p1", "kind": "play_card", "timing": "default", "object_kind": "unit"},
+      "expected": {"state_label": "neutral_open", "legal": true, "reason_code": "ok"}
+    },
+    {
+      "case_id": "RK-002",
+      "description": "Off-turn player cannot act without Priority in Neutral Open",
+      "state": "neutral_open",
+      "action": {"actor": "p2", "kind": "play_card", "timing": "reaction", "object_kind": "spell"},
+      "expected": {"state_label": "neutral_open", "legal": false, "reason_code": "priority_required"}
+    },
+    {
+      "case_id": "RK-003",
+      "description": "Default timing is not permitted in Showdown Open",
+      "state": "showdown_open",
+      "action": {"actor": "p1", "kind": "play_card", "timing": "default", "object_kind": "spell"},
+      "expected": {"state_label": "showdown_open", "legal": false, "reason_code": "action_or_reaction_required_in_showdown"}
+    },
+    {
+      "case_id": "RK-004",
+      "description": "Action timing may start a Chain for the Focus holder in Showdown Open",
+      "state": "showdown_open",
+      "action": {"actor": "p1", "kind": "play_card", "timing": "action", "object_kind": "spell"},
+      "expected": {"state_label": "showdown_open", "legal": true, "reason_code": "ok"}
+    },
+    {
+      "case_id": "RK-005",
+      "description": "Reaction timing may start a Chain for the Focus holder in Showdown Open",
+      "state": "showdown_open",
+      "action": {"actor": "p1", "kind": "play_card", "timing": "reaction", "object_kind": "unit"},
+      "expected": {"state_label": "showdown_open", "legal": true, "reason_code": "ok"}
+    },
+    {
+      "case_id": "RK-006",
+      "description": "Action timing cannot be added in Neutral Closed",
+      "state": "neutral_closed",
+      "action": {"actor": "p2", "kind": "play_card", "timing": "action", "object_kind": "spell"},
+      "expected": {"state_label": "neutral_closed", "legal": false, "reason_code": "reaction_required_in_closed_state"}
+    },
+    {
+      "case_id": "RK-007",
+      "description": "Reaction timing can be added by the Priority holder in Neutral Closed",
+      "state": "neutral_closed",
+      "action": {"actor": "p2", "kind": "play_card", "timing": "reaction", "object_kind": "spell"},
+      "expected": {"state_label": "neutral_closed", "legal": true, "reason_code": "ok"}
+    },
+    {
+      "case_id": "RK-008",
+      "description": "Reaction timing can be added by the Priority holder in Showdown Closed",
+      "state": "showdown_closed",
+      "action": {"actor": "p2", "kind": "activate_ability", "timing": "reaction", "object_kind": "ability"},
+      "expected": {"state_label": "showdown_closed", "legal": true, "reason_code": "ok"}
+    },
+    {
+      "case_id": "RK-009",
+      "description": "Pending Chain Item must finalize before discretionary actions",
+      "state": "pending_spell",
+      "action": {"actor": "p1", "kind": "play_card", "timing": "reaction", "object_kind": "spell"},
+      "expected": {"state_label": "neutral_closed", "legal": false, "reason_code": "procedure_blocks_discretionary_action", "next_procedure": "finalize_oldest_pending"}
+    },
+    {
+      "case_id": "RK-010",
+      "description": "All consecutive passes resolve only the newest Finalized item",
+      "state": "two_finalized_all_passed",
+      "expected": {"state_label": "neutral_closed", "next_procedure": "resolve_newest_finalized", "subject": "reaction-2"}
+    },
+    {
+      "case_id": "RK-011",
+      "description": "Finalized Reaction Unit requires immediate resolution",
+      "state": "pending_unit",
+      "expected": {"state_label": "neutral_closed", "finalized_item": "unit-1", "immediate_resolution_required": true}
+    },
+    {
+      "case_id": "RK-012",
+      "description": "Finalized Spell remains for Execute/Pass/Resolve",
+      "state": "pending_spell",
+      "expected": {"state_label": "neutral_closed", "finalized_item": "spell-1", "immediate_resolution_required": false}
+    },
+    {
+      "case_id": "RK-013",
+      "description": "Outstanding Tasks block discretionary actions before FEPR",
+      "state": "outstanding_cleanup",
+      "action": {"actor": "p1", "kind": "play_card", "timing": "default", "object_kind": "unit"},
+      "expected": {"state_label": "neutral_open", "legal": false, "reason_code": "procedure_blocks_discretionary_action", "next_procedure": "handle_outstanding_tasks"}
+    },
+    {
+      "case_id": "RK-014",
+      "description": "Only the Focus and Priority holder may pass in Showdown Open",
+      "state": "showdown_open",
+      "action": {"actor": "p2", "kind": "pass_focus", "timing": "default", "object_kind": "ability"},
+      "expected": {"state_label": "showdown_open", "legal": false, "reason_code": "focus_and_priority_required"}
+    }
+  ]
+}

@@ -11,6 +11,11 @@ Riftbound Chronicle is a portable knowledge and decision-support project with th
 
 The systems share card, rules, format, and evidence data. They do not share authority. A deck recommendation is not a ruling; a rules explanation is not a state transition; a Player 2 choice is not automatic rules enforcement.
 
+A fourth system, `play-reviewer`, is planned for decision-time replay analysis.
+It remains outside the active Skill router until the sovereign rules core can
+reconstruct the bounded interaction and legal timing set with tested coverage.
+See `../play-reviewer/PLAY_REVIEWER_PRODUCT_SPEC.md`.
+
 ## Product outcomes
 
 ### Deck Coach
@@ -47,11 +52,24 @@ Given a human-confirmed game state and only the information Player 2 is entitled
 
 The initial deliverable is P2-A: assisted manual play. The human operates all physical cards and confirms every rule-dependent state transition.
 
+## Shared sovereign rules layer
+
+All modes may use a Chronicle-owned, versioned rules core for bounded timing
+and permission reasoning. Version 1 derives the four Open/Closed and
+Neutral/Showdown states, Action/Reaction permissions, Priority/Focus gates,
+and the next HOT/FEPR procedure. It is executable support for Agent reasoning,
+not a claim that arbitrary card effects or a complete game are implemented.
+
+Official rules and scoped FAQs remain normative. A mismatch is a conformance
+failure in the core. The public P2-A flow still gives the human authority over
+physical operations, incomplete card-effect legality, and resulting state.
+
 ## Explicit non-goals for the current implementation
 
-- No automated Riftbound rules engine.
+- No complete automated Riftbound card-effect or gameplay engine.
 - No software-controlled shuffle, draw, phase progression, effect resolution, damage assignment, scoring, or win determination.
-- No automatic generation of an authoritative legal-action set.
+- No claim that a bounded timing-permission result is an authoritative or
+  complete legal-action set for unsupported card behavior.
 - No matchmaking, rank, ladder, or tournament bracket.
 - No retained or published card/deck play rates, win rates, or matchup percentages.
 - No claim that `rule-consult` is an official Riot or tournament judge.

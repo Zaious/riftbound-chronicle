@@ -3,13 +3,17 @@
 Status: accepted baseline
 Date: 2026-08-24
 
+This document describes the three currently active modes. The planned fourth
+mode, Play Reviewer, is specified separately and is not routed until its
+rules-core activation gates pass.
+
 ## Design principle
 
 The project is one portable Skill with three operating modes, not three unrelated assistants and not one undifferentiated coach.
 
 ```text
-                    shared knowledge core
-        cards · rules · formats · provenance · freshness
+               shared sovereign knowledge + rules core
+ cards · rules · executable timing · formats · provenance · freshness
                          │
           ┌──────────────┼──────────────┐
           │              │              │
@@ -30,6 +34,12 @@ skill references, schemas, data, and validators
 ```
 
 The portable `skill/` folder must not depend on a particular web app, private deployment path, model provider, or future reinforcement-learning framework.
+
+It also must not depend on a third-party fan engine for its rules semantics.
+Chronicle owns the common state/timing contract and executable conformance
+cases. External simulators may inform the design or be compared against it, but
+they do not define truth or availability. See
+`SOVEREIGN_RULES_LAYER.md`.
 
 The three no-build pages under `prototype/` are reference clients of these contracts, not alternate authorities. They use a manual copy/paste Agent bridge and in-tab memory only:
 

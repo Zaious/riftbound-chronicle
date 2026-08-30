@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/effect-program.schema.json",
+  "title": "Chronicle Typed Effect Program v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ruleset", "program_id", "effects"],
+  "properties": {
+    "schema_version": {"const": "riftbound-effect-program.v1"},
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {
+        "core": {"const": "2026-07-16"},
+        "faq_as_of": {"const": "2026-08-14"}
+      }
+    },
+    "program_id": {"type": "string", "minLength": 1},
+    "effects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["op"],
+        "properties": {
+          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource"]}
+        }
+      }
+    }
+  }
+}

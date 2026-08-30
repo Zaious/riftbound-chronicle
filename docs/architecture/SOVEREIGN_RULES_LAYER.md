@@ -127,7 +127,7 @@ The v1 core exposes `add`, `finalize`, `pass-priority`, and
 the card effect was executed. This keeps the timing trace useful without
 pretending the current kernel owns arbitrary card semantics.
 
-### R2 — Effect intermediate representation
+### R2 — Effect intermediate representation (v1 implemented)
 
 Chronicle will own a small typed effect vocabulary before implementing cards:
 
@@ -141,6 +141,18 @@ Effects are data interpreted by Chronicle code. Card packs may compose these
 operations but may not add card-name conditionals to the turn/Chain engine.
 Replacement effects, layers, and delayed/reflexive triggers receive explicit
 types rather than free-text matching.
+
+The first executable slice implements draw-without-Burn-Out, one-card recycle,
+board movement, Might modifiers, damage/healing, ready/exhaust, and resource
+addition. It emits deterministic state hashes and rule-grounded traces and
+fails closed on every unsupported operation. Targeting, instruction linkage,
+kill/cleanup, countering, attachment, replacement, layers, triggers, scoring,
+tokens, and Burn Out remain later R2 increments.
+
+The atomic resolution bridge now combines an eligible Chain Item and an effect
+program. Timing and effect states are exposed only when both pure transitions
+succeed; unsupported effects cannot silently remove a Chain Item, and a
+non-newest Finalized item cannot mutate effect state.
 
 ### R3 — Bounded Origins/Taiwan card pack
 

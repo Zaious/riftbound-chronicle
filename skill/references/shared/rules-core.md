@@ -19,6 +19,9 @@ complete card-effect engine and never outranks the current official sources.
 The initial implementation is `${CLAUDE_SKILL_DIR}/scripts/rules_core.py`; its
 state schema is `${CLAUDE_SKILL_DIR}/schemas/rules-core-state.schema.json`, and
 its executable fixtures are `${CLAUDE_SKILL_DIR}/data/rules_core_cases.json`.
+Supported card-state mutations live separately in
+`${CLAUDE_SKILL_DIR}/references/shared/effect-ir.md`; timing permission does not
+imply effect support.
 
 ## Four-state timing model
 

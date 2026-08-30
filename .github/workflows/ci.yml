@@ -67,6 +67,12 @@ jobs:
       - name: Sovereign rules core timing and permission conformance
         run: python3 skill/scripts/check_rules_core.py
 
+      - name: Typed effect IR atomic semantics and fail-closed coverage
+        run: python3 skill/scripts/check_effect_ir.py
+
+      - name: Atomic timing and typed-effect resolution bridge
+        run: python3 skill/scripts/check_resolution_bridge.py
+
       - name: Rule Consult static prototype contract
         run: python3 skill/scripts/check_rule_consult_prototype.py
 
@@ -94,6 +100,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_p2a_prototype.py"
           python3 "$REPO/skill/scripts/check_rule_consult.py"
           python3 "$REPO/skill/scripts/check_rules_core.py"
+          python3 "$REPO/skill/scripts/check_effect_ir.py"
+          python3 "$REPO/skill/scripts/check_resolution_bridge.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"
           python3 "$REPO/skill/scripts/check_rules_bootstrap.py"

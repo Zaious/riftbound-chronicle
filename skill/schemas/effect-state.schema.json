@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/effect-state.schema.json",
+  "title": "Chronicle Effect State v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ruleset", "players", "objects", "battlefields"],
+  "properties": {
+    "schema_version": {"const": "riftbound-effect-state.v1"},
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {
+        "core": {"const": "2026-07-16"},
+        "faq_as_of": {"const": "2026-08-14"}
+      }
+    },
+    "players": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": {"$ref": "#/$defs/player"}
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/object"}
+    },
+    "battlefields": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/battlefield"}
+    }
+  },
+  "$defs": {
+    "zones": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["main_deck", "hand", "trash", "banishment", "base", "rune_deck"],
+      "properties": {
+        "main_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "hand": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "trash": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "banishment": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "base": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "rune_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["zones", "resources"],
+      "properties": {
+        "zones": {"$ref": "#/$defs/zones"},
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["energy", "power"],
+          "properties": {
+            "energy": {"type": "integer", "minimum": 0},
+            "power": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+          }
+        }
+      }
+    },
+    "modifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "duration", "source"],
+      "properties": {
+        "amount": {"type": "integer"},
+        "duration": {"enum": ["this_turn", "persistent"]},
+        "source": {"type": "string", "minLength": 1}
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "controller", "kind", "base_might", "might_modifiers", "damage", "exhausted"],
+      "properties": {
+        "owner": {"type": "string", "minLength": 1},
+        "controller": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["unit", "gear", "spell", "rune", "token"]},
+        "base_might": {"type": "integer", "minimum": 0},
+        "might_modifiers": {"type": "array", "items": {"$ref": "#/$defs/modifier"}},
+        "damage": {"type": "integer", "minimum": 0},
+        "exhausted": {"type": "boolean"}
+      }
+    },
+    "battlefield": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["controller", "objects"],
+      "properties": {
+        "controller": {"type": ["string", "null"]},
+        "objects": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    }
+  }
+}

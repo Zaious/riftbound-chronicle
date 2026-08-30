@@ -39,6 +39,13 @@ can override a current official rule or scoped FAQ. Unsupported card effects
 remain unknown. Player 2 outputs still require human confirmation unless a
 separately approved state-owning runtime is explicitly introduced.
 
+When a claim depends on what a card instruction actually changes, read
+`${CLAUDE_SKILL_DIR}/references/shared/effect-ir.md`. Use
+`${CLAUDE_SKILL_DIR}/scripts/effect_ir.py` only for operations listed as
+supported there. An unsupported effect must lower confidence or stop the
+sequence; never complete it from card-text intuition and present that state as
+executable.
+
 ## Shared source authority
 
 Before quoting current card text, legality, errata, or tournament procedure, read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md`. Use local data for routine lookup only within its documented freshness and provenance limits. Do not answer a live, time-sensitive question from memory.
@@ -61,6 +68,8 @@ For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.
 - Deterministic validation and artifact tooling: `${CLAUDE_SKILL_DIR}/scripts/`
 - Chronicle-owned timing/permission core: `${CLAUDE_SKILL_DIR}/scripts/rules_core.py`
 - Executable rules-core cases: `${CLAUDE_SKILL_DIR}/data/rules_core_cases.json`
+- Chronicle-owned typed effect IR: `${CLAUDE_SKILL_DIR}/scripts/effect_ir.py`
+- Atomic timing/effect bridge: `${CLAUDE_SKILL_DIR}/scripts/resolution_bridge.py`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
 - Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
 - Rift Atlas deck handoff adapter: `${CLAUDE_SKILL_DIR}/scripts/riftatlas_bridge.py` (user-pasted list, no upstream scraping)

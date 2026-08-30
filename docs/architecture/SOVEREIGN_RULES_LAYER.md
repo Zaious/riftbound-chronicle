@@ -169,7 +169,14 @@ controller-relation failures; ignored targets do not mutate state, and a later
 The third R2 slice adds supported active Kill and the lethal-damage portion of
 Cleanup. Non-token permanents move to owner Trash, killed tokens cease to exist,
 and passive lethal kills retain a simultaneous group plus source attribution.
-Death-trigger scheduling and the rest of Cleanup remain fail-closed gates.
+At that stage death-trigger scheduling and the rest of Cleanup were
+fail-closed gates; the following slice opens only the typed self-death subset.
+
+The fourth R2 slice adds typed self-death trigger descriptors and Pending Chain
+scheduling. Trigger blocks follow Turn Player/Turn Order and require explicit
+controller-local order. The combined resolution remains atomic when order is
+missing or ambiguous. Cross-object watchers, optional finalization, reflexive
+triggers, and replacements remain future increments.
 
 ### R3 — Bounded Origins/Taiwan card pack
 

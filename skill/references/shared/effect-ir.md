@@ -49,6 +49,24 @@ current Might. It passively kills every supported lethal Unit and records their
 simultaneous group and attribution. It does not claim to perform the remaining
 Cleanup steps.
 
+## Typed self-death triggers
+
+A supported object may carry ordered `death_triggers`. Kill captures these
+descriptors before the object leaves the board. Each descriptor preserves its
+trigger id, controller, source object, controller-local order, and optional
+effect-program id.
+
+The resolution bridge schedules them as Pending ability items after the current
+resolution. When several players control simultaneous triggers, controller
+blocks follow Turn Player then Turn Order; within one controller's block,
+`controller_order` is mandatory and unique. Missing or ambiguous order prevents
+the combined timing/effect commit.
+
+This slice covers only the killed object's own death/Deathknell descriptors.
+Watching permanents, zone-dependent evaluation, “Nth time,” optional-at-
+finalize choices, reflexive triggers, and replacement effects remain
+unsupported.
+
 ## Targets and linked instructions
 
 R2 v1 records the target's object id and board/non-board zone class at choice

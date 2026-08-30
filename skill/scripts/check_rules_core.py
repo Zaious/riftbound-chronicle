@@ -17,6 +17,7 @@ from rules_core import (
     finalize_oldest_pending,
     next_procedure,
     pass_priority,
+    schedule_triggered_items,
     state_hash,
     validate_state,
     validate_timing,
@@ -182,6 +183,22 @@ def main() -> int:
         resolved = complete_resolution(state, f"{origin}-1", effect_execution_confirmed=True)
         if not resolved.get("applied") or resolved["next_state"]["showdown"]["focus"] != "p1":
             errors.append(f"trace: {origin} Chain closure incorrectly moved Focus")
+
+    trigger_base = FIXTURES["neutral_open"]
+    scheduled = schedule_triggered_items(trigger_base, [
+        {"trigger_id": "p2-a", "controller": "p2", "source_object": "u2", "controller_order": 0},
+        {"trigger_id": "p1-b", "controller": "p1", "source_object": "u1", "controller_order": 1},
+        {"trigger_id": "p1-a", "controller": "p1", "source_object": "u1", "controller_order": 0},
+    ])
+    expected_order = ["p1-a", "p1-b", "p2-a"]
+    if not scheduled.get("applied") or scheduled.get("transition", {}).get("ordered_trigger_ids") != expected_order:
+        errors.append(f"trigger scheduling did not use Turn Player blocks and controller order: {scheduled}")
+    duplicate_order = schedule_triggered_items(trigger_base, [
+        {"trigger_id": "a", "controller": "p1", "source_object": "u1", "controller_order": 0},
+        {"trigger_id": "b", "controller": "p1", "source_object": "u1", "controller_order": 0},
+    ])
+    if duplicate_order.get("applied") or duplicate_order.get("reason_code") != "trigger_order_required":
+        errors.append("ambiguous same-controller trigger ordering did not fail closed")
 
     print(f"[info] sovereign rules core: {len(ids)} executable cases; {len(FIXTURES)} canonical fixtures.")
     if errors:

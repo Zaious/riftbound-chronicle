@@ -48,9 +48,11 @@
               "id": {"type": "string", "minLength": 1},
               "controller": {"type": "string", "minLength": 1},
               "object_kind": {"enum": ["spell", "unit", "gear", "ability"]},
-              "timing": {"enum": ["default", "action", "reaction"]},
+              "timing": {"enum": ["default", "action", "reaction", "triggered"]},
               "status": {"enum": ["pending", "finalized"]},
-              "ability_kind": {"type": ["string", "null"], "enum": ["standard", "add", null]}
+              "ability_kind": {"type": ["string", "null"], "enum": ["standard", "add", null]},
+              "source_object": {"type": "string", "minLength": 1},
+              "effect_program_id": {"type": ["string", "null"]}
             }
           }
         },

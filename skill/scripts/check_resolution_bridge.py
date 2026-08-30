@@ -47,6 +47,27 @@ def main() -> int:
     if not lethal_result.get("committed") or "u2" not in lethal_result["next_effect_state"]["players"]["p2"]["zones"]["trash"]:
         failures.append("combined resolution did not run the lethal cleanup slice")
 
+    trigger_effects = base_state()
+    trigger_effects["objects"]["u2"]["death_triggers"] = [{
+        "trigger_id": "u2-deathknell", "controller": "p2", "source_object": "u2",
+        "controller_order": 0, "effect_program_id": "u2-deathknell-effects",
+    }]
+    trigger_result = resolve_with_program(timing, "spell-1", trigger_effects, lethal_program)
+    trigger_items = trigger_result.get("next_timing_state", {}).get("chain", {}).get("items", [])
+    if not trigger_result.get("committed") or [item["id"] for item in trigger_items] != ["u2-deathknell"] or trigger_items[0]["status"] != "pending":
+        failures.append("death trigger was not scheduled as a Pending Chain Item")
+
+    ambiguous = base_state()
+    ambiguous["objects"]["u2"]["death_triggers"] = [
+        {"trigger_id": "u2-a", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "a"},
+        {"trigger_id": "u2-b", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "b"},
+    ]
+    ambiguous_result = resolve_with_program(timing, "spell-1", ambiguous, lethal_program)
+    if ambiguous_result.get("committed") or ambiguous_result.get("stage") != "trigger_schedule":
+        failures.append("ambiguous same-controller death-trigger order did not block the atomic commit")
+    if "next_timing_state" in ambiguous_result or "next_effect_state" in ambiguous_result:
+        failures.append("ambiguous trigger ordering leaked a partial next state")
+
     not_next = fixture(
         priority="p2",
         items=[

@@ -172,10 +172,13 @@ def main() -> int:
 
     trigger_state = base_state()
     trigger_state["objects"]["u2"]["damage"] = 4
-    trigger_state["objects"]["u2"]["death_triggers"] = ["deathknell"]
+    trigger_state["objects"]["u2"]["death_triggers"] = [{
+        "trigger_id": "u2-deathknell", "controller": "p2", "source_object": "u2",
+        "controller_order": 0, "effect_program_id": "u2-deathknell-effects",
+    }]
     trigger_cleanup = perform_lethal_cleanup(trigger_state)
-    if trigger_cleanup.get("committed") or trigger_cleanup.get("unsupported") is not True:
-        failures.append("death-trigger cleanup did not fail closed")
+    if not trigger_cleanup.get("committed") or [item["trigger_id"] for item in trigger_cleanup.get("pending_triggers", [])] != ["u2-deathknell"]:
+        failures.append("lethal cleanup did not preserve typed death-trigger descriptors")
 
     print(f"[info] typed effect IR: {len(cases) + 1} supported operations plus sequence, targets, linked effects, lethal cleanup, unsupported, Burn Out, and state invariants.")
     if failures:

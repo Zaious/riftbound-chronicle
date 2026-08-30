@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from effect_ir import apply_program, hash_value, perform_lethal_cleanup
-from rules_core import complete_resolution, state_hash
+from rules_core import complete_resolution, schedule_triggered_items, state_hash
 
 
 def resolve_with_program(
@@ -62,22 +62,38 @@ def resolve_with_program(
             "cleanup_result": cleanup_result,
         }
     final_effect_state = cleanup_result["next_state"]
+    pending_triggers = effect_result.get("pending_triggers", []) + cleanup_result.get("pending_triggers", [])
+    scheduled_result = schedule_triggered_items(timing_result["next_state"], pending_triggers)
+    if scheduled_result.get("applied") is not True:
+        return {
+            **base,
+            "valid": scheduled_result.get("valid", True),
+            "committed": False,
+            "stage": "trigger_schedule",
+            "reason": scheduled_result.get("reason_code", "; ".join(scheduled_result.get("errors", [])) or "trigger_schedule_failed"),
+            "effect_result": effect_result,
+            "cleanup_result": cleanup_result,
+            "trigger_result": scheduled_result,
+        }
+    final_timing_state = scheduled_result["next_state"]
     return {
         **base,
         "valid": True,
         "committed": True,
-        "next_timing_state": timing_result["next_state"],
-        "next_timing_state_hash": timing_result["next_state_hash"],
+        "next_timing_state": final_timing_state,
+        "next_timing_state_hash": scheduled_result["next_state_hash"],
         "next_effect_state": final_effect_state,
         "next_effect_state_hash": cleanup_result["next_state_hash"],
         "trace": {
             "effect": effect_result["trace"],
             "cleanup": cleanup_result["trace"],
+            "trigger_schedule": scheduled_result["transition"],
             "timing": timing_result["transition"],
         },
         "rule_locators": list(dict.fromkeys(
             [locator for event in effect_result["trace"] for locator in event.get("rule_locators", [])]
             + [locator for event in cleanup_result["trace"] for locator in event.get("rule_locators", [])]
+            + scheduled_result.get("rule_locators", [])
             + timing_result.get("rule_locators", [])
         )),
     }

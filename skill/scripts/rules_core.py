@@ -23,7 +23,7 @@ SCHEMA_VERSION = "riftbound-rules-core-state.v1"
 CORE_RULESET = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 
-TIMINGS = {"default", "action", "reaction"}
+TIMINGS = {"default", "action", "reaction", "triggered"}
 OBJECT_KINDS = {"spell", "unit", "gear", "ability"}
 ITEM_STATUSES = {"pending", "finalized"}
 ABILITY_KINDS = {"standard", "add", None}
@@ -533,6 +533,82 @@ def complete_resolution(state: dict[str, Any], item_id: str, *, effect_execution
         transition=transition,
         next_procedure=next_procedure(new_state),
         rule_locators=["Core 337.2", "Core 340", "Core 346", "Core 429.2.a"] if immediate else ["Core 339.1", "Core 340", "Core 346"],
+    )
+
+
+def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, Any]]) -> dict[str, Any]:
+    errors = validate_state(state)
+    if errors:
+        return _result(state, valid=False, applied=False, errors=errors)
+    if not descriptors:
+        return _result(state, valid=True, applied=True, next_state=copy.deepcopy(state), next_state_hash=state_hash(state), transition={"type": "no_triggers"})
+    seen: set[str] = set()
+    groups: dict[str, list[dict[str, Any]]] = {}
+    descriptor_errors = []
+    for index, descriptor in enumerate(descriptors):
+        if not isinstance(descriptor, dict):
+            descriptor_errors.append(f"descriptor {index} must be an object")
+            continue
+        trigger_id = descriptor.get("trigger_id")
+        controller = descriptor.get("controller")
+        if not isinstance(trigger_id, str) or not trigger_id or trigger_id in seen:
+            descriptor_errors.append(f"descriptor {index} has invalid or duplicate trigger_id")
+        else:
+            seen.add(trigger_id)
+        if controller not in state["players"]:
+            descriptor_errors.append(f"descriptor {index} has unknown controller")
+            continue
+        if not isinstance(descriptor.get("source_object"), str) or not descriptor.get("source_object"):
+            descriptor_errors.append(f"descriptor {index} must preserve source_object")
+        groups.setdefault(controller, []).append(descriptor)
+    for controller, values in groups.items():
+        if len(values) > 1:
+            orders = [value.get("controller_order") for value in values]
+            if any(not isinstance(order, int) or order < 0 for order in orders) or len(orders) != len(set(orders)):
+                descriptor_errors.append(f"controller {controller} must provide unique non-negative controller_order values")
+        else:
+            values[0].setdefault("controller_order", 0)
+    if descriptor_errors:
+        return _result(state, valid=True, applied=False, reason_code="trigger_order_required", errors=descriptor_errors)
+
+    order = state["turn_order"]
+    start = order.index(state["turn_player"])
+    rotated = order[start:] + order[:start]
+    ordered = []
+    for controller in rotated:
+        ordered.extend(sorted(groups.get(controller, []), key=lambda value: value["controller_order"]))
+
+    new_state = copy.deepcopy(state)
+    was_empty = not new_state["chain"]["items"]
+    for descriptor in ordered:
+        new_state["chain"]["items"].append({
+            "id": descriptor["trigger_id"],
+            "controller": descriptor["controller"],
+            "object_kind": "ability",
+            "timing": "triggered",
+            "status": "pending",
+            "ability_kind": "standard",
+            "source_object": descriptor["source_object"],
+            "effect_program_id": descriptor.get("effect_program_id"),
+        })
+    if was_empty:
+        new_state["chain"]["initiated_by"] = "triggered_ability"
+    new_state["chain"]["consecutive_passes"] = []
+    if found := validate_state(new_state):
+        return _result(state, valid=True, applied=False, reason_code="scheduled_trigger_state_invalid", errors=found)
+    return _result(
+        state,
+        valid=True,
+        applied=True,
+        next_state=new_state,
+        next_state_hash=state_hash(new_state),
+        transition={
+            "type": "triggered_items_scheduled",
+            "ordered_trigger_ids": [descriptor["trigger_id"] for descriptor in ordered],
+            "controller_blocks": [controller for controller in rotated if controller in groups],
+        },
+        next_procedure=next_procedure(new_state),
+        rule_locators=["Core 383.3", "Core 383.3.c–383.3.d.1", "Core 428.1.a.1.b"],
     )
 
 

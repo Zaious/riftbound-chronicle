@@ -132,8 +132,15 @@ def validate_state(state: Any) -> list[str]:
         if not isinstance(obj.get("exhausted"), bool):
             errors.append(f"objects.{object_id}.exhausted must be boolean")
         death_triggers = obj.get("death_triggers", [])
-        if not isinstance(death_triggers, list) or not all(isinstance(item, str) and item for item in death_triggers):
-            errors.append(f"objects.{object_id}.death_triggers must be an array of non-empty strings")
+        if not isinstance(death_triggers, list):
+            errors.append(f"objects.{object_id}.death_triggers must be an array")
+        else:
+            for trigger_index, trigger in enumerate(death_triggers):
+                required = {"trigger_id", "controller", "source_object", "controller_order"}
+                if not isinstance(trigger, dict) or not required.issubset(trigger):
+                    errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid shape")
+                elif trigger.get("source_object") != object_id or trigger.get("controller") not in players:
+                    errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid source/controller")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         modifiers = obj.get("might_modifiers")
@@ -355,8 +362,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             raise ValueError("Kill applies only to a permanent on the board")
         if obj.get("kind") not in {"unit", "gear"}:
             raise ValueError("effect IR v1 only kills supported Unit/Gear permanents")
-        if obj.get("death_triggers"):
-            raise NotImplementedError("Kill requires death-trigger scheduling, which is outside effect IR v1")
+        pending_triggers = copy.deepcopy(obj.get("death_triggers", []))
         _remove_from_location(new_state, object_id)
         if obj.get("is_token"):
             del new_state["objects"][object_id]
@@ -370,6 +376,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             "kill_mode": effect.get("kill_mode", "active"),
             "destination": destination,
             "attributed_sources": effect.get("attributed_sources", []),
+            "pending_triggers": pending_triggers,
         })
 
     errors = validate_state(new_state)
@@ -399,16 +406,6 @@ def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[st
         might = current_might(obj)
         if obj["damage"] > 0 and obj["damage"] >= might:
             lethal.append((object_id, might, obj["damage"]))
-    if any(state["objects"][object_id].get("death_triggers") for object_id, _, _ in lethal):
-        return {
-            **base,
-            "valid": True,
-            "committed": False,
-            "unsupported": True,
-            "reason": "lethal cleanup requires death-trigger scheduling",
-            "lethal_objects": [object_id for object_id, _, _ in lethal],
-            "trace": [],
-        }
     current = copy.deepcopy(state)
     trace = []
     group = [object_id for object_id, _, _ in sorted(lethal)]
@@ -439,6 +436,7 @@ def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[st
         "next_state_hash": hash_value(current),
         "lethal_objects": group,
         "trace": trace,
+        "pending_triggers": [trigger for event in trace for trigger in event.get("pending_triggers", [])],
         "coverage": "lethal_damage_slice_only",
     }
 
@@ -534,6 +532,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
         "next_state": current,
         "next_state_hash": hash_value(current),
         "trace": trace,
+        "pending_triggers": [trigger for event in trace for trigger in event.get("pending_triggers", [])],
     }
 
 

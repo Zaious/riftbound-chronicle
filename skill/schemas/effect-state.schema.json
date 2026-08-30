@@ -83,7 +83,21 @@
         "might_modifiers": {"type": "array", "items": {"$ref": "#/$defs/modifier"}},
         "damage": {"type": "integer", "minimum": 0},
         "exhausted": {"type": "boolean"},
-        "death_triggers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "death_triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trigger_id", "controller", "source_object", "controller_order"],
+            "properties": {
+              "trigger_id": {"type": "string", "minLength": 1},
+              "controller": {"type": "string", "minLength": 1},
+              "source_object": {"type": "string", "minLength": 1},
+              "controller_order": {"type": "integer", "minimum": 0},
+              "effect_program_id": {"type": ["string", "null"]}
+            }
+          }
+        },
         "is_token": {"type": "boolean"}
       }
     },

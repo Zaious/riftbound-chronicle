@@ -180,6 +180,24 @@ def main():
     # outcome three different ways.
     if "RC_ENGINE_CHECK_VIEW.mount" not in js:
         errors.append("app.js does not render engine checks through the shared read-only viewer")
+    # The viewer writes its own bilingual text at mount time, so the shared
+    # runtime cannot retranslate it later; without this the panel would freeze
+    # in whichever language it was first rendered in.
+    if 'rc:localechange' not in js:
+        errors.append("app.js does not re-render the engine check on a locale change, so the panel would not follow the language toggle")
+    # The demos default to zh-Hant, and the shared runtime translates by exact
+    # text. Copy added to the panel without a dictionary entry does not fail
+    # anywhere -- it just silently renders in English on a page whose default
+    # language is Chinese.
+    i18n_source = (REPO_ROOT / "prototype" / "shared" / "i18n.js").read_text(encoding="utf-8")
+    panel_start = html.index('<div class="engine-attach">')
+    panel = html[panel_start:html.index("</details>", panel_start)]
+    for text in (item.strip() for item in re.split(r"<[^>]+>", panel)):
+        if not text or re.fullmatch(r"\d+ attached", text):
+            continue
+        if f'"{text}":' not in i18n_source:
+            errors.append(f"engine-check panel copy has no zh-Hant entry in shared/i18n.js: {text[:60]!r}")
+
     if "engine_checks:[]" not in js.replace(" ", ""):
         errors.append("app.js does not initialize the schema's engine_checks array, so exports would omit attached checks")
     # Source confidence and engine coverage must stay separate fields: a

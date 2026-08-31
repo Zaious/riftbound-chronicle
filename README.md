@@ -20,11 +20,29 @@ The current Player 2 implementation is **P2-A**: the Agent recommends and
 explains an action, then waits for the human to confirm legality and the resulting
 state. The future **P2-S** simulator is documented but is not implemented.
 
-All systems share a **Chronicle-owned sovereign rules core**. Version 1 is an
-executable timing and permission kernel for the four turn states,
-Action/Reaction, Priority/Focus, and HOT/FEPR. It has no runtime dependency on
-another fan simulator and does not claim complete card-effect resolution. See
-the [sovereign rules-layer architecture](docs/architecture/SOVEREIGN_RULES_LAYER.md).
+All systems share a **Chronicle-owned sovereign rules core**, and it only ever
+claims what its conformance suite executes:
+
+- a timing and permission kernel for the four turn states, Action/Reaction,
+  Priority/Focus, and HOT/FEPR — 14 executable cases over 8 canonical fixtures;
+- a bounded typed-effect IR — 12 operations plus sequencing, targets, linked
+  effects, lethal cleanup, and trigger emission, which **fails closed** on any
+  card behaviour it does not model rather than guessing one;
+- an atomic bridge between the two, so a timing decision and its typed effects
+  commit together or roll back together.
+
+It has no runtime dependency on another fan simulator, and it does not claim
+complete card-effect resolution — the `unsupported` outcome is a first-class
+result, not an error path. See the
+[sovereign rules-layer architecture](docs/architecture/SOVEREIGN_RULES_LAYER.md)
+and [ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md) for why this
+layer exists at all after two audits advised against one.
+
+A fourth system, `match-analyst` (post-game Review and Commentary over one
+normalized timeline), is fully specified but **deliberately not routed** until
+its activation gates pass — see
+[the spec](docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md). The table above
+lists what the Skill router actually exposes today.
 
 The repository name intentionally stays `riftbound-chronicle`: it is the product
 brand. Search terms such as `AI agent`, `deck coach`, and `rule consult` belong in

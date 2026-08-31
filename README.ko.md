@@ -4,7 +4,7 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
-## 세 가지 시스템
+## 시스템
 
 | 시스템 | 목적 | 권한 경계 | 실행 가능한 결과물 |
 | --- | --- | --- | --- |
@@ -14,7 +14,15 @@
 
 현재 Player 2는 **P2-A**만 구현되어 있습니다. Agent가 행동과 이유를 제안하고, 사람이 합법성을 확인한 뒤 실물 카드로 해결합니다. 자동 시뮬레이터인 P2-S는 문서로만 계획되어 있으며 구현되지 않았습니다.
 
-세 시스템은 **Chronicle이 직접 소유하고 관리하는 규칙 코어**를 공유합니다. 첫 버전은 네 가지 턴 상태, Action／Reaction, Priority／Focus, HOT／FEPR의 타이밍과 권한을 실행 가능한 코드로 다룹니다. 다른 팬 시뮬레이터에 런타임 의존성이 없으며 모든 카드 효과를 해결한다고 주장하지 않습니다. 자세한 내용은 [주권 규칙 레이어](docs/architecture/SOVEREIGN_RULES_LAYER.md)를 참고하세요.
+네 시스템은 **Chronicle이 직접 소유하고 관리하는 규칙 코어**를 공유하며, 이 코어는 conformance 스위트가 실제로 실행하는 것만 주장합니다:
+
+- 타이밍·권한 커널: 네 가지 턴 상태, Action／Reaction, Priority／Focus, HOT／FEPR —— 8개 표준 fixture 위의 14개 실행 가능한 케이스;
+- 제한된 typed effect IR: 12개 연산과 시퀀스, 대상, 연결 효과, 치명 정리, 트리거 방출을 포함하며, 모델링되지 않은 카드 동작을 만나면 추측하지 않고 **fail closed**;
+- 둘 사이의 원자적 브리지: 타이밍 판정과 해당 typed effect는 함께 커밋되거나 함께 롤백됩니다.
+
+다른 팬 시뮬레이터에 런타임 의존성이 없으며, 모든 카드 효과를 결산할 수 있다고 주장하지 않습니다 —— `unsupported`는 오류 경로가 아니라 일급 결과입니다. 아키텍처와 흡수 경계는 [주권 규칙 레이어](docs/architecture/SOVEREIGN_RULES_LAYER.md)를, 두 차례의 감사가 규칙 엔진을 만들지 말라고 권고했음에도 만든 이유는 [ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md)을 참조하세요.
+
+네 번째 시스템 `match-analyst`(경기 후 단일 정규화 타임라인 위의 Review와 Commentary 두 가지 투영)는 명세가 완성되었지만 activation gate를 통과할 때까지 **의도적으로 라우팅되지 않습니다** —— [명세](docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md)를 보세요. 위 표는 Skill router가 오늘 실제로 제공하는 것만 나열합니다.
 
 ## 빠른 시작
 

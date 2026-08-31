@@ -4,7 +4,7 @@
 
 [English](README.md) · [한국어](README.ko.md)
 
-## 三個體系
+## 體系
 
 | 體系 | 用途 | 權限邊界 | 可執行產物 |
 | --- | --- | --- | --- |
@@ -14,7 +14,15 @@
 
 目前 Player 2 只有 **P2-A**：代理提出並解釋行動，玩家確認合法性並手動完成結算。P2-S 自動模擬器只有規劃文件，尚未實作。
 
-三個體系共用一層由 **Chronicle 自主掌控的規則核心**。第一版已用程式實作四種回合狀態、迅捷／反應、Priority／Focus 與 HOT／FEPR 的時機和權限判斷；它不依賴其他玩家模擬器，也不宣稱已能結算所有卡牌效果。架構與吸收邊界見[主權規則層](docs/architecture/SOVEREIGN_RULES_LAYER.md)。
+四個體系共用一層由 **Chronicle 自主掌控的規則核心**，而它只宣稱 conformance 套件真的跑得過的東西：
+
+- 時機與權限核心：四種回合狀態、Action／Reaction、Priority／Focus、HOT／FEPR —— 8 組標準 fixture 上的 14 個可執行案例；
+- 有界的 typed effect IR：12 種操作，加上序列、目標、連動效果、致死清理與觸發發射；遇到沒有建模的卡牌行為**直接 fail closed**，不猜；
+- 兩者之間的原子橋接：時機判斷與它的 typed effect 要嘛一起提交，要嘛一起回滾。
+
+它不依賴其他玩家模擬器，也不宣稱已能結算所有卡牌效果——`unsupported` 是第一級的結果，不是錯誤路徑。架構與吸收邊界見[主權規則層](docs/architecture/SOVEREIGN_RULES_LAYER.md)；兩份審計都建議不要做規則引擎、為何仍然做了，見 [ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md)。
+
+第四個體系 `match-analyst`（賽後單一時間軸上的 Review 與 Commentary 兩種投影）規格已完整，但**刻意還沒接進 router**，要等 activation gate 全過——見[規格](docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md)。上面表格列的是 Skill router 今天真的提供的東西。
 
 ## 快速開始
 

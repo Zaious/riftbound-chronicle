@@ -40,6 +40,12 @@ jobs:
       - name: Deck-primer worked examples follow the eight-section contract
         run: python3 skill/scripts/check_deck_primer.py
 
+      # Fires when a mode is routed in SKILL.md but the READMEs still describe the
+      # old set -- README maintenance is split from feature work, so this is what
+      # tells the doc author that the code moved.
+      - name: READMEs match routed modes, cited counts, and referenced paths
+        run: python3 skill/scripts/check_readme_sync.py
+
       - name: Deck Coach schema, roles, cases, and artifact regressions
         run: python3 skill/scripts/check_deck_coach.py
 
@@ -96,6 +102,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_links.py"
           python3 "$REPO/skill/scripts/check_legend_packets.py"
           python3 "$REPO/skill/scripts/check_deck_primer.py"
+          python3 "$REPO/skill/scripts/check_readme_sync.py"
           python3 "$REPO/skill/scripts/check_deck_coach.py"
           python3 "$REPO/skill/scripts/check_deck_coach_prototype.py"
           python3 "$REPO/skill/scripts/check_tournament_lists.py"

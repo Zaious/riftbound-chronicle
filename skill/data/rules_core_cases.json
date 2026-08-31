@@ -99,6 +99,62 @@
       "state": "showdown_open",
       "action": {"actor": "p2", "kind": "pass_focus", "timing": "default", "object_kind": "ability"},
       "expected": {"state_label": "showdown_open", "legal": false, "reason_code": "focus_and_priority_required"}
+    },
+    {
+      "case_id": "RK-015",
+      "description": "A later card in Showdown Closed needs Reaction, so Action timing is refused",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "358.4"},
+      "state": "showdown_closed",
+      "action": {"actor": "p2", "kind": "play_card", "timing": "action", "object_kind": "spell"},
+      "expected": {"state_label": "showdown_closed", "legal": false, "reason_code": "reaction_required_in_closed_state"}
+    },
+    {
+      "case_id": "RK-016",
+      "description": "Default timing is refused in Showdown Closed for the same reason as Action timing",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "358.4"},
+      "state": "showdown_closed",
+      "action": {"actor": "p2", "kind": "play_card", "timing": "default", "object_kind": "spell"},
+      "expected": {"state_label": "showdown_closed", "legal": false, "reason_code": "reaction_required_in_closed_state"}
+    },
+    {
+      "case_id": "RK-017",
+      "description": "Activating an Action-timing ability in Neutral Closed is refused, not only playing a card",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "358.4"},
+      "state": "neutral_closed",
+      "action": {"actor": "p2", "kind": "activate_ability", "timing": "action", "object_kind": "ability"},
+      "expected": {"state_label": "neutral_closed", "legal": false, "reason_code": "reaction_required_in_closed_state"}
+    },
+    {
+      "case_id": "RK-018",
+      "description": "Correct Reaction timing still fails without Priority in Neutral Closed",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "312.1"},
+      "state": "neutral_closed",
+      "action": {"actor": "p1", "kind": "play_card", "timing": "reaction", "object_kind": "spell"},
+      "expected": {"state_label": "neutral_closed", "legal": false, "reason_code": "priority_required"}
+    },
+    {
+      "case_id": "RK-019",
+      "description": "Focus is the permission to act in Showdown Open, so the player without it cannot take an Action",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "313.1"},
+      "state": "showdown_open",
+      "action": {"actor": "p2", "kind": "play_card", "timing": "action", "object_kind": "spell"},
+      "expected": {"state_label": "showdown_open", "legal": false, "reason_code": "priority_required"}
+    },
+    {
+      "case_id": "RK-020",
+      "description": "A Showdown Chain opened by playing a card passes Focus to the next player as it empties",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "346"},
+      "state": "showdown_chain_played_card_all_passed",
+      "resolve": {"item_id": "action-1", "effect_execution_confirmed": true},
+      "expected": {"state_label": "showdown_closed", "focus_before": "p1", "focus_after": "p2", "chain_empty": true}
+    },
+    {
+      "case_id": "RK-021",
+      "description": "A Showdown Chain opened by a triggered ability keeps Focus with the same player as it empties",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "346.1"},
+      "state": "showdown_chain_triggered_all_passed",
+      "resolve": {"item_id": "trigger-1", "effect_execution_confirmed": true},
+      "expected": {"state_label": "showdown_closed", "focus_before": "p1", "focus_after": "p1", "chain_empty": true}
     }
   ]
 }

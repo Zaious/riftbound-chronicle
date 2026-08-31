@@ -67,7 +67,31 @@ FIXTURES = {
         passes=["p2", "p1"],
     ),
     "outstanding_cleanup": fixture(tasks=["cleanup"]),
+    # Two Showdown Chains that differ only in what opened them, which is what
+    # decides whether Focus passes when the chain empties (Core 346 / 346.1).
+    "showdown_chain_played_card_all_passed": {
+        **fixture(showdown=True, focus="p1", priority="p1",
+                  items=[item("action-1", "p1", "spell", "action")], passes=["p1", "p2"]),
+        "chain": {
+            "initiated_by": "played_card",
+            "items": [item("action-1", "p1", "spell", "action")],
+            "consecutive_passes": ["p1", "p2"],
+        },
+    },
+    "showdown_chain_triggered_all_passed": {
+        **fixture(showdown=True, focus="p1", priority="p1",
+                  items=[item("trigger-1", "p1", "ability", "reaction", "finalized", "standard")], passes=["p1", "p2"]),
+        "chain": {
+            "initiated_by": "triggered_ability",
+            "items": [item("trigger-1", "p1", "ability", "reaction", "finalized", "standard")],
+            "consecutive_passes": ["p1", "p2"],
+        },
+    },
 }
+
+# Documents a case may cite, and the baseline those citations were read against.
+# A case that cites a clause is claiming someone looked it up in that version.
+CITABLE_DOCUMENTS = {"core_rules", "tournament_rules"}
 
 
 def main() -> int:
@@ -103,7 +127,38 @@ def main() -> int:
             continue
         expected = case["expected"]
         action = case.get("action")
-        if action:
+
+        # Provenance is optional, but a citation that exists must be checkable:
+        # a locator read against a superseded baseline is worse than none, since
+        # it looks verified.
+        if (cited := case.get("source")) is not None:
+            if not isinstance(cited, dict) or set(cited) != {"document", "version", "locator"}:
+                errors.append(f"{case_id}: source must carry exactly document, version, and locator")
+            else:
+                if cited["document"] not in CITABLE_DOCUMENTS:
+                    errors.append(f"{case_id}: source document {cited['document']!r} is not a citable official document")
+                if cited["version"] != cases.get("ruleset", {}).get("core"):
+                    errors.append(
+                        f"{case_id}: source cites {cited['version']} but the corpus baseline is "
+                        f"{cases.get('ruleset', {}).get('core')}; re-read the clause before moving the baseline")
+                if not isinstance(cited["locator"], str) or not cited["locator"]:
+                    errors.append(f"{case_id}: source locator must be a non-empty rule number")
+
+        if (resolve := case.get("resolve")) is not None:
+            result = complete_resolution(state, resolve["item_id"],
+                                         effect_execution_confirmed=resolve["effect_execution_confirmed"])
+            if not result.get("applied"):
+                errors.append(f"{case_id}: resolution did not apply: {result}")
+                continue
+            transition = result.get("transition", {})
+            if "state_label" in expected and result.get("state_label") != expected["state_label"]:
+                errors.append(f"{case_id}: expected state_label={expected['state_label']!r}, got {result.get('state_label')!r}")
+            for key in ("focus_before", "focus_after", "chain_empty"):
+                if key in expected and transition.get(key) != expected[key]:
+                    errors.append(f"{case_id}: expected {key}={expected[key]!r}, got {transition.get(key)!r}")
+            if state_hash(result["next_state"]) != result.get("next_state_hash"):
+                errors.append(f"{case_id}: resolved next-state hash is not reproducible")
+        elif action:
             result = validate_timing(state, action)
             for key in ("state_label", "legal", "reason_code"):
                 if key in expected and result.get(key) != expected[key]:

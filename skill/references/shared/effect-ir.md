@@ -33,7 +33,7 @@ core: `rules_core.py` determines when and what procedure occurs;
 
 This version deliberately excludes Burn Out, simultaneous multi-card recycle,
 cost payment, the full Cleanup procedure, open-ended target choice and target
-groups, countering, attachments, replacement actions beyond event prevention,
+groups, countering, attachments, replacement augmentation/inheritance,
 layers, cross-object triggers,
 scoring, and token creation. Those require additional state and ordering
 contracts; they are not simulated by approximation.
@@ -54,10 +54,24 @@ descriptors preserve source, controller, optionality, and remaining uses.
   `if_applied` instructions.
 - A replacement is not re-applied after its remaining uses reach zero.
 
+### Recursive `replace_with`
+
+`replace_with` removes the original event and executes a nested typed effect
+program. The applied replacement is temporarily unavailable to its own child
+events, enforcing the once-per-event rule; other active replacements may apply
+recursively. Recursion is capped, and any unsupported child prevents the whole
+outer program from committing.
+
+If the replacement source leaves the board during its nested program, its
+descriptor is not restored. Because the original action did not occur, a linked
+`if_applied` instruction remains skipped. Nested trigger descriptors retain a
+replacement-prefixed chronological batch.
+
 Player-targeted events, uncontrolled Battlefield ordering, simultaneous-event
-replacement sequences, partial damage prevention values, `replace_with`
-programs, inheritance, and recursive replacement events are not supported yet.
-They fail closed rather than being approximated.
+replacement sequences, partial damage prevention values, “same event plus”
+augmentation, modification inheritance, and replacement sequences spanning
+several simultaneous events are not supported yet. They fail closed rather
+than being approximated.
 
 ## Kill and lethal cleanup slice
 

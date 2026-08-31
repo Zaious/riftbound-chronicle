@@ -249,6 +249,50 @@ def main() -> int:
     if not any("duplicated" in item for item in validate_state(invalid_replacements)):
         failures.append("duplicate replacement ids were not rejected")
 
+    replace_state = base_state()
+    replace_state["objects"]["u2"]["damage"] = 3
+    replace_state["replacement_effects"] = [{
+        "replacement_id": "save-u2", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "kill", "optional": False,
+        "uses_remaining": 1, "target_object_id": "u2",
+        "replacement_effects": [
+            {"op": "kill", "object_id": "u1"},
+            {"op": "heal_damage", "object_id": "u2", "amount": 99},
+            {"op": "exhaust", "object_id": "u2"}
+        ]
+    }]
+    replaced = apply_program(replace_state, program(
+        "replace-kill",
+        {"effect_id": "kill-u2", "op": "kill", "object_id": "u2"},
+        {"effect_id": "draw", "depends_on": "kill-u2", "op": "draw", "player": "p1", "count": 1},
+    ))
+    if not replaced.get("committed") or [event["outcome"] for event in replaced.get("trace", [])] != ["replaced_with", "skipped_linked_dependency"]:
+        failures.append("replace_with did not replace the original event and gate its linked instruction")
+    else:
+        next_state = replaced["next_state"]
+        if "u2" not in next_state["players"]["p2"]["zones"]["base"] or next_state["objects"]["u2"]["damage"] != 0 or next_state["objects"]["u2"]["exhausted"] is not True:
+            failures.append("replace_with program did not preserve/heal/exhaust the affected Unit")
+        if "u1" not in next_state["players"]["p1"]["zones"]["trash"] or next_state["replacement_effects"]:
+            failures.append("replacement source left board but its replacement descriptor remained active")
+
+    recursive_state = base_state()
+    recursive_state["replacement_effects"] = [
+        {
+            "replacement_id": "replace-u2-kill", "controller": "p1", "source_object": "u1",
+            "mode": "replace_with", "event_op": "kill", "optional": False,
+            "uses_remaining": 1, "target_object_id": "u2",
+            "replacement_effects": [{"op": "kill", "object_id": "u1"}]
+        },
+        {
+            "replacement_id": "prevent-u1-kill", "controller": "p2", "source_object": "u2",
+            "mode": "prevent_event", "event_op": "kill", "optional": False,
+            "uses_remaining": 1, "target_object_id": "u1"
+        }
+    ]
+    recursive = apply_program(recursive_state, program("recursive-replacement", {"op": "kill", "object_id": "u2"}))
+    if not recursive.get("committed") or "u1" not in recursive["next_state"]["players"]["p1"]["zones"]["base"] or "u2" not in recursive["next_state"]["players"]["p2"]["zones"]["base"]:
+        failures.append("another replacement did not apply to a replace_with child event")
+
     print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, unsupported, Burn Out, and state invariants.")
     if failures:
         print("\n".join(f"FAILED: {failure}" for failure in failures))

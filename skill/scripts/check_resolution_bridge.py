@@ -119,6 +119,20 @@ def main() -> int:
     elif replacement_result["next_effect_state"]["replacement_effects"][0]["uses_remaining"] != 0:
         failures.append("replacement usage was not committed with the resolved Chain Item")
 
+    replace_state = base_state()
+    replace_state["replacement_effects"] = [{
+        "replacement_id": "save-u2", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "kill", "optional": False,
+        "uses_remaining": 1, "target_object_id": "u2",
+        "replacement_effects": [{"op": "kill", "object_id": "u1"}, {"op": "exhaust", "object_id": "u2"}]
+    }]
+    replace_program = program("replace-in-bridge", {"op": "kill", "object_id": "u2"})
+    replace_result = resolve_with_program(timing, "spell-1", replace_state, replace_program)
+    if not replace_result.get("committed") or "u2" not in replace_result["next_effect_state"]["players"]["p2"]["zones"]["base"]:
+        failures.append("replace_with did not commit atomically with Chain resolution")
+    elif "u1" not in replace_result["next_effect_state"]["players"]["p1"]["zones"]["trash"]:
+        failures.append("replace_with child actions were not committed through the resolution bridge")
+
     not_next = fixture(
         priority="p2",
         items=[

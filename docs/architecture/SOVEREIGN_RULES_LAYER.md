@@ -202,6 +202,13 @@ uses, and gates linked instructions. Recursive `replace_with`, simultaneous
 replacement sequences, and partial damage prevention remain fail-closed future
 work.
 
+The eighth R2 slice adds recursive `replace_with` programs. The original event
+is removed, nested typed effects may themselves encounter other replacements,
+the same replacement cannot reapply within its replacement chain, recursion is
+capped, and a source leaving the board disables its descriptor. Unsupported
+children roll back the combined timing/effect result. Augmentation, inheritance,
+and multi-event replacement sequences remain future work.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

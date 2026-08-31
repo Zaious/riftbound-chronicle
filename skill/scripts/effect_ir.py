@@ -179,7 +179,7 @@ def validate_state(state: Any) -> list[str]:
             replacement_ids.add(replacement_id)
         if replacement.get("controller") not in players or replacement.get("source_object") not in objects:
             errors.append(f"{label} has unknown controller/source")
-        if replacement.get("mode") != "prevent_event":
+        if replacement.get("mode") not in {"prevent_event", "replace_with"}:
             errors.append(f"{label}.mode is unsupported")
         if replacement.get("event_op") not in SUPPORTED_OPS:
             errors.append(f"{label}.event_op is unsupported")
@@ -191,6 +191,12 @@ def validate_state(state: Any) -> list[str]:
         relation = replacement.get("target_controller_relation")
         if relation not in {None, "friendly", "enemy"}:
             errors.append(f"{label}.target_controller_relation is invalid")
+        replacement_effects = replacement.get("replacement_effects")
+        if replacement.get("mode") == "replace_with" and (not isinstance(replacement_effects, list) or not replacement_effects):
+            errors.append(f"{label}.replacement_effects must be non-empty for replace_with")
+        source_places = occupancy.get(replacement.get("source_object"), [])
+        if source_places and not any(place.startswith("battlefield:") or place.endswith(":base") for place in source_places):
+            errors.append(f"{label}.source_object must be active on the board")
     return errors
 
 
@@ -289,12 +295,12 @@ def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
         state["battlefields"][location[1]]["objects"].remove(object_id)
 
 
-def _applicable_preventions(state: dict[str, Any], effect: dict[str, Any]) -> list[dict[str, Any]]:
+def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any]) -> list[dict[str, Any]]:
     object_id = effect.get("object_id")
     obj = state["objects"].get(object_id) if object_id is not None else None
     applicable = []
     for replacement in state["replacement_effects"]:
-        if replacement["mode"] != "prevent_event" or replacement["event_op"] != effect.get("op"):
+        if replacement["event_op"] != effect.get("op"):
             continue
         if replacement["uses_remaining"] == 0:
             continue
@@ -314,8 +320,8 @@ def _applicable_preventions(state: dict[str, Any], effect: dict[str, Any]) -> li
     return applicable
 
 
-def _apply_prevention(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]] | None:
-    applicable = _applicable_preventions(state, effect)
+def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
+    applicable = _applicable_replacements(state, effect)
     if not applicable:
         return None
     ids = [replacement["replacement_id"] for replacement in applicable]
@@ -343,13 +349,14 @@ def _apply_prevention(state: dict[str, Any], effect: dict[str, Any]) -> tuple[di
         stored = next(item for item in new_state["replacement_effects"] if item["replacement_id"] == replacement_id)
         if stored["uses_remaining"] is not None:
             stored["uses_remaining"] -= 1
+        outcome = "replaced_prevented" if replacement["mode"] == "prevent_event" else "replaced_with"
         return new_state, {
             "op": effect["op"],
-            "outcome": "replaced_prevented",
+            "outcome": outcome,
             "replacement_id": replacement_id,
             "affected_object_id": effect.get("object_id"),
-            "rule_locators": ["Core 367–372", "Core 370.1.c", "Core 443"],
-        }
+            "rule_locators": ["Core 367–375", "Core 370.1.b–370.2"] + (["Core 443"] if replacement["mode"] == "prevent_event" else []),
+        }, copy.deepcopy(replacement)
     return None
 
 
@@ -563,7 +570,7 @@ def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[st
     }
 
 
-def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
+def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacement_depth: int = 0) -> dict[str, Any]:
     state_errors = validate_state(state)
     program_errors = validate_program(program)
     base = {
@@ -574,6 +581,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
     }
     if state_errors or program_errors:
         return {**base, "valid": False, "committed": False, "errors": state_errors + program_errors, "trace": []}
+    if _replacement_depth > 8:
+        return {**base, "valid": True, "committed": False, "unsupported": True, "reason": "replacement recursion depth exceeded", "trace": []}
     current = copy.deepcopy(state)
     trace = []
     outcomes: dict[str, str] = {}
@@ -623,7 +632,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
                     "trace": trace,
                 }
         try:
-            prevention = _apply_prevention(current, effect)
+            replacement_selection = _select_replacement(current, effect)
         except ReplacementDecisionRequired as exc:
             return {
                 **base,
@@ -644,9 +653,60 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
                 "errors": [str(exc)],
                 "trace": trace,
             }
-        if prevention is not None:
-            current, event = prevention
-            event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
+        if replacement_selection is not None:
+            selected_state, event, replacement = replacement_selection
+            if replacement["mode"] == "prevent_event":
+                current = selected_state
+                event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            replacement_id = replacement["replacement_id"]
+            replacement_index = next(i for i, item in enumerate(selected_state["replacement_effects"]) if item["replacement_id"] == replacement_id)
+            stored_replacement = copy.deepcopy(selected_state["replacement_effects"][replacement_index])
+            recursive_state = copy.deepcopy(selected_state)
+            del recursive_state["replacement_effects"][replacement_index]
+            recursive_program = {
+                "schema_version": PROGRAM_VERSION,
+                "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                "program_id": f"replacement:{replacement_id}:{program['program_id']}:{effect_id}",
+                "controller": replacement["controller"],
+                "source_object": replacement["source_object"],
+                "effects": copy.deepcopy(replacement["replacement_effects"]),
+            }
+            recursive_result = apply_program(recursive_state, recursive_program, _replacement_depth=_replacement_depth + 1)
+            if recursive_result.get("committed") is not True:
+                return {
+                    **base,
+                    "valid": recursive_result.get("valid", True),
+                    "committed": False,
+                    "unsupported": recursive_result.get("unsupported", False),
+                    "failed_effect_index": index,
+                    "reason": recursive_result.get("reason", "; ".join(recursive_result.get("errors", [])) or "replacement program failed"),
+                    "replacement_id": replacement_id,
+                    "replacement_result": recursive_result,
+                    "trace": trace,
+                }
+            current = recursive_result["next_state"]
+            source_location = find_location(current, replacement["source_object"])
+            if zone_class(source_location) == "board":
+                current["replacement_effects"].insert(min(replacement_index, len(current["replacement_effects"])), stored_replacement)
+            if found := validate_state(current):
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": found, "trace": trace}
+            nested_locators = [locator for child in recursive_result.get("trace", []) for locator in child.get("rule_locators", [])]
+            nested_triggers = [dict(trigger) for trigger in recursive_result.get("pending_triggers", [])]
+            for trigger in nested_triggers:
+                trigger["batch_sequence"] = index * 1000 + trigger.get("batch_sequence", 0)
+                trigger["batch_id"] = f"replacement:{replacement_id}:{trigger.get('batch_id', 'batch')}"
+            event.update({
+                "index": index,
+                "effect_id": effect_id,
+                "before_state_hash": before_hash,
+                "after_state_hash": hash_value(current),
+                "replacement_trace": recursive_result.get("trace", []),
+                "pending_triggers": nested_triggers,
+                "rule_locators": list(dict.fromkeys(event["rule_locators"] + nested_locators)),
+            })
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue

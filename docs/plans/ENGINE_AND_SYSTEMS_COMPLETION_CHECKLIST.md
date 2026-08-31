@@ -58,6 +58,9 @@ contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
 - [ ] Human-reviewed official-source refresh and baseline-versioning workflow.
 - [ ] Cross-language clause alignment and disagreement reporting.
 - [ ] Card-text-to-effect-program provenance manifest shared by all systems.
+- [ ] `[CLAUDE-READY; due 2026-10-23]` Re-run Tier 2 verification after the
+  Radiance release, review all 53 Global Vendetta rows currently forecast to
+  become stale, and update each row's evidence date or abstention status.
 
 ## 2. R1 — Timing, permissions, and Chain structure
 
@@ -399,6 +402,12 @@ fixtures, projection formatting, and the demo.
 - [x] CI and off-cwd portability checks for active scripts.
 - [ ] Shared engine-check viewer across the three active demos.
 - [ ] Match Analyst demo and four-system navigation.
+- [ ] `[JOINT]` After each system satisfies the six connection conditions,
+  update English, Traditional Chinese, and Korean READMEs from “partial/planned”
+  to the exact implemented connection scope.
+- [ ] `[CLAUDE-READY after the first migration]` Extend documentation CI to
+  reject README connection claims that diverge from the system artifacts; the
+  existing routed-mode sync check is not sufficient.
 - [ ] One bounded end-to-end example spanning Deck Coach → P2-A → Rule Consult
   → Match Analyst.
 - [ ] Release report generated from this checklist and executable evidence.
@@ -423,23 +432,48 @@ connection as partial or planned.
 These packages translate the labels above into tasks that can be handed to
 Claude without relying on the full conversation.
 
+### Shared-working-tree protocol
+
+Chronicle currently uses one shared working tree and one local `main`; therefore
+delegated work uses a **no-commit handoff**, not an unpushed commit:
+
+1. Codex confirms the working tree and records any pre-existing user changes.
+2. Codex and Claude work serially, not concurrently, inside the delegated
+   package's allowed files.
+3. Claude does not stage, commit, push, reset, rebase, merge, or update the
+   checklist.
+4. Claude runs the package acceptance commands and returns their output plus
+   `git diff -- <allowed paths>` and `git status --short`.
+5. Claude stops if another process changes an allowed file or if unrelated
+   uncommitted changes make attribution ambiguous.
+6. Codex reviews the exact allowed-path diff, runs focused and complete suites,
+   stages only accepted files, commits, updates this ledger, and pushes.
+
+A feature branch/worktree may replace this protocol only after it has actually
+been created and its base/ref recorded in the handoff. Merely saying “do not
+push” does not isolate a commit on shared `main`.
+
 ### Ready to give Claude now
 
 | ID | Package | Allowed scope | Acceptance evidence |
 | --- | --- | --- | --- |
-| C-01 | Rename Deck Coach `card_resolution_coverage` to an unambiguous card-name/data-resolution term | Deck Coach pipeline, schemas, tests, prototype labels, docs; no rules-engine semantics | Existing Deck Coach suite plus migration/compatibility test |
+| C-01 | Rename Deck Coach `card_resolution_coverage` to an unambiguous card-name/data-resolution term | Deck Coach pipeline, Rift Atlas bridge, tests, prototype labels, docs; no schema or rules-engine semantic change | Existing Deck Coach suite plus compatibility test; current field is internal, not schema-bound |
 | C-02 | Expand `engine-check.v1` CLI examples and fixtures | Examples/fixtures/tests only; no schema vocabulary or outcome changes | `check_engine_check.py`, links, off-cwd pass |
-| C-03 | Build a reusable read-only engine-check viewer component for the three demos | Shared prototype JS/CSS and demo rendering only; no consumer artifact migration | Prototype UI checks plus supported/unsupported/decision fixtures |
 | C-04 | Encode additional existing official timing examples as R1 fixtures | Data/tests only, using already-supported transitions | `check_rules_core.py`; no production-code change unless escalated |
 | C-05 | Add property-style determinism and rollback tests for currently supported effect programs | Tests only; do not add mechanics or alter expected semantics | Repeated/randomized supported inputs remain deterministic and atomic |
-| C-06 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline | Offline fixture, no credentials, explicit human approval output |
+| C-06 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline; every generated report/excerpt must stay under an already-ignored local path such as `skill/.local/refresh-reports/` | Offline fixture, no credentials, explicit human approval output, and a path-guard test proving output cannot target a tracked/public path |
 | C-07 | Expand Deck Coach expert/eval cases using existing contracts | Data, evidence ledger, and tests; no new scoring dimensions without review | `check_deck_coach.py` and source provenance pass |
 | C-08 | Prepare Match Analyst example logs and uncertainty fixtures | Fixtures/docs only; no claim that the system is routed or implemented | Complete/partial/contradictory/perspective-safe fixture set |
+
+Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
+fixture harness, not evidence that any demo is connected; Rule Consult's first
+real artifact migration should establish the presentation semantics first.
 
 ### Give Claude only after Codex lands a prerequisite contract
 
 | ID | Package | Prerequisite owned by Codex | Claude deliverable |
 | --- | --- | --- | --- |
+| D-00 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules | Fixture-driven shared renderer and tests; wiring one consumer does not claim all three are connected |
 | D-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration | Bilingual rendering, import/export, UI regression |
 | D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration | Bilingual UI, decision-required flow, prototype regression |
 | D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest | Pipeline consumer, evidence display, regression fixtures |
@@ -477,7 +511,8 @@ Stop and report if:
   - official text conflicts with the frozen contract;
   - the task needs an unsupported engine mechanic;
   - unrelated or concurrent changes overlap the allowed files.
-Deliver one focused commit; do not push or mark checklist items complete.
+Do not stage, commit, push, reset, rebase, merge, or mark checklist items
+complete. Return focused allowed-path diffs and acceptance output to Codex.
 ```
 
 Codex reviews the diff, reruns the complete suite, decides whether the package

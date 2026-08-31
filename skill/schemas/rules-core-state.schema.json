@@ -53,7 +53,10 @@
               "ability_kind": {"type": ["string", "null"], "enum": ["standard", "add", null]},
               "source_object": {"type": "string", "minLength": 1},
               "effect_program_id": {"type": ["string", "null"]},
-              "optional_at_finalize": {"type": "boolean"}
+              "optional_at_finalize": {"type": "boolean"},
+              "trigger_kind": {"enum": ["triggered", "self_death", "reflexive"]},
+              "batch_sequence": {"type": "integer", "minimum": 0},
+              "batch_id": {"type": "string", "minLength": 1}
             }
           }
         },

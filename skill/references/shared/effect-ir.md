@@ -70,9 +70,23 @@ or decline it. Declining removes the Pending item and treats it as not having
 triggered.
 
 This slice covers only the killed object's own death/Deathknell descriptors.
-Watching permanents, zone-dependent evaluation, “Nth time,” reflexive triggers,
-instruction-level optional choices made on resolution, and replacement effects
-remain unsupported.
+Watching permanents, zone-dependent evaluation, “Nth time,” instruction-level
+optional choices made on resolution, and replacement effects remain
+unsupported.
+
+## Reflexive trigger emission
+
+`emit_reflexive` models the Chain-producing portion of “Do this:” and “Do this
+N times.” It does not execute the nested instructions immediately. Instead it
+emits one or more ordered typed descriptors, each bound to its own effect
+program, and the resolution bridge schedules them as Pending ability items.
+
+Each effect that emits triggers creates a chronological batch. Turn Player／Turn
+Order sorting applies only inside that simultaneous batch; a later event's
+triggers cannot move ahead of an earlier batch merely because another player
+controls them. The conditional grammar that decides whether a reflexive trigger
+is emitted must be represented by the containing typed program and tested per
+card.
 
 ## Targets and linked instructions
 

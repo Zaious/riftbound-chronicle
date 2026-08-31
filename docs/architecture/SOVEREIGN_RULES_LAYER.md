@@ -184,6 +184,12 @@ decline choice during Finalize; mismatched programs are rejected before state
 mutation. A new regression also corrected Priority assignment when an off-turn
 player controls the newly Finalized top item.
 
+The sixth R2 slice separates chronological trigger batches and adds Reflexive
+Trigger emission. “Do this” effects create Pending descriptors bound to nested
+effect programs; they do not execute inline. Turn-order sorting is scoped to a
+single simultaneous batch, preventing a later event from jumping ahead of an
+earlier one.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

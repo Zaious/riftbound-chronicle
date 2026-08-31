@@ -82,6 +82,11 @@ Finalize choice. The controller must explicitly perform or decline an optional
 trigger; after the last Pending item finalizes, Priority is granted to the
 controller of the newest Finalized item.
 
+Trigger scheduling preserves chronological batches. Simultaneous triggers in
+one batch use Turn Player／Turn Order controller blocks; separate event batches
+remain ordered by `batch_sequence`. Self-death and Reflexive descriptors share
+this scheduler without becoming the same kind of trigger.
+
 It does not execute arbitrary card instructions, combat, scoring, replacement
 effects, layers, or a complete game. `complete-resolution` requires the caller
 to confirm that the effect was executed; the timing core never invents the

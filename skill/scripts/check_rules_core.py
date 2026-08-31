@@ -136,6 +136,9 @@ def main() -> int:
     bad["chain"]["items"] = [item("x", "p1", "spell", "default"), item("x", "p2", "spell", "reaction")]
     if not any("duplicated" in value for value in validate_state(bad)):
         errors.append("duplicate Chain Item ids were not rejected")
+    incomplete_trigger = fixture(items=[item("bad-trigger", "p1", "ability", "triggered", "pending", "standard")])
+    if not any("required for triggered" in value for value in validate_state(incomplete_trigger)):
+        errors.append("incomplete typed trigger item was not rejected")
 
     # Structural trace: Action starts a Showdown Chain, finalizes, both players
     # pass, the one item resolves, and ordinary Chain closure passes Focus.
@@ -199,6 +202,13 @@ def main() -> int:
     ])
     if duplicate_order.get("applied") or duplicate_order.get("reason_code") != "trigger_order_required":
         errors.append("ambiguous same-controller trigger ordering did not fail closed")
+
+    separate_batches = schedule_triggered_items(trigger_base, [
+        {"trigger_id": "earlier-p2", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "earlier", "optional_at_finalize": False, "batch_sequence": 0, "batch_id": "event-a"},
+        {"trigger_id": "later-p1", "controller": "p1", "source_object": "u1", "controller_order": 0, "effect_program_id": "later", "optional_at_finalize": False, "batch_sequence": 1, "batch_id": "event-b"},
+    ])
+    if separate_batches.get("transition", {}).get("ordered_trigger_ids") != ["earlier-p2", "later-p1"]:
+        errors.append("different trigger batches were incorrectly reordered by global Turn Order")
 
     optional_scheduled = schedule_triggered_items(trigger_base, [{
         "trigger_id": "optional-1", "controller": "p1", "source_object": "u1",

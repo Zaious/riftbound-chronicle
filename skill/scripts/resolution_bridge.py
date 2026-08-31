@@ -80,7 +80,12 @@ def resolve_with_program(
             "cleanup_result": cleanup_result,
         }
     final_effect_state = cleanup_result["next_state"]
-    pending_triggers = effect_result.get("pending_triggers", []) + cleanup_result.get("pending_triggers", [])
+    effect_triggers = [dict(trigger) for trigger in effect_result.get("pending_triggers", [])]
+    cleanup_triggers = [dict(trigger) for trigger in cleanup_result.get("pending_triggers", [])]
+    next_batch = max((trigger.get("batch_sequence", -1) for trigger in effect_triggers), default=-1) + 1
+    for trigger in cleanup_triggers:
+        trigger["batch_sequence"] = trigger.get("batch_sequence", 0) + next_batch
+    pending_triggers = effect_triggers + cleanup_triggers
     scheduled_result = schedule_triggered_items(timing_result["next_state"], pending_triggers)
     if scheduled_result.get("applied") is not True:
         return {

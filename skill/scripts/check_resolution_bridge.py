@@ -89,6 +89,24 @@ def main() -> int:
     else:
         failures.append("scheduled death trigger did not finalize for bound-program test")
 
+    reflexive_program = program(
+        "reflexive-source-effects",
+        {
+            "op": "emit_reflexive", "effect_id": "earlier-event",
+            "triggers": [{"trigger_id": "earlier-p2", "controller": "p2", "source_object": "spell-1", "controller_order": 0, "effect_program_id": "earlier-p2-effects", "optional_at_finalize": False}]
+        },
+        {
+            "op": "emit_reflexive", "effect_id": "later-event",
+            "triggers": [{"trigger_id": "later-p1", "controller": "p1", "source_object": "spell-1", "controller_order": 0, "effect_program_id": "later-p1-effects", "optional_at_finalize": False}]
+        },
+    )
+    reflexive_result = resolve_with_program(timing, "spell-1", effects, reflexive_program)
+    reflexive_items = reflexive_result.get("next_timing_state", {}).get("chain", {}).get("items", [])
+    if not reflexive_result.get("committed") or [item["id"] for item in reflexive_items] != ["earlier-p2", "later-p1"]:
+        failures.append("reflexive trigger batches were not preserved in event order")
+    elif any(item.get("trigger_kind") != "reflexive" or item.get("status") != "pending" for item in reflexive_items):
+        failures.append("reflexive descriptors were not scheduled as typed Pending abilities")
+
     not_next = fixture(
         priority="p2",
         items=[

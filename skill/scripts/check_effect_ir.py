@@ -180,7 +180,23 @@ def main() -> int:
     if not trigger_cleanup.get("committed") or [item["trigger_id"] for item in trigger_cleanup.get("pending_triggers", [])] != ["u2-deathknell"]:
         failures.append("lethal cleanup did not preserve typed death-trigger descriptors")
 
-    print(f"[info] typed effect IR: {len(cases) + 1} supported operations plus sequence, targets, linked effects, lethal cleanup, unsupported, Burn Out, and state invariants.")
+    reflexive = apply_program(state, program(
+        "reflexive",
+        {
+            "op": "emit_reflexive",
+            "effect_id": "do-this-twice",
+            "triggers": [
+                {"trigger_id": "reflexive-1", "controller": "p1", "source_object": "c1", "controller_order": 0, "effect_program_id": "reflexive-1-effects", "optional_at_finalize": False},
+                {"trigger_id": "reflexive-2", "controller": "p1", "source_object": "c1", "controller_order": 1, "effect_program_id": "reflexive-2-effects", "optional_at_finalize": False}
+            ]
+        }
+    ))
+    if not reflexive.get("committed") or [item["trigger_id"] for item in reflexive.get("pending_triggers", [])] != ["reflexive-1", "reflexive-2"]:
+        failures.append("reflexive effect did not emit ordered typed Pending descriptors")
+    elif reflexive.get("next_state_hash") != reflexive.get("input_state_hash"):
+        failures.append("emit_reflexive unexpectedly mutated effect state")
+
+    print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, unsupported, Burn Out, and state invariants.")
     if failures:
         print("\n".join(f"FAILED: {failure}" for failure in failures))
         return 1

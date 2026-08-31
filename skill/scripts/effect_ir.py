@@ -34,6 +34,7 @@ SUPPORTED_OPS = {
     "exhaust",
     "add_resource",
     "kill",
+    "emit_reflexive",
 }
 
 OP_RULES = {
@@ -47,6 +48,7 @@ OP_RULES = {
     "exhaust": ["Core 414"],
     "add_resource": ["Core 429"],
     "kill": ["Core 428"],
+    "emit_reflexive": ["Core 386–388"],
 }
 
 
@@ -381,6 +383,18 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             "pending_triggers": pending_triggers,
         })
 
+    elif op == "emit_reflexive":
+        triggers = effect.get("triggers")
+        if not isinstance(triggers, list) or not triggers:
+            raise ValueError("emit_reflexive requires one or more trigger descriptors")
+        copied = copy.deepcopy(triggers)
+        for index, descriptor in enumerate(copied):
+            required = {"trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"}
+            if not isinstance(descriptor, dict) or not required.issubset(descriptor):
+                raise ValueError(f"reflexive trigger {index} has invalid shape")
+            descriptor["trigger_kind"] = "reflexive"
+        trace.update({"pending_triggers": copied, "reflexive_count": len(copied)})
+
     errors = validate_state(new_state)
     if errors:
         raise ValueError("effect produced invalid state: " + "; ".join(errors))
@@ -429,6 +443,12 @@ def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[st
             "rule_locators": ["Core 142.4", "Core 323.3–323.5", "Core 428"],
         })
         trace.append(event)
+    pending_triggers = [trigger for event in trace for trigger in event.get("pending_triggers", [])]
+    cleanup_batch_id = f"lethal-cleanup:{hash_value(state).split(':', 1)[1][:12]}"
+    for trigger in pending_triggers:
+        trigger["batch_sequence"] = 0
+        trigger["batch_id"] = cleanup_batch_id
+        trigger.setdefault("trigger_kind", "self_death")
     return {
         **base,
         "valid": True,
@@ -438,7 +458,7 @@ def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[st
         "next_state_hash": hash_value(current),
         "lethal_objects": group,
         "trace": trace,
-        "pending_triggers": [trigger for event in trace for trigger in event.get("pending_triggers", [])],
+        "pending_triggers": pending_triggers,
         "coverage": "lethal_damage_slice_only",
     }
 
@@ -524,6 +544,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
                 "trace": trace,
             }
         event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
+        for trigger in event.get("pending_triggers", []):
+            trigger.setdefault("batch_sequence", index)
+            trigger.setdefault("batch_id", f"{program['program_id']}:{effect_id}")
+            trigger.setdefault("trigger_kind", "self_death")
         trace.append(event)
         outcomes[effect_id] = event["outcome"]
     return {

@@ -165,6 +165,19 @@ def validate_state(state: dict[str, Any]) -> list[str]:
             errors.append(f"{label}.status is invalid")
         if item.get("ability_kind") not in ABILITY_KINDS:
             errors.append(f"{label}.ability_kind is invalid")
+        if item.get("timing") == "triggered":
+            if not isinstance(item.get("source_object"), str) or not item.get("source_object"):
+                errors.append(f"{label}.source_object is required for triggered items")
+            if not isinstance(item.get("effect_program_id"), str) or not item.get("effect_program_id"):
+                errors.append(f"{label}.effect_program_id is required for triggered items")
+            if not isinstance(item.get("optional_at_finalize"), bool):
+                errors.append(f"{label}.optional_at_finalize is required for triggered items")
+            if item.get("trigger_kind") not in {"triggered", "self_death", "reflexive"}:
+                errors.append(f"{label}.trigger_kind is invalid")
+            if not isinstance(item.get("batch_sequence"), int) or item.get("batch_sequence", -1) < 0:
+                errors.append(f"{label}.batch_sequence is invalid")
+            if not isinstance(item.get("batch_id"), str) or not item.get("batch_id"):
+                errors.append(f"{label}.batch_id is invalid")
     passes = chain.get("consecutive_passes", [])
     if not isinstance(passes, list) or any(player not in players for player in passes):
         errors.append("chain.consecutive_passes must contain only player ids")
@@ -585,7 +598,7 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
     if not descriptors:
         return _result(state, valid=True, applied=True, next_state=copy.deepcopy(state), next_state_hash=state_hash(state), transition={"type": "no_triggers"})
     seen: set[str] = set()
-    groups: dict[str, list[dict[str, Any]]] = {}
+    batches: dict[tuple[int, str], dict[str, list[dict[str, Any]]]] = {}
     descriptor_errors = []
     for index, descriptor in enumerate(descriptors):
         if not isinstance(descriptor, dict):
@@ -606,14 +619,22 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             descriptor_errors.append(f"descriptor {index} must bind effect_program_id")
         if not isinstance(descriptor.get("optional_at_finalize", False), bool):
             descriptor_errors.append(f"descriptor {index}.optional_at_finalize must be boolean")
-        groups.setdefault(controller, []).append(descriptor)
-    for controller, values in groups.items():
-        if len(values) > 1:
-            orders = [value.get("controller_order") for value in values]
-            if any(not isinstance(order, int) or order < 0 for order in orders) or len(orders) != len(set(orders)):
-                descriptor_errors.append(f"controller {controller} must provide unique non-negative controller_order values")
-        else:
-            values[0].setdefault("controller_order", 0)
+        batch_sequence = descriptor.get("batch_sequence", 0)
+        batch_id = descriptor.get("batch_id", f"batch-{batch_sequence}")
+        if not isinstance(batch_sequence, int) or batch_sequence < 0 or not isinstance(batch_id, str) or not batch_id:
+            descriptor_errors.append(f"descriptor {index} has invalid trigger batch")
+            continue
+        descriptor["batch_sequence"] = batch_sequence
+        descriptor["batch_id"] = batch_id
+        batches.setdefault((batch_sequence, batch_id), {}).setdefault(controller, []).append(descriptor)
+    for (batch_sequence, batch_id), groups in batches.items():
+        for controller, values in groups.items():
+            if len(values) > 1:
+                orders = [value.get("controller_order") for value in values]
+                if any(not isinstance(order, int) or order < 0 for order in orders) or len(orders) != len(set(orders)):
+                    descriptor_errors.append(f"batch {batch_id} controller {controller} must provide unique non-negative controller_order values")
+            else:
+                values[0].setdefault("controller_order", 0)
     if descriptor_errors:
         return _result(state, valid=True, applied=False, reason_code="trigger_order_required", errors=descriptor_errors)
 
@@ -621,8 +642,18 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
     start = order.index(state["turn_player"])
     rotated = order[start:] + order[:start]
     ordered = []
-    for controller in rotated:
-        ordered.extend(sorted(groups.get(controller, []), key=lambda value: value["controller_order"]))
+    batch_trace = []
+    for (batch_sequence, batch_id), groups in sorted(batches.items(), key=lambda entry: (entry[0][0], entry[0][1])):
+        batch_ordered = []
+        for controller in rotated:
+            batch_ordered.extend(sorted(groups.get(controller, []), key=lambda value: value["controller_order"]))
+        ordered.extend(batch_ordered)
+        batch_trace.append({
+            "batch_sequence": batch_sequence,
+            "batch_id": batch_id,
+            "ordered_trigger_ids": [descriptor["trigger_id"] for descriptor in batch_ordered],
+            "controller_blocks": [controller for controller in rotated if controller in groups],
+        })
 
     new_state = copy.deepcopy(state)
     was_empty = not new_state["chain"]["items"]
@@ -637,6 +668,9 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             "source_object": descriptor["source_object"],
             "effect_program_id": descriptor.get("effect_program_id"),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),
+            "trigger_kind": descriptor.get("trigger_kind", "triggered"),
+            "batch_sequence": descriptor["batch_sequence"],
+            "batch_id": descriptor["batch_id"],
         })
     if was_empty:
         new_state["chain"]["initiated_by"] = "triggered_ability"
@@ -652,7 +686,7 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
         transition={
             "type": "triggered_items_scheduled",
             "ordered_trigger_ids": [descriptor["trigger_id"] for descriptor in ordered],
-            "controller_blocks": [controller for controller in rotated if controller in groups],
+            "batches": batch_trace,
         },
         next_procedure=next_procedure(new_state),
         rule_locators=["Core 383.3", "Core 383.3.c–383.3.d.1", "Core 428.1.a.1.b"],

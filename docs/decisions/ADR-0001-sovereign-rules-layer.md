@@ -94,6 +94,55 @@ capabilities the executable conformance suite does not prove. Version 1 is a
 timing and permission kernel with 14 executable cases and a bounded typed-effect
 IR; it is described as exactly that.
 
+## What this decision does not claim
+
+Worth stating explicitly, because the volume of rules-core code invites the
+opposite reading: **this project does not claim its value lies in owning a rules
+engine, and could not.**
+
+**A rules engine is a hygiene factor, not a differentiator.** Correct is the
+expectation; incorrect is disqualifying; there is no upside above correct. It is
+also derivative — the rules are Riot's, and an implementation of them is a
+translation, however good. Anyone claiming a competitive position on "our rules
+engine is right" is claiming something closer to "our program does not crash."
+
+**So why build one at all.** Two reasons, and the second is the load-bearing one:
+
+1. Without it the four systems would be reasoning about legality by plausible
+   text continuation, which produces confident errors — the failure this
+   repository's `README` opens with.
+2. **Without it, "I do not know" is not sayable.** Text continuation always
+   produces an answer; it has no mechanism for declining. `unsupported` is only
+   meaningful because something with a *declared scope* is the one saying it, and
+   `coverage: timing_permission_v1` is only a meaningful sentence if a formal
+   model backs the boundary. The evidence tiers, the abstention outcomes, and the
+   authority separation all rest on that. The engine is the floor those stand on,
+   not the thing being sold.
+
+**This is what an external engine would have to replicate.** An engine that
+answered legality with perfect accuracy but returned only legal/illegal would
+*not* substitute for this layer, because the four systems consume `coverage` and
+`outcome` as **evidence**, not merely as a gate. The requirement on any
+replacement is therefore not "is it accurate" but "**can it speak with a stated
+scope, and can it decline**" — which play-oriented engines have no reason to do,
+since for playing, "illegal" and "unmodelled" both just mean "you cannot do
+that."
+
+**The quality bar that follows, and it is not the obvious one.** "The engine is
+not where the value is" must not decay into "the engine can be rough," because
+the evidence layer is standing on the truth of its scope declarations. If
+`coverage: timing_permission_v1` is asserted while gaps remain *inside*
+timing-permission, the layer above is built on a false floor. So:
+
+- **Breadth of coverage is a roadmap item** (R2 → R3 → R4). Having less of it is
+  a known state, not a defect.
+- **Truthfulness within the declared scope is a correctness requirement**, with
+  no room to trade. Narrowing the claim is always available; overstating it is
+  not.
+
+The `unsupported`-as-first-class design already encodes this: prefer a smaller
+claim to a wrong one.
+
 ## Consequences
 
 - Every capability claim is now gated on conformance coverage, which is why

@@ -9,6 +9,32 @@ Riftbound Chronicle is a portable knowledge and decision-support project with fo
 2. `rule-consult` explains rules and analyzes interactions with citations and calibrated uncertainty.
 3. `player2-agent` acts as the strategic second player in a manually operated physical game.
 
+**All four occupy the preparation phase, not the play phase.** That is the
+product identity, and it is what makes the set coherent rather than four
+loosely-related tools:
+
+| Phase | System | Question answered |
+| --- | --- | --- |
+| Before — construction | `deck-coach` | what should this deck be, and how does it win |
+| Before — knowledge | `rule-consult` | what does this interaction do, before you meet it at the table |
+| Before — practice | `player2-agent` | what does a competent opponent do against this |
+| After — review | `match-analyst` | what actually happened, and what to prepare next |
+
+None of them plays the game for the user. This is not a simulator with advice
+attached; it is preparation infrastructure, and the game is played by people
+away from it.
+
+Two consequences worth stating early. First, an authoritative rules engine —
+including an official digital client, should one ship — would *strengthen* all
+four rather than replace them, because such an engine serves play, and this
+serves preparation. Legality would be delegated to it with a clean provenance
+story, freeing effort for the layers it does not provide. Second, the category
+has precedent: Magic's testing and data ecosystem, and — inside Riot's own
+portfolio — League of Legends' long-tolerated third-party preparation tools.
+The category precedent holds; the policy path does not transfer automatically,
+since the Riftbound policy currently prefers gameplay-facilitation tools to live
+in multi-game platforms (see `../policy/RIOT_COMPLIANCE_BOUNDARY.md`).
+
 The systems share card, rules, format, and evidence data. They do not share authority. A deck recommendation is not a ruling; a rules explanation is not a state transition; a Player 2 choice is not automatic rules enforcement.
 
 A fourth system, `match-analyst`, is planned for post-game log analysis. It has

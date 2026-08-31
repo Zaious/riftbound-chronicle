@@ -229,6 +229,52 @@ some of this repository's sovereignty argument weakens (ADR-0001's alternative B
 would deserve re-examination). Worth re-checking at each set release rather than
 assuming the current emptiness is permanent.
 
+**The stronger scenario: an official engine, including an official digital
+client.** A community engine is the weak version of this question. The strong
+version is Riot shipping a complete and authoritative one. Written down in
+advance, because "we would still be valuable" is easier to say afterwards than
+to defend.
+
+*What genuinely dies.* The rules core's legality-checking value — an official
+client is not *an* engine, it is *the* engine, and any disagreement resolves
+against us by definition. R4's legal-action enumeration, which the client would
+do natively and authoritatively. Match Analyst's timeline reconstruction for
+digital play, since the client would emit logs. And R5 entirely: anyone doing
+search or learning would use the official substrate. ADR-0001 would need a new
+version — not its reasoning about authority, which is unaffected, but its scope.
+
+*What survives, and why the four systems are strengthened rather than replaced.*
+The architecture's claim was never "we own a rules engine"; it is "we bound what
+the assistant may conclude, on what evidence, at what scope." An authoritative
+engine *moves* that boundary rather than removing the need for one. Today:
+we bound conclusions because there is no authority to defer to. Then: we bound
+conclusions and defer legality to the authority. The `coverage` field was built
+for exactly this — writing `official_client_v3` there is structurally identical
+to writing `timing_permission_v1`.
+
+Three things get stronger rather than merely surviving. Physical play does not
+go away: Arena has existed for years and paper Magic still has competitive
+preparation needs, and an official client does nothing for someone at a table
+with cards. An engine answers "is this legal," never "why should I do this" —
+Hearthstone has a perfect rules engine and its players still read guides and use
+trackers, because a correct engine makes the coaching layer *possible* rather
+than redundant. And regional legality gets *worse*, not better: a digital client
+is global-current while paper Taiwan is three sets behind, so the gap between
+"the client says this is legal" and "my local paper pool allows this" is a
+problem the client creates. Meanwhile the layer we would most like to stop
+paying for — bounded rules coverage, `unsupported` everywhere, 14 conformance
+cases — is precisely the one it would take over.
+
+*The non-technical risk, which is the real one.* If Riot ships an official
+client they may become **more** restrictive toward third-party tools, not less,
+because "why do you need a third party for this" gets harder to answer. That has
+nothing to do with technical value and would decide whether the work can
+continue. Partial mitigation: the category has precedent inside Riot's own
+portfolio — League of Legends' third-party preparation ecosystem — and P2-A's
+use is confined to practice by the game's own rules (Tournament Rules 417.1;
+see `../policy/RIOT_COMPLIANCE_BOUNDARY.md`). Neither transfers automatically to
+the Riftbound policy, which currently prefers multi-game platforms.
+
 ---
 
 ## How to use this note

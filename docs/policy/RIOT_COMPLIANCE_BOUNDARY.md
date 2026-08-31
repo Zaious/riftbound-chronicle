@@ -24,6 +24,40 @@ Riot's current documentation says player-serving products must be registered, ap
 | Automated legal-action enumeration | — | Would own legality | Excluded |
 | Full automated simulator/self-play | — | Would own state and rules | P2-S, planned only |
 
+## Preparation, not play — and the game enforces it
+
+The four systems all sit in the preparation phase (see
+`../product/PRODUCT_SCOPE.md`). For P2-A specifically, that is not a
+self-imposed limit but a consequence of the game's own tournament rules:
+
+- **417.1** — "Players may use electronic devices during competitions, but can't
+  use them during matches." This settles the question without needing to argue
+  about what counts as assistance: the device may not be in use during a
+  sanctioned match.
+- **703.9** — Outside Assistance is defined as a player receiving advice or
+  strategic assistance from an individual outside the match; **703.9.c** extends
+  the penalty to a spectator who is also a player in the event; **703.9.e**
+  carves out teammates in 2v2 and other specified team formats; **703.9.f**
+  allows physical logistics help at a judge's discretion.
+- **602.3.b–c**, **602.4.b.2.d–e** — high-OPL restrictions on electronic aids and
+  outside assistance during deckbuilding and drafting, with head-judge discretion
+  at low OPL.
+
+This matters for the application in two ways. It is a *bounding* argument — the
+tool cannot be used to gain an advantage inside a sanctioned match, because
+using it there is already a rules violation independent of this product. And it
+places the product in a category with precedent inside Riot's own portfolio:
+League of Legends has a long-standing, tolerated third-party preparation-tool
+ecosystem. The category precedent should not be overstated into a policy
+precedent — that ecosystem operates under its own API and policy regime, and the
+Riftbound policy currently prefers gameplay-facilitation tools to live in
+platforms broadly applicable to multiple games.
+
+Clause text above was read from the 2026-07-16 Tournament Rules through the local
+rules index. **Re-verify against the current published version before submitting
+anything that relies on it**; this document is an engineering interpretation, not
+legal advice, and rule numbering can move between revisions.
+
 ## Risk classification
 
 ### Lower-risk product functions

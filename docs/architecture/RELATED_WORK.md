@@ -8,7 +8,9 @@ point of the note is to answer, in advance, the question any reviewer or
 collaborator asks first: *this problem has been worked on before — what is
 different here, and what is merely re-done?*
 
-Everything below was checked by reading the source, not recalled. One
+Everything below was checked by reading the source, not recalled. For work that
+should change *what we build next* rather than situate what exists, see
+[ITERATION_INPUTS.md](../research/ITERATION_INPUTS.md). One
 frequently-circulated item is a hoax and is flagged as such at the bottom so it
 does not get picked up again.
 

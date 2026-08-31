@@ -107,6 +107,18 @@ def main() -> int:
     elif any(item.get("trigger_kind") != "reflexive" or item.get("status") != "pending" for item in reflexive_items):
         failures.append("reflexive descriptors were not scheduled as typed Pending abilities")
 
+    replacement_state = base_state()
+    replacement_state["replacement_effects"] = [{
+        "replacement_id": "prevent-u2-damage", "controller": "p2", "source_object": "u2",
+        "mode": "prevent_event", "event_op": "deal_damage", "optional": False,
+        "uses_remaining": 1, "target_object_id": "u2"
+    }]
+    replacement_result = resolve_with_program(timing, "spell-1", replacement_state, damage_program)
+    if not replacement_result.get("committed") or replacement_result["next_effect_state"]["objects"]["u2"]["damage"] != 0:
+        failures.append("replacement prevention did not participate in atomic Chain resolution")
+    elif replacement_result["next_effect_state"]["replacement_effects"][0]["uses_remaining"] != 0:
+        failures.append("replacement usage was not committed with the resolved Chain Item")
+
     not_next = fixture(
         priority="p2",
         items=[

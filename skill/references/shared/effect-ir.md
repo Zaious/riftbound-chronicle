@@ -33,9 +33,31 @@ core: `rules_core.py` determines when and what procedure occurs;
 
 This version deliberately excludes Burn Out, simultaneous multi-card recycle,
 cost payment, the full Cleanup procedure, open-ended target choice and target
-groups, countering, attachments, replacement effects, layers, triggers,
+groups, countering, attachments, replacement actions beyond event prevention,
+layers, cross-object triggers,
 scoring, and token creation. Those require additional state and ordering
 contracts; they are not simulated by approximation.
+
+## Replacement event framework
+
+R2 currently supports typed `prevent_event` replacements for an exact effect
+operation and optional affected object/controller relation. Replacement
+descriptors preserve source, controller, optionality, and remaining uses.
+
+- A replacement is evaluated before the event occurs.
+- Optional replacement use requires an explicit apply/decline choice.
+- Declining does not consume a use.
+- When several replacements apply, the affected object's controller must supply
+  a complete unique order.
+- The first applied prevention replaces the event with nothing, records
+  `replaced_prevented`, consumes its use when finite, and prevents linked
+  `if_applied` instructions.
+- A replacement is not re-applied after its remaining uses reach zero.
+
+Player-targeted events, uncontrolled Battlefield ordering, simultaneous-event
+replacement sequences, partial damage prevention values, `replace_with`
+programs, inheritance, and recursive replacement events are not supported yet.
+They fail closed rather than being approximated.
 
 ## Kill and lethal cleanup slice
 

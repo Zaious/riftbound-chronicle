@@ -190,6 +190,13 @@ effect programs; they do not execute inline. Turn-order sorting is scoped to a
 single simultaneous batch, preventing a later event from jumping ahead of an
 earlier one.
 
+The seventh R2 slice establishes the Replacement Event framework with bounded
+`prevent_event` semantics. It evaluates before event execution, requires
+explicit optional choices and affected-controller ordering, consumes finite
+uses, and gates linked instructions. Recursive `replace_with`, simultaneous
+replacement sequences, and partial damage prevention remain fail-closed future
+work.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

@@ -37,6 +37,12 @@ SUPPORTED_OPS = {
     "emit_reflexive",
 }
 
+
+class ReplacementDecisionRequired(ValueError):
+    def __init__(self, message: str, replacement_ids: list[str]):
+        super().__init__(message)
+        self.replacement_ids = replacement_ids
+
 OP_RULES = {
     "draw": ["Core 413"],
     "recycle_one": ["Core 416"],
@@ -72,6 +78,7 @@ def validate_state(state: Any) -> list[str]:
     players = state.get("players")
     objects = state.get("objects")
     battlefields = state.get("battlefields")
+    replacements = state.get("replacement_effects")
     if not isinstance(players, dict) or len(players) < 2:
         errors.append("players must be an object with at least two entries")
         players = {}
@@ -81,6 +88,9 @@ def validate_state(state: Any) -> list[str]:
     if not isinstance(battlefields, dict):
         errors.append("battlefields must be an object")
         battlefields = {}
+    if not isinstance(replacements, list):
+        errors.append("replacement_effects must be an array")
+        replacements = []
 
     occupancy: dict[str, list[str]] = {object_id: [] for object_id in objects}
     for player_id, player in players.items():
@@ -155,6 +165,32 @@ def validate_state(state: Any) -> list[str]:
         places = occupancy.get(object_id, [])
         if len(places) != 1:
             errors.append(f"object {object_id!r} must occupy exactly one zone/location, got {places}")
+    replacement_ids: set[str] = set()
+    for index, replacement in enumerate(replacements):
+        label = f"replacement_effects[{index}]"
+        required = {"replacement_id", "controller", "source_object", "mode", "event_op", "optional", "uses_remaining"}
+        if not isinstance(replacement, dict) or not required.issubset(replacement):
+            errors.append(f"{label} has invalid shape")
+            continue
+        replacement_id = replacement.get("replacement_id")
+        if not isinstance(replacement_id, str) or not replacement_id or replacement_id in replacement_ids:
+            errors.append(f"{label}.replacement_id is invalid or duplicated")
+        else:
+            replacement_ids.add(replacement_id)
+        if replacement.get("controller") not in players or replacement.get("source_object") not in objects:
+            errors.append(f"{label} has unknown controller/source")
+        if replacement.get("mode") != "prevent_event":
+            errors.append(f"{label}.mode is unsupported")
+        if replacement.get("event_op") not in SUPPORTED_OPS:
+            errors.append(f"{label}.event_op is unsupported")
+        if not isinstance(replacement.get("optional"), bool):
+            errors.append(f"{label}.optional must be boolean")
+        uses = replacement.get("uses_remaining")
+        if uses is not None and (not isinstance(uses, int) or uses < 0):
+            errors.append(f"{label}.uses_remaining must be null or non-negative integer")
+        relation = replacement.get("target_controller_relation")
+        if relation not in {None, "friendly", "enemy"}:
+            errors.append(f"{label}.target_controller_relation is invalid")
     return errors
 
 
@@ -251,6 +287,70 @@ def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
         state["players"][location[1]]["zones"][location[2]].remove(object_id)
     else:
         state["battlefields"][location[1]]["objects"].remove(object_id)
+
+
+def _applicable_preventions(state: dict[str, Any], effect: dict[str, Any]) -> list[dict[str, Any]]:
+    object_id = effect.get("object_id")
+    obj = state["objects"].get(object_id) if object_id is not None else None
+    applicable = []
+    for replacement in state["replacement_effects"]:
+        if replacement["mode"] != "prevent_event" or replacement["event_op"] != effect.get("op"):
+            continue
+        if replacement["uses_remaining"] == 0:
+            continue
+        required_object = replacement.get("target_object_id")
+        if required_object is not None and required_object != object_id:
+            continue
+        relation = replacement.get("target_controller_relation")
+        if relation is not None:
+            if obj is None:
+                continue
+            friendly = obj.get("controller") == replacement["controller"]
+            if relation == "friendly" and not friendly:
+                continue
+            if relation == "enemy" and friendly:
+                continue
+        applicable.append(replacement)
+    return applicable
+
+
+def _apply_prevention(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    applicable = _applicable_preventions(state, effect)
+    if not applicable:
+        return None
+    ids = [replacement["replacement_id"] for replacement in applicable]
+    supplied_order = effect.get("replacement_order")
+    if len(applicable) > 1:
+        object_id = effect.get("object_id")
+        affected_controller = state["objects"].get(object_id, {}).get("controller") if object_id is not None else None
+        if affected_controller is None or effect.get("replacement_decider") != affected_controller:
+            raise ReplacementDecisionRequired("the affected object's controller must decide replacement order", ids)
+        if not isinstance(supplied_order, list) or len(supplied_order) != len(set(supplied_order)) or set(supplied_order) != set(ids):
+            raise ReplacementDecisionRequired("affected controller must order all applicable replacement effects", ids)
+        by_id = {replacement["replacement_id"]: replacement for replacement in applicable}
+        applicable = [by_id[replacement_id] for replacement_id in supplied_order]
+    choices = effect.get("replacement_choices", {})
+    if not isinstance(choices, dict):
+        raise ValueError("replacement_choices must be an object")
+    for replacement in applicable:
+        replacement_id = replacement["replacement_id"]
+        if replacement["optional"]:
+            if replacement_id not in choices or not isinstance(choices[replacement_id], bool):
+                raise ReplacementDecisionRequired("optional replacement requires an explicit apply/decline choice", [replacement_id])
+            if choices[replacement_id] is False:
+                continue
+        new_state = copy.deepcopy(state)
+        stored = next(item for item in new_state["replacement_effects"] if item["replacement_id"] == replacement_id)
+        if stored["uses_remaining"] is not None:
+            stored["uses_remaining"] -= 1
+        return new_state, {
+            "op": effect["op"],
+            "outcome": "replaced_prevented",
+            "replacement_id": replacement_id,
+            "affected_object_id": effect.get("object_id"),
+            "rule_locators": ["Core 367–372", "Core 370.1.c", "Core 443"],
+        }
+    return None
 
 
 def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -522,6 +622,34 @@ def apply_program(state: dict[str, Any], program: dict[str, Any]) -> dict[str, A
                     "errors": ["effect object_id must match target.object_id"],
                     "trace": trace,
                 }
+        try:
+            prevention = _apply_prevention(current, effect)
+        except ReplacementDecisionRequired as exc:
+            return {
+                **base,
+                "valid": True,
+                "committed": False,
+                "replacement_decision_required": True,
+                "failed_effect_index": index,
+                "reason": str(exc),
+                "replacement_ids": exc.replacement_ids,
+                "trace": trace,
+            }
+        except ValueError as exc:
+            return {
+                **base,
+                "valid": False,
+                "committed": False,
+                "failed_effect_index": index,
+                "errors": [str(exc)],
+                "trace": trace,
+            }
+        if prevention is not None:
+            current, event = prevention
+            event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         try:
             current, event = _apply_one(current, effect)
         except NotImplementedError as exc:

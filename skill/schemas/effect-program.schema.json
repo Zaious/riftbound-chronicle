@@ -30,6 +30,9 @@
           "effect_id": {"type": "string", "minLength": 1},
           "depends_on": {"type": "string", "minLength": 1},
           "dependency_mode": {"enum": ["if_applied", "always"]},
+          "replacement_order": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "replacement_decider": {"type": "string", "minLength": 1},
+          "replacement_choices": {"type": "object", "additionalProperties": {"type": "boolean"}},
           "target": {
             "type": "object",
             "additionalProperties": false,

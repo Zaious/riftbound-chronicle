@@ -48,6 +48,7 @@ def base_state():
             "r1": {"owner": "p1", "controller": "p1", "kind": "rune", "base_might": 0, "might_modifiers": [], "damage": 0, "exhausted": False},
         },
         "battlefields": {"bf1": {"controller": None, "objects": []}},
+        "replacement_effects": [],
     }
 
 
@@ -195,6 +196,58 @@ def main() -> int:
         failures.append("reflexive effect did not emit ordered typed Pending descriptors")
     elif reflexive.get("next_state_hash") != reflexive.get("input_state_hash"):
         failures.append("emit_reflexive unexpectedly mutated effect state")
+
+    prevented_state = base_state()
+    prevented_state["replacement_effects"] = [{
+        "replacement_id": "shield-u2", "controller": "p2", "source_object": "u2",
+        "mode": "prevent_event", "event_op": "deal_damage", "optional": False,
+        "uses_remaining": 1, "target_object_id": "u2"
+    }]
+    prevented = apply_program(prevented_state, program(
+        "prevented",
+        {"effect_id": "damage", "op": "deal_damage", "object_id": "u2", "amount": 3},
+        {"effect_id": "draw", "depends_on": "damage", "op": "draw", "player": "p1", "count": 1},
+        {"effect_id": "damage-again", "op": "deal_damage", "object_id": "u2", "amount": 2},
+    ))
+    replacement_outcomes = [event["outcome"] for event in prevented.get("trace", [])]
+    if not prevented.get("committed") or replacement_outcomes != ["replaced_prevented", "skipped_linked_dependency", "applied"]:
+        failures.append(f"mandatory one-use prevention did not gate linked effect then expire: {replacement_outcomes}")
+    elif prevented["next_state"]["objects"]["u2"]["damage"] != 2 or prevented["next_state"]["replacement_effects"][0]["uses_remaining"] != 0:
+        failures.append("prevention state/usage was not updated correctly")
+
+    optional_state = base_state()
+    optional_state["replacement_effects"] = [{
+        "replacement_id": "optional-shield", "controller": "p2", "source_object": "u2",
+        "mode": "prevent_event", "event_op": "deal_damage", "optional": True,
+        "uses_remaining": 1, "target_object_id": "u2"
+    }]
+    missing_choice = apply_program(optional_state, program("optional-missing", {"op": "deal_damage", "object_id": "u2", "amount": 2}))
+    if missing_choice.get("committed") or missing_choice.get("replacement_decision_required") is not True:
+        failures.append("optional replacement applied without an explicit choice")
+    declined = apply_program(optional_state, program("optional-decline", {"op": "deal_damage", "object_id": "u2", "amount": 2, "replacement_choices": {"optional-shield": False}}))
+    if not declined.get("committed") or declined["next_state"]["objects"]["u2"]["damage"] != 2 or declined["next_state"]["replacement_effects"][0]["uses_remaining"] != 1:
+        failures.append("declined optional replacement did not preserve use and execute event")
+    accepted = apply_program(optional_state, program("optional-accept", {"op": "deal_damage", "object_id": "u2", "amount": 2, "replacement_choices": {"optional-shield": True}}))
+    if not accepted.get("committed") or accepted["next_state"]["objects"]["u2"]["damage"] != 0:
+        failures.append("accepted optional replacement did not prevent event")
+
+    multiple_state = base_state()
+    multiple_state["replacement_effects"] = [
+        {"replacement_id": "r1", "controller": "p1", "source_object": "u1", "mode": "prevent_event", "event_op": "deal_damage", "optional": False, "uses_remaining": None, "target_object_id": "u2"},
+        {"replacement_id": "r2", "controller": "p2", "source_object": "u2", "mode": "prevent_event", "event_op": "deal_damage", "optional": False, "uses_remaining": None, "target_object_id": "u2"}
+    ]
+    unordered = apply_program(multiple_state, program("unordered", {"op": "deal_damage", "object_id": "u2", "amount": 2}))
+    if unordered.get("committed") or unordered.get("replacement_decision_required") is not True:
+        failures.append("multiple replacements did not require affected-controller ordering")
+    ordered = apply_program(multiple_state, program("ordered", {"op": "deal_damage", "object_id": "u2", "amount": 2, "replacement_decider": "p2", "replacement_order": ["r2", "r1"]}))
+    if not ordered.get("committed") or ordered.get("trace", [{}])[0].get("replacement_id") != "r2":
+        failures.append("affected-controller replacement order was not respected")
+
+    invalid_replacements = base_state()
+    duplicate_replacement = {"replacement_id": "dup", "controller": "p1", "source_object": "u1", "mode": "prevent_event", "event_op": "kill", "optional": False, "uses_remaining": 1}
+    invalid_replacements["replacement_effects"] = [duplicate_replacement, dict(duplicate_replacement)]
+    if not any("duplicated" in item for item in validate_state(invalid_replacements)):
+        failures.append("duplicate replacement ids were not rejected")
 
     print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, unsupported, Burn Out, and state invariants.")
     if failures:

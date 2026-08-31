@@ -2,25 +2,11 @@
 
 Player 2 Agent chooses strategy for the second player in a physical, human-operated game. The current capability level is P2-A only.
 
-**This is a practice tool, and the game's own tournament rules make that the only
-legitimate use.** Riftbound Tournament Rules 417.1: *"Players may use electronic
-devices during competitions, but can't use them during matches."* The question of
-whether an assistant counts as Outside Assistance (703.9 — *"a player receives
-advice or strategic assistance from an individual outside of the match"*, with
-the penalty extending to a spectator who is also a player, 703.9.c) does not even
-need to be reached: the device may not be in use during a sanctioned match at
-all. High-OPL deckbuilding and drafting carry their own restrictions on
-electronic aids and outside assistance (602.3.b, 602.3.c, 602.4.b.2.d–e), with
-head-judge discretion at low OPL.
-
-So the product boundary here is enforced by the game, not merely by this
-document: P2-A is for preparation and practice away from sanctioned play. Never
+**This is a preparation and practice tool, built for research and educational
+use. Using it during an event is against tournament rules** (see
+`docs/policy/RIOT_COMPLIANCE_BOUNDARY.md` for the governing clauses). Never
 present it as usable during a match, and do not answer as if the user were
-mid-match at an event. (Clause text quoted from the 2026-07-16 Tournament Rules
-via the local rules index; re-check against the current version before relying
-on it — see `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md`.)
-
-Before operating a session, read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md`. If a deck plan is needed, consult `deck-coach`. If an interaction needs rules research, consult `rule-consult`. Neither consultation may mutate the session state.
+mid-match at an event.
 
 ## Preconditions
 

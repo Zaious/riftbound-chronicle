@@ -75,6 +75,11 @@ away from this. That is why an authoritative rules engine, including an official
 digital client should one ship, would strengthen these rather than replace them:
 such an engine serves play, and this serves preparation.
 
+This is an assistant for preparation, built for research and educational use.
+**Using it during an event is against tournament rules** — see
+[the compliance boundary](docs/policy/RIOT_COMPLIANCE_BOUNDARY.md) for the
+governing clauses.
+
 The repository name intentionally stays `riftbound-chronicle`: it is the product
 brand. Search terms such as `AI agent`, `deck coach`, and `rule consult` belong in
 the GitHub description, topics, README, and Skill metadata rather than replacing
@@ -237,15 +242,6 @@ not automated rulings. A custom location is available through
 and superseded sources are excluded from current search by default.
 
 ## Player2 Agent
-
-> **Practice only — not for use during a sanctioned match.** Riftbound
-> Tournament Rules 417.1: *"Players may use electronic devices during
-> competitions, but can't use them during matches."* Whether an assistant would
-> also count as Outside Assistance (703.9) never has to be reached; the device
-> may not be in use during a match at all. High-OPL deckbuilding and drafting
-> carry their own restrictions (602.3.b–c, 602.4.b.2.d–e). This boundary is set
-> by the game, not by this project. Clauses read from the 2026-07-16 Tournament
-> Rules — re-check the current version before relying on them.
 
 P2-A supports one person practising with two physical decks while the Agent
 chooses a strategic direction for Player 2. The ledger permits three event types:

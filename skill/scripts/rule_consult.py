@@ -19,7 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from rules_core import summarize_result
+from engine_check import build_engine_check, validate_engine_check
 
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -34,7 +34,7 @@ REQUIRED_TOP = {
     "question_type", "question", "format", "ruleset_as_of", "facts",
     "assumptions", "sources", "answer",
 }
-OPTIONAL_TOP = {"rules_core_check"}
+OPTIONAL_TOP = {"rules_core_check", "engine_checks"}
 FORBIDDEN_KEYS = {
     "official_ruling", "binding_ruling", "penalty_assigned", "state_transition",
     "game_state_update", "legal_action_set", "winner",
@@ -235,6 +235,21 @@ def validate_consultation(value: Any) -> list[str]:
             if not isinstance(check.get("rule_locators"), list) or not all(isinstance(item, str) for item in check["rule_locators"]):
                 errors.append("rules_core_check.rule_locators must be an array of strings")
 
+    engine_checks = value.get("engine_checks", [])
+    if not isinstance(engine_checks, list):
+        errors.append("engine_checks must be an array")
+    else:
+        seen_check_ids = set()
+        for index, engine_check in enumerate(engine_checks):
+            check_errors = validate_engine_check(engine_check)
+            if check_errors:
+                errors.extend(f"engine_checks[{index}]: {error}" for error in check_errors)
+                continue
+            check_id = engine_check["check_id"]
+            if check_id in seen_check_ids:
+                errors.append(f"engine_checks[{index}] duplicates check_id {check_id!r}")
+            seen_check_ids.add(check_id)
+
     return errors
 
 
@@ -262,7 +277,7 @@ def new_consultation(*, question_type: str, question: str, format_name: str, rul
         "assumptions": [],
         "sources": [],
         "answer": None,
-        "rules_core_check": None,
+        "engine_checks": [],
     }
     require_valid(value)
     return value
@@ -303,6 +318,18 @@ def mutate_draft(value: dict[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(value)
 
 
+def attach_engine_check(value: dict[str, Any], engine_check: dict[str, Any]) -> dict[str, Any]:
+    updated = mutate_draft(value)
+    errors = validate_engine_check(engine_check)
+    if errors:
+        raise ConsultationError("invalid engine-check.v1: " + "; ".join(errors))
+    checks = updated.setdefault("engine_checks", [])
+    if any(item.get("check_id") == engine_check["check_id"] for item in checks if isinstance(item, dict)):
+        raise ConsultationError(f"duplicate engine check {engine_check['check_id']}")
+    checks.append(copy.deepcopy(engine_check))
+    return updated
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -328,6 +355,9 @@ def build_parser() -> argparse.ArgumentParser:
     core = sub.add_parser("core-check")
     core.add_argument("path", type=Path)
     core.add_argument("--result", type=Path, required=True)
+    engine = sub.add_parser("engine-check")
+    engine.add_argument("path", type=Path)
+    engine.add_argument("--check", type=Path, required=True)
     finalize = sub.add_parser("finalize")
     finalize.add_argument("path", type=Path)
     finalize.add_argument("--conclusion", required=True)
@@ -378,7 +408,19 @@ def main(argv: list[str] | None = None) -> int:
                     raise ConsultationError(f"cannot load rules-core result: {exc}") from exc
                 if not isinstance(result, dict):
                     raise ConsultationError("rules-core result must be a JSON object")
-                value["rules_core_check"] = summarize_result(result)
+                input_hash = result.get("input_state_hash")
+                if not isinstance(input_hash, str) or not input_hash.startswith("sha256:"):
+                    raise ConsultationError("rules-core result lacks a valid input_state_hash")
+                normalized = build_engine_check("timing", result, input_hashes={"timing_state": input_hash})
+                value = attach_engine_check(value, normalized)
+            elif args.command == "engine-check":
+                try:
+                    engine_check = json.loads(args.check.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    raise ConsultationError(f"cannot load engine check: {exc}") from exc
+                if not isinstance(engine_check, dict):
+                    raise ConsultationError("engine check must be a JSON object")
+                value = attach_engine_check(value, engine_check)
             elif args.command == "finalize":
                 target = args.escalation_target
                 value["status"] = "final"

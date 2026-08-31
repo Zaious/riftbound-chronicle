@@ -8,12 +8,32 @@ For exact clause work, also read `${CLAUDE_SKILL_DIR}/references/shared/local-ru
 
 For Open/Closed state, Showdown, Action/Reaction, Priority/Focus, Chain, or
 HOT/FEPR questions, also read `${CLAUDE_SKILL_DIR}/references/shared/rules-core.md`.
-After retrieving the controlling official text, use `rules_core.py` when the
-facts can be represented by its v1 schema. Treat a mismatch as a core
-conformance defect and report it; never prefer executable output over the
-official source.
+For any executable timing, effect, resolution, or cleanup check, read
+`${CLAUDE_SKILL_DIR}/references/shared/engine-check.md`. After retrieving the
+controlling official text, use `engine_check.py` when the facts fit a supported
+state/program contract. Treat a mismatch as a conformance defect and report it;
+never prefer executable output over the official source.
 
 For an auditable consultation, use `${CLAUDE_SKILL_DIR}/scripts/rule_consult.py` and the schema at `${CLAUDE_SKILL_DIR}/schemas/rule-consultation.schema.json`. Resolve source identifiers through `${CLAUDE_SKILL_DIR}/data/rules_source_registry.json`; the registry records versions and authority, but any source marked `resolve_at_query_time` must still be checked live.
+
+Attach a completed shared check without hand-editing the consultation:
+
+```powershell
+python ${CLAUDE_SKILL_DIR}/scripts/rule_consult.py engine-check consultation.json `
+  --check engine-check.json
+```
+
+New consultations store executable evidence in the `engine_checks` array. The
+legacy nullable `rules_core_check` field remains accepted only so existing
+`rule-consultation.v1` artifacts continue to validate. The deprecated
+`core-check` CLI command normalizes a raw rules-core result into
+`engine-check.v1`; it no longer creates new timing-only evidence.
+
+Keep source confidence and engine coverage distinct. A `supported` engine check
+does not raise source authority. `unsupported` means the executable component
+abstained, not that no official answer exists. `decision_required` identifies
+facts or controller choices needed for a retry; Rule Consult presents those
+choices neutrally and does not choose on the player's behalf.
 
 ## Retrieve before interpreting
 

@@ -321,6 +321,8 @@ Default ownership: `[JOINT]`. Pipeline/evaluation/UI work is
 - [x] Source registry, bilingual retrieval, precedence, freshness, and masking.
 - [x] Facts, assumptions, citations, confidence, and escalation contract.
 - [x] Manual import of a bounded `rules_core` timing summary.
+- [x] `engine_checks` artifact array, validator, import CLI, duplicate/overclaim
+  guards, and legacy `core-check` normalization to `engine-check.v1`.
 - [x] Executable consultation cases and bilingual local demo.
 
 ### Remaining
@@ -329,7 +331,6 @@ Default ownership: `[CODEX-CONTEXT]` for artifact migration and authority
 semantics; fixtures and the engine-check viewer are `[CLAUDE-READY]` after that
 migration lands.
 
-- [ ] Consume `engine-check.v1` instead of timing-only `rules_core_check`.
 - [ ] Run timing/effect/combined checks from one consultation command.
 - [ ] Present engine trace beside official passages without treating it as
   authority.
@@ -476,8 +477,8 @@ real artifact migration should establish the presentation semantics first.
 
 | ID | Package | Prerequisite owned by Codex | Claude deliverable |
 | --- | --- | --- | --- |
-| D-00 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules | Fixture-driven shared renderer and tests; wiring one consumer does not claim all three are connected |
-| D-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration | Bilingual rendering, import/export, UI regression |
+| D-00 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules — satisfied 2026-09-01 | Fixture-driven shared renderer and tests; wiring one consumer does not claim all three are connected |
+| D-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, import/export, UI regression |
 | D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration | Bilingual UI, decision-required flow, prototype regression |
 | D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest | Pipeline consumer, evidence display, regression fixtures |
 | D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |
@@ -489,7 +490,7 @@ real artifact migration should establish the presentation semantics first.
 
 | ID | Work | Why context-sensitive |
 | --- | --- | --- |
-| X-01 | Rule Consult migration from `rules_core_check` to `engine-check.v1` | Must preserve source authority, consultation confidence, and compatibility |
+| X-01 — completed 2026-09-01 | Rule Consult migration from `rules_core_check` to `engine-check.v1` | Preserves source authority, consultation confidence, legacy reads, and compatibility |
 | X-02 | P2-A migration to `engine-check.v1` | Must preserve human legality/state authority and avoid automation creep |
 | X-03 | Deck behavior-coverage contract | Must distinguish card lookup, engine clauses, evidence, and strategy claims |
 | X-04 | R1/R2 semantic expansion and schema versioning | Each decision constrains every card program and replay |

@@ -80,6 +80,11 @@
         {"$ref": "#/$defs/rulesCoreCheck"}
       ]
     },
+    "engine_checks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "engine-check.schema.json"}
+    },
     "answer": {
       "oneOf": [
         { "type": "null" },

@@ -1,5 +1,8 @@
 # Systems Architecture
 
+The reconciled implementation ledger for all four systems and the shared engine
+is [ENGINE_AND_SYSTEMS_COMPLETION_CHECKLIST.md](../plans/ENGINE_AND_SYSTEMS_COMPLETION_CHECKLIST.md).
+
 Status: accepted baseline
 Date: 2026-08-24
 

@@ -1,5 +1,8 @@
 # Chronicle Sovereign Rules Layer
 
+Implementation status and the complete engine/four-system backlog are tracked
+in [ENGINE_AND_SYSTEMS_COMPLETION_CHECKLIST.md](../plans/ENGINE_AND_SYSTEMS_COMPLETION_CHECKLIST.md).
+
 Status: implementation baseline
 Date: 2026-08-30
 

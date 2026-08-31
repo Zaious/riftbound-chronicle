@@ -179,7 +179,7 @@ def validate_state(state: Any) -> list[str]:
             replacement_ids.add(replacement_id)
         if replacement.get("controller") not in players or replacement.get("source_object") not in objects:
             errors.append(f"{label} has unknown controller/source")
-        if replacement.get("mode") not in {"prevent_event", "replace_with"}:
+        if replacement.get("mode") not in {"prevent_event", "replace_with", "reduce_damage"}:
             errors.append(f"{label}.mode is unsupported")
         if replacement.get("event_op") not in SUPPORTED_OPS:
             errors.append(f"{label}.event_op is unsupported")
@@ -194,6 +194,11 @@ def validate_state(state: Any) -> list[str]:
         replacement_effects = replacement.get("replacement_effects")
         if replacement.get("mode") == "replace_with" and (not isinstance(replacement_effects, list) or not replacement_effects):
             errors.append(f"{label}.replacement_effects must be non-empty for replace_with")
+        if replacement.get("mode") == "reduce_damage":
+            if replacement.get("event_op") != "deal_damage":
+                errors.append(f"{label}.reduce_damage may only replace deal_damage")
+            if not isinstance(replacement.get("prevent_remaining"), int) or replacement.get("prevent_remaining", 0) <= 0:
+                errors.append(f"{label}.prevent_remaining must be a positive integer")
         source_places = occupancy.get(replacement.get("source_object"), [])
         if source_places and not any(place.startswith("battlefield:") or place.endswith(":base") for place in source_places):
             errors.append(f"{label}.source_object must be active on the board")
@@ -304,6 +309,8 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any]) -> l
             continue
         if replacement["uses_remaining"] == 0:
             continue
+        if replacement["mode"] == "reduce_damage" and replacement.get("prevent_remaining", 0) <= 0:
+            continue
         required_object = replacement.get("target_object_id")
         if required_object is not None and required_object != object_id:
             continue
@@ -349,7 +356,11 @@ def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[
         stored = next(item for item in new_state["replacement_effects"] if item["replacement_id"] == replacement_id)
         if stored["uses_remaining"] is not None:
             stored["uses_remaining"] -= 1
-        outcome = "replaced_prevented" if replacement["mode"] == "prevent_event" else "replaced_with"
+        outcome = {
+            "prevent_event": "replaced_prevented",
+            "replace_with": "replaced_with",
+            "reduce_damage": "replaced_modified",
+        }[replacement["mode"]]
         return new_state, {
             "op": effect["op"],
             "outcome": outcome,
@@ -631,6 +642,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                     "errors": ["effect object_id must match target.object_id"],
                     "trace": trace,
                 }
+        affected_before_damage = current["objects"].get(effect.get("object_id"), {}).get("damage")
         try:
             replacement_selection = _select_replacement(current, effect)
         except ReplacementDecisionRequired as exc:
@@ -664,15 +676,49 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
             replacement_id = replacement["replacement_id"]
             replacement_index = next(i for i, item in enumerate(selected_state["replacement_effects"]) if item["replacement_id"] == replacement_id)
             stored_replacement = copy.deepcopy(selected_state["replacement_effects"][replacement_index])
+            replacement_program_effects = copy.deepcopy(replacement.get("replacement_effects", []))
+            original_damage = None
+            prevented_damage = None
+            if replacement["mode"] == "reduce_damage":
+                original_damage = effect.get("amount")
+                if not isinstance(original_damage, int) or original_damage < 1:
+                    return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": ["reduce_damage requires positive deal_damage amount"], "trace": trace}
+                prevented_damage = min(original_damage, stored_replacement["prevent_remaining"])
+                stored_replacement["prevent_remaining"] -= prevented_damage
+                reduced = copy.deepcopy(effect)
+                reduced["amount"] = original_damage - prevented_damage
+                reduced.pop("replacement_order", None)
+                reduced.pop("replacement_decider", None)
+                reduced.pop("replacement_choices", None)
+                replacement_program_effects = [] if reduced["amount"] == 0 else [reduced]
             recursive_state = copy.deepcopy(selected_state)
             del recursive_state["replacement_effects"][replacement_index]
+            if replacement["mode"] == "reduce_damage" and not replacement_program_effects:
+                current = recursive_state
+                source_location = find_location(current, replacement["source_object"])
+                if zone_class(source_location) == "board" and stored_replacement.get("prevent_remaining", 0) > 0:
+                    current["replacement_effects"].insert(min(replacement_index, len(current["replacement_effects"])), stored_replacement)
+                event.update({
+                    "outcome": "replaced_prevented",
+                    "index": index,
+                    "effect_id": effect_id,
+                    "original_damage": original_damage,
+                    "prevented_damage": prevented_damage,
+                    "remaining_damage": 0,
+                    "before_state_hash": before_hash,
+                    "after_state_hash": hash_value(current),
+                    "rule_locators": list(dict.fromkeys(event["rule_locators"] + ["Core 437.1–437.4"])),
+                })
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
             recursive_program = {
                 "schema_version": PROGRAM_VERSION,
                 "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                 "program_id": f"replacement:{replacement_id}:{program['program_id']}:{effect_id}",
                 "controller": replacement["controller"],
                 "source_object": replacement["source_object"],
-                "effects": copy.deepcopy(replacement["replacement_effects"]),
+                "effects": replacement_program_effects,
             }
             recursive_result = apply_program(recursive_state, recursive_program, _replacement_depth=_replacement_depth + 1)
             if recursive_result.get("committed") is not True:
@@ -689,7 +735,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                 }
             current = recursive_result["next_state"]
             source_location = find_location(current, replacement["source_object"])
-            if zone_class(source_location) == "board":
+            replacement_still_active = replacement["mode"] != "reduce_damage" or stored_replacement.get("prevent_remaining", 0) > 0
+            if zone_class(source_location) == "board" and replacement_still_active:
                 current["replacement_effects"].insert(min(replacement_index, len(current["replacement_effects"])), stored_replacement)
             if found := validate_state(current):
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": found, "trace": trace}
@@ -707,8 +754,20 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                 "pending_triggers": nested_triggers,
                 "rule_locators": list(dict.fromkeys(event["rule_locators"] + nested_locators)),
             })
+            if replacement["mode"] == "reduce_damage":
+                affected = effect.get("object_id")
+                before_damage = affected_before_damage
+                after_damage = current["objects"].get(affected, {}).get("damage")
+                damage_applied = isinstance(before_damage, int) and isinstance(after_damage, int) and after_damage > before_damage
+                event.update({
+                    "outcome": "replaced_modified_applied" if damage_applied else "replaced_modified_prevented",
+                    "original_damage": original_damage,
+                    "prevented_damage": prevented_damage,
+                    "remaining_damage": original_damage - prevented_damage,
+                    "rule_locators": list(dict.fromkeys(event["rule_locators"] + ["Core 437.1–437.4"])),
+                })
             trace.append(event)
-            outcomes[effect_id] = event["outcome"]
+            outcomes[effect_id] = "applied" if event["outcome"] == "replaced_modified_applied" else event["outcome"]
             continue
         try:
             current, event = _apply_one(current, effect)

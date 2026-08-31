@@ -209,6 +209,12 @@ capped, and a source leaving the board disables its descriptor. Unsupported
 children roll back the combined timing/effect result. Augmentation, inheritance,
 and multi-event replacement sequences remain future work.
 
+The ninth R2 slice implements finite Damage Prevention Values. Full prevention
+replaces Deal with no event; partial prevention recursively deals only the
+remainder and preserves linked-action meaning. Prevent Values consume only the
+amount actually prevented and leave active state when depleted. `All`, duration
+expiry, and combat-assignment lethal calculations remain future work.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

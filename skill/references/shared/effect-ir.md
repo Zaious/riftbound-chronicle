@@ -54,6 +54,13 @@ descriptors preserve source, controller, optionality, and remaining uses.
   `if_applied` instructions.
 - A replacement is not re-applied after its remaining uses reach zero.
 
+`reduce_damage` implements a finite Prevent Value for `deal_damage`. The value
+is reduced by the amount actually prevented. If all damage is prevented, no
+Deal event occurs and linked `if_applied` instructions are skipped. If only part
+is prevented, the remaining positive Damage is recursively presented to other
+Replacement Effects and, if dealt, satisfies the linked action. A depleted
+Prevent Value is removed from active state.
+
 ### Recursive `replace_with`
 
 `replace_with` removes the original event and executes a nested typed effect
@@ -68,7 +75,7 @@ descriptor is not restored. Because the original action did not occur, a linked
 replacement-prefixed chronological batch.
 
 Player-targeted events, uncontrolled Battlefield ordering, simultaneous-event
-replacement sequences, partial damage prevention values, “same event plus”
+replacement sequences, `All` prevention and duration expiry, “same event plus”
 augmentation, modification inheritance, and replacement sequences spanning
 several simultaneous events are not supported yet. They fail closed rather
 than being approximated.

@@ -293,6 +293,29 @@ def main() -> int:
     if not recursive.get("committed") or "u1" not in recursive["next_state"]["players"]["p1"]["zones"]["base"] or "u2" not in recursive["next_state"]["players"]["p2"]["zones"]["base"]:
         failures.append("another replacement did not apply to a replace_with child event")
 
+    prevent_value_state = base_state()
+    prevent_value_state["replacement_effects"] = [{
+        "replacement_id": "prevent-five", "controller": "p1", "source_object": "u1",
+        "mode": "reduce_damage", "event_op": "deal_damage", "optional": False,
+        "uses_remaining": None, "prevent_remaining": 5, "target_object_id": "u2"
+    }]
+    prevent_value = apply_program(prevent_value_state, program(
+        "prevent-value",
+        {"effect_id": "damage-1", "op": "deal_damage", "object_id": "u2", "amount": 3},
+        {"effect_id": "draw-1", "depends_on": "damage-1", "op": "draw", "player": "p1", "count": 1},
+        {"effect_id": "damage-2", "op": "deal_damage", "object_id": "u2", "amount": 4},
+        {"effect_id": "draw-2", "depends_on": "damage-2", "op": "draw", "player": "p1", "count": 1},
+    ))
+    prevent_outcomes = [event["outcome"] for event in prevent_value.get("trace", [])]
+    if not prevent_value.get("committed") or prevent_outcomes != ["replaced_prevented", "skipped_linked_dependency", "replaced_modified_applied", "applied"]:
+        failures.append(f"finite prevention value did not distinguish full and partial prevention: {prevent_outcomes}")
+    else:
+        next_state = prevent_value["next_state"]
+        if next_state["objects"]["u2"]["damage"] != 2 or next_state["players"]["p1"]["zones"]["hand"] != ["c1"]:
+            failures.append("partial prevention did not deal remaining damage or satisfy linked instruction")
+        if next_state["replacement_effects"]:
+            failures.append("depleted prevention value remained active")
+
     print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, unsupported, Burn Out, and state invariants.")
     if failures:
         print("\n".join(f"FAILED: {failure}" for failure in failures))

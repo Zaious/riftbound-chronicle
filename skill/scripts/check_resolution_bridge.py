@@ -133,6 +133,16 @@ def main() -> int:
     elif "u1" not in replace_result["next_effect_state"]["players"]["p1"]["zones"]["trash"]:
         failures.append("replace_with child actions were not committed through the resolution bridge")
 
+    partial_state = base_state()
+    partial_state["replacement_effects"] = [{
+        "replacement_id": "prevent-two", "controller": "p1", "source_object": "u1",
+        "mode": "reduce_damage", "event_op": "deal_damage", "optional": False,
+        "uses_remaining": None, "prevent_remaining": 2, "target_object_id": "u2"
+    }]
+    partial_result = resolve_with_program(timing, "spell-1", partial_state, damage_program)
+    if not partial_result.get("committed") or partial_result["next_effect_state"]["objects"]["u2"]["damage"] != 1:
+        failures.append("partial prevention value did not commit remaining damage with Chain resolution")
+
     not_next = fixture(
         priority="p2",
         items=[

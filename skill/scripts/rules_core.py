@@ -388,17 +388,58 @@ def validate_timing(state: dict[str, Any], action: dict[str, Any]) -> dict[str, 
     )
 
 
-def finalize_oldest_pending(state: dict[str, Any]) -> dict[str, Any]:
+def finalize_oldest_pending(state: dict[str, Any], *, perform_optional_trigger: bool | None = None) -> dict[str, Any]:
     errors = validate_state(state)
     if errors:
         return _result(state, valid=False, errors=errors)
     next_step = next_procedure(state)
     if next_step.get("procedure") != "finalize_oldest_pending":
         return _result(state, valid=True, applied=False, reason_code="finalize_not_next", next_procedure=next_step)
+    original_item = next(item for item in state["chain"]["items"] if item["status"] == "pending")
+    optional_trigger = original_item.get("timing") == "triggered" and original_item.get("optional_at_finalize") is True
+    if optional_trigger and perform_optional_trigger is None:
+        return _result(
+            state,
+            valid=True,
+            applied=False,
+            reason_code="trigger_finalize_choice_required",
+            choices=["perform", "decline"],
+            subject=original_item["id"],
+            rule_locators=["Core 383.3.a–383.3.a.3"],
+        )
+    if not optional_trigger and perform_optional_trigger is not None:
+        return _result(
+            state,
+            valid=True,
+            applied=False,
+            reason_code="unexpected_trigger_finalize_choice",
+            subject=original_item["id"],
+        )
+    if optional_trigger and perform_optional_trigger is False:
+        new_state = copy.deepcopy(state)
+        origin = new_state["chain"].get("initiated_by")
+        new_state["chain"]["items"] = [item for item in new_state["chain"]["items"] if item["id"] != original_item["id"]]
+        new_state["chain"]["consecutive_passes"] = []
+        if not new_state["chain"]["items"]:
+            _open_after_empty_chain(new_state, origin)
+        elif not any(item["status"] == "pending" for item in new_state["chain"]["items"]):
+            new_state["priority"] = new_state["chain"]["items"][-1]["controller"]
+        return _result(
+            state,
+            valid=True,
+            applied=True,
+            next_state=new_state,
+            next_state_hash=state_hash(new_state),
+            transition={"type": "optional_trigger_declined", "item_id": original_item["id"], "considered_triggered": False},
+            next_procedure=next_procedure(new_state),
+            rule_locators=["Core 383.3.a–383.3.a.3"],
+        )
     new_state = copy.deepcopy(state)
     item = next(item for item in new_state["chain"]["items"] if item["status"] == "pending")
     item["status"] = "finalized"
     immediate = item["object_kind"] in {"unit", "gear"} or item.get("ability_kind") == "add"
+    if not immediate and not any(candidate["status"] == "pending" for candidate in new_state["chain"]["items"]):
+        new_state["priority"] = new_state["chain"]["items"][-1]["controller"]
     return _result(
         new_state,
         valid=True,
@@ -407,6 +448,7 @@ def finalize_oldest_pending(state: dict[str, Any]) -> dict[str, Any]:
         transition={
             "type": "chain_item_finalized",
             "item_id": item["id"],
+            "optional_trigger_performed": True if optional_trigger else None,
             "immediate_resolution_required": immediate,
             "effect_execution_owned": False,
         },
@@ -560,6 +602,10 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             continue
         if not isinstance(descriptor.get("source_object"), str) or not descriptor.get("source_object"):
             descriptor_errors.append(f"descriptor {index} must preserve source_object")
+        if not isinstance(descriptor.get("effect_program_id"), str) or not descriptor.get("effect_program_id"):
+            descriptor_errors.append(f"descriptor {index} must bind effect_program_id")
+        if not isinstance(descriptor.get("optional_at_finalize", False), bool):
+            descriptor_errors.append(f"descriptor {index}.optional_at_finalize must be boolean")
         groups.setdefault(controller, []).append(descriptor)
     for controller, values in groups.items():
         if len(values) > 1:
@@ -590,6 +636,7 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             "ability_kind": "standard",
             "source_object": descriptor["source_object"],
             "effect_program_id": descriptor.get("effect_program_id"),
+            "optional_at_finalize": descriptor.get("optional_at_finalize", False),
         })
     if was_empty:
         new_state["chain"]["initiated_by"] = "triggered_ability"
@@ -622,9 +669,14 @@ def _load(path: Path) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Chronicle sovereign Riftbound timing/permission kernel")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("inspect", "next", "permissions", "finalize"):
+    for name in ("inspect", "next", "permissions"):
         item = sub.add_parser(name)
         item.add_argument("state", type=Path)
+    finalized = sub.add_parser("finalize")
+    finalized.add_argument("state", type=Path)
+    trigger_choice = finalized.add_mutually_exclusive_group()
+    trigger_choice.add_argument("--perform-trigger", action="store_true")
+    trigger_choice.add_argument("--decline-trigger", action="store_true")
     timing = sub.add_parser("validate-timing")
     timing.add_argument("state", type=Path)
     timing.add_argument("action", type=Path)
@@ -648,7 +700,8 @@ def main() -> int:
         elif args.command == "permissions":
             output = derive_permissions(state)
         elif args.command == "finalize":
-            output = finalize_oldest_pending(state)
+            choice = True if args.perform_trigger else False if args.decline_trigger else None
+            output = finalize_oldest_pending(state, perform_optional_trigger=choice)
         elif args.command == "add":
             output = add_pending_item(state, _load(args.proposal))
         elif args.command == "pass-priority":

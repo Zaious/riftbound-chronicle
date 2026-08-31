@@ -174,7 +174,7 @@ def main() -> int:
     trigger_state["objects"]["u2"]["damage"] = 4
     trigger_state["objects"]["u2"]["death_triggers"] = [{
         "trigger_id": "u2-deathknell", "controller": "p2", "source_object": "u2",
-        "controller_order": 0, "effect_program_id": "u2-deathknell-effects",
+        "controller_order": 0, "effect_program_id": "u2-deathknell-effects", "optional_at_finalize": False,
     }]
     trigger_cleanup = perform_lethal_cleanup(trigger_state)
     if not trigger_cleanup.get("committed") or [item["trigger_id"] for item in trigger_cleanup.get("pending_triggers", [])] != ["u2-deathknell"]:

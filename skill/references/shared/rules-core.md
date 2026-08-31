@@ -77,6 +77,11 @@ pass Priority, complete exactly one newest Finalized resolution, and move or
 retain Focus when the Chain empties. Every transition includes reproducible
 before/after state hashes and rule locators.
 
+Triggered Pending Items may bind an effect program and declare an optional
+Finalize choice. The controller must explicitly perform or decline an optional
+trigger; after the last Pending item finalizes, Priority is granted to the
+controller of the newest Finalized item.
+
 It does not execute arbitrary card instructions, combat, scoring, replacement
 effects, layers, or a complete game. `complete-resolution` requires the caller
 to confirm that the effect was executed; the timing core never invents the

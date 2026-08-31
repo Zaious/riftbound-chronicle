@@ -25,6 +25,24 @@ def resolve_with_program(
         "input_timing_state_hash": state_hash(timing_state),
         "input_effect_state_hash": hash_value(effect_state),
     }
+    chain_item = next((item for item in timing_state.get("chain", {}).get("items", []) if item.get("id") == item_id), None)
+    if chain_item is None:
+        return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "chain_item_not_found"}
+    bound_program = chain_item.get("effect_program_id")
+    if bound_program is not None and program.get("program_id") != bound_program:
+        return {
+            **base,
+            "valid": True,
+            "committed": False,
+            "stage": "program_binding",
+            "reason": "effect_program_id_mismatch",
+            "expected_program_id": bound_program,
+            "received_program_id": program.get("program_id"),
+        }
+    if program.get("controller") is not None and program.get("controller") != chain_item.get("controller"):
+        return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_controller_mismatch"}
+    if program.get("source_object") is not None and chain_item.get("source_object") is not None and program.get("source_object") != chain_item.get("source_object"):
+        return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_source_mismatch"}
     # Both components are pure. Probe timing first so an effect program is never
     # exposed as committed for an item that is not next to resolve.
     timing_result = complete_resolution(timing_state, item_id, effect_execution_confirmed=True)

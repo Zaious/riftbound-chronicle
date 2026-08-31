@@ -136,11 +136,13 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.death_triggers must be an array")
         else:
             for trigger_index, trigger in enumerate(death_triggers):
-                required = {"trigger_id", "controller", "source_object", "controller_order"}
+                required = {"trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"}
                 if not isinstance(trigger, dict) or not required.issubset(trigger):
                     errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid shape")
                 elif trigger.get("source_object") != object_id or trigger.get("controller") not in players:
                     errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid source/controller")
+                elif not isinstance(trigger.get("effect_program_id"), str) or not trigger.get("effect_program_id") or not isinstance(trigger.get("optional_at_finalize"), bool):
+                    errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid program/optional binding")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         modifiers = obj.get("might_modifiers")

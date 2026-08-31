@@ -52,7 +52,8 @@
               "status": {"enum": ["pending", "finalized"]},
               "ability_kind": {"type": ["string", "null"], "enum": ["standard", "add", null]},
               "source_object": {"type": "string", "minLength": 1},
-              "effect_program_id": {"type": ["string", "null"]}
+              "effect_program_id": {"type": ["string", "null"]},
+              "optional_at_finalize": {"type": "boolean"}
             }
           }
         },

@@ -178,6 +178,12 @@ controller-local order. The combined resolution remains atomic when order is
 missing or ambiguous. Cross-object watchers, optional finalization, reflexive
 triggers, and replacements remain future increments.
 
+The fifth R2 slice binds every typed trigger to its controller, source, and
+effect-program id. Rules-level optional triggers require an explicit perform or
+decline choice during Finalize; mismatched programs are rejected before state
+mutation. A new regression also corrected Priority assignment when an off-turn
+player controls the newly Finalized top item.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

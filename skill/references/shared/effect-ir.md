@@ -62,10 +62,17 @@ blocks follow Turn Player then Turn Order; within one controller's block,
 `controller_order` is mandatory and unique. Missing or ambiguous order prevents
 the combined timing/effect commit.
 
+Each trigger is bound to one `effect_program_id`, controller, and source object.
+The resolution bridge rejects a mismatched program before either state changes.
+If the trigger's effect begins with the rules-level optional “you may,” its
+descriptor sets `optional_at_finalize`; the controller must explicitly perform
+or decline it. Declining removes the Pending item and treats it as not having
+triggered.
+
 This slice covers only the killed object's own death/Deathknell descriptors.
-Watching permanents, zone-dependent evaluation, “Nth time,” optional-at-
-finalize choices, reflexive triggers, and replacement effects remain
-unsupported.
+Watching permanents, zone-dependent evaluation, “Nth time,” reflexive triggers,
+instruction-level optional choices made on resolution, and replacement effects
+remain unsupported.
 
 ## Targets and linked instructions
 

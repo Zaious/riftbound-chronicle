@@ -186,19 +186,42 @@ def main() -> int:
 
     trigger_base = FIXTURES["neutral_open"]
     scheduled = schedule_triggered_items(trigger_base, [
-        {"trigger_id": "p2-a", "controller": "p2", "source_object": "u2", "controller_order": 0},
-        {"trigger_id": "p1-b", "controller": "p1", "source_object": "u1", "controller_order": 1},
-        {"trigger_id": "p1-a", "controller": "p1", "source_object": "u1", "controller_order": 0},
+        {"trigger_id": "p2-a", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "p2-a-effects", "optional_at_finalize": False},
+        {"trigger_id": "p1-b", "controller": "p1", "source_object": "u1", "controller_order": 1, "effect_program_id": "p1-b-effects", "optional_at_finalize": False},
+        {"trigger_id": "p1-a", "controller": "p1", "source_object": "u1", "controller_order": 0, "effect_program_id": "p1-a-effects", "optional_at_finalize": False},
     ])
     expected_order = ["p1-a", "p1-b", "p2-a"]
     if not scheduled.get("applied") or scheduled.get("transition", {}).get("ordered_trigger_ids") != expected_order:
         errors.append(f"trigger scheduling did not use Turn Player blocks and controller order: {scheduled}")
     duplicate_order = schedule_triggered_items(trigger_base, [
-        {"trigger_id": "a", "controller": "p1", "source_object": "u1", "controller_order": 0},
-        {"trigger_id": "b", "controller": "p1", "source_object": "u1", "controller_order": 0},
+        {"trigger_id": "a", "controller": "p1", "source_object": "u1", "controller_order": 0, "effect_program_id": "a-effects", "optional_at_finalize": False},
+        {"trigger_id": "b", "controller": "p1", "source_object": "u1", "controller_order": 0, "effect_program_id": "b-effects", "optional_at_finalize": False},
     ])
     if duplicate_order.get("applied") or duplicate_order.get("reason_code") != "trigger_order_required":
         errors.append("ambiguous same-controller trigger ordering did not fail closed")
+
+    optional_scheduled = schedule_triggered_items(trigger_base, [{
+        "trigger_id": "optional-1", "controller": "p1", "source_object": "u1",
+        "controller_order": 0, "effect_program_id": "optional-effects", "optional_at_finalize": True,
+    }])
+    optional_state = optional_scheduled.get("next_state", {})
+    blocked = finalize_oldest_pending(optional_state) if optional_state else {}
+    if blocked.get("applied") or blocked.get("reason_code") != "trigger_finalize_choice_required":
+        errors.append("optional trigger finalized without an explicit perform/decline choice")
+    performed = finalize_oldest_pending(optional_state, perform_optional_trigger=True) if optional_state else {}
+    if not performed.get("applied") or performed.get("next_state", {}).get("chain", {}).get("items", [{}])[0].get("status") != "finalized":
+        errors.append("accepted optional trigger did not finalize")
+    declined = finalize_oldest_pending(optional_state, perform_optional_trigger=False) if optional_state else {}
+    if not declined.get("applied") or declined.get("next_state", {}).get("chain", {}).get("items"):
+        errors.append("declined optional trigger was not removed from the Chain")
+
+    off_turn_trigger = schedule_triggered_items(trigger_base, [{
+        "trigger_id": "p2-trigger", "controller": "p2", "source_object": "u2",
+        "controller_order": 0, "effect_program_id": "p2-effects", "optional_at_finalize": False,
+    }])
+    off_turn_finalized = finalize_oldest_pending(off_turn_trigger.get("next_state", {})) if off_turn_trigger.get("applied") else {}
+    if off_turn_finalized.get("next_state", {}).get("priority") != "p2":
+        errors.append("Finalize did not grant Priority to the newest Finalized item's controller")
 
     print(f"[info] sovereign rules core: {len(ids)} executable cases; {len(FIXTURES)} canonical fixtures.")
     if errors:

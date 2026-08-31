@@ -8,6 +8,7 @@ import sys
 
 from check_effect_ir import base_state, program
 from check_rules_core import fixture, item
+from rules_core import finalize_oldest_pending, pass_priority
 from resolution_bridge import resolve_with_program
 
 
@@ -50,7 +51,7 @@ def main() -> int:
     trigger_effects = base_state()
     trigger_effects["objects"]["u2"]["death_triggers"] = [{
         "trigger_id": "u2-deathknell", "controller": "p2", "source_object": "u2",
-        "controller_order": 0, "effect_program_id": "u2-deathknell-effects",
+        "controller_order": 0, "effect_program_id": "u2-deathknell-effects", "optional_at_finalize": False,
     }]
     trigger_result = resolve_with_program(timing, "spell-1", trigger_effects, lethal_program)
     trigger_items = trigger_result.get("next_timing_state", {}).get("chain", {}).get("items", [])
@@ -59,14 +60,34 @@ def main() -> int:
 
     ambiguous = base_state()
     ambiguous["objects"]["u2"]["death_triggers"] = [
-        {"trigger_id": "u2-a", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "a"},
-        {"trigger_id": "u2-b", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "b"},
+        {"trigger_id": "u2-a", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "a", "optional_at_finalize": False},
+        {"trigger_id": "u2-b", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "b", "optional_at_finalize": False},
     ]
     ambiguous_result = resolve_with_program(timing, "spell-1", ambiguous, lethal_program)
     if ambiguous_result.get("committed") or ambiguous_result.get("stage") != "trigger_schedule":
         failures.append("ambiguous same-controller death-trigger order did not block the atomic commit")
     if "next_timing_state" in ambiguous_result or "next_effect_state" in ambiguous_result:
         failures.append("ambiguous trigger ordering leaked a partial next state")
+
+    pending_trigger_state = trigger_result.get("next_timing_state", {})
+    finalized_trigger = finalize_oldest_pending(pending_trigger_state) if pending_trigger_state else {}
+    if finalized_trigger.get("applied"):
+        trigger_closed = finalized_trigger["next_state"]
+        first_pass = pass_priority(trigger_closed, "p2")
+        second_pass = pass_priority(first_pass["next_state"], "p1") if first_pass.get("applied") else {}
+        trigger_program = program("u2-deathknell-effects", {"op": "draw", "player": "p2", "count": 1})
+        trigger_program["controller"] = "p2"
+        trigger_program["source_object"] = "u2"
+        trigger_resolution = resolve_with_program(second_pass.get("next_state", {}), "u2-deathknell", trigger_result["next_effect_state"], trigger_program)
+        if not trigger_resolution.get("committed") or trigger_resolution["next_effect_state"]["players"]["p2"]["zones"]["hand"] != ["c4"]:
+            failures.append("bound death-trigger effect program did not resolve")
+        wrong_program = dict(trigger_program)
+        wrong_program["program_id"] = "wrong-effects"
+        rejected_program = resolve_with_program(second_pass.get("next_state", {}), "u2-deathknell", trigger_result["next_effect_state"], wrong_program)
+        if rejected_program.get("committed") or rejected_program.get("reason") != "effect_program_id_mismatch":
+            failures.append("mismatched trigger effect program was not rejected")
+    else:
+        failures.append("scheduled death trigger did not finalize for bound-program test")
 
     not_next = fixture(
         priority="p2",

@@ -46,6 +46,14 @@ supported there. An unsupported effect must lower confidence or stop the
 sequence; never complete it from card-text intuition and present that state as
 executable.
 
+When Deck Coach, Rule Consult, Player 2 Agent, or the planned Match Analyst
+needs to consume an executable result, read
+`${CLAUDE_SKILL_DIR}/references/shared/engine-check.md`. Produce the shared
+`engine-check.v1` envelope with `${CLAUDE_SKILL_DIR}/scripts/engine_check.py`
+rather than embedding a component-specific raw result directly. The envelope
+is a non-authoritative consistency check and never changes a consumer's state
+or legality authority.
+
 ## Shared source authority
 
 Before quoting current card text, legality, errata, or tournament procedure, read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md`. Use local data for routine lookup only within its documented freshness and provenance limits. Do not answer a live, time-sensitive question from memory.
@@ -70,6 +78,7 @@ For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.
 - Executable rules-core cases: `${CLAUDE_SKILL_DIR}/data/rules_core_cases.json`
 - Chronicle-owned typed effect IR: `${CLAUDE_SKILL_DIR}/scripts/effect_ir.py`
 - Atomic timing/effect bridge: `${CLAUDE_SKILL_DIR}/scripts/resolution_bridge.py`
+- Shared engine-result envelope and runner: `${CLAUDE_SKILL_DIR}/scripts/engine_check.py`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
 - Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
 - Rift Atlas deck handoff adapter: `${CLAUDE_SKILL_DIR}/scripts/riftatlas_bridge.py` (user-pasted list, no upstream scraping)

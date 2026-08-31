@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/engine-check.schema.json",
+  "title": "Chronicle Engine Check v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "check_id", "check_kind", "outcome", "authority",
+    "ruleset", "component", "coverage", "input_hashes", "result_hash",
+    "reason", "rule_locators", "trace_summary", "assumptions",
+    "missing_information"
+  ],
+  "properties": {
+    "schema_version": {"const": "engine-check.v1"},
+    "check_id": {"type": "string", "pattern": "^engine-check:[0-9a-f]{24}$"},
+    "check_kind": {"enum": ["timing", "effect", "resolution", "cleanup", "legal_action"]},
+    "outcome": {"enum": ["supported", "illegal", "unsupported", "decision_required", "invalid_input"]},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["official_status", "role", "state_effect"],
+      "properties": {
+        "official_status": {"const": "unofficial"},
+        "role": {"const": "consistency_check"},
+        "state_effect": {"const": "none"}
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {
+        "core": {"type": "string", "minLength": 1},
+        "faq_as_of": {"type": "string", "minLength": 1}
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"enum": ["rules_core", "effect_ir", "resolution_bridge", "lethal_cleanup", "legal_action_service"]},
+        "version": {"type": "string", "minLength": 1}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "complete_game", "complete_legality", "supported_scope", "unsupported_scope"],
+      "properties": {
+        "id": {"enum": ["timing_permission_v1", "effect_program_v1", "combined_resolution_v1", "lethal_cleanup_v1", "legal_action_v1"]},
+        "complete_game": {"const": false},
+        "complete_legality": {"const": false},
+        "supported_scope": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "unsupported_scope": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "input_hashes": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+    },
+    "result_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "state_label": {"type": "string", "minLength": 1},
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string"}
+      }
+    },
+    "rule_locators": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "trace_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_count", "outcomes", "raw_result_included"],
+      "properties": {
+        "event_count": {"type": "integer", "minimum": 0},
+        "outcomes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "stage": {"type": "string", "minLength": 1},
+        "procedure": {"type": "string", "minLength": 1},
+        "raw_result_included": {"type": "boolean"}
+      }
+    },
+    "decision_required": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "controller", "replacement_ids", "event_ids"],
+      "properties": {
+        "kind": {"enum": ["trigger_choice", "trigger_order", "replacement_choice", "replacement_order", "effect_confirmation", "other"]},
+        "controller": {"type": ["string", "null"]},
+        "replacement_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "event_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "decision_schema": {"type": ["string", "null"]}
+      }
+    },
+    "assumptions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "missing_information": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "raw_result": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"outcome": {"const": "decision_required"}}},
+      "then": {"required": ["decision_required"]}
+    },
+    {
+      "if": {"properties": {"outcome": {"enum": ["supported", "illegal", "unsupported", "invalid_input"]}}},
+      "then": {"not": {"required": ["decision_required"]}}
+    }
+  ]
+}

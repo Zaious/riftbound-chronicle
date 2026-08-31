@@ -82,6 +82,9 @@ jobs:
       - name: Atomic timing and typed-effect resolution bridge
         run: python3 skill/scripts/check_resolution_bridge.py
 
+      - name: Shared engine-check envelope and runner
+        run: python3 skill/scripts/check_engine_check.py
+
       - name: Rule Consult static prototype contract
         run: python3 skill/scripts/check_rule_consult_prototype.py
 
@@ -113,6 +116,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_rules_core.py"
           python3 "$REPO/skill/scripts/check_effect_ir.py"
           python3 "$REPO/skill/scripts/check_resolution_bridge.py"
+          python3 "$REPO/skill/scripts/check_engine_check.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"
           python3 "$REPO/skill/scripts/check_rules_bootstrap.py"

@@ -17,7 +17,7 @@ about mechanics outside the stated scope.
 - [x] Define the four-system product boundaries and ownership rules.
 - [x] Build the first Chronicle-owned timing and typed-effect kernel.
 - [x] Publish this reconciled completion checklist.
-- [ ] Establish the shared `engine-check.v1` result contract and runner.
+- [x] Establish the shared `engine-check.v1` result contract and runner.
 - [ ] Integrate `engine-check.v1` into Rule Consult.
 - [ ] Integrate `engine-check.v1` into Player 2 Agent P2-A.
 - [ ] Integrate behavior coverage and verified lines into Deck Coach.
@@ -213,19 +213,19 @@ about mechanics outside the stated scope.
 
 ## 7. Shared `engine-check.v1` integration layer
 
-- [ ] One versioned envelope for timing-only, effect-only, combined resolution,
-  cleanup, and future legal-action checks.
-- [ ] Component input/result hashes plus engine/rules versions.
-- [ ] Distinct `supported`, `illegal`, `unsupported`, `decision_required`, and
+- [x] One versioned envelope for timing-only, effect-only, combined resolution,
+  and cleanup checks, with the future legal-action kind reserved but not emitted.
+- [x] Component input/result hashes plus engine/rules versions.
+- [x] Distinct `supported`, `illegal`, `unsupported`, `decision_required`, and
   `invalid_input` outcomes with attributed causes.
-- [ ] Precise coverage, rule locators, trace summary, assumptions, and missing
+- [x] Precise coverage, rule locators, trace summary, assumptions, and missing
   information.
-- [ ] Decision schema/id/options without embedding an authoritative choice.
-- [ ] Rejection of complete-game or complete-legality overclaims.
-- [ ] Dependency-free runner wrapping the existing pure engines.
-- [ ] Schema, validator, CLI examples, fixtures, and off-cwd regressions.
-- [ ] Optional raw state/trace so consumer artifacts can remain compact.
-- [ ] Consumer projection rules for all four systems.
+- [x] Decision schema/id/options without embedding an authoritative choice.
+- [x] Rejection of complete-game or complete-legality overclaims.
+- [x] Dependency-free runner wrapping the existing pure engines.
+- [x] Schema, validator, CLI examples, fixtures, and off-cwd regressions.
+- [x] Optional raw state/trace so consumer artifacts can remain compact.
+- [x] Consumer projection rules for all four systems.
 
 ## 8. Deck Coach
 

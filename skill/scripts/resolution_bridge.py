@@ -12,12 +12,39 @@ from typing import Any
 from effect_ir import apply_program, hash_value, perform_lethal_cleanup
 from rules_core import complete_resolution, schedule_triggered_items, state_hash
 
+CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
+
+
+def validate_cleanup_decisions(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, dict):
+        return ["cleanup_decisions must be an object"]
+    if value.get("schema_version") != CLEANUP_DECISION_VERSION:
+        return [f"cleanup_decisions.schema_version must be {CLEANUP_DECISION_VERSION}"]
+    if set(value) - {"schema_version", "replacement_event_order", "replacement_choices"}:
+        return ["cleanup_decisions contains unsupported fields"]
+    event_order = value.get("replacement_event_order", {})
+    if not isinstance(event_order, dict) or any(
+        not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) or any(not isinstance(item, str) or not item for item in ids)
+        for ids in event_order.values()
+    ):
+        return ["cleanup_decisions.replacement_event_order must map ids to non-empty unique string arrays"]
+    choices = value.get("replacement_choices", {})
+    if not isinstance(choices, dict) or any(
+        not isinstance(by_event, dict) or any(not isinstance(event_id, str) or not isinstance(choice, bool) for event_id, choice in by_event.items())
+        for by_event in choices.values()
+    ):
+        return ["cleanup_decisions.replacement_choices must map replacement and event ids to booleans"]
+    return []
+
 
 def resolve_with_program(
     timing_state: dict[str, Any],
     item_id: str,
     effect_state: dict[str, Any],
     program: dict[str, Any],
+    cleanup_decisions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     base = {
         "schema_version": "riftbound-resolution-bridge-result.v1",
@@ -55,6 +82,8 @@ def resolve_with_program(
             "reason": timing_result.get("reason_code", "timing_resolution_failed"),
             "timing_result": timing_result,
         }
+    if decision_errors := validate_cleanup_decisions(cleanup_decisions):
+        return {**base, "valid": False, "committed": False, "stage": "cleanup_decision", "errors": decision_errors, "reason": "; ".join(decision_errors)}
     effect_result = apply_program(effect_state, program)
     if effect_result.get("committed") is not True:
         return {
@@ -68,6 +97,8 @@ def resolve_with_program(
     cleanup_result = perform_lethal_cleanup(
         effect_result["next_state"],
         attributed_sources=[program.get("source_object")] if program.get("source_object") else [],
+        replacement_event_order=(cleanup_decisions or {}).get("replacement_event_order"),
+        replacement_choices=(cleanup_decisions or {}).get("replacement_choices"),
     )
     if cleanup_result.get("committed") is not True:
         return {
@@ -135,10 +166,12 @@ def main() -> int:
     parser.add_argument("item_id")
     parser.add_argument("effect_state", type=Path)
     parser.add_argument("program", type=Path)
+    parser.add_argument("--cleanup-decisions", type=Path)
     args = parser.parse_args()
     try:
         result = resolve_with_program(
-            _load(args.timing_state), args.item_id, _load(args.effect_state), _load(args.program)
+            _load(args.timing_state), args.item_id, _load(args.effect_state), _load(args.program),
+            _load(args.cleanup_decisions) if args.cleanup_decisions else None,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("valid") and result.get("committed") else 1

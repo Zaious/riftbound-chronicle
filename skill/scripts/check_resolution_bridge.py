@@ -4,16 +4,21 @@
 from __future__ import annotations
 
 import copy
+import json
 import sys
+from pathlib import Path
 
 from check_effect_ir import base_state, program
 from check_rules_core import fixture, item
 from rules_core import finalize_oldest_pending, pass_priority
-from resolution_bridge import resolve_with_program
+from resolution_bridge import CLEANUP_DECISION_VERSION, resolve_with_program
 
 
 def main() -> int:
     failures = []
+    cleanup_schema = json.loads((Path(__file__).resolve().parents[1] / "schemas" / "cleanup-decisions.schema.json").read_text(encoding="utf-8"))
+    if cleanup_schema.get("properties", {}).get("schema_version", {}).get("const") != CLEANUP_DECISION_VERSION:
+        failures.append("cleanup decision schema and resolution bridge version diverged")
     timing = fixture(
         priority="p2",
         items=[item("spell-1", "p1", "spell", "default", "finalized")],
@@ -183,6 +188,45 @@ def main() -> int:
     inherited_objects = inheritance_result.get("next_effect_state", {}).get("objects", {})
     if not inheritance_result.get("committed") or any(inherited_objects.get(object_id, {}).get("keywords") != ["temporary"] for object_id in ("mech-token", "recruit-token")):
         failures.append("Core 375 token modifier inheritance did not commit atomically with Chain resolution")
+
+    simultaneous_state = base_state()
+    for object_id in ("u3", "u4"):
+        simultaneous_state["objects"][object_id] = {
+            "owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2,
+            "might_modifiers": [], "damage": 0, "exhausted": False,
+        }
+        simultaneous_state["players"]["p2"]["zones"]["base"].append(object_id)
+    simultaneous_state["replacement_effects"] = [{
+        "replacement_id": "guard-all", "controller": "p2", "source_object": "u4",
+        "mode": "prevent_event", "event_op": "kill", "optional": False,
+        "uses_remaining": None, "target_controller_relation": "friendly",
+    }]
+    simultaneous_program = program(
+        "simultaneous-lethal",
+        {"op": "deal_damage", "object_id": "u2", "amount": 4},
+        {"op": "deal_damage", "object_id": "u3", "amount": 2},
+    )
+    missing_cleanup_decision = resolve_with_program(timing, "spell-1", simultaneous_state, simultaneous_program)
+    if missing_cleanup_decision.get("committed") or missing_cleanup_decision.get("stage") != "cleanup":
+        failures.append("resolution bridge did not stop atomically for a simultaneous replacement decision")
+    decided_cleanup = resolve_with_program(
+        timing,
+        "spell-1",
+        simultaneous_state,
+        simultaneous_program,
+        {
+            "schema_version": CLEANUP_DECISION_VERSION,
+            "replacement_event_order": {"guard-all": ["u3", "u2"]},
+        },
+    )
+    if not decided_cleanup.get("committed") or decided_cleanup["next_effect_state"].get("replacement_effects", [])[0].get("replacement_id") != "guard-all":
+        failures.append("resolution bridge did not atomically commit a supplied simultaneous replacement order")
+    invalid_cleanup_decision = resolve_with_program(
+        timing, "spell-1", simultaneous_state, simultaneous_program,
+        {"schema_version": "wrong", "replacement_event_order": {"guard-all": ["u3", "u2"]}},
+    )
+    if invalid_cleanup_decision.get("committed") or invalid_cleanup_decision.get("stage") != "cleanup_decision" or invalid_cleanup_decision.get("valid") is not False:
+        failures.append("resolution bridge accepted an unversioned or invalid cleanup decision contract")
 
     not_next = fixture(
         priority="p2",

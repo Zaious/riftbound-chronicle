@@ -229,6 +229,15 @@ provenance, and are ignored for incompatible replacement actions such as Draw.
 Contradictory child modifiers fail closed; broader keywords, linked result
 actions, and general modification inheritance remain future work.
 
+The twelfth R2 slice routes simultaneous lethal Kill events through a bounded
+Core 370.4/373 replacement sequence. One prevention descriptor can apply across
+an explicitly controller-ordered event list before unmodified Kills execute;
+finite uses can cause Core 322 follow-up cleanups, and a source can apply before
+leaving in the same simultaneous group. Resolution accepts a versioned cleanup
+decision artifact and otherwise rolls back atomically. Multiple descriptors,
+replacement programs, and different-controller turn-order execution remain
+fail-closed future work.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

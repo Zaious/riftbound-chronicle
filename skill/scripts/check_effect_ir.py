@@ -205,6 +205,89 @@ def main() -> int:
     if not trigger_cleanup.get("committed") or [item["trigger_id"] for item in trigger_cleanup.get("pending_triggers", [])] != ["u2-deathknell"]:
         failures.append("lethal cleanup did not preserve typed death-trigger descriptors")
 
+    simultaneous_state = base_state()
+    for object_id in ("u3", "u4"):
+        simultaneous_state["objects"][object_id] = {
+            "owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2,
+            "might_modifiers": [], "damage": 0, "exhausted": False,
+        }
+        simultaneous_state["players"]["p2"]["zones"]["base"].append(object_id)
+    simultaneous_state["objects"]["u2"]["damage"] = 4
+    simultaneous_state["objects"]["u3"]["damage"] = 2
+    simultaneous_state["replacement_effects"] = [{
+        "replacement_id": "guard-all", "controller": "p2", "source_object": "u4",
+        "mode": "prevent_event", "event_op": "kill", "optional": False,
+        "uses_remaining": None, "target_controller_relation": "friendly",
+    }]
+    missing_batch_order = perform_lethal_cleanup(simultaneous_state)
+    if missing_batch_order.get("committed") or missing_batch_order.get("replacement_decision_required") is not True:
+        failures.append("simultaneous replacement sequence did not require controller event ordering")
+    sequenced_batch = perform_lethal_cleanup(
+        simultaneous_state,
+        replacement_event_order={"guard-all": ["u3", "u2"]},
+    )
+    sequence_trace = [event.get("object_id") for event in sequenced_batch.get("trace", []) if event.get("phase") == "replacement_sequence"]
+    if not sequenced_batch.get("committed") or sequence_trace != ["u3", "u2"]:
+        failures.append(f"simultaneous replacement event order was not preserved: {sequence_trace}")
+    elif sequenced_batch.get("stable_prevented_objects") != ["u2", "u3"] or sequenced_batch.get("cleanup_iterations") != 1:
+        failures.append("unlimited simultaneous prevention did not stabilize without inventing another cleanup")
+
+    optional_batch_state = copy.deepcopy(simultaneous_state)
+    optional_batch_state["replacement_effects"][0]["optional"] = True
+    missing_batch_choices = perform_lethal_cleanup(
+        optional_batch_state,
+        replacement_event_order={"guard-all": ["u3", "u2"]},
+    )
+    if missing_batch_choices.get("committed") or missing_batch_choices.get("replacement_decision_required") is not True:
+        failures.append("optional simultaneous replacement did not require per-event choices")
+    accepted_batch_choices = perform_lethal_cleanup(
+        optional_batch_state,
+        replacement_event_order={"guard-all": ["u3", "u2"]},
+        replacement_choices={"guard-all": {"u3": True, "u2": True}},
+    )
+    if not accepted_batch_choices.get("committed") or accepted_batch_choices.get("stable_prevented_objects") != ["u2", "u3"]:
+        failures.append("explicit optional choices did not apply across the simultaneous sequence")
+
+    finite_batch_state = copy.deepcopy(simultaneous_state)
+    finite_batch_state["replacement_effects"][0]["uses_remaining"] = 1
+    finite_batch = perform_lethal_cleanup(
+        finite_batch_state,
+        replacement_event_order={"guard-all": ["u3", "u2"]},
+    )
+    if not finite_batch.get("committed") or finite_batch.get("cleanup_iterations") != 2:
+        failures.append("finite simultaneous prevention did not trigger the required follow-up cleanup")
+    elif any(object_id in finite_batch["next_state"]["objects"] and object_id not in finite_batch["next_state"]["players"]["p2"]["zones"]["trash"] for object_id in ("u2", "u3")):
+        failures.append("finite simultaneous prevention did not eventually kill both still-lethal Units")
+
+    leaving_source_state = copy.deepcopy(simultaneous_state)
+    leaving_source_state["objects"]["u3"]["damage"] = 0
+    leaving_source_state["objects"]["u4"]["damage"] = 2
+    leaving_source_state["replacement_effects"][0]["target_object_id"] = "u2"
+    leaving_source_state["replacement_effects"][0].pop("target_controller_relation", None)
+    leaving_source = perform_lethal_cleanup(leaving_source_state)
+    leaving_trace = [(event.get("phase"), event.get("object_id")) for event in leaving_source.get("trace", [])]
+    if not leaving_source.get("committed") or leaving_trace[:2] != [("replacement_sequence", "u2"), ("unmodified_simultaneous_events", "u4")]:
+        failures.append(f"replacement source did not apply before leaving in its simultaneous event: {leaving_trace}")
+    elif leaving_source["next_state"]["replacement_effects"]:
+        failures.append("replacement descriptor remained active after its source left the board")
+    elif "Core 370.4" not in leaving_source["trace"][0].get("rule_locators", []):
+        failures.append("simultaneously leaving replacement source lacks its exact Core 370.4 trace locator")
+
+    multi_descriptor_state = copy.deepcopy(simultaneous_state)
+    multi_descriptor_state["objects"]["u5"] = {
+        "owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2,
+        "might_modifiers": [], "damage": 0, "exhausted": False,
+    }
+    multi_descriptor_state["players"]["p2"]["zones"]["base"].append("u5")
+    multi_descriptor_state["replacement_effects"].append({
+        "replacement_id": "guard-second", "controller": "p2", "source_object": "u5",
+        "mode": "prevent_event", "event_op": "kill", "optional": False,
+        "uses_remaining": None, "target_object_id": "u2",
+    })
+    multi_descriptor = perform_lethal_cleanup(multi_descriptor_state)
+    if multi_descriptor.get("committed") or multi_descriptor.get("unsupported") is not True:
+        failures.append("multi-descriptor simultaneous replacement batch did not fail closed")
+
     reflexive = apply_program(state, program(
         "reflexive",
         {

@@ -184,6 +184,8 @@ def validate_state(state: Any) -> list[str]:
             replacement_ids.add(replacement_id)
         if replacement.get("controller") not in players or replacement.get("source_object") not in objects:
             errors.append(f"{label} has unknown controller/source")
+        elif objects[replacement["source_object"]].get("controller") != replacement.get("controller"):
+            errors.append(f"{label}.controller must control its source object")
         if replacement.get("mode") not in {"prevent_event", "replace_with", "augment_with", "reduce_damage"}:
             errors.append(f"{label}.mode is unsupported")
         if replacement.get("event_op") not in SUPPORTED_OPS:
@@ -329,6 +331,18 @@ def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
         state["players"][location[1]]["zones"][location[2]].remove(object_id)
     else:
         state["battlefields"][location[1]]["objects"].remove(object_id)
+
+
+def _prune_inactive_replacements(state: dict[str, Any]) -> list[str]:
+    removed = []
+    active = []
+    for replacement in state["replacement_effects"]:
+        if zone_class(find_location(state, replacement["source_object"])) == "board":
+            active.append(replacement)
+        else:
+            removed.append(replacement["replacement_id"])
+    state["replacement_effects"] = active
+    return removed
 
 
 def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any]) -> list[dict[str, Any]]:
@@ -602,12 +616,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         else:
             new_state["players"][obj["owner"]]["zones"]["trash"].append(object_id)
             destination = f"{obj['owner']}.trash"
+        disabled_replacements = _prune_inactive_replacements(new_state)
         trace.update({
             "object_id": object_id,
             "kill_mode": effect.get("kill_mode", "active"),
             "destination": destination,
             "attributed_sources": effect.get("attributed_sources", []),
             "pending_triggers": pending_triggers,
+            "disabled_replacements": disabled_replacements,
         })
 
     elif op == "emit_reflexive":
@@ -632,7 +648,167 @@ def current_might(obj: dict[str, Any]) -> int:
     return obj["base_might"] + sum(modifier["amount"] for modifier in obj.get("might_modifiers", []))
 
 
-def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[str] | None = None) -> dict[str, Any]:
+def apply_simultaneous_kill_batch(
+    state: dict[str, Any],
+    object_ids: list[str],
+    *,
+    replacement_event_order: dict[str, list[str]] | None = None,
+    replacement_choices: dict[str, dict[str, bool]] | None = None,
+    kill_mode: str = "simultaneous",
+    attributed_sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """Resolve a bounded Core 373 batch with at most one prevent descriptor."""
+    base = {
+        "schema_version": "riftbound-simultaneous-kill-result.v1",
+        "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+        "input_state_hash": hash_value(state),
+    }
+    errors = validate_state(state)
+    if errors:
+        return {**base, "valid": False, "committed": False, "errors": errors, "trace": []}
+    if not isinstance(object_ids, list) or not object_ids or len(object_ids) != len(set(object_ids)):
+        return {**base, "valid": False, "committed": False, "errors": ["object_ids must be a non-empty unique array"], "trace": []}
+    for object_id in object_ids:
+        obj = state["objects"].get(object_id)
+        if obj is None or obj.get("kind") not in {"unit", "gear"} or zone_class(find_location(state, object_id)) != "board":
+            return {**base, "valid": False, "committed": False, "errors": [f"{object_id!r} is not a supported board permanent"], "trace": []}
+    if replacement_event_order is not None and not isinstance(replacement_event_order, dict):
+        return {**base, "valid": False, "committed": False, "errors": ["replacement_event_order must be an object"], "trace": []}
+    if replacement_choices is not None and not isinstance(replacement_choices, dict):
+        return {**base, "valid": False, "committed": False, "errors": ["replacement_choices must be an object"], "trace": []}
+
+    events = {
+        object_id: {
+            "effect_id": f"simultaneous-kill:{object_id}", "op": "kill", "object_id": object_id,
+            "kill_mode": kill_mode, "attributed_sources": attributed_sources or [],
+        }
+        for object_id in object_ids
+    }
+    qualifying: dict[str, list[str]] = {}
+    descriptors: dict[str, dict[str, Any]] = {}
+    for object_id in object_ids:
+        for descriptor in _applicable_replacements(state, events[object_id]):
+            replacement_id = descriptor["replacement_id"]
+            descriptors[replacement_id] = descriptor
+            qualifying.setdefault(replacement_id, []).append(object_id)
+    supplied_order_ids = set((replacement_event_order or {}).keys())
+    supplied_choice_ids = set((replacement_choices or {}).keys())
+    stale_decision_ids = (supplied_order_ids | supplied_choice_ids) - set(descriptors)
+    if stale_decision_ids:
+        return {
+            **base, "valid": False, "committed": False,
+            "errors": [f"cleanup decisions reference non-applicable replacements: {sorted(stale_decision_ids)}"],
+            "trace": [],
+        }
+    if len(descriptors) > 1:
+        return {
+            **base, "valid": True, "committed": False, "unsupported": True,
+            "reason": "multiple replacement descriptors in one simultaneous batch are outside the bounded Core 373 slice",
+            "replacement_ids": sorted(descriptors), "trace": [],
+        }
+    if descriptors and next(iter(descriptors.values()))["mode"] != "prevent_event":
+        descriptor = next(iter(descriptors.values()))
+        return {
+            **base, "valid": True, "committed": False, "unsupported": True,
+            "reason": "simultaneous batch currently supports prevent_event only",
+            "replacement_ids": [descriptor["replacement_id"]], "trace": [],
+        }
+
+    current = copy.deepcopy(state)
+    trace: list[dict[str, Any]] = []
+    prevented: set[str] = set()
+    if descriptors:
+        replacement_id, descriptor = next(iter(descriptors.items()))
+        qualified_ids = qualifying[replacement_id]
+        supplied = (replacement_event_order or {}).get(replacement_id)
+        if len(qualified_ids) > 1:
+            if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(qualified_ids):
+                return {
+                    **base, "valid": True, "committed": False, "replacement_decision_required": True,
+                    "reason": "replacement controller must order every qualifying simultaneous event",
+                    "replacement_ids": [replacement_id], "event_ids": qualified_ids,
+                    "decision_controller": descriptor["controller"], "trace": [],
+                }
+            event_order = supplied
+        else:
+            event_order = qualified_ids
+        per_event_choices = (replacement_choices or {}).get(replacement_id, {})
+        if not isinstance(per_event_choices, dict):
+            return {**base, "valid": False, "committed": False, "errors": [f"replacement choices for {replacement_id} must be an object"], "trace": []}
+        for sequence_index, object_id in enumerate(event_order):
+            applicable_now = next((item for item in _applicable_replacements(current, events[object_id]) if item["replacement_id"] == replacement_id), None)
+            if applicable_now is None:
+                continue
+            event = copy.deepcopy(events[object_id])
+            if descriptor["optional"]:
+                choice = per_event_choices.get(object_id)
+                if not isinstance(choice, bool):
+                    return {
+                        **base, "valid": True, "committed": False, "replacement_decision_required": True,
+                        "reason": "optional simultaneous replacement requires an explicit choice for the next qualifying event",
+                        "replacement_ids": [replacement_id], "event_ids": [object_id],
+                        "decision_controller": descriptor["controller"], "trace": trace,
+                    }
+                if choice is False:
+                    unchanged_hash = hash_value(current)
+                    trace.append({
+                        "phase": "replacement_sequence", "sequence_index": sequence_index,
+                        "effect_id": event["effect_id"], "object_id": object_id, "op": "kill",
+                        "outcome": "replacement_declined", "replacement_id": replacement_id,
+                        "before_state_hash": unchanged_hash, "after_state_hash": unchanged_hash,
+                        "rule_locators": ["Core 371.2–371.2.b", "Core 373–373.2.a.1"],
+                    })
+                    continue
+                event["replacement_choices"] = {replacement_id: choice}
+            selection = _select_replacement(current, event)
+            if selection is None:
+                continue
+            selected_state, replacement_trace, _ = selection
+            current = selected_state
+            sequence_locators = ["Core 373–373.2.a.1"]
+            if descriptor["source_object"] in object_ids:
+                sequence_locators.insert(0, "Core 370.4")
+            replacement_trace.update({
+                "phase": "replacement_sequence", "sequence_index": sequence_index,
+                "effect_id": event["effect_id"], "object_id": object_id,
+                "before_state_hash": trace[-1]["after_state_hash"] if trace else hash_value(state),
+                "after_state_hash": hash_value(current),
+                "rule_locators": list(dict.fromkeys(replacement_trace["rule_locators"] + sequence_locators)),
+            })
+            trace.append(replacement_trace)
+            prevented.add(object_id)
+
+    killed = []
+    for object_id in object_ids:
+        if object_id in prevented:
+            continue
+        current, event_trace = _apply_one(current, events[object_id])
+        event_trace.update({
+            "phase": "unmodified_simultaneous_events", "effect_id": events[object_id]["effect_id"],
+            "simultaneous_group": copy.deepcopy(object_ids),
+            "before_state_hash": trace[-1]["after_state_hash"] if trace else hash_value(state),
+            "after_state_hash": hash_value(current),
+            "rule_locators": list(dict.fromkeys(event_trace["rule_locators"] + ["Core 373.1.a"])),
+        })
+        trace.append(event_trace)
+        killed.append(object_id)
+    pending_triggers = [trigger for event in trace for trigger in event.get("pending_triggers", [])]
+    return {
+        **base, "valid": True, "committed": True, "unsupported": False,
+        "next_state": current, "next_state_hash": hash_value(current),
+        "killed_objects": killed, "prevented_objects": [object_id for object_id in object_ids if object_id in prevented],
+        "trace": trace, "pending_triggers": pending_triggers,
+        "coverage": "single-prevention-descriptor-simultaneous-kill-batch",
+    }
+
+
+def perform_lethal_cleanup(
+    state: dict[str, Any],
+    *,
+    attributed_sources: list[str] | None = None,
+    replacement_event_order: dict[str, list[str]] | None = None,
+    replacement_choices: dict[str, dict[str, bool]] | None = None,
+) -> dict[str, Any]:
     base = {
         "schema_version": "riftbound-lethal-cleanup-result.v1",
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -641,41 +817,71 @@ def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[st
     errors = validate_state(state)
     if errors:
         return {**base, "valid": False, "committed": False, "errors": errors, "trace": []}
-    lethal = []
-    for object_id, obj in state["objects"].items():
-        location = find_location(state, object_id)
-        if obj["kind"] != "unit" or location is None or not (location[0] == "battlefield" or location[2] == "base"):
-            continue
-        might = current_might(obj)
-        if obj["damage"] > 0 and obj["damage"] >= might:
-            lethal.append((object_id, might, obj["damage"]))
     current = copy.deepcopy(state)
-    trace = []
-    group = [object_id for object_id, _, _ in sorted(lethal)]
-    for object_id, might, damage in sorted(lethal):
-        effect = {
-            "op": "kill",
-            "object_id": object_id,
-            "kill_mode": "passive_lethal_cleanup",
-            "attributed_sources": attributed_sources or [],
+    trace: list[dict[str, Any]] = []
+    pending_triggers: list[dict[str, Any]] = []
+    initial_group: list[str] = []
+    killed_objects: list[str] = []
+    stable_prevented: list[str] = []
+    iterations = 0
+    while iterations < 16:
+        lethal = []
+        for object_id, obj in current["objects"].items():
+            location = find_location(current, object_id)
+            if obj["kind"] != "unit" or location is None or not (location[0] == "battlefield" or location[2] == "base"):
+                continue
+            might = current_might(obj)
+            if obj["damage"] > 0 and obj["damage"] >= might:
+                lethal.append((object_id, might, obj["damage"]))
+        group = [object_id for object_id, _, _ in sorted(lethal)]
+        if not group:
+            break
+        if not initial_group:
+            initial_group = copy.deepcopy(group)
+        facts = {object_id: (might, damage) for object_id, might, damage in lethal}
+        before_iteration_hash = hash_value(current)
+        batch = apply_simultaneous_kill_batch(
+            current,
+            group,
+            replacement_event_order=replacement_event_order if iterations == 0 else None,
+            replacement_choices=replacement_choices if iterations == 0 else None,
+            kill_mode="passive_lethal_cleanup",
+            attributed_sources=attributed_sources,
+        )
+        if batch.get("committed") is not True:
+            return {
+                **base, "valid": batch.get("valid", True), "committed": False,
+                "unsupported": batch.get("unsupported", False),
+                "replacement_decision_required": batch.get("replacement_decision_required", False),
+                "reason": batch.get("reason", "; ".join(batch.get("errors", [])) or "simultaneous lethal batch failed"),
+                "batch_result": batch, "trace": trace,
+            }
+        current = batch["next_state"]
+        batch_id = f"lethal-cleanup:{hash_value(state).split(':', 1)[1][:12]}:{iterations}"
+        for event in batch["trace"]:
+            copied_event = copy.deepcopy(event)
+            object_id = copied_event.get("object_id")
+            if object_id in facts:
+                copied_event["lethal_might"], copied_event["marked_damage"] = facts[object_id]
+            copied_event["cleanup_iteration"] = iterations
+            copied_event["rule_locators"] = list(dict.fromkeys(copied_event.get("rule_locators", []) + ["Core 142.4", "Core 322–323.5", "Core 428"]))
+            trace.append(copied_event)
+        for trigger in batch.get("pending_triggers", []):
+            copied_trigger = copy.deepcopy(trigger)
+            copied_trigger["batch_sequence"] = iterations
+            copied_trigger["batch_id"] = batch_id
+            copied_trigger.setdefault("trigger_kind", "self_death")
+            pending_triggers.append(copied_trigger)
+        killed_objects.extend(batch.get("killed_objects", []))
+        iterations += 1
+        if hash_value(current) == before_iteration_hash:
+            stable_prevented = batch.get("prevented_objects", [])
+            break
+    else:
+        return {
+            **base, "valid": True, "committed": False, "unsupported": True,
+            "reason": "lethal cleanup replacement loop exceeded 16 iterations", "trace": trace,
         }
-        current, event = _apply_one(current, effect)
-        event.update({
-            "object_id": object_id,
-            "lethal_might": might,
-            "marked_damage": damage,
-            "simultaneous_group": group,
-            "before_state_hash": trace[-1]["after_state_hash"] if trace else hash_value(state),
-            "after_state_hash": hash_value(current),
-            "rule_locators": ["Core 142.4", "Core 323.3–323.5", "Core 428"],
-        })
-        trace.append(event)
-    pending_triggers = [trigger for event in trace for trigger in event.get("pending_triggers", [])]
-    cleanup_batch_id = f"lethal-cleanup:{hash_value(state).split(':', 1)[1][:12]}"
-    for trigger in pending_triggers:
-        trigger["batch_sequence"] = 0
-        trigger["batch_id"] = cleanup_batch_id
-        trigger.setdefault("trigger_kind", "self_death")
     return {
         **base,
         "valid": True,
@@ -683,10 +889,13 @@ def perform_lethal_cleanup(state: dict[str, Any], *, attributed_sources: list[st
         "unsupported": False,
         "next_state": current,
         "next_state_hash": hash_value(current),
-        "lethal_objects": group,
+        "lethal_objects": initial_group,
+        "killed_objects": killed_objects,
+        "stable_prevented_objects": stable_prevented,
+        "cleanup_iterations": iterations,
         "trace": trace,
         "pending_triggers": pending_triggers,
-        "coverage": "lethal_damage_slice_only",
+        "coverage": "lethal-damage-with-single-prevention-descriptor-sequencing",
     }
 
 

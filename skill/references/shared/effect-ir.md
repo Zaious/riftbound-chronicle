@@ -105,22 +105,51 @@ precedence rule. Other keywords, post-entry linked actions, copy semantics,
 token text, attachments, and modifiers for other event families remain outside
 the executable contract.
 
-Player-targeted events, uncontrolled Battlefield ordering, simultaneous-event
-replacement sequences, `All` prevention and duration expiry, broader
-modification inheritance, and replacement sequences spanning several simultaneous events
-are not supported yet. They fail closed rather than being approximated.
+Player-targeted events, uncontrolled Battlefield ordering, general
+simultaneous-event replacement sequences, `All` prevention and duration expiry,
+broader modification inheritance, and replacement sequences spanning several
+simultaneous events are not supported yet. They fail closed rather than being
+approximated.
+
+### Bounded simultaneous Kill sequences
+
+`apply_simultaneous_kill_batch` implements the first Core 370.4 and 373 slice
+for a simultaneous group of typed Kill events. Each event remains distinct. A
+single applicable `prevent_event` descriptor may qualify for one or more events;
+when it qualifies for several, its controller must provide a complete unique
+`replacement_event_order`. Applied prevention traces precede every unmodified
+Kill trace, even when the replacement source is one of the permanents leaving
+in that simultaneous group.
+
+Finite uses are consumed in the declared event order. If that consumption
+changes state while a lethal Unit remains, `perform_lethal_cleanup` repeats the
+cleanup under Core 322. An unlimited prevention that changes no state reaches a
+stable stop instead of looping. A replacement descriptor is removed when its
+source leaves the board.
+
+Resolution callers submit the versioned
+[`cleanup-decisions.schema.json`](../../schemas/cleanup-decisions.schema.json)
+contract. Missing order or optional-use
+choices returns `replacement_decision_required` without committing timing or
+effect state. Optional choices that would require a new decision in a later
+follow-up cleanup are not yet representable as one artifact and therefore also
+stop without committing. Two or more applicable descriptors, non-prevention
+replacement programs, different-controller turn-order execution, and the
+general Core 373.2 sequence graph remain fail-closed.
 
 ## Kill and lethal cleanup slice
 
 `kill` moves a supported non-token Unit or Gear from a board location to its
 owner's Trash. A killed token ceases to exist after entering the non-board zone.
-Objects with death-trigger metadata fail closed until trigger scheduling exists.
+Typed self-death triggers are captured before the object leaves and handed to
+the resolution bridge for Pending-item scheduling.
 
-`perform_lethal_cleanup` implements only Core 323.3–323.5: a board Unit is
-lethal when it has a non-zero marked damage value greater than or equal to its
-current Might. It passively kills every supported lethal Unit and records their
-simultaneous group and attribution. It does not claim to perform the remaining
-Cleanup steps.
+`perform_lethal_cleanup` implements Core 322–323.5 for the supported slice: a
+board Unit is lethal when it has a non-zero marked damage value greater than or
+equal to its current Might. It processes the simultaneous Kill group through
+the bounded replacement sequence above, repeats after a state-changing cleanup,
+and records attribution. It does not claim to perform the remaining Cleanup
+steps.
 
 ## Typed self-death triggers
 

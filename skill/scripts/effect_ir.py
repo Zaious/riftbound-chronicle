@@ -179,7 +179,7 @@ def validate_state(state: Any) -> list[str]:
             replacement_ids.add(replacement_id)
         if replacement.get("controller") not in players or replacement.get("source_object") not in objects:
             errors.append(f"{label} has unknown controller/source")
-        if replacement.get("mode") not in {"prevent_event", "replace_with", "reduce_damage"}:
+        if replacement.get("mode") not in {"prevent_event", "replace_with", "augment_with", "reduce_damage"}:
             errors.append(f"{label}.mode is unsupported")
         if replacement.get("event_op") not in SUPPORTED_OPS:
             errors.append(f"{label}.event_op is unsupported")
@@ -192,8 +192,8 @@ def validate_state(state: Any) -> list[str]:
         if relation not in {None, "friendly", "enemy"}:
             errors.append(f"{label}.target_controller_relation is invalid")
         replacement_effects = replacement.get("replacement_effects")
-        if replacement.get("mode") == "replace_with" and (not isinstance(replacement_effects, list) or not replacement_effects):
-            errors.append(f"{label}.replacement_effects must be non-empty for replace_with")
+        if replacement.get("mode") in {"replace_with", "augment_with"} and (not isinstance(replacement_effects, list) or not replacement_effects):
+            errors.append(f"{label}.replacement_effects must be non-empty for {replacement.get('mode')}")
         if replacement.get("mode") == "reduce_damage":
             if replacement.get("event_op") != "deal_damage":
                 errors.append(f"{label}.reduce_damage may only replace deal_damage")
@@ -359,6 +359,7 @@ def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[
         outcome = {
             "prevent_event": "replaced_prevented",
             "replace_with": "replaced_with",
+            "augment_with": "augmented_with",
             "reduce_damage": "replaced_modified",
         }[replacement["mode"]]
         return new_state, {
@@ -676,6 +677,78 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
             replacement_id = replacement["replacement_id"]
             replacement_index = next(i for i, item in enumerate(selected_state["replacement_effects"]) if item["replacement_id"] == replacement_id)
             stored_replacement = copy.deepcopy(selected_state["replacement_effects"][replacement_index])
+            if replacement["mode"] == "augment_with":
+                recursive_state = copy.deepcopy(selected_state)
+                del recursive_state["replacement_effects"][replacement_index]
+                original_effect = copy.deepcopy(effect)
+                supplied_order = original_effect.get("replacement_order")
+                if isinstance(supplied_order, list):
+                    original_effect["replacement_order"] = [item for item in supplied_order if item != replacement_id]
+                original_program = {
+                    "schema_version": PROGRAM_VERSION,
+                    "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                    "program_id": f"augmentation-original:{replacement_id}:{program['program_id']}:{effect_id}",
+                    "controller": program.get("controller"),
+                    "source_object": program.get("source_object"),
+                    "effects": [original_effect],
+                }
+                original_result = apply_program(recursive_state, original_program, _replacement_depth=_replacement_depth + 1)
+                if original_result.get("committed") is not True:
+                    return {
+                        **base, "valid": original_result.get("valid", True), "committed": False,
+                        "unsupported": original_result.get("unsupported", False), "failed_effect_index": index,
+                        "reason": original_result.get("reason", "; ".join(original_result.get("errors", [])) or "augmented original event failed"),
+                        "replacement_id": replacement_id, "replacement_result": original_result, "trace": trace,
+                    }
+                augmentation_program = {
+                    "schema_version": PROGRAM_VERSION,
+                    "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                    "program_id": f"augmentation-extra:{replacement_id}:{program['program_id']}:{effect_id}",
+                    "controller": replacement["controller"],
+                    "source_object": replacement["source_object"],
+                    "effects": copy.deepcopy(replacement["replacement_effects"]),
+                }
+                augmentation_result = apply_program(original_result["next_state"], augmentation_program, _replacement_depth=_replacement_depth + 1)
+                if augmentation_result.get("committed") is not True:
+                    return {
+                        **base, "valid": augmentation_result.get("valid", True), "committed": False,
+                        "unsupported": augmentation_result.get("unsupported", False), "failed_effect_index": index,
+                        "reason": augmentation_result.get("reason", "; ".join(augmentation_result.get("errors", [])) or "augmentation program failed"),
+                        "replacement_id": replacement_id, "replacement_result": augmentation_result, "trace": trace,
+                    }
+                current = augmentation_result["next_state"]
+                source_location = find_location(current, replacement["source_object"])
+                active_uses = stored_replacement.get("uses_remaining") is None or stored_replacement.get("uses_remaining", 0) > 0
+                if zone_class(source_location) == "board" and active_uses:
+                    current["replacement_effects"].insert(min(replacement_index, len(current["replacement_effects"])), stored_replacement)
+                if found := validate_state(current):
+                    return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": found, "trace": trace}
+                original_trace = original_result.get("trace", [])
+                augmentation_trace = augmentation_result.get("trace", [])
+                original_happened = any(child.get("outcome") in {"applied", "replaced_modified_applied", "augmented_applied"} for child in original_trace)
+                pending = []
+                for offset, child_result in enumerate((original_result, augmentation_result)):
+                    for trigger in child_result.get("pending_triggers", []):
+                        copied_trigger = dict(trigger)
+                        copied_trigger["batch_sequence"] = index * 1000 + offset * 500 + copied_trigger.get("batch_sequence", 0)
+                        copied_trigger["batch_id"] = f"augmentation:{replacement_id}:{copied_trigger.get('batch_id', 'batch')}"
+                        pending.append(copied_trigger)
+                nested_locators = [locator for child in original_trace + augmentation_trace for locator in child.get("rule_locators", [])]
+                event.update({
+                    "outcome": "augmented_applied" if original_happened else "augmented_original_replaced",
+                    "original_event_happened": original_happened,
+                    "index": index,
+                    "effect_id": effect_id,
+                    "before_state_hash": before_hash,
+                    "after_state_hash": hash_value(current),
+                    "original_trace": original_trace,
+                    "augmentation_trace": augmentation_trace,
+                    "pending_triggers": pending,
+                    "rule_locators": list(dict.fromkeys(event["rule_locators"] + nested_locators + ["Core 370.1.b.1"])),
+                })
+                trace.append(event)
+                outcomes[effect_id] = "applied" if original_happened else event["outcome"]
+                continue
             replacement_program_effects = copy.deepcopy(replacement.get("replacement_effects", []))
             original_damage = None
             prevented_damage = None

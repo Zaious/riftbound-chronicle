@@ -316,7 +316,63 @@ def main() -> int:
         if next_state["replacement_effects"]:
             failures.append("depleted prevention value remained active")
 
-    print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, unsupported, Burn Out, and state invariants.")
+    augment_state = base_state()
+    augment_state["replacement_effects"] = [{
+        "replacement_id": "damage-and-draw", "controller": "p1", "source_object": "u1",
+        "mode": "augment_with", "event_op": "deal_damage", "optional": False,
+        "uses_remaining": 1, "target_object_id": "u2",
+        "replacement_effects": [{"op": "draw", "player": "p1", "count": 1}]
+    }]
+    augmented = apply_program(augment_state, program(
+        "augment-damage",
+        {"effect_id": "damage", "op": "deal_damage", "object_id": "u2", "amount": 2},
+        {"effect_id": "linked-draw", "depends_on": "damage", "op": "draw", "player": "p1", "count": 1},
+    ))
+    if not augmented.get("committed") or [event["outcome"] for event in augmented.get("trace", [])] != ["augmented_applied", "applied"]:
+        failures.append("augment_with did not preserve the original event and satisfy its linked instruction")
+    else:
+        next_state = augmented["next_state"]
+        if next_state["objects"]["u2"]["damage"] != 2 or next_state["players"]["p1"]["zones"]["hand"] != ["c1", "c2"]:
+            failures.append("augment_with did not execute the original event before its additional program")
+        if next_state["replacement_effects"]:
+            failures.append("one-use augmentation remained active")
+
+    augmented_then_prevented_state = base_state()
+    augmented_then_prevented_state["replacement_effects"] = [
+        {
+            "replacement_id": "damage-and-draw", "controller": "p1", "source_object": "u1",
+            "mode": "augment_with", "event_op": "deal_damage", "optional": False,
+            "uses_remaining": 1, "target_object_id": "u2",
+            "replacement_effects": [{"op": "draw", "player": "p1", "count": 1}]
+        },
+        {
+            "replacement_id": "prevent-damage", "controller": "p2", "source_object": "u2",
+            "mode": "prevent_event", "event_op": "deal_damage", "optional": False,
+            "uses_remaining": 1, "target_object_id": "u2"
+        },
+        {
+            "replacement_id": "prevent-damage-later", "controller": "p1", "source_object": "u1",
+            "mode": "prevent_event", "event_op": "deal_damage", "optional": False,
+            "uses_remaining": 1, "target_object_id": "u2"
+        },
+    ]
+    augmented_then_prevented = apply_program(augmented_then_prevented_state, program(
+        "augment-then-prevent",
+        {
+            "effect_id": "damage", "op": "deal_damage", "object_id": "u2", "amount": 2,
+            "replacement_decider": "p2",
+            "replacement_order": ["damage-and-draw", "prevent-damage", "prevent-damage-later"],
+        },
+        {"effect_id": "linked-draw", "depends_on": "damage", "op": "draw", "player": "p1", "count": 1},
+    ))
+    if not augmented_then_prevented.get("committed") or [event["outcome"] for event in augmented_then_prevented.get("trace", [])] != ["augmented_original_replaced", "skipped_linked_dependency"]:
+        failures.append("augmentation did not distinguish an original event prevented by another replacement")
+    else:
+        next_state = augmented_then_prevented["next_state"]
+        if next_state["objects"]["u2"]["damage"] != 0 or next_state["players"]["p1"]["zones"]["hand"] != ["c1"]:
+            failures.append("augmentation did not run exactly once after its original event was prevented")
+
+    print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, replacements, unsupported, Burn Out, and state invariants.")
     if failures:
         print("\n".join(f"FAILED: {failure}" for failure in failures))
         return 1

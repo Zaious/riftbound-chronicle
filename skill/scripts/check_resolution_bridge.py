@@ -143,6 +143,21 @@ def main() -> int:
     if not partial_result.get("committed") or partial_result["next_effect_state"]["objects"]["u2"]["damage"] != 1:
         failures.append("partial prevention value did not commit remaining damage with Chain resolution")
 
+    augment_state = base_state()
+    augment_state["replacement_effects"] = [{
+        "replacement_id": "damage-and-draw", "controller": "p1", "source_object": "u1",
+        "mode": "augment_with", "event_op": "deal_damage", "optional": False,
+        "uses_remaining": 1, "target_object_id": "u2",
+        "replacement_effects": [{"op": "draw", "player": "p1", "count": 1}]
+    }]
+    augment_result = resolve_with_program(timing, "spell-1", augment_state, damage_program)
+    if not augment_result.get("committed"):
+        failures.append("augmentation program did not commit atomically with Chain resolution")
+    elif augment_result["next_effect_state"]["objects"]["u2"]["damage"] != 3 or augment_result["next_effect_state"]["players"]["p1"]["zones"]["hand"] != ["c1"]:
+        failures.append("atomic augmentation did not preserve original damage before its additional draw")
+    elif augment_result["next_timing_state"]["chain"]["items"]:
+        failures.append("atomic augmentation did not remove exactly the resolved Chain Item")
+
     not_next = fixture(
         priority="p2",
         items=[

@@ -215,6 +215,13 @@ remainder and preserves linked-action meaning. Prevent Values consume only the
 amount actually prevented and leave active state when depleted. `All`, duration
 expiry, and combat-assignment lethal calculations remain future work.
 
+The tenth R2 slice adds bounded `augment_with` replacement programs for Core
+370.1.b.1 “same event plus” semantics. The original event is recursively offered
+to other replacements before the additional typed program runs. Linked
+instructions depend on whether that original event occurred, not on whether the
+augmentation succeeded. Modification inheritance and simultaneous-event
+replacement sequencing remain fail-closed future work.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

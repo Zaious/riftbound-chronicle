@@ -123,7 +123,7 @@
         "replacement_id": {"type": "string", "minLength": 1},
         "controller": {"type": "string", "minLength": 1},
         "source_object": {"type": "string", "minLength": 1},
-        "mode": {"enum": ["prevent_event", "replace_with", "reduce_damage"]},
+        "mode": {"enum": ["prevent_event", "replace_with", "augment_with", "reduce_damage"]},
         "event_op": {"type": "string", "minLength": 1},
         "optional": {"type": "boolean"},
         "uses_remaining": {"type": ["integer", "null"], "minimum": 0},

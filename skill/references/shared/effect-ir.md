@@ -33,7 +33,7 @@ core: `rules_core.py` determines when and what procedure occurs;
 
 This version deliberately excludes Burn Out, simultaneous multi-card recycle,
 cost payment, the full Cleanup procedure, open-ended target choice and target
-groups, countering, attachments, replacement augmentation/inheritance,
+groups, countering, attachments, replacement modification inheritance,
 layers, cross-object triggers,
 scoring, and token creation. Those require additional state and ordering
 contracts; they are not simulated by approximation.
@@ -74,11 +74,24 @@ descriptor is not restored. Because the original action did not occur, a linked
 `if_applied` instruction remains skipped. Nested trigger descriptors retain a
 replacement-prefixed chronological batch.
 
+### “Same event plus” augmentation
+
+`augment_with` implements the bounded Core 370.1.b.1 form that preserves the
+original event and then performs an additional typed effect program. The
+original event keeps the original program's controller and source; the added
+program uses the replacement descriptor's controller and source. Other active
+replacement effects may apply recursively to either part.
+
+Linked `if_applied` instructions depend only on whether the original event
+actually occurred. The added program still executes when another replacement
+prevents or replaces that original event, but its successful execution does not
+make the original event count as applied. A finite augmentation consumes one
+use, and its descriptor is restored only while its source remains on the board.
+
 Player-targeted events, uncontrolled Battlefield ordering, simultaneous-event
-replacement sequences, `All` prevention and duration expiry, “same event plus”
-augmentation, modification inheritance, and replacement sequences spanning
-several simultaneous events are not supported yet. They fail closed rather
-than being approximated.
+replacement sequences, `All` prevention and duration expiry, modification
+inheritance, and replacement sequences spanning several simultaneous events
+are not supported yet. They fail closed rather than being approximated.
 
 ## Kill and lethal cleanup slice
 

@@ -26,13 +26,37 @@
         "type": "object",
         "required": ["op"],
         "properties": {
-          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "kill", "emit_reflexive"]},
+          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive"]},
           "effect_id": {"type": "string", "minLength": 1},
           "depends_on": {"type": "string", "minLength": 1},
           "dependency_mode": {"enum": ["if_applied", "always"]},
           "replacement_order": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "replacement_decider": {"type": "string", "minLength": 1},
           "replacement_choices": {"type": "object", "additionalProperties": {"type": "boolean"}},
+          "owner": {"type": "string", "minLength": 1},
+          "controller": {"type": "string", "minLength": 1},
+          "token_kind": {"enum": ["unit", "gear"]},
+          "base_might": {"type": "integer", "minimum": 0},
+          "destination": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {"enum": ["base", "battlefield"]},
+              "player": {"type": "string", "minLength": 1},
+              "battlefield": {"type": "string", "minLength": 1}
+            }
+          },
+          "event_modifiers": {"$ref": "#/$defs/eventModifiers"},
+          "modifier_inheritance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rule"],
+            "properties": {
+              "rule": {"const": "Core 375"},
+              "from_effect_id": {"type": ["string", "null"]}
+            }
+          },
           "target": {
             "type": "object",
             "additionalProperties": false,
@@ -56,6 +80,19 @@
     }
   },
   "$defs": {
+    "eventModifiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "entry_state": {"enum": ["ready", "exhausted"]},
+        "result_keywords": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["temporary"]}
+        }
+      }
+    },
     "triggerDescriptor": {
       "type": "object",
       "additionalProperties": false,

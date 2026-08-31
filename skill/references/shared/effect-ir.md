@@ -29,13 +29,14 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `ready` | ready a supported board object; already ready is a no-op | Core 415 |
 | `exhaust` | exhaust a supported board object; already exhausted is a no-op | Core 414 |
 | `add_resource` | add Energy or domain-labelled Power | Core 429 |
-| `kill` | kill a supported Unit/Gear permanent without death-trigger or replacement handling | Core 428 |
+| `play_token` | create one explicitly identified Unit/Gear token at a Base or Battlefield; Units default exhausted and Gear ready | Core 143.4, 149.1, 184–186, 349, 375 |
+| `kill` | kill a supported Unit/Gear permanent with typed self-death trigger capture and replacement handling | Core 428 |
 
 This version deliberately excludes Burn Out, simultaneous multi-card recycle,
 cost payment, the full Cleanup procedure, open-ended target choice and target
-groups, countering, attachments, replacement modification inheritance,
+groups, countering, attachments, unrestricted replacement modification inheritance,
 layers, cross-object triggers,
-scoring, and token creation. Those require additional state and ordering
+scoring, and open-ended token construction. Those require additional state and ordering
 contracts; they are not simulated by approximation.
 
 ## Replacement event framework
@@ -88,9 +89,25 @@ prevents or replaces that original event, but its successful execution does not
 make the original event count as applied. A finite augmentation consumes one
 use, and its descriptor is restored only while its source remains on the board.
 
+### Bounded modifier inheritance
+
+`play_token` carries a typed `event_modifiers` envelope. The current Core 375
+slice supports only `entry_state` (`ready` or `exhausted`) and the
+`temporary` result keyword. When a token-play event is replaced by one or more
+token-play child events, every compatible child inherits those modifiers and
+records `modifier_inheritance.rule: Core 375` in its trace.
+
+A modifier that cannot apply to the replacement event is ignored: token entry
+state is not attached to a replacement `draw`, matching the official rule's
+example. If a child declares a contradictory value for the same supported
+modifier, execution fails closed because this slice does not invent a
+precedence rule. Other keywords, post-entry linked actions, copy semantics,
+token text, attachments, and modifiers for other event families remain outside
+the executable contract.
+
 Player-targeted events, uncontrolled Battlefield ordering, simultaneous-event
-replacement sequences, `All` prevention and duration expiry, modification
-inheritance, and replacement sequences spanning several simultaneous events
+replacement sequences, `All` prevention and duration expiry, broader
+modification inheritance, and replacement sequences spanning several simultaneous events
 are not supported yet. They fail closed rather than being approximated.
 
 ## Kill and lethal cleanup slice

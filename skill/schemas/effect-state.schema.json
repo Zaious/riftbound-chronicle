@@ -103,7 +103,12 @@
             }
           }
         },
-        "is_token": {"type": "boolean"}
+        "is_token": {"type": "boolean"},
+        "keywords": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["temporary"]}
+        }
       }
     },
     "battlefield": {

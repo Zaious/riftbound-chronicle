@@ -33,6 +33,7 @@ SUPPORTED_OPS = {
     "ready",
     "exhaust",
     "add_resource",
+    "play_token",
     "kill",
     "emit_reflexive",
 }
@@ -53,6 +54,7 @@ OP_RULES = {
     "ready": ["Core 415"],
     "exhaust": ["Core 414"],
     "add_resource": ["Core 429"],
+    "play_token": ["Core 143.4", "Core 149.1", "Core 184–186", "Core 349", "Core 375"],
     "kill": ["Core 428"],
     "emit_reflexive": ["Core 386–388"],
 }
@@ -157,6 +159,9 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid program/optional binding")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
+        keywords = obj.get("keywords", [])
+        if not isinstance(keywords, list) or len(keywords) != len(set(keywords)) or any(keyword not in {"temporary"} for keyword in keywords):
+            errors.append(f"objects.{object_id}.keywords must be a unique supported-keyword array")
         modifiers = obj.get("might_modifiers")
         if not isinstance(modifiers, list):
             errors.append(f"objects.{object_id}.might_modifiers must be an array")
@@ -234,6 +239,32 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].depends_on must reference an earlier effect")
             if effect.get("dependency_mode", "if_applied") not in {"if_applied", "always"}:
                 errors.append(f"effects[{index}].dependency_mode is invalid")
+            modifiers = effect.get("event_modifiers")
+            if modifiers is not None:
+                if effect.get("op") != "play_token" or not isinstance(modifiers, dict) or not modifiers or set(modifiers) - {"entry_state", "result_keywords"}:
+                    errors.append(f"effects[{index}].event_modifiers is unsupported for this operation")
+                else:
+                    if modifiers.get("entry_state") not in {None, "ready", "exhausted"}:
+                        errors.append(f"effects[{index}].event_modifiers.entry_state is invalid")
+                    result_keywords = modifiers.get("result_keywords", [])
+                    if not isinstance(result_keywords, list) or len(result_keywords) != len(set(result_keywords)) or any(keyword not in {"temporary"} for keyword in result_keywords):
+                        errors.append(f"effects[{index}].event_modifiers.result_keywords is invalid")
+            if effect.get("op") == "play_token":
+                destination = effect.get("destination")
+                if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
+                    errors.append(f"effects[{index}].play_token requires object_id")
+                if not isinstance(effect.get("owner"), str) or not effect.get("owner"):
+                    errors.append(f"effects[{index}].play_token requires owner")
+                if not isinstance(effect.get("controller"), str) or effect.get("token_kind") not in {"unit", "gear"}:
+                    errors.append(f"effects[{index}].play_token requires controller and unit/gear token_kind")
+                if not isinstance(effect.get("base_might"), int) or effect.get("base_might", -1) < 0:
+                    errors.append(f"effects[{index}].play_token requires non-negative base_might")
+                if not isinstance(destination, dict) or destination.get("kind") not in {"base", "battlefield"}:
+                    errors.append(f"effects[{index}].play_token requires a base or battlefield destination")
+                elif effect.get("token_kind") == "gear" and destination.get("kind") != "base":
+                    errors.append(f"effects[{index}].non-Unit Gear token must enter a Base")
+                elif destination.get("kind") == "base" and destination.get("player") != effect.get("controller"):
+                    errors.append(f"effects[{index}].Base destination must match token controller")
             target = effect.get("target")
             if target is not None:
                 if not isinstance(target, dict) or not isinstance(target.get("object_id"), str):
@@ -325,6 +356,32 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any]) -> l
                 continue
         applicable.append(replacement)
     return applicable
+
+
+def _inherit_event_modifiers(original_effect: dict[str, Any], replacement_effects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Apply the bounded Core 375 modifier vocabulary to compatible child events."""
+    inherited = original_effect.get("event_modifiers")
+    children = copy.deepcopy(replacement_effects)
+    if not inherited:
+        return children
+    for child in children:
+        if child.get("op") != "play_token":
+            continue
+        applicable: dict[str, Any] = {}
+        if "entry_state" in inherited:
+            applicable["entry_state"] = inherited["entry_state"]
+        inherited_keywords = inherited.get("result_keywords", [])
+        if child.get("token_kind") == "unit" and inherited_keywords:
+            applicable["result_keywords"] = copy.deepcopy(inherited_keywords)
+        if not applicable:
+            continue
+        existing = child.get("event_modifiers", {})
+        for key, value in applicable.items():
+            if key in existing and existing[key] != value:
+                raise NotImplementedError(f"conflicting inherited event modifier {key!r}")
+        child["event_modifiers"] = {**applicable, **copy.deepcopy(existing)}
+        child["modifier_inheritance"] = {"rule": "Core 375", "from_effect_id": original_effect.get("effect_id")}
+    return children
 
 
 def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
@@ -474,6 +531,57 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             trace.update({"player": player_id, "resource": resource, "domain": domain, "amount": amount})
         else:
             raise ValueError("power addition requires a domain")
+
+    elif op == "play_token":
+        object_id = effect.get("object_id")
+        owner = effect.get("owner")
+        controller = effect.get("controller")
+        token_kind = effect.get("token_kind")
+        base_might = effect.get("base_might")
+        destination = effect.get("destination")
+        if not isinstance(object_id, str) or not object_id or object_id in new_state["objects"]:
+            raise ValueError("play_token requires a new unique object_id")
+        if owner not in new_state["players"] or controller not in new_state["players"]:
+            raise ValueError("play_token requires known owner/controller players")
+        if token_kind not in {"unit", "gear"} or not isinstance(base_might, int) or base_might < 0:
+            raise ValueError("play_token requires a supported kind and non-negative base_might")
+        if not isinstance(destination, dict):
+            raise ValueError("play_token requires a destination")
+        if token_kind == "gear" and destination.get("kind") != "base":
+            raise ValueError("non-Unit Gear token must enter a Base")
+        if destination.get("kind") == "base" and destination.get("player") != controller:
+            raise ValueError("play_token Base destination must match token controller")
+        modifiers = copy.deepcopy(effect.get("event_modifiers", {}))
+        default_entry_state = "exhausted" if token_kind == "unit" else "ready"
+        entry_state = modifiers.get("entry_state", default_entry_state)
+        keywords = modifiers.get("result_keywords", []) if token_kind == "unit" else []
+        new_state["objects"][object_id] = {
+            "owner": owner,
+            "controller": controller,
+            "kind": token_kind,
+            "is_token": True,
+            "base_might": base_might,
+            "might_modifiers": [],
+            "damage": 0,
+            "exhausted": entry_state == "exhausted",
+            "keywords": copy.deepcopy(keywords),
+        }
+        if destination.get("kind") == "base" and destination.get("player") in new_state["players"]:
+            new_state["players"][destination["player"]]["zones"]["base"].append(object_id)
+            destination_label = f"{destination['player']}.base"
+        elif destination.get("kind") == "battlefield" and destination.get("battlefield") in new_state["battlefields"]:
+            new_state["battlefields"][destination["battlefield"]]["objects"].append(object_id)
+            destination_label = f"battlefield:{destination['battlefield']}"
+        else:
+            raise ValueError("play_token destination is unknown")
+        trace.update({
+            "object_id": object_id,
+            "token_kind": token_kind,
+            "base_might": base_might,
+            "destination": destination_label,
+            "event_modifiers": modifiers,
+            "modifier_inheritance": copy.deepcopy(effect.get("modifier_inheritance")),
+        })
 
     elif op == "kill":
         object_id = effect.get("object_id")
@@ -700,13 +808,20 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                         "reason": original_result.get("reason", "; ".join(original_result.get("errors", [])) or "augmented original event failed"),
                         "replacement_id": replacement_id, "replacement_result": original_result, "trace": trace,
                     }
+                try:
+                    augmentation_effects = _inherit_event_modifiers(effect, replacement["replacement_effects"])
+                except NotImplementedError as exc:
+                    return {
+                        **base, "valid": True, "committed": False, "unsupported": True,
+                        "failed_effect_index": index, "reason": str(exc), "replacement_id": replacement_id, "trace": trace,
+                    }
                 augmentation_program = {
                     "schema_version": PROGRAM_VERSION,
                     "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                     "program_id": f"augmentation-extra:{replacement_id}:{program['program_id']}:{effect_id}",
                     "controller": replacement["controller"],
                     "source_object": replacement["source_object"],
-                    "effects": copy.deepcopy(replacement["replacement_effects"]),
+                    "effects": augmentation_effects,
                 }
                 augmentation_result = apply_program(original_result["next_state"], augmentation_program, _replacement_depth=_replacement_depth + 1)
                 if augmentation_result.get("committed") is not True:
@@ -749,7 +864,13 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                 trace.append(event)
                 outcomes[effect_id] = "applied" if original_happened else event["outcome"]
                 continue
-            replacement_program_effects = copy.deepcopy(replacement.get("replacement_effects", []))
+            try:
+                replacement_program_effects = _inherit_event_modifiers(effect, replacement.get("replacement_effects", []))
+            except NotImplementedError as exc:
+                return {
+                    **base, "valid": True, "committed": False, "unsupported": True,
+                    "failed_effect_index": index, "reason": str(exc), "replacement_id": replacement_id, "trace": trace,
+                }
             original_damage = None
             prevented_damage = None
             if replacement["mode"] == "reduce_damage":

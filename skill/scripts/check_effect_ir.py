@@ -79,6 +79,23 @@ def main() -> int:
         ("ready", program("ready", {"op": "ready", "object_id": "u2"}), lambda s: s["objects"]["u2"]["exhausted"] is False),
         ("energy", program("energy", {"op": "add_resource", "player": "p1", "resource": "energy", "amount": 2}), lambda s: s["players"]["p1"]["resources"]["energy"] == 2),
         ("power", program("power", {"op": "add_resource", "player": "p1", "resource": "power", "domain": "fury", "amount": 1}), lambda s: s["players"]["p1"]["resources"]["power"]["fury"] == 1),
+        (
+            "play-token",
+            program("play-token", {
+                "op": "play_token", "object_id": "token-1", "owner": "p1", "controller": "p1",
+                "token_kind": "unit", "base_might": 3, "destination": {"kind": "base", "player": "p1"},
+                "event_modifiers": {"entry_state": "ready", "result_keywords": ["temporary"]},
+            }),
+            lambda s: s["objects"]["token-1"]["exhausted"] is False and s["objects"]["token-1"]["keywords"] == ["temporary"],
+        ),
+        (
+            "play-gear-token",
+            program("play-gear-token", {
+                "op": "play_token", "object_id": "gear-token-1", "owner": "p1", "controller": "p1",
+                "token_kind": "gear", "base_might": 0, "destination": {"kind": "base", "player": "p1"},
+            }),
+            lambda s: s["objects"]["gear-token-1"]["exhausted"] is False,
+        ),
     ]
     for name, value, assertion in cases:
         result = apply_program(state, value)
@@ -103,6 +120,13 @@ def main() -> int:
         failures.append("unsupported effect did not fail closed")
     if hash_value(state) != unsupported.get("input_state_hash"):
         failures.append("unsupported effect lost the original state hash")
+
+    misplaced_gear = apply_program(state, program("misplaced-gear", {
+        "op": "play_token", "object_id": "gear-token-bf", "owner": "p1", "controller": "p1",
+        "token_kind": "gear", "base_might": 0, "destination": {"kind": "battlefield", "battlefield": "bf1"},
+    }))
+    if misplaced_gear.get("committed") or misplaced_gear.get("valid") is not False:
+        failures.append("non-Unit Gear token was allowed to enter a Battlefield")
 
     burn_out = apply_program(state, program("burn-out", {"op": "draw", "player": "p2", "count": 2}))
     if burn_out.get("committed") or "Burn Out" not in burn_out.get("reason", ""):
@@ -371,6 +395,73 @@ def main() -> int:
         next_state = augmented_then_prevented["next_state"]
         if next_state["objects"]["u2"]["damage"] != 0 or next_state["players"]["p1"]["zones"]["hand"] != ["c1"]:
             failures.append("augmentation did not run exactly once after its original event was prevented")
+
+    inheritance_state = base_state()
+    inheritance_state["replacement_effects"] = [{
+        "replacement_id": "double-token", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "play_token", "optional": False,
+        "uses_remaining": 1, "target_object_id": "mech-token",
+        "replacement_effects": [
+            {
+                "op": "play_token", "object_id": "mech-token", "owner": "p1", "controller": "p1",
+                "token_kind": "unit", "base_might": 3, "destination": {"kind": "base", "player": "p1"},
+            },
+            {
+                "op": "play_token", "object_id": "recruit-token", "owner": "p1", "controller": "p1",
+                "token_kind": "unit", "base_might": 1, "destination": {"kind": "base", "player": "p1"},
+            },
+        ]
+    }]
+    inherited = apply_program(inheritance_state, program("inherit-token-modifiers", {
+        "effect_id": "make-mech", "op": "play_token", "object_id": "mech-token", "owner": "p1", "controller": "p1",
+        "token_kind": "unit", "base_might": 3, "destination": {"kind": "base", "player": "p1"},
+        "event_modifiers": {"entry_state": "ready", "result_keywords": ["temporary"]},
+    }))
+    if not inherited.get("committed") or inherited.get("trace", [{}])[0].get("outcome") != "replaced_with":
+        failures.append("Core 375 token replacement did not commit")
+    else:
+        next_state = inherited["next_state"]
+        for object_id in ("mech-token", "recruit-token"):
+            token = next_state["objects"].get(object_id, {})
+            if token.get("exhausted") is not False or token.get("keywords") != ["temporary"]:
+                failures.append(f"Core 375 modifiers were not inherited by {object_id}")
+        nested = inherited["trace"][0].get("replacement_trace", [])
+        if not nested or any(event.get("modifier_inheritance", {}).get("rule") != "Core 375" for event in nested):
+            failures.append("Core 375 modifier provenance was not preserved in nested trace")
+
+    conflict_state = base_state()
+    conflict_state["replacement_effects"] = [{
+        "replacement_id": "conflicting-token", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "play_token", "optional": False,
+        "uses_remaining": 1, "target_object_id": "conflict-token",
+        "replacement_effects": [{
+            "op": "play_token", "object_id": "conflict-token", "owner": "p1", "controller": "p1",
+            "token_kind": "unit", "base_might": 1, "destination": {"kind": "base", "player": "p1"},
+            "event_modifiers": {"entry_state": "exhausted"},
+        }]
+    }]
+    conflict = apply_program(conflict_state, program("conflicting-inheritance", {
+        "op": "play_token", "object_id": "conflict-token", "owner": "p1", "controller": "p1",
+        "token_kind": "unit", "base_might": 1, "destination": {"kind": "base", "player": "p1"},
+        "event_modifiers": {"entry_state": "ready"},
+    }))
+    if conflict.get("committed") or conflict.get("unsupported") is not True or "conflicting inherited event modifier" not in conflict.get("reason", ""):
+        failures.append("conflicting inherited modifiers did not fail closed")
+
+    inapplicable_state = base_state()
+    inapplicable_state["replacement_effects"] = [{
+        "replacement_id": "token-to-draw", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "play_token", "optional": False,
+        "uses_remaining": 1, "target_object_id": "ignored-token",
+        "replacement_effects": [{"op": "draw", "player": "p1", "count": 1}]
+    }]
+    inapplicable = apply_program(inapplicable_state, program("inapplicable-inheritance", {
+        "op": "play_token", "object_id": "ignored-token", "owner": "p1", "controller": "p1",
+        "token_kind": "unit", "base_might": 1, "destination": {"kind": "base", "player": "p1"},
+        "event_modifiers": {"entry_state": "ready", "result_keywords": ["temporary"]},
+    }))
+    if not inapplicable.get("committed") or inapplicable["next_state"]["players"]["p1"]["zones"]["hand"] != ["c1"] or "ignored-token" in inapplicable["next_state"]["objects"]:
+        failures.append("inapplicable Core 375 token modifiers were not ignored on a draw replacement")
 
     print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, replacements, unsupported, Burn Out, and state invariants.")
     if failures:

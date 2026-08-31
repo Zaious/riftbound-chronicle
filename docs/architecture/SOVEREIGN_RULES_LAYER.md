@@ -222,6 +222,13 @@ instructions depend on whether that original event occurred, not on whether the
 augmentation succeeded. Modification inheritance and simultaneous-event
 replacement sequencing remain fail-closed future work.
 
+The eleventh R2 slice adds a typed `play_token` event and a bounded Core 375
+modifier envelope. Ready/exhausted entry state and the `Temporary` result
+keyword propagate only to compatible replacement token events, retain trace
+provenance, and are ignored for incompatible replacement actions such as Draw.
+Contradictory child modifiers fail closed; broader keywords, linked result
+actions, and general modification inheritance remain future work.
+
 ### R3 — Bounded Origins/Taiwan card pack
 
 - select two to four linear decks plus their relevant Battlefields;

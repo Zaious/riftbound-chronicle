@@ -158,6 +158,32 @@ def main() -> int:
     elif augment_result["next_timing_state"]["chain"]["items"]:
         failures.append("atomic augmentation did not remove exactly the resolved Chain Item")
 
+    inheritance_state = base_state()
+    inheritance_state["replacement_effects"] = [{
+        "replacement_id": "double-token", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "play_token", "optional": False,
+        "uses_remaining": 1, "target_object_id": "mech-token",
+        "replacement_effects": [
+            {
+                "op": "play_token", "object_id": "mech-token", "owner": "p1", "controller": "p1",
+                "token_kind": "unit", "base_might": 3, "destination": {"kind": "base", "player": "p1"},
+            },
+            {
+                "op": "play_token", "object_id": "recruit-token", "owner": "p1", "controller": "p1",
+                "token_kind": "unit", "base_might": 1, "destination": {"kind": "base", "player": "p1"},
+            },
+        ]
+    }]
+    inheritance_program = program("token-inheritance-bridge", {
+        "op": "play_token", "object_id": "mech-token", "owner": "p1", "controller": "p1",
+        "token_kind": "unit", "base_might": 3, "destination": {"kind": "base", "player": "p1"},
+        "event_modifiers": {"entry_state": "ready", "result_keywords": ["temporary"]},
+    })
+    inheritance_result = resolve_with_program(timing, "spell-1", inheritance_state, inheritance_program)
+    inherited_objects = inheritance_result.get("next_effect_state", {}).get("objects", {})
+    if not inheritance_result.get("committed") or any(inherited_objects.get(object_id, {}).get("keywords") != ["temporary"] for object_id in ("mech-token", "recruit-token")):
+        failures.append("Core 375 token modifier inheritance did not commit atomically with Chain resolution")
+
     not_next = fixture(
         priority="p2",
         items=[

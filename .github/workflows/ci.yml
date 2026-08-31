@@ -79,6 +79,11 @@ jobs:
       - name: Typed effect IR atomic semantics and fail-closed coverage
         run: python3 skill/scripts/check_effect_ir.py
 
+      # Properties over generated programs rather than chosen ones: a case
+      # author picks inputs, and unconsciously picks the ones that work.
+      - name: Effect IR purity, determinism, atomic rollback, and hash portability
+        run: python3 skill/scripts/check_effect_ir_properties.py
+
       - name: Atomic timing and typed-effect resolution bridge
         run: python3 skill/scripts/check_resolution_bridge.py
 
@@ -127,6 +132,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_rules_index.py"
           python3 "$REPO/skill/scripts/check_rules_core.py"
           python3 "$REPO/skill/scripts/check_effect_ir.py"
+          python3 "$REPO/skill/scripts/check_effect_ir_properties.py"
           python3 "$REPO/skill/scripts/check_resolution_bridge.py"
           python3 "$REPO/skill/scripts/check_engine_check.py"
           python3 "$REPO/skill/scripts/check_engine_check_cli.py"

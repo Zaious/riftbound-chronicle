@@ -15,6 +15,12 @@ core: `rules_core.py` determines when and what procedure occurs;
   fail closed with `committed: false`.
 - The interpreter never falls back to model prose or partial guessed behavior.
 - Official rules remain normative; a mismatch is a conformance failure.
+- Applying a program never mutates the state it was given, produces the same
+  result byte for byte on the same input, and either commits every effect or
+  returns no state at all. `check_effect_ir_properties.py` asserts these over
+  generated programs, including that hashes do not vary with interpreter run
+  state — a hash that depends on dict ordering is stable on one machine and
+  wrong everywhere else.
 
 ## Supported R2 v1 operations
 

@@ -150,6 +150,87 @@ the human for — not in the enumerator.
 
 ---
 
+## 4. Is Riftbound the right subject — and what the youth of the game actually buys
+
+**The open question.** Not a literature question but a framing one, and it
+governs which of the entries above are worth acting on. Riftbound is roughly a
+year old, has essentially no AI research around it, no tournament-data corpus,
+and a live and restrictive platform policy. Magic and Hearthstone have all of
+the opposite. It is worth writing down why this is nonetheless the better
+subject *for this work* — and where that stops being true.
+
+**The question splits, and the two halves give opposite answers.**
+
+*If the research question is "can an agent play a TCG well," Riftbound is a poor
+choice.* There are no baselines to compare against, almost no data, and — this
+is the part usually left unsaid — no community that could replicate or dispute a
+result, which in practice makes a playing-strength claim unfalsifiable by peers.
+A one-year-old game may also not survive; Magic's thirty years is itself a
+research asset, because it guarantees the domain persists. The platform policy
+is *more* restrictive here than Wizards', not less. For that question, go where
+the substrate and the community already are.
+
+*If the research question is "how do you build and govern a knowledge and rules
+layer for a live, evolving, regionally fragmented game, with an assistant whose
+authority is bounded and whose uncertainty is attributed," Riftbound is unusually
+good — plausibly better than Magic.* No incumbent engine, so owning the rules
+layer is defensible rather than redundant. A bounded card pool that makes R3
+finishable at all. A rules corpus that genuinely moves, which is the only
+condition under which versioning, supersession, and a freshness gate are
+interesting rather than ceremonial. And a live regional-lag natural experiment
+that, as far as this note's searching found, nobody treats as an environment
+variable.
+
+Every substantial thing this repository has built belongs to the second
+question: the 46-Legend verification pass, the evidence tiers, the freshness
+gate, the regional model, the authority invariants. None of it is about playing
+strength.
+
+**What the youth of the game actually buys — the strong form.** "Young game, so
+it is interesting" is too weak, and it is also how a project talks itself into a
+subject. The defensible version is a forcing function:
+
+> A knowledge system for a mature game can be built by accumulation. Scrape
+> enough results, the meta is known, the rules have settled, and the hard
+> questions never have to be answered — they are papered over by data. A
+> knowledge system for a game this young **cannot do that**. Every hard question
+> is live and unavoidable: what may the system claim when there is no data? how
+> does it version rules that change underneath it? how does it distinguish "we
+> do not know" from "nobody knows yet"? There is no data to cheat with, so the
+> honesty machinery has to be real or the system visibly fails.
+
+That is why abstention, evidence tiers, and freshness are load-bearing here and
+would be decoration on a mature game. It is hard to demonstrate that a system
+correctly says "I don't know" in a domain where it always knows.
+
+**And the window closes.** In a few years Riftbound will have tournament data, a
+settled meta, and community engines, and this condition will be unreproducible.
+`verification-log.md` is, incidentally, already a longitudinal record of a
+game's knowledge base forming from nothing — dated rows, launch-window flags,
+inference-versus-observation scoring, and "no public result found" recorded as a
+finding rather than a gap. Nobody has that for Magic, because nobody was doing
+it in 1993 with this discipline. **Keeping that record complete and dated is
+worth doing on its own terms, before and independently of any paper** — and it
+is the one asset that survives even if the game does not, because it documents a
+method rather than a metagame.
+
+**Where the subject choice starts hurting: R5.** Search and learning is exactly
+where Riftbound's disadvantages dominate — no baselines, no game records, no
+peer replication. R5 is already gated behind R4 conformance for engineering
+reasons; there is a second reason to keep it narrow. If it is built, the
+defensible framing is *an existence proof that the rules core can carry a
+search procedure* over a small reproducible bounded environment — a claim about
+the rules layer, which is portable — rather than *a strong Riftbound agent*,
+which is a claim whose entire value is staked on a one-year-old game.
+
+**How we would know this framing is wrong.** If a Riftbound AI research
+community appears, or a community engine ships, the first answer changes and
+some of this repository's sovereignty argument weakens (ADR-0001's alternative B
+would deserve re-examination). Worth re-checking at each set release rather than
+assuming the current emptiness is permanent.
+
+---
+
 ## How to use this note
 
 An entry earns its place by changing a decision, not by being interesting. When

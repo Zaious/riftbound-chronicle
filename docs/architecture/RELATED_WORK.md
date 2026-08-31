@@ -146,6 +146,56 @@ fill the gap left after the Hearthstone AI Competition and the Strategy Card
 Game AI Competition stopped being organised — and Tales of Tribute is a
 deliberately compact game chosen so that agent research is tractable.
 
+### Randomness is not what makes an engine expensive
+
+It is worth separating two kinds of hardness, because the intuitive reading gets
+this backwards. Hearthstone is conspicuously random — summon a random minion,
+discover, cast a random spell — and it is tempting to conclude that its state
+space is therefore unbounded and hard to model. The two complexity results cited
+in this note say otherwise, and they say it precisely:
+
+- [Perfect Information Hearthstone is PSPACE-hard](https://arxiv.org/pdf/2305.12731)
+  removes the randomness *and* the hidden information, and the game is still
+  PSPACE-hard. Its difficulty does not come from the randomness.
+- [Magic is Turing complete](https://arxiv.org/abs/1904.09828) — that is
+  undecidable, strictly beyond PSPACE.
+
+So there is a real complexity separation between the two games, and randomness
+is not what produces it. Hearthstone's randomness is drawn from finite, known,
+enumerable pools; the engine knows the distribution exactly. That is
+stochasticity, and the tools for it (determinization, chance nodes, sampling)
+are mature. What makes an engine expensive is *interaction complexity* —
+priority, response windows, replacement effects, layered continuous effects,
+self-reference. Randomness does not make a game undecidable; unbounded
+interaction depth does.
+
+Stated compactly: **Hearthstone is high-variance with bounded complexity; Magic's
+complexity is itself unbounded.** Randomness makes play noisy and evaluation
+sample-hungry — a research problem with known tools. Interaction complexity makes
+the engine expensive — a cost problem with no shortcut. Research went to the
+game whose hardness sits in the dimension that already had tools.
+
+Two further reasons the digital game is cheaper to model, beyond "someone
+already wrote it": its card definitions ship as structured data (the Fireplace
+simulator reads the client's own `CardDefs` XML, so the text-to-executable step
+this repository performs in `effect_ir.py` simply does not exist there), and it
+was designed under an implementability constraint in the first place — a game
+that must run as code does not adopt arbitrary player-timed response windows.
+Note also that the Hearthstone simulators were built *as research substrates*
+(SabberStone ships game-tree search and a declarative card-mechanic system),
+whereas Magic's XMage is a play client that researchers adapt. The gap is not
+"Magic has no engine" — Forge and XMage are decade-scale community efforts — it
+is that Magic has no engine designed to be experimented on.
+
+**Where Riftbound sits, and why R0 came first.** Riftbound has a Chain,
+priority, Focus, and response windows: its difficulty is Magic-shaped, in the
+expensive dimension, not Hearthstone-shaped. That is the retrospective
+justification for the release ordering in this repository — R0 is a timing and
+permission kernel rather than a card-effect library because the cost here is
+*when may who do what*, not how many effect types exist. The typed effect IR
+(R2) can be bounded and can answer `unsupported`; timing cannot be skipped that
+way, because every single action has to ask it.
+
 The reading for this project: **the bottleneck for real-TCG agent research is
 the rules engine, not the agent.** A playing-strength contribution presupposes an
 executable rules substrate, which for a game like this is where most of the cost

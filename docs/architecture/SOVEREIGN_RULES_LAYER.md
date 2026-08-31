@@ -41,6 +41,11 @@ against the same Chronicle cases.  A disagreement is classified as
 `kernel_failure`, `external_engine_failure`, `unsupported`, or
 `stale_ruleset`; it is never resolved by silently changing the rule source.
 
+See [RELATED_WORK.md](RELATED_WORK.md) for where this layer sits relative to
+published work on card-text-to-code generation, LLM-proposes/formal-validates
+architectures, and the complexity results that make "implement the rules" an
+unfinishable claim for a TCG.
+
 ## What was absorbed and what was only referenced
 
 ### Legally absorbable

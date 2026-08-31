@@ -52,6 +52,11 @@ assumptions, and an escalation path to the event's Head Judge.
 
 Chronicle owns the rules layer, bounded by what the conformance suite proves.
 
+Published work bearing on this decision — including an independent group
+arriving at the same propose-and-validate split, and the 2016 result that makes
+the learned alternative unattractive for a rules layer — is collected in
+[RELATED_WORK.md](../architecture/RELATED_WORK.md).
+
 ## Alternatives rejected
 
 **A. Stay escalation-only (no rules code at all).** The status quo the audits

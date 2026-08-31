@@ -1,0 +1,37 @@
+/* Shared engine-check.v1 viewer. Loaded after the host demo's styles.css and
+   ../shared/theme.css, so every colour here resolves through the tokens both
+   files define -- the component never introduces a palette of its own, and the
+   check_prototype_ui.py theme contract stays untouched. */
+.ecv{border:1px solid var(--line);background:var(--panel);font-size:10px;line-height:1.55}
+.ecv-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line)}
+.ecv-badge{padding:5px 9px;border:1px solid var(--line);color:var(--gold);font-size:9px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+.ecv-kind,.ecv-component{color:var(--faint);font-family:ui-monospace,monospace;font-size:9px}
+.ecv-component{margin-left:auto}
+/* Outcome tinting is a reading aid only. "supported" is deliberately not green
+   and not louder than the rest: inside a bounded coverage it is not a verdict,
+   and colour that reads as approval is exactly the misreading this component
+   exists to prevent. */
+.ecv-outcome-supported .ecv-badge{border-color:var(--gold)}
+.ecv-outcome-illegal .ecv-badge,.ecv-outcome-invalid_input .ecv-badge{border-color:var(--line);color:var(--muted)}
+.ecv-outcome-unsupported .ecv-badge,.ecv-outcome-decision_required .ecv-badge{border-color:var(--line);color:var(--muted)}
+.ecv-meaning{margin:0;padding:14px 16px;color:var(--ink);font-size:11px;line-height:1.6}
+.ecv-authority{display:flex;gap:6px;flex-wrap:wrap;margin:0;padding:0 16px 14px}
+.ecv-tag{padding:4px 7px;border:1px solid var(--line);color:var(--faint);font-family:ui-monospace,monospace;font-size:8px}
+.ecv-section{padding:14px 16px;border-top:1px solid var(--line)}
+.ecv-section h4{margin:0 0 8px;color:var(--muted);font-size:8px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.ecv-section ul{margin:0;padding-left:16px;color:var(--muted)}
+.ecv-section li+li{margin-top:4px}
+.ecv-reason{margin:0;color:var(--ink);font-size:11px;line-height:1.6}
+.ecv-coverage-id{display:inline-block;margin-bottom:8px;padding:4px 7px;border:1px solid var(--line);color:var(--gold);font-family:ui-monospace,monospace;font-size:9px}
+.ecv-limits{margin-bottom:10px!important}
+.ecv-scope{margin-top:9px}
+.ecv-scope-label{display:block;margin-bottom:4px;color:var(--faint);font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+.ecv-decision-lead{margin:0 0 12px;padding:11px 13px;border-left:2px solid var(--line);color:var(--muted);font-size:10px;line-height:1.55}
+.ecv-decision-fields{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0}
+.ecv-decision-fields dt{color:var(--faint);font-size:9px}
+.ecv-decision-fields dd{margin:0;color:var(--ink);font-family:ui-monospace,monospace;font-size:9px}
+.ecv-locators li{font-family:ui-monospace,monospace;color:var(--gold)}
+.ecv-foot{display:flex;gap:12px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid var(--line);color:var(--faint);font-family:ui-monospace,monospace;font-size:8px}
+.ecv-hash{margin-left:auto}
+.ecv-error{margin:0;padding:16px;color:var(--muted)}
+@media(max-width:760px){.ecv-component,.ecv-hash{margin-left:0}.ecv-decision-fields{grid-template-columns:1fr;gap:2px}}

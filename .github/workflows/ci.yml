@@ -85,6 +85,12 @@ jobs:
       - name: Shared engine-check envelope and runner
         run: python3 skill/scripts/check_engine_check.py
 
+      # Renders every engine-check.v1 outcome through the real viewer in a
+      # minimal DOM. `node --check` would pass a viewer that had quietly lost
+      # the authority triple or grown a control that makes a decision.
+      - name: Shared engine-check viewer fixtures, rendering, and read-only invariants
+        run: python3 skill/scripts/check_engine_check_view.py
+
       - name: Rule Consult static prototype contract
         run: python3 skill/scripts/check_rule_consult_prototype.py
 
@@ -117,6 +123,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_effect_ir.py"
           python3 "$REPO/skill/scripts/check_resolution_bridge.py"
           python3 "$REPO/skill/scripts/check_engine_check.py"
+          python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"
           python3 "$REPO/skill/scripts/check_rules_bootstrap.py"

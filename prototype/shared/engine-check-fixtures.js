@@ -1,4 +1,8 @@
-{
+// GENERATED FILE -- do not edit by hand.
+// Produced by skill/scripts/build_engine_check_fixtures.py from the real
+// engines. Read-only demo data for prototype/shared/engine-check-view.js; not a
+// rules authority. Regenerate and commit after any engine or envelope change.
+window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
   "schema_version": "engine-check-view-fixtures.v1",
   "generated_by": "skill/scripts/build_engine_check_fixtures.py",
   "note": "Read-only demo data produced by the real engines. Not a rules authority; every check carries official_status unofficial and state_effect none.",
@@ -309,4 +313,4 @@
       }
     }
   ]
-}
+});

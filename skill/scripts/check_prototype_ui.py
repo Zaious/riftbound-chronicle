@@ -45,6 +45,30 @@ class ShellParser(HTMLParser):
             self.links.append(values["href"])
 
 
+def asset_order_errors(scripts, stylesheets):
+    """Shared loading-order contract for every demo page.
+
+    Stated as an order rather than an exact list so a page can adopt a shared
+    component (the engine-check viewer was the first) without the contract
+    having to be rewritten each time. What must not drift is the order: the
+    host's own layout first, then the shared theme, then shared component
+    styles; and the shared runtime before any shared component, with the
+    page's own app.js last so it can use what the others defined.
+    """
+    errors = []
+    if stylesheets[:2] != ["styles.css", "../shared/theme.css"]:
+        errors.append(f"expected local layout followed by shared theme, got {stylesheets}")
+    for extra in stylesheets[2:]:
+        if not (extra.startswith("../shared/") and extra.endswith(".css")):
+            errors.append(f"extra stylesheet {extra!r} must be a shared component style under ../shared/")
+    if not scripts or scripts[0] != "../shared/i18n.js" or scripts[-1] != "app.js":
+        errors.append(f"expected shared i18n first and local app.js last, got {scripts}")
+    for extra in scripts[1:-1]:
+        if not (extra.startswith("../shared/") and extra.endswith(".js")):
+            errors.append(f"extra script {extra!r} must be a shared component under ../shared/")
+    return errors
+
+
 def main() -> int:
     errors = []
     if not SHARED_THEME.is_file():
@@ -81,10 +105,7 @@ def main() -> int:
             errors.append(f"{folder}: data-system must be {system!r}")
         if "language-toggle" not in parser.ids:
             errors.append(f"{folder}: missing language toggle")
-        if parser.stylesheets != ["styles.css", "../shared/theme.css"]:
-            errors.append(f"{folder}: shared theme must load after local layout CSS")
-        if parser.scripts != ["../shared/i18n.js", "app.js"]:
-            errors.append(f"{folder}: shared i18n must load before local app JS")
+        errors.extend(f"{folder}: {error}" for error in asset_order_errors(parser.scripts, parser.stylesheets))
         for href in ("../deck-coach/index.html", "../rule-consult/index.html", "../p2a/index.html"):
             own_href = "#top" if href.startswith(f"../{folder}/") else href
             if own_href not in parser.links:

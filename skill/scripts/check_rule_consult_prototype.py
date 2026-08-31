@@ -12,6 +12,11 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from check_prototype_ui import asset_order_errors  # noqa: E402
+from rule_consult import validate_consultation  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PROTOTYPE = REPO_ROOT / "prototype" / "rule-consult"
 HTML = PROTOTYPE / "index.html"
@@ -33,6 +38,10 @@ REQUIRED_IDS = {
     "reset",
     "result",
     "language-toggle",
+    "engine-form",
+    "engine-select",
+    "engine-check-view",
+    "engine-count",
 }
 FORBIDDEN_NETWORK_OR_STORAGE = {
     "fetch(": "network request",
@@ -72,6 +81,14 @@ class PrototypeParser(HTMLParser):
             self.stylesheets.append(values["href"])
 
 
+def first_option_value(html: str, field: str) -> str:
+    """First <option value> of a named select, so samples mirror the real page."""
+    block = re.search(rf'name="{re.escape(field)}"><select[^>]*>|name="{re.escape(field)}">', html)
+    tail = html[block.end():] if block else html
+    match = re.search(r'<option value="([^"]+)"', tail)
+    return match.group(1) if match else ""
+
+
 def main():
     errors = []
     for path in (HTML, JS, CSS, SCHEMA, REGISTRY):
@@ -101,10 +118,7 @@ def main():
     for asset in parser.scripts + parser.stylesheets:
         if not (PROTOTYPE / asset).resolve().is_file():
             errors.append(f"HTML references missing local asset: {asset}")
-    if parser.scripts != ["../shared/i18n.js", "app.js"]:
-        errors.append(f"expected shared i18n before local app.js, got {parser.scripts}")
-    if parser.stylesheets != ["styles.css", "../shared/theme.css"]:
-        errors.append(f"expected local layout followed by shared theme, got {parser.stylesheets}")
+    errors.extend(asset_order_errors(parser.scripts, parser.stylesheets))
 
     required_copy = [
         "Unofficial",
@@ -114,6 +128,12 @@ def main():
         "Judge-prep handoff",
         "Head Judge",
         "Riot Games does not endorse or sponsor this project",
+        # The engine-check panel's boundary, stated in the doctrine order: the
+        # official source decides, the check is a consistency test beside it,
+        # and abstention is not absence of an answer.
+        "does not raise source confidence",
+        "the component abstained",
+        "This page runs no engine of its own",
     ]
     for phrase in required_copy:
         if phrase not in html:
@@ -154,6 +174,43 @@ def main():
     for guard in required_guards:
         if guard not in js:
             errors.append(f"app.js is missing confidence/state guard: {guard!r}")
+
+    # The check must be presented by the shared read-only viewer. A local
+    # renderer here would be the start of three systems describing the same
+    # outcome three different ways.
+    if "RC_ENGINE_CHECK_VIEW.mount" not in js:
+        errors.append("app.js does not render engine checks through the shared read-only viewer")
+    if "engine_checks:[]" not in js.replace(" ", ""):
+        errors.append("app.js does not initialize the schema's engine_checks array, so exports would omit attached checks")
+    # Source confidence and engine coverage must stay separate fields: a
+    # `supported` check does not raise confidence, and an `unsupported` one does
+    # not lower it. Any expression joining the two would encode the opposite.
+    # Quoted copy is removed first, so the guard reads code: the panel's own
+    # text has to be able to say what the check does not do.
+    js_code = re.sub(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"", "", js)
+    for pattern in (r"outcome[^;\n]{0,80}confidence", r"confidence[^;\n]{0,80}outcome"):
+        for hit in re.findall(pattern, js_code):
+            errors.append(f"app.js ties an engine outcome to source confidence: {hit!r}")
+
+    # End to end: a consultation carrying a real envelope must still validate,
+    # which is what makes this a wired consumer rather than a rendered demo.
+    fixtures_js = (REPO_ROOT / "prototype" / "shared" / "engine-check-fixtures.js").read_text(encoding="utf-8")
+    payload = json.loads(fixtures_js[fixtures_js.index("Object.freeze(") + len("Object.freeze("):fixtures_js.rindex(");")])
+    sample = {
+        "schema_version": constants["schema_version"], "mode": constants["mode"],
+        "official_status": constants["official_status"], "state_effect": constants["state_effect"],
+        "consultation_id": "11111111-2222-3333-4444-555555555555",
+        "created_at": "2026-08-01T00:00:00Z", "created_by": "prototype-contract-check",
+        "status": "draft", "question_type": first_option_value(html, "questionType"),
+        "question": "Does the attached engine check validate inside a consultation?",
+        "format": "standard", "ruleset_as_of": "2026-07-16",
+        "facts": [{"text": "Both units are on the same battlefield.", "origin": first_option_value(html, "origin")}],
+        "assumptions": [], "sources": [], "answer": None,
+        "engine_checks": [item["check"] for item in payload["fixtures"]],
+    }
+    consultation_errors = validate_consultation(sample)
+    if consultation_errors:
+        errors.append(f"a consultation carrying the prototype's engine checks does not validate: {consultation_errors}")
 
     if "@media(max-width:760px)" not in css.replace(" ", ""):
         errors.append("styles.css has no narrow-screen layout contract")

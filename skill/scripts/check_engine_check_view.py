@@ -31,13 +31,13 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
 VIEWER_JS = REPO_ROOT / "prototype" / "shared" / "engine-check-view.js"
 VIEWER_CSS = REPO_ROOT / "prototype" / "shared" / "engine-check-view.css"
-FIXTURES = REPO_ROOT / "prototype" / "shared" / "engine-check-fixtures.json"
+FIXTURES = REPO_ROOT / "prototype" / "shared" / "engine-check-fixtures.js"
 HARNESS = SCRIPT_DIR / "engine_check_view_harness.mjs"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from engine_check import validate_engine_check  # noqa: E402
-from build_engine_check_fixtures import build_fixtures  # noqa: E402
+from build_engine_check_fixtures import build_fixtures, render_module  # noqa: E402
 
 OUTCOME_ORDER = ["supported", "illegal", "unsupported", "decision_required", "invalid_input"]
 INTERACTIVE_TAGS = {"button", "input", "select", "textarea", "form", "a", "dialog"}
@@ -76,11 +76,13 @@ def main() -> int:
 
     # --- fixtures are genuine engine output, and current -------------------
     committed = FIXTURES.read_text(encoding="utf-8")
-    expected = json.dumps(build_fixtures(), ensure_ascii=False, indent=2) + "\n"
-    if committed != expected:
-        errors.append("engine-check-fixtures.json is stale; re-run build_engine_check_fixtures.py and commit the diff")
+    if committed != render_module(build_fixtures()):
+        errors.append("engine-check-fixtures.js is stale; re-run build_engine_check_fixtures.py and commit the diff")
 
-    fixtures = json.loads(committed)["fixtures"]
+    # The fixtures ship as a browser-loadable global assignment, since the demo
+    # pages open from disk and may not fetch. Unwrap the payload to inspect it.
+    payload = committed[committed.index("Object.freeze(") + len("Object.freeze("):committed.rindex(");")]
+    fixtures = json.loads(payload)["fixtures"]
     covered = {item["check"]["outcome"] for item in fixtures}
     if covered != set(OUTCOME_ORDER):
         errors.append(f"fixtures cover {sorted(covered)}; the viewer must be exercised on all of {sorted(OUTCOME_ORDER)}")

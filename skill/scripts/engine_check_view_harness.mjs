@@ -21,7 +21,7 @@ import vm from "node:vm";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..", "..");
 const VIEWER = join(REPO_ROOT, "prototype", "shared", "engine-check-view.js");
-const FIXTURES = join(REPO_ROOT, "prototype", "shared", "engine-check-fixtures.json");
+const FIXTURES = join(REPO_ROOT, "prototype", "shared", "engine-check-fixtures.js");
 
 class Node {
   constructor(tag) {
@@ -90,7 +90,11 @@ const describe = (node) => ({
   children: node.children.map(describe),
 });
 
-const fixtures = JSON.parse(readFileSync(FIXTURES, "utf8")).fixtures;
+// The fixtures ship as a browser-loadable global, so they are loaded the same
+// way the prototype page loads them: evaluated, not parsed out of a .json file.
+const fixtureWindow = {};
+vm.runInContext(readFileSync(FIXTURES, "utf8"), vm.createContext({ window: fixtureWindow }), { filename: "engine-check-fixtures.js" });
+const fixtures = fixtureWindow.RC_ENGINE_CHECK_FIXTURES.fixtures;
 const rendered = [];
 for (const fixture of fixtures) {
   rendered.push({

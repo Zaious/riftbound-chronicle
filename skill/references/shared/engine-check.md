@@ -81,6 +81,13 @@ Place the check beside controlling official passages. The official source is
 the answer's authority; the check is a reproducible consistency test. Source
 uncertainty and engine-coverage uncertainty must remain separate fields.
 
+Store the envelope in the consultation's `engine_checks` array. When a surface
+displays one, use the shared read-only viewer in
+`prototype/shared/engine-check-view.js` rather than a per-system renderer, so
+one outcome does not acquire a different meaning in each place it appears. The
+viewer always shows the coverage limits and the authority triple with the
+result, and presents `decision_required` options without choosing among them.
+
 ### Player 2 Agent
 
 Use supported/illegal timing results to remove impossible candidates only

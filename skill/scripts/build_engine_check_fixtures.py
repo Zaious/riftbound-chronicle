@@ -10,8 +10,9 @@ nothing -- so every fixture here is produced by running the genuine components
 `effect_ir.perform_lethal_cleanup`) and wrapping the result with the real
 `engine_check.build_engine_check`.
 
-The generated file is committed so the prototype stays dependency-free and
-loadable straight from disk with no build step. Re-run this script after any
+The generated file is committed as plain JavaScript, not JSON: the prototype
+pages open straight from disk and are forbidden from making network requests,
+so a fetched .json fixture would never load. Re-run this script after any
 change to the envelope, the outcome classifier, or the engines, and commit the
 diff.
 
@@ -34,7 +35,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPT_DIR.parent
 REPO_ROOT = SKILL_DIR.parent
-OUT = REPO_ROOT / "prototype" / "shared" / "engine-check-fixtures.json"
+OUT = REPO_ROOT / "prototype" / "shared" / "engine-check-fixtures.js"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -167,13 +168,26 @@ def build_fixtures() -> dict:
     }
 
 
+BANNER = """// GENERATED FILE -- do not edit by hand.
+// Produced by skill/scripts/build_engine_check_fixtures.py from the real
+// engines. Read-only demo data for prototype/shared/engine-check-view.js; not a
+// rules authority. Regenerate and commit after any engine or envelope change.
+"""
+
+
+def render_module(payload: dict) -> str:
+    """Wrap the fixture payload as a browser-loadable global assignment."""
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    return f"{BANNER}window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({body});\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="fail if the committed fixture file is stale")
     args = parser.parse_args()
 
     generated = build_fixtures()
-    rendered = json.dumps(generated, ensure_ascii=False, indent=2) + "\n"
+    rendered = render_module(generated)
 
     if args.check:
         if not OUT.exists():

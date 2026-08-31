@@ -1,0 +1,153 @@
+{
+  "schema_version": "riftbound-effect-state.v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "players": {
+    "p1": {
+      "zones": {
+        "main_deck": [
+          "c1",
+          "c2"
+        ],
+        "hand": [],
+        "trash": [
+          "c3"
+        ],
+        "banishment": [],
+        "base": [
+          "u1"
+        ],
+        "rune_deck": [
+          "r1"
+        ]
+      },
+      "resources": {
+        "energy": 0,
+        "power": {}
+      }
+    },
+    "p2": {
+      "zones": {
+        "main_deck": [
+          "c4"
+        ],
+        "hand": [],
+        "trash": [],
+        "banishment": [],
+        "base": [
+          "u2",
+          "u3",
+          "u4"
+        ],
+        "rune_deck": []
+      },
+      "resources": {
+        "energy": 0,
+        "power": {}
+      }
+    }
+  },
+  "objects": {
+    "c1": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "spell",
+      "base_might": 0,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "c2": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "spell",
+      "base_might": 0,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "c3": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "spell",
+      "base_might": 0,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "c4": {
+      "owner": "p2",
+      "controller": "p2",
+      "kind": "spell",
+      "base_might": 0,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "u1": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "unit",
+      "base_might": 3,
+      "might_modifiers": [],
+      "damage": 1,
+      "exhausted": false
+    },
+    "u2": {
+      "owner": "p2",
+      "controller": "p2",
+      "kind": "unit",
+      "base_might": 4,
+      "might_modifiers": [],
+      "damage": 4,
+      "exhausted": true
+    },
+    "r1": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "rune",
+      "base_might": 0,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "u3": {
+      "owner": "p2",
+      "controller": "p2",
+      "kind": "unit",
+      "base_might": 2,
+      "might_modifiers": [],
+      "damage": 2,
+      "exhausted": false
+    },
+    "u4": {
+      "owner": "p2",
+      "controller": "p2",
+      "kind": "unit",
+      "base_might": 2,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    }
+  },
+  "battlefields": {
+    "bf1": {
+      "controller": null,
+      "objects": []
+    }
+  },
+  "replacement_effects": [
+    {
+      "replacement_id": "guard-all",
+      "controller": "p2",
+      "source_object": "u4",
+      "mode": "prevent_event",
+      "event_op": "kill",
+      "optional": false,
+      "uses_remaining": null,
+      "target_controller_relation": "friendly"
+    }
+  ]
+}

@@ -44,27 +44,49 @@ physical resolution and a new confirmed snapshot.
 
 The dependency-free runner wraps existing pure components:
 
+Every command below runs as written against the bundled example inputs in
+`${CLAUDE_SKILL_DIR}/data/engine_check_examples/`, and `check_engine_check.py`
+executes each one and asserts its outcome. Substitute your own files in the same
+argument positions.
+
 ```powershell
 python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py timing timing-state.json `
   --payload proposed-action.json --output timing-check.json
 
+python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py timing timing-state.json `
+  --operation permissions --output permissions-check.json
+
+python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py timing timing-state.json `
+  --operation next --output next-check.json
+
 python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py effect effect-state.json `
   effect-program.json --output effect-check.json
 
-python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py resolution timing-state.json `
-  chain-item-id effect-state.json effect-program.json `
-  --cleanup-decisions cleanup-decisions.json --output resolution-check.json
+python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py resolution closed-timing-state.json `
+  spell-1 effect-state.json effect-program.json --output resolution-check.json
 
-python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py cleanup effect-state.json `
-  --cleanup-decisions cleanup-decisions.json --output cleanup-check.json
+python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py cleanup cleanup-state.json `
+  --output cleanup-check.json
 
-python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py validate engine-check.json
+python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py cleanup cleanup-state.json `
+  --cleanup-decisions cleanup-decisions.json --output resolved-cleanup-check.json
+
+python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py validate cleanup-check.json
 ```
+
+The two `cleanup` commands are the same state twice, and are worth running in
+order: without decisions it returns `decision_required` naming the events whose
+order a controller owns, and with those decisions supplied it completes. That
+is the whole abstention contract in two commands — the component stops and says
+what it needs rather than picking an order to keep going.
 
 Use `--include-raw` only when the consumer needs the full trace/state proposal.
 Use repeatable `--assumption` and `--missing-information` flags to keep the
 artifact's epistemic boundary explicit. The check id is deterministic for the
 same kind, inputs, and underlying result.
+
+A malformed input, a missing file, or `validate` on an artifact that overclaims
+its coverage exits non-zero and writes no artifact. Failure is never a ruling.
 
 ## Consumer projections
 

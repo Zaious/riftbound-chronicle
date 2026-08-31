@@ -1,0 +1,41 @@
+{
+  "schema_version": "riftbound-rules-core-state.v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "players": [
+    "p1",
+    "p2"
+  ],
+  "turn_order": [
+    "p1",
+    "p2"
+  ],
+  "turn_player": "p1",
+  "phase": "main",
+  "showdown": {
+    "active": false,
+    "kind": null,
+    "focus": null
+  },
+  "priority": "p2",
+  "outstanding_tasks": [],
+  "chain": {
+    "initiated_by": "played_card",
+    "items": [
+      {
+        "id": "spell-1",
+        "controller": "p1",
+        "object_kind": "spell",
+        "timing": "default",
+        "status": "finalized",
+        "ability_kind": null
+      }
+    ],
+    "consecutive_passes": [
+      "p1",
+      "p2"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "actor": "p1",
+  "kind": "play_card",
+  "timing": "default",
+  "object_kind": "unit"
+}

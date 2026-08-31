@@ -85,6 +85,12 @@ jobs:
       - name: Shared engine-check envelope and runner
         run: python3 skill/scripts/check_engine_check.py
 
+      # Runs the commands the reference actually prints, against the bundled
+      # example inputs. Documented commands otherwise rot silently -- a reader
+      # finds the breakage, not CI.
+      - name: Documented engine-check CLI commands and failure surface
+        run: python3 skill/scripts/check_engine_check_cli.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -123,6 +129,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_effect_ir.py"
           python3 "$REPO/skill/scripts/check_resolution_bridge.py"
           python3 "$REPO/skill/scripts/check_engine_check.py"
+          python3 "$REPO/skill/scripts/check_engine_check_cli.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -1,0 +1,9 @@
+{
+  "schema_version": "riftbound-cleanup-decisions.v1",
+  "replacement_event_order": {
+    "guard-all": [
+      "u2",
+      "u3"
+    ]
+  }
+}

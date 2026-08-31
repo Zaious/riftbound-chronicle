@@ -34,6 +34,8 @@
 
 네 번째 시스템 `match-analyst`(경기 후 단일 정규화 타임라인 위의 Review와 Commentary 두 가지 투영)는 명세가 완성되었지만 activation gate를 통과할 때까지 **의도적으로 라우팅되지 않습니다** —— [명세](docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md)를 보세요. 위 표는 Skill router가 오늘 실제로 제공하는 것만 나열합니다.
 
+**네 시스템 모두 준비 단계에 있으며, 어느 것도 대신 플레이하지 않습니다.** 구성, 규칙 이해, 연습, 복기 —— 게임 자체는 사람이 이곳 바깥에서 플레이합니다. 그래서 권위 있는 규칙 엔진이, 언젠가 공식 디지털 클라이언트가 나온다 해도, 이 네 시스템을 대체하는 것이 아니라 **강화**합니다. 그런 엔진은 플레이를 위한 것이고, 이것은 준비를 위한 것이기 때문입니다.
+
 ## 빠른 시작
 
 필요 조건은 Git과 Python 3.10 이상입니다. 정적 데모에는 패키지 설치나 빌드가 필요하지 않습니다.
@@ -107,6 +109,8 @@ event addendum > Tournament Rules > 수정되지 않은 Core Rules > 현장 Head
 
 ## P2-A 경계
 
+> **연습 전용이며, 공식 대회 매치 중에는 사용할 수 없습니다.** Riftbound 대회 규칙 417.1: "Players may use electronic devices during competitions, but can't use them during matches."(대회 기간 중 전자기기를 사용할 수 있으나 **매치 중에는 사용할 수 없습니다**.) 따라서 AI가 외부 조력(703.9)에 해당하는지는 따질 필요조차 없습니다 —— 매치 중에는 기기 사용 자체가 불가합니다. 높은 OPL의 덱 구성과 드래프트에는 별도의 전자기기·외부 조력 제한이 있습니다(602.3.b–c, 602.4.b.2.d–e). **이 경계는 게임 규칙이 정한 것이지 이 프로젝트가 정한 것이 아닙니다.** 조문은 2026-07-16 판 대회 규칙에서 인용했으며, 의존하기 전에 현행 판본을 다시 확인하세요.
+
 ```text
 사람이 공개 상태를 확인
   → Agent가 행동과 이유를 제안
@@ -117,6 +121,8 @@ event addendum > Tournament Rules > 수정되지 않은 Core Rules > 현장 Head
 P2-A는 상대의 숨은 정보를 보지 않고, 행동이 합법이라고 주장하지 않으며, 해결 후 상태를 추론하지 않습니다. 셔플, 드로우, 단계 진행, 전투／효과 해결, 점수 계산, 승자 판정도 수행하지 않습니다.
 
 ## 출처, 데이터와 검증
+
+규칙 계층을 변경하기 전에 읽어 볼 설계 근거: [ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md)(두 차례 감사가 규칙 엔진을 만들지 말라고 권고했음에도 만든 이유와, 이 결정이 주장하지 **않는** 것), [RELATED_WORK](docs/architecture/RELATED_WORK.md)(발표된 연구 대비 위치), [ITERATION_INPUTS](docs/research/ITERATION_INPUTS.md)(다음에 무엇을 만들지 바꿔야 할 연구).
 
 출처 우선순위는 현재 공식 규칙／대회 문서／errata／금지 목록, 공식 카드 텍스트, 신뢰할 수 있는 커뮤니티 자료, 명시된 추론, 그리고 알 수 없음입니다. 포함된 카드 snapshot은 비공식 RiftCodex API에서 가져온 것으로 1,451개 row와 1,304개의 unique card ID를 포함합니다. 자세한 내용은 [데이터 출처와 제한](skill/data/README.md)을 확인하세요.
 

@@ -69,6 +69,12 @@ its activation gates pass — see
 [the spec](docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md). The table above
 lists what the Skill router actually exposes today.
 
+**All four sit in the preparation phase; none of them plays the game.**
+Construction, knowledge, practice, review — the game itself is played by people,
+away from this. That is why an authoritative rules engine, including an official
+digital client should one ship, would strengthen these rather than replace them:
+such an engine serves play, and this serves preparation.
+
 The repository name intentionally stays `riftbound-chronicle`: it is the product
 brand. Search terms such as `AI agent`, `deck coach`, and `rule consult` belong in
 the GitHub description, topics, README, and Skill metadata rather than replacing
@@ -232,6 +238,15 @@ and superseded sources are excluded from current search by default.
 
 ## Player2 Agent
 
+> **Practice only — not for use during a sanctioned match.** Riftbound
+> Tournament Rules 417.1: *"Players may use electronic devices during
+> competitions, but can't use them during matches."* Whether an assistant would
+> also count as Outside Assistance (703.9) never has to be reached; the device
+> may not be in use during a match at all. High-OPL deckbuilding and drafting
+> carry their own restrictions (602.3.b–c, 602.4.b.2.d–e). This boundary is set
+> by the game, not by this project. Clauses read from the 2026-07-16 Tournament
+> Rules — re-check the current version before relying on them.
+
 P2-A supports one person practising with two physical decks while the Agent
 chooses a strategic direction for Player 2. The ledger permits three event types:
 
@@ -271,6 +286,13 @@ regenerate the file byte-for-byte and it is not official Riot API data. Read the
 building a public product from it.
 
 ## Repository map
+
+Design rationale worth reading before changing the rules layer:
+[ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md) (why a rules layer
+exists after two audits advised against one, and what it does *not* claim),
+[RELATED_WORK](docs/architecture/RELATED_WORK.md) (where this sits in published
+work), and [ITERATION_INPUTS](docs/research/ITERATION_INPUTS.md) (research that
+should change what gets built next).
 
 ```text
 skill/

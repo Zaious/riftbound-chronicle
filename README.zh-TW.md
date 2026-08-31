@@ -34,6 +34,8 @@
 
 第四個體系 `match-analyst`（賽後單一時間軸上的 Review 與 Commentary 兩種投影）規格已完整，但**刻意還沒接進 router**，要等 activation gate 全過——見[規格](docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md)。上面表格列的是 Skill router 今天真的提供的東西。
 
+**四個體系都在備賽階段,沒有一個代替你打牌。**構築、規則、練習、檢討——遊戲本身是人在別的地方玩的。這也是為什麼一個權威規則引擎(包括官方線上版,如果哪天出了)會**增強**這四個體系而不是取代它們:那種引擎服務的是對局,這裡服務的是備賽。
+
 ## 快速開始
 
 需求：Git、Python 3.10 以上。展示頁不需要安裝套件或建置。
@@ -107,6 +109,8 @@ event addendum > Tournament Rules > Core Rules 未被修改的部分 > 現場主
 
 ## P2-A 邊界
 
+> **僅供練習,不得在正式賽事對局中使用。**Riftbound 賽事規則 417.1:「Players may use electronic devices during competitions, but can't use them during matches.」(玩家可在賽事期間使用電子裝置,但**不得在對局中使用**。)所以連「AI 算不算外部協助」(703.9)都不必爭論——裝置在對局中本來就不能用。高 OPL 的組牌與輪抽另有電子輔助與外部協助的限制(602.3.b–c、602.4.b.2.d–e)。**這條邊界是遊戲規則劃的,不是本專案自己劃的。**條文引自 2026-07-16 版賽事規則,倚賴前請重新核對現行版本。
+
 ```text
 玩家確認可見狀態
   → 代理提出行動與理由
@@ -117,6 +121,8 @@ event addendum > Tournament Rules > Core Rules 未被修改的部分 > 現場主
 P2-A 不會查看對手隱藏資訊、不會聲稱行動合法、不會推測結算後狀態，也不會洗牌、抽牌、推進階段、結算戰鬥、計分或判定勝者。
 
 ## 來源、資料與驗證
+
+改動規則層之前值得先讀的設計理據:[ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md)(為何在兩份審計建議不要做規則引擎之後仍然做了,以及它**不**主張什麼)、[RELATED_WORK](docs/architecture/RELATED_WORK.md)(與已發表工作的相對位置)、[ITERATION_INPUTS](docs/research/ITERATION_INPUTS.md)(該改變下一步做什麼的研究)。
 
 來源優先順序為：目前官方規則／賽事文件／勘誤／禁卡表、官方卡牌文字、可靠社群材料、明示推論，最後是未知。隨 repo 附帶的卡牌 snapshot 來自非官方 RiftCodex API，包含 1,451 rows、1,304 個 unique card IDs；請先閱讀 [資料來源與限制](skill/data/README.md)。
 

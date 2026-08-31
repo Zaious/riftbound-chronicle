@@ -12,20 +12,38 @@ executable regression exist in the repository. A written design or prototype
 alone does not count as implementation. A bounded checked item makes no claim
 about mechanics outside the stated scope.
 
+## Ownership labels
+
+- **`[CLAUDE-READY]`** — bounded work with stable inputs, outputs, and acceptance
+  tests. It can be handed to another AI without this conversation history.
+- **`[CODEX-CONTEXT]`** — depends on the rules semantics, authority boundaries,
+  schema history, or sequencing decisions developed in this thread. Codex
+  should own the contract and final implementation.
+- **`[JOINT]`** — Codex defines/finalizes the contract; Claude can implement a
+  bounded subpackage, fixtures, data, documentation, or UI against it.
+
+The label names the recommended implementation owner, not the only model
+capable of doing the work. Prerequisites still apply. Completed items remain
+unlabelled because ownership is relevant to remaining work.
+
 ## 0. Delivery order
 
 - [x] Define the four-system product boundaries and ownership rules.
 - [x] Build the first Chronicle-owned timing and typed-effect kernel.
 - [x] Publish this reconciled completion checklist.
 - [x] Establish the shared `engine-check.v1` result contract and runner.
-- [ ] Integrate `engine-check.v1` into Rule Consult.
-- [ ] Integrate `engine-check.v1` into Player 2 Agent P2-A.
-- [ ] Integrate behavior coverage and verified lines into Deck Coach.
-- [ ] Build and validate a bounded R3 card-program pack.
-- [ ] Pass the R4 state-completeness and legal-action gates.
-- [ ] Implement and route Match Analyst.
+- [ ] `[CODEX-CONTEXT]` Integrate `engine-check.v1` into Rule Consult.
+- [ ] `[CODEX-CONTEXT]` Integrate `engine-check.v1` into Player 2 Agent P2-A.
+- [ ] `[JOINT]` Integrate behavior coverage and verified lines into Deck Coach.
+- [ ] `[JOINT]` Build and validate a bounded R3 card-program pack.
+- [ ] `[CODEX-CONTEXT]` Pass the R4 state-completeness and legal-action gates.
+- [ ] `[JOINT]` Implement and route Match Analyst; routing remains
+  `[CODEX-CONTEXT]`.
 
 ## 1. Shared evidence and source layer
+
+Remaining source tooling is `[CLAUDE-READY]`; the card-program provenance
+contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
 
 - [x] Versioned source registry with `locale`, `region`, `document_class`,
   `status`, and `superseded_by`.
@@ -42,6 +60,10 @@ about mechanics outside the stated scope.
 - [ ] Card-text-to-effect-program provenance manifest shared by all systems.
 
 ## 2. R1 — Timing, permissions, and Chain structure
+
+Remaining engine semantics are `[CODEX-CONTEXT]`. Once a transition contract is
+frozen, fixture expansion and official-example encoding become
+`[CLAUDE-READY]`.
 
 - [x] Four-state model: Neutral/Showdown × Open/Closed.
 - [x] Action/Reaction permission gates.
@@ -98,6 +120,9 @@ about mechanics outside the stated scope.
 
 ### Effect vocabulary still required
 
+Default ownership: `[JOINT]`. Codex specifies the semantic/state contract and
+Claude may implement one bounded operation plus tests at a time.
+
 - [ ] Generic choices: zero/one/up-to/exactly-N, divide, order, reveal
   selection, and affected-player decisions.
 - [ ] Typed costs: Energy, Power, exhaust, sacrifice/kill, discard, banish,
@@ -116,6 +141,9 @@ about mechanics outside the stated scope.
 
 ### Conditions, targets, and instruction grammar still required
 
+Default ownership: `[CODEX-CONTEXT]`; these forms affect every later card
+program and cannot be safely inferred from isolated examples.
+
 - [ ] Open-ended target choice and target groups.
 - [ ] Location-relative targets such as “here” and “another location.”
 - [ ] Last-known information and objects that change identity or zone.
@@ -127,6 +155,9 @@ about mechanics outside the stated scope.
 - [ ] Player-targeted and uncontrolled-Battlefield replacement ordering.
 
 ### Continuous effects, triggers, and replacement still required
+
+Default ownership: `[CODEX-CONTEXT]`. Fixture/data expansion after a contract is
+accepted is `[CLAUDE-READY]`.
 
 - [ ] Cross-object watchers and zone-dependent trigger eligibility.
 - [ ] Delayed triggers and duration-bound trigger registration.
@@ -143,6 +174,9 @@ about mechanics outside the stated scope.
 
 ### Game procedures still required
 
+Default ownership: `[CODEX-CONTEXT]`; independent UI or fixture work after each
+procedure contract is `[CLAUDE-READY]`.
+
 - [ ] Complete normal Cleanup steps 1–10a.
 - [ ] Special, Combat, and End-of-Turn Cleanup additions.
 - [ ] Attack declaration, attacker/defender designations, and legal defenders.
@@ -155,6 +189,10 @@ about mechanics outside the stated scope.
 
 ### Engine quality gates still required
 
+Default ownership: `[JOINT]`. Test harnesses, golden fixture encoding, and
+differential adapters are `[CLAUDE-READY]`; coverage definitions and version
+migrations are `[CODEX-CONTEXT]`.
+
 - [ ] State schema covering every mechanic in the bounded R3 pack without prose
   escape hatches.
 - [ ] Property/fuzz tests for rollback, determinism, ordering, and recursion.
@@ -165,6 +203,10 @@ about mechanics outside the stated scope.
 - [ ] Clause-level coverage manifest, not merely operation-name coverage.
 
 ## 4. R3 — Bounded card-program packs
+
+Default ownership: `[JOINT]`. Codex selects the pack, freezes the semantic
+contract, and accepts coverage; Claude can collect/normalize card clauses and
+implement assigned cards against that frozen contract.
 
 - [ ] Select two to four linear Origins/Taiwan decks and their Battlefields.
 - [ ] Freeze applicable card text, errata, ruleset, format, and region.
@@ -182,6 +224,9 @@ about mechanics outside the stated scope.
 
 ## 5. R4 — Observation, legal actions, and replay reconstruction
 
+Default ownership: `[CODEX-CONTEXT]`. After schemas are frozen, corpus
+normalization and adversarial fixtures become `[CLAUDE-READY]`.
+
 - [ ] Run the state-completeness pre-check on real P2-A `public_state` samples.
 - [ ] Define structured, perspective-safe observation schemas.
 - [ ] Separate public, own-private, inferred, later-revealed, and unknown facts.
@@ -198,6 +243,10 @@ about mechanics outside the stated scope.
 - [ ] Measure confirmation latency/disagreement to detect rubber-stamping.
 
 ## 6. R5 — Evaluation, search, and learning research
+
+Default ownership: `[JOINT]`. Deterministic runners, metrics, and corpus tooling
+are `[CLAUDE-READY]`; policy objectives, information sets, and authorization
+gates remain `[CODEX-CONTEXT]`.
 
 - [ ] Deterministic batch runner for states, programs, decisions, and replays.
 - [ ] Versioned replay corpus with train/eval separation and provenance.
@@ -243,6 +292,9 @@ about mechanics outside the stated scope.
 
 ### Remaining
 
+Default ownership: `[JOINT]`. Pipeline/evaluation/UI work is
+`[CLAUDE-READY]` after Codex defines the behavior-coverage contract.
+
 - [ ] Consume `engine-check.v1` for verified timing/effect examples.
 - [ ] Rename card-name “resolution coverage” so it cannot be confused with
   rules-engine coverage.
@@ -267,6 +319,10 @@ about mechanics outside the stated scope.
 
 ### Remaining
 
+Default ownership: `[CODEX-CONTEXT]` for artifact migration and authority
+semantics; fixtures and the engine-check viewer are `[CLAUDE-READY]` after that
+migration lands.
+
 - [ ] Consume `engine-check.v1` instead of timing-only `rules_core_check`.
 - [ ] Run timing/effect/combined checks from one consultation command.
 - [ ] Present engine trace beside official passages without treating it as
@@ -289,6 +345,9 @@ about mechanics outside the stated scope.
 
 ### Remaining
 
+Default ownership: `[CODEX-CONTEXT]` for observation, authority, candidate-mask,
+and confirmation semantics; demo/UI work is `[CLAUDE-READY]` afterward.
+
 - [ ] Consume `engine-check.v1` for timing/effect/combined coverage.
 - [ ] Differentiate verification burden by supported/unsupported/decision state.
 - [ ] Build a structured observation adapter without inferring authority from
@@ -310,6 +369,10 @@ about mechanics outside the stated scope.
 - [x] Artifact outlines and activation gates.
 
 ### Remaining implementation
+
+Default ownership: `[JOINT]`. Codex owns normalization/reconstruction contracts,
+review classifications, and activation. Claude may implement frozen schemas,
+fixtures, projection formatting, and the demo.
 
 - [ ] Add `match-analysis.v1`, `match-review.v1`, and
   `match-commentary.v1` schemas.
@@ -354,3 +417,68 @@ core. It is connected only when all six conditions are checked:
 
 Until these pass independently for a system, documentation must describe the
 connection as partial or planned.
+
+## 13. Delegation work packages
+
+These packages translate the labels above into tasks that can be handed to
+Claude without relying on the full conversation.
+
+### Ready to give Claude now
+
+| ID | Package | Allowed scope | Acceptance evidence |
+| --- | --- | --- | --- |
+| C-01 | Rename Deck Coach `card_resolution_coverage` to an unambiguous card-name/data-resolution term | Deck Coach pipeline, schemas, tests, prototype labels, docs; no rules-engine semantics | Existing Deck Coach suite plus migration/compatibility test |
+| C-02 | Expand `engine-check.v1` CLI examples and fixtures | Examples/fixtures/tests only; no schema vocabulary or outcome changes | `check_engine_check.py`, links, off-cwd pass |
+| C-03 | Build a reusable read-only engine-check viewer component for the three demos | Shared prototype JS/CSS and demo rendering only; no consumer artifact migration | Prototype UI checks plus supported/unsupported/decision fixtures |
+| C-04 | Encode additional existing official timing examples as R1 fixtures | Data/tests only, using already-supported transitions | `check_rules_core.py`; no production-code change unless escalated |
+| C-05 | Add property-style determinism and rollback tests for currently supported effect programs | Tests only; do not add mechanics or alter expected semantics | Repeated/randomized supported inputs remain deterministic and atomic |
+| C-06 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline | Offline fixture, no credentials, explicit human approval output |
+| C-07 | Expand Deck Coach expert/eval cases using existing contracts | Data, evidence ledger, and tests; no new scoring dimensions without review | `check_deck_coach.py` and source provenance pass |
+| C-08 | Prepare Match Analyst example logs and uncertainty fixtures | Fixtures/docs only; no claim that the system is routed or implemented | Complete/partial/contradictory/perspective-safe fixture set |
+
+### Give Claude only after Codex lands a prerequisite contract
+
+| ID | Package | Prerequisite owned by Codex | Claude deliverable |
+| --- | --- | --- | --- |
+| D-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration | Bilingual rendering, import/export, UI regression |
+| D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration | Bilingual UI, decision-required flow, prototype regression |
+| D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest | Pipeline consumer, evidence display, regression fixtures |
+| D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |
+| D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
+| D-06 | Match Analyst schemas/runner projections | Normalized timeline and engine-binding contracts | Schema implementation, formatter, fixtures, no router activation |
+| D-07 | Fourth demo and navigation | Match Analyst gates satisfied except final activation review | Bilingual demo matching the shared visual shell |
+
+### Keep with Codex because this thread context matters
+
+| ID | Work | Why context-sensitive |
+| --- | --- | --- |
+| X-01 | Rule Consult migration from `rules_core_check` to `engine-check.v1` | Must preserve source authority, consultation confidence, and compatibility |
+| X-02 | P2-A migration to `engine-check.v1` | Must preserve human legality/state authority and avoid automation creep |
+| X-03 | Deck behavior-coverage contract | Must distinguish card lookup, engine clauses, evidence, and strategy claims |
+| X-04 | R1/R2 semantic expansion and schema versioning | Each decision constrains every card program and replay |
+| X-05 | R3 pack selection and acceptance gate | Connects Taiwan scope, real deck lines, errata, and engine feasibility |
+| X-06 | R4 observation and legal-action architecture | Defines information sets, hidden-data safety, and abstention correctness |
+| X-07 | Match Analyst normalization/review contract and router activation | Must keep Review/Commentary consistent and satisfy all gates |
+| X-08 | Riot authorization interpretation and P2-S boundary | Product authority cannot be inferred from an isolated coding task |
+
+## Claude handoff template
+
+Every delegated package should include:
+
+```text
+Package ID and objective:
+Allowed files/directories:
+Files that must not change:
+Frozen schemas/contracts to consume:
+Required fixtures and acceptance commands:
+Authority/compliance boundary:
+Stop and report if:
+  - a schema/version/outcome vocabulary must change;
+  - official text conflicts with the frozen contract;
+  - the task needs an unsupported engine mechanic;
+  - unrelated or concurrent changes overlap the allowed files.
+Deliver one focused commit; do not push or mark checklist items complete.
+```
+
+Codex reviews the diff, reruns the complete suite, decides whether the package
+satisfies its checklist item, updates this ledger, and performs the final push.

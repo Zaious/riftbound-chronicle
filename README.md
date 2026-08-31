@@ -8,6 +8,31 @@ An evidence-aware AI assistant for building, learning, and practising physical
 Keywords: Riftbound AI agent, deck coach, rule consult, Player 2 agent, TCG
 deckbuilding, gameplay assistant, Claude Skill.
 
+## Why this exists
+
+A language model can "judge" a card interaction without any of this machinery.
+It will just be judging by plausible-sounding text continuation, which is not
+the same thing as legality. It will read a Reaction card and conclude you may
+insert it at the end of a Showdown to add Might, because that reads fine — and
+it is not a legal play.
+
+So the program owns the mechanical part. When you may play what, what can be
+responded to, how priority passes, what the current score and costs and Might
+actually are: these are rule-governed and arithmetic, and handing them to a
+model invites drift. Even the strongest model will still tell you 8.11 is
+greater than 8.9 unless something checks the number.
+
+The model then reasons inside the space the program has already constrained,
+under the same external constraints as the real rules. That is the whole
+design: **not translating the rules so the model can read them, but bounding
+what the model is allowed to conclude.**
+
+Today the program owns *timing and permission*. Full legality is still
+confirmed by the human — see the Player 2 boundary below — and automated rules
+enforcement is not currently approved by Riot in any case. Enumerating legal
+actions is a planned release gated on conformance coverage, not on collecting
+more game records first.
+
 The project is split into three systems with deliberately different authority:
 
 | System | Purpose | Authority boundary | Runnable artifact |

@@ -38,7 +38,7 @@ That one command writes normalized input, `deck-profile.v1`, `recommendation-mas
 
 ### Structured observation
 
-The profile computes card-resolution coverage, environment/region/set pool, curve, printed Domains and Power costs, Unit/Spell/Gear mix, Battlefield package, interaction/draw-recursion/movement density, eight-role distribution, engine candidates, data provenance, and confidence. Role and engine detection are labelled text heuristics; do not promote them to verified gameplay claims without evidence.
+The profile computes card-name lookup coverage (what fraction of the decklist's copies matched a card in the bundled snapshot by name -- a data-resolution measure, unrelated to rules-engine coverage), environment/region/set pool, curve, printed Domains and Power costs, Unit/Spell/Gear mix, Battlefield package, interaction/draw-recursion/movement density, eight-role distribution, engine candidates, data provenance, and confidence. Role and engine detection are labelled text heuristics; do not promote them to verified gameplay claims without evidence.
 
 ### Recommendation mask
 

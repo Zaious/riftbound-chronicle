@@ -28,6 +28,9 @@ REPO_ROOT = SKILL_DIR.parent
 ROLES = SKILL_DIR / "data" / "deck_coach_roles.json"
 ENVIRONMENTS = SKILL_DIR / "data" / "deck_coach_environments.json"
 CASES = SKILL_DIR / "data" / "deck_coach_cases.json"
+PIPELINE_SRC = SKILL_DIR / "scripts" / "deck_coach_pipeline.py"
+BRIDGE_SRC = SKILL_DIR / "scripts" / "riftatlas_bridge.py"
+METHOD_DOC = SKILL_DIR / "references" / "deck-coach" / "deck-coach.md"
 SCHEMAS = {
     "deck-coach-input.schema.json": ("schema_version", "deck-coach-input.v1"),
     "deck-profile.schema.json": ("schema_version", "deck-profile.v1"),
@@ -52,6 +55,20 @@ def main():
     environments = json.loads(ENVIRONMENTS.read_text(encoding="utf-8"))
     suite = json.loads(CASES.read_text(encoding="utf-8"))
     catalog = CardCatalog()
+
+    # C-01 naming guard. The profile's confidence block reports how much of the
+    # decklist matched a card in the bundled snapshot *by name*. That is data
+    # resolution, and the old key `card_resolution_coverage` read as though it
+    # said something about rules-engine coverage of those cards' behaviour --
+    # two unrelated things this project keeps deliberately separate. The name is
+    # asserted here, and the ambiguous form is banned across the Deck Coach
+    # surface, so the confusion cannot reappear by copy-paste.
+    banned_name = "card_" + "resolution_coverage"   # split so this guard does not match itself
+    for path in (PIPELINE_SRC, BRIDGE_SRC, METHOD_DOC):
+        if not path.exists():
+            errors.append(f"naming guard cannot read {path.name}")
+        elif banned_name in path.read_text(encoding="utf-8"):
+            errors.append(f"{path.name} reintroduces the ambiguous {banned_name!r}; use 'card_lookup_coverage' (card-name lookup, not rules-engine coverage)")
 
     role_ids = [item.get("role_id") for item in roles.get("roles", [])]
     if len(role_ids) != 8 or len(role_ids) != len(set(role_ids)):

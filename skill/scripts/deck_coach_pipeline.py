@@ -331,7 +331,7 @@ def build_profile(deck_input: dict[str, Any], catalog: CardCatalog | None = None
         "feature_density": {name: {"copies": count, "density": round(count / known_copies, 4) if known_copies else 0.0, "method": "text heuristic"} for name, count in sorted(features.items())},
         "role_distribution": role_result,
         "engine_cards": {"structural_anchors": structural_anchors, "inferred_candidates": engine_scored[:12], "inference_is_authoritative": False},
-        "confidence": {"overall": overall, "card_resolution_coverage": round(coverage, 4), "role_method": "heuristic", "warnings": warnings},
+        "confidence": {"overall": overall, "card_lookup_coverage": round(coverage, 4), "role_method": "heuristic", "warnings": warnings},
     }
 
 
@@ -501,7 +501,8 @@ def generate_baseline_primer(deck_input: dict[str, Any], profile: dict[str, Any]
     )
     evidence = (
         f"Tier 1: bundled card snapshot ({profile['data_provenance']['card_snapshot_rows']} rows), errata verified "
-        f"{profile['data_provenance']['errata_last_verified']}, card-resolution coverage {profile['confidence']['card_resolution_coverage']:.0%}. "
+        f"{profile['data_provenance']['errata_last_verified']}, card-name lookup coverage {profile['confidence']['card_lookup_coverage']:.0%} "
+        "(card-database name matching, not rules-engine coverage). "
         f"Tier 1 provisional legality: environment registry checked {profile['data_provenance']['environment_registry_last_checked']}; live event use still requires the official Rules Hub check. "
         "Tier 3: role, engine, mulligan, sequencing, and mistake inferences unless a separate cited source upgrades them."
     )

@@ -299,8 +299,11 @@ Default ownership: `[JOINT]`. Pipeline/evaluation/UI work is
 `[CLAUDE-READY]` after Codex defines the behavior-coverage contract.
 
 - [ ] Consume `engine-check.v1` for verified timing/effect examples.
-- [ ] Rename card-name “resolution coverage” so it cannot be confused with
-  rules-engine coverage.
+- [x] Rename `card_resolution_coverage` to `card_lookup_coverage` and state that
+  it measures card-database name matching, not rules-engine coverage.
+- [ ] `[JOINT]` Rename the separate top-level Deck Profile `resolution` block to
+  an unambiguous lookup/matching term through an explicit `deck-profile.v1`
+  compatibility or migration decision.
 - [ ] Consume the R3 card behavior coverage manifest.
 - [ ] Validate core loops, lines, mulligan rationale, and mistakes against
   executable card programs where supported.
@@ -457,7 +460,7 @@ push” does not isolate a commit on shared `main`.
 
 | ID | Package | Allowed scope | Acceptance evidence |
 | --- | --- | --- | --- |
-| C-01 | Rename Deck Coach `card_resolution_coverage` to an unambiguous card-name/data-resolution term | Deck Coach pipeline, Rift Atlas bridge, tests, prototype labels, docs; no schema or rules-engine semantic change | Existing Deck Coach suite plus compatibility test; current field is internal, not schema-bound |
+| C-01 — completed 2026-09-01 | Rename Deck Coach `card_resolution_coverage` to an unambiguous card-name/data-resolution term | Deck Coach pipeline, Rift Atlas bridge, tests, prototype labels, docs; no schema or rules-engine semantic change | Existing Deck Coach suite plus compatibility test; current field is internal, not schema-bound |
 | C-02 | Expand `engine-check.v1` CLI examples and fixtures | Examples/fixtures/tests only; no schema vocabulary or outcome changes | `check_engine_check.py`, links, off-cwd pass |
 | C-04 | Encode additional existing official timing examples as R1 fixtures | Data/tests only, using already-supported transitions | `check_rules_core.py`; no production-code change unless escalated |
 | C-05 | Add property-style determinism and rollback tests for currently supported effect programs | Tests only; do not add mechanics or alter expected semantics | Repeated/randomized supported inputs remain deterministic and atomic |

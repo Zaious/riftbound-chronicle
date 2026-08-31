@@ -245,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
         for filename, value in (("bridge.json", bridge), ("input.json", deck_input), ("profile.json", profile), ("mask.json", mask), ("primer.json", primer)):
             save_json(args.output_dir / filename, value)
         write_brief(args.output_dir / "primer-brief.md", bridge, primer)
-        print(f"OK: Rift Atlas decklist bridged; coverage={profile['confidence']['card_resolution_coverage']:.0%}; blocked={mask['deck_legality']['blocked_count']}")
+        print(f"OK: Rift Atlas decklist bridged; lookup_coverage={profile['confidence']['card_lookup_coverage']:.0%}; blocked={mask['deck_legality']['blocked_count']}")
         return 0
     except (OSError, PipelineError) as exc:
         print(f"FAILED: {exc}", file=sys.stderr)

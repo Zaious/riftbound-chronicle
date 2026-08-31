@@ -65,8 +65,13 @@ so this is measurable without new instrumentation: the interval between
 answer `legal: false`. Confirmation latency collapsing toward zero, or a
 disagreement rate that trends to nil as the core improves, is the signature of
 rubber-stamping rather than of the core getting good. Neither number is currently
-reported. **Treat "the human confirmed it" as a claim requiring evidence, on the
-same principle this project already applies to every other claim.**
+reported — and, checked rather than assumed, **neither can be: there is no
+stored P2-A session anywhere in the repository, not even a fixture.** So the
+honest form of this item is not "measure it now" but "when a session store is
+built, build these two counters with it, because retrofitting them means
+retrofitting the evidence for the safety claim." **Treat "the human confirmed
+it" as a claim requiring evidence, on the same principle this project already
+applies to every other claim.**
 
 ---
 

@@ -27,6 +27,13 @@ Do not request, store, or use Player 1 hidden information.
    candidates. Do not claim effect legality for unsupported card behavior.
 4. Propose a preferred action with reasoning, assumptions, and important alternatives.
 5. Mark legality as unverified and ask the human to confirm it.
+   (Known open design question, not yet resolved: this request is currently
+   uniform regardless of what the rules-core check returned, so a
+   `supported_legal_timing` proposal and an `unsupported` one ask the human for
+   the same thing. The over-reliance literature predicts that uniform
+   confirmation requests train rubber-stamping — and that the better the core
+   gets, the weaker this gate becomes. See
+   `docs/research/ITERATION_INPUTS.md` §1 before changing this step.)
 6. After confirmation, ask the human to perform and resolve the action physically.
 7. Request a new human-confirmed state snapshot. Do not infer it from the chosen action.
 

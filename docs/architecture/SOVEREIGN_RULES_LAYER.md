@@ -213,6 +213,15 @@ work.
 
 ### R4 — Legal-action and review services
 
+> Before building this, read
+> [ITERATION_INPUTS.md §3](../research/ITERATION_INPUTS.md). Published
+> legal-action enumeration derives an information set from a *complete* state
+> model; P2-A's state is a human-written prose summary, so the contract may be
+> wrong on paper before any code exists. The cheap pre-check named there — take
+> real `public_state` strings and ask how many support an unambiguous
+> enumeration — costs almost nothing and could redirect the whole release.
+
+
 - enumerate timing- and effect-legal actions from a perspective-safe state;
 - return an explanation trace, not only an action id;
 - let P2-A rank inside the supported legal set while retaining the human gate;

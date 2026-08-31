@@ -122,7 +122,39 @@ A broader map of this area:
 [git-disl/awesome-LLM-game-agent-papers](https://github.com/git-disl/awesome-LLM-game-agent-papers)
 (survey, ACM CSUR).
 
-## 5. What appears not to be covered
+## 5. Imperfect-information CCG agents, and where the field actually went
+
+Collectible card games are a recognised hard case — imperfect information,
+stochasticity, long-horizon planning, and a very large action space at once —
+and there is a real body of work: MCTS with determinization for hidden and
+random information, deep networks used to improve MCTS-based bots, evolutionary
+approaches to evaluation functions and automated playtesting, and a
+[taxonomy of CCGs from a game-playing AI perspective](https://link.springer.com/chapter/10.1007/978-3-031-74353-5_12)
+(2024). Complexity results exist for these games specifically as well:
+[Perfect Information Hearthstone is PSPACE-hard](https://arxiv.org/pdf/2305.12731)
+— hardness that does not depend on the hidden information at all.
+
+The distribution of that work is the informative part. It concentrates on
+Hearthstone rather than Magic, and the reason given in the literature is
+capability rather than interest: Magic presents a wider search space *and* the
+property that every card carries its own rules behaviour. Research goes where a
+usable engine already exists.
+
+The trajectory says the same thing. The [Tales of Tribute AI
+Competition](https://arxiv.org/html/2305.08234v4) was introduced explicitly to
+fill the gap left after the Hearthstone AI Competition and the Strategy Card
+Game AI Competition stopped being organised — and Tales of Tribute is a
+deliberately compact game chosen so that agent research is tractable.
+
+The reading for this project: **the bottleneck for real-TCG agent research is
+the rules engine, not the agent.** A playing-strength contribution presupposes an
+executable rules substrate, which for a game like this is where most of the cost
+sits, and which is what R0–R4 here are. That is a reason to expect the rules
+layer to be the durable artifact even if no agent is ever trained on it — and a
+reason not to read "there is not much recent work on imperfect-information TCG
+AI" as an open field. It is closer to a field gated behind an engine.
+
+## 6. What appears not to be covered
 
 Stated as an open question rather than a claim of novelty. This note is not a
 systematic survey, and an absence here is weak evidence.

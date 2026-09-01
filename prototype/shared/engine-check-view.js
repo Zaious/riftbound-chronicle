@@ -56,6 +56,21 @@
   const pick = (zhValue, enValue) =>
     globalThis.RC_I18N ? RC_I18N.pick(zhValue, enValue) : enValue;
 
+  const isRenderableCheck = (check) =>
+    Boolean(check) &&
+    typeof check === "object" &&
+    check.schema_version === "engine-check.v1" &&
+    Object.hasOwn(OUTCOME_COPY, check.outcome) &&
+    check.authority?.official_status === "unofficial" &&
+    check.authority?.role === "consistency_check" &&
+    check.authority?.state_effect === "none" &&
+    typeof check.coverage?.id === "string" &&
+    check.coverage.id.length > 0 &&
+    check.coverage.complete_game === false &&
+    check.coverage.complete_legality === false &&
+    typeof check.component?.name === "string" &&
+    typeof check.component?.version === "string";
+
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -145,11 +160,11 @@
   function render(check) {
     const root = el("article", "ecv");
 
-    if (!check || typeof check !== "object" || check.schema_version !== "engine-check.v1") {
+    if (!isRenderableCheck(check)) {
       root.classList.add("ecv-outcome-invalid_input");
       root.append(el("p", "ecv-error", pick(
-        "這不是一份 engine-check.v1 檢查結果，無法呈現。",
-        "This is not an engine-check.v1 result and cannot be rendered.")));
+        "這不是一份有效且維持非官方邊界的 engine-check.v1，無法呈現。",
+        "This is not a valid engine-check.v1 with the required unofficial boundary and cannot be rendered.")));
       return root;
     }
 

@@ -196,8 +196,11 @@ def main() -> int:
 
     # Degenerate input renders an explanation instead of throwing.
     for case in report["degenerate"]:
-        if "engine-check.v1" not in text_of(case["tree"]):
+        case_text = text_of(case["tree"])
+        if "engine-check.v1" not in case_text:
             errors.append(f"degenerate input {case['label']!r} did not render the not-an-engine-check explanation")
+        if case["label"] == "malformed_envelope" and ("Supported" in case_text or "Complete game: yes" in case_text):
+            errors.append("malformed engine-check.v1 was rendered as a supported claim instead of failing closed")
 
     # mount() replaces; a stale check must not linger beside a new one.
     if report["mounted"]["child_count"] != 1:

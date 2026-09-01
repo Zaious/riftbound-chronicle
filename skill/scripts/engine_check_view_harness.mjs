@@ -109,7 +109,19 @@ for (const fixture of fixtures) {
 // a consumer that crashes on a malformed check would show nothing at all, which
 // is a worse failure than saying "this is not an engine-check.v1 result".
 const degenerate = [];
-for (const [label, value] of [["null", null], ["string", "not an object"], ["wrong_schema", { schema_version: "engine-check.v0", outcome: "supported" }], ["empty_object", {}]]) {
+for (const [label, value] of [
+  ["null", null],
+  ["string", "not an object"],
+  ["wrong_schema", { schema_version: "engine-check.v0", outcome: "supported" }],
+  ["empty_object", {}],
+  ["malformed_envelope", {
+    schema_version: "engine-check.v1",
+    outcome: "supported",
+    authority: {},
+    coverage: { id: "timing_permission_v1", complete_game: true, complete_legality: false },
+    component: { name: "rules_core", version: "fixture" },
+  }],
+]) {
   degenerate.push({ label, tree: describe(view.render(value)) });
 }
 

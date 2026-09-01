@@ -32,7 +32,8 @@ unlabelled because ownership is relevant to remaining work.
 - [x] Build the first Chronicle-owned timing and typed-effect kernel.
 - [x] Publish this reconciled completion checklist.
 - [x] Establish the shared `engine-check.v1` result contract and runner.
-- [ ] `[CODEX-CONTEXT]` Integrate `engine-check.v1` into Rule Consult.
+- [x] Integrate `engine-check.v1` into Rule Consult artifact, CLI, validator,
+  bilingual demo, and supported/abstaining regressions.
 - [ ] `[CODEX-CONTEXT]` Integrate `engine-check.v1` into Player 2 Agent P2-A.
 - [ ] `[JOINT]` Integrate behavior coverage and verified lines into Deck Coach.
 - [ ] `[JOINT]` Build and validate a bounded R3 card-program pack.
@@ -332,12 +333,12 @@ semantics; fixtures and the engine-check viewer are `[CLAUDE-READY]` after that
 migration lands.
 
 - [ ] Run timing/effect/combined checks from one consultation command.
-- [ ] Present engine trace beside official passages without treating it as
+- [x] Present engine trace beside official passages without treating it as
   authority.
-- [ ] Render `decision_required` options neutrally.
-- [ ] Separate source uncertainty from engine coverage uncertainty.
+- [x] Render `decision_required` options neutrally in a read-only viewer.
+- [x] Separate source uncertainty from engine coverage uncertainty.
 - [ ] Add effect/replacement/combat fixtures and expert rulings.
-- [ ] Add an engine-check panel to demo and export.
+- [x] Add an engine-check panel to demo and export.
 
 ## 10. Player 2 Agent
 
@@ -431,6 +432,15 @@ core. It is connected only when all six conditions are checked:
 Until these pass independently for a system, documentation must describe the
 connection as partial or planned.
 
+### Current connection audit
+
+| System | Conditions passed | Status |
+| --- | ---: | --- |
+| Rule Consult | 6 / 6 | Connected to `engine-check.v1`; official sources remain authoritative |
+| Deck Coach | 0 / 6 | Planned; engine terminology is now disambiguated |
+| Player 2 Agent P2-A | 0 / 6 | Planned; legacy timing summary remains partial only |
+| Match Analyst | 0 / 6 | Not implemented or routed |
+
 ## 13. Delegation work packages
 
 These packages translate the labels above into tasks that can be handed to
@@ -462,9 +472,9 @@ push” does not isolate a commit on shared `main`.
 | ID | Package | Allowed scope | Acceptance evidence |
 | --- | --- | --- | --- |
 | C-01 — completed 2026-09-01 | Rename Deck Coach `card_resolution_coverage` to an unambiguous card-name/data-resolution term | Deck Coach pipeline, Rift Atlas bridge, tests, prototype labels, docs; no schema or rules-engine semantic change | Existing Deck Coach suite plus compatibility test; current field is internal, not schema-bound |
-| C-02 | Expand `engine-check.v1` CLI examples and fixtures | Examples/fixtures/tests only; no schema vocabulary or outcome changes | `check_engine_check.py`, links, off-cwd pass |
-| C-04 | Encode additional existing official timing examples as R1 fixtures | Data/tests only, using already-supported transitions | `check_rules_core.py`; no production-code change unless escalated |
-| C-05 | Add property-style determinism and rollback tests for currently supported effect programs | Tests only; do not add mechanics or alter expected semantics | Repeated/randomized supported inputs remain deterministic and atomic |
+| C-02 — completed 2026-09-01 | Expand `engine-check.v1` CLI examples and fixtures | Examples/fixtures/tests only; no schema vocabulary or outcome changes | Document-derived executable commands, failure surface, links, and off-cwd pass |
+| C-04 — completed 2026-09-01 | Encode additional existing official timing examples as R1 fixtures | Data/tests only, using already-supported transitions | Seven sourced cases plus baseline-linked provenance gate |
+| C-05 — completed 2026-09-01 | Add property-style determinism and rollback tests for currently supported effect programs | Tests only; do not add mechanics or alter expected semantics | 240 generated programs across commit/reject/abstain paths plus cross-process hashes |
 | C-06 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline; every generated report/excerpt must stay under an already-ignored local path such as `skill/.local/refresh-reports/` | Offline fixture, no credentials, explicit human approval output, and a path-guard test proving output cannot target a tracked/public path |
 | C-07 | Expand Deck Coach expert/eval cases using existing contracts | Data, evidence ledger, and tests; no new scoring dimensions without review | `check_deck_coach.py` and source provenance pass |
 | C-08 | Prepare Match Analyst example logs and uncertainty fixtures | Fixtures/docs only; no claim that the system is routed or implemented | Complete/partial/contradictory/perspective-safe fixture set |
@@ -477,8 +487,8 @@ real artifact migration should establish the presentation semantics first.
 
 | ID | Package | Prerequisite owned by Codex | Claude deliverable |
 | --- | --- | --- | --- |
-| D-00 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules — satisfied 2026-09-01 | Fixture-driven shared renderer and tests; wiring one consumer does not claim all three are connected |
-| D-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, import/export, UI regression |
+| D-00 — completed 2026-09-01 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules — satisfied 2026-09-01 | Five outcomes, bilingual fail-closed renderer, authority/coverage display, no choices or mutation |
+| D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
 | D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration | Bilingual UI, decision-required flow, prototype regression |
 | D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest | Pipeline consumer, evidence display, regression fixtures |
 | D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |

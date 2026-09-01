@@ -91,7 +91,7 @@ FIXTURES = {
 
 # Documents a case may cite, and the baseline those citations were read against.
 # A case that cites a clause is claiming someone looked it up in that version.
-CITABLE_DOCUMENTS = {"core_rules", "tournament_rules"}
+CITABLE_DOCUMENTS = {"core_rules"}
 
 
 def main() -> int:

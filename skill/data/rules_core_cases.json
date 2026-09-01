@@ -134,11 +134,11 @@
     },
     {
       "case_id": "RK-019",
-      "description": "Focus is the permission to act in Showdown Open, so the player without it cannot take an Action",
-      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "313.1"},
+      "description": "The Focus holder with Priority may pass Focus in Showdown Open",
+      "source": {"document": "core_rules", "version": "2026-07-16", "locator": "347.2"},
       "state": "showdown_open",
-      "action": {"actor": "p2", "kind": "play_card", "timing": "action", "object_kind": "spell"},
-      "expected": {"state_label": "showdown_open", "legal": false, "reason_code": "priority_required"}
+      "action": {"actor": "p1", "kind": "pass_focus", "timing": "default", "object_kind": "ability"},
+      "expected": {"state_label": "showdown_open", "legal": true, "reason_code": "ok"}
     },
     {
       "case_id": "RK-020",

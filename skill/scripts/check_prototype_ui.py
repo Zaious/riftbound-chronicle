@@ -77,6 +77,13 @@ UNTRANSLATED_BY_DESIGN = {
     # Project vocabulary the Chinese prose itself keeps in English: i18n.js
     # renders these as "Tier 1／Tier 2／Tier 3" and "Tier 排名".
     "Tier 1", "Tier 2", "Tier 3",
+    # p2a-session.v1 verification_requirement values. These are shown verbatim
+    # because they are exactly what the exported artifact records; a translated
+    # label beside a different token in the JSON would be worse than English.
+    # The sentence explaining each one is translated.
+    "standard_human_confirmation", "heightened_manual_verification",
+    "controller_decision_and_recheck", "input_repair_and_recheck",
+    "official_source_review_before_override",
 }
 
 

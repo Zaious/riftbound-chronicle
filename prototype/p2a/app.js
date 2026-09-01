@@ -10,6 +10,47 @@
     legality_authority: "user_confirmed",
   });
 
+  // Demonstration checks generated from the real engines by
+  // skill/scripts/build_engine_check_fixtures.py, loaded as a global because
+  // this page opens from disk and makes no network requests.
+  const ENGINE_CHECKS = globalThis.window?.RC_ENGINE_CHECK_FIXTURES?.fixtures || [];
+
+  // The same precedence p2a_session.verification_requirement applies, in the
+  // same order. Worst outcome wins, and no checks at all is not neutral: it
+  // means nothing was narrowed, so the human verifies everything.
+  const REQUIREMENT_COPY = {
+    standard_human_confirmation: {
+      zh: "引擎在其有界範圍內接受了這個動作。人類仍須確認合法性並實際執行。",
+      en: "The engine accepted this inside its bounded coverage. The human still confirms legality and performs the action.",
+    },
+    heightened_manual_verification: {
+      zh: "沒有附上檢查，或元件對這件事棄權。什麼都沒有被縮小，人類要全部自己查。",
+      en: "No check is attached, or the component abstained. Nothing has been narrowed, so the human verifies everything.",
+    },
+    controller_decision_and_recheck: {
+      zh: "引擎回報需要有人先做決定。做完決定後重新檢查，這個頁面不會替任何人選。",
+      en: "The engine reports that someone must decide first. Decide, then re-check; this page chooses for nobody.",
+    },
+    input_repair_and_recheck: {
+      zh: "輸入的狀態或程式有誤，這不是遊戲裁定。修好輸入再重新檢查。",
+      en: "The state or program is malformed. That is not a game ruling: repair the input and re-check.",
+    },
+    official_source_review_before_override: {
+      zh: "有一條已支援的規則否決了這個動作。人類可以依官方來源覆核，但要留下查了什麼的紀錄。",
+      en: "A supported rule rejects this action. A human may override it against an official source, but must record what they checked.",
+    },
+  };
+
+  function verificationRequirement(checks) {
+    const outcomes = new Set(checks.map((check) => check.outcome));
+    if (outcomes.has("invalid_input")) return "input_repair_and_recheck";
+    if (outcomes.has("decision_required")) return "controller_decision_and_recheck";
+    if (outcomes.has("illegal")) return "official_source_review_before_override";
+    if (outcomes.size === 0 || outcomes.has("unsupported")) return "heightened_manual_verification";
+    return "standard_human_confirmation";
+  }
+
+  let attachedChecks = [];
   let session = null;
   let toastTimer = null;
 
@@ -29,6 +70,13 @@
     shortId: $("#session-id-short"),
     statusBanner: $("#status-banner"),
     toast: $("#toast"),
+    engineSelect: $("#engine-select"),
+    attachCheck: $("#attach-check"),
+    engineView: $("#engine-check-view"),
+    engineCount: $("#engine-count"),
+    requirementValue: $("#requirement-value"),
+    requirementExplanation: $("#requirement-explanation"),
+    verificationDemand: $("#verification-demand"),
   };
 
   function nowIso() {
@@ -131,7 +179,7 @@
         return `<li><div class="ledger-meta"><span>#${event.seq} state confirmed</span><time>${time}</time></div><strong>Turn ${event.turn} · ${escapeHtml(event.turn_player)} · ${escapeHtml(event.phase)}</strong><p>${escapeHtml(event.public_state)}</p><span class="ledger-tag">user confirmed</span></li>`;
       }
       if (event.type === "action_proposed") {
-        return `<li class="proposal"><div class="ledger-meta"><span>#${event.seq} agent proposal</span><time>${time}</time></div><strong>${escapeHtml(event.action_id)} · ${escapeHtml(event.description)}</strong><p>${escapeHtml(event.reason)}</p><span class="ledger-tag">legality unverified</span></li>`;
+        return `<li class="proposal"><div class="ledger-meta"><span>#${event.seq} agent proposal</span><time>${time}</time></div><strong>${escapeHtml(event.action_id)} · ${escapeHtml(event.description)}</strong><p>${escapeHtml(event.reason)}</p><span class="ledger-tag">legality unverified</span><span class="ledger-tag requirement">${escapeHtml(event.verification_requirement || "heightened_manual_verification")}</span></li>`;
       }
       const rejected = event.legal === false;
       return `<li class="${rejected ? "rejected" : ""}"><div class="ledger-meta"><span>#${event.seq} human check</span><time>${time}</time></div><strong>${escapeHtml(event.action_id)} · ${rejected ? "Rejected" : "Confirmed legal"}</strong><p>${escapeHtml(event.resolution_summary || (rejected ? "No state change" : "Awaiting a new human-confirmed state"))}</p><span class="ledger-tag">${rejected ? "no transition" : "snapshot required"}</span></li>`;
@@ -141,6 +189,42 @@
   function renderProposalSelect() {
     const proposals = pendingProposals();
     elements.proposalSelect.innerHTML = proposals.map((proposal) => `<option value="${escapeHtml(proposal.action_id)}">${escapeHtml(proposal.action_id)} — ${escapeHtml(proposal.description)}</option>`).join("");
+  }
+
+  function renderEngineOptions() {
+    elements.engineSelect.innerHTML = ENGINE_CHECKS
+      .map((item) => `<option value="${item.check.check_id}">${item.check.outcome} · ${item.check.check_kind} · ${item.check.component.name}</option>`)
+      .join("");
+  }
+
+  // The check is shown through the shared read-only viewer, so an outcome does
+  // not acquire a different meaning here than it has in Rule Consult.
+  function renderEngineCheck() {
+    const requirement = verificationRequirement(attachedChecks);
+    const copy = REQUIREMENT_COPY[requirement];
+    elements.engineCount.textContent = `${attachedChecks.length} attached`;
+    elements.requirementValue.textContent = requirement;
+    elements.requirementExplanation.textContent = globalThis.RC_I18N ? RC_I18N.pick(copy.zh, copy.en) : copy.en;
+    const latest = attachedChecks.at(-1);
+    if (!latest) {
+      elements.engineView.replaceChildren();
+      return;
+    }
+    globalThis.RC_ENGINE_CHECK_VIEW.mount(elements.engineView, latest);
+  }
+
+  function renderVerificationDemand() {
+    const pending = pendingProposals();
+    const selected = elements.proposalSelect.value;
+    const proposal = pending.find((event) => event.action_id === selected) || pending[0] || null;
+    const requirement = proposal?.verification_requirement;
+    const demanded = Boolean(requirement) && requirement !== "standard_human_confirmation";
+    elements.verificationDemand.hidden = !demanded;
+    if (demanded) {
+      $("#demand-detail").textContent = globalThis.RC_I18N
+        ? RC_I18N.pick(REQUIREMENT_COPY[requirement].zh, REQUIREMENT_COPY[requirement].en)
+        : REQUIREMENT_COPY[requirement].en;
+    }
   }
 
   function render() {
@@ -172,6 +256,8 @@
     renderSteps(step);
     setStatus(step);
     renderProposalSelect();
+    renderEngineCheck();
+    renderVerificationDemand();
     renderLedger();
   }
 
@@ -181,6 +267,37 @@
     elements.toast.classList.add("show");
     toastTimer = setTimeout(() => elements.toast.classList.remove("show"), 2600);
   }
+
+  elements.attachCheck.addEventListener("click", () => {
+    const fixture = ENGINE_CHECKS.find((item) => item.check.check_id === elements.engineSelect.value);
+    if (!fixture) {
+      showToast("Select a check to attach.");
+      return;
+    }
+    if (attachedChecks.some((check) => check.check_id === fixture.check.check_id)) {
+      showToast("That check is already attached.");
+      return;
+    }
+    // The P2-A information boundary refuses a raw engine result outright. A
+    // proposed next state sitting in the ledger is exactly the thing a human
+    // could read as the state, and the human owns the state.
+    if ("raw_result" in fixture.check) {
+      showToast("This check carries a raw engine result and cannot be attached.");
+      return;
+    }
+    attachedChecks.push(fixture.check);
+    render();
+    showToast("Check attached. It does not confirm legality.");
+  });
+
+  elements.proposalSelect.addEventListener("change", renderVerificationDemand);
+
+  // The viewer writes its bilingual text at mount time, so the shared runtime
+  // cannot retranslate it afterwards; re-mount when the language changes.
+  document.addEventListener("rc:localechange", () => {
+    renderEngineCheck();
+    renderVerificationDemand();
+  });
 
   elements.sessionForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -239,8 +356,14 @@
       alternative: values.alternative.trim(),
       assumptions: values.assumptions.split("\n").map((line) => line.trim()).filter(Boolean),
       legality_status: "unverified",
+      // Recorded even when empty: an explicit "no evidence, verify everything"
+      // is the honest entry, and the schema requires the pair to travel together.
+      engine_checks: attachedChecks.map((check) => ({ ...check })),
+      verification_requirement: verificationRequirement(attachedChecks),
     });
+    attachedChecks = [];
     event.currentTarget.reset();
+    render();
     showToast("Agent proposal recorded as unverified.");
   });
 
@@ -248,6 +371,12 @@
     event.preventDefault();
     const values = formValues(event.currentTarget);
     const legal = values.legal === "true";
+    const proposal = pendingProposals().find((item) => item.action_id === values.actionId);
+    const requirement = proposal?.verification_requirement;
+    if (legal && requirement && requirement !== "standard_human_confirmation" && !values.resolution.trim()) {
+      showToast("Record what you verified before confirming this legal.");
+      return;
+    }
     appendEvent({
       type: "action_confirmed",
       action_id: values.actionId,
@@ -296,6 +425,7 @@
   elements.resetButton.addEventListener("click", () => {
     if (!confirm("Reset this in-tab prototype session? Export first if you need the ledger.")) return;
     session = null;
+    attachedChecks = [];
     elements.sessionForm.reset();
     elements.stateForm.reset();
     elements.proposalForm.reset();
@@ -304,5 +434,6 @@
     showToast("Prototype session reset.");
   });
 
+  renderEngineOptions();
   render();
 })();

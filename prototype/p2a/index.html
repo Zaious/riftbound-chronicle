@@ -7,6 +7,7 @@
     <title>二號玩家代理 Player 2 Agent · P2-A</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/engine-check-view.css" />
   </head>
   <body>
     <header class="topbar">
@@ -125,6 +126,23 @@
               <label class="wide">Why<textarea name="reason" required rows="3" placeholder="Strategic reason, not a legality claim"></textarea></label>
               <label class="wide">Important alternative<textarea name="alternative" rows="2" placeholder="Best meaningful alternative or pass line"></textarea></label>
               <label class="wide">Assumptions<textarea name="assumptions" rows="2" placeholder="One assumption per line"></textarea></label>
+              <div class="engine-attach wide">
+                <div class="engine-attach-head">
+                  <div><strong>Bounded engine check</strong><p>Optional evidence, never a ruling. What it changes is how much the human has to verify before confirming, and attaching nothing raises that burden rather than lowering it.</p></div>
+                  <span id="engine-count">0 attached</span>
+                </div>
+                <div class="engine-attach-controls">
+                  <label class="wide">Bounded engine check<select name="checkId" id="engine-select"></select></label>
+                  <button type="button" id="attach-check" class="button secondary">Attach check</button>
+                </div>
+                <div id="engine-check-view" class="engine-check-view"></div>
+                <div class="verification-requirement" id="verification-requirement">
+                  <span class="requirement-label">Human verification required</span>
+                  <strong id="requirement-value">heightened_manual_verification</strong>
+                  <p id="requirement-explanation">No engine check is attached, so nothing has been narrowed and the human verifies everything.</p>
+                </div>
+                <p class="engine-attach-note">These demonstration checks were produced by running the bundled rules core and effect IR. This page runs no engine, accepts no engine state, and stores no raw engine result.</p>
+              </div>
               <div class="legality-lock"><span>!</span><div><strong>Legality: unverified</strong><p>A human must confirm before this becomes a physical action.</p></div></div>
               <div class="form-action"><button type="submit" class="button primary">Record Agent proposal</button></div>
             </form>
@@ -144,7 +162,11 @@
                 <label><input type="radio" name="legal" value="true" checked /><span><strong>Legal</strong><small>I will resolve this physically</small></span></label>
                 <label><input type="radio" name="legal" value="false" /><span><strong>Not legal</strong><small>Reject without changing state</small></span></label>
               </fieldset>
-              <label class="wide">Physical resolution note<textarea name="resolution" rows="3" placeholder="What the human did at the table; this does not create the next state"></textarea></label>
+              <div class="wide verification-demand" id="verification-demand" hidden>
+                <span>!</span>
+                <div><strong id="demand-title">Verification summary required</strong><p id="demand-detail">The engine did not clear this proposal on its own. To confirm it legal, record what you actually checked.</p></div>
+              </div>
+              <label class="wide">Physical resolution and verification summary<textarea name="resolution" rows="3" placeholder="What the human checked and did at the table; this does not create the next state"></textarea></label>
               <div class="form-action"><button type="submit" class="button primary">Record human confirmation</button></div>
             </form>
           </details>
@@ -172,6 +194,8 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="../shared/i18n.js"></script>
+    <script src="../shared/engine-check-fixtures.js"></script>
+    <script src="../shared/engine-check-view.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

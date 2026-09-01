@@ -43,21 +43,18 @@ proposals are fine, the faster the human learns that confirming is a formality.
 The safety property and the engineering goal pull in opposite directions, and
 nothing in the current design notices this.
 
-There is a concrete gap that follows. `skill/references/player2-agent/player2-agent.md`
-step 5 says, uniformly: *mark legality as unverified and ask the human to confirm
-it*. Every proposal gets the same request, whether `rules_core_check.outcome` is
-`supported_legal_timing` (the core checked the timing and it holds) or
-`unsupported` (the core has no model of this behaviour at all). Those two cases
-carry completely different verification burdens and are presented identically —
-which both maximizes the human's total verification cost and gives them no
-signal about where to spend it. That is close to the worst configuration the
-cost-benefit account predicts.
+This gap was present in the first P2-A implementation: every proposal requested
+the same confirmation whether the timing core supported it or abstained. X-02
+resolves the artifact-level problem with `engine_checks` plus a deterministic
+`verification_requirement`. Supported, unsupported, decision-required,
+invalid-input, and illegal outcomes now demand different next steps while
+`legality_authority` remains `user_confirmed`.
 
-**What to consider.** Differentiate the confirmation request by
-`rules_core_check.outcome`, so that `unsupported` visibly demands more of the
-human than `supported_legal_timing` does. The point is not to weaken the human's
-authority over legality — it stays theirs in all four cases — but to stop
-spending it uniformly on cases where the core already has a grounded answer.
+**Implemented response.** Differentiate the confirmation request by shared
+`engine-check.v1` outcome, so `unsupported` visibly demands more verification,
+`decision_required` and `invalid_input` must be resolved before relying on the
+proposal, and `illegal` demands official-source review before a human override.
+The point is not to weaken human authority — it remains theirs in every case.
 
 **How we would know it is real.** The P2-A ledger is append-only and timestamped,
 so this is measurable without new instrumentation: the interval between

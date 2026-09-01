@@ -43,6 +43,9 @@ The prototype deliberately does not parse these fields into rule-enforceable obj
 - Reference to the confirmed state on which the proposal was based.
 - Description, strategic reason, assumptions, and alternatives considered.
 - `legality_status: unverified` at creation.
+- Zero or more compact `engine-check.v1` envelopes without raw engine state.
+- A deterministic verification requirement derived from the check outcomes;
+  this calibrates human attention but does not change legality authority.
 - No state mutation.
 
 ### Human confirmation
@@ -67,6 +70,11 @@ The prototype deliberately does not parse these fields into rule-enforceable obj
 - `state_authority` and `legality_authority` must be `user_confirmed`.
 - Player 1 hidden information is not stored.
 - A proposal cannot be presented as already legal.
+- A supported engine check cannot replace human confirmation; an illegal check
+  can be overridden only as a recorded human judgment against official sources.
+- A legal confirmation under any non-standard verification requirement must
+  include a non-empty human verification summary.
+- Raw engine results are rejected at the P2-A information boundary.
 - An action confirmation cannot produce an authoritative derived state.
 - The next authoritative state must be a separate human-confirmed snapshot.
 - The public implementation contains no randomizer, card resolver, phase engine, scoring engine, or winner evaluator.
@@ -76,6 +84,8 @@ The prototype deliberately does not parse these fields into rule-enforceable obj
 - Create and validate a new P2-A session.
 - Record a human-confirmed state.
 - Record an Agent proposal.
+- Preserve supported, unsupported, decision-required, invalid-input, and illegal
+  checks with distinct verification requirements.
 - Confirm or reject the proposal as a human.
 - Reject malformed sessions and any session claiming engine-derived authority or P2-S activation.
 - Preserve a complete event trail suitable for a product demo and Riot review.

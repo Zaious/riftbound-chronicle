@@ -35,7 +35,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from rules_core import summarize_result
+from engine_check import build_engine_check, validate_engine_check
 
 
 SCHEMA_VERSION = "p2a-session.v1"
@@ -70,7 +70,7 @@ ALLOWED_EVENT_FIELDS = {
 }
 OPTIONAL_EVENT_FIELDS = {
     "state_confirmed": set(),
-    "action_proposed": {"rules_core_check"},
+    "action_proposed": {"rules_core_check", "engine_checks", "verification_requirement"},
     "action_confirmed": set(),
 }
 FORBIDDEN_HIDDEN_KEYS = {
@@ -81,6 +81,13 @@ FORBIDDEN_HIDDEN_KEYS = {
     "opponent_private_hand",
     "opponent_private",
     "deck_order",
+}
+VERIFICATION_REQUIREMENTS = {
+    "standard_human_confirmation",
+    "heightened_manual_verification",
+    "controller_decision_and_recheck",
+    "input_repair_and_recheck",
+    "official_source_review_before_override",
 }
 
 
@@ -109,6 +116,19 @@ def _find_forbidden_keys(value: Any, path: str = "$") -> list[str]:
         for index, child in enumerate(value):
             hits.extend(_find_forbidden_keys(child, f"{path}[{index}]"))
     return hits
+
+
+def verification_requirement(engine_checks: list[dict[str, Any]]) -> str:
+    outcomes = {check.get("outcome") for check in engine_checks if isinstance(check, dict)}
+    if "invalid_input" in outcomes:
+        return "input_repair_and_recheck"
+    if "decision_required" in outcomes:
+        return "controller_decision_and_recheck"
+    if "illegal" in outcomes:
+        return "official_source_review_before_override"
+    if not outcomes or "unsupported" in outcomes:
+        return "heightened_manual_verification"
+    return "standard_human_confirmation"
 
 
 def validate_session(session: Any) -> list[str]:
@@ -241,6 +261,35 @@ def validate_session(session: Any) -> list[str]:
                     errors.append(f"{label}.rules_core_check has invalid shape")
                 elif check.get("coverage") != "timing_permission_v1":
                     errors.append(f"{label}.rules_core_check coverage is invalid")
+            engine_checks = event.get("engine_checks")
+            requirement = event.get("verification_requirement")
+            if (engine_checks is None) != (requirement is None):
+                errors.append(f"{label}.engine_checks and verification_requirement must appear together")
+            if engine_checks is not None:
+                if check is not None:
+                    errors.append(f"{label} cannot mix legacy rules_core_check with engine_checks")
+                if not isinstance(engine_checks, list):
+                    errors.append(f"{label}.engine_checks must be an array")
+                    engine_checks = []
+                seen_check_ids = set()
+                for check_index, engine_check in enumerate(engine_checks):
+                    check_errors = validate_engine_check(engine_check)
+                    if check_errors:
+                        errors.extend(f"{label}.engine_checks[{check_index}]: {error}" for error in check_errors)
+                        continue
+                    if "raw_result" in engine_check:
+                        errors.append(f"{label}.engine_checks[{check_index}] must omit raw_result at the P2-A information boundary")
+                    check_id = engine_check["check_id"]
+                    if check_id in seen_check_ids:
+                        errors.append(f"{label}.engine_checks[{check_index}] duplicates check_id {check_id!r}")
+                    seen_check_ids.add(check_id)
+                expected_requirement = verification_requirement(engine_checks)
+                if requirement != expected_requirement:
+                    errors.append(
+                        f"{label}.verification_requirement must be {expected_requirement!r} for its engine outcomes"
+                    )
+                if requirement not in VERIFICATION_REQUIREMENTS:
+                    errors.append(f"{label}.verification_requirement is invalid")
 
         elif event_type == "action_confirmed":
             action_id = event.get("action_id")
@@ -261,6 +310,16 @@ def validate_session(session: Any) -> list[str]:
             _nonempty(event.get("confirmed_by"), f"{label}.confirmed_by", errors)
             if not isinstance(event.get("resolution_summary"), str):
                 errors.append(f"{label}.resolution_summary must be a string")
+            proposal_event = events[proposed[action_id][0]] if isinstance(action_id, str) and action_id in proposed else None
+            proposal_requirement = proposal_event.get("verification_requirement") if isinstance(proposal_event, dict) else None
+            if (
+                event.get("legal") is True
+                and proposal_requirement in VERIFICATION_REQUIREMENTS - {"standard_human_confirmation"}
+                and (not isinstance(event.get("resolution_summary"), str) or not event["resolution_summary"].strip())
+            ):
+                errors.append(
+                    f"{label}.resolution_summary must record the human verification performed for {proposal_requirement!r}"
+                )
             expected_transition = "pending_user_snapshot" if event.get("legal") is True else "none"
             if event.get("state_transition") != expected_transition:
                 errors.append(
@@ -334,11 +393,14 @@ def add_proposal(
     description: str, reason: str, alternative: str = "",
     assumptions: list[str] | None = None,
     rules_core_check: dict[str, Any] | None = None,
+    engine_checks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     state_seq = max(
         (event["seq"] for event in session.get("events", []) if event.get("type") == "state_confirmed"),
         default=0,
     )
+    if rules_core_check is not None and engine_checks is not None:
+        raise ProtocolError("cannot mix legacy rules_core_check with engine_checks")
     event = {
         "type": "action_proposed",
         "action_id": action_id,
@@ -352,6 +414,10 @@ def add_proposal(
     }
     if rules_core_check is not None:
         event["rules_core_check"] = rules_core_check
+    else:
+        checks = copy.deepcopy(engine_checks or [])
+        event["engine_checks"] = checks
+        event["verification_requirement"] = verification_requirement(checks)
     return _append(session, event)
 
 
@@ -429,6 +495,7 @@ def build_parser() -> argparse.ArgumentParser:
     propose.add_argument("--alternative", default="")
     propose.add_argument("--assumption", action="append", default=[])
     propose.add_argument("--rules-core-result", type=Path)
+    propose.add_argument("--engine-check", type=Path, action="append", default=[])
 
     confirm = sub.add_parser("confirm", help="append a human legality confirmation")
     confirm.add_argument("path", type=Path)
@@ -476,6 +543,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 save_session(args.path, session)
             elif args.command == "propose":
+                if args.rules_core_result and args.engine_check:
+                    raise ProtocolError("cannot combine --rules-core-result with --engine-check")
+                engine_checks = []
                 core_check = None
                 if args.rules_core_result:
                     try:
@@ -484,7 +554,18 @@ def main(argv: list[str] | None = None) -> int:
                         raise ProtocolError(f"cannot load rules-core result: {exc}") from exc
                     if not isinstance(core_result, dict):
                         raise ProtocolError("rules-core result must be a JSON object")
-                    core_check = summarize_result(core_result)
+                    input_hash = core_result.get("input_state_hash")
+                    if not isinstance(input_hash, str) or not input_hash.startswith("sha256:"):
+                        raise ProtocolError("rules-core result lacks a valid input_state_hash")
+                    engine_checks.append(build_engine_check("timing", core_result, input_hashes={"timing_state": input_hash}))
+                for check_path in args.engine_check:
+                    try:
+                        engine_check = json.loads(check_path.read_text(encoding="utf-8"))
+                    except (OSError, json.JSONDecodeError) as exc:
+                        raise ProtocolError(f"cannot load engine check: {exc}") from exc
+                    if not isinstance(engine_check, dict):
+                        raise ProtocolError("engine check must be a JSON object")
+                    engine_checks.append(engine_check)
                 session = add_proposal(
                     session,
                     action_id=args.action_id,
@@ -494,6 +575,7 @@ def main(argv: list[str] | None = None) -> int:
                     alternative=args.alternative,
                     assumptions=args.assumption,
                     rules_core_check=core_check,
+                    engine_checks=engine_checks,
                 )
                 save_session(args.path, session)
             elif args.command == "confirm":

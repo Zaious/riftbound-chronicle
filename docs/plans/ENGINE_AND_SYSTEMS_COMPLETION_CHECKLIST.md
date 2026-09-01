@@ -349,6 +349,8 @@ migration lands.
 - [x] Perspective boundary for public and Player 2 private information.
 - [x] Separate confirmed-state, proposal, and confirmation events.
 - [x] Manual import of a bounded `rules_core` timing summary.
+- [x] `engine_checks` proposal evidence, outcome-derived verification burden,
+  raw-result rejection, CLI import, and legacy raw-core normalization.
 - [x] Protocol validator, regressions, CLI, and bilingual local demo.
 
 ### Remaining
@@ -356,8 +358,6 @@ migration lands.
 Default ownership: `[CODEX-CONTEXT]` for observation, authority, candidate-mask,
 and confirmation semantics; demo/UI work is `[CLAUDE-READY]` afterward.
 
-- [ ] Consume `engine-check.v1` for timing/effect/combined coverage.
-- [ ] Differentiate verification burden by supported/unsupported/decision state.
 - [ ] Build a structured observation adapter without inferring authority from
   prose.
 - [ ] Use R4 legal candidates as a recommendation mask before ranking.
@@ -438,7 +438,7 @@ connection as partial or planned.
 | --- | ---: | --- |
 | Rule Consult | 6 / 6 | Connected to `engine-check.v1`; official sources remain authoritative |
 | Deck Coach | 0 / 6 | Planned; engine terminology is now disambiguated |
-| Player 2 Agent P2-A | 0 / 6 | Planned; legacy timing summary remains partial only |
+| Player 2 Agent P2-A | 5 / 6 | Artifact/CLI/validator connected; D-02 UI remains before full connection |
 | Match Analyst | 0 / 6 | Not implemented or routed |
 
 ## 13. Delegation work packages
@@ -489,7 +489,7 @@ real artifact migration should establish the presentation semantics first.
 | --- | --- | --- | --- |
 | D-00 — completed 2026-09-01 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules — satisfied 2026-09-01 | Five outcomes, bilingual fail-closed renderer, authority/coverage display, no choices or mutation |
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
-| D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration | Bilingual UI, decision-required flow, prototype regression |
+| D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual UI, five verification states, decision-required flow, prototype regression |
 | D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest | Pipeline consumer, evidence display, regression fixtures |
 | D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
@@ -501,7 +501,7 @@ real artifact migration should establish the presentation semantics first.
 | ID | Work | Why context-sensitive |
 | --- | --- | --- |
 | X-01 — completed 2026-09-01 | Rule Consult migration from `rules_core_check` to `engine-check.v1` | Preserves source authority, consultation confidence, legacy reads, and compatibility |
-| X-02 | P2-A migration to `engine-check.v1` | Must preserve human legality/state authority and avoid automation creep |
+| X-02 — completed 2026-09-01 | P2-A migration to `engine-check.v1` | Preserves human legality/state authority, rejects raw engine state, and calibrates verification without automation creep |
 | X-03 | Deck behavior-coverage contract | Must distinguish card lookup, engine clauses, evidence, and strategy claims |
 | X-04 | R1/R2 semantic expansion and schema versioning | Each decision constrains every card program and replay |
 | X-05 | R3 pack selection and acceptance gate | Connects Taiwan scope, real deck lines, errata, and engine feasibility |

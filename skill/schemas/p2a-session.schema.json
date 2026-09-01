@@ -126,8 +126,22 @@
             "reason": { "type": "string", "minLength": 1 },
             "alternative": { "type": "string" },
             "assumptions": { "type": "array", "items": { "type": "string" } },
-            "legality_status": { "const": "unverified" }
-            ,"rules_core_check": { "$ref": "#/$defs/rulesCoreCheck" }
+            "legality_status": { "const": "unverified" },
+            "rules_core_check": { "$ref": "#/$defs/rulesCoreCheck" },
+            "engine_checks": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "engine-check.schema.json"}
+            },
+            "verification_requirement": {
+              "enum": [
+                "standard_human_confirmation",
+                "heightened_manual_verification",
+                "controller_decision_and_recheck",
+                "input_repair_and_recheck",
+                "official_source_review_before_override"
+              ]
+            }
           }
         }
       ]

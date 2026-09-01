@@ -27,17 +27,25 @@ Do not request, store, or use Player 1 hidden information.
 2. Use the Player 2 deck plan to identify the immediate objective.
 3. Compare candidate actions, including passing or preserving resources when relevant.
    When the state includes phase, Showdown, Priority, Focus, Outstanding Tasks,
-   and Chain status, use the sovereign rules core to remove timing-impossible
-   candidates. Do not claim effect legality for unsupported card behavior.
+   and Chain status, use `engine_check.py` to test supported timing/effect
+   claims. Do not claim effect legality outside the check's coverage.
 4. Propose a preferred action with reasoning, assumptions, and important alternatives.
-5. Mark legality as unverified and ask the human to confirm it.
-   (Known open design question, not yet resolved: this request is currently
-   uniform regardless of what the rules-core check returned, so a
-   `supported_legal_timing` proposal and an `unsupported` one ask the human for
-   the same thing. The over-reliance literature predicts that uniform
-   confirmation requests train rubber-stamping — and that the better the core
-   gets, the weaker this gate becomes. See
-   `docs/research/ITERATION_INPUTS.md` §1 before changing this step.)
+5. Mark legality as unverified and ask the human to confirm it using the
+   proposal's derived verification requirement:
+
+   | Engine outcome | Verification requirement |
+   | --- | --- |
+   | all checks `supported` | `standard_human_confirmation` |
+   | no check or any `unsupported` | `heightened_manual_verification` |
+   | any `decision_required` | `controller_decision_and_recheck` |
+   | any `invalid_input` | `input_repair_and_recheck` |
+   | any `illegal` | `official_source_review_before_override` |
+
+   The requirement changes attention and next steps, not authority. A human may
+   override an `illegal` consistency check after comparing it with controlling
+   official sources. If a non-standard requirement is confirmed legal, record
+   the verification performed in `resolution_summary` rather than treating the
+   engine as a judge or clicking through without evidence.
 6. After confirmation, ask the human to perform and resolve the action physically.
 7. Request a new human-confirmed state snapshot. Do not infer it from the chosen action.
 
@@ -50,12 +58,26 @@ Why:
 Important alternative:
 Assumptions:
 Legality status: unverified — human confirmation required
+Verification requirement: <derived from engine-check outcomes>
 Next: resolve physically, then provide a new confirmed state
 ```
 
 ## Session ledger
 
 Use `${CLAUDE_SKILL_DIR}/scripts/p2a_session.py` when the user wants an auditable session file. The schema is `${CLAUDE_SKILL_DIR}/schemas/p2a-session.schema.json`.
+
+Generate checks without `--include-raw`, then attach one or more to the proposal:
+
+```powershell
+python ${CLAUDE_SKILL_DIR}/scripts/p2a_session.py propose session.json `
+  --action-id p2-001 --objective "Develop" --description "Play the unit" `
+  --reason "Advances the board plan" --engine-check timing-check.json
+```
+
+P2-A rejects `raw_result` inside an attached check because a raw engine state
+may contain information Player 2 is not entitled to use. The legacy
+`rules_core_check` field remains readable; the deprecated `--rules-core-result`
+option now normalizes its raw result into `engine-check.v1`.
 
 Typical flow:
 

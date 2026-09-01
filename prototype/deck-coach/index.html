@@ -48,9 +48,25 @@
           <div id="role-coverage" class="role-coverage"></div>
           <div class="pipeline-card">
             <strong>Closed-loop results</strong>
-            <p>Run the profiler CLI, then import its profile, mask, and evaluation JSON files here. This manual review page does not recompute card data.</p>
+            <p>Run the profiler CLI, then import its profile, mask, evaluation, and behavior-coverage JSON files here. This manual review page does not recompute card data.</p>
             <label class="file-label">Import pipeline artifacts<input id="pipeline-import" type="file" accept="application/json,.json" multiple /></label>
             <div id="pipeline-summary" class="pipeline-summary"><span>No computed profile imported</span></div>
+          </div>
+          <div class="coverage-card">
+            <div class="coverage-head">
+              <div><strong>Card behavior coverage</strong><p>How much of this Main Deck has an executable, tested claim about its current card text. It is a coverage number, not a judgement about the deck.</p></div>
+              <span class="coverage-status" id="coverage-status">unavailable</span>
+            </div>
+            <p class="coverage-explanation" id="coverage-explanation">No R3 card behavior pack is bundled, so nothing in this list has an executable behavior claim today.</p>
+            <div class="coverage-counts" id="coverage-counts"></div>
+            <div class="coverage-cards" id="coverage-cards"></div>
+            <ul class="coverage-warnings" id="coverage-warnings"></ul>
+            <div class="coverage-boundary">
+              <strong>strategy_evidence: not_established_by_engine_coverage</strong>
+              <p>Executable clause coverage says nothing about deck identity, mulligans, sequencing, lines, or mistakes. A fully covered card does not make any of those claims more correct, and an uncovered one does not make them wrong.</p>
+            </div>
+            <label class="coverage-preview">Preview a projection<select id="coverage-fixture"></select></label>
+            <p class="coverage-note">Previews come from demonstration manifests, not an R3 pack. Import a real behavior-coverage file above to display a projection of your own.</p>
           </div>
           <div class="boundary"><strong>No rate analysis</strong><p>No win rate, play rate, matchup percentage, tier ranking, or composite score.</p></div>
         </aside>
@@ -122,6 +138,7 @@
     </main>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="../shared/i18n.js"></script>
+    <script src="../shared/behavior-coverage-fixtures.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

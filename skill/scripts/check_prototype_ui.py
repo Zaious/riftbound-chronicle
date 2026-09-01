@@ -84,6 +84,12 @@ UNTRANSLATED_BY_DESIGN = {
     "standard_human_confirmation", "heightened_manual_verification",
     "controller_decision_and_recheck", "input_repair_and_recheck",
     "official_source_review_before_override",
+    # deck-behavior-coverage.v1 availability statuses and the marker the
+    # projection always carries, shown verbatim for the same reason: they are
+    # the exact strings the artifact records, and the sentence explaining each
+    # one is translated.
+    "unavailable", "available", "stale", "incompatible",
+    "strategy_evidence: not_established_by_engine_coverage",
 }
 
 

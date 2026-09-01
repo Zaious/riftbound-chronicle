@@ -3,8 +3,21 @@ const ROLES=[
 {role_id:"core_engine",label:"Core engine"},{role_id:"battlefield_presence",label:"Battlefield presence"},{role_id:"mobility",label:"Mobility"},{role_id:"showdown_interaction",label:"Showdown interaction"},{role_id:"resource_economy",label:"Resource economy"},{role_id:"protection",label:"Protection"},{role_id:"closer",label:"Closer"},{role_id:"flex_replacement",label:"Flex / replacement"}
 ];
 const CONSTANTS={schema_version:"deck-coach-session.v1",mode:"deck-coach"};
+// Demonstration projections generated from the real deck-behavior-coverage.v1
+// summarizer by skill/scripts/build_behavior_coverage_fixtures.py. Loaded as a
+// global because this page opens from disk and makes no network requests.
+const COVERAGE_FIXTURES=(globalThis.window?.RC_BEHAVIOR_COVERAGE_FIXTURES?.fixtures||[]);
+// Four availability statuses, four different reasons a number is missing. They
+// are not interchangeable: "we have no pack" and "the pack does not apply here"
+// look identical in the counts and mean different things about the deck.
+const COVERAGE_STATUS={
+unavailable:{zh:"沒有附上 R3 卡牌行為封包，因此這份牌表目前沒有任何可執行的行為主張。",en:"No R3 card behavior pack is bundled, so nothing in this list has an executable behavior claim today."},
+available:{zh:"有一份現行且相容的封包比對過這份牌表。下方數字是逐張計算的結果，不是牌組品質。",en:"An active, compatible manifest was matched against this list. The numbers below are copy counts, not a verdict on the deck."},
+stale:{zh:"封包存在但不是 active，所以裡面的內容都不能當成現行的可執行主張。",en:"The manifest exists but is not active, so nothing in it may be consumed as a current executable claim."},
+incompatible:{zh:"封包的規則版本、環境、賽制或地區與這副牌不符，它的涵蓋率對這裡沒有意義。",en:"The manifest's ruleset, environment, format, or region does not match this deck, so its coverage says nothing here."}};
+const COUNT_LABELS=[["full","Full"],["partial","Partial"],["unsupported","Unsupported"],["stale","Stale"],["uncovered","Uncovered"]];
 const PRIMER=["identity","core_loop","mulligan_targets","turn_priorities","fight_or_hold","common_lines","common_mistakes","evidence_ledger"];
-let review=null,timer=null,pipelineArtifacts={};
+let review=null,timer=null,pipelineArtifacts={},coverageView=null;
 const $=s=>document.querySelector(s),forms={context:$("#context-form"),deck:$("#deck-form"),diagnosis:$("#diagnosis-form"),primer:$("#primer-form")};
 const esc=v=>String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 const now=()=>new Date().toISOString().replace(/\.\d{3}Z$/,"Z");
@@ -16,6 +29,21 @@ function lock(element,value){element.classList.toggle("locked",value);element.qu
 function coverage(){const seen=new Set((review?.decklist||[]).flatMap(card=>card.roles));return{present:ROLES.filter(role=>seen.has(role.role_id)).map(role=>role.role_id),not_observed:ROLES.filter(role=>!seen.has(role.role_id)).map(role=>role.role_id)}}
 function renderRoles(){const present=new Set(coverage().present);$("#role-coverage").innerHTML=ROLES.map(role=>`<div class="role-chip ${present.has(role.role_id)?"present":""}"><b>${esc(role.label)}</b><small>${present.has(role.role_id)?"present in tagged entries":"not observed"}</small></div>`).join("");$("#role-key").innerHTML=ROLES.map(role=>`<span>${role.role_id}</span>`).join("")}
 function renderPipeline(){const profile=pipelineArtifacts["deck-profile.v1"],mask=pipelineArtifacts["recommendation-mask.v1"],evaluation=pipelineArtifacts["deck-coach-evaluation.v1"],parts=[];if(profile){const types=profile.type_distribution||{},domains=profile.domain_requirements?.legend_domains||[];parts.push(`<div><b>Profile</b> · ${esc(profile.confidence?.overall||"unknown")} confidence · ${esc(domains.join(" / ")||"Domains unresolved")}</div>`);parts.push(`<div><b>Mix</b> · ${types.Unit?.count||0} units · ${types.Spell?.count||0} spells · ${types.Gear?.count||0} gear · avg Energy ${profile.curve?.average_known_energy??"?"}</div>`)}if(mask)parts.push(`<div><b>Mask</b> · ${mask.deck_legality?.blocked_count||0} blocked deck entries · ${mask.eligible_pool?.count||0} eligible candidates · ${esc(mask.live_check?.status||"unknown")}</div>`);if(evaluation)parts.push(`<div><b>Eval</b> · ${Math.round((evaluation.overall?.score||0)*100)}% · ${evaluation.overall?.passed?"passed":"needs review"} · ${esc(evaluation.grader||"unknown grader")}</div>`);$("#pipeline-summary").innerHTML=parts.length?parts.join(""):`<span>No computed profile imported</span>`}
+function pickLocale(zh,en){return globalThis.RC_I18N?RC_I18N.pick(zh,en):en}
+function renderCoverageFixtures(){$("#coverage-fixture").innerHTML=`<option value="">Imported projection only</option>`+COVERAGE_FIXTURES.map(item=>`<option value="${esc(item.fixture_id)}">${esc(item.fixture_id)} · ${esc(item.coverage.status)}</option>`).join("")}
+// The counts are shown for every status, including the ones that are all zero.
+// A panel that hides the row when the number is nothing is a panel that reads
+// as "nothing to report" when the truth is "nothing was checked".
+function renderCoverage(){const coverage=coverageView,status=coverage?.status||"unavailable";
+$("#coverage-status").textContent=status;
+$("#coverage-status").dataset.status=status;
+$("#coverage-explanation").textContent=pickLocale(COVERAGE_STATUS[status].zh,COVERAGE_STATUS[status].en);
+const counts=coverage?.copy_weighted||{total:0,full:0,partial:0,unsupported:0,stale:0,uncovered:0};
+$("#coverage-counts").innerHTML=`<div class="coverage-total"><b>${counts.total}</b><small>Main Deck copies</small></div>`+COUNT_LABELS.map(([key,label])=>`<div class="coverage-count" data-count="${key}"><b>${counts[key]}</b><small>${label}</small></div>`).join("");
+const cards=coverage?.cards||[];
+$("#coverage-cards").innerHTML=cards.length?cards.map(card=>`<div class="coverage-row"><strong>${card.count} × ${esc(card.canonical_name||card.input_name||"unresolved entry")}</strong><span class="coverage-chip" data-status="${esc(card.status)}">${esc(card.status)}</span>${card.unsupported_mechanics.length?`<small>${esc(card.unsupported_mechanics.join(" · "))}</small>`:""}</div>`).join(""):"";
+$("#coverage-warnings").innerHTML=(coverage?.warnings||[]).map(warning=>`<li>${esc(warning)}</li>`).join("");}
+
 function parseDeck(text){return lines(text).map((line,index)=>{const [cardPart,rolePart=""]=line.split("|",2),match=cardPart.trim().match(/^(\d+)\s+(.+)$/);if(!match)throw new Error(`Line ${index+1} needs a count followed by card name.`);const count=Number(match[1]);if(count<1)throw new Error(`Line ${index+1} needs a positive card count.`);const roles=rolePart.split(",").map(role=>role.trim()).filter(Boolean),unknown=roles.filter(role=>!ROLES.some(item=>item.role_id===role));if(unknown.length)throw new Error(`Line ${index+1} has unknown role: ${unknown.join(", ")}`);return{name:match[2].trim(),count,roles:[...new Set(roles)],notes:""}})}
 function stage(){if(!review)return"context";if(!review.decklist.length)return"deck";if(!review.diagnosis)return"diagnosis";if(!review.primer)return"primer";return"complete"}
 function renderStatus(current){const map={context:["1","Enter the deck context","Anchor the review to a format and environment."],deck:["2","Parse the supplied list","Tag roles only where the deck or card text supports them."],diagnosis:["3","Diagnose the plan","State strengths, gaps, proposed tests, and evidence tier."],primer:["4","Teach the pilot","Complete all eight primer sections."],complete:["✓","Primer finalized","Export the structured record or Markdown primer."]};const [n,title,detail]=map[current];$("#status b").textContent=n;$("#status strong").textContent=title;$("#status p").textContent=detail}
@@ -29,7 +57,9 @@ $("#copy-brief").addEventListener("click",async()=>{const brief=["Use the Riftbo
 function download(name,text,type){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=name;link.click();URL.revokeObjectURL(url)}
 $("#export-json").addEventListener("click",()=>{download(`deck-coach-${review.session_id.slice(0,8)}.json`,`${JSON.stringify(review,null,2)}\n`,"application/json");toast("Deck Coach JSON exported.")});
 $("#export-md").addEventListener("click",()=>{const labels=["Identity","Core loop","Mulligan targets","Turn-by-turn priorities","When to fight, when to hold","Common lines","Common mistakes","Evidence ledger"],body=[`# ${review.legend} — Deck Primer`,``,`Environment: ${review.environment} · Format: ${review.format}`,``];PRIMER.forEach((key,index)=>body.push(`${index+1}. **${labels[index]}**`,``,review.primer[key],``));download(`deck-primer-${review.session_id.slice(0,8)}.md`,body.join("\n"),"text/markdown");toast("Markdown primer exported.")});
+$("#coverage-fixture").addEventListener("change",event=>{const fixture=COVERAGE_FIXTURES.find(item=>item.fixture_id===event.currentTarget.value);coverageView=fixture?fixture.coverage:(pipelineArtifacts["deck-behavior-coverage.v1"]||null);renderCoverage();if(fixture)toast("Demonstration projection shown; this is not an R3 pack.")});
+document.addEventListener("rc:localechange",renderCoverage);
 $("#reset").addEventListener("click",()=>{if(!confirm("Reset this in-tab review? Export first if you need it."))return;review=null;Object.values(forms).forEach(form=>form.reset());render();toast("Deck Coach review reset.")});
-$("#pipeline-import").addEventListener("change",async event=>{const files=[...event.currentTarget.files],next={...pipelineArtifacts};for(const file of files){try{const value=JSON.parse(await file.text());if(["deck-profile.v1","recommendation-mask.v1","deck-coach-evaluation.v1"].includes(value.schema_version))next[value.schema_version]=value;else toast(`${file.name} is not a supported pipeline artifact.`)}catch{toast(`${file.name} is not valid JSON.`)}}pipelineArtifacts=next;renderPipeline();if(files.length)toast("Pipeline artifacts imported for display only.")});
-renderPipeline();render();
+$("#pipeline-import").addEventListener("change",async event=>{const files=[...event.currentTarget.files],next={...pipelineArtifacts};for(const file of files){try{const value=JSON.parse(await file.text());if(["deck-profile.v1","recommendation-mask.v1","deck-coach-evaluation.v1","deck-behavior-coverage.v1"].includes(value.schema_version)){next[value.schema_version]=value;if(value.schema_version==="deck-behavior-coverage.v1"){coverageView=value;$("#coverage-fixture").value=""}}else toast(`${file.name} is not a supported pipeline artifact.`)}catch{toast(`${file.name} is not valid JSON.`)}}pipelineArtifacts=next;renderPipeline();renderCoverage();if(files.length)toast("Pipeline artifacts imported for display only.")});
+renderPipeline();renderCoverageFixtures();renderCoverage();render();
 })();

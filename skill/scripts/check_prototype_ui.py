@@ -69,6 +69,47 @@ def asset_order_errors(scripts, stylesheets):
     return errors
 
 
+# Text the shared runtime is not expected to translate, each for a stated
+# reason. Anything not listed here must have a zh-Hant rendering.
+UNTRANSLATED_BY_DESIGN = {
+    # Required verbatim in all three demos by the brand-shell assertion below.
+    "Riftbound Chronicle · Assistant Lab",
+    # Project vocabulary the Chinese prose itself keeps in English: i18n.js
+    # renders these as "Tier 1／Tier 2／Tier 3" and "Tier 排名".
+    "Tier 1", "Tier 2", "Tier 3",
+}
+
+
+def visible_english(html: str) -> set[str]:
+    """Visible text nodes that are English prose, not markup or Chinese copy."""
+    body = html.split("<body>", 1)[-1]
+    body = re.sub(r"<(script|style)\b.*?</\1>", "", body, flags=re.S)
+    texts = {item.strip() for item in re.split(r"<[^>]+>", body) if item.strip()}
+    return {item for item in texts
+            if re.search(r"[A-Za-z]{3}", item) and not re.search(r"[一-鿿]", item)}
+
+
+def has_translation(text: str, i18n: str) -> bool:
+    """Mirror i18n.js: dictionary key, numbered heading, or regex pattern.
+
+    Every rule is read out of i18n.js rather than reimplemented from memory. A
+    checker that knows a fallback the runtime has lost passes a page that
+    renders in English, which is the failure it exists to catch.
+    """
+    if f'"{text}":' in i18n:
+        return True
+    numbered = re.fullmatch(r"(\d+)\.\s+(.+)", text)
+    if numbered and r"/^(\d+)\.\s+(.+)$/" in i18n and f'"{numbered.group(2)}":' in i18n:
+        return True
+    for pattern in re.findall(r"\[/\^(.+?)\$/", i18n):
+        try:
+            if re.fullmatch(pattern, text):
+                return True
+        except re.error:
+            continue
+    return False
+
+
 def main() -> int:
     errors = []
     if not SHARED_THEME.is_file():
@@ -115,6 +156,14 @@ def main() -> int:
                 errors.append(f"{folder}: shared brand shell is missing {required!r}")
         if not re.search(r"<title>.*[\u4e00-\u9fff].*[A-Za-z].*</title>", html):
             errors.append(f"{folder}: document title is not visibly bilingual")
+
+        # The demos default to zh-Hant, so English copy with no rendering fails
+        # nowhere -- it just silently shows in English on a Chinese page. Once
+        # something looked, every demo had some: the whole eight-part primer
+        # heading list, a judge-prep card, and two footer lines.
+        for text in sorted(visible_english(html) - UNTRANSLATED_BY_DESIGN):
+            if not has_translation(text, i18n):
+                errors.append(f"{folder}: visible copy has no zh-Hant rendering in shared/i18n.js: {text[:60]!r}")
 
     node = subprocess.run(["node", "--check", str(SHARED_I18N)], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if node.returncode:

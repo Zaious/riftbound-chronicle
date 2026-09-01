@@ -322,6 +322,13 @@
     "Consultation finalized": "諮詢已完成",
     "Export the record or start another question.": "匯出紀錄或開始下一個問題。",
     "Draft consultation created. No ruling has been asserted.": "諮詢草稿已建立；尚未聲稱任何裁定。",
+    "Turn-by-turn priorities": "逐回合優先順序",
+    "When to fight, when to hold": "何時交戰、何時保留",
+    "Unofficial coaching prototype · No game-state operations · No metagame rates": "非官方教練原型 · 不執行遊戲狀態操作 · 不提供中盤數據比率",
+    "Judge-prep handoff": "裁判準備交接",
+    "Ask precisely; decide live": "問得精準，現場裁定",
+    "Prepare facts, locators, and competing readings for a Head Judge. This tool never issues a binding ruling or assigns a penalty.": "替主審整理事實、條號與互相競爭的讀法。本工具不會做出有拘束力的裁定，也不會判罰。",
+    "Useful for edge cases and source discovery, but never outranks Riot sources or a live event's Head Judge.": "適合用來找邊界案例與追出處，但永遠不會凌駕 Riot 來源或現場賽事的主審。",
     "Clipboard permission unavailable; copy the record manually.": "無法取得剪貼簿權限，請手動複製紀錄。",
     "Executable consistency check": "可執行的一致性檢查",
     "Optional. The official source above is the answer's authority; a bounded engine check is a reproducible consistency test placed beside it. A supported check does not raise source confidence, and an unsupported one means the component abstained, not that no official answer exists.": "選填。答案的權威仍是上方的官方來源；有界引擎檢查只是放在它旁邊、可重現的一致性測試。supported 不會提高來源信心，unsupported 代表元件棄權，不代表官方沒有答案。",
@@ -411,6 +418,10 @@
       ];
       for (const [pattern, replacement] of patterns) {
         if (pattern.test(trimmed)) { translated = trimmed.replace(pattern, replacement); break; }
+      }
+      if (!translated) {
+        const numbered = /^(\d+)\.\s+(.+)$/.exec(trimmed);
+        if (numbered && zh[numbered[2]]) translated = `${numbered[1]}. ${zh[numbered[2]]}`;
       }
     }
     if (!translated) return value;

@@ -26,7 +26,7 @@
 
 四個體系共用一層由 **Chronicle 自主掌控的規則核心**，而它只宣稱 conformance 套件真的跑得過的東西：
 
-- 時機與權限核心：四種回合狀態、Action／Reaction、Priority／Focus、HOT／FEPR —— 8 組標準 fixture 上的 14 個可執行案例；
+- 時機與權限核心：四種回合狀態、Action／Reaction、Priority／Focus、HOT／FEPR —— 21 個可執行案例（`skill/data/rules_core_cases.json`）；
 - 有界的 typed effect IR：12 種操作，加上序列、目標、連動效果、致死清理與觸發發射；遇到沒有建模的卡牌行為**直接 fail closed**，不猜；
 - 兩者之間的原子橋接：時機判斷與它的 typed effect 要嘛一起提交，要嘛一起回滾。
 

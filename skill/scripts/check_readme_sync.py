@@ -100,6 +100,10 @@ def main() -> int:
             # their own wording for "cases", so anchor on the filename, not the noun.
             stem = path.stem.replace("_", "[ _-]")
             if re.search(stem, t):
+                # One number, before the filename, on the same line. Keep any
+                # other figure (fixture counts, dates) out of that window: this
+                # gate cannot tell which number the claim is about, and a second
+                # one in range reads as a wrong case count.
                 nums = {int(n) for n in re.findall(rf"(\d+)[^\n]{{0,80}}{stem}", t)}
                 bad = {n for n in nums if n != real}
                 if bad:

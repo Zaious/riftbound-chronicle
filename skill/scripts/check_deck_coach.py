@@ -145,8 +145,58 @@ def main():
             errors.append(f"{case_id}: profile is missing observation fields")
         if profile["context"]["player_level"] != case["input"]["player_level"]:
             errors.append(f"{case_id}: player level was not preserved in observation")
+        # Every case must show that its expectations can tell a good primer from
+        # a bad one. Scoring the bad primer against only the first case left the
+        # rest asserting that the baseline passes, which a case with vacuous
+        # expectations also does.
+        weak = {
+            "schema_version": "deck-coach-candidate.v1",
+            "candidate_id": f"weak-{case_id}",
+            "metadata": {"skill_version": "test", "model": "fixture", "generator": "discrimination-probe",
+                         "generated_at": candidate["metadata"]["generated_at"]},
+            "primer": {key: "Play the deck well and win the game." for key in PRIMER_SECTIONS},
+        }
+        weak_eval = evaluate_candidate(case, weak, profile, mask)
+        if weak_eval["overall"]["passed"]:
+            errors.append(f"{case_id}: a contentless primer passes this case; its expectations do not discriminate")
+        if weak_eval["overall"]["score"] >= evaluation["overall"]["score"]:
+            errors.append(f"{case_id}: a contentless primer scores at least as well as the baseline")
+
         if battle_fixture is None:
             battle_fixture = (case, profile, mask, candidate)
+
+    formats = environments["formats"]
+    two_v_two_only = set(formats["2v2 Constructed"]["banned_names"]) - set(formats["1v1 Constructed"]["banned_names"])
+    if not two_v_two_only:
+        errors.append("the two Constructed ban lists no longer differ; the format-scoped legality case has nothing to prove")
+    else:
+        covered = False
+        for case in load_cases():
+            names = {case["input"]["legend"], case["input"].get("chosen_champion")}
+            names |= {entry["name"] for entry in case["input"]["main_deck"]}
+            if case["input"]["format"] != "2v2 Constructed" or not (names & two_v_two_only):
+                continue
+            covered = True
+            case_id = case["case_id"]
+            profile = build_profile(case["input"], catalog)
+            as_2v2 = build_mask(case["input"], profile, catalog)
+            swapped = {**case["input"], "format": "1v1 Constructed"}
+            as_1v1 = build_mask(swapped, build_profile(swapped, catalog), catalog)
+
+            def reasons_for(mask_value, wanted):
+                return {name: set(entry["reasons"]) for entry in mask_value["deck_legality"]["checks"]
+                        for name in [entry["name"]] if name in wanted}
+
+            for name in sorted(names & two_v_two_only):
+                in_2v2 = reasons_for(as_2v2, {name}).get(name, set())
+                in_1v1 = reasons_for(as_1v1, {name}).get(name, set())
+                if "banned_in_format" not in in_2v2:
+                    errors.append(f"{case_id}: {name!r} is on the 2v2 ban list but the mask did not refuse it under 2v2")
+                if "banned_in_format" in in_1v1:
+                    errors.append(f"{case_id}: {name!r} is banned only in 2v2, yet the mask refuses it under 1v1 as well; "
+                                  "legality is being applied without regard to format")
+        if not covered:
+            errors.append(f"no case exercises a 2v2-only ban ({sorted(two_v_two_only)}); the ban lists differ and nothing checks it")
 
     if len(case_ids) < 3 or len(case_ids) != len(set(case_ids)):
         errors.append("eval suite needs at least three unique executable cases")

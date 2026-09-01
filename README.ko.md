@@ -26,7 +26,7 @@
 
 네 시스템은 **Chronicle이 직접 소유하고 관리하는 규칙 코어**를 공유하며, 이 코어는 conformance 스위트가 실제로 실행하는 것만 주장합니다:
 
-- 타이밍·권한 커널: 네 가지 턴 상태, Action／Reaction, Priority／Focus, HOT／FEPR —— 8개 표준 fixture 위의 14개 실행 가능한 케이스;
+- 타이밍·권한 커널: 네 가지 턴 상태, Action／Reaction, Priority／Focus, HOT／FEPR —— 21개 실행 가능한 케이스(`skill/data/rules_core_cases.json`);
 - 제한된 typed effect IR: 12개 연산과 시퀀스, 대상, 연결 효과, 치명 정리, 트리거 방출을 포함하며, 모델링되지 않은 카드 동작을 만나면 추측하지 않고 **fail closed**;
 - 둘 사이의 원자적 브리지: 타이밍 판정과 해당 typed effect는 함께 커밋되거나 함께 롤백됩니다.
 

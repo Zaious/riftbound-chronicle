@@ -175,6 +175,115 @@
         {"name": "Official Rules Hub legality", "url": "https://playriftbound.com/en-us/rules-hub/", "effective_date": "2026-07-24", "accessed": "2026-08-24"},
         {"name": "Errata overlay", "path": "data/errata_overlay.json", "effective_date": "2026-08-17", "accessed": "2026-08-24"}
       ]
+    },
+    {
+      "case_id": "DC-YI-2V2-004",
+      "title": "A Legend that is legal in 1v1 and banned in 2v2",
+      "pass_threshold": 0.75,
+      "input": {
+        "schema_version": "deck-coach-input.v1",
+        "deck_id": "master-yi-calm-body-2v2-2026-08-30",
+        "environment": "global-vendetta",
+        "format": "2v2 Constructed",
+        "player_level": "advanced",
+        "legend": "Master Yi - Wuju Bladesman",
+        "chosen_champion": "Master Yi - Tempered",
+        "runes": {"Calm": 6, "Body": 6},
+        "battlefields": ["Emperor's Dais", "Forgotten Library", "Dragon Roost"],
+        "main_deck": [
+          {"name": "Determined Sentry", "count": 3}, {"name": "Steel Paws", "count": 3},
+          {"name": "Cithria of Cloudfield", "count": 3}, {"name": "Irresistible Faefolk", "count": 3},
+          {"name": "Demacian Diplomat", "count": 3}, {"name": "Dragonsoul Sage", "count": 3},
+          {"name": "Gemhand Hunter", "count": 3}, {"name": "Legion Marauder", "count": 3},
+          {"name": "Master Yi - Tempered", "count": 3}, {"name": "Master Yi - Meditative", "count": 2},
+          {"name": "Master Yi - Honed", "count": 1}, {"name": "Punch First", "count": 3},
+          {"name": "En Garde", "count": 3}, {"name": "Combat Experience", "count": 3},
+          {"name": "Defy", "count": 1}
+        ],
+        "sideboard": [],
+        "owned_cards": null,
+        "source_environment": "global-vendetta",
+        "recommendation_candidates": [
+          {"name": "Master Yi - Unstoppable", "requested_count": 1, "source_environment": "global-vendetta", "cited_text": "A 12-cost Calm Master Yi champion unit printed in Unleashed."},
+          {"name": "Stealthy Pursuer", "requested_count": 2, "source_environment": "global-vendetta", "cited_text": "Banned in both Constructed ban lists; included so the mask has to refuse it."}
+        ]
+      },
+      "expected": {
+        "identity_tokens": ["Master Yi", "Calm", "Body", "advanced"],
+        "must_identify_engine": ["Master Yi - Wuju Bladesman", "Master Yi - Tempered"],
+        "must_mention_weakness": ["blocked deck entry"],
+        "forbidden_claims": ["the same ban list applies to both formats", "Stealthy Pursuer is legal", "this Legend is legal in 2v2 Constructed"],
+        "acceptable_uncertainty": ["no verified card-by-card sequence"],
+        "expected_mask_reasons": ["banned_in_format", "not_released_in_environment"],
+        "expected_blocked_deck_entries": 1
+      },
+      "expert_reference": {
+        "identity": "A Calm/Body Master Yi board deck. The 40-card list itself is legal in this environment; the Legend is not, under this format.",
+        "core_loop": "Master Yi champion units carry the board; the Legend is the declared anchor and is exactly the piece the format removes.",
+        "mulligan_targets": "Do not teach keeps for a deck that cannot be registered in this format as submitted.",
+        "turn_priorities": "Resolve the Legend question before teaching sequencing; the answer changes which format the deck is for.",
+        "fight_or_hold": "No matchup verdict is supportable from this diagnostic fixture.",
+        "common_lines": "No verified card-by-card sequence should be asserted from this fixture.",
+        "common_mistakes": "Carrying a 1v1 legality conclusion into 2v2. The ban lists differ by exactly this Legend, so a check that is not format-scoped gives the wrong answer for one of the two formats.",
+        "evidence_ledger": "Format-scoped legality is a Tier 1 current-source check against the environment registry; the strategic reading stays Tier 3."
+      },
+      "sources": [
+        {"name": "Official Rules Hub legality", "url": "https://playriftbound.com/en-us/rules-hub/", "effective_date": "2026-07-24", "accessed": "2026-08-24"},
+        {"name": "Deck Coach environment registry", "path": "data/deck_coach_environments.json", "effective_date": "2026-07-24", "accessed": "2026-08-24"}
+      ]
+    },
+    {
+      "case_id": "DC-YI-COLLECTION-005",
+      "title": "A fully legal Set 1 deck where the collection is the only binding constraint",
+      "pass_threshold": 0.75,
+      "input": {
+        "schema_version": "deck-coach-input.v1",
+        "deck_id": "starter-calm-body-collection-2026-08-30",
+        "environment": "taiwan-set1-banned",
+        "format": "1v1 Constructed",
+        "player_level": "advanced",
+        "legend": "Master Yi - Wuju Bladesman (Starter)",
+        "chosen_champion": "Master Yi - Meditative",
+        "runes": {"Calm": 6, "Body": 6},
+        "battlefields": ["Monastery of Hirana", "Navori Fighting Pit", "The Grand Plaza"],
+        "main_deck": [
+          {"name": "Cithria of Cloudfield", "count": 3}, {"name": "Pit Rookie", "count": 3},
+          {"name": "Stalwart Poro", "count": 3}, {"name": "Solari Shieldbearer", "count": 3},
+          {"name": "Kraken Hunter", "count": 3}, {"name": "Kinkou Monk", "count": 3},
+          {"name": "Master Yi - Meditative", "count": 2}, {"name": "En Garde", "count": 3},
+          {"name": "Discipline", "count": 3}, {"name": "Rune Prison", "count": 2}
+        ],
+        "sideboard": [],
+        "owned_cards": {"Cithria of Cloudfield": 3, "Pit Rookie": 3, "Stalwart Poro": 3, "Solari Shieldbearer": 3, "Kraken Hunter": 3, "Kinkou Monk": 3, "Master Yi - Meditative": 2, "En Garde": 3, "Discipline": 3, "Rune Prison": 2, "Monastery of Hirana": 1, "Navori Fighting Pit": 1, "The Grand Plaza": 1, "Master Yi - Wuju Bladesman (Starter)": 1, "Challenge": 1, "Sona - Harmonious": 0},
+        "source_environment": "taiwan-set1-banned",
+        "recommendation_candidates": [
+          {"name": "Challenge", "requested_count": 3, "source_environment": "taiwan-set1-banned", "cited_text": "A two-cost Action the player owns exactly one copy of."},
+          {"name": "Sona - Harmonious", "requested_count": 2, "source_environment": "taiwan-set1-banned", "cited_text": "A four-cost Champion unit in the legal pool that the player owns no copies of."}
+        ]
+      },
+      "expected": {
+        "identity_tokens": ["Master Yi", "Calm", "Body", "advanced"],
+        "must_identify_engine": ["Master Yi - Wuju Bladesman (Starter)", "Master Yi - Meditative"],
+        "must_mention_weakness": ["treating heuristic engine candidates as proven"],
+        "forbidden_claims": ["buy the missing copies", "Sona - Harmonious is available to this player", "the deck is illegal"],
+        "acceptable_uncertainty": ["no verified card-by-card sequence"],
+        "expected_mask_reasons": ["not_enough_owned_copies"],
+        "expected_blocked_deck_entries": 0
+      },
+      "expert_reference": {
+        "identity": "A legal Calm/Body Master Yi Set 1 deck. Nothing in the list is blocked; every refusal in this case comes from what the player owns.",
+        "core_loop": "The Starter Legend and Master Yi - Meditative are the declared anchors, both owned.",
+        "mulligan_targets": "Keeps may be researched normally; legality is not in question here.",
+        "turn_priorities": "Teach within the owned pool. A recommendation the player cannot assemble is not actionable advice.",
+        "fight_or_hold": "No matchup verdict is supportable from this diagnostic fixture.",
+        "common_lines": "No verified card-by-card sequence should be asserted from this fixture.",
+        "common_mistakes": "Recommending a card the player owns one copy of as a three-of, or treating a collection gap as a deckbuilding error.",
+        "evidence_ledger": "Ownership counts are supplied by the player and are Tier 1 for this diagnostic only; they are not a legality claim."
+      },
+      "sources": [
+        {"name": "Official Rules Hub legality", "url": "https://playriftbound.com/en-us/rules-hub/", "effective_date": "2026-07-24", "accessed": "2026-08-24"},
+        {"name": "Deck Coach environment registry", "path": "data/deck_coach_environments.json", "effective_date": "2026-07-24", "accessed": "2026-08-24"}
+      ]
     }
   ]
 }

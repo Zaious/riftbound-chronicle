@@ -49,7 +49,8 @@ All systems share a **Chronicle-owned sovereign rules core**, and it only ever
 claims what its conformance suite executes:
 
 - a timing and permission kernel for the four turn states, Action/Reaction,
-  Priority/Focus, and HOT/FEPR — 14 executable cases over 8 canonical fixtures;
+  Priority/Focus, and HOT/FEPR —
+  21 executable cases (`skill/data/rules_core_cases.json`);
 - a bounded typed-effect IR — 12 operations plus sequencing, targets, linked
   effects, lethal cleanup, and trigger emission, which **fails closed** on any
   card behaviour it does not model rather than guessing one;
@@ -158,8 +159,10 @@ Before recommending cards, the mask rejects candidates that are known to be:
 The bundled legality snapshot is only a dated input. A real recommendation must
 still re-check current official sources.
 
-Three executable cases currently cover a global Rengar deck, a Taiwan Rengar
-environment, and an Annie mask stress case. The evaluation contract scores:
+There are 5 executable cases in `skill/data/deck_coach_cases.json`: a global
+Rengar deck, a Taiwan Rengar environment, an Annie mask stress case, a Legend
+that is legal in 1v1 and banned in 2v2, and a fully legal deck where the
+player's collection is the only thing constraining the advice. The evaluation contract scores:
 
 1. card and rules facts;
 2. format and regional legality;

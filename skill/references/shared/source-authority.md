@@ -53,6 +53,30 @@ judge FAQ is `authority: judge_guidance`, not official rules, even when its PDF
 is distributed on an official CDN. It may clarify intent but remains below an
 official FAQ, Tournament Rules, Core Rules, errata, and a live Head Judge.
 
+## Checking the registry against reality
+
+`last_checked` is a typed date. It records that someone meant to check, not
+that anything was checked. To turn it into evidence, run:
+
+```powershell
+python ${CLAUDE_SKILL_DIR}/scripts/refresh_sources.py plan
+python ${CLAUDE_SKILL_DIR}/scripts/refresh_sources.py capture --name 2026-09-01 --captured-at 2026-09-01
+python ${CLAUDE_SKILL_DIR}/scripts/refresh_sources.py report --snapshot skill/.local/refresh-reports/2026-09-01/snapshot.json --name 2026-09-01
+```
+
+`plan` opens no connection; `capture` performs read-only requests with no
+credentials and refuses anything that is not a plain public https URL; `report`
+diffs the capture against the registry offline. Everything written lands under
+the git-ignored `skill/.local/refresh-reports/`, because a report quotes
+third-party pages.
+
+The tool cannot edit the registry, and there is deliberately no command that
+would. It reports redirects, unreachable documents, documents that changed
+without a version bump, sources the hub links to that no entry covers, and
+internal inconsistencies. Read each finding against the official document, make
+the change by hand, and set `last_checked` to the date you actually verified —
+not the date the tool ran.
+
 Official Simplified Chinese documents are useful for terminology and regional
 materials. They have `controlling_language: false`; Tournament Rules state that
 English controls a translation conflict. Region-specific documents such as a CN

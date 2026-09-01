@@ -81,6 +81,7 @@ For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.
 - Shared engine-result envelope and runner: `${CLAUDE_SKILL_DIR}/scripts/engine_check.py`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
 - Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
+- Read-only source-registry refresh proposal tool: `${CLAUDE_SKILL_DIR}/scripts/refresh_sources.py` (never edits the registry; reports stay in the ignored `.local/`)
 - Rift Atlas deck handoff adapter: `${CLAUDE_SKILL_DIR}/scripts/riftatlas_bridge.py` (user-pasted list, no upstream scraping)
 
 A deployment may provide a sibling private companion Skill for approved/current data bindings. Keep deployment-specific paths, credentials, and publishing behavior out of this public portable folder.

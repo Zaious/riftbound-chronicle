@@ -2,9 +2,12 @@ __pycache__/
 *.pyc
 skill/legend_packets.json
 
-# Official rule PDFs are fetched locally by the opt-in bootstrap command.
-# Keep copyrighted source documents and their local lock file out of Git.
-skill/.local/rules/
+# Everything under skill/.local/ is machine-local by construction and never
+# committed: official rule PDFs fetched by the opt-in bootstrap command, and
+# source-refresh reports, which quote third-party pages. Ignoring the whole
+# directory is what lets refresh_sources.py treat "inside skill/.local" as its
+# output boundary rather than maintaining a second list here.
+skill/.local/
 
 # Partnership drafts, outreach notes, and unaccepted localization samples stay
 # local until the other maintainer explicitly agrees to publish them.

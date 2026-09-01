@@ -1,0 +1,294 @@
+{
+  "schema_version": "riftbound-source-snapshot.v1",
+  "name": "fixture-offline",
+  "captured_at": "2026-09-01",
+  "note": "Synthetic offline fixture. Real registry URLs, invented responses and link text; no official page content is reproduced here.",
+  "previous_validators": {
+    "core-rules-2026-07-16": {
+      "etag": "\"v1\"",
+      "last_modified": "Fri, 24 Jul 2026 10:00:00 GMT"
+    },
+    "tournament-rules-2026-07-16": {
+      "etag": "\"tr-1\"",
+      "last_modified": null
+    }
+  },
+  "responses": [
+    {
+      "url": "https://playriftbound.com/en-us/rules-hub/",
+      "source_id": "rules-hub",
+      "status": 200,
+      "final_url": "https://playriftbound.com/en-us/rules-hub/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<!doctype html>\n<html lang=\"en\"><head><title>Fixture hub page</title></head><body>\n<h1>Synthetic fixture page</h1>\n<p>Written for skill/scripts/check_refresh_sources.py. Not a copy of any official page.</p>\n<ul>\n  <li><a href=\"https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/e9ac8e3d33e0f78cef296f5945aba7bc1313b086.pdf\">Core Rules (PDF)</a></li>\n  <li><a href=\"https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/503da65669ced10598d62925a6f6bc15111af726.pdf\">Tournament Rules (PDF)</a></li>\n  <li><a href=\"https://playriftbound.com/en-us/news/rules-and-releases/vendetta-rules-faq-and-clarifications/\">Vendetta rules FAQ</a></li>\n  <li><a href=\"https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/0000000000000000000000000000000000000000.pdf\">Fixture-only link standing in for a document the registry does not cover</a></li>\n  <li><a href=\"https://playriftbound.com/en-us/news/\">News index</a></li>\n</ul>\n</body></html>"
+    },
+    {
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/e9ac8e3d33e0f78cef296f5945aba7bc1313b086.pdf",
+      "source_id": "core-rules-2026-07-16",
+      "status": 200,
+      "final_url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/e9ac8e3d33e0f78cef296f5945aba7bc1313b086.pdf",
+      "content_type": "application/pdf",
+      "content_length": null,
+      "last_modified": "Fri, 28 Aug 2026 10:00:00 GMT",
+      "etag": "\"v2\"",
+      "html": null
+    },
+    {
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/503da65669ced10598d62925a6f6bc15111af726.pdf",
+      "source_id": "tournament-rules-2026-07-16",
+      "status": 200,
+      "final_url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/503da65669ced10598d62925a6f6bc15111af726.pdf",
+      "content_type": "application/pdf",
+      "content_length": null,
+      "last_modified": null,
+      "etag": "\"tr-1\"",
+      "html": null
+    },
+    {
+      "url": "https://playriftbound.com/en-us/news/announcements/core-rules-vendetta-patch-notes/",
+      "source_id": "vendetta-patch-notes-2026-07-17",
+      "status": 200,
+      "final_url": "https://playriftbound.com/en-us/news/announcements/core-rules-vendetta-patch-notes-2/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://playriftbound.com/en-us/news/announcements/vendetta-errata-updates/",
+      "source_id": "vendetta-errata-2026-07-23",
+      "status": 404,
+      "final_url": "https://playriftbound.com/en-us/news/announcements/vendetta-errata-updates/",
+      "content_type": "",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": null,
+      "error": "HTTP 404"
+    },
+    {
+      "url": "https://playriftbound.com/en-us/news/rules-and-releases/unleashed-rules-faq-and-clarifications/",
+      "source_id": "unleashed-rules-faq-2026-04-29",
+      "status": 200,
+      "final_url": "https://playriftbound.com/en-us/news/rules-and-releases/unleashed-rules-faq-and-clarifications/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://playriftbound.com/en-us/news/rules-and-releases/riftbound-spiritforged-faq/",
+      "source_id": "spiritforged-faq-2026-01-14",
+      "status": 200,
+      "final_url": "https://playriftbound.com/en-us/news/rules-and-releases/riftbound-spiritforged-faq/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://playriftbound.com/en-us/news/rules-and-releases/riftbound-origins-faq/",
+      "source_id": "origins-faq-2025-10-16",
+      "status": 200,
+      "final_url": "https://playriftbound.com/en-us/news/rules-and-releases/riftbound-origins-faq/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/5bcbb23cb6131680ec8d469de6c87a3966a7622d.pdf",
+      "source_id": "origins-errata-2025-10-28",
+      "status": 200,
+      "final_url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/5bcbb23cb6131680ec8d469de6c87a3966a7622d.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/44d1c3c1185a8360b290ddfbb1ba7f7aaae34e62.pdf",
+      "source_id": "spiritforged-errata-2026-01-14",
+      "status": 200,
+      "final_url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/44d1c3c1185a8360b290ddfbb1ba7f7aaae34e62.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/07/2026-07-17/1b4e41e26aa9483da404200b3d1a9cab.pdf",
+      "source_id": "core-rules-zh-cn-2026-07-17",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/07/2026-07-17/1b4e41e26aa9483da404200b3d1a9cab.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/07/2026-07-17/836060c4535a4f71af5e8cff575097f1.pdf",
+      "source_id": "tournament-rules-zh-cn-2026-07-17",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/07/2026-07-17/836060c4535a4f71af5e8cff575097f1.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/07/2026-07-17/d91ee4548d224dfb9c7a3f5390cf0573.pdf",
+      "source_id": "ban-list-zh-cn-2026-07-17",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/07/2026-07-17/d91ee4548d224dfb9c7a3f5390cf0573.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2025/12/2025-12-03/%E3%80%8A%E7%AC%A6%E6%96%87%E6%88%98%E5%9C%BA%E3%80%8B%E5%8B%98%E8%AF%AF%E6%B1%87%E6%80%BB_1028.pdf",
+      "source_id": "origins-errata-zh-cn-2025-10-28",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2025/12/2025-12-03/%E3%80%8A%E7%AC%A6%E6%96%87%E6%88%98%E5%9C%BA%E3%80%8B%E5%8B%98%E8%AF%AF%E6%B1%87%E6%80%BB_1028.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2025/12/2025-12-03/%E8%A3%81%E5%88%A4FAQ_251023.pdf",
+      "source_id": "origins-judge-faq-zh-cn-2025-10-24",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2025/12/2025-12-03/%E8%A3%81%E5%88%A4FAQ_251023.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E9%93%B8%E9%AD%82%E6%B7%AC%E7%82%BC%E7%B3%BB%E5%88%97_%E5%8B%98%E8%AF%AF%E6%B1%87%E6%80%BB_260114.pdf",
+      "source_id": "spiritforged-errata-zh-cn-2026-01-14",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E9%93%B8%E9%AD%82%E6%B7%AC%E7%82%BC%E7%B3%BB%E5%88%97_%E5%8B%98%E8%AF%AF%E6%B1%87%E6%80%BB_260114.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E9%93%B8%E9%AD%82%E6%B7%AC%E7%82%BC%E7%B3%BB%E5%88%97_%E5%AE%98%E6%96%B9FAQ_260114.pdf",
+      "source_id": "spiritforged-official-faq-zh-cn-2026-01-14",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E9%93%B8%E9%AD%82%E6%B7%AC%E7%82%BC%E7%B3%BB%E5%88%97_%E5%AE%98%E6%96%B9FAQ_260114.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E9%93%B8%E9%AD%82%E6%B7%AC%E7%82%BC%E7%B3%BB%E5%88%97_%E8%A3%81%E5%88%A4FAQ.pdf",
+      "source_id": "spiritforged-judge-faq-zh-cn-2026-01-14",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E9%93%B8%E9%AD%82%E6%B7%AC%E7%82%BC%E7%B3%BB%E5%88%97_%E8%A3%81%E5%88%A4FAQ.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E7%A0%B4%E9%99%90%E7%B3%BB%E5%88%97_%E5%8B%98%E8%AF%AF%E6%B1%87%E6%80%BB_260403.pdf",
+      "source_id": "unleashed-errata-zh-cn-2026-04-03",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-15/%E7%A0%B4%E9%99%90%E7%B3%BB%E5%88%97_%E5%8B%98%E8%AF%AF%E6%B1%87%E6%80%BB_260403.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-30/%E7%A0%B4%E9%99%90%E7%B3%BB%E5%88%97%20%E5%AE%98%E6%96%B9FAQ.pdf",
+      "source_id": "unleashed-official-faq-zh-cn-2026-04-30",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/04/2026-04-30/%E7%A0%B4%E9%99%90%E7%B3%BB%E5%88%97%20%E5%AE%98%E6%96%B9FAQ.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://cdn.playloltcg.com/lol/2026/05/2026-05-13/%E3%80%8A%E7%AC%A6%E6%96%87%E6%88%98%E5%9C%BA%E3%80%8B%E7%A0%B4%E9%99%90%E7%B3%BB%E5%88%97_%E8%A3%81%E5%88%A4FAQ_260511.pdf",
+      "source_id": "unleashed-judge-faq-zh-cn-2026-05-11",
+      "status": 200,
+      "final_url": "https://cdn.playloltcg.com/lol/2026/05/2026-05-13/%E3%80%8A%E7%AC%A6%E6%96%87%E6%88%98%E5%9C%BA%E3%80%8B%E7%A0%B4%E9%99%90%E7%B3%BB%E5%88%97_%E8%A3%81%E5%88%A4FAQ_260511.pdf",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://app.riftjudge.com/",
+      "source_id": "riftjudge-community",
+      "status": 200,
+      "final_url": "https://app.riftjudge.com/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://www.riftboundfaq.com/",
+      "source_id": "riftbound-faq-community",
+      "status": 200,
+      "final_url": "https://www.riftboundfaq.com/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://riftref.org/",
+      "source_id": "riftref-community",
+      "status": 200,
+      "final_url": "https://riftref.org/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    },
+    {
+      "url": "https://www.runejudge.com/",
+      "source_id": "runejudge-discovery",
+      "status": 200,
+      "final_url": "https://www.runejudge.com/",
+      "content_type": "text/html",
+      "content_length": null,
+      "last_modified": null,
+      "etag": null,
+      "html": "<html><body>fixture</body></html>"
+    }
+  ]
+}

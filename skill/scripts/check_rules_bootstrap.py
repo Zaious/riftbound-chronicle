@@ -51,9 +51,16 @@ def main() -> int:
         seen_paths.add(item.get("relative_path"))
         if not item.get("url", "").startswith("https://") or ".pdf" not in item.get("url", "").lower():
             errors.append(f"{item.get('document_id')}: source URL is not an HTTPS PDF")
-    gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
-    if "skill/.local/rules/" not in gitignore:
-        errors.append(".gitignore does not exclude skill/.local/rules/")
+    # Ask git whether the path is ignored, rather than looking for a literal
+    # line: what matters is that a downloaded PDF cannot be committed, and any
+    # pattern covering it (`skill/.local/` covers `skill/.local/rules/`) is a
+    # correct answer. Matching the line text made a broader, still-correct rule
+    # read as a regression.
+    ignored = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "check-ignore", "-q", "skill/.local/rules/core-rules.pdf"],
+        capture_output=True, text=True, check=False)
+    if ignored.returncode != 0:
+        errors.append("git does not ignore skill/.local/rules/; a downloaded official PDF could be committed")
     bootstrap_text = SCRIPT.read_text(encoding="utf-8")
     for marker in ("--yes", "RIFTBOUND_RULES_DIR", "--include-zh-cn", "--include-supplemental-en"):
         if marker not in bootstrap_text:

@@ -111,6 +111,11 @@ jobs:
       - name: Local official rules bootstrap contract (no PDF download)
         run: python3 skill/scripts/check_rules_bootstrap.py
 
+      # The refresh tool's value is what it refuses: it cannot write outside the
+      # git-ignored report directory and cannot update its own baseline.
+      - name: Source-registry refresh tooling path guard and offline diff
+        run: python3 skill/scripts/check_refresh_sources.py
+
       - name: Rift Atlas bridge contract (offline, no upstream fetch)
         run: python3 skill/scripts/check_riftatlas_bridge.py
 
@@ -140,4 +145,5 @@ jobs:
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"
           python3 "$REPO/skill/scripts/check_rules_bootstrap.py"
+          python3 "$REPO/skill/scripts/check_refresh_sources.py"
           python3 "$REPO/skill/scripts/check_riftatlas_bridge.py"

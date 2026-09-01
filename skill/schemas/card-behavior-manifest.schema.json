@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/card-behavior-manifest.schema.json",
+  "title": "Chronicle Card Behavior Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "pack_id", "status", "ruleset", "environment", "verified_at", "cards"],
+  "properties": {
+    "schema_version": {"const": "card-behavior-manifest.v1"},
+    "manifest_id": {"type": "string", "minLength": 1},
+    "pack_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["draft", "active", "stale"]},
+    "ruleset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {"core": {"type": "string", "minLength": 1}, "faq_as_of": {"type": "string", "minLength": 1}}
+    },
+    "environment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["environment_id", "region", "formats"],
+      "properties": {
+        "environment_id": {"type": "string", "minLength": 1},
+        "region": {"type": "string", "minLength": 1},
+        "formats": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "verified_at": {"type": "string", "format": "date"},
+    "cards": {
+      "type": "array", "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["card_key", "canonical_name", "current_text_hash", "printing_ids", "behavior_status", "clauses"],
+        "properties": {
+          "card_key": {"type": "string", "minLength": 1},
+          "canonical_name": {"type": "string", "minLength": 1},
+          "current_text_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "printing_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "behavior_status": {"enum": ["full", "partial", "unsupported", "stale"]},
+          "clauses": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["clause_id", "source_id", "locator", "text_hash", "status", "program_id", "implemented_ops", "unsupported_mechanics", "test_ids", "notes"],
+              "properties": {
+                "clause_id": {"type": "string", "minLength": 1},
+                "source_id": {"type": "string", "minLength": 1},
+                "locator": {"type": "string", "minLength": 1},
+                "text_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+                "status": {"enum": ["full", "partial", "unsupported", "stale"]},
+                "program_id": {"type": ["string", "null"]},
+                "implemented_ops": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+                "unsupported_mechanics": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+                "test_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+                "notes": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -37,6 +37,8 @@ SCHEMAS = {
     "recommendation-mask.schema.json": ("schema_version", "recommendation-mask.v1"),
     "deck-coach-evaluation.schema.json": ("schema_version", "deck-coach-evaluation.v1"),
     "primer-battle.schema.json": ("schema_version", "primer-battle.v1"),
+    "card-behavior-manifest.schema.json": ("schema_version", "card-behavior-manifest.v1"),
+    "deck-behavior-coverage.schema.json": ("schema_version", "deck-behavior-coverage.v1"),
 }
 RUBRIC = {
     "card_and_rule_factual_accuracy", "format_and_region_legality", "deck_identity",
@@ -140,11 +142,13 @@ def main():
         missing_reasons = set(expected["expected_mask_reasons"]) - case_reasons
         if missing_reasons:
             errors.append(f"{case_id}: expected mask reasons not observed: {sorted(missing_reasons)}")
-        required_profile_fields = {"curve", "domain_requirements", "type_distribution", "battlefield_package", "feature_density", "role_distribution", "engine_cards", "confidence"}
+        required_profile_fields = {"curve", "domain_requirements", "type_distribution", "battlefield_package", "feature_density", "role_distribution", "engine_cards", "confidence", "behavior_coverage"}
         if not required_profile_fields.issubset(profile):
             errors.append(f"{case_id}: profile is missing observation fields")
         if profile["context"]["player_level"] != case["input"]["player_level"]:
             errors.append(f"{case_id}: player level was not preserved in observation")
+        if profile["behavior_coverage"].get("status") != "unavailable" or profile["behavior_coverage"].get("strategy_evidence") != "not_established_by_engine_coverage":
+            errors.append(f"{case_id}: no-manifest profile overstates executable card behavior or strategy evidence")
         # Every case must show that its expectations can tell a good primer from
         # a bad one. Scoring the bad primer against only the first case left the
         # rest asserting that the baseline passes, which a case with vacuous

@@ -23,6 +23,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
+from card_behavior_coverage import BehaviorCoverageError, summarize_profile_coverage, text_hash
+
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 CARDS_PATH = SKILL_DIR / "data" / "riftcodex_cards_raw.json"
@@ -213,7 +215,11 @@ def _distribution(counter: Counter[str], total: int) -> dict[str, Any]:
     }
 
 
-def build_profile(deck_input: dict[str, Any], catalog: CardCatalog | None = None) -> dict[str, Any]:
+def build_profile(
+    deck_input: dict[str, Any],
+    catalog: CardCatalog | None = None,
+    behavior_manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     catalog = catalog or CardCatalog()
     errors = validate_input(deck_input, catalog)
     if errors:
@@ -276,7 +282,8 @@ def build_profile(deck_input: dict[str, Any], catalog: CardCatalog | None = None
             "input_name": item["name"], "canonical_name": clean_name(card["name"]), "count": item["count"],
             "set_id": card.get("set", {}).get("set_id"), "type": card_type, "domains": classification.get("domain") or [],
             "energy": energy, "power": power, "might": might, "features": sorted(card_features), "roles": sorted(card_roles),
-            "errata_applied": bool(errata),
+            "errata_applied": bool(errata), "riftbound_id": card.get("riftbound_id"),
+            "current_text_hash": text_hash(current_text),
         })
 
     battlefields = []
@@ -307,7 +314,7 @@ def build_profile(deck_input: dict[str, Any], catalog: CardCatalog | None = None
     else:
         overall = "Low"
     role_result = {role["role_id"]: {"copies": roles.get(role["role_id"], 0), "method": "text heuristic"} for role in catalog.roles["roles"]}
-    return {
+    profile = {
         "schema_version": "deck-profile.v1",
         "deck_id": deck_input["deck_id"],
         "generated_at": now_iso(),
@@ -333,6 +340,11 @@ def build_profile(deck_input: dict[str, Any], catalog: CardCatalog | None = None
         "engine_cards": {"structural_anchors": structural_anchors, "inferred_candidates": engine_scored[:12], "inference_is_authoritative": False},
         "confidence": {"overall": overall, "card_lookup_coverage": round(coverage, 4), "role_method": "heuristic", "warnings": warnings},
     }
+    try:
+        profile["behavior_coverage"] = summarize_profile_coverage(profile, behavior_manifest)
+    except BehaviorCoverageError as error:
+        raise PipelineError(str(error)) from error
+    return profile
 
 
 def _ban_keys(format_config: dict[str, Any]) -> set[str]:
@@ -506,6 +518,16 @@ def generate_baseline_primer(deck_input: dict[str, Any], profile: dict[str, Any]
         f"Tier 1 provisional legality: environment registry checked {profile['data_provenance']['environment_registry_last_checked']}; live event use still requires the official Rules Hub check. "
         "Tier 3: role, engine, mulligan, sequencing, and mistake inferences unless a separate cited source upgrades them."
     )
+    behavior = profile.get("behavior_coverage", {})
+    if behavior.get("status") == "available":
+        weighted = behavior["copy_weighted"]
+        evidence += (
+            f" Executable behavior coverage (main deck only): {weighted['full']} full, {weighted['partial']} partial, "
+            f"{weighted['unsupported']} unsupported, {weighted['stale']} stale, and {weighted['uncovered']} uncovered copies. "
+            "This clause coverage does not establish deck strategy, mulligans, or sequencing."
+        )
+    else:
+        evidence += " No compatible active R3 behavior manifest was supplied; executable card-behavior coverage is unavailable."
     return {
         "schema_version": "deck-coach-candidate.v1",
         "candidate_id": candidate_id,
@@ -642,6 +664,7 @@ def build_parser() -> argparse.ArgumentParser:
         child = sub.add_parser(command)
         child.add_argument("--input", type=Path, required=True)
         child.add_argument("--output", type=Path, required=True)
+        child.add_argument("--behavior-manifest", type=Path)
     run = sub.add_parser("run")
     run.add_argument("--input", type=Path, help="deck-coach-input.v1; omit when using --case-id")
     run.add_argument("--output-dir", type=Path, required=True)
@@ -649,6 +672,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--skill-version", default="working-tree")
     run.add_argument("--model", default="none")
     run.add_argument("--case-id", help="use this built-in eval case, or evaluate a matching plain input")
+    run.add_argument("--behavior-manifest", type=Path)
     evaluate = sub.add_parser("evaluate")
     evaluate.add_argument("--case-id", required=True)
     evaluate.add_argument("--candidate", type=Path, required=True)
@@ -673,7 +697,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command in {"profile", "mask"}:
             raw = load_json(args.input)
             deck_input = case_input(raw)
-            profile = build_profile(deck_input)
+            manifest = load_json(args.behavior_manifest) if args.behavior_manifest else None
+            profile = build_profile(deck_input, behavior_manifest=manifest)
             value = profile if args.command == "profile" else build_mask(deck_input, profile)
             save_json(args.output, value)
             print(f"OK: wrote {args.command} to {args.output}")
@@ -686,7 +711,8 @@ def main(argv: list[str] | None = None) -> int:
             deck_input = case_input(raw)
             case = raw if "expected" in raw else selected_case
             catalog = CardCatalog()
-            profile = build_profile(deck_input, catalog)
+            manifest = load_json(args.behavior_manifest) if args.behavior_manifest else None
+            profile = build_profile(deck_input, catalog, manifest)
             mask = build_mask(deck_input, profile, catalog)
             candidate = generate_baseline_primer(deck_input, profile, mask, args.candidate_id, args.skill_version, args.model)
             args.output_dir.mkdir(parents=True, exist_ok=True)

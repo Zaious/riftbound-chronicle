@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/deck-behavior-coverage.schema.json",
+  "title": "Deck Behavior Coverage v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scope", "status", "manifest_id", "cards", "copy_weighted", "strategy_evidence", "warnings"],
+  "properties": {
+    "schema_version": {"const": "deck-behavior-coverage.v1"},
+    "scope": {"const": "main_deck_current_text_clauses"},
+    "status": {"enum": ["unavailable", "available", "stale", "incompatible"]},
+    "manifest_id": {"type": ["string", "null"]},
+    "cards": {"type": "array"},
+    "copy_weighted": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total", "full", "partial", "unsupported", "stale", "uncovered"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0}, "full": {"type": "integer", "minimum": 0},
+        "partial": {"type": "integer", "minimum": 0}, "unsupported": {"type": "integer", "minimum": 0},
+        "stale": {"type": "integer", "minimum": 0}, "uncovered": {"type": "integer", "minimum": 0}
+      }
+    },
+    "strategy_evidence": {"const": "not_established_by_engine_coverage"},
+    "warnings": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  }
+}

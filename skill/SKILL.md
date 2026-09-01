@@ -79,6 +79,7 @@ For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.
 - Chronicle-owned typed effect IR: `${CLAUDE_SKILL_DIR}/scripts/effect_ir.py`
 - Atomic timing/effect bridge: `${CLAUDE_SKILL_DIR}/scripts/resolution_bridge.py`
 - Shared engine-result envelope and runner: `${CLAUDE_SKILL_DIR}/scripts/engine_check.py`
+- Card behavior manifest and Deck Coach projection: `${CLAUDE_SKILL_DIR}/scripts/card_behavior_coverage.py`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
 - Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
 - Read-only source-registry refresh proposal tool: `${CLAUDE_SKILL_DIR}/scripts/refresh_sources.py` (never edits the registry; reports stay in the ignored `.local/`)

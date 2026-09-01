@@ -19,6 +19,7 @@
     "feature_density": {"type": "object"},
     "role_distribution": {"type": "object"},
     "engine_cards": {"type": "object"},
-    "confidence": {"type": "object"}
+    "confidence": {"type": "object"},
+    "behavior_coverage": {"$ref": "deck-behavior-coverage.schema.json"}
   }
 }

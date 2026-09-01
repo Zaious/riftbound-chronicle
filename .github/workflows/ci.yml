@@ -49,6 +49,9 @@ jobs:
       - name: Deck Coach schema, roles, cases, and artifact regressions
         run: python3 skill/scripts/check_deck_coach.py
 
+      - name: Card behavior manifest and Deck Coach coverage boundary
+        run: python3 skill/scripts/check_card_behavior_coverage.py
+
       - name: Deck Coach static prototype contract
         run: python3 skill/scripts/check_deck_coach_prototype.py
 
@@ -135,6 +138,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_deck_primer.py"
           python3 "$REPO/skill/scripts/check_readme_sync.py"
           python3 "$REPO/skill/scripts/check_deck_coach.py"
+          python3 "$REPO/skill/scripts/check_card_behavior_coverage.py"
           python3 "$REPO/skill/scripts/check_deck_coach_prototype.py"
           python3 "$REPO/skill/scripts/check_tournament_lists.py"
           python3 "$REPO/skill/scripts/check_p2a_protocol.py"

@@ -40,6 +40,12 @@ That one command writes normalized input, `deck-profile.v1`, `recommendation-mas
 
 The profile computes card-name lookup coverage (what fraction of the decklist's copies matched a card in the bundled snapshot by name -- a data-resolution measure, unrelated to rules-engine coverage), environment/region/set pool, curve, printed Domains and Power costs, Unit/Spell/Gear mix, Battlefield package, interaction/draw-recursion/movement density, eight-role distribution, engine candidates, data provenance, and confidence. Role and engine detection are labelled text heuristics; do not promote them to verified gameplay claims without evidence.
 
+When an R3 behavior manifest is supplied, read
+`${CLAUDE_SKILL_DIR}/references/shared/card-behavior-coverage.md`. The profile
+adds bounded Main Deck clause coverage, but it must remain separate from card
+lookup confidence and strategic evidence. With no compatible active manifest,
+the correct status is `unavailable`, not an inferred coverage percentage.
+
 ### Recommendation mask
 
 Before naming a replacement, pass it through the mask. It excludes candidates that are unreleased in the target environment, banned in the selected format, outside the Legend's Domain identity, absent from a supplied collection, supported only by a different source environment, or paired with stale pre-errata text. The registry is dated and still requires a live official check for a real event; `provisionally_clear` is not an official deck-registration ruling.

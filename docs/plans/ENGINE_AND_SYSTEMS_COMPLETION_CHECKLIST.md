@@ -216,7 +216,8 @@ implement assigned cards against that frozen contract.
 
 - [ ] Select two to four linear Origins/Taiwan decks and their Battlefields.
 - [ ] Freeze applicable card text, errata, ruleset, format, and region.
-- [ ] Define a registry keyed by stable card/printing identity.
+- [x] Define `card-behavior-manifest.v1` using canonical rules identity,
+  current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.
 - [ ] Label each card `full`, `partial`, `unsupported`, or `stale`.
 - [ ] Attach an official locator to every implemented clause.
@@ -294,6 +295,8 @@ gates remain `[CODEX-CONTEXT]`.
 - [x] Evidence tiers, confidence, provenance, and abstention checks.
 - [x] Executable cases and seven-dimension evaluation.
 - [x] Format-scoped 2v2-only ban and collection-only recommendation-mask cases.
+- [x] Optional card behavior manifest projection with copy-weighted clause
+  coverage and automatic current-text staleness.
 - [x] Rift Atlas pasted-deck/URL provenance adapter.
 - [x] Bilingual local demo with JSON/Markdown export and artifact import.
 
@@ -308,7 +311,8 @@ Default ownership: `[JOINT]`. Pipeline/evaluation/UI work is
 - [ ] `[JOINT]` Rename the separate top-level Deck Profile `resolution` block to
   an unambiguous lookup/matching term through an explicit `deck-profile.v1`
   compatibility or migration decision.
-- [ ] Consume the R3 card behavior coverage manifest.
+- [x] Consume a compatible active R3 card behavior manifest when supplied;
+  default to explicitly unavailable until a production pack exists.
 - [ ] Validate core loops, lines, mulligan rationale, and mistakes against
   executable card programs where supported.
 - [ ] Separate heuristic roles from expert-confirmed deck identity.
@@ -496,7 +500,7 @@ real artifact migration should establish the presentation semantics first.
 | D-00 — completed 2026-09-01 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules — satisfied 2026-09-01 | Five outcomes, bilingual fail-closed renderer, authority/coverage display, no choices or mutation |
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
 | D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual UI, five verification states, decision-required flow, prototype regression |
-| D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest | Pipeline consumer, evidence display, regression fixtures |
+| D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied 2026-09-01; production pack absent | Prototype display, import, and regression fixtures without widening strategy claims |
 | D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
 | D-06 | Match Analyst schemas/runner projections | Normalized timeline and engine-binding contracts | Schema implementation, formatter, fixtures, no router activation |
@@ -508,7 +512,7 @@ real artifact migration should establish the presentation semantics first.
 | --- | --- | --- |
 | X-01 — completed 2026-09-01 | Rule Consult migration from `rules_core_check` to `engine-check.v1` | Preserves source authority, consultation confidence, legacy reads, and compatibility |
 | X-02 — completed 2026-09-01 | P2-A migration to `engine-check.v1` | Preserves human legality/state authority, rejects raw engine state, and calibrates verification without automation creep |
-| X-03 | Deck behavior-coverage contract | Must distinguish card lookup, engine clauses, evidence, and strategy claims |
+| X-03 — completed 2026-09-01 | Deck behavior-coverage contract | Separates card lookup, current-text clause programs, unsupported mechanics, tests, and strategy evidence |
 | X-04 | R1/R2 semantic expansion and schema versioning | Each decision constrains every card program and replay |
 | X-05 | R3 pack selection and acceptance gate | Connects Taiwan scope, real deck lines, errata, and engine feasibility |
 | X-06 | R4 observation and legal-action architecture | Defines information sets, hidden-data safety, and abstention correctness |

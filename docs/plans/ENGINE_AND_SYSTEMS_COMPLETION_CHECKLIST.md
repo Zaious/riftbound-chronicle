@@ -56,6 +56,8 @@ contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
 - [x] Default masking of superseded sources.
 - [x] Bundled card snapshot and errata overlay with provenance/freshness checks.
 - [x] Format/region/set-pool environment registry for Deck Coach.
+- [x] Read-only source refresh planner/capture/reporter with ignored output,
+  registry immutability, public-DNS/redirect guards, and offline analysis.
 - [ ] Human-reviewed official-source refresh and baseline-versioning workflow.
 - [ ] Cross-language clause alignment and disagreement reporting.
 - [ ] Card-text-to-effect-program provenance manifest shared by all systems.
@@ -291,6 +293,7 @@ gates remain `[CODEX-CONTEXT]`.
 - [x] Eight roles and eight-section primer contract.
 - [x] Evidence tiers, confidence, provenance, and abstention checks.
 - [x] Executable cases and seven-dimension evaluation.
+- [x] Format-scoped 2v2-only ban and collection-only recommendation-mask cases.
 - [x] Rift Atlas pasted-deck/URL provenance adapter.
 - [x] Bilingual local demo with JSON/Markdown export and artifact import.
 
@@ -391,7 +394,8 @@ fixtures, projection formatting, and the demo.
 - [ ] Implement Review with mandatory unsupported abstention.
 - [ ] Implement Commentary over the same confirmed timeline.
 - [ ] Prove Review and Commentary agree on confirmed state.
-- [ ] Add complete, partial, contradictory, and perspective-limited fixtures.
+- [x] Add complete, partial, contradictory, and perspective-limited fixtures
+  with independently re-derived contradiction/redaction boundaries.
 - [ ] Obtain expert review of the first bounded replay corpus.
 - [ ] Add runner, evaluation suite, and bilingual demo.
 - [ ] Re-check the applicable Riot product boundary.
@@ -402,6 +406,8 @@ fixtures, projection formatting, and the demo.
 - [x] Consistent bilingual shell for Deck Coach, Rule Consult, and P2-A.
 - [x] Local-only no-build demos with manual Agent bridge.
 - [x] Shared navigation among the three active systems.
+- [x] zh-Hant visible-copy coverage gate with explicit intentional-English
+  allowlist and runtime-derived numbered-heading fallback.
 - [x] Public repository excludes official PDFs and generated local index.
 - [x] English, Traditional Chinese, and Korean README set.
 - [x] CI and off-cwd portability checks for active scripts.
@@ -475,9 +481,9 @@ push” does not isolate a commit on shared `main`.
 | C-02 — completed 2026-09-01 | Expand `engine-check.v1` CLI examples and fixtures | Examples/fixtures/tests only; no schema vocabulary or outcome changes | Document-derived executable commands, failure surface, links, and off-cwd pass |
 | C-04 — completed 2026-09-01 | Encode additional existing official timing examples as R1 fixtures | Data/tests only, using already-supported transitions | Seven sourced cases plus baseline-linked provenance gate |
 | C-05 — completed 2026-09-01 | Add property-style determinism and rollback tests for currently supported effect programs | Tests only; do not add mechanics or alter expected semantics | 240 generated programs across commit/reject/abstain paths plus cross-process hashes |
-| C-06 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline; every generated report/excerpt must stay under an already-ignored local path such as `skill/.local/refresh-reports/` | Offline fixture, no credentials, explicit human approval output, and a path-guard test proving output cannot target a tracked/public path |
-| C-07 | Expand Deck Coach expert/eval cases using existing contracts | Data, evidence ledger, and tests; no new scoring dimensions without review | `check_deck_coach.py` and source provenance pass |
-| C-08 | Prepare Match Analyst example logs and uncertainty fixtures | Fixtures/docs only; no claim that the system is routed or implemented | Complete/partial/contradictory/perspective-safe fixture set |
+| C-06 — completed 2026-09-01 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline; reports stay under `skill/.local/refresh-reports/` | Offline fixtures, immutable registry, path guard, public DNS/redirect guard, no analysis socket |
+| C-07 — completed 2026-09-01 | Expand Deck Coach expert/eval cases using existing contracts | Data, evidence ledger, and tests; no new scoring dimensions | 2v2-only ban and collection-only constraints, weak-primer discrimination, README count gate |
+| C-08 — completed 2026-09-01 | Prepare Match Analyst example logs and uncertainty fixtures | Fixtures/docs only; no claim that the system is routed or implemented | Complete/partial/contradictory/perspective-safe fixtures with re-derived boundaries |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first

@@ -105,7 +105,7 @@ def write_output(name: str, filename: str, text: str) -> Path:
 # --------------------------------------------------------------------------
 
 def assert_fetchable(url: str) -> None:
-    """Refuse anything that is not a plain public https URL.
+    """Refuse malformed URLs and literal non-public IP hosts without DNS.
 
     The registry is data, and data can be wrong or hostile. Without this a bad
     entry could point the fetcher at a loopback address or an internal host and
@@ -126,6 +126,32 @@ def assert_fetchable(url: str) -> None:
         raise RefreshError(f"refusing non-public address: {url}")
 
 
+def assert_public_resolution(url: str) -> None:
+    """Resolve a capture target and refuse every non-global destination."""
+    assert_fetchable(url)
+    parsed = urllib.parse.urlparse(url)
+    port = parsed.port or 443
+    try:
+        answers = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
+    except OSError as error:
+        raise RefreshError(f"cannot resolve capture host {parsed.hostname!r}: {error}") from error
+    addresses = {answer[4][0].split("%", 1)[0] for answer in answers if answer[4]}
+    if not addresses:
+        raise RefreshError(f"capture host {parsed.hostname!r} resolved to no addresses")
+    rejected = sorted(address for address in addresses if not ipaddress.ip_address(address).is_global)
+    if rejected:
+        raise RefreshError(f"refusing capture host with non-public DNS destination(s) {rejected}: {url}")
+
+
+class PublicOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Validate every redirect before urllib follows it."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urllib.parse.urljoin(req.full_url, newurl)
+        assert_public_resolution(target)
+        return super().redirect_request(req, fp, code, msg, headers, target)
+
+
 def fetch_metadata(url: str) -> dict[str, Any]:
     """One read-only GET, recording metadata only.
 
@@ -133,14 +159,15 @@ def fetch_metadata(url: str) -> dict[str, Any]:
     discovered. Document bodies (the PDFs) are never stored: the tool reports
     what changed about a source, never the source itself.
     """
-    assert_fetchable(url)
+    assert_public_resolution(url)
     request = urllib.request.Request(url, method="GET", headers={
         "User-Agent": USER_AGENT,
         "Accept": "text/html,application/pdf;q=0.9,*/*;q=0.5",
     })
     record: dict[str, Any] = {"url": url}
     try:
-        with urllib.request.urlopen(request, timeout=FETCH_TIMEOUT_SECONDS) as response:
+        opener = urllib.request.build_opener(PublicOnlyRedirectHandler())
+        with opener.open(request, timeout=FETCH_TIMEOUT_SECONDS) as response:
             headers = response.headers
             content_type = (headers.get("Content-Type") or "").split(";")[0].strip()
             record.update({

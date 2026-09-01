@@ -27,6 +27,8 @@ import socket
 import subprocess
 import sys
 import tempfile
+import urllib.request
+from unittest import mock
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -205,6 +207,33 @@ def main() -> int:
         rs.assert_fetchable("https://playriftbound.com/en-us/rules-hub/")
     except rs.RefreshError as error:
         errors.append(f"the fetch guard rejected a legitimate official URL: {error}")
+
+    # Hostnames and redirects must be checked after DNS resolution as well as
+    # syntactically. Otherwise a harmless-looking registry hostname can resolve
+    # to loopback/private infrastructure and bypass the literal-IP guard.
+    private_answer = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.7", 443))]
+    public_answer = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))]
+    with mock.patch.object(socket, "getaddrinfo", return_value=private_answer):
+        try:
+            rs.assert_public_resolution("https://example.com/rules")
+        except rs.RefreshError:
+            pass
+        else:
+            errors.append("DNS guard accepted a hostname resolving to a private address")
+        try:
+            rs.PublicOnlyRedirectHandler().redirect_request(
+                urllib.request.Request("https://example.com/start"), None, 302, "Found", {},
+                "https://redirect.example/rules",
+            )
+        except rs.RefreshError:
+            pass
+        else:
+            errors.append("redirect guard accepted a redirect resolving to a private address")
+    with mock.patch.object(socket, "getaddrinfo", return_value=public_answer):
+        try:
+            rs.assert_public_resolution("https://example.com/rules")
+        except rs.RefreshError as error:
+            errors.append(f"DNS guard rejected a mocked public destination: {error}")
 
     # --- there is no way to apply anything -----------------------------------
     subcommands = set(rs.build_parser()._subparsers._group_actions[0].choices)

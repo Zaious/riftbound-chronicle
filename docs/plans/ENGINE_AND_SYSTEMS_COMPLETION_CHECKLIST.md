@@ -34,7 +34,8 @@ unlabelled because ownership is relevant to remaining work.
 - [x] Establish the shared `engine-check.v1` result contract and runner.
 - [x] Integrate `engine-check.v1` into Rule Consult artifact, CLI, validator,
   bilingual demo, and supported/abstaining regressions.
-- [ ] `[CODEX-CONTEXT]` Integrate `engine-check.v1` into Player 2 Agent P2-A.
+- [x] Integrate `engine-check.v1` into P2-A artifact, CLI, validator, calibrated
+  verification flow, bilingual demo, and supported/abstaining regressions.
 - [ ] `[JOINT]` Integrate behavior coverage and verified lines into Deck Coach.
 - [ ] `[JOINT]` Build and validate a bounded R3 card-program pack.
 - [ ] `[CODEX-CONTEXT]` Pass the R4 state-completeness and legal-action gates.
@@ -358,6 +359,8 @@ migration lands.
 - [x] Manual import of a bounded `rules_core` timing summary.
 - [x] `engine_checks` proposal evidence, outcome-derived verification burden,
   raw-result rejection, CLI import, and legacy raw-core normalization.
+- [x] Bilingual read-only engine-check panel with all five verification states,
+  documented human override, and post-confirmation snapshot requirement.
 - [x] Protocol validator, regressions, CLI, and bilingual local demo.
 
 ### Remaining
@@ -370,7 +373,7 @@ and confirmation semantics; demo/UI work is `[CLAUDE-READY]` afterward.
 - [ ] Use R4 legal candidates as a recommendation mask before ranking.
 - [ ] Add a bounded policy/candidate ranker and expert scenario suite.
 - [ ] Store opt-in sessions and measure confirmation latency/disagreement.
-- [ ] Add effect coverage and decision-required UI to the demo.
+- [x] Add effect coverage and decision-required UI to the demo.
 - [ ] Keep every physical state transition human-confirmed in P2-A.
 
 ## 11. Match Analyst
@@ -448,7 +451,7 @@ connection as partial or planned.
 | --- | ---: | --- |
 | Rule Consult | 6 / 6 | Connected to `engine-check.v1`; official sources remain authoritative |
 | Deck Coach | 0 / 6 | Planned; engine terminology is now disambiguated |
-| Player 2 Agent P2-A | 5 / 6 | Artifact/CLI/validator connected; D-02 UI remains before full connection |
+| Player 2 Agent P2-A | 6 / 6 | Connected with calibrated human verification; state and legality remain user-confirmed |
 | Match Analyst | 0 / 6 | Not implemented or routed |
 
 ## 13. Delegation work packages
@@ -499,7 +502,7 @@ real artifact migration should establish the presentation semantics first.
 | --- | --- | --- | --- |
 | D-00 — completed 2026-09-01 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules — satisfied 2026-09-01 | Five outcomes, bilingual fail-closed renderer, authority/coverage display, no choices or mutation |
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
-| D-02 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual UI, five verification states, decision-required flow, prototype regression |
+| D-02 — completed 2026-09-01 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual shared viewer, five verification states, raw-result refusal, documented overrides, prototype regression |
 | D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied 2026-09-01; production pack absent | Prototype display, import, and regression fixtures without widening strategy claims |
 | D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |

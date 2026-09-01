@@ -1,0 +1,92 @@
+{
+  "schema_version": "riftbound-match-log-fixture.v1",
+  "fixture_id": "MA-PERSPECTIVE-004",
+  "fixture_kind": "perspective_safe",
+  "title": "A player-perspective review of a turn decided by a face-down Lotus Trap",
+  "note": "The log is omniscient -- it records p2's hand and the face-down card -- but the requested perspective is p1. Everything p1 could not see is labelled, and the boundary names it explicitly. Two distinct leaks are possible here and both are easy: using the hidden card's identity, and judging p1's decision by what the reveal later showed.",
+  "provenance": {
+    "log_source": "synthetic",
+    "log_format": "omniscient replay, reviewed from one seat",
+    "completeness": "complete",
+    "recorded_by": "fixture author",
+    "is_real_match": false
+  },
+  "ruleset": {"core": "2026-07-16", "faq_as_of": "2026-08-14", "format": "1v1 Constructed", "region": "global"},
+  "perspective": "player1",
+  "players": {
+    "p1": {"legend": "Rengar - Pridestalker", "chosen_champion": "Rengar, Trophy Hunter"},
+    "p2": {"legend": "Rengar - Pridestalker", "chosen_champion": "Rengar, Trophy Hunter"}
+  },
+  "events": [
+    {
+      "event_id": "e1", "turn": 6, "phase": "main", "state_label": "neutral_open",
+      "priority": "p2", "focus": null, "outstanding_tasks": [], "chain": [],
+      "actor": "p2", "action": {"kind": "hide_card", "card": "Lotus Trap", "detail": "played face down as a Hidden card"},
+      "visibility": "private:p2", "certainty": "confirmed",
+      "public_shadow": {"description": "p2 hid a card; its identity was not public", "visibility": "public"}
+    },
+    {
+      "event_id": "e2", "turn": 7, "phase": "main", "state_label": "neutral_open",
+      "priority": "p1", "focus": null, "outstanding_tasks": [], "chain": [],
+      "actor": null, "action": {"kind": "hand_snapshot", "player": "p2", "cards": ["Defy", "Pit Rookie"]},
+      "visibility": "private:p2", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e3", "turn": 7, "phase": "main", "state_label": "neutral_open",
+      "priority": "p1", "focus": null, "outstanding_tasks": [], "chain": [],
+      "actor": null, "action": {"kind": "hand_snapshot", "player": "p1", "cards": ["Incinerate", "Kai'Sa, Survivor"]},
+      "visibility": "private:p1", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e4", "turn": 7, "phase": "main", "state_label": "neutral_open",
+      "priority": "p1", "focus": null, "outstanding_tasks": [], "chain": [],
+      "actor": "p1", "action": {"kind": "move_unit", "unit": "Pakaa Cub", "destination": "Emperor's Dais", "initiates": "showdown"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e5", "turn": 7, "phase": "combat", "state_label": "showdown_open",
+      "priority": "p1", "focus": "p1", "outstanding_tasks": [], "chain": [],
+      "actor": "p1", "action": {"kind": "play_card", "card": "Incinerate", "timing": "action", "target": "Grim Apothecary"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e6", "turn": 7, "phase": "combat", "state_label": "showdown_closed",
+      "priority": "p2", "focus": "p1", "outstanding_tasks": [], "chain": ["Incinerate"],
+      "actor": "p2", "action": {"kind": "reveal_hidden", "card": "Lotus Trap", "timing": "reaction", "target": "Pakaa Cub"},
+      "visibility": "revealed_later", "certainty": "confirmed",
+      "revealed_at": "e6", "was_hidden_until": "e6"
+    },
+    {
+      "event_id": "e7", "turn": 7, "phase": "combat", "state_label": "showdown_closed",
+      "priority": "p1", "focus": "p1", "outstanding_tasks": [], "chain": ["Incinerate", "Lotus Trap"],
+      "actor": null, "action": {"kind": "chain_resolved", "result": "Pakaa Cub took doubled damage and died"},
+      "visibility": "public", "certainty": "confirmed"
+    }
+  ],
+  "decision_points": [
+    {
+      "decision_id": "d1", "at_event": "e4", "actor": "p1",
+      "question": "Whether to open a Showdown at Emperor's Dais into an unspent face-down card",
+      "information_available": ["own hand", "public board", "p2 has one face-down Hidden card of unknown identity"],
+      "information_withheld": ["the identity of the face-down card", "p2 hand contents"],
+      "recorded_choice": "opened the Showdown"
+    }
+  ],
+  "uncertainty_ledger": [
+    {"about": "e1", "kind": "hidden_information", "detail": "p1 could see that a card was hidden, never which card. Only the public shadow is usable in a p1-perspective analysis."},
+    {"about": "e2", "kind": "opponent_private", "detail": "p2's hand was never available to p1 at any point in this match."},
+    {"about": "e6", "kind": "hindsight_only", "detail": "The identity became public at e6, which is after d1. Using it to judge d1 is hindsight, not analysis."}
+  ],
+  "expected_analysis_boundary": {
+    "must_not_use": ["e1", "e2"],
+    "must_not_use_before": {"e6": "d1"},
+    "must_classify_insufficient": [],
+    "must_not_claim": [
+      "that p1 should have played around Lotus Trap specifically",
+      "anything about p2 holding Defy",
+      "that d1 was a misplay because the Hidden card turned out to be Lotus Trap"
+    ],
+    "expected_classification": {"d1": "outcome_bias if criticised on the reveal; reasonable_alternative on the information p1 held"},
+    "notes": "The reveal at e6 is legitimately usable when narrating the Showdown itself. It is not usable to grade the decision at e4, which happened before it. A boundary that only excludes opponent-private events would let the hindsight leak straight through."
+  }
+}

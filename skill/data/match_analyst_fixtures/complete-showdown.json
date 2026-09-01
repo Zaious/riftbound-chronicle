@@ -1,0 +1,78 @@
+{
+  "schema_version": "riftbound-match-log-fixture.v1",
+  "fixture_id": "MA-COMPLETE-001",
+  "fixture_kind": "complete",
+  "title": "One fully recorded Showdown over Emperor's Dais",
+  "note": "The baseline. Every event is directly recorded, so nothing here needs an inference and nothing may be labelled unknown. A fixture set without this one cannot tell a genuinely uncertain log apart from a tool that labels everything uncertain.",
+  "provenance": {
+    "log_source": "synthetic",
+    "log_format": "hand-recorded event list",
+    "completeness": "complete",
+    "recorded_by": "fixture author",
+    "is_real_match": false
+  },
+  "ruleset": {"core": "2026-07-16", "faq_as_of": "2026-08-14", "format": "1v1 Constructed", "region": "global"},
+  "perspective": "omniscient_replay",
+  "players": {
+    "p1": {"legend": "Rengar - Pridestalker", "chosen_champion": "Rengar, Trophy Hunter"},
+    "p2": {"legend": "Rengar - Pridestalker", "chosen_champion": "Rengar, Trophy Hunter"}
+  },
+  "events": [
+    {
+      "event_id": "e1", "turn": 3, "phase": "main", "state_label": "neutral_open",
+      "priority": "p1", "focus": null, "outstanding_tasks": [], "chain": [],
+      "actor": "p1", "action": {"kind": "play_card", "card": "Pakaa Cub", "timing": "default", "destination": "Emperor's Dais"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e2", "turn": 3, "phase": "main", "state_label": "neutral_open",
+      "priority": "p1", "focus": null, "outstanding_tasks": [], "chain": [],
+      "actor": "p1", "action": {"kind": "move_unit", "unit": "Pakaa Cub", "destination": "Emperor's Dais", "initiates": "showdown"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e3", "turn": 3, "phase": "combat", "state_label": "showdown_open",
+      "priority": "p2", "focus": "p2", "outstanding_tasks": [], "chain": [],
+      "actor": "p2", "action": {"kind": "play_card", "card": "Incinerate", "timing": "action", "target": "Pakaa Cub"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e4", "turn": 3, "phase": "combat", "state_label": "showdown_closed",
+      "priority": "p1", "focus": "p2", "outstanding_tasks": [], "chain": ["Incinerate"],
+      "actor": "p1", "action": {"kind": "pass_priority"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e5", "turn": 3, "phase": "combat", "state_label": "showdown_closed",
+      "priority": "p2", "focus": "p2", "outstanding_tasks": [], "chain": ["Incinerate"],
+      "actor": "p2", "action": {"kind": "pass_priority"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e6", "turn": 3, "phase": "combat", "state_label": "showdown_closed",
+      "priority": "p2", "focus": "p2", "outstanding_tasks": [], "chain": ["Incinerate"],
+      "actor": null, "action": {"kind": "resolve_chain_item", "item": "Incinerate", "result": "2 damage marked on Pakaa Cub"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e7", "turn": 3, "phase": "combat", "state_label": "showdown_open",
+      "priority": "p1", "focus": "p1", "outstanding_tasks": [], "chain": [],
+      "actor": null, "action": {"kind": "focus_passed", "from": "p2", "to": "p1"},
+      "visibility": "public", "certainty": "confirmed"
+    }
+  ],
+  "decision_points": [
+    {
+      "decision_id": "d1", "at_event": "e4", "actor": "p1",
+      "question": "Respond to Incinerate targeting Pakaa Cub, or pass",
+      "information_available": ["own hand", "public board", "p2 spent 2 Energy on Incinerate"],
+      "recorded_choice": "pass_priority"
+    }
+  ],
+  "uncertainty_ledger": [],
+  "expected_analysis_boundary": {
+    "must_not_use": [],
+    "must_classify_insufficient": [],
+    "notes": "Every fact is confirmed and the perspective is omniscient_replay, so no redaction applies. An analysis of this log that emits unknown or insufficient_information for d1 is over-abstaining, which is its own failure."
+  }
+}

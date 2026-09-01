@@ -1,0 +1,86 @@
+{
+  "schema_version": "riftbound-match-log-fixture.v1",
+  "fixture_id": "MA-PARTIAL-002",
+  "fixture_kind": "partial",
+  "title": "Spectator notes with the Chain interior missing",
+  "note": "A realistic public record: someone watched the match and wrote down what happened at the table. The Showdown's Chain order was never recorded, so which spell resolved first cannot be established. The interesting failure is not refusing to analyze this log -- it is quietly reconstructing the missing order and presenting it as observed.",
+  "provenance": {
+    "log_source": "synthetic",
+    "log_format": "spectator notes",
+    "completeness": "partial",
+    "recorded_by": "fixture author",
+    "is_real_match": false
+  },
+  "ruleset": {"core": "2026-07-16", "faq_as_of": "2026-08-14", "format": "1v1 Constructed", "region": "global"},
+  "perspective": "public_observer",
+  "players": {
+    "p1": {"legend": "Rengar - Pridestalker", "chosen_champion": "Rengar, Trophy Hunter"},
+    "p2": {"legend": "Rengar - Pridestalker", "chosen_champion": "Rengar, Trophy Hunter"}
+  },
+  "events": [
+    {
+      "event_id": "e1", "turn": 5, "phase": "main", "state_label": "neutral_open",
+      "priority": "p1", "focus": null, "outstanding_tasks": [], "chain": [],
+      "actor": "p1", "action": {"kind": "move_unit", "unit": "Grim Apothecary", "destination": "Seat of Power", "initiates": "showdown"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e2", "turn": 5, "phase": "combat", "state_label": "showdown_open",
+      "priority": "p2", "focus": "p2", "outstanding_tasks": [], "chain": [],
+      "actor": "p2", "action": {"kind": "play_card", "card": "Hextech Ray", "timing": "action", "target": "Grim Apothecary"},
+      "visibility": "public", "certainty": "confirmed"
+    },
+    {
+      "event_id": "e3", "turn": 5, "phase": "combat", "state_label": "showdown_closed",
+      "priority": "p1", "focus": "p2", "outstanding_tasks": [], "chain": null,
+      "actor": "p1", "action": {"kind": "play_card", "card": "Ki Barrier", "timing": "reaction", "target": "Grim Apothecary"},
+      "visibility": "public", "certainty": "confirmed",
+      "gap": "chain contents at this point were not recorded"
+    },
+    {
+      "event_id": "e4", "turn": 5, "phase": "combat", "state_label": "showdown_closed",
+      "priority": null, "focus": "p2", "outstanding_tasks": null, "chain": null,
+      "actor": null, "action": {"kind": "chain_resolved", "result": "Grim Apothecary survived the Showdown"},
+      "visibility": "public", "certainty": "confirmed",
+      "gap": "the order in which the two Chain items resolved was not recorded"
+    },
+    {
+      "event_id": "e5", "turn": 5, "phase": "combat", "state_label": "showdown_open",
+      "priority": "p1", "focus": "p1", "outstanding_tasks": [], "chain": [],
+      "actor": "p2", "action": {"kind": "unrecorded_response", "description": "the observer noted that p2 did something with a card in hand but not what"},
+      "visibility": "public", "certainty": "unknown"
+    }
+  ],
+  "decision_points": [
+    {
+      "decision_id": "d1", "at_event": "e3", "actor": "p1",
+      "question": "Whether Ki Barrier was the best available response",
+      "information_available": ["public board", "the observer's notes"],
+      "recorded_choice": "played Ki Barrier",
+      "unknown_at_decision_time": ["p1 hand contents", "p1 available Energy"]
+    },
+    {
+      "decision_id": "d2", "at_event": "e5", "actor": "p2",
+      "question": "What p2 did with the card in hand",
+      "information_available": ["public board"],
+      "recorded_choice": null,
+      "unknown_at_decision_time": ["the action itself was not recorded"]
+    }
+  ],
+  "uncertainty_ledger": [
+    {"about": "e3", "kind": "missing_state", "detail": "Chain contents at the time of the reaction were not recorded, so the legality of the timing cannot be reconstructed from this log alone."},
+    {"about": "e4", "kind": "missing_order", "detail": "Both Chain items are known; their resolution order is not. Two different orders are consistent with the recorded outcome."},
+    {"about": "e5", "kind": "missing_action", "detail": "An action occurred and was not recorded. Its actor is known; nothing else is."},
+    {"about": "d1", "kind": "missing_private_state", "detail": "p1's hand and Energy were never public, so whether a better response existed is not establishable."}
+  ],
+  "expected_analysis_boundary": {
+    "must_not_use": [],
+    "must_classify_insufficient": ["d1", "d2"],
+    "must_not_claim": [
+      "the resolution order of the two Chain items at e4",
+      "that p1 had or lacked a better response at d1",
+      "what p2 played at e5"
+    ],
+    "notes": "Every gap here is recoverable-looking, which is what makes it a trap: an analyzer can produce a fluent, plausible reconstruction of the Chain order and of p1's options, and be inventing both."
+  }
+}

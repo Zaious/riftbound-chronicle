@@ -167,6 +167,20 @@ Shared machine-readable record:
 - turning-point summaries;
 - final recap without fabricated motive or hidden information.
 
+## Example logs and uncertainty fixtures
+
+`skill/data/match_analyst_fixtures/` holds four logs written against this
+specification before any implementation exists: a complete one, a partial one
+whose gaps look reconstructible, a contradictory one merged from two disagreeing
+records, and a perspective-safe one turning on a face-down card. Each ends in an
+`expected_analysis_boundary` stating what an analysis of that log may not claim.
+
+They are written first on purpose. A corpus produced after a system exists gets
+shaped by what that system already does well; these fix the hard cases —
+abstention, contradiction, hidden information, and hindsight — while nothing can
+yet be tuned to pass them. `check_match_analyst_fixtures.py` validates the
+corpus and fails if `SKILL.md` starts routing the mode.
+
 ## Activation gate
 
 Do not add Match Analyst to `skill/SKILL.md` as an available mode until:

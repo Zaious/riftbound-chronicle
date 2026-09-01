@@ -1,0 +1,230 @@
+{
+  "schema_version": "riftbound-match-log-fixture.v1",
+  "fixture_id": "MA-CONTRADICTORY-003",
+  "fixture_kind": "contradictory",
+  "title": "Two recorders who disagree about whether Inferna died",
+  "note": "A log can be complete and still be wrong. Two events assert states that cannot both hold: Inferna is recorded as killed at e4 and as attacking at e7, and the two Priority assertions at e5 conflict. The requirement is that the contradiction is surfaced -- an analyzer that picks the more plausible branch and narrates it has produced a match that did not happen.",
+  "provenance": {
+    "log_source": "synthetic",
+    "log_format": "merged from two hand records",
+    "completeness": "complete_but_inconsistent",
+    "recorded_by": "fixture author",
+    "is_real_match": false
+  },
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14",
+    "format": "1v1 Constructed",
+    "region": "global"
+  },
+  "perspective": "public_observer",
+  "players": {
+    "p1": {
+      "legend": "Rengar - Pridestalker",
+      "chosen_champion": "Rengar, Trophy Hunter"
+    },
+    "p2": {
+      "legend": "Rengar - Pridestalker",
+      "chosen_champion": "Rengar, Trophy Hunter"
+    }
+  },
+  "events": [
+    {
+      "event_id": "e1",
+      "turn": 4,
+      "phase": "main",
+      "state_label": "neutral_open",
+      "priority": "p1",
+      "focus": null,
+      "outstanding_tasks": [],
+      "chain": [],
+      "actor": "p1",
+      "action": {
+        "kind": "play_card",
+        "card": "Inferna",
+        "timing": "default",
+        "destination": "Star Spring"
+      },
+      "visibility": "public",
+      "certainty": "confirmed"
+    },
+    {
+      "event_id": "e2",
+      "turn": 4,
+      "phase": "main",
+      "state_label": "neutral_open",
+      "priority": "p1",
+      "focus": null,
+      "outstanding_tasks": [],
+      "chain": [],
+      "actor": "p1",
+      "action": {
+        "kind": "move_unit",
+        "unit": "Inferna",
+        "destination": "Star Spring",
+        "initiates": "showdown"
+      },
+      "visibility": "public",
+      "certainty": "confirmed"
+    },
+    {
+      "event_id": "e3",
+      "turn": 4,
+      "phase": "combat",
+      "state_label": "showdown_open",
+      "priority": "p2",
+      "focus": "p2",
+      "outstanding_tasks": [],
+      "chain": [],
+      "actor": "p2",
+      "action": {
+        "kind": "play_card",
+        "card": "Hextech Ray",
+        "timing": "action",
+        "target": "Inferna"
+      },
+      "visibility": "public",
+      "certainty": "confirmed"
+    },
+    {
+      "event_id": "e4",
+      "turn": 4,
+      "phase": "combat",
+      "state_label": "showdown_closed",
+      "priority": "p2",
+      "focus": "p2",
+      "outstanding_tasks": [],
+      "chain": [
+        "Hextech Ray"
+      ],
+      "actor": null,
+      "action": {
+        "kind": "object_killed",
+        "object": "Inferna",
+        "reason": "3 damage from Hextech Ray exceeded 1 Might"
+      },
+      "visibility": "public",
+      "certainty": "confirmed",
+      "recorder": "record-a"
+    },
+    {
+      "event_id": "e5",
+      "turn": 4,
+      "phase": "combat",
+      "state_label": "showdown_open",
+      "priority": "p1",
+      "focus": "p1",
+      "outstanding_tasks": [],
+      "chain": [],
+      "actor": null,
+      "action": {
+        "kind": "state_assertion",
+        "detail": "p1 holds Priority and Focus"
+      },
+      "visibility": "public",
+      "certainty": "confirmed",
+      "recorder": "record-a"
+    },
+    {
+      "event_id": "e6",
+      "turn": 4,
+      "phase": "combat",
+      "state_label": "showdown_open",
+      "priority": "p2",
+      "focus": "p2",
+      "outstanding_tasks": [],
+      "chain": [],
+      "actor": null,
+      "action": {
+        "kind": "state_assertion",
+        "detail": "p2 holds Priority and Focus"
+      },
+      "visibility": "public",
+      "certainty": "confirmed",
+      "recorder": "record-b"
+    },
+    {
+      "event_id": "e7",
+      "turn": 4,
+      "phase": "combat",
+      "state_label": "showdown_open",
+      "priority": null,
+      "focus": null,
+      "outstanding_tasks": [],
+      "chain": [],
+      "actor": "p1",
+      "action": {
+        "kind": "attack",
+        "unit": "Inferna",
+        "battlefield": "Star Spring"
+      },
+      "visibility": "public",
+      "certainty": "confirmed",
+      "recorder": "record-b",
+      "recorder_note": "record-b did not note the Priority or Focus holder at this point"
+    }
+  ],
+  "decision_points": [
+    {
+      "decision_id": "d1",
+      "at_event": "e7",
+      "actor": "p1",
+      "question": "Whether attacking with Inferna was supported",
+      "information_available": [
+        "public board as recorded"
+      ],
+      "recorded_choice": "attacked with Inferna"
+    }
+  ],
+  "uncertainty_ledger": [
+    {
+      "about": "e4/e7",
+      "kind": "contradiction",
+      "detail": "e4 records Inferna as killed; e7 records Inferna acting afterwards in the same turn. No ordering of these events is consistent."
+    },
+    {
+      "about": "e5/e6",
+      "kind": "contradiction",
+      "detail": "e5 and e6 assert incompatible Priority and Focus holders at the same turn, phase, and state."
+    }
+  ],
+  "declared_contradictions": [
+    {
+      "contradiction_id": "c1",
+      "events": [
+        "e4",
+        "e7"
+      ],
+      "field": "object_liveness",
+      "object": "Inferna"
+    },
+    {
+      "contradiction_id": "c2",
+      "events": [
+        "e5",
+        "e6"
+      ],
+      "field": "priority"
+    },
+    {
+      "contradiction_id": "c3",
+      "events": [
+        "e5",
+        "e6"
+      ],
+      "field": "focus"
+    }
+  ],
+  "expected_analysis_boundary": {
+    "must_not_use": [],
+    "must_classify_insufficient": [
+      "d1"
+    ],
+    "must_not_claim": [
+      "that Inferna was alive at e7",
+      "that Inferna was dead at e7",
+      "which recorder was correct"
+    ],
+    "notes": "Both branches are narratable and one of them is false. The obligation is to report the conflict and stop, not to pick the branch that reads better."
+  }
+}

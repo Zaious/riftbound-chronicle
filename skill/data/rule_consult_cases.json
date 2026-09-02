@@ -214,15 +214,15 @@
     {
       "case_id": "RC-017",
       "category": "specific_interaction",
-      "question": "Two replacement effects could each replace the same unit's death. Do both apply?",
-      "facts": ["Both replacement effects qualify for the same kill event.", "Neither is worded as optional."],
+      "question": "Two replacement effects could each replace the same unit's death. Which applies, and can the second still apply after the first?",
+      "facts": ["Both replacement effects qualify for the same kill event before either is applied.", "Neither is worded as optional.", "The affected unit's controller has not yet chosen an order.", "Whether the event the first replacement produces still qualifies for the second is not given."],
       "expected": {
-        "conclusion_contains": ["applied once", "one", "not"],
+        "conclusion_contains": ["order", "controller", "applied once", "qualif"],
         "confidence": "High",
         "escalation_required": false
       },
       "source_ids": ["core-rules-2026-07-16"],
-      "locator": "Core Rules 370.2"
+      "locator": "Core Rules 370.1.b, 370.2, 372"
     },
     {
       "case_id": "RC-018",
@@ -241,7 +241,7 @@
       "case_id": "RC-019",
       "category": "general_mechanic",
       "question": "When a replacement effect replaces a kill, does the unit die first and then get returned, or does the death never occur?",
-      "facts": ["The replacement effect names the death event as the event it replaces."],
+      "facts": ["The replacement effect names the death event as the event it replaces.", "The replacement effect has been applied to that death event."],
       "expected": {
         "conclusion_contains": ["before", "never", "replaced"],
         "confidence": "High",

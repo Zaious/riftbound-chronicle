@@ -37,6 +37,12 @@ in multi-game platforms (see `../policy/RIOT_COMPLIANCE_BOUNDARY.md`).
 
 The systems share card, rules, format, and evidence data. They do not share authority. A deck recommendation is not a ruling; a rules explanation is not a state transition; a Player 2 choice is not automatic rules enforcement.
 
+Executable card semantics are global-core and controlling-English based;
+regional release, legality, localization, and availability remain overlays.
+This lets the portable repository support international research while the
+Taiwan-facing product retains its actual regional responsibilities. See
+[ADR-0004](../decisions/ADR-0004-global-card-programs-and-regional-overlays.md).
+
 A fourth system, `match-analyst`, is planned for post-game log analysis. It has
 two projections over one normalized timeline: `review` evaluates rules and
 decision quality; `commentary` explains the match for players, readers, or

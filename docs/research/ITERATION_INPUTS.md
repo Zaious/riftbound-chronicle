@@ -139,6 +139,11 @@ enumerates only over what the summary determines and returns an explicit
 `indeterminate` for the rest, which is the same fail-closed discipline the effect
 IR already uses, applied one level up.
 
+**Decision recorded 2026-09-02.** ADR-0003 adopts that bounded shape: Phase A
+classifies user-supplied candidates and never claims a complete set; Phase B
+engine enumeration requires structured observation, action-family generators,
+and a machine-checkable completeness proof.
+
 **How we would know it is real.** Before building R4, take a sample of real P2-A
 `public_state` strings and ask how many support an unambiguous action
 enumeration. If most do not, R4's contract is wrong on paper before any code is

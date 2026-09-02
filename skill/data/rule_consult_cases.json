@@ -171,6 +171,123 @@
       },
       "source_ids": ["spiritforged-errata-2026-01-14", "spiritforged-errata-zh-cn-2026-01-14"],
       "locator": "matching card entry in the official English errata and Chinese translation"
+    },
+    {
+      "case_id": "RC-014",
+      "category": "general_mechanic",
+      "question": "A player is instructed to draw 3 with only 2 cards left in their Main Deck. What happens?",
+      "facts": ["The Main Deck holds two cards when the draw instruction resolves."],
+      "expected": {
+        "conclusion_contains": ["as many as possible", "Burn Out", "remaining"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 413.4.a–413.4.c"
+    },
+    {
+      "case_id": "RC-015",
+      "category": "general_mechanic",
+      "question": "When an effect recycles several cards from a trash at once, where do they go and in what order?",
+      "facts": ["Three Main Deck cards are recycled from one player's trash by a single instruction."],
+      "expected": {
+        "conclusion_contains": ["bottom", "own", "random order"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 416.1, 416.1.c, 416.5"
+    },
+    {
+      "case_id": "RC-016",
+      "category": "general_mechanic",
+      "question": "A 5-Might unit has 3 damage marked. A spell lowers its Might to 3. Is that damage now lethal?",
+      "facts": ["The Might reduction resolves before the next cleanup.", "No effect alters the amount of damage needed to kill the unit."],
+      "expected": {
+        "conclusion_contains": ["greater than or equal", "Might", "cleanup"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 142.4.a–142.4.b"
+    },
+    {
+      "case_id": "RC-017",
+      "category": "specific_interaction",
+      "question": "Two replacement effects could each replace the same unit's death. Do both apply?",
+      "facts": ["Both replacement effects qualify for the same kill event.", "Neither is worded as optional."],
+      "expected": {
+        "conclusion_contains": ["applied once", "one", "not"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 370.2"
+    },
+    {
+      "case_id": "RC-018",
+      "category": "specific_interaction",
+      "question": "A once-each-turn replacement says the player may apply it. If they decline for one event, can they apply it to a later event this turn?",
+      "facts": ["The replacement effect begins with the words once each turn and contains the word may.", "The player declined to apply it to the first qualifying event."],
+      "expected": {
+        "conclusion_contains": ["not been applied", "later", "may"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 371.1–371.2.b"
+    },
+    {
+      "case_id": "RC-019",
+      "category": "general_mechanic",
+      "question": "When a replacement effect replaces a kill, does the unit die first and then get returned, or does the death never occur?",
+      "facts": ["The replacement effect names the death event as the event it replaces."],
+      "expected": {
+        "conclusion_contains": ["before", "never", "replaced"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 370.1.b–370.1.c"
+    },
+    {
+      "case_id": "RC-020",
+      "category": "general_mechanic",
+      "question": "A unit dies in a cleanup after a spell dealt it damage. Which object is credited with the kill?",
+      "facts": ["The unit had lethal damage marked when the cleanup resolved.", "The damage came from a spell that resolved immediately before the cleanup."],
+      "expected": {
+        "conclusion_contains": ["attributed", "dealt", "cleanup"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 428.4, 428.5.c"
+    },
+    {
+      "case_id": "RC-021",
+      "category": "general_mechanic",
+      "question": "A resolving effect says Do this twice. How does the reflexive trigger reach the chain?",
+      "facts": ["The condition for the reflexive trigger is met during resolution."],
+      "expected": {
+        "conclusion_contains": ["Pending", "chain", "in order"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 387.1.a, 388.1–388.2"
+    },
+    {
+      "case_id": "RC-022",
+      "category": "general_mechanic",
+      "question": "Does an activated ability that Adds resources wait on the chain like a spell, and does Priority pass when it is finalized?",
+      "facts": ["The ability is an activated ability, not a spell, and its effect is to Add resources."],
+      "expected": {
+        "conclusion_contains": ["immediately", "Priority", "Focus"],
+        "confidence": "High",
+        "escalation_required": false
+      },
+      "source_ids": ["core-rules-2026-07-16"],
+      "locator": "Core Rules 429.2–429.2.b"
     }
   ]
 }

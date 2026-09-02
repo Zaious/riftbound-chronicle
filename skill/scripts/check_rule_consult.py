@@ -10,6 +10,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from check_effect_ir import base_state, program
+from effect_ir import apply_program, hash_value, perform_lethal_cleanup
 from engine_check import build_engine_check
 from rule_consult import ConsultationError, attach_engine_check, new_consultation, now_iso, save, validate_consultation
 from rules_core import CORE_RULESET, FAQ_AS_OF, summarize_result
@@ -101,7 +103,7 @@ def main():
             errors.append(f"case {case_id} has no source locator")
     if len(case_ids) != len(set(case_ids)):
         errors.append("Rule Consult cases have duplicate case_id values")
-    if not {"general_mechanic", "specific_interaction", "tournament_procedure"}.issubset(category_seen):
+    if not {"general_mechanic", "specific_interaction", "tournament_procedure", "source_conflict"}.issubset(category_seen):
         errors.append("case corpus does not cover all initial question categories")
 
     if schema.get("properties", {}).get("official_status", {}).get("const") != "unofficial":
@@ -187,6 +189,68 @@ def main():
     modern_with_abstention = attach_engine_check(modern, unsupported_check)
     if validate_consultation(modern_with_abstention) or modern_with_abstention["engine_checks"][-1].get("outcome") != "unsupported":
         errors.append("Rule Consult did not preserve an unsupported engine abstention")
+
+    # Effect-layer and replacement fixtures, from the real engines rather than
+    # hand-written result dicts. Rule Consult must carry a supported effect
+    # check beside its timing check, and must carry a decision_required check
+    # without the artifact resolving the decision -- the consultation presents
+    # the choice; it does not make it.
+    effect_state = base_state()
+    draw_program = program("rule-consult-draw", {"op": "draw", "player": "p1", "count": 1})
+    effect_check = build_engine_check(
+        "effect", apply_program(copy.deepcopy(effect_state), draw_program),
+        input_hashes={"effect_state": hash_value(effect_state), "effect_program": "sha256:" + "4" * 64},
+    )
+    with_effect = attach_engine_check(modern, effect_check)
+    if validate_consultation(with_effect) or with_effect["engine_checks"][-1].get("outcome") != "supported":
+        errors.append("Rule Consult did not accept a supported effect-layer engine check")
+    if with_effect["engine_checks"][-1].get("coverage", {}).get("id") != "effect_program_v1":
+        errors.append("effect-layer check lost its bounded coverage id in the consultation")
+
+    replacement_state = base_state()
+    for object_id in ("u3", "u4"):
+        replacement_state["objects"][object_id] = {
+            "owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2,
+            "might_modifiers": [], "damage": 0, "exhausted": False,
+        }
+        replacement_state["players"]["p2"]["zones"]["base"].append(object_id)
+    replacement_state["objects"]["u2"]["damage"] = 4
+    replacement_state["objects"]["u3"]["damage"] = 2
+    replacement_state["replacement_effects"] = [{
+        "replacement_id": "guard-all", "controller": "p2", "source_object": "u4",
+        "mode": "prevent_event", "event_op": "kill", "optional": False,
+        "uses_remaining": None, "target_controller_relation": "friendly",
+    }]
+    decision_check = build_engine_check(
+        "cleanup", perform_lethal_cleanup(copy.deepcopy(replacement_state)),
+        input_hashes={"effect_state": hash_value(replacement_state)},
+    )
+    if decision_check.get("outcome") != "decision_required":
+        errors.append(f"simultaneous replacement fixture did not produce decision_required: {decision_check.get('outcome')}")
+    with_decision = attach_engine_check(with_effect, decision_check)
+    if validate_consultation(with_decision):
+        errors.append("Rule Consult rejected a decision_required replacement-ordering check")
+    stored = with_decision["engine_checks"][-1]
+    if stored.get("outcome") != "decision_required" or set(stored.get("decision_required", {}).get("event_ids", [])) != {"u2", "u3"}:
+        errors.append("the pending replacement decision was not preserved intact in the consultation")
+    if any(key in with_decision for key in ("cleanup_decisions", "replacement_event_order")):
+        errors.append("the consultation artifact resolved a controller decision on the player's behalf")
+
+    optional_state = base_state()
+    optional_state["replacement_effects"] = [{
+        "replacement_id": "optional-shield", "controller": "p2", "source_object": "u2",
+        "mode": "prevent_event", "event_op": "deal_damage", "optional": True,
+        "uses_remaining": 1, "target_object_id": "u2",
+    }]
+    optional_program = program("rule-consult-optional", {"op": "deal_damage", "object_id": "u2", "amount": 2})
+    choice_check = build_engine_check(
+        "effect", apply_program(copy.deepcopy(optional_state), optional_program),
+        input_hashes={"effect_state": hash_value(optional_state), "effect_program": "sha256:" + "5" * 64},
+    )
+    if choice_check.get("outcome") != "decision_required" or choice_check.get("decision_required", {}).get("kind") != "replacement_choice":
+        errors.append("optional replacement fixture did not produce a replacement_choice decision")
+    elif validate_consultation(attach_engine_check(with_decision, choice_check)):
+        errors.append("Rule Consult rejected a replacement_choice decision check")
 
     bad_engine = copy.deepcopy(modern)
     bad_engine["engine_checks"][0]["coverage"]["complete_game"] = True

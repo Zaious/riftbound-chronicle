@@ -298,6 +298,8 @@ gates remain `[CODEX-CONTEXT]`.
 - [x] Format-scoped 2v2-only ban and collection-only recommendation-mask cases.
 - [x] Optional card behavior manifest projection with copy-weighted clause
   coverage and automatic current-text staleness.
+- [x] Bilingual behavior-coverage demo for all availability statuses and copy
+  counts, with generated non-production fixtures and strategy-boundary guards.
 - [x] Rift Atlas pasted-deck/URL provenance adapter.
 - [x] Bilingual local demo with JSON/Markdown export and artifact import.
 
@@ -319,7 +321,8 @@ Default ownership: `[JOINT]`. Pipeline/evaluation/UI work is
 - [ ] Separate heuristic roles from expert-confirmed deck identity.
 - [ ] Expand expert cases across decks, regions, levels, and stale data.
 - [ ] Add blinded player/expert preference results to the eval suite.
-- [ ] Expose unsupported interaction coverage in output and demo.
+- [x] Expose unsupported/stale/uncovered behavior counts in output and demo
+  without turning them into strategy claims.
 
 ## 9. Rule Consult
 
@@ -345,7 +348,9 @@ migration lands.
   authority.
 - [x] Render `decision_required` options neutrally in a read-only viewer.
 - [x] Separate source uncertainty from engine coverage uncertainty.
-- [ ] Add effect/replacement/combat fixtures and expert rulings.
+- [x] Add sourced effect-layer and replacement-effect consultation fixtures.
+- [ ] Add supported Combat-engine consultation fixtures and expert rulings;
+  current source-only Combat questions do not satisfy this item.
 - [x] Add an engine-check panel to demo and export.
 
 ## 10. Player 2 Agent
@@ -418,6 +423,8 @@ fixtures, projection formatting, and the demo.
 - [x] Public repository excludes official PDFs and generated local index.
 - [x] English, Traditional Chinese, and Korean README set.
 - [x] CI and off-cwd portability checks for active scripts.
+- [x] Three-language README connection tables with an artifact-derived CI gate
+  that rejects both overstatement and understatement.
 - [ ] Shared engine-check viewer across the three active demos.
 - [ ] Match Analyst demo and four-system navigation.
 - [ ] `[JOINT]` After each system satisfies the six connection conditions,
@@ -503,7 +510,7 @@ real artifact migration should establish the presentation semantics first.
 | D-00 — completed 2026-09-01 | Reusable read-only engine-check viewer core | X-01 Rule Consult artifact migration and its source-vs-engine presentation rules — satisfied 2026-09-01 | Five outcomes, bilingual fail-closed renderer, authority/coverage display, no choices or mutation |
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
 | D-02 — completed 2026-09-01 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual shared viewer, five verification states, raw-result refusal, documented overrides, prototype regression |
-| D-03 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied 2026-09-01; production pack absent | Prototype display, import, and regression fixtures without widening strategy claims |
+| D-03 — completed 2026-09-02 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied; production pack absent | Four status explanations, five copy counts, generated fixtures, bilingual display, strategy-boundary regressions |
 | D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
 | D-06 | Match Analyst schemas/runner projections | Normalized timeline and engine-binding contracts | Schema implementation, formatter, fixtures, no router activation |

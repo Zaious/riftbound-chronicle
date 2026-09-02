@@ -2,6 +2,10 @@
 
 Implementation status and the complete engine/four-system backlog are tracked
 in [ENGINE_AND_SYSTEMS_COMPLETION_CHECKLIST.md](../plans/ENGINE_AND_SYSTEMS_COMPLETION_CHECKLIST.md).
+Schema/capability evolution follows
+[ADR-0002](../decisions/ADR-0002-engine-schema-and-capability-evolution.md),
+and dependency order is named in
+[ENGINE_CAPABILITY_MILESTONES.md](../plans/ENGINE_CAPABILITY_MILESTONES.md).
 
 Status: implementation baseline
 Date: 2026-08-30
@@ -241,9 +245,13 @@ decision artifact and otherwise rolls back atomically. Multiple descriptors,
 replacement programs, and different-controller turn-order execution remain
 fail-closed future work.
 
-### R3 — Bounded Origins/Taiwan card pack
+### R3 — Bounded global card programs plus regional overlays
 
-- select two to four linear decks plus their relevant Battlefields;
+[ADR-0004](../decisions/ADR-0004-global-card-programs-and-regional-overlays.md)
+keeps card semantics once under controlling current text; Taiwan and future
+regions add release, legality, localization, and availability overlays.
+
+- select two to four linear global-core decks plus their relevant Battlefields;
 - implement only cards used by the bounded environment;
 - mark every card behavior `full`, `partial`, `unsupported`, or `stale`;
 - require an official-text/errata locator and at least one behavior test per
@@ -260,6 +268,10 @@ fail-closed future work.
 > real `public_state` strings and ask how many support an unambiguous
 > enumeration — costs almost nothing and could redirect the whole release.
 
+[ADR-0003](../decisions/ADR-0003-bounded-observation-and-legal-actions.md)
+therefore requires Phase A to classify user-supplied candidates without a
+complete-set claim. Engine-generated enumeration is Phase B and remains gated
+by structured observation and action-family completeness evidence.
 
 - enumerate timing- and effect-legal actions from a perspective-safe state;
 - return an explanation trace, not only an action id;
@@ -268,14 +280,13 @@ fail-closed future work.
   from one timeline, and abstain on missing facts;
 - feed confirmed Reviewer corrections back into the conformance corpus.
 
-### R5 — Search and learning research
+### R5 — Evaluation, search, and learning research
 
-- deterministic batch runner and replay corpus;
-- Random and transparent heuristic baselines;
-- MCTS/ISMCTS through a Chronicle-owned interface, optionally backed by
-  Apache-licensed OpenSpiel;
-- imitation/RL only after legal-action masks, observation boundaries, and
-  state transitions pass conformance for the bounded environment.
+- **R5-A:** deterministic runners, replay corpus, coverage/abstention metrics,
+  and transparent baselines; no Riot authorization dependency.
+- **R5-B:** bounded local search only after R4 and G3 terminal-state coverage.
+- **R5-C:** P2-S/public simulation/RL remains outside the active roadmap until
+  a separate authorization and product decision.
 
 ## Pattern absorption matrix
 

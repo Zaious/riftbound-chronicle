@@ -4,7 +4,7 @@ Status: active implementation ledger
 
 Baseline: Core Rules 2026-07-16; FAQ as of 2026-08-14
 
-Last reconciled: 2026-09-01
+Last reconciled: 2026-09-02
 
 This is the single completion ledger for Chronicle's sovereign rules engine and
 four user-facing systems. A checked item means an implementation, contract, and
@@ -71,6 +71,9 @@ contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
 Remaining engine semantics are `[CODEX-CONTEXT]`. Once a transition contract is
 frozen, fixture expansion and official-example encoding become
 `[CLAUDE-READY]`.
+
+- [x] Accept ADR-0002 schema/ruleset/capability/implementation version policy
+  and explicit migration contract.
 
 - [x] Four-state model: Neutral/Showdown × Open/Closed.
 - [x] Action/Reaction permission gates.
@@ -184,13 +187,25 @@ accepted is `[CLAUDE-READY]`.
 Default ownership: `[CODEX-CONTEXT]`; independent UI or fixture work after each
 procedure contract is `[CLAUDE-READY]`.
 
+Dependency milestones are defined in
+[ENGINE_CAPABILITY_MILESTONES.md](ENGINE_CAPABILITY_MILESTONES.md):
+
+- [ ] **G1 — Showdown and Combat.** Complete the supported Showdown/Combat
+  procedure and its state/trace contract.
+- [ ] **G2 — Battlefield control, Conquer, and Scoring.** Complete control,
+  point, and scoring semantics.
+- [ ] **G3 — Victory and Terminal State.** Complete Victory Score, ties,
+  simultaneous terminal events, Burn Out, terminal reasons, and reward adapter.
+
 - [ ] Complete normal Cleanup steps 1–10a.
 - [ ] Special, Combat, and End-of-Turn Cleanup additions.
 - [ ] Attack declaration, attacker/defender designations, and legal defenders.
 - [ ] Combat damage assignment, Tank/Backline conflicts, and simultaneous Deal.
 - [ ] Showdown staging, opening, action cycle, resolution, and closure.
 - [ ] Battlefield Contested/control transitions.
-- [ ] Conquer resolution, scoring, ties, and win determination.
+- [ ] Implement the Conquer/point/control components required by G2.
+- [ ] Implement terminal detection, ties, Burn Out, and reward adapter required
+  by G3.
 - [ ] Complete turn start/main/ending phase transitions.
 - [ ] Multi-player edge cases and Turn Order changes.
 
@@ -206,17 +221,23 @@ migrations are `[CODEX-CONTEXT]`.
 - [ ] Golden official examples encoded as conformance fixtures.
 - [ ] Differential tests against independent implementations where semantics
   overlap, without giving those engines authority.
-- [ ] Version migration policy for state, program, trace, and decision schemas.
-- [ ] Clause-level coverage manifest, not merely operation-name coverage.
+- [x] Version migration policy for state, program, trace, and decision schemas
+  accepted in ADR-0002; migration tooling remains to implement.
+- [x] Clause-level card behavior coverage manifest, not merely operation-name
+  coverage.
+- [ ] Implement a capability manifest that identifies exact supported
+  operations, procedures, clauses, exclusions, and implementation identity.
 
 ## 4. R3 — Bounded card-program packs
 
-Default ownership: `[JOINT]`. Codex selects the pack, freezes the semantic
-contract, and accepts coverage; Claude can collect/normalize card clauses and
-implement assigned cards against that frozen contract.
+Default ownership: `[JOINT]`. ADR-0004 fixes global card semantics plus regional
+overlays. Codex selects the first pack and accepts coverage; Claude can
+collect/normalize card clauses and implement assigned cards.
 
-- [ ] Select two to four linear Origins/Taiwan decks and their Battlefields.
-- [ ] Freeze applicable card text, errata, ruleset, format, and region.
+- [x] Accept the global-core card-program plus regional-overlay architecture.
+- [ ] Select two to four linear global-core Origins decks and Battlefields.
+- [ ] Define the first `taiwan-origins-v1` release/legality/localization overlay.
+- [ ] Freeze applicable card text, errata, ruleset, global pack, and overlay.
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
   current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.
@@ -235,15 +256,21 @@ implement assigned cards against that frozen contract.
 Default ownership: `[CODEX-CONTEXT]`. After schemas are frozen, corpus
 normalization and adversarial fixtures become `[CLAUDE-READY]`.
 
+- [x] Accept ADR-0003: structured observation is prerequisite; Phase A
+  classifies user-supplied candidates; Phase B enumeration requires a
+  completeness proof.
+
 - [ ] Run the state-completeness pre-check on real P2-A `public_state` samples.
 - [ ] Define structured, perspective-safe observation schemas.
 - [ ] Separate public, own-private, inferred, later-revealed, and unknown facts.
 - [ ] Normalize complete and partial logs into stable source event ids.
 - [ ] Reconstruct timing and supported effect state at every event.
-- [ ] Enumerate timing-legal candidates from supported structured state.
+- [ ] Phase A: classify user-supplied candidates from supported structured state.
 - [ ] Filter candidates by targets, costs, and effect prerequisites.
 - [ ] Explain every included/excluded action and its coverage.
 - [ ] Abstain when the observation cannot support an unambiguous legal set.
+- [ ] Phase B: generate candidates only for covered action families and keep
+  `complete_action_set: false` without a machine-checkable completeness proof.
 - [ ] Prove Player 1 hidden information cannot enter Player 2's action set.
 - [ ] Add official fixtures for legal and illegal response windows.
 - [ ] Bind P2-A ranking to supported candidates without moving legality or
@@ -256,17 +283,19 @@ Default ownership: `[JOINT]`. Deterministic runners, metrics, and corpus tooling
 are `[CLAUDE-READY]`; policy objectives, information sets, and authorization
 gates remain `[CODEX-CONTEXT]`.
 
-- [ ] Deterministic batch runner for states, programs, decisions, and replays.
-- [ ] Versioned replay corpus with train/eval separation and provenance.
-- [ ] Clause-level engine coverage, unsupported-rate, and conformance metrics.
-- [ ] Abstention metrics split by missing state, unsupported mechanic, source
+- [ ] **R5-A:** deterministic batch runner for states, programs, decisions, and
+  replays.
+- [ ] **R5-A:** versioned replay corpus with train/eval separation and provenance.
+- [ ] **R5-A:** clause-level engine coverage, unsupported-rate, and conformance metrics.
+- [ ] **R5-A:** abstention metrics split by missing state, unsupported mechanic, source
   conflict, stale data, and decision requirement.
-- [ ] Policy evaluation separating legality, strategy, and outcome quality.
-- [ ] Model/Skill/version primer battles and blinded expert preference tests.
-- [ ] Match-review correction loop into conformance fixtures.
-- [ ] Search/MCTS/RL only after state ownership, legal actions, deterministic
-  transitions, and Riot authorization are separately satisfied.
-- [ ] P2-S remains excluded from public runtime until its written gate passes.
+- [ ] **R5-A:** policy evaluation separating legality, strategy, and outcome quality.
+- [ ] **R5-A:** model/Skill/version primer battles and blinded expert preference tests.
+- [ ] **R5-A:** Match-review correction loop into conformance fixtures.
+- [ ] **R5-B:** bounded local search only after state ownership, R4 legal
+  actions, deterministic transitions, and G3 terminal-state conformance.
+- [ ] **R5-C:** P2-S/public simulation/RL remains outside the active roadmap
+  until a separate authorization and product decision.
 
 ## 7. Shared `engine-check.v1` integration layer
 
@@ -498,6 +527,9 @@ push” does not isolate a commit on shared `main`.
 | C-06 — completed 2026-09-01 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline; reports stay under `skill/.local/refresh-reports/` | Offline fixtures, immutable registry, path guard, public DNS/redirect guard, no analysis socket |
 | C-07 — completed 2026-09-01 | Expand Deck Coach expert/eval cases using existing contracts | Data, evidence ledger, and tests; no new scoring dimensions | 2v2-only ban and collection-only constraints, weak-primer discrimination, README count gate |
 | C-08 — completed 2026-09-01 | Prepare Match Analyst example logs and uncertainty fixtures | Fixtures/docs only; no claim that the system is routed or implemented | Complete/partial/contradictory/perspective-safe fixtures with re-derived boundaries |
+| C-09 | Implement ADR-0002 capability-manifest schema, validator, fixtures, and engine-check binding | ADR-0002 accepted; do not change existing schema semantics | Exact capability/exclusion/build identity, stale/mismatch tests, off-cwd CLI |
+| C-10 | Implement ADR-0003 observation/action-query/result schemas and Phase-A adversarial fixtures | ADR-0003 accepted; no Phase-B completeness claim | Five candidate verdicts, perspective boundary, missing-fact abstention, deterministic ids |
+| C-11 | Build R5-A coverage and abstention report over existing fixtures | ADR-0002 capability vocabulary accepted | Deterministic report only; no search, policy-strength, or P2-S claim |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first
@@ -523,9 +555,9 @@ real artifact migration should establish the presentation semantics first.
 | X-01 — completed 2026-09-01 | Rule Consult migration from `rules_core_check` to `engine-check.v1` | Preserves source authority, consultation confidence, legacy reads, and compatibility |
 | X-02 — completed 2026-09-01 | P2-A migration to `engine-check.v1` | Preserves human legality/state authority, rejects raw engine state, and calibrates verification without automation creep |
 | X-03 — completed 2026-09-01 | Deck behavior-coverage contract | Separates card lookup, current-text clause programs, unsupported mechanics, tests, and strategy evidence |
-| X-04 | R1/R2 semantic expansion and schema versioning | Each decision constrains every card program and replay |
-| X-05 | R3 pack selection and acceptance gate | Connects Taiwan scope, real deck lines, errata, and engine feasibility |
-| X-06 | R4 observation and legal-action architecture | Defines information sets, hidden-data safety, and abstention correctness |
+| X-04 — governance completed 2026-09-02 | R1/R2 semantic expansion and schema versioning | ADR-0002 fixes version axes, composition, choices, feature acceptance, and migrations; mechanic implementations remain open |
+| X-05 — scope completed 2026-09-02 | R3 pack selection and acceptance gate | ADR-0004 fixes global-core plus regional overlays; exact deck selection remains open |
+| X-06 — architecture completed 2026-09-02 | R4 observation and legal-action architecture | ADR-0003 fixes Phase A/B, information sets, completeness, hidden-data safety, and abstention |
 | X-07 | Match Analyst normalization/review contract and router activation | Must keep Review/Commentary consistent and satisfy all gates |
 | X-08 | Riot authorization interpretation and P2-S boundary | Product authority cannot be inferred from an isolated coding task |
 

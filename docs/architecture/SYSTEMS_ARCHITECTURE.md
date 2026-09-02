@@ -47,6 +47,11 @@ skill references, schemas, data, and validators
 
 The portable `skill/` folder must not depend on a particular web app, private deployment path, model provider, or future reinforcement-learning framework.
 
+Future structured execution composes versioned timing, effect, perspective,
+and capability components in a `game-snapshot` envelope rather than replacing
+them with one monolithic state. See
+[ADR-0002](../decisions/ADR-0002-engine-schema-and-capability-evolution.md).
+
 It also must not depend on a third-party fan engine for its rules semantics.
 Chronicle owns the common state/timing contract and executable conformance
 cases. External simulators may inform the design or be compared against it, but

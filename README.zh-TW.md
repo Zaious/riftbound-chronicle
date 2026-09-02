@@ -22,6 +22,19 @@
 | `rule-consult` | 以日期與來源解釋規則和互動 | 非官方諮詢，不改變遊戲狀態，也不取代主審 | consultation record、evidence ledger |
 | `player2-agent` | 實體雙牌對練時提出二號玩家策略建議 | 玩家掌握隱藏資訊、合法性、結算與狀態更新 | P2-A session ledger |
 
+### 引擎接通狀態
+
+一個體系只有在 checklist 的六個條件全部通過時才算接通：artifact 接受封裝、runner 能產出、validator 拒絕超額宣稱、UI 呈現各種結果、回歸測試涵蓋支援與棄權兩種案例、權威邊界在消費檢查後仍然成立。`skill/scripts/check_readme_connection_claims.py` 會從 artifact 推導這張表，表格與推導結果不一致時，多說少說都會失敗。
+
+| 體系 | 狀態 | 條件 |
+| --- | --- | ---: |
+| `rule-consult` → `engine-check.v1` | `connected` | 6 / 6 |
+| `player2-agent` → `engine-check.v1` | `connected` | 6 / 6 |
+| `deck-coach` → `engine-check.v1` | `planned` | 0 / 6 |
+| `match-analyst` → `engine-check.v1` | `planned` | 0 / 6 |
+
+Deck Coach 會顯示匯入的行為涵蓋率投影，但尚未消費這個封裝；Match Analyst 已有規格與 fixture，尚未路由。
+
 目前 Player 2 只有 **P2-A**：代理提出並解釋行動，玩家確認合法性並手動完成結算。P2-S 自動模擬器只有規劃文件，尚未實作。
 
 四個體系共用一層由 **Chronicle 自主掌控的規則核心**，而它只宣稱 conformance 套件真的跑得過的東西：

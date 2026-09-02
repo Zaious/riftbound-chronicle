@@ -22,6 +22,19 @@
 | `rule-consult` | 날짜와 출처가 있는 규칙／상호작용 설명 | 비공식 상담이며 게임 상태를 변경하거나 심판을 대체하지 않음 | consultation record, evidence ledger |
 | `player2-agent` | 두 개의 실물 덱으로 연습할 때 Player 2 전략을 제안 | 숨은 정보, 합법성, 해결 및 상태 갱신은 사람이 담당 | P2-A session ledger |
 
+### 엔진 연결 상태
+
+시스템은 체크리스트의 여섯 조건을 모두 통과해야 연결된 것으로 봅니다: artifact가 봉투를 받아들이고, runner가 생성하며, validator가 과장된 주장을 거부하고, UI가 결과를 표시하며, 회귀 테스트가 지원 사례와 기권 사례를 모두 포함하고, 권한 경계가 유지되어야 합니다. `skill/scripts/check_readme_connection_claims.py`가 artifact에서 이 표를 도출하며, 표가 어느 쪽으로든 어긋나면 실패합니다.
+
+| 시스템 | 상태 | 조건 |
+| --- | --- | ---: |
+| `rule-consult` → `engine-check.v1` | `connected` | 6 / 6 |
+| `player2-agent` → `engine-check.v1` | `connected` | 6 / 6 |
+| `deck-coach` → `engine-check.v1` | `planned` | 0 / 6 |
+| `match-analyst` → `engine-check.v1` | `planned` | 0 / 6 |
+
+Deck Coach는 가져온 행동 커버리지 투영을 표시하지만 아직 봉투를 소비하지 않습니다. Match Analyst는 명세와 fixture만 있고 라우팅되지 않았습니다.
+
 현재 Player 2는 **P2-A**만 구현되어 있습니다. Agent가 행동과 이유를 제안하고, 사람이 합법성을 확인한 뒤 실물 카드로 해결합니다. 자동 시뮬레이터인 P2-S는 문서로만 계획되어 있으며 구현되지 않았습니다.
 
 네 시스템은 **Chronicle이 직접 소유하고 관리하는 규칙 코어**를 공유하며, 이 코어는 conformance 스위트가 실제로 실행하는 것만 주장합니다:

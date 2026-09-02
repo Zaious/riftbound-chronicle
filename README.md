@@ -41,6 +41,24 @@ The project is split into three systems with deliberately different authority:
 | `rule-consult` | Explain a rule or interaction with dated sources and explicit assumptions | Unofficial consultation; never changes game state or replaces the Head Judge | Consultation record and evidence ledger |
 | `player2-agent` | Propose Player 2 decisions during human-operated physical practice | The human owns hidden information, legality, resolution, and state updates | Append-only P2-A session ledger |
 
+### Engine connection
+
+A system counts as connected only when all six checklist conditions pass:
+artifact accepts the envelope, runner produces it, validator rejects overclaims,
+UI renders the outcomes, regressions cover a supported and an abstaining case,
+and the authority boundary survives. `skill/scripts/check_readme_connection_claims.py`
+derives this table from the artifacts and fails if the table drifts either way.
+
+| System | Status | Conditions |
+| --- | --- | ---: |
+| `rule-consult` → `engine-check.v1` | `connected` | 6 / 6 |
+| `player2-agent` → `engine-check.v1` | `connected` | 6 / 6 |
+| `deck-coach` → `engine-check.v1` | `planned` | 0 / 6 |
+| `match-analyst` → `engine-check.v1` | `planned` | 0 / 6 |
+
+Deck Coach displays behavior coverage from an imported projection but does not
+yet consume the envelope; Match Analyst is specified, fixtured, and not routed.
+
 The current Player 2 implementation is **P2-A**: the Agent recommends and
 explains an action, then waits for the human to confirm legality and the resulting
 state. The future **P2-S** simulator is documented but is not implemented.

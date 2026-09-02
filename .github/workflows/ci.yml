@@ -46,6 +46,11 @@ jobs:
       - name: READMEs match routed modes, cited counts, and referenced paths
         run: python3 skill/scripts/check_readme_sync.py
 
+      # Derives each system's engine-connection status from its artifacts and
+      # fails if any README (or the checklist audit table) claims otherwise.
+      - name: README engine-connection claims match the artifacts
+        run: python3 skill/scripts/check_readme_connection_claims.py
+
       - name: Deck Coach schema, roles, cases, and artifact regressions
         run: python3 skill/scripts/check_deck_coach.py
 
@@ -137,6 +142,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_legend_packets.py"
           python3 "$REPO/skill/scripts/check_deck_primer.py"
           python3 "$REPO/skill/scripts/check_readme_sync.py"
+          python3 "$REPO/skill/scripts/check_readme_connection_claims.py"
           python3 "$REPO/skill/scripts/check_deck_coach.py"
           python3 "$REPO/skill/scripts/check_card_behavior_coverage.py"
           python3 "$REPO/skill/scripts/check_deck_coach_prototype.py"

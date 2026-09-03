@@ -1,8 +1,9 @@
 # Deck Coach ↔ `engine-check.v1`: gap analysis and test list
 
-Status: design only — no schema change, no code. Written 2026-09-03 for the
-Codex/Claude split; implementation is a later Claude package once Codex accepts
-the wiring and the authority constant.
+Status: design accepted by
+[ADR-0006](../decisions/ADR-0006-deck-coach-engine-evidence-intake.md) — no
+schema or runtime implementation yet. Written 2026-09-03 for the Codex/Claude
+split.
 
 ## Where Deck Coach stands
 
@@ -38,20 +39,20 @@ The last row is the boundary constant. Deck Coach already carries
 `deck-behavior-coverage.v1`; the engine-check wiring must leave it in place
 after a check is attached. That is the authority test.
 
-## Proposed shape (for Codex to accept or amend)
+## Accepted shape
 
 **Session artifact.** Add an optional `engine_checks` array to
 `deck-coach-session.v1`, each item a full `engine-check.v1` — the same pattern
 `rule-consultation.v1` and `p2a-session.v1` use, so the shared viewer and the
 shared validator apply unchanged. Optional, so existing sessions stay valid
-(ADR-0002 row 1).
+(ADR-0002 row 1). When present it is paired with
+`engine_evidence_scope: rules_consistency_only`.
 
 **Runner.** `deck_coach.py engine-check <session> --check <engine-check.json>`
 mirroring `rule_consult.py engine-check`: validate the check with
-`validate_engine_check`, refuse if invalid, append. The pipeline may also
-*produce* timing checks for primer claims that name a response window, using
-`build_engine_check("timing", …)` on a fixture state — production is optional
-for the first wiring; consumption is the gate.
+`validate_engine_check`, refuse if invalid, append. The first wiring is
+**consume-only**. Producing a timing check later requires an explicit structured
+scenario; primer prose is never converted into an invented game state.
 
 **Authority constant.** A Deck Coach constant
 `ENGINE_EVIDENCE_SCOPE = "rules_consistency_only"` recorded on the session
@@ -87,9 +88,11 @@ engine outcomes.
 9. Off-cwd: the `engine-check` subcommand works from `$TEMP` by absolute path
    and writes nothing on failure.
 
-## Decision needed from Codex before implementation
+## Codex decisions (accepted 2026-09-03)
 
-- Accept `engine_checks` as an optional array on `deck-coach-session.v1`.
-- Name the authority constant and where it lives (session vs coverage).
-- Whether Deck Coach may *produce* timing checks for primer claims in the
-  first wiring, or only *consume* checks handed to it.
+- `engine_checks` is an optional array on `deck-coach-session.v1`.
+- `engine_evidence_scope: rules_consistency_only` lives on the session and is
+  required whenever `engine_checks` is present; behavior coverage retains its
+  separate strategy-evidence constant.
+- The first wiring only consumes validated checks. It does not produce timing
+  checks from primer claims.

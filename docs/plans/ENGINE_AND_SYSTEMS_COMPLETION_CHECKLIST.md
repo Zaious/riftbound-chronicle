@@ -225,7 +225,7 @@ migrations are `[CODEX-CONTEXT]`.
   accepted in ADR-0002; migration tooling remains to implement.
 - [x] Clause-level card behavior coverage manifest, not merely operation-name
   coverage.
-- [ ] Implement a capability manifest that identifies exact supported
+- [x] Implement a capability manifest that identifies exact supported
   operations, procedures, clauses, exclusions, and implementation identity.
 
 ## 4. R3 — Bounded card-program packs
@@ -244,7 +244,8 @@ collect/normalize card clauses and implement assigned cards.
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
   current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.
-- [ ] Label each card `full`, `partial`, `unsupported`, or `stale`.
+- [x] Label every selected Wave-A card and clause `unsupported` or `stale` in
+  the R3-A0 draft; `full`/`partial` remain recommendations until tested programs exist.
 - [ ] Attach an official locator to every implemented clause.
 - [ ] Add positive, negative, replacement, timing, and impossible-action tests
   for every implemented card.
@@ -264,18 +265,19 @@ normalization and adversarial fixtures become `[CLAUDE-READY]`.
   completeness proof.
 
 - [ ] Run the state-completeness pre-check on real P2-A `public_state` samples.
-- [ ] Define structured, perspective-safe observation schemas.
-- [ ] Separate public, own-private, inferred, later-revealed, and unknown facts.
+- [x] Define structured, perspective-safe observation schemas for Phase A.
+- [x] Separate public, own-private, inferred, later-revealed, and unknown facts.
 - [ ] Normalize complete and partial logs into stable source event ids.
 - [ ] Reconstruct timing and supported effect state at every event.
-- [ ] Phase A: classify user-supplied candidates from supported structured state.
+- [x] Phase A: classify user-supplied candidates from supported structured state.
 - [ ] Filter candidates by targets, costs, and effect prerequisites.
 - [ ] Explain every included/excluded action and its coverage.
-- [ ] Abstain when the observation cannot support an unambiguous legal set.
+- [x] Abstain when the observation cannot support an unambiguous candidate verdict;
+  Phase A still never claims a complete legal set.
 - [ ] Phase B: generate candidates only for covered action families and keep
   `complete_action_set: false` without a machine-checkable completeness proof.
-- [ ] Prove Player 1 hidden information cannot enter Player 2's action set.
-- [ ] Add official fixtures for legal and illegal response windows.
+- [x] Prove Player 1 hidden information cannot enter Player 2's Phase-A query/results.
+- [x] Add sourced fixtures for legal and illegal response windows within R1 coverage.
 - [ ] Bind P2-A ranking to supported candidates without moving legality or
   physical-state authority away from the human.
 - [ ] Measure confirmation latency/disagreement to detect rubber-stamping.
@@ -289,8 +291,9 @@ gates remain `[CODEX-CONTEXT]`.
 - [ ] **R5-A:** deterministic batch runner for states, programs, decisions, and
   replays.
 - [ ] **R5-A:** versioned replay corpus with train/eval separation and provenance.
-- [ ] **R5-A:** clause-level engine coverage, unsupported-rate, and conformance metrics.
-- [ ] **R5-A:** abstention metrics split by missing state, unsupported mechanic, source
+- [x] **R5-A:** exact-locator fixture-exercise, unsupported-rate, and fixture-conformance
+  metrics. These are not correctness or whole-rule-family coverage scores.
+- [x] **R5-A:** abstention metrics split by missing state, unsupported mechanic, source
   conflict, stale data, and decision requirement.
 - [ ] **R5-A:** policy evaluation separating legality, strategy, and outcome quality.
 - [ ] **R5-A:** model/Skill/version primer battles and blinded expert preference tests.
@@ -303,7 +306,7 @@ gates remain `[CODEX-CONTEXT]`.
 ## 7. Shared `engine-check.v1` integration layer
 
 - [x] One versioned envelope for timing-only, effect-only, combined resolution,
-  and cleanup checks, with the future legal-action kind reserved but not emitted.
+  cleanup, and bounded Phase-A legal-action checks.
 - [x] Component input/result hashes plus engine/rules versions.
 - [x] Distinct `supported`, `illegal`, `unsupported`, `decision_required`, and
   `invalid_input` outcomes with attributed causes.
@@ -530,10 +533,10 @@ push” does not isolate a commit on shared `main`.
 | C-06 — completed 2026-09-01 | Build source-registry refresh diff/report tooling | Read-only fetch/diff proposal; never auto-promote or overwrite baseline; reports stay under `skill/.local/refresh-reports/` | Offline fixtures, immutable registry, path guard, public DNS/redirect guard, no analysis socket |
 | C-07 — completed 2026-09-01 | Expand Deck Coach expert/eval cases using existing contracts | Data, evidence ledger, and tests; no new scoring dimensions | 2v2-only ban and collection-only constraints, weak-primer discrimination, README count gate |
 | C-08 — completed 2026-09-01 | Prepare Match Analyst example logs and uncertainty fixtures | Fixtures/docs only; no claim that the system is routed or implemented | Complete/partial/contradictory/perspective-safe fixtures with re-derived boundaries |
-| C-09 | Implement ADR-0002 capability-manifest schema, validator, fixtures, and engine-check binding | ADR-0002 accepted; do not change existing schema semantics | Exact capability/exclusion/build identity, stale/mismatch tests, off-cwd CLI |
-| C-10 | Implement ADR-0003 observation/action-query/result schemas and Phase-A adversarial fixtures | ADR-0003 accepted; no Phase-B completeness claim | Five candidate verdicts, perspective boundary, missing-fact abstention, deterministic ids |
-| C-11 | Build R5-A coverage and abstention report over existing fixtures | ADR-0002 capability vocabulary accepted | Deterministic report only; no search, policy-strength, or P2-S claim |
-| C-12 | Execute R3-A0 Annie/Master Yi clause inventory | Selection record accepted; no engine changes allowed | Verify current text/errata, stable clause ids, draft full/partial/unsupported/stale labels, source ledger; no production activation |
+| C-09 — completed 2026-09-03 | Implement ADR-0002 capability-manifest schema, validator, fixtures, and engine-check binding | ADR-0002 accepted; do not change existing schema semantics | Exact capability/exclusion/build identity, stale/mismatch tests, off-cwd CLI |
+| C-10 — completed 2026-09-03 | Implement ADR-0003 observation/action-query/result schemas and Phase-A adversarial fixtures | ADR-0003 accepted; no Phase-B completeness claim | Five candidate verdicts, perspective boundary, missing-fact abstention, deterministic ids |
+| C-11 — completed 2026-09-03 | Build R5-A coverage and abstention report over existing fixtures | ADR-0002 capability vocabulary accepted | Deterministic report only; no search, policy-strength, or P2-S claim |
+| C-12 — completed 2026-09-03 | Execute R3-A0 Annie/Master Yi clause inventory | Selection record accepted; no engine changes allowed | Verify current text/errata, stable clause ids, draft unsupported/stale labels plus non-authoritative future recommendations, source ledger; no production activation |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first

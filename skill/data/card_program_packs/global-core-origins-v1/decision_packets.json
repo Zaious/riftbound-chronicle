@@ -55,7 +55,7 @@
     {
       "id": "DP-02",
       "title": "When each choice is made: play, resolution, or trigger finalization",
-      "question": "Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost decision and object/destination choices at play; 'you may' triggered abilities and Predict recycle at trigger finalization/resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
+      "question": "Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost and spell-target choices at play, triggered-ability targets/performance at trigger finalization, and Predict recycle during resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
       "rule_text": [
         {
           "locator": "Core 355.1.a",
@@ -93,7 +93,7 @@
           "kind": "core_rules"
         }
       ],
-      "proposal": "one `play-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play|resolution|trigger, kind, owner, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses.",
+      "proposal": "one `engine-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play_declaration|trigger_finalization|resolution, kind, controller, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses. Vision's recycle choice is resolution-stage, not a 402.1 performance choice.",
       "failure_classification": {
         "decision for the wrong stage supplied early": "invalid_input",
         "decision owner mismatch": "illegal",
@@ -142,7 +142,7 @@
           "kind": "core_rules"
         }
       ],
-      "proposal": "outcome stays `supported`; per-instruction trace outcome `skipped_illegal_target` (all invalid) or `applied_to_subset` (some invalid) with the object ids; `if_applied` dependencies read the instruction's applied flag, so 'If this kills it' after a mistarget is not applied.",
+      "proposal": "outcome stays `supported`; per-instruction trace outcome `skipped_illegal_target` (all invalid) or `applied_to_subset` (some invalid) with the object ids. Linked instructions use typed predicates: mistargeting makes the prior instruction unexecuted, while 'If this kills it' additionally requires a causally attributed kill after the instruction's Cleanup; plain `if_applied` is insufficient.",
       "failure_classification": {
         "target invalid at play": "illegal",
         "target invalid at resolution": "supported (trace: skipped_illegal_target)",
@@ -190,7 +190,7 @@
           "kind": "core_rules"
         }
       ],
-      "proposal": "a `play` transaction in the resolution bridge: {decisions, costs[], program}; costs are typed effects flagged `cost: true`; any cost failing 203.3/414.4 rolls the whole play back and returns illegal with reason `cost_unpayable`; 'paid' is a decision flag per 356.4.f.1, independent of amount.",
+      "proposal": "a `play` transaction in the resolution bridge: {decisions, cost_payments[], program}. A cost payment has an explicit cost context and receipt; it may reuse typed operations but is not merely an ordinary effect carrying a boolean flag. Any failed payment/check rolls the entire play back. Optional-cost 'paid' records the declared decision and successful payment semantics, including replacement/reduction rules.",
       "failure_classification": {
         "cost declared but unpayable": "illegal",
         "cost decision missing at play": "decision_required",
@@ -239,7 +239,7 @@
           "kind": "core_rules"
         }
       ],
-      "proposal": "add dependency_mode `if_not_applied`; an instruction records `applied: full|partial|none`; 'If you can't' tests applied != full against the requested count (per 430.5's example), 'If you do' tests the cost decision flag (DP-04), 'Otherwise' is if_not_applied on the same dependency. ADR-0002: same program major, capability revision.",
+      "proposal": "record instruction completion as full|partial|none, but use typed predicates rather than one generic `if_not_applied`: action_performed, action_not_performed, requested_count_not_reached, cost_paid, and caused_kill. Mobilize tests actual_count < requested_count; Meditation branches on its optional-cost receipt. ADR-0002: same program major, capability revision.",
       "failure_classification": {
         "dependency on an unknown effect_id": "invalid_input",
         "dependency mode not implemented": "unsupported"
@@ -293,7 +293,7 @@
           "kind": "errata"
         }
       ],
-      "proposal": "new ops `return_to_hand` (board→owner's hand, new object id, temporary modifications dropped per 124.1), `recall` (to controller's base, not a move, damage kept per 458.1), alongside existing `move_board_object`; trigger emission keyed by op so move triggers never fire on recall.",
+      "proposal": "new ops `return_to_hand` (board→owner's hand, new object identity, temporary modifications dropped per 124.1) and `recall` (to the permanent's current controller's base, not a Move, damage/status retained unless its source changes them), alongside existing `move_board_object`; trigger emission is keyed by event kind so Move triggers never fire on Recall.",
       "failure_classification": {
         "return of an object not on the board": "illegal",
         "recall destination not the controller's base": "invalid_input",
@@ -383,7 +383,7 @@
     {
       "id": "DP-09",
       "title": "Versioning under ADR-0002",
-      "question": "Everything above adds operations and one decision artifact; nothing changes an existing field's meaning. Confirm: effect-program stays v1 with a capability revision; `play-decisions.v1` is a new decision schema; effect-state gains optional `hand` contents only if DP-06 needs object ids in hand.",
+      "question": "Everything above adds operations and one decision artifact; nothing changes an existing field's meaning. Confirm: effect-program stays v1 with a capability revision; `engine-decisions.v1` is a new decision schema; effect-state gains optional zone contents only through an additive state capability.",
       "rule_text": [
         {
           "locator": "ADR-0002 change table",
@@ -406,12 +406,12 @@
     },
     {
       "id": "DP-11",
-      "title": "The English Origins FAQ is registered but not installed",
-      "question": "rules_source_registry lists origins-faq-2025-10-16 (controlling, en-US) but only zh-CN judge FAQs are installed under .local/rules. R3-A1 packets cite Core only. Install the English FAQ into the bootstrap manifest so rulings can cite it?",
+      "title": "The English Origins FAQ is locally captured as historical evidence",
+      "question": "The official Origins FAQ is an HTML page whose own warning defers to newer rules. How should it be retained without overriding Core 2026-07-16?",
       "rule_text": [],
-      "proposal": "add the English FAQ PDF/URL to rules_manifest.json (core-en group); until then every packet here is Core-only and says so.",
+      "proposal": "capture the official HTML in supplemental-en, hash and index it locally, mark it superseded by Core 2026-07-16, exclude it from default search, and expose it only through explicit historical search. R3-A1 rulings cite current Core/errata; the FAQ is rationale, not controlling authority.",
       "failure_classification": {}
     }
   ],
-  "content_hash": "sha256:7777b05bfb65ce3072341b6219de68eb3b134a0fff19356f501f7ce79266d00b"
+  "content_hash": "sha256:b9bd6fc8269d9eb7623e9ed382b7637fa5d69c12e5c4096dc0afb5cc624d445f"
 }

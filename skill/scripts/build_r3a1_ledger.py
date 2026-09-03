@@ -54,8 +54,9 @@ from effect_ir import SUPPORTED_OPS  # noqa: E402
 BATCH = "R3-A1-choices-costs-zones"
 CORE = {"source_id": "core-rules-2026-07-16", "version": "2026-07-16", "kind": "core_rules"}
 ERRATA = {"source_id": "origins-errata-2025-10-28", "version": "2025-10-28", "kind": "errata"}
-# Registered but not installed locally (only zh-CN FAQs are); cited by id, never quoted. See DP-11.
-FAQ = {"source_id": "origins-faq-2025-10-16", "version": "2025-10-16", "kind": "official_clarification", "local": False}
+# Locally captured as an official HTML snapshot. The page itself warns that it
+# may no longer reflect current rules, so default queries exclude it.
+FAQ = {"source_id": "origins-faq-2025-10-16", "version": "2025-10-16", "kind": "official_clarification", "local": True, "status": "superseded"}
 
 DECISION_POINTS = ("at_play", "at_resolution", "at_trigger_finalization", "none")
 FIXTURE_KINDS = ("positive", "negative", "missing_information", "target_invalidated")
@@ -142,7 +143,7 @@ CLAUSES: dict[str, dict[str, Any]] = {
     },
     # Vision (Mystic Poro, Sai Scout) — keyword; "When this is played, predict."
     "f4a07c4d": {
-        "targets": False, "decision_point": "at_trigger_finalization",
+        "targets": False, "decision_point": "at_resolution",
         "why": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
         "locators": [
             L("Core 817.1.b", "It is functionally short for 'When this is played, predict.'"),
@@ -151,7 +152,6 @@ CLAUSES: dict[str, dict[str, Any]] = {
             L("Core 436.1", "Predicting a card is the act of looking at a single card from the top of the Main Deck and choosing whether or not to Recycle it."),
             L("Core 436.4", "If a player attempts to Predict more cards than are available in their Main Deck, they will Predict as many as possible instead."),
             L("Core 128.3", "Secret: This level of Privacy indicates that no player may read or look at the face of the card."),
-            L("Core 402.1", "If the first part of a Triggered Ability's effect is 'you may', its controller decides whether or not to perform the Triggered Ability now."),
             L("Core 355.5.b", "This does not include making choices for Triggered Abilities of permanents, even if those abilities trigger when the chain item is played."),
         ],
         "packets": ["DP-02", "DP-07"],
@@ -237,13 +237,13 @@ PACKETS: list[dict[str, Any]] = [
      "proposal": "typed selector carries `targeted: true|false` derived from 355.10; targeted selectors are validated at play (355.8) and re-validated at resolution (359.3.e); non-targeted resolution choices become a `play-decisions` entry with stage=resolution.",
      "failure_classification": {"missing selector on a targeted clause at play": "invalid_input", "selector names an object failing 355.9": "illegal", "selector on a zone the engine does not model": "unsupported", "resolution-time choice not yet supplied": "decision_required"}},
     {"id": "DP-02", "title": "When each choice is made: play, resolution, or trigger finalization",
-     "question": "Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost decision and object/destination choices at play; 'you may' triggered abilities and Predict recycle at trigger finalization/resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
+     "question": "Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost and spell-target choices at play, triggered-ability targets/performance at trigger finalization, and Predict recycle during resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
      "rule_text": [L("Core 355.1.a", "This includes the choice of whether or not to pay an Optional Additional Cost."),
                    L("Core 355.5.b", "This does not include making choices for Triggered Abilities of permanents … even if those abilities trigger when the chain item is played."),
                    L("Core 355.17", "If a spell or ability requires one or more players to make choices that are not outlined in this section, they are made on resolution."),
                    L("Core 402.1", "If the first part of a Triggered Ability's effect is 'you may' … its controller decides whether or not to perform the Triggered Ability now."),
                    L("Core 752.2", "This does not refer to any choices made 'as you play this' … or any choices made for Optional Additional Costs.")],
-     "proposal": "one `play-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play|resolution|trigger, kind, owner, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses.",
+     "proposal": "one `engine-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play_declaration|trigger_finalization|resolution, kind, controller, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses. Vision's recycle choice is resolution-stage, not a 402.1 performance choice.",
      "failure_classification": {"decision for the wrong stage supplied early": "invalid_input", "decision owner mismatch": "illegal", "stage the engine cannot model": "unsupported", "entry absent when reached": "decision_required"}},
     {"id": "DP-03", "title": "Targets that become illegal before or during resolution",
      "question": "Adopt 359.3.e.1–359.3.e.9 as written: resolve anyway; illegal targets unaffected; instruction with all targets invalid does not execute; with some invalid executes on the valid subset; zone change to/from non-board makes a new object (124). How should the trace record a mistarget, and does a linked 'If this kills it' then evaluate false?",
@@ -252,7 +252,7 @@ PACKETS: list[dict[str, Any]] = [
                    L("Core 359.3.e.8", "If an instruction has more than one Target and fewer than all of the Targets become Invalid … the instruction will execute, with only the Targets available and valid being operated on."),
                    L("Core 359.3.e.4", "If a target changes Zones to or from a Non-Board Zone and then returns to its original zone, it is no longer a legal target, because it's not treated as the same object."),
                    L("Core 758.1", "the spell or ability will mistarget on resolution. Any instructions related to that Game Object will be ignored as the spell resolves.")],
-     "proposal": "outcome stays `supported`; per-instruction trace outcome `skipped_illegal_target` (all invalid) or `applied_to_subset` (some invalid) with the object ids; `if_applied` dependencies read the instruction's applied flag, so 'If this kills it' after a mistarget is not applied.",
+     "proposal": "outcome stays `supported`; per-instruction trace outcome `skipped_illegal_target` (all invalid) or `applied_to_subset` (some invalid) with the object ids. Linked instructions use typed predicates: mistargeting makes the prior instruction unexecuted, while 'If this kills it' additionally requires a causally attributed kill after the instruction's Cleanup; plain `if_applied` is insufficient.",
      "failure_classification": {"target invalid at play": "illegal", "target invalid at resolution": "supported (trace: skipped_illegal_target)", "object identity after zone change not tracked by the engine": "unsupported"}},
     {"id": "DP-04", "title": "Costs: atomic payment and the play-level transaction",
      "question": "Is 'play a card' the transaction boundary — costs paid in step 4 (357), legality checked in step 5 (358), everything undone on failure (358.5)? Today the atomic bridge spans timing + one effect program; a play with an optional additional cost and a linked effect needs the same guarantee across cost payment.",
@@ -261,7 +261,7 @@ PACKETS: list[dict[str, Any]] = [
                    L("Core 414.4", "An exhausted friendly unit may not be exhausted again as the additional cost for the spell, and the additional cost has not been paid."),
                    L("Core 358.5", "If any of the above checks fail, the actions taken in this process are undone and the action is cancelled."),
                    L("Core 356.4.f.1", "An optional additional cost was 'paid' if the player made the decision to pay it.")],
-     "proposal": "a `play` transaction in the resolution bridge: {decisions, costs[], program}; costs are typed effects flagged `cost: true`; any cost failing 203.3/414.4 rolls the whole play back and returns illegal with reason `cost_unpayable`; 'paid' is a decision flag per 356.4.f.1, independent of amount.",
+     "proposal": "a `play` transaction in the resolution bridge: {decisions, cost_payments[], program}. A cost payment has an explicit cost context and receipt; it may reuse typed operations but is not merely an ordinary effect carrying a boolean flag. Any failed payment/check rolls the entire play back. Optional-cost 'paid' records the declared decision and successful payment semantics, including replacement/reduction rules.",
      "failure_classification": {"cost declared but unpayable": "illegal", "cost decision missing at play": "decision_required", "cost kind not typed": "unsupported", "malformed cost declaration": "invalid_input"}},
     {"id": "DP-05", "title": "'If you do', 'Otherwise', 'If you can't' — dependency vocabulary",
      "question": "The IR has dependency_mode if_applied|always. Meditation needs the negative branch (Otherwise); Mobilize needs 'couldn't fully perform' (430.3 channels as many as possible — is a partial channel a failure for 'If you can't'?). 055 says ignore impossible instructions; 430.5's example ties 'couldn't' to the requested count.",
@@ -270,7 +270,7 @@ PACKETS: list[dict[str, Any]] = [
                    L("Core 430.5", "e.g., 'Channel 2 runes exhausted. If you couldn't channel 2 runes this way, draw 1.'"),
                    L("Core 205", "The later instruction checks whether the game action was performed, not whether a cost was paid."),
                    L("Core 359.3.e.6", "Instructions that can't be followed, either because of illegal targets or other circumstances, are ignored.")],
-     "proposal": "add dependency_mode `if_not_applied`; an instruction records `applied: full|partial|none`; 'If you can't' tests applied != full against the requested count (per 430.5's example), 'If you do' tests the cost decision flag (DP-04), 'Otherwise' is if_not_applied on the same dependency. ADR-0002: same program major, capability revision.",
+     "proposal": "record instruction completion as full|partial|none, but use typed predicates rather than one generic `if_not_applied`: action_performed, action_not_performed, requested_count_not_reached, cost_paid, and caused_kill. Mobilize tests actual_count < requested_count; Meditation branches on its optional-cost receipt. ADR-0002: same program major, capability revision.",
      "failure_classification": {"dependency on an unknown effect_id": "invalid_input", "dependency mode not implemented": "unsupported"}},
     {"id": "DP-06", "title": "return, recall, move — three events, not one",
      "question": "Return-to-hand is a zone change (446.2) producing a new object (124); Recall relocates to Base without being a Move (455–456) and keeps damage/statuses (458.1); Move is 420/446 and triggers move abilities. Confirm three distinct event ops with distinct trigger classes, and Highlander's errata ordering (heal, exhaust, recall).",
@@ -280,7 +280,7 @@ PACKETS: list[dict[str, Any]] = [
                    L("Core 458.1", "Unless otherwise stated by the source of the Recall, Damage and statuses of a permanent will all remain unaffected by a Recall."),
                    L("Core 056.2", "If a card would enter such a zone, it goes to its owner's corresponding zone instead."),
                    L("errata: Highlander OGS-020", "heal it, exhaust it, and recall it instead.", ERRATA)],
-     "proposal": "new ops `return_to_hand` (board→owner's hand, new object id, temporary modifications dropped per 124.1), `recall` (to controller's base, not a move, damage kept per 458.1), alongside existing `move_board_object`; trigger emission keyed by op so move triggers never fire on recall.",
+     "proposal": "new ops `return_to_hand` (board→owner's hand, new object identity, temporary modifications dropped per 124.1) and `recall` (to the permanent's current controller's base, not a Move, damage/status retained unless its source changes them), alongside existing `move_board_object`; trigger emission is keyed by event kind so Move triggers never fire on Recall.",
      "failure_classification": {"return of an object not on the board": "illegal", "recall destination not the controller's base": "invalid_input", "hand zone semantics beyond add-to-hand": "unsupported"}},
     {"id": "DP-07", "title": "Look / Predict and the information boundary",
      "question": "Predict (436) lets a player look at a Secret card and choose to recycle it. The looked-at card becomes own-private knowledge. Under ADR-0003, how does an observation record it, and may a player2 query ever contain player1's predicted card? (424.2.b: voluntarily showing private information is not a Reveal.)",
@@ -299,7 +299,7 @@ PACKETS: list[dict[str, Any]] = [
      "proposal": "new op `channel_rune` {player, count, entry_state} — takes from rune_deck top, appends to base, sets exhausted per entry_state, records applied count for DP-05; rune identity preserved (Rune Deck is a zone the state already models).",
      "failure_classification": {"rune deck empty": "supported (applied: none/partial per 430.3)", "entry state other than ready|exhausted": "invalid_input"}},
     {"id": "DP-09", "title": "Versioning under ADR-0002",
-     "question": "Everything above adds operations and one decision artifact; nothing changes an existing field's meaning. Confirm: effect-program stays v1 with a capability revision; `play-decisions.v1` is a new decision schema; effect-state gains optional `hand` contents only if DP-06 needs object ids in hand.",
+     "question": "Everything above adds operations and one decision artifact; nothing changes an existing field's meaning. Confirm: effect-program stays v1 with a capability revision; `engine-decisions.v1` is a new decision schema; effect-state gains optional zone contents only through an additive state capability.",
      "rule_text": [L("ADR-0002 change table", "Add a new operation that old programs never invoke → same program major may remain; capability revision required.", {"source_id": "ADR-0002", "version": "2026-09-02", "kind": "decision"})],
      "proposal": "as stated; the capability manifest picks up the new ops automatically (C-09) and the R5-A report shows their fixture coverage (C-11).",
      "failure_classification": {}},
@@ -308,10 +308,10 @@ PACKETS: list[dict[str, Any]] = [
      "rule_text": [],
      "proposal": "illegal = a supported rule rejects it (355.9, 414.4, 203.3); invalid_input = the artifact is malformed or a required decision was supplied at the wrong stage; unsupported = the engine lacks the semantics (named mechanic); decision_required = a listed decision is unsupplied when reached. Resolution-time mistargets are supported with a trace outcome, per DP-03.",
      "failure_classification": {}},
-    {"id": "DP-11", "title": "The English Origins FAQ is registered but not installed",
-     "question": "rules_source_registry lists origins-faq-2025-10-16 (controlling, en-US) but only zh-CN judge FAQs are installed under .local/rules. R3-A1 packets cite Core only. Install the English FAQ into the bootstrap manifest so rulings can cite it?",
+    {"id": "DP-11", "title": "The English Origins FAQ is locally captured as historical evidence",
+     "question": "The official Origins FAQ is an HTML page whose own warning defers to newer rules. How should it be retained without overriding Core 2026-07-16?",
      "rule_text": [],
-     "proposal": "add the English FAQ PDF/URL to rules_manifest.json (core-en group); until then every packet here is Core-only and says so.",
+     "proposal": "capture the official HTML in supplemental-en, hash and index it locally, mark it superseded by Core 2026-07-16, exclude it from default search, and expose it only through explicit historical search. R3-A1 rulings cite current Core/errata; the FAQ is rationale, not controlling authority.",
      "failure_classification": {}},
 ]
 
@@ -411,7 +411,7 @@ def render_ledger_md(ledger: dict[str, Any]) -> str:
     out = ["# R3-A1 clause ledger — choices, costs, zones", "",
            f"Package C-13. {c['cards']} cards, {c['clauses']} clauses, {c['fixture_drafts']} fixture drafts, {c['packets']} decision packets. "
            f"{c['targeted_clauses']} clauses target under Core 355.10; decision points: {c['decision_points']}.", "",
-           f"Sources: Core Rules {CORE['version']} (installed locally, quoted); Origins errata {ERRATA['version']}; Origins FAQ {FAQ['version']} is registered but **not installed** — cited by id only (DP-11).", "",
+           f"Sources: Core Rules {CORE['version']} (installed locally, quoted); Origins errata {ERRATA['version']}; Origins FAQ {FAQ['version']} is locally captured as **superseded historical evidence** and excluded from default queries (DP-11).", "",
            "Nothing here is a ruling. Every classification is input to X-09; every fixture draft omits the expected result by construction.", ""]
     for card in ledger["cards"]:
         out.append(f"## {card['card']} — {card['type']} · `{card['printing']}`" + (" · stale snapshot" if card["stale"] else ""))

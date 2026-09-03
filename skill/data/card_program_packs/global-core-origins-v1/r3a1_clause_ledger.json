@@ -18,7 +18,8 @@
       "source_id": "origins-faq-2025-10-16",
       "version": "2025-10-16",
       "kind": "official_clarification",
-      "local": false
+      "local": true,
+      "status": "superseded"
     }
   },
   "not_claimed": [
@@ -36,8 +37,8 @@
     "targeted_clauses": 8,
     "decision_points": {
       "at_play": 9,
-      "at_resolution": 0,
-      "at_trigger_finalization": 2,
+      "at_resolution": 2,
+      "at_trigger_finalization": 0,
       "none": 1
     }
   },
@@ -725,7 +726,7 @@
             "recycle_one"
           ],
           "targets": false,
-          "decision_point": "at_trigger_finalization",
+          "decision_point": "at_resolution",
           "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
           "locators": [
             {
@@ -766,13 +767,6 @@
             {
               "locator": "Core 128.3",
               "excerpt": "Secret: This level of Privacy indicates that no player may read or look at the face of the card.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
-              "kind": "core_rules"
-            },
-            {
-              "locator": "Core 402.1",
-              "excerpt": "If the first part of a Triggered Ability's effect is 'you may', its controller decides whether or not to perform the Triggered Ability now.",
               "source_id": "core-rules-2026-07-16",
               "version": "2026-07-16",
               "kind": "core_rules"
@@ -809,7 +803,7 @@
             "recycle_one"
           ],
           "targets": false,
-          "decision_point": "at_trigger_finalization",
+          "decision_point": "at_resolution",
           "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
           "locators": [
             {
@@ -855,13 +849,6 @@
               "kind": "core_rules"
             },
             {
-              "locator": "Core 402.1",
-              "excerpt": "If the first part of a Triggered Ability's effect is 'you may', its controller decides whether or not to perform the Triggered Ability now.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
-              "kind": "core_rules"
-            },
-            {
               "locator": "Core 355.5.b",
               "excerpt": "This does not include making choices for Triggered Abilities of permanents, even if those abilities trigger when the chain item is played.",
               "source_id": "core-rules-2026-07-16",
@@ -877,5 +864,5 @@
       ]
     }
   ],
-  "content_hash": "sha256:31f0608263700ba21d69c02f18f170eabc9ae921c4e41a4d0709faf816254df2"
+  "content_hash": "sha256:979ce41f2da02f74518ef6b6e485b3193e378bef23bf8f26f41f49b46dc2a149"
 }

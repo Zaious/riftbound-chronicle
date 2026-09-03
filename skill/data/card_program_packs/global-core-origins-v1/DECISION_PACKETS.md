@@ -27,7 +27,7 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 
 **Blocks:** Flash `7a92a690`, Meditation `6ce549b5`, Mystic Poro `f4a07c4d`, Sai Scout `f4a07c4d`
 
-**Question.** Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost decision and object/destination choices at play; 'you may' triggered abilities and Predict recycle at trigger finalization/resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?
+**Question.** Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost and spell-target choices at play, triggered-ability targets/performance at trigger finalization, and Predict recycle during resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?
 
 **Rule text.**
 - `Core 355.1.a` — This includes the choice of whether or not to pay an Optional Additional Cost.
@@ -36,7 +36,7 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 - `Core 402.1` — If the first part of a Triggered Ability's effect is 'you may' … its controller decides whether or not to perform the Triggered Ability now.
 - `Core 752.2` — This does not refer to any choices made 'as you play this' … or any choices made for Optional Additional Costs.
 
-**Proposal.** one `play-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play|resolution|trigger, kind, owner, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses.
+**Proposal.** one `engine-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play_declaration|trigger_finalization|resolution, kind, controller, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses. Vision's recycle choice is resolution-stage, not a 402.1 performance choice.
 
 | Situation | Proposed outcome |
 | --- | --- |
@@ -58,7 +58,7 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 - `Core 359.3.e.4` — If a target changes Zones to or from a Non-Board Zone and then returns to its original zone, it is no longer a legal target, because it's not treated as the same object.
 - `Core 758.1` — the spell or ability will mistarget on resolution. Any instructions related to that Game Object will be ignored as the spell resolves.
 
-**Proposal.** outcome stays `supported`; per-instruction trace outcome `skipped_illegal_target` (all invalid) or `applied_to_subset` (some invalid) with the object ids; `if_applied` dependencies read the instruction's applied flag, so 'If this kills it' after a mistarget is not applied.
+**Proposal.** outcome stays `supported`; per-instruction trace outcome `skipped_illegal_target` (all invalid) or `applied_to_subset` (some invalid) with the object ids. Linked instructions use typed predicates: mistargeting makes the prior instruction unexecuted, while 'If this kills it' additionally requires a causally attributed kill after the instruction's Cleanup; plain `if_applied` is insufficient.
 
 | Situation | Proposed outcome |
 | --- | --- |
@@ -79,7 +79,7 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 - `Core 358.5` — If any of the above checks fail, the actions taken in this process are undone and the action is cancelled.
 - `Core 356.4.f.1` — An optional additional cost was 'paid' if the player made the decision to pay it.
 
-**Proposal.** a `play` transaction in the resolution bridge: {decisions, costs[], program}; costs are typed effects flagged `cost: true`; any cost failing 203.3/414.4 rolls the whole play back and returns illegal with reason `cost_unpayable`; 'paid' is a decision flag per 356.4.f.1, independent of amount.
+**Proposal.** a `play` transaction in the resolution bridge: {decisions, cost_payments[], program}. A cost payment has an explicit cost context and receipt; it may reuse typed operations but is not merely an ordinary effect carrying a boolean flag. Any failed payment/check rolls the entire play back. Optional-cost 'paid' records the declared decision and successful payment semantics, including replacement/reduction rules.
 
 | Situation | Proposed outcome |
 | --- | --- |
@@ -101,7 +101,7 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 - `Core 205` — The later instruction checks whether the game action was performed, not whether a cost was paid.
 - `Core 359.3.e.6` — Instructions that can't be followed, either because of illegal targets or other circumstances, are ignored.
 
-**Proposal.** add dependency_mode `if_not_applied`; an instruction records `applied: full|partial|none`; 'If you can't' tests applied != full against the requested count (per 430.5's example), 'If you do' tests the cost decision flag (DP-04), 'Otherwise' is if_not_applied on the same dependency. ADR-0002: same program major, capability revision.
+**Proposal.** record instruction completion as full|partial|none, but use typed predicates rather than one generic `if_not_applied`: action_performed, action_not_performed, requested_count_not_reached, cost_paid, and caused_kill. Mobilize tests actual_count < requested_count; Meditation branches on its optional-cost receipt. ADR-0002: same program major, capability revision.
 
 | Situation | Proposed outcome |
 | --- | --- |
@@ -122,7 +122,7 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 - `Core 056.2` — If a card would enter such a zone, it goes to its owner's corresponding zone instead.
 - `errata: Highlander OGS-020` — heal it, exhaust it, and recall it instead.
 
-**Proposal.** new ops `return_to_hand` (board→owner's hand, new object id, temporary modifications dropped per 124.1), `recall` (to controller's base, not a move, damage kept per 458.1), alongside existing `move_board_object`; trigger emission keyed by op so move triggers never fire on recall.
+**Proposal.** new ops `return_to_hand` (board→owner's hand, new object identity, temporary modifications dropped per 124.1) and `recall` (to the permanent's current controller's base, not a Move, damage/status retained unless its source changes them), alongside existing `move_board_object`; trigger emission is keyed by event kind so Move triggers never fire on Recall.
 
 | Situation | Proposed outcome |
 | --- | --- |
@@ -172,7 +172,7 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 
 **Blocks:** (cross-cutting)
 
-**Question.** Everything above adds operations and one decision artifact; nothing changes an existing field's meaning. Confirm: effect-program stays v1 with a capability revision; `play-decisions.v1` is a new decision schema; effect-state gains optional `hand` contents only if DP-06 needs object ids in hand.
+**Question.** Everything above adds operations and one decision artifact; nothing changes an existing field's meaning. Confirm: effect-program stays v1 with a capability revision; `engine-decisions.v1` is a new decision schema; effect-state gains optional zone contents only through an additive state capability.
 
 **Rule text.**
 - `ADR-0002 change table` — Add a new operation that old programs never invoke → same program major may remain; capability revision required.
@@ -187,10 +187,10 @@ Each packet is one question Codex can rule on once for every card it blocks. Rul
 
 **Proposal.** illegal = a supported rule rejects it (355.9, 414.4, 203.3); invalid_input = the artifact is malformed or a required decision was supplied at the wrong stage; unsupported = the engine lacks the semantics (named mechanic); decision_required = a listed decision is unsupplied when reached. Resolution-time mistargets are supported with a trace outcome, per DP-03.
 
-## DP-11 — The English Origins FAQ is registered but not installed
+## DP-11 — The English Origins FAQ is locally captured as historical evidence
 
 **Blocks:** (cross-cutting)
 
-**Question.** rules_source_registry lists origins-faq-2025-10-16 (controlling, en-US) but only zh-CN judge FAQs are installed under .local/rules. R3-A1 packets cite Core only. Install the English FAQ into the bootstrap manifest so rulings can cite it?
+**Question.** The official Origins FAQ is an HTML page whose own warning defers to newer rules. How should it be retained without overriding Core 2026-07-16?
 
-**Proposal.** add the English FAQ PDF/URL to rules_manifest.json (core-en group); until then every packet here is Core-only and says so.
+**Proposal.** capture the official HTML in supplemental-en, hash and index it locally, mark it superseded by Core 2026-07-16, exclude it from default search, and expose it only through explicit historical search. R3-A1 rulings cite current Core/errata; the FAQ is rationale, not controlling authority.

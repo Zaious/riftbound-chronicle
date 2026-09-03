@@ -1,8 +1,8 @@
 # R3-A1 clause ledger — choices, costs, zones
 
-Package C-13. 11 cards, 12 clauses, 48 fixture drafts, 11 decision packets. 8 clauses target under Core 355.10; decision points: {'at_play': 9, 'at_resolution': 0, 'at_trigger_finalization': 2, 'none': 1}.
+Package C-13. 11 cards, 12 clauses, 48 fixture drafts, 11 decision packets. 8 clauses target under Core 355.10; decision points: {'at_play': 9, 'at_resolution': 2, 'at_trigger_finalization': 0, 'none': 1}.
 
-Sources: Core Rules 2026-07-16 (installed locally, quoted); Origins errata 2025-10-28; Origins FAQ 2025-10-16 is registered but **not installed** — cited by id only (DP-11).
+Sources: Core Rules 2026-07-16 (installed locally, quoted); Origins errata 2025-10-28; Origins FAQ 2025-10-16 is locally captured as **superseded historical evidence** and excluded from default queries (DP-11).
 
 Nothing here is a ruling. Every classification is input to X-09; every fixture draft omits the expected result by construction.
 
@@ -115,7 +115,7 @@ Nothing here is a ruling. Every classification is input to X-09; every fixture d
 
 ## Mystic Poro — Unit · `ogn-171-298`
 ### `f4a07c4d` [Vision]
-- targets: **no** · decision point: **at_trigger_finalization** · needs: look, play_and_move_triggers · ops: recycle_one · packets: DP-02, DP-07
+- targets: **no** · decision point: **at_resolution** · needs: look, play_and_move_triggers · ops: recycle_one · packets: DP-02, DP-07
 - why: 817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)
   - `Core 817.1.b` — It is functionally short for 'When this is played, predict.'
   - `Core 817.1.c` — The trigger is the permanent entering the Board.
@@ -123,12 +123,11 @@ Nothing here is a ruling. Every classification is input to X-09; every fixture d
   - `Core 436.1` — Predicting a card is the act of looking at a single card from the top of the Main Deck and choosing whether or not to Recycle it.
   - `Core 436.4` — If a player attempts to Predict more cards than are available in their Main Deck, they will Predict as many as possible instead.
   - `Core 128.3` — Secret: This level of Privacy indicates that no player may read or look at the face of the card.
-  - `Core 402.1` — If the first part of a Triggered Ability's effect is 'you may', its controller decides whether or not to perform the Triggered Ability now.
   - `Core 355.5.b` — This does not include making choices for Triggered Abilities of permanents, even if those abilities trigger when the chain item is played.
 
 ## Sai Scout — Unit · `ogn-174-298`
 ### `f4a07c4d` [Vision]
-- targets: **no** · decision point: **at_trigger_finalization** · needs: look, play_and_move_triggers · ops: recycle_one · packets: DP-02, DP-07
+- targets: **no** · decision point: **at_resolution** · needs: look, play_and_move_triggers · ops: recycle_one · packets: DP-02, DP-07
 - why: 817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)
   - `Core 817.1.b` — It is functionally short for 'When this is played, predict.'
   - `Core 817.1.c` — The trigger is the permanent entering the Board.
@@ -136,5 +135,4 @@ Nothing here is a ruling. Every classification is input to X-09; every fixture d
   - `Core 436.1` — Predicting a card is the act of looking at a single card from the top of the Main Deck and choosing whether or not to Recycle it.
   - `Core 436.4` — If a player attempts to Predict more cards than are available in their Main Deck, they will Predict as many as possible instead.
   - `Core 128.3` — Secret: This level of Privacy indicates that no player may read or look at the face of the card.
-  - `Core 402.1` — If the first part of a Triggered Ability's effect is 'you may', its controller decides whether or not to perform the Triggered Ability now.
   - `Core 355.5.b` — This does not include making choices for Triggered Abilities of permanents, even if those abilities trigger when the chain item is played.

@@ -69,7 +69,8 @@ not add guessed programs for missing mechanics.
 Define and implement the smallest typed support needed for targets, optional
 additional costs, return-to-hand/from-trash, discard, look, channel, and recall.
 Each semantic contract follows ADR-0002 and is reviewed before card programs use
-it.
+it. The accepted cross-card semantics and implementation order are fixed by
+[ADR-0005](../decisions/ADR-0005-r3a1-choices-costs-and-zones.md).
 
 ### R3-A2 — play, conditions, and continuous effects
 

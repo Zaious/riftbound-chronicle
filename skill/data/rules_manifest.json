@@ -1,6 +1,6 @@
 {
   "schema_version": "riftbound-local-rules-manifest.v2",
-  "description": "Official source pointers for opt-in local rule documents. PDFs and generated indexes are never bundled in this repository.",
+  "description": "Official source pointers for opt-in local rule documents. Downloaded PDF/HTML files and generated indexes are never bundled in this repository.",
   "source_registry": "rules_source_registry.json",
   "default_groups": ["core-en"],
   "groups": {

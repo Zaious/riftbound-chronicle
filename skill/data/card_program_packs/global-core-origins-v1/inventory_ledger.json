@@ -1,0 +1,2214 @@
+{
+  "schema_version": "r3-inventory-ledger.v1",
+  "batch_id": "R3-A0-inventory",
+  "manifest_id": "global-core-origins-v1-inventory-draft",
+  "selection_id": "global-core-origins-v1-selection-2026-09-03",
+  "snapshot_source": "riftcodex-cards-raw-snapshot",
+  "errata_last_verified": "2026-08-17",
+  "not_claimed": [
+    "executable programs",
+    "production activation",
+    "deck legality",
+    "full or partial coverage in the manifest"
+  ],
+  "findings": [
+    {
+      "card": "Annie - Dark Child (Starter)",
+      "finding": "errata_join_missed_by_catalog",
+      "errata_official_name": "Dark Child, Starter",
+      "errata_card_ids": [
+        "OGN-?"
+      ],
+      "joined_by": "subtitle",
+      "consequence": "Deck Coach's catalog applies errata by name only, so it reads this card's pre-errata text; fix the overlay entry's official_name or card_ids."
+    }
+  ],
+  "counts": {
+    "cards": 34,
+    "clauses": 56,
+    "stale_cards": 4,
+    "vanilla_cards": 2,
+    "catalog_join_missed": 1,
+    "unclassified_clauses": 0
+  },
+  "cards_by_mechanic": {
+    "action_reaction_timing": [
+      "Cannon Barrage",
+      "Confront",
+      "En Garde",
+      "Flash",
+      "Gentlemen's Duel",
+      "Gust",
+      "Incinerate",
+      "Meditation",
+      "Morbid Return"
+    ],
+    "area_damage_in_combat": [
+      "Cannon Barrage"
+    ],
+    "area_targets": [
+      "Cannon Barrage",
+      "Firestorm",
+      "Tibbers"
+    ],
+    "attacking_defending_alone": [
+      "Master Yi - Wuju Bladesman (Starter)",
+      "Wielder of Water"
+    ],
+    "bonus_damage": [
+      "Annie - Fiery",
+      "Void Gate"
+    ],
+    "channel_rune": [
+      "Mobilize",
+      "Stormclaw Ursine"
+    ],
+    "combat_state": [
+      "Cannon Barrage",
+      "Fortified Position",
+      "Maddened Marauder",
+      "Master Yi - Honed",
+      "Master Yi - Wuju Bladesman (Starter)",
+      "Mountain Drake",
+      "Playful Phantom",
+      "Stalwart Poro",
+      "Stormclaw Ursine",
+      "Wielder of Water",
+      "Zephyr Sage"
+    ],
+    "conditional_effects": [
+      "Disintegrate",
+      "En Garde",
+      "Mobilize"
+    ],
+    "conditional_might": [
+      "Master Yi - Meditative",
+      "Master Yi - Wuju Bladesman (Starter)",
+      "Wielder of Water"
+    ],
+    "continuous_effects": [
+      "Master Yi - Meditative",
+      "Master Yi - Wuju Bladesman (Starter)",
+      "Wielder of Water"
+    ],
+    "deflect": [
+      "Pouty Poro"
+    ],
+    "discard": [
+      "Traveling Merchant"
+    ],
+    "duration_expiry": [
+      "En Garde",
+      "Fortified Position",
+      "Gentlemen's Duel"
+    ],
+    "end_of_turn_trigger": [
+      "Annie - Dark Child (Starter)"
+    ],
+    "enter_ready": [
+      "Confront",
+      "Master Yi - Honed"
+    ],
+    "ganking": [
+      "Master Yi - Honed"
+    ],
+    "if_cannot_fallback": [
+      "Mobilize"
+    ],
+    "linked_instruction": [
+      "Disintegrate"
+    ],
+    "look": [
+      "Mystic Poro",
+      "Sai Scout"
+    ],
+    "mutual_damage_equal_might": [
+      "Gentlemen's Duel"
+    ],
+    "next_death_replacement": [
+      "Highlander"
+    ],
+    "open_battlefield_play": [
+      "Sai Scout",
+      "Sneaky Deckhand"
+    ],
+    "optional_additional_cost": [
+      "Meditation"
+    ],
+    "play_and_move_triggers": [
+      "Annie - Stubborn",
+      "Fortified Position",
+      "Maddened Marauder",
+      "Mystic Poro",
+      "Sai Scout",
+      "Stormclaw Ursine",
+      "Tibbers",
+      "Traveling Merchant"
+    ],
+    "play_lifecycle": [
+      "Annie - Stubborn",
+      "Maddened Marauder",
+      "Sai Scout",
+      "Sneaky Deckhand",
+      "Stormclaw Ursine",
+      "Tibbers"
+    ],
+    "recall": [
+      "Highlander"
+    ],
+    "return_board_to_hand": [
+      "Gust"
+    ],
+    "return_trash_to_hand": [
+      "Annie - Stubborn",
+      "Morbid Return"
+    ],
+    "shield": [
+      "Fortified Position",
+      "Stalwart Poro",
+      "Zephyr Sage"
+    ],
+    "tank": [
+      "Maddened Marauder",
+      "Stormclaw Ursine"
+    ],
+    "target_choice": [
+      "Annie - Stubborn",
+      "Disintegrate",
+      "En Garde",
+      "Flash",
+      "Fortified Position",
+      "Gentlemen's Duel",
+      "Gust",
+      "Highlander",
+      "Incinerate",
+      "Maddened Marauder",
+      "Morbid Return"
+    ],
+    "vanilla_unit_combat_state": [
+      "Mountain Drake",
+      "Playful Phantom"
+    ]
+  },
+  "cards_by_unblocking_batch": {
+    "E0": [
+      "Cannon Barrage",
+      "Confront",
+      "En Garde",
+      "Flash",
+      "Gentlemen's Duel",
+      "Gust",
+      "Incinerate",
+      "Meditation",
+      "Morbid Return"
+    ],
+    "R3-A1-choices-costs-zones": [
+      "Disintegrate",
+      "Flash",
+      "Gentlemen's Duel",
+      "Gust",
+      "Highlander",
+      "Incinerate",
+      "Meditation",
+      "Mobilize",
+      "Morbid Return",
+      "Mystic Poro",
+      "Sai Scout"
+    ],
+    "R3-A2-play-conditions-continuous": [
+      "Annie - Dark Child (Starter)",
+      "Annie - Fiery",
+      "Annie - Stubborn",
+      "Confront",
+      "Disintegrate",
+      "En Garde",
+      "Firestorm",
+      "Highlander",
+      "Maddened Marauder",
+      "Master Yi - Honed",
+      "Master Yi - Meditative",
+      "Mobilize",
+      "Pouty Poro",
+      "Sai Scout",
+      "Sneaky Deckhand",
+      "Stormclaw Ursine",
+      "Tibbers",
+      "Traveling Merchant",
+      "Void Gate"
+    ],
+    "R3-A3-combat": [
+      "Cannon Barrage",
+      "Fortified Position",
+      "Gentlemen's Duel",
+      "Maddened Marauder",
+      "Master Yi - Honed",
+      "Master Yi - Wuju Bladesman (Starter)",
+      "Mountain Drake",
+      "Playful Phantom",
+      "Stalwart Poro",
+      "Stormclaw Ursine",
+      "Wielder of Water",
+      "Zephyr Sage"
+    ]
+  },
+  "cards": [
+    {
+      "card_key": "annie - dark child (starter)",
+      "canonical_name": "Annie - Dark Child (Starter)",
+      "type": "Legend",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "legend"
+        }
+      ],
+      "printing_read": "ogs-017-024",
+      "origins_printings": [
+        "ogs-017-024"
+      ],
+      "all_printings": [
+        "ogs-017-024"
+      ],
+      "snapshot_text": "At the end of your turn, ready 2 runes.",
+      "current_text": "At the end of your turn, ready up to 2 runes.",
+      "current_text_hash": "sha256:94906fd67089298c933baf7fbce0d195cf336c3a3e5aeb00aeb1a88403bb6a97",
+      "inventory_text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
+      "errata_applied": true,
+      "errata_join": "subtitle",
+      "catalog_join_missed": true,
+      "errata_official_name": "Dark Child, Starter",
+      "errata_card_ids": [
+        "OGN-?"
+      ],
+      "errata_document": "origins",
+      "errata_verification": "live-fetched",
+      "snapshot_is_pre_errata": true,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "annie - dark child (starter)#223039b2",
+          "text": "At the end of your turn, ready up to 2 runes.",
+          "reminder": "",
+          "mechanics": [
+            "end_of_turn_trigger"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "stale",
+          "recommended_label": "stale",
+          "recommendation_reason": "bundled snapshot still carries pre-errata wording; reverify text before any program"
+        }
+      ]
+    },
+    {
+      "card_key": "annie - fiery",
+      "canonical_name": "Annie - Fiery",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-001-024",
+      "origins_printings": [
+        "ogs-001-024"
+      ],
+      "all_printings": [
+        "ogs-001-024",
+        "opp-001-024"
+      ],
+      "snapshot_text": "Your spells and abilities deal 1 Bonus Damage. (Each instance of damage the spell deals is increased by 1.)",
+      "current_text": "Your spells and abilities deal 1 Bonus Damage. (Each instance of damage the spell deals is increased by 1.)",
+      "current_text_hash": "sha256:399be2b71aee4aadd03303d30c381e0138ba62baf1a1a52e1ecfb97930fe9214",
+      "inventory_text_hash": "sha256:399be2b71aee4aadd03303d30c381e0138ba62baf1a1a52e1ecfb97930fe9214",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "annie - fiery#24035ea0",
+          "text": "Your spells and abilities deal 1 Bonus Damage.",
+          "reminder": "Each instance of damage the spell deals is increased by 1.",
+          "mechanics": [
+            "bonus_damage"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['bonus_damage']"
+        }
+      ]
+    },
+    {
+      "card_key": "annie - stubborn",
+      "canonical_name": "Annie - Stubborn",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-010-024",
+      "origins_printings": [
+        "ogs-010-024"
+      ],
+      "all_printings": [
+        "ogs-010-024",
+        "opp-010-024"
+      ],
+      "snapshot_text": "When you play me, return a spell from your trash to your hand.",
+      "current_text": "When you play me, return a spell from your trash to your hand.",
+      "current_text_hash": "sha256:5086e61a30cdd2f049264fdbcd994b6b705fbda72272aa2023411c8e12d21c9f",
+      "inventory_text_hash": "sha256:5086e61a30cdd2f049264fdbcd994b6b705fbda72272aa2023411c8e12d21c9f",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "annie - stubborn#5086e61a",
+          "text": "When you play me, return a spell from your trash to your hand.",
+          "reminder": "",
+          "mechanics": [
+            "return_trash_to_hand",
+            "target_choice",
+            "play_and_move_triggers",
+            "play_lifecycle"
+          ],
+          "implemented_ops": [
+            "emit_reflexive"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['emit_reflexive'] exist; blocked on ['return_trash_to_hand', 'target_choice', 'play_and_move_triggers', 'play_lifecycle']"
+        }
+      ]
+    },
+    {
+      "card_key": "disintegrate",
+      "canonical_name": "Disintegrate",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-005-298",
+      "origins_printings": [
+        "ogn-005-298"
+      ],
+      "all_printings": [
+        "ogn-005-298"
+      ],
+      "snapshot_text": "[Action] (Play on your turn or in showdowns.)Deal 3 to a unit at a battlefield. If this kills it, draw 1.",
+      "current_text": "Deal 3 to a unit at battlefield. If this kills it, do this: draw 1.",
+      "current_text_hash": "sha256:2156f0653971761b76a6a78a675dd027c7fff8d072f97fc3ccfe0851f2b0204f",
+      "inventory_text_hash": "sha256:2156f0653971761b76a6a78a675dd027c7fff8d072f97fc3ccfe0851f2b0204f",
+      "errata_applied": true,
+      "errata_join": "name",
+      "catalog_join_missed": false,
+      "errata_official_name": "Disintegrate",
+      "errata_card_ids": [
+        "OGN-005"
+      ],
+      "errata_document": "origins",
+      "errata_verification": "spot-checked",
+      "snapshot_is_pre_errata": true,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "disintegrate#d3d94631",
+          "text": "Deal 3 to a unit at battlefield.",
+          "reminder": "",
+          "mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "stale",
+          "recommended_label": "stale",
+          "recommendation_reason": "bundled snapshot still carries pre-errata wording; reverify text before any program"
+        },
+        {
+          "clause_id": "disintegrate#033ec095",
+          "text": "If this kills it, do this: draw 1.",
+          "reminder": "",
+          "mechanics": [
+            "conditional_effects",
+            "linked_instruction"
+          ],
+          "implemented_ops": [
+            "kill",
+            "draw"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "stale",
+          "recommended_label": "stale",
+          "recommendation_reason": "bundled snapshot still carries pre-errata wording; reverify text before any program"
+        }
+      ]
+    },
+    {
+      "card_key": "firestorm",
+      "canonical_name": "Firestorm",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-002-024",
+      "origins_printings": [
+        "ogs-002-024"
+      ],
+      "all_printings": [
+        "ogs-002-024"
+      ],
+      "snapshot_text": "Deal 3 to all enemy units at a battlefield.",
+      "current_text": "Deal 3 to all enemy units at a battlefield.",
+      "current_text_hash": "sha256:95a3c682efa3aee1c09e48f831c266478721af4d7d8d66bddd6691f2e41aa100",
+      "inventory_text_hash": "sha256:95a3c682efa3aee1c09e48f831c266478721af4d7d8d66bddd6691f2e41aa100",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "firestorm#95a3c682",
+          "text": "Deal 3 to all enemy units at a battlefield.",
+          "reminder": "",
+          "mechanics": [
+            "area_targets"
+          ],
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['deal_damage'] exist; blocked on ['area_targets']"
+        }
+      ]
+    },
+    {
+      "card_key": "flash",
+      "canonical_name": "Flash",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-011-024",
+      "origins_printings": [
+        "ogs-011-024"
+      ],
+      "all_printings": [
+        "ogs-011-024",
+        "opp-011-024"
+      ],
+      "snapshot_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Move up to 2 friendly units to base.",
+      "current_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Move up to 2 friendly units to base.",
+      "current_text_hash": "sha256:4e7eeb0d11428f1128fe93f6e560a0d358e01e9cfbbe10acc06dd3d7d314be71",
+      "inventory_text_hash": "sha256:4e7eeb0d11428f1128fe93f6e560a0d358e01e9cfbbe10acc06dd3d7d314be71",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "flash#e7a1971e",
+          "text": "[Reaction]",
+          "reminder": "Play any time, even before spells and abilities resolve.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "flash#7a92a690",
+          "text": "Move up to 2 friendly units to base.",
+          "reminder": "",
+          "mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "move_board_object"
+          ],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['move_board_object'] exist; blocked on ['target_choice']"
+        }
+      ]
+    },
+    {
+      "card_key": "gust",
+      "canonical_name": "Gust",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-169-298",
+      "origins_printings": [
+        "ogn-169-298"
+      ],
+      "all_printings": [
+        "ogn-169-298"
+      ],
+      "snapshot_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+      "current_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+      "current_text_hash": "sha256:9523e4c354e3d14fd874342a05a91ba279d68a1dd204ce5a82e22474852c275c",
+      "inventory_text_hash": "sha256:9523e4c354e3d14fd874342a05a91ba279d68a1dd204ce5a82e22474852c275c",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "gust#e7a1971e",
+          "text": "[Reaction]",
+          "reminder": "Play any time, even before spells and abilities resolve.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "gust#e661650e",
+          "text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+          "reminder": "",
+          "mechanics": [
+            "return_board_to_hand",
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['return_board_to_hand', 'target_choice']"
+        }
+      ]
+    },
+    {
+      "card_key": "incinerate",
+      "canonical_name": "Incinerate",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-003-024",
+      "origins_printings": [
+        "ogs-003-024"
+      ],
+      "all_printings": [
+        "ogs-003-024"
+      ],
+      "snapshot_text": "[Action] (Play on your turn or in showdowns.)Deal 2 to a unit at a battlefield.",
+      "current_text": "[Action] (Play on your turn or in showdowns.)Deal 2 to a unit at a battlefield.",
+      "current_text_hash": "sha256:357d542160da7a3e5b04ffd8bdd5cdca5280ded425e82944ca761f8f812854e2",
+      "inventory_text_hash": "sha256:357d542160da7a3e5b04ffd8bdd5cdca5280ded425e82944ca761f8f812854e2",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "incinerate#08866b32",
+          "text": "[Action]",
+          "reminder": "Play on your turn or in showdowns.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "incinerate#df9db2ea",
+          "text": "Deal 2 to a unit at a battlefield.",
+          "reminder": "",
+          "mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['deal_damage'] exist; blocked on ['target_choice']"
+        }
+      ]
+    },
+    {
+      "card_key": "maddened marauder",
+      "canonical_name": "Maddened Marauder",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-191-298",
+      "origins_printings": [
+        "ogn-191-298"
+      ],
+      "all_printings": [
+        "ogn-191-298"
+      ],
+      "snapshot_text": "[Tank] (I must be assigned combat damage first.)When you play me, move a unit from a battlefield to its base.",
+      "current_text": "[Tank] (I must be assigned combat damage first.)When you play me, move a unit from a battlefield to its base.",
+      "current_text_hash": "sha256:014567718993e7cd9d403802bf694fdbebd5d996eb9d556b9cc31097e70b8bea",
+      "inventory_text_hash": "sha256:014567718993e7cd9d403802bf694fdbebd5d996eb9d556b9cc31097e70b8bea",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "maddened marauder#7a66c5e8",
+          "text": "[Tank]",
+          "reminder": "I must be assigned combat damage first.",
+          "mechanics": [
+            "tank",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['tank', 'combat_state']"
+        },
+        {
+          "clause_id": "maddened marauder#8815ca64",
+          "text": "When you play me, move a unit from a battlefield to its base.",
+          "reminder": "",
+          "mechanics": [
+            "play_and_move_triggers",
+            "play_lifecycle",
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "emit_reflexive",
+            "move_board_object"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['emit_reflexive', 'move_board_object'] exist; blocked on ['play_and_move_triggers', 'play_lifecycle', 'target_choice']"
+        }
+      ]
+    },
+    {
+      "card_key": "morbid return",
+      "canonical_name": "Morbid Return",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-170-298",
+      "origins_printings": [
+        "ogn-170-298"
+      ],
+      "all_printings": [
+        "ogn-170-298"
+      ],
+      "snapshot_text": "[Action] (Play on your turn or in showdowns.)Return a unit from your trash to your hand.",
+      "current_text": "[Action] (Play on your turn or in showdowns.)Return a unit from your trash to your hand.",
+      "current_text_hash": "sha256:78ed41bcdc9152035d66d649a45138a6725a6c34d3e8adf72f67ca2147cd5edf",
+      "inventory_text_hash": "sha256:78ed41bcdc9152035d66d649a45138a6725a6c34d3e8adf72f67ca2147cd5edf",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "morbid return#08866b32",
+          "text": "[Action]",
+          "reminder": "Play on your turn or in showdowns.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "morbid return#f3c76e58",
+          "text": "Return a unit from your trash to your hand.",
+          "reminder": "",
+          "mechanics": [
+            "return_trash_to_hand",
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['return_trash_to_hand', 'target_choice']"
+        }
+      ]
+    },
+    {
+      "card_key": "mystic poro",
+      "canonical_name": "Mystic Poro",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-171-298",
+      "origins_printings": [
+        "ogn-171-298"
+      ],
+      "all_printings": [
+        "ogn-171-298",
+        "unl-224-219"
+      ],
+      "snapshot_text": "[Vision] (When you play me, look at the top card of your Main Deck. You may recycle it.)",
+      "current_text": "[Vision] (When you play me, look at the top card of your Main Deck. You may recycle it.)",
+      "current_text_hash": "sha256:825f4546ec6fba89d6f570b01784ba3b25cf4abfe645d1d16cdf58023628282b",
+      "inventory_text_hash": "sha256:825f4546ec6fba89d6f570b01784ba3b25cf4abfe645d1d16cdf58023628282b",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "mystic poro#f4a07c4d",
+          "text": "[Vision]",
+          "reminder": "When you play me, look at the top card of your Main Deck. You may recycle it.",
+          "mechanics": [
+            "look",
+            "play_and_move_triggers"
+          ],
+          "implemented_ops": [
+            "recycle_one"
+          ],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['recycle_one'] exist; blocked on ['look', 'play_and_move_triggers']"
+        }
+      ]
+    },
+    {
+      "card_key": "pouty poro",
+      "canonical_name": "Pouty Poro",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-013-298",
+      "origins_printings": [
+        "ogn-013-298"
+      ],
+      "all_printings": [
+        "ogn-013-298",
+        "opp-013-298",
+        "unl-220-219"
+      ],
+      "snapshot_text": "[Deflect] (Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.)",
+      "current_text": "[Deflect] (Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.)",
+      "current_text_hash": "sha256:701afa540248b3c1404a796e763e641e8e8c5e0d08758f0f3d9d99e8940b1b44",
+      "inventory_text_hash": "sha256:701afa540248b3c1404a796e763e641e8e8c5e0d08758f0f3d9d99e8940b1b44",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "pouty poro#f8dcb74f",
+          "text": "[Deflect]",
+          "reminder": "Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.",
+          "mechanics": [
+            "deflect"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['deflect']"
+        }
+      ]
+    },
+    {
+      "card_key": "sai scout",
+      "canonical_name": "Sai Scout",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-174-298",
+      "origins_printings": [
+        "ogn-174-298"
+      ],
+      "all_printings": [
+        "ogn-174-298"
+      ],
+      "snapshot_text": "[Vision] (When you play me, look at the top card of your Main Deck. You may recycle it.)You may play me to an open battlefield.",
+      "current_text": "[Vision] (When you play me, look at the top card of your Main Deck. You may recycle it.)You may play me to an open battlefield.",
+      "current_text_hash": "sha256:174ce3f290b0d6a31dbb1e08720671474782fb19f5b18d1211f4e61d2eb0fc24",
+      "inventory_text_hash": "sha256:174ce3f290b0d6a31dbb1e08720671474782fb19f5b18d1211f4e61d2eb0fc24",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "sai scout#f4a07c4d",
+          "text": "[Vision]",
+          "reminder": "When you play me, look at the top card of your Main Deck. You may recycle it.",
+          "mechanics": [
+            "look",
+            "play_and_move_triggers"
+          ],
+          "implemented_ops": [
+            "recycle_one"
+          ],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['recycle_one'] exist; blocked on ['look', 'play_and_move_triggers']"
+        },
+        {
+          "clause_id": "sai scout#0ede37d4",
+          "text": "You may play me to an open battlefield.",
+          "reminder": "",
+          "mechanics": [
+            "open_battlefield_play",
+            "play_lifecycle"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['open_battlefield_play', 'play_lifecycle']"
+        }
+      ]
+    },
+    {
+      "card_key": "sneaky deckhand",
+      "canonical_name": "Sneaky Deckhand",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-176-298",
+      "origins_printings": [
+        "ogn-176-298"
+      ],
+      "all_printings": [
+        "ogn-176-298"
+      ],
+      "snapshot_text": "You may play me to an open battlefield.",
+      "current_text": "You may play me to an open battlefield.",
+      "current_text_hash": "sha256:0ede37d423d7644a27f9a96adcab757937c526df5400d0de4c873a31acdbebe6",
+      "inventory_text_hash": "sha256:0ede37d423d7644a27f9a96adcab757937c526df5400d0de4c873a31acdbebe6",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "sneaky deckhand#0ede37d4",
+          "text": "You may play me to an open battlefield.",
+          "reminder": "",
+          "mechanics": [
+            "open_battlefield_play",
+            "play_lifecycle"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['open_battlefield_play', 'play_lifecycle']"
+        }
+      ]
+    },
+    {
+      "card_key": "tibbers",
+      "canonical_name": "Tibbers",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-018-024",
+      "origins_printings": [
+        "ogs-018-024"
+      ],
+      "all_printings": [
+        "ogs-018-024",
+        "opp-018-024"
+      ],
+      "snapshot_text": "When you play me, deal 3 to all units at battlefields.",
+      "current_text": "When you play me, deal 3 to all units at battlefields.",
+      "current_text_hash": "sha256:ca7660897c387532cfa751bc3a37a6a9b120231c59a1136a03ab66459c3e55a4",
+      "inventory_text_hash": "sha256:ca7660897c387532cfa751bc3a37a6a9b120231c59a1136a03ab66459c3e55a4",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "tibbers#ca766089",
+          "text": "When you play me, deal 3 to all units at battlefields.",
+          "reminder": "",
+          "mechanics": [
+            "area_targets",
+            "play_and_move_triggers",
+            "play_lifecycle"
+          ],
+          "implemented_ops": [
+            "deal_damage",
+            "emit_reflexive"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['deal_damage', 'emit_reflexive'] exist; blocked on ['area_targets', 'play_and_move_triggers', 'play_lifecycle']"
+        }
+      ]
+    },
+    {
+      "card_key": "traveling merchant",
+      "canonical_name": "Traveling Merchant",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-185-298",
+      "origins_printings": [
+        "ogn-185-298"
+      ],
+      "all_printings": [
+        "ogn-185-298"
+      ],
+      "snapshot_text": "When I move, discard 1, then draw 1.",
+      "current_text": "When I move, discard 1, then draw 1.",
+      "current_text_hash": "sha256:92d985e197c3e79ba7d4a59d586f8d1dc11a9db596c3d96e9e7ad4e31ee4c9f2",
+      "inventory_text_hash": "sha256:92d985e197c3e79ba7d4a59d586f8d1dc11a9db596c3d96e9e7ad4e31ee4c9f2",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "traveling merchant#92d985e1",
+          "text": "When I move, discard 1, then draw 1.",
+          "reminder": "",
+          "mechanics": [
+            "play_and_move_triggers",
+            "discard"
+          ],
+          "implemented_ops": [
+            "emit_reflexive",
+            "draw"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['emit_reflexive', 'draw'] exist; blocked on ['play_and_move_triggers', 'discard']"
+        }
+      ]
+    },
+    {
+      "card_key": "void gate",
+      "canonical_name": "Void Gate",
+      "type": "Battlefield",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-annie",
+          "role": "battlefield"
+        }
+      ],
+      "printing_read": "ogn-296-298",
+      "origins_printings": [
+        "ogn-296-298"
+      ],
+      "all_printings": [
+        "ogn-296-298"
+      ],
+      "snapshot_text": "Spells and abilities affecting units here each deal 1 Bonus Damage. (Each instance of damage the spell deals is increased by 1.)",
+      "current_text": "Spells and abilities deal 1 Bonus Damage to units here.",
+      "current_text_hash": "sha256:3aa2e8f71efe85b94007987b7d9e5053795d1a6b457e7f67ce307a6098071e16",
+      "inventory_text_hash": "sha256:3aa2e8f71efe85b94007987b7d9e5053795d1a6b457e7f67ce307a6098071e16",
+      "errata_applied": true,
+      "errata_join": "name",
+      "catalog_join_missed": false,
+      "errata_official_name": "Void Gate",
+      "errata_card_ids": [
+        "OGN-296"
+      ],
+      "errata_document": "origins",
+      "errata_verification": "spot-checked",
+      "snapshot_is_pre_errata": true,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "void gate#3aa2e8f7",
+          "text": "Spells and abilities deal 1 Bonus Damage to units here.",
+          "reminder": "",
+          "mechanics": [
+            "bonus_damage"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "stale",
+          "recommended_label": "stale",
+          "recommendation_reason": "bundled snapshot still carries pre-errata wording; reverify text before any program"
+        }
+      ]
+    },
+    {
+      "card_key": "master yi - wuju bladesman (starter)",
+      "canonical_name": "Master Yi - Wuju Bladesman (Starter)",
+      "type": "Legend",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "legend"
+        }
+      ],
+      "printing_read": "ogs-019-024",
+      "origins_printings": [
+        "ogs-019-024"
+      ],
+      "all_printings": [
+        "ogs-019-024"
+      ],
+      "snapshot_text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
+      "current_text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
+      "current_text_hash": "sha256:96ecd8e61bf3f1b2ab53be18cb638aa01522869250250c030da36ee752be96e9",
+      "inventory_text_hash": "sha256:96ecd8e61bf3f1b2ab53be18cb638aa01522869250250c030da36ee752be96e9",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "master yi - wuju bladesman (starter)#96ecd8e6",
+          "text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
+          "reminder": "",
+          "mechanics": [
+            "conditional_might",
+            "continuous_effects",
+            "attacking_defending_alone",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['conditional_might', 'continuous_effects', 'attacking_defending_alone', 'combat_state']"
+        }
+      ]
+    },
+    {
+      "card_key": "cannon barrage",
+      "canonical_name": "Cannon Barrage",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-127-298",
+      "origins_printings": [
+        "ogn-127-298"
+      ],
+      "all_printings": [
+        "ogn-127-298"
+      ],
+      "snapshot_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Deal 2 to all enemy units in combat.",
+      "current_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Deal 2 to all enemy units in combat.",
+      "current_text_hash": "sha256:c9ceeeb78a4db1fc90e66dbb887849a8820c138dd3e07e9dd026782520c5ac79",
+      "inventory_text_hash": "sha256:c9ceeeb78a4db1fc90e66dbb887849a8820c138dd3e07e9dd026782520c5ac79",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "cannon barrage#e7a1971e",
+          "text": "[Reaction]",
+          "reminder": "Play any time, even before spells and abilities resolve.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "cannon barrage#3c6691c9",
+          "text": "Deal 2 to all enemy units in combat.",
+          "reminder": "",
+          "mechanics": [
+            "area_damage_in_combat",
+            "combat_state",
+            "area_targets"
+          ],
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['deal_damage'] exist; blocked on ['area_damage_in_combat', 'combat_state', 'area_targets']"
+        }
+      ]
+    },
+    {
+      "card_key": "confront",
+      "canonical_name": "Confront",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-129-298",
+      "origins_printings": [
+        "ogn-129-298"
+      ],
+      "all_printings": [
+        "ogn-129-298"
+      ],
+      "snapshot_text": "[Action] (Play on your turn or in showdowns.)Units you play this turn enter ready. Draw 1.",
+      "current_text": "[Action] (Play on your turn or in showdowns.)Units you play this turn enter ready. Draw 1.",
+      "current_text_hash": "sha256:b1ebf46a8c72b2b7a4b2aa491d9b7629a8c67f7cec1353e0027fb11966e41076",
+      "inventory_text_hash": "sha256:b1ebf46a8c72b2b7a4b2aa491d9b7629a8c67f7cec1353e0027fb11966e41076",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "confront#08866b32",
+          "text": "[Action]",
+          "reminder": "Play on your turn or in showdowns.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "confront#5ee34de4",
+          "text": "Units you play this turn enter ready.",
+          "reminder": "",
+          "mechanics": [
+            "enter_ready"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['enter_ready']"
+        },
+        {
+          "clause_id": "confront#e8c50cd4",
+          "text": "Draw 1.",
+          "reminder": "",
+          "mechanics": [],
+          "implemented_ops": [
+            "draw"
+          ],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "composes from implemented ops ['draw'] with no missing mechanic"
+        }
+      ]
+    },
+    {
+      "card_key": "en garde",
+      "canonical_name": "En Garde",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-046-298",
+      "origins_printings": [
+        "ogn-046-298"
+      ],
+      "all_printings": [
+        "ogn-046-298"
+      ],
+      "snapshot_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Give a friendly unit +1 :rb_might: this turn, then an additional +1 :rb_might: this turn if it is the only unit you control there.",
+      "current_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Give a friendly unit +1 :rb_might: this turn, then an additional +1 :rb_might: this turn if it is the only unit you control there.",
+      "current_text_hash": "sha256:a60253826f86e8a3096d680b3337fdf9434173a50043a7f3624e8133c8c05644",
+      "inventory_text_hash": "sha256:a60253826f86e8a3096d680b3337fdf9434173a50043a7f3624e8133c8c05644",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "en garde#e7a1971e",
+          "text": "[Reaction]",
+          "reminder": "Play any time, even before spells and abilities resolve.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "en garde#6dd9b599",
+          "text": "Give a friendly unit +1 :rb_might: this turn, then an additional +1 :rb_might: this turn if it is the only unit you control there.",
+          "reminder": "",
+          "mechanics": [
+            "target_choice",
+            "duration_expiry",
+            "conditional_effects"
+          ],
+          "implemented_ops": [
+            "modify_might"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['modify_might'] exist; blocked on ['target_choice', 'duration_expiry', 'conditional_effects']"
+        }
+      ]
+    },
+    {
+      "card_key": "gentlemen's duel",
+      "canonical_name": "Gentlemen's Duel",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-008-024",
+      "origins_printings": [
+        "ogs-008-024"
+      ],
+      "all_printings": [
+        "ogs-008-024"
+      ],
+      "snapshot_text": "[Action] (Play on your turn or in showdowns.)Give a friendly unit +3 :rb_might: this turn. Then choose an enemy unit. They deal damage equal to their Mights to each other.",
+      "current_text": "[Action] (Play on your turn or in showdowns.)Give a friendly unit +3 :rb_might: this turn. Then choose an enemy unit. They deal damage equal to their Mights to each other.",
+      "current_text_hash": "sha256:eda9a65c04ef62fa4e13448e332fc711e28d225d1ed51ba279f9a14aece32dc2",
+      "inventory_text_hash": "sha256:eda9a65c04ef62fa4e13448e332fc711e28d225d1ed51ba279f9a14aece32dc2",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "gentlemen's duel#08866b32",
+          "text": "[Action]",
+          "reminder": "Play on your turn or in showdowns.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "gentlemen's duel#2ed49f33",
+          "text": "Give a friendly unit +3 :rb_might: this turn.",
+          "reminder": "",
+          "mechanics": [
+            "target_choice",
+            "duration_expiry"
+          ],
+          "implemented_ops": [
+            "modify_might"
+          ],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['modify_might'] exist; blocked on ['target_choice', 'duration_expiry']"
+        },
+        {
+          "clause_id": "gentlemen's duel#fd48e5d0",
+          "text": "Then choose an enemy unit.",
+          "reminder": "",
+          "mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['target_choice']"
+        },
+        {
+          "clause_id": "gentlemen's duel#26a3859b",
+          "text": "They deal damage equal to their Mights to each other.",
+          "reminder": "",
+          "mechanics": [
+            "mutual_damage_equal_might",
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['deal_damage'] exist; blocked on ['mutual_damage_equal_might', 'target_choice']"
+        }
+      ]
+    },
+    {
+      "card_key": "highlander",
+      "canonical_name": "Highlander",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-020-024",
+      "origins_printings": [
+        "ogs-020-024"
+      ],
+      "all_printings": [
+        "ogs-020-024",
+        "opp-020-024"
+      ],
+      "snapshot_text": "[Reaction] (Play any time, even before spells and abilities resolve.)Choose a friendly unit. The next time it dies this turn, recall it exhausted instead. (Send it to base. This isn't a move.)",
+      "current_text": "Choose a friendly unit. The next time it would die this turn, heal it, exhaust it, and recall it instead.",
+      "current_text_hash": "sha256:a47d58f8cfa31b53b6147b56d141208e3e582380426d8cb2f8a3f63fdfdad88d",
+      "inventory_text_hash": "sha256:a47d58f8cfa31b53b6147b56d141208e3e582380426d8cb2f8a3f63fdfdad88d",
+      "errata_applied": true,
+      "errata_join": "name",
+      "catalog_join_missed": false,
+      "errata_official_name": "Highlander",
+      "errata_card_ids": [
+        "OGS-020"
+      ],
+      "errata_document": "origins",
+      "errata_verification": "live-fetched",
+      "snapshot_is_pre_errata": true,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "highlander#d659b2ba",
+          "text": "Choose a friendly unit.",
+          "reminder": "",
+          "mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "stale",
+          "recommended_label": "stale",
+          "recommendation_reason": "bundled snapshot still carries pre-errata wording; reverify text before any program"
+        },
+        {
+          "clause_id": "highlander#b9d95a9d",
+          "text": "The next time it would die this turn, heal it, exhaust it, and recall it instead.",
+          "reminder": "",
+          "mechanics": [
+            "next_death_replacement",
+            "recall"
+          ],
+          "implemented_ops": [
+            "heal_damage",
+            "exhaust"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "stale",
+          "recommended_label": "stale",
+          "recommendation_reason": "bundled snapshot still carries pre-errata wording; reverify text before any program"
+        }
+      ]
+    },
+    {
+      "card_key": "master yi - honed",
+      "canonical_name": "Master Yi - Honed",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-009-024",
+      "origins_printings": [
+        "ogs-009-024"
+      ],
+      "all_printings": [
+        "ogs-009-024",
+        "opp-009-024"
+      ],
+      "snapshot_text": "[Ganking] (I can move from battlefield to battlefield.)I enter ready.",
+      "current_text": "[Ganking] (I can move from battlefield to battlefield.)I enter ready.",
+      "current_text_hash": "sha256:cab1bb1d9a67f52439a40a51bf073ace18ecb927af3ef3e8ff5bc4a02ff9b2d9",
+      "inventory_text_hash": "sha256:cab1bb1d9a67f52439a40a51bf073ace18ecb927af3ef3e8ff5bc4a02ff9b2d9",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "master yi - honed#ba87989e",
+          "text": "[Ganking]",
+          "reminder": "I can move from battlefield to battlefield.",
+          "mechanics": [
+            "ganking",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['ganking', 'combat_state']"
+        },
+        {
+          "clause_id": "master yi - honed#0be72750",
+          "text": "I enter ready.",
+          "reminder": "",
+          "mechanics": [
+            "enter_ready"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['enter_ready']"
+        }
+      ]
+    },
+    {
+      "card_key": "master yi - meditative",
+      "canonical_name": "Master Yi - Meditative",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-004-024",
+      "origins_printings": [
+        "ogs-004-024"
+      ],
+      "all_printings": [
+        "ogs-004-024",
+        "opp-004-024"
+      ],
+      "snapshot_text": "While you have 8+ runes, I have +4 :rb_might:.",
+      "current_text": "While you have 8+ runes, I have +4 :rb_might:.",
+      "current_text_hash": "sha256:d767e9dd3194920001d186bb2523ea0b0cfd8873cd1544324980d8f9d42d0404",
+      "inventory_text_hash": "sha256:d767e9dd3194920001d186bb2523ea0b0cfd8873cd1544324980d8f9d42d0404",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "master yi - meditative#d767e9dd",
+          "text": "While you have 8+ runes, I have +4 :rb_might:.",
+          "reminder": "",
+          "mechanics": [
+            "conditional_might",
+            "continuous_effects"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['conditional_might', 'continuous_effects']"
+        }
+      ]
+    },
+    {
+      "card_key": "meditation",
+      "canonical_name": "Meditation",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-048-298",
+      "origins_printings": [
+        "ogn-048-298"
+      ],
+      "all_printings": [
+        "ogn-048-298"
+      ],
+      "snapshot_text": "[Reaction] (Play any time, even before spells and abilities resolve.)As an additional cost to play this, you may exhaust a friendly unit. If you do, draw 2. Otherwise, draw 1.",
+      "current_text": "[Reaction] (Play any time, even before spells and abilities resolve.)As an additional cost to play this, you may exhaust a friendly unit. If you do, draw 2. Otherwise, draw 1.",
+      "current_text_hash": "sha256:62e1417befeba818dfa2da95e92e96b931c72662c99f2921be53813f31b084a3",
+      "inventory_text_hash": "sha256:62e1417befeba818dfa2da95e92e96b931c72662c99f2921be53813f31b084a3",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "meditation#e7a1971e",
+          "text": "[Reaction]",
+          "reminder": "Play any time, even before spells and abilities resolve.",
+          "mechanics": [
+            "action_reaction_timing"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "timing keyword only; already covered by the timing kernel (R1)"
+        },
+        {
+          "clause_id": "meditation#6ce549b5",
+          "text": "As an additional cost to play this, you may exhaust a friendly unit.",
+          "reminder": "",
+          "mechanics": [
+            "optional_additional_cost"
+          ],
+          "implemented_ops": [
+            "exhaust"
+          ],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['exhaust'] exist; blocked on ['optional_additional_cost']"
+        },
+        {
+          "clause_id": "meditation#8be0efa4",
+          "text": "If you do, draw 2.",
+          "reminder": "",
+          "mechanics": [],
+          "implemented_ops": [
+            "draw"
+          ],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "composes from implemented ops ['draw'] with no missing mechanic"
+        },
+        {
+          "clause_id": "meditation#083ddaf7",
+          "text": "Otherwise, draw 1.",
+          "reminder": "",
+          "mechanics": [],
+          "implemented_ops": [
+            "draw"
+          ],
+          "unblocked_by": "E0",
+          "manifest_status": "unsupported",
+          "recommended_label": "full",
+          "recommendation_reason": "composes from implemented ops ['draw'] with no missing mechanic"
+        }
+      ]
+    },
+    {
+      "card_key": "mobilize",
+      "canonical_name": "Mobilize",
+      "type": "Spell",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-134-298",
+      "origins_printings": [
+        "ogn-134-298"
+      ],
+      "all_printings": [
+        "ogn-134-298"
+      ],
+      "snapshot_text": "Channel 1 rune exhausted. If you can't, draw 1.",
+      "current_text": "Channel 1 rune exhausted. If you can't, draw 1.",
+      "current_text_hash": "sha256:3fefcc9cc7b3ebf1ea30249ce9d9fc69eae9cdcce6f0aa6ca52ae12717e84eda",
+      "inventory_text_hash": "sha256:3fefcc9cc7b3ebf1ea30249ce9d9fc69eae9cdcce6f0aa6ca52ae12717e84eda",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "mobilize#3e791d2d",
+          "text": "Channel 1 rune exhausted.",
+          "reminder": "",
+          "mechanics": [
+            "channel_rune"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A1-choices-costs-zones",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['channel_rune']"
+        },
+        {
+          "clause_id": "mobilize#27e88ae5",
+          "text": "If you can't, draw 1.",
+          "reminder": "",
+          "mechanics": [
+            "if_cannot_fallback",
+            "conditional_effects"
+          ],
+          "implemented_ops": [
+            "draw"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['draw'] exist; blocked on ['if_cannot_fallback', 'conditional_effects']"
+        }
+      ]
+    },
+    {
+      "card_key": "mountain drake",
+      "canonical_name": "Mountain Drake",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-142-298",
+      "origins_printings": [
+        "ogn-142-298"
+      ],
+      "all_printings": [
+        "ogn-142-298"
+      ],
+      "snapshot_text": "",
+      "current_text": "",
+      "current_text_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inventory_text_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": true,
+      "clauses": [
+        {
+          "clause_id": "mountain drake#a95a0531",
+          "text": "(no rules text)",
+          "reminder": "",
+          "mechanics": [
+            "vanilla_unit_combat_state",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['vanilla_unit_combat_state', 'combat_state']"
+        }
+      ]
+    },
+    {
+      "card_key": "playful phantom",
+      "canonical_name": "Playful Phantom",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-049-298",
+      "origins_printings": [
+        "ogn-049-298"
+      ],
+      "all_printings": [
+        "ogn-049-298"
+      ],
+      "snapshot_text": "",
+      "current_text": "",
+      "current_text_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inventory_text_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": true,
+      "clauses": [
+        {
+          "clause_id": "playful phantom#a95a0531",
+          "text": "(no rules text)",
+          "reminder": "",
+          "mechanics": [
+            "vanilla_unit_combat_state",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['vanilla_unit_combat_state', 'combat_state']"
+        }
+      ]
+    },
+    {
+      "card_key": "stalwart poro",
+      "canonical_name": "Stalwart Poro",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-052-298",
+      "origins_printings": [
+        "ogn-052-298"
+      ],
+      "all_printings": [
+        "ogn-052-298",
+        "opp-052-298"
+      ],
+      "snapshot_text": "[Shield] (+1 :rb_might: while I'm a defender.)",
+      "current_text": "[Shield] (+1 :rb_might: while I'm a defender.)",
+      "current_text_hash": "sha256:a1b84362c94fbc825be2ea9800cb780a5287ca3c0cfca05cff5ef2e39078a6f4",
+      "inventory_text_hash": "sha256:a1b84362c94fbc825be2ea9800cb780a5287ca3c0cfca05cff5ef2e39078a6f4",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "stalwart poro#8b9eb35a",
+          "text": "[Shield]",
+          "reminder": "+1 :rb_might: while I'm a defender.",
+          "mechanics": [
+            "shield",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['shield', 'combat_state']"
+        }
+      ]
+    },
+    {
+      "card_key": "stormclaw ursine",
+      "canonical_name": "Stormclaw Ursine",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-137-298",
+      "origins_printings": [
+        "ogn-137-298"
+      ],
+      "all_printings": [
+        "ogn-137-298",
+        "opp-137-298"
+      ],
+      "snapshot_text": "[Tank] (I must be assigned combat damage first.)When you play me, channel 1 rune exhausted.",
+      "current_text": "[Tank] (I must be assigned combat damage first.)When you play me, channel 1 rune exhausted.",
+      "current_text_hash": "sha256:2e17f1568879a9baec3f43cefe6a9709cdf08711808fbd8587652caa6e109f5a",
+      "inventory_text_hash": "sha256:2e17f1568879a9baec3f43cefe6a9709cdf08711808fbd8587652caa6e109f5a",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "stormclaw ursine#7a66c5e8",
+          "text": "[Tank]",
+          "reminder": "I must be assigned combat damage first.",
+          "mechanics": [
+            "tank",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['tank', 'combat_state']"
+        },
+        {
+          "clause_id": "stormclaw ursine#2b579376",
+          "text": "When you play me, channel 1 rune exhausted.",
+          "reminder": "",
+          "mechanics": [
+            "play_and_move_triggers",
+            "play_lifecycle",
+            "channel_rune"
+          ],
+          "implemented_ops": [
+            "emit_reflexive"
+          ],
+          "unblocked_by": "R3-A2-play-conditions-continuous",
+          "manifest_status": "unsupported",
+          "recommended_label": "partial",
+          "recommendation_reason": "ops ['emit_reflexive'] exist; blocked on ['play_and_move_triggers', 'play_lifecycle', 'channel_rune']"
+        }
+      ]
+    },
+    {
+      "card_key": "wielder of water",
+      "canonical_name": "Wielder of Water",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogn-055-298",
+      "origins_printings": [
+        "ogn-055-298"
+      ],
+      "all_printings": [
+        "ogn-055-298",
+        "opp-055-298"
+      ],
+      "snapshot_text": "While I'm attacking or defending alone, I have +2 :rb_might:.",
+      "current_text": "While I'm attacking or defending alone, I have +2 :rb_might:.",
+      "current_text_hash": "sha256:d2dd9c3ea658050b6b9fefb47063dedad3c17febbd418d88920ac51df15a3228",
+      "inventory_text_hash": "sha256:d2dd9c3ea658050b6b9fefb47063dedad3c17febbd418d88920ac51df15a3228",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "wielder of water#d2dd9c3e",
+          "text": "While I'm attacking or defending alone, I have +2 :rb_might:.",
+          "reminder": "",
+          "mechanics": [
+            "conditional_might",
+            "continuous_effects",
+            "attacking_defending_alone",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['conditional_might', 'continuous_effects', 'attacking_defending_alone', 'combat_state']"
+        }
+      ]
+    },
+    {
+      "card_key": "zephyr sage",
+      "canonical_name": "Zephyr Sage",
+      "type": "Unit",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "main_deck"
+        }
+      ],
+      "printing_read": "ogs-005-024",
+      "origins_printings": [
+        "ogs-005-024"
+      ],
+      "all_printings": [
+        "ogs-005-024"
+      ],
+      "snapshot_text": "[Shield] (+1 :rb_might: while I'm a defender.)",
+      "current_text": "[Shield] (+1 :rb_might: while I'm a defender.)",
+      "current_text_hash": "sha256:a1b84362c94fbc825be2ea9800cb780a5287ca3c0cfca05cff5ef2e39078a6f4",
+      "inventory_text_hash": "sha256:a1b84362c94fbc825be2ea9800cb780a5287ca3c0cfca05cff5ef2e39078a6f4",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "zephyr sage#8b9eb35a",
+          "text": "[Shield]",
+          "reminder": "+1 :rb_might: while I'm a defender.",
+          "mechanics": [
+            "shield",
+            "combat_state"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['shield', 'combat_state']"
+        }
+      ]
+    },
+    {
+      "card_key": "fortified position",
+      "canonical_name": "Fortified Position",
+      "type": "Battlefield",
+      "decks": [
+        {
+          "deck_id": "proving-grounds-master-yi",
+          "role": "battlefield"
+        }
+      ],
+      "printing_read": "ogn-279-298",
+      "origins_printings": [
+        "ogn-279-298"
+      ],
+      "all_printings": [
+        "ogn-279-298"
+      ],
+      "snapshot_text": "When you defend here, choose a unit. It gains [Shield 2] this combat. (+2 :rb_might: while it's a defender.)",
+      "current_text": "When you defend here, choose a unit. It gains [Shield 2] this combat. (+2 :rb_might: while it's a defender.)",
+      "current_text_hash": "sha256:936e1f72c8f9b231b8cb02fbcb81bc217af9c129b50923d25d89589801cbac65",
+      "inventory_text_hash": "sha256:936e1f72c8f9b231b8cb02fbcb81bc217af9c129b50923d25d89589801cbac65",
+      "errata_applied": false,
+      "errata_join": "none",
+      "catalog_join_missed": false,
+      "errata_official_name": null,
+      "errata_card_ids": [],
+      "errata_document": null,
+      "errata_verification": null,
+      "snapshot_is_pre_errata": false,
+      "vanilla": false,
+      "clauses": [
+        {
+          "clause_id": "fortified position#d0ee5f77",
+          "text": "When you defend here, choose a unit.",
+          "reminder": "",
+          "mechanics": [
+            "combat_state",
+            "play_and_move_triggers",
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['combat_state', 'play_and_move_triggers', 'target_choice']"
+        },
+        {
+          "clause_id": "fortified position#9b46c0cf",
+          "text": "It gains [Shield 2] this combat.",
+          "reminder": "+2 :rb_might: while it's a defender.",
+          "mechanics": [
+            "shield",
+            "combat_state",
+            "duration_expiry"
+          ],
+          "implemented_ops": [],
+          "unblocked_by": "R3-A3-combat",
+          "manifest_status": "unsupported",
+          "recommended_label": "unsupported",
+          "recommendation_reason": "no implemented op applies; blocked on ['shield', 'combat_state', 'duration_expiry']"
+        }
+      ]
+    }
+  ],
+  "ledger_hash": "sha256:ac980227a7681899667ce64e5b35ec0ac65812c5fef21a526c2047560ec2c463"
+}

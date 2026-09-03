@@ -125,6 +125,13 @@ jobs:
       - name: R5-A coverage and abstention report is deterministic and refuses learning claims
         run: python3 skill/scripts/check_r5a_report.py
 
+      # R3-A0: the Annie / Master Yi clause inventory is generated from the
+      # card snapshot plus errata; fails when stale, when a selected card does
+      # not resolve to an Origins printing, when any program id appears (A0
+      # builds none), or when the manifest is anything but draft.
+      - name: R3-A0 clause inventory derives from card text and errata, draft only
+        run: python3 skill/scripts/check_r3_inventory.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -182,6 +189,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_capability_manifest.py"
           python3 "$REPO/skill/scripts/check_legal_action.py"
           python3 "$REPO/skill/scripts/check_r5a_report.py"
+          python3 "$REPO/skill/scripts/check_r3_inventory.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

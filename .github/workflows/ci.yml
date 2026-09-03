@@ -132,6 +132,12 @@ jobs:
       - name: R3-A0 clause inventory derives from card text and errata, draft only
         run: python3 skill/scripts/check_r3_inventory.py
 
+      # C-13: R3-A1 locators, decision points, fixture drafts and decision
+      # packets. Fails when stale, when a clause lacks a Core citation, or when
+      # any draft smuggles an expected outcome or a program in.
+      - name: R3-A1 ledger cites Core for every clause and drafts fixtures without outcomes
+        run: python3 skill/scripts/check_r3a1_ledger.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -190,6 +196,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_legal_action.py"
           python3 "$REPO/skill/scripts/check_r5a_report.py"
           python3 "$REPO/skill/scripts/check_r3_inventory.py"
+          python3 "$REPO/skill/scripts/check_r3a1_ledger.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -1,0 +1,1895 @@
+{
+  "schema_version": "r3a1-fixture-drafts.v1",
+  "batch": "R3-A1-choices-costs-zones",
+  "package": "C-13",
+  "shape_note": "There is no expected_outcome, expected_state, or program field, by rule. Promotion to executable fixtures is C-14..C-16 work after X-09.",
+  "kinds": [
+    "positive",
+    "negative",
+    "missing_information",
+    "target_invalidated"
+  ],
+  "drafts": [
+    {
+      "card": "Disintegrate",
+      "clause_id": "disintegrate#d3d94631",
+      "clause_text": "Deal 3 to a unit at battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.8",
+        "Core 355.9.b",
+        "Core 355.10.b",
+        "Core 359.3.e.5",
+        "Core 417.1.b",
+        "Core 417.6.a",
+        "errata: Disintegrate OGN-005"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "move u2 to bf1; p1 chooses u2"
+    },
+    {
+      "card": "Disintegrate",
+      "clause_id": "disintegrate#d3d94631",
+      "clause_text": "Deal 3 to a unit at battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.8",
+        "Core 355.9.b",
+        "Core 355.10.b",
+        "Core 359.3.e.5",
+        "Core 417.1.b",
+        "Core 417.6.a",
+        "errata: Disintegrate OGN-005"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 chooses u2 while u2 is at base (not 'at battlefield')"
+    },
+    {
+      "card": "Disintegrate",
+      "clause_id": "disintegrate#d3d94631",
+      "clause_text": "Deal 3 to a unit at battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.8",
+        "Core 355.9.b",
+        "Core 355.10.b",
+        "Core 359.3.e.5",
+        "Core 417.1.b",
+        "Core 417.6.a",
+        "errata: Disintegrate OGN-005"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "no selector supplied for the unit"
+    },
+    {
+      "card": "Disintegrate",
+      "clause_id": "disintegrate#d3d94631",
+      "clause_text": "Deal 3 to a unit at battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.8",
+        "Core 355.9.b",
+        "Core 355.10.b",
+        "Core 359.3.e.5",
+        "Core 417.1.b",
+        "Core 417.6.a",
+        "errata: Disintegrate OGN-005"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "u2 chosen at bf1, then recalled to base before resolution"
+    },
+    {
+      "card": "Flash",
+      "clause_id": "flash#7a92a690",
+      "clause_text": "Move up to 2 friendly units to base.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "move_board_object"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.4",
+        "Core 355.4.a",
+        "Core 355.13",
+        "Core 446.3.c",
+        "Core 449.1",
+        "Core 453"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-02",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "move u1 to bf1; p1 chooses [u1] with destination base"
+    },
+    {
+      "card": "Flash",
+      "clause_id": "flash#7a92a690",
+      "clause_text": "Move up to 2 friendly units to base.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "move_board_object"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.4",
+        "Core 355.4.a",
+        "Core 355.13",
+        "Core 446.3.c",
+        "Core 449.1",
+        "Core 453"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-02",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "destination equals current location (355.4.a)"
+    },
+    {
+      "card": "Flash",
+      "clause_id": "flash#7a92a690",
+      "clause_text": "Move up to 2 friendly units to base.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "move_board_object"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.4",
+        "Core 355.4.a",
+        "Core 355.13",
+        "Core 446.3.c",
+        "Core 449.1",
+        "Core 453"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-02",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "destination omitted"
+    },
+    {
+      "card": "Flash",
+      "clause_id": "flash#7a92a690",
+      "clause_text": "Move up to 2 friendly units to base.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "move_board_object"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.4",
+        "Core 355.4.a",
+        "Core 355.13",
+        "Core 446.3.c",
+        "Core 449.1",
+        "Core 453"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-02",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "u1 chosen at bf1, then killed before resolution; 'up to 2' with zero valid → instruction does not execute (359.3.e.7)"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#2ed49f33",
+      "clause_text": "Give a friendly unit +3 :rb_might: this turn.",
+      "required_mechanics": [
+        "target_choice",
+        "duration_expiry"
+      ],
+      "implemented_ops_involved": [
+        "modify_might"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.9.b",
+        "Core 359.3.e.2",
+        "Core 135.2.e.3"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "p1 chooses u1 (friendly)"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#2ed49f33",
+      "clause_text": "Give a friendly unit +3 :rb_might: this turn.",
+      "required_mechanics": [
+        "target_choice",
+        "duration_expiry"
+      ],
+      "implemented_ops_involved": [
+        "modify_might"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.9.b",
+        "Core 359.3.e.2",
+        "Core 135.2.e.3"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 chooses u2 (enemy)"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#2ed49f33",
+      "clause_text": "Give a friendly unit +3 :rb_might: this turn.",
+      "required_mechanics": [
+        "target_choice",
+        "duration_expiry"
+      ],
+      "implemented_ops_involved": [
+        "modify_might"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.9.b",
+        "Core 359.3.e.2",
+        "Core 135.2.e.3"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "selector missing"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#2ed49f33",
+      "clause_text": "Give a friendly unit +3 :rb_might: this turn.",
+      "required_mechanics": [
+        "target_choice",
+        "duration_expiry"
+      ],
+      "implemented_ops_involved": [
+        "modify_might"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.9.b",
+        "Core 359.3.e.2",
+        "Core 135.2.e.3"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "u1 chosen, then returned to hand before resolution"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#fd48e5d0",
+      "clause_text": "Then choose an enemy unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.16",
+        "Core 359.3.e.7"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "p1 chooses u2 (enemy) as the second target"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#fd48e5d0",
+      "clause_text": "Then choose an enemy unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.16",
+        "Core 359.3.e.7"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 chooses u1 for both targets (355.16 deterministically illegal later)"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#fd48e5d0",
+      "clause_text": "Then choose an enemy unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.16",
+        "Core 359.3.e.7"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "second selector missing"
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "clause_id": "gentlemen's duel#fd48e5d0",
+      "clause_text": "Then choose an enemy unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.16",
+        "Core 359.3.e.7"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "u2 chosen, then killed before resolution → 'They deal damage…' does not execute (359.3.e.7)"
+    },
+    {
+      "card": "Gust",
+      "clause_id": "gust#e661650e",
+      "clause_text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+      "required_mechanics": [
+        "return_board_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.b",
+        "Core 359.3.e.4",
+        "Core 446.2",
+        "Core 124",
+        "Core 124.1",
+        "Core 056"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "move u1 (3 Might) to bf1; p1 chooses u1"
+    },
+    {
+      "card": "Gust",
+      "clause_id": "gust#e661650e",
+      "clause_text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+      "required_mechanics": [
+        "return_board_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.b",
+        "Core 359.3.e.4",
+        "Core 446.2",
+        "Core 124",
+        "Core 124.1",
+        "Core 056"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 chooses u2 (4 Might > 3)"
+    },
+    {
+      "card": "Gust",
+      "clause_id": "gust#e661650e",
+      "clause_text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+      "required_mechanics": [
+        "return_board_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.b",
+        "Core 359.3.e.4",
+        "Core 446.2",
+        "Core 124",
+        "Core 124.1",
+        "Core 056"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "u1's Might unknown in observation"
+    },
+    {
+      "card": "Gust",
+      "clause_id": "gust#e661650e",
+      "clause_text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+      "required_mechanics": [
+        "return_board_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.b",
+        "Core 359.3.e.4",
+        "Core 446.2",
+        "Core 124",
+        "Core 124.1",
+        "Core 056"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "u1 chosen, then given +1 Might in reaction (359.3.e.4 example)"
+    },
+    {
+      "card": "Highlander",
+      "clause_id": "highlander#d659b2ba",
+      "clause_text": "Choose a friendly unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.10.c",
+        "Core 355.5",
+        "Core 359.3.e.5",
+        "Core 455",
+        "Core 456.1",
+        "errata: Highlander OGS-020"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "p1 chooses u1"
+    },
+    {
+      "card": "Highlander",
+      "clause_id": "highlander#d659b2ba",
+      "clause_text": "Choose a friendly unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.10.c",
+        "Core 355.5",
+        "Core 359.3.e.5",
+        "Core 455",
+        "Core 456.1",
+        "errata: Highlander OGS-020"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 chooses u2 (not friendly)"
+    },
+    {
+      "card": "Highlander",
+      "clause_id": "highlander#d659b2ba",
+      "clause_text": "Choose a friendly unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.10.c",
+        "Core 355.5",
+        "Core 359.3.e.5",
+        "Core 455",
+        "Core 456.1",
+        "errata: Highlander OGS-020"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "selector missing"
+    },
+    {
+      "card": "Highlander",
+      "clause_id": "highlander#d659b2ba",
+      "clause_text": "Choose a friendly unit.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.10.c",
+        "Core 355.5",
+        "Core 359.3.e.5",
+        "Core 455",
+        "Core 456.1",
+        "errata: Highlander OGS-020"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "u1 chosen, then returned to hand → replacement never attaches (359.3.e.5)"
+    },
+    {
+      "card": "Incinerate",
+      "clause_id": "incinerate#df9db2ea",
+      "clause_text": "Deal 2 to a unit at a battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.10.b",
+        "Core 359.3.e.2",
+        "Core 417.1.b"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "move u2 to bf1; p1 chooses u2"
+    },
+    {
+      "card": "Incinerate",
+      "clause_id": "incinerate#df9db2ea",
+      "clause_text": "Deal 2 to a unit at a battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.10.b",
+        "Core 359.3.e.2",
+        "Core 417.1.b"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 chooses c3 (a card in trash, not a unit on the board)"
+    },
+    {
+      "card": "Incinerate",
+      "clause_id": "incinerate#df9db2ea",
+      "clause_text": "Deal 2 to a unit at a battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.10.b",
+        "Core 359.3.e.2",
+        "Core 417.1.b"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "selector present but names no object"
+    },
+    {
+      "card": "Incinerate",
+      "clause_id": "incinerate#df9db2ea",
+      "clause_text": "Deal 2 to a unit at a battlefield.",
+      "required_mechanics": [
+        "target_choice"
+      ],
+      "implemented_ops_involved": [
+        "deal_damage"
+      ],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.5",
+        "Core 355.10.b",
+        "Core 359.3.e.2",
+        "Core 417.1.b"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "u2 chosen at bf1, then returned to hand (zone change → new object)"
+    },
+    {
+      "card": "Meditation",
+      "clause_id": "meditation#6ce549b5",
+      "clause_text": "As an additional cost to play this, you may exhaust a friendly unit.",
+      "required_mechanics": [
+        "optional_additional_cost"
+      ],
+      "implemented_ops_involved": [
+        "exhaust"
+      ],
+      "decision_point": "at_play",
+      "targets": false,
+      "locators": [
+        "Core 355.1.a",
+        "Core 355.10.c",
+        "Core 204.2.a",
+        "Core 356.2.b.1",
+        "Core 356.4.f.1",
+        "Core 357.2",
+        "Core 357.2.a",
+        "Core 414.4",
+        "Core 358.2",
+        "Core 358.5",
+        "Core 205"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-04",
+        "DP-05"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "p1 declares pay at play (355.1.a) naming u1 (ready); step 4 exhausts u1; 'paid' flag set"
+    },
+    {
+      "card": "Meditation",
+      "clause_id": "meditation#6ce549b5",
+      "clause_text": "As an additional cost to play this, you may exhaust a friendly unit.",
+      "required_mechanics": [
+        "optional_additional_cost"
+      ],
+      "implemented_ops_involved": [
+        "exhaust"
+      ],
+      "decision_point": "at_play",
+      "targets": false,
+      "locators": [
+        "Core 355.1.a",
+        "Core 355.10.c",
+        "Core 204.2.a",
+        "Core 356.2.b.1",
+        "Core 356.4.f.1",
+        "Core 357.2",
+        "Core 357.2.a",
+        "Core 414.4",
+        "Core 358.2",
+        "Core 358.5",
+        "Core 205"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-04",
+        "DP-05"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 declares pay naming u2-like exhausted friendly unit → 414.4 unpaid → 358.5 undo"
+    },
+    {
+      "card": "Meditation",
+      "clause_id": "meditation#6ce549b5",
+      "clause_text": "As an additional cost to play this, you may exhaust a friendly unit.",
+      "required_mechanics": [
+        "optional_additional_cost"
+      ],
+      "implemented_ops_involved": [
+        "exhaust"
+      ],
+      "decision_point": "at_play",
+      "targets": false,
+      "locators": [
+        "Core 355.1.a",
+        "Core 355.10.c",
+        "Core 204.2.a",
+        "Core 356.2.b.1",
+        "Core 356.4.f.1",
+        "Core 357.2",
+        "Core 357.2.a",
+        "Core 414.4",
+        "Core 358.2",
+        "Core 358.5",
+        "Core 205"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-04",
+        "DP-05"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "pay/decline decision absent at play → decision_required"
+    },
+    {
+      "card": "Meditation",
+      "clause_id": "meditation#6ce549b5",
+      "clause_text": "As an additional cost to play this, you may exhaust a friendly unit.",
+      "required_mechanics": [
+        "optional_additional_cost"
+      ],
+      "implemented_ops_involved": [
+        "exhaust"
+      ],
+      "decision_point": "at_play",
+      "targets": false,
+      "locators": [
+        "Core 355.1.a",
+        "Core 355.10.c",
+        "Core 204.2.a",
+        "Core 356.2.b.1",
+        "Core 356.4.f.1",
+        "Core 357.2",
+        "Core 357.2.a",
+        "Core 414.4",
+        "Core 358.2",
+        "Core 358.5",
+        "Core 205"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-04",
+        "DP-05"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "not applicable: a cost does not target (355.10.c); recorded as n/a"
+    },
+    {
+      "card": "Mobilize",
+      "clause_id": "mobilize#3e791d2d",
+      "clause_text": "Channel 1 rune exhausted.",
+      "required_mechanics": [
+        "channel_rune"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "none",
+      "targets": false,
+      "locators": [
+        "Core 430.1",
+        "Core 430.2",
+        "Core 430.3",
+        "Core 430.5",
+        "Core 161.1.a"
+      ],
+      "packets": [
+        "DP-05",
+        "DP-08"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "rune_deck [r1]; channel 1 exhausted → r1 enters base exhausted"
+    },
+    {
+      "card": "Mobilize",
+      "clause_id": "mobilize#3e791d2d",
+      "clause_text": "Channel 1 rune exhausted.",
+      "required_mechanics": [
+        "channel_rune"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "none",
+      "targets": false,
+      "locators": [
+        "Core 430.1",
+        "Core 430.2",
+        "Core 430.3",
+        "Core 430.5",
+        "Core 161.1.a"
+      ],
+      "packets": [
+        "DP-05",
+        "DP-08"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "entry_state 'stunned' (not ready|exhausted) → invalid_input"
+    },
+    {
+      "card": "Mobilize",
+      "clause_id": "mobilize#3e791d2d",
+      "clause_text": "Channel 1 rune exhausted.",
+      "required_mechanics": [
+        "channel_rune"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "none",
+      "targets": false,
+      "locators": [
+        "Core 430.1",
+        "Core 430.2",
+        "Core 430.3",
+        "Core 430.5",
+        "Core 161.1.a"
+      ],
+      "packets": [
+        "DP-05",
+        "DP-08"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "rune_deck contents unknown in observation"
+    },
+    {
+      "card": "Mobilize",
+      "clause_id": "mobilize#3e791d2d",
+      "clause_text": "Channel 1 rune exhausted.",
+      "required_mechanics": [
+        "channel_rune"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "none",
+      "targets": false,
+      "locators": [
+        "Core 430.1",
+        "Core 430.2",
+        "Core 430.3",
+        "Core 430.5",
+        "Core 161.1.a"
+      ],
+      "packets": [
+        "DP-05",
+        "DP-08"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "not applicable: no target; rune_deck empty → applied none (430.3) — feeds DP-05"
+    },
+    {
+      "card": "Morbid Return",
+      "clause_id": "morbid return#f3c76e58",
+      "clause_text": "Return a unit from your trash to your hand.",
+      "required_mechanics": [
+        "return_trash_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.a",
+        "Core 355.10.a",
+        "Core 355.10.a.1",
+        "Core 359.3.e.2",
+        "Core 108.2.c"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "p1 chooses c3 from trash (trash is Public, 355.10.a)"
+    },
+    {
+      "card": "Morbid Return",
+      "clause_id": "morbid return#f3c76e58",
+      "clause_text": "Return a unit from your trash to your hand.",
+      "required_mechanics": [
+        "return_trash_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.a",
+        "Core 355.10.a",
+        "Core 355.10.a.1",
+        "Core 359.3.e.2",
+        "Core 108.2.c"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 chooses c1 (in deck, not trash)"
+    },
+    {
+      "card": "Morbid Return",
+      "clause_id": "morbid return#f3c76e58",
+      "clause_text": "Return a unit from your trash to your hand.",
+      "required_mechanics": [
+        "return_trash_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.a",
+        "Core 355.10.a",
+        "Core 355.10.a.1",
+        "Core 359.3.e.2",
+        "Core 108.2.c"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "trash contents not in observation"
+    },
+    {
+      "card": "Morbid Return",
+      "clause_id": "morbid return#f3c76e58",
+      "clause_text": "Return a unit from your trash to your hand.",
+      "required_mechanics": [
+        "return_trash_to_hand",
+        "target_choice"
+      ],
+      "implemented_ops_involved": [],
+      "decision_point": "at_play",
+      "targets": true,
+      "locators": [
+        "Core 355.9.a",
+        "Core 355.10.a",
+        "Core 355.10.a.1",
+        "Core 359.3.e.2",
+        "Core 108.2.c"
+      ],
+      "packets": [
+        "DP-01",
+        "DP-03",
+        "DP-06"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "c3 recycled out of trash before resolution (zone change → new object)"
+    },
+    {
+      "card": "Mystic Poro",
+      "clause_id": "mystic poro#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "unit played; Vision triggers; p1 looks at c1 and decides recycle/keep at trigger finalization"
+    },
+    {
+      "card": "Mystic Poro",
+      "clause_id": "mystic poro#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "recycle decision supplied at play time (wrong stage, 355.5.b)"
+    },
+    {
+      "card": "Mystic Poro",
+      "clause_id": "mystic poro#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "recycle decision absent when the trigger resolves → decision_required"
+    },
+    {
+      "card": "Mystic Poro",
+      "clause_id": "mystic poro#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "not applicable: Predict targets nothing (355.10.a, deck is Secret); recorded as n/a"
+    },
+    {
+      "card": "Sai Scout",
+      "clause_id": "sai scout#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "positive",
+      "intent": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
+      "setup": "unit played; Vision triggers; p1 looks at c1 and decides recycle/keep at trigger finalization"
+    },
+    {
+      "card": "Sai Scout",
+      "clause_id": "sai scout#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "negative",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "recycle decision supplied at play time (wrong stage, 355.5.b)"
+    },
+    {
+      "card": "Sai Scout",
+      "clause_id": "sai scout#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "missing_information",
+      "intent": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
+      "setup": "recycle decision absent when the trigger resolves → decision_required"
+    },
+    {
+      "card": "Sai Scout",
+      "clause_id": "sai scout#f4a07c4d",
+      "clause_text": "[Vision]",
+      "required_mechanics": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "implemented_ops_involved": [
+        "recycle_one"
+      ],
+      "decision_point": "at_trigger_finalization",
+      "targets": false,
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a",
+        "Core 436.1",
+        "Core 436.4",
+        "Core 128.3",
+        "Core 402.1",
+        "Core 355.5.b"
+      ],
+      "packets": [
+        "DP-02",
+        "DP-07"
+      ],
+      "state_sketch": {
+        "from": "check_effect_ir.base_state()",
+        "objects": {
+          "u1": "p1 unit, 3 Might, 1 damage, base",
+          "u2": "p2 unit, 4 Might, exhausted, base",
+          "c3": "p1 spell in trash",
+          "r1": "p1 rune in rune_deck",
+          "bf1": "battlefield, uncontrolled, empty"
+        }
+      },
+      "actor": "p1",
+      "kind": "target_invalidated",
+      "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
+      "setup": "not applicable: Predict targets nothing (355.10.a, deck is Secret); recorded as n/a"
+    }
+  ],
+  "content_hash": "sha256:b896e4285f6c9c6a65e8287b595368ee85c9960522a1cdbeeffec1907074c953"
+}

@@ -1,0 +1,881 @@
+{
+  "schema_version": "r3a1-clause-ledger.v1",
+  "batch": "R3-A1-choices-costs-zones",
+  "package": "C-13",
+  "inventory_manifest_id": "global-core-origins-v1-inventory-draft",
+  "sources": {
+    "core": {
+      "source_id": "core-rules-2026-07-16",
+      "version": "2026-07-16",
+      "kind": "core_rules"
+    },
+    "errata": {
+      "source_id": "origins-errata-2025-10-28",
+      "version": "2025-10-28",
+      "kind": "errata"
+    },
+    "faq": {
+      "source_id": "origins-faq-2025-10-16",
+      "version": "2025-10-16",
+      "kind": "official_clarification",
+      "local": false
+    }
+  },
+  "not_claimed": [
+    "expected resolution results",
+    "programs",
+    "new effect ops",
+    "schema changes",
+    "any ruling — every judgement here is input to X-09"
+  ],
+  "counts": {
+    "cards": 11,
+    "clauses": 12,
+    "fixture_drafts": 48,
+    "packets": 11,
+    "targeted_clauses": 8,
+    "decision_points": {
+      "at_play": 9,
+      "at_resolution": 0,
+      "at_trigger_finalization": 2,
+      "none": 1
+    }
+  },
+  "cards": [
+    {
+      "card": "Disintegrate",
+      "type": "Spell",
+      "printing": "ogn-005-298",
+      "stale": true,
+      "clauses": [
+        {
+          "clause_id": "disintegrate#d3d94631",
+          "text": "Deal 3 to a unit at battlefield.",
+          "required_mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "355.5 specific object choice at play; 355.10.b 'at battlefield' is a restriction, the unit is the target",
+          "locators": [
+            {
+              "locator": "Core 355.5",
+              "excerpt": "If a card requires you to specifically choose one or more Game Objects, that choice is made now.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.8",
+              "excerpt": "In order to put a spell or ability on the chain, valid choices must be made for all targets.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.9.b",
+              "excerpt": "It meets all targeting restrictions. e.g., a unit is a valid target for a spell that refers to a 'unit at a battlefield' only if it meets the appropriate criteria.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.10.b",
+              "excerpt": "'Kill a unit at a battlefield' targets a unit, but not a battlefield, because the units are targets and 'at a battlefield' is a restriction.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 359.3.e.5",
+              "excerpt": "If any of the spell's targets are no longer legal, those game objects are unaffected by the spell as it resolves.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 417.1.b",
+              "excerpt": "To Deal Damage to Units, mark the specified amount of Damage on the Unit.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 417.6.a",
+              "excerpt": "If a game effect does not specify a source, the game effect describing the Deal action is the source.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "errata: Disintegrate OGN-005",
+              "excerpt": "Deal 3 to a unit at battlefield. If this kills it, do this: draw 1.",
+              "source_id": "origins-errata-2025-10-28",
+              "version": "2025-10-28",
+              "kind": "errata"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-03"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Flash",
+      "type": "Spell",
+      "printing": "ogs-011-024",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "flash#7a92a690",
+          "text": "Move up to 2 friendly units to base.",
+          "required_mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "move_board_object"
+          ],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "355.4 move destinations chosen at play; 355.13 'up to' may choose zero; 355.12 each chosen unit is a target",
+          "locators": [
+            {
+              "locator": "Core 355.4",
+              "excerpt": "For Spells and Abilities that Move one or more Units, choose a valid Location as the Move Destination for each Move that will be performed.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.4.a",
+              "excerpt": "A valid Location for a Move Effect is one other than the Units' current Location where they are allowed to be present.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.13",
+              "excerpt": "If a card specifies that a player chooses 'any number' or 'up to' some number of Game Objects to be affected, they may choose any number of available targets, including zero.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 446.3.c",
+              "excerpt": "Moving does not use the Chain, nor is it able to be Reacted to.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 449.1",
+              "excerpt": "The source of the Move will provide details on any restrictions on legality for Destination.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 453",
+              "excerpt": "When a Move action is complete, perform a Cleanup.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-02",
+            "DP-06"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "type": "Spell",
+      "printing": "ogs-008-024",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "gentlemen's duel#2ed49f33",
+          "text": "Give a friendly unit +3 :rb_might: this turn.",
+          "required_mechanics": [
+            "target_choice",
+            "duration_expiry"
+          ],
+          "implemented_ops": [
+            "modify_might"
+          ],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "friendly-unit choice at play; duration 'this turn' is R3-A2 but the target is A1",
+          "locators": [
+            {
+              "locator": "Core 355.5",
+              "excerpt": "If a card requires you to specifically choose one or more Game Objects, that choice is made now.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.9.b",
+              "excerpt": "A unit is a valid target for a spell that refers to a 'unit you control' only if it meets the appropriate criteria.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 359.3.e.2",
+              "excerpt": "A target is illegal as the spell resolves if it no longer meets the targeting requirements of the spell.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 135.2.e.3",
+              "excerpt": "(Might modifier accounting, as effect_ir already cites for modify_might)",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-03"
+          ]
+        },
+        {
+          "clause_id": "gentlemen's duel#fd48e5d0",
+          "text": "Then choose an enemy unit.",
+          "required_mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "a second, independent target chosen at play (355.5); 'Then' orders execution, not the choice",
+          "locators": [
+            {
+              "locator": "Core 355.5",
+              "excerpt": "If a card requires you to specifically choose one or more Game Objects, that choice is made now.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.16",
+              "excerpt": "A player may not make choices during this step that will deterministically result in illegal choices or actions later in this process unless they have no choice.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 359.3.e.7",
+              "excerpt": "If all of an instruction's Targets become Invalid or Unavailable by the time the spell begins resolving, that instruction will not execute.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-03"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Gust",
+      "type": "Spell",
+      "printing": "ogn-169-298",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "gust#e661650e",
+          "text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+          "required_mechanics": [
+            "return_board_to_hand",
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "targeted choice with two restrictions; returning to hand is a zone change, not a Move (446.2), and the object becomes new (124)",
+          "locators": [
+            {
+              "locator": "Core 355.9.b",
+              "excerpt": "A unit is a valid target for a spell that refers to a 'unit with Might 4 or greater' only if it meets the appropriate criteria.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 359.3.e.4",
+              "excerpt": "A unit with 3 or less Might is no longer a legal target if it is no longer a unit or if its Might is greater than 3.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 446.2",
+              "excerpt": "A card changing game zones does not in itself constitute a Move.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 124",
+              "excerpt": "A Game Object that changes zones to or from a Non-Board Zone becomes a new object for the purposes of tracking that object.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 124.1",
+              "excerpt": "Whenever a Game Object changes zones to or from a Non-Board Zone, all Temporary Modifications of all kinds cease to be tracked on it.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 056",
+              "excerpt": "Cards a player owns may never be placed into a non-Board zone belonging to another player.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-03",
+            "DP-06"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Highlander",
+      "type": "Spell",
+      "printing": "ogs-020-024",
+      "stale": true,
+      "clauses": [
+        {
+          "clause_id": "highlander#d659b2ba",
+          "text": "Choose a friendly unit.",
+          "required_mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "355.10.c's own example: 'Choose a friendly unit. The next time it would die this turn…' targets a friendly unit, because 'choose' is not part of the replacement effect",
+          "locators": [
+            {
+              "locator": "Core 355.10.c",
+              "excerpt": "'Choose a friendly unit. The next time it would die this turn, return it to your hand instead' targets a friendly unit, because 'choose a friendly unit' is not part of the replacement effect.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.5",
+              "excerpt": "If a card requires you to specifically choose one or more Game Objects, that choice is made now.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 359.3.e.5",
+              "excerpt": "Any instructions related to an illegal target can't be followed.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 455",
+              "excerpt": "A Recall is when a Permanent is relocated from anywhere to its Base without it being a Move.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 456.1",
+              "excerpt": "They do not cause Triggered Abilities to trigger that are triggered by Move actions.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "errata: Highlander OGS-020",
+              "excerpt": "Choose a friendly unit. The next time it would die this turn, heal it, exhaust it, and recall it instead.",
+              "source_id": "origins-errata-2025-10-28",
+              "version": "2025-10-28",
+              "kind": "errata"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-03",
+            "DP-06"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Incinerate",
+      "type": "Spell",
+      "printing": "ogs-003-024",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "incinerate#df9db2ea",
+          "text": "Deal 2 to a unit at a battlefield.",
+          "required_mechanics": [
+            "target_choice"
+          ],
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "same shape as Disintegrate without the linked instruction",
+          "locators": [
+            {
+              "locator": "Core 355.5",
+              "excerpt": "If a card requires you to specifically choose one or more Game Objects, that choice is made now.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.10.b",
+              "excerpt": "'Kill a unit at a battlefield' targets a unit, but not a battlefield.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 359.3.e.2",
+              "excerpt": "A target is illegal as the spell resolves if it no longer meets the targeting requirements of the spell, or if it has changed Zones to or from a Non-Board Zone.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 417.1.b",
+              "excerpt": "To Deal Damage to Units, mark the specified amount of Damage on the Unit.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-03"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Meditation",
+      "type": "Spell",
+      "printing": "ogn-048-298",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "meditation#6ce549b5",
+          "text": "As an additional cost to play this, you may exhaust a friendly unit.",
+          "required_mechanics": [
+            "optional_additional_cost"
+          ],
+          "implemented_ops": [
+            "exhaust"
+          ],
+          "targets": false,
+          "decision_point": "at_play",
+          "rationale": "355.1.a the choice to pay an optional additional cost is made at play; 355.10.c a cost does not target; 356.2.b/357.2 paid in step 4; 414.4 an exhausted unit cannot pay it",
+          "locators": [
+            {
+              "locator": "Core 355.1.a",
+              "excerpt": "This includes the choice of whether or not to pay an Optional Additional Cost.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.10.c",
+              "excerpt": "'As an additional cost to play me, kill a friendly unit' doesn't target anything.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 204.2.a",
+              "excerpt": "Additional Costs must be paid to finalize the spell or ability, in addition to the base cost.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 356.2.b.1",
+              "excerpt": "Optional Costs … must be paid only if the player made the choice to pay them in step 2. They use the phrase 'as an additional cost' and the word 'may.'",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 356.4.f.1",
+              "excerpt": "An optional additional cost was 'paid' if the player made the decision to pay it. It doesn't matter how much the player actually paid.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 357.2",
+              "excerpt": "In addition, pay any non-standard Cost summed in step 3 in any order.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 357.2.a",
+              "excerpt": "Costs that are replaced with other events by replacement effects are still considered paid.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 414.4",
+              "excerpt": "An exhausted friendly unit may not be exhausted again as the additional cost for the spell, and the additional cost has not been paid.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 358.2",
+              "excerpt": "Check that all costs were paid.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 358.5",
+              "excerpt": "If any of the above checks fail, the actions taken in this process are undone and the action is cancelled.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 205",
+              "excerpt": "An instruction that requires a player to pay resources … that does not also have a linked Effect, is not a Cost.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-02",
+            "DP-04",
+            "DP-05"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Mobilize",
+      "type": "Spell",
+      "printing": "ogn-134-298",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "mobilize#3e791d2d",
+          "text": "Channel 1 rune exhausted.",
+          "required_mechanics": [
+            "channel_rune"
+          ],
+          "implemented_ops": [],
+          "targets": false,
+          "decision_point": "none",
+          "rationale": "430.1 channel takes the top rune (no choice); 430.2 the effect specifies entry state; 430.3 channel as many as possible",
+          "locators": [
+            {
+              "locator": "Core 430.1",
+              "excerpt": "Channeling is the action of taking one or more Runes from the top of a player's Rune Deck and putting them on the board.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 430.2",
+              "excerpt": "A spell reads 'Channel 1 rune exhausted.' As that spell resolves, its controller puts the top rune of their rune deck onto the board and that rune enters the board exhausted rather than ready.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 430.3",
+              "excerpt": "If there aren't sufficient runes in the Rune Deck, channel as many as possible.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 430.5",
+              "excerpt": "e.g., 'Channel 2 runes exhausted. If you couldn't channel 2 runes this way, draw 1.'",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 161.1.a",
+              "excerpt": "despite remaining on the Board until Recycled or otherwise removed from the board, it is not a Permanent.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-05",
+            "DP-08"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Morbid Return",
+      "type": "Spell",
+      "printing": "ogn-170-298",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "morbid return#f3c76e58",
+          "text": "Return a unit from your trash to your hand.",
+          "required_mechanics": [
+            "return_trash_to_hand",
+            "target_choice"
+          ],
+          "implemented_ops": [],
+          "targets": true,
+          "decision_point": "at_play",
+          "rationale": "355.10.a: trash is Public, so a unit card in it is a target (the rule's own example)",
+          "locators": [
+            {
+              "locator": "Core 355.9.a",
+              "excerpt": "e.g., 'Recycle a unit from your trash' targets a unit card in your trash.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.10.a",
+              "excerpt": "'Return a unit from your trash to your hand' targets a unit card in your trash, because your trash is Public.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.10.a.1",
+              "excerpt": "Public zones are Battlefield Zones, Bases, Trashes, Legend Zones, Champion Zones, and Facedown Zones.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 359.3.e.2",
+              "excerpt": "A target is illegal as the spell resolves if it has changed Zones to or from a Non-Board Zone.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 108.2.c",
+              "excerpt": "Cards in each player's Trash are unordered.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-01",
+            "DP-03",
+            "DP-06"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Mystic Poro",
+      "type": "Unit",
+      "printing": "ogn-171-298",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "mystic poro#f4a07c4d",
+          "text": "[Vision]",
+          "required_mechanics": [
+            "look",
+            "play_and_move_triggers"
+          ],
+          "implemented_ops": [
+            "recycle_one"
+          ],
+          "targets": false,
+          "decision_point": "at_trigger_finalization",
+          "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
+          "locators": [
+            {
+              "locator": "Core 817.1.b",
+              "excerpt": "It is functionally short for 'When this is played, predict.'",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 817.1.c",
+              "excerpt": "The trigger is the permanent entering the Board.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 817.2.a",
+              "excerpt": "The player may choose to recycle or not recycle for each instance of Vision separately.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 436.1",
+              "excerpt": "Predicting a card is the act of looking at a single card from the top of the Main Deck and choosing whether or not to Recycle it.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 436.4",
+              "excerpt": "If a player attempts to Predict more cards than are available in their Main Deck, they will Predict as many as possible instead.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 128.3",
+              "excerpt": "Secret: This level of Privacy indicates that no player may read or look at the face of the card.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 402.1",
+              "excerpt": "If the first part of a Triggered Ability's effect is 'you may', its controller decides whether or not to perform the Triggered Ability now.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.5.b",
+              "excerpt": "This does not include making choices for Triggered Abilities of permanents, even if those abilities trigger when the chain item is played.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-02",
+            "DP-07"
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Sai Scout",
+      "type": "Unit",
+      "printing": "ogn-174-298",
+      "stale": false,
+      "clauses": [
+        {
+          "clause_id": "sai scout#f4a07c4d",
+          "text": "[Vision]",
+          "required_mechanics": [
+            "look",
+            "play_and_move_triggers"
+          ],
+          "implemented_ops": [
+            "recycle_one"
+          ],
+          "targets": false,
+          "decision_point": "at_trigger_finalization",
+          "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
+          "locators": [
+            {
+              "locator": "Core 817.1.b",
+              "excerpt": "It is functionally short for 'When this is played, predict.'",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 817.1.c",
+              "excerpt": "The trigger is the permanent entering the Board.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 817.2.a",
+              "excerpt": "The player may choose to recycle or not recycle for each instance of Vision separately.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 436.1",
+              "excerpt": "Predicting a card is the act of looking at a single card from the top of the Main Deck and choosing whether or not to Recycle it.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 436.4",
+              "excerpt": "If a player attempts to Predict more cards than are available in their Main Deck, they will Predict as many as possible instead.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 128.3",
+              "excerpt": "Secret: This level of Privacy indicates that no player may read or look at the face of the card.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 402.1",
+              "excerpt": "If the first part of a Triggered Ability's effect is 'you may', its controller decides whether or not to perform the Triggered Ability now.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            },
+            {
+              "locator": "Core 355.5.b",
+              "excerpt": "This does not include making choices for Triggered Abilities of permanents, even if those abilities trigger when the chain item is played.",
+              "source_id": "core-rules-2026-07-16",
+              "version": "2026-07-16",
+              "kind": "core_rules"
+            }
+          ],
+          "packets": [
+            "DP-02",
+            "DP-07"
+          ]
+        }
+      ]
+    }
+  ],
+  "content_hash": "sha256:31f0608263700ba21d69c02f18f170eabc9ae921c4e41a4d0709faf816254df2"
+}

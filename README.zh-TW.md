@@ -30,10 +30,10 @@
 | --- | --- | ---: |
 | `rule-consult` → `engine-check.v1` | `connected` | 6 / 6 |
 | `player2-agent` → `engine-check.v1` | `connected` | 6 / 6 |
-| `deck-coach` → `engine-check.v1` | `planned` | 0 / 6 |
+| `deck-coach` → `engine-check.v1` | `connected` | 6 / 6 |
 | `match-analyst` → `engine-check.v1` | `planned` | 0 / 6 |
 
-Deck Coach 會顯示匯入的行為涵蓋率投影，但尚未消費這個封裝；Match Analyst 已有規格與 fixture，尚未路由。
+Deck Coach 只把這個封裝當規則一致性證據消費（ADR-0006）：附加檢查不改變診斷或入門指南，也不自行產生檢查；Match Analyst 已有規格與 fixture，尚未路由。
 
 目前 Player 2 只有 **P2-A**：代理提出並解釋行動，玩家確認合法性並手動完成結算。P2-S 自動模擬器只有規劃文件，尚未實作。
 

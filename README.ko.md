@@ -30,10 +30,10 @@
 | --- | --- | ---: |
 | `rule-consult` → `engine-check.v1` | `connected` | 6 / 6 |
 | `player2-agent` → `engine-check.v1` | `connected` | 6 / 6 |
-| `deck-coach` → `engine-check.v1` | `planned` | 0 / 6 |
+| `deck-coach` → `engine-check.v1` | `connected` | 6 / 6 |
 | `match-analyst` → `engine-check.v1` | `planned` | 0 / 6 |
 
-Deck Coach는 가져온 행동 커버리지 투영을 표시하지만 아직 봉투를 소비하지 않습니다. Match Analyst는 명세와 fixture만 있고 라우팅되지 않았습니다.
+Deck Coach는 이 봉투를 규칙 일관성 증거로만 소비합니다(ADR-0006). 검사를 첨부해도 진단이나 프라이머는 바뀌지 않으며, 스스로 검사를 만들지 않습니다. Match Analyst는 명세와 fixture만 있고 라우팅되지 않았습니다.
 
 현재 Player 2는 **P2-A**만 구현되어 있습니다. Agent가 행동과 이유를 제안하고, 사람이 합법성을 확인한 뒤 실물 카드로 해결합니다. 자동 시뮬레이터인 P2-S는 문서로만 계획되어 있으며 구현되지 않았습니다.
 

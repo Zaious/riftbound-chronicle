@@ -14,6 +14,9 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from engine_check import build_engine_check, validate_engine_check  # noqa: E402
+
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 ROLE_PATH = SKILL_DIR / "data" / "deck_coach_roles.json"
@@ -28,6 +31,13 @@ ALLOWED_TOP = {
     "environment", "format", "legend", "chosen_champion", "decklist", "diagnosis", "primer",
 }
 FORBIDDEN_RATE_KEYS = {"win_rate", "play_rate", "matchup_win_rate", "usage_rate", "tier_rank", "score"}
+# ADR-0006: engine evidence is optional and paired. Deck Coach consumes checks;
+# it does not produce them from prose, and it never supplies a decision the
+# engine asked for -- these keys are what a supplied decision would look like.
+OPTIONAL_TOP = {"engine_checks", "engine_evidence_scope"}
+ENGINE_EVIDENCE_SCOPE = "rules_consistency_only"
+FORBIDDEN_DECISION_KEYS = {"cleanup_decisions", "replacement_event_order", "replacement_choices", "engine_decisions"}
+ENGINE_CHECK_KINDS = ("timing", "effect", "resolution", "cleanup")
 
 
 class DeckCoachError(ValueError):
@@ -72,7 +82,7 @@ def validate_session(value: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(value, dict):
         return ["session must be a JSON object"]
-    missing, unknown = ALLOWED_TOP - set(value), set(value) - ALLOWED_TOP
+    missing, unknown = ALLOWED_TOP - set(value), set(value) - ALLOWED_TOP - OPTIONAL_TOP
     if missing:
         errors.append(f"missing top-level fields: {sorted(missing)}")
     if unknown:
@@ -90,6 +100,7 @@ def validate_session(value: Any) -> list[str]:
     forbidden = _forbidden_paths(value)
     if forbidden:
         errors.append("session contains forbidden rate/score fields: " + ", ".join(forbidden))
+    errors.extend(_engine_evidence_errors(value))
 
     known_roles = set(role_ids())
     decklist = value.get("decklist")
@@ -158,6 +169,88 @@ def validate_session(value: Any) -> list[str]:
     return errors
 
 
+def _decision_paths(value: Any, path: str = "$") -> list[str]:
+    hits = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}"
+            if key in FORBIDDEN_DECISION_KEYS:
+                hits.append(child_path)
+            hits.extend(_decision_paths(child, child_path))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            hits.extend(_decision_paths(child, f"{path}[{index}]"))
+    return hits
+
+
+def _engine_evidence_errors(value: dict[str, Any]) -> list[str]:
+    """ADR-0006: the pair is optional, but if either half is present both are, and every check is a valid envelope."""
+    errors: list[str] = []
+    has_checks, has_scope = "engine_checks" in value, "engine_evidence_scope" in value
+    if has_checks != has_scope:
+        errors.append("engine_checks and engine_evidence_scope must be present together or absent together")
+    if has_scope and value.get("engine_evidence_scope") != ENGINE_EVIDENCE_SCOPE:
+        errors.append(f"engine_evidence_scope must be {ENGINE_EVIDENCE_SCOPE!r}")
+    if has_checks:
+        checks = value.get("engine_checks")
+        if not isinstance(checks, list):
+            errors.append("engine_checks must be an array")
+        else:
+            seen: set[str] = set()
+            for index, check in enumerate(checks):
+                found = validate_engine_check(check)
+                if found:
+                    errors.append(f"engine_checks[{index}] is not a valid engine-check.v1: " + "; ".join(found))
+                    continue
+                if check["check_id"] in seen:
+                    errors.append(f"engine_checks[{index}] duplicates {check['check_id']}")
+                seen.add(check["check_id"])
+    decided = _decision_paths(value)
+    if decided:
+        errors.append("session resolves an engine decision on the player's behalf: " + ", ".join(decided))
+    return errors
+
+
+def evidence_free_view(value: dict[str, Any]) -> dict[str, Any]:
+    """Everything except the evidence pair -- what attaching a check must leave untouched."""
+    return {key: copy.deepcopy(item) for key, item in value.items() if key not in OPTIONAL_TOP}
+
+
+def attach_engine_check(value: dict[str, Any], engine_check: dict[str, Any]) -> dict[str, Any]:
+    """Attach a complete envelope. Works on draft and final sessions: a final
+    session's content is immutable, and evidence is not content -- the
+    evidence-free view is asserted identical before and after."""
+    require_valid(value)
+    found = validate_engine_check(engine_check)
+    if found:
+        raise DeckCoachError("invalid engine-check.v1: " + "; ".join(found))
+    if "raw_result" in engine_check:
+        raise DeckCoachError("engine check carries a raw engine result; Deck Coach stores summaries only")
+    before = evidence_free_view(value)
+    updated = copy.deepcopy(value)
+    checks = updated.setdefault("engine_checks", [])
+    updated["engine_evidence_scope"] = ENGINE_EVIDENCE_SCOPE
+    if any(item.get("check_id") == engine_check["check_id"] for item in checks if isinstance(item, dict)):
+        raise DeckCoachError(f"duplicate engine check {engine_check['check_id']}")
+    checks.append(copy.deepcopy(engine_check))
+    require_valid(updated)
+    if evidence_free_view(updated) != before:
+        raise DeckCoachError("attaching evidence changed session content; refused")
+    return updated
+
+
+def normalize_engine_result(kind: str, result: dict[str, Any]) -> dict[str, Any]:
+    """Wrap a raw engine result produced *elsewhere* from explicit structured
+    inputs. Deck Coach adds nothing: the input hash comes from the result."""
+    if kind not in ENGINE_CHECK_KINDS:
+        raise DeckCoachError(f"unsupported engine check kind {kind!r}")
+    input_hash = result.get("input_state_hash")
+    if not isinstance(input_hash, str) or not input_hash.startswith("sha256:"):
+        raise DeckCoachError("engine result lacks a valid input_state_hash")
+    key = {"timing": "timing_state", "effect": "effect_state", "resolution": "timing_state", "cleanup": "effect_state"}[kind]
+    return build_engine_check(kind, result, input_hashes={key: input_hash})
+
+
 def require_valid(value: Any) -> None:
     errors = validate_session(value)
     if errors:
@@ -181,6 +274,16 @@ def new_session(*, environment: str, format_name: str, legend: str, champion: st
         "primer": None,
     }
     require_valid(value)
+    return value
+
+
+def _load_json(path: Path, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DeckCoachError(f"cannot load {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise DeckCoachError(f"{label} must be a JSON object")
     return value
 
 
@@ -246,6 +349,12 @@ def build_parser() -> argparse.ArgumentParser:
     finalize.add_argument("path", type=Path)
     finalize.add_argument("--diagnosis", type=Path, required=True, help="JSON object with identity, core_loop, strengths, gaps, proposed_changes, and evidence")
     finalize.add_argument("--primer", type=Path, required=True, help="JSON object containing the fixed eight primer sections")
+    engine = sub.add_parser("engine-check", help="attach rules-consistency evidence produced elsewhere (ADR-0006)")
+    engine.add_argument("path", type=Path)
+    source = engine.add_mutually_exclusive_group(required=True)
+    source.add_argument("--check", type=Path, help="a complete engine-check.v1 envelope")
+    source.add_argument("--result", type=Path, help="a raw engine result to wrap in the envelope")
+    engine.add_argument("--kind", choices=ENGINE_CHECK_KINDS, help="required with --result")
     for command in ("validate", "show", "render"):
         child = sub.add_parser(command)
         child.add_argument("path", type=Path)
@@ -269,6 +378,17 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if args.command == "render":
                 print(render_markdown(value), end="")
+                return 0
+            if args.command == "engine-check":
+                if args.check is not None:
+                    engine_check = _load_json(args.check, "engine check")
+                else:
+                    if not args.kind:
+                        raise DeckCoachError("--kind is required with --result")
+                    engine_check = normalize_engine_result(args.kind, _load_json(args.result, "engine result"))
+                value = attach_engine_check(value, engine_check)
+                save(args.path, value)
+                print(f"OK: engine-check attached ({value['engine_checks'][-1]['check_id']}, outcome {value['engine_checks'][-1]['outcome']}); it does not change the diagnosis or primer")
                 return 0
             if value["status"] != "draft":
                 raise DeckCoachError("final session is immutable")

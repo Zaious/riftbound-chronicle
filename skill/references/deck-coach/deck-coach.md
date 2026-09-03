@@ -58,6 +58,23 @@ The deterministic grader covers the seven declared dimensions and produces usefu
 
 `deck_coach.py` and `deck-coach-session.v1` remain available for manually authored reviews. They are artifact editors, not the closed-loop profiler.
 
+## Engine evidence intake (ADR-0006)
+
+A session may carry `engine_checks` — complete `engine-check.v1` envelopes —
+paired with `engine_evidence_scope: rules_consistency_only`. Both fields or
+neither. Deck Coach consumes checks produced elsewhere from explicit structured
+inputs; it does not build a timing state from primer prose.
+
+```powershell
+python ${CLAUDE_SKILL_DIR}/scripts/deck_coach.py engine-check session.json --check engine-check.json
+python ${CLAUDE_SKILL_DIR}/scripts/deck_coach.py engine-check session.json --result timing-result.json --kind timing
+```
+
+Attaching never changes the diagnosis, the primer, or behavior coverage; the
+runner refuses if it would. A `supported` check is not evidence that a line is
+good, an `unsupported` one means the component abstained, and a
+`decision_required` one is shown, never answered here.
+
 ## Evidence discipline
 
 Keep mechanically derived claims, verified real-play claims, and unverified recommendations visibly separate. Do not manufacture specific matchup, mulligan, or sequencing rules merely to fill a template. Preserve the existing Tier 1/2/3 contract in the underlying books.

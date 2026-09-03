@@ -53,11 +53,12 @@ derives this table from the artifacts and fails if the table drifts either way.
 | --- | --- | ---: |
 | `rule-consult` → `engine-check.v1` | `connected` | 6 / 6 |
 | `player2-agent` → `engine-check.v1` | `connected` | 6 / 6 |
-| `deck-coach` → `engine-check.v1` | `planned` | 0 / 6 |
+| `deck-coach` → `engine-check.v1` | `connected` | 6 / 6 |
 | `match-analyst` → `engine-check.v1` | `planned` | 0 / 6 |
 
-Deck Coach displays behavior coverage from an imported projection but does not
-yet consume the envelope; Match Analyst is specified, fixtured, and not routed.
+Deck Coach consumes the envelope as rules-consistency evidence only (ADR-0006):
+attaching a check never changes the diagnosis or primer, and it produces no
+checks of its own. Match Analyst is specified, fixtured, and not routed.
 
 The current Player 2 implementation is **P2-A**: the Agent recommends and
 explains an action, then waits for the human to confirm legality and the resulting

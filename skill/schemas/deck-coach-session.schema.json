@@ -5,6 +5,10 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "mode", "session_id", "created_at", "created_by", "status", "environment", "format", "legend", "chosen_champion", "decklist", "diagnosis", "primer"],
+  "dependentRequired": {
+    "engine_checks": ["engine_evidence_scope"],
+    "engine_evidence_scope": ["engine_checks"]
+  },
   "properties": {
     "schema_version": {"const": "deck-coach-session.v1"},
     "mode": {"const": "deck-coach"},
@@ -69,6 +73,12 @@
         }
       ]
     },
+    "engine_checks": {
+      "description": "ADR-0006: complete engine-check.v1 envelopes consumed as rules-consistency evidence. Optional, paired with engine_evidence_scope; attaching one never changes diagnosis, primer, mask, or coverage.",
+      "type": "array",
+      "items": {"$ref": "engine-check.schema.json"}
+    },
+    "engine_evidence_scope": {"const": "rules_consistency_only"},
     "primer": {
       "oneOf": [
         {"type": "null"},

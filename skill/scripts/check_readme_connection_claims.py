@@ -82,6 +82,20 @@ def consultation_with(check: dict) -> dict:
     return value
 
 
+def deck_coach_session_with(check: dict) -> dict:
+    """A minimal final Deck Coach session with the check attached through the real runner."""
+    dc = __import__("deck_coach")
+    session = dc.new_session(environment="global-vendetta", format_name="1v1 Constructed", legend="Fixture Legend", champion=None, created_by="audit")
+    session["decklist"] = [{"name": "Fixture Card", "count": 1, "roles": [], "notes": ""}]
+    session["diagnosis"] = {"identity": "fixture", "core_loop": "fixture", "strengths": ["a"], "gaps": ["b"], "proposed_changes": ["c"],
+                            "role_coverage": dc.role_coverage(session["decklist"]), "evidence": [{"claim": "x", "tier": "Tier 3", "basis": "fixture"}]}
+    session["primer"] = {key: "fixture" for key in dc.PRIMER_SECTIONS}
+    session["status"] = "final"
+    session["engine_checks"] = [check]
+    session["engine_evidence_scope"] = dc.ENGINE_EVIDENCE_SCOPE
+    return session
+
+
 def session_with(check: dict) -> dict:
     from p2a_session import verification_requirement
     return {
@@ -121,14 +135,13 @@ SYSTEMS = {
     },
     "deck-coach": {
         "schema": "deck-coach-session.schema.json",
-        "runner": "deck_coach_pipeline.py",
-        "checks": ("check_deck_coach.py", "check_deck_coach_prototype.py"),
+        # The session runner, not the pipeline: ADR-0006 makes Deck Coach an
+        # intake-only consumer, and the intake lives on the session artifact.
+        "runner": "deck_coach.py",
+        "checks": ("check_deck_coach.py", "check_deck_coach_prototype.py", "check_deck_coach_engine_intake.py"),
         "prototype": "deck-coach",
-        # No engine-facing authority constant exists yet; the condition is
-        # about preserving a boundary after consuming a check, and there is no
-        # consumption to preserve it across.
-        "boundary": None,
-        "validate": None,
+        "boundary": {"engine_evidence_scope": "rules_consistency_only"},
+        "validate": lambda check: __import__("deck_coach").validate_session(deck_coach_session_with(check)),
     },
     "match-analyst": {
         "schema": None, "runner": None, "checks": (), "prototype": None, "boundary": None, "validate": None,

@@ -98,7 +98,18 @@
     },
     "assumptions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "missing_information": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
-    "raw_result": {"type": "object"}
+    "raw_result": {"type": "object"},
+    "capability": {
+      "description": "Optional ADR-0002 binding: which capability set and which engine build produced this check. Absent on checks emitted before the capability manifest existed; those remain valid.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_id", "capability_set_id", "implementation_identity"],
+      "properties": {
+        "manifest_id": {"type": "string", "pattern": "^capability-manifest:[0-9a-f]{24}$"},
+        "capability_set_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "implementation_identity": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    }
   },
   "allOf": [
     {

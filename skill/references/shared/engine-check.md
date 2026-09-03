@@ -124,6 +124,36 @@ may classify a rules error only inside supported coverage; Commentary may
 explain confirmed traces. Unsupported or missing input becomes an uncertainty
 label, never a fabricated event or misplay.
 
+## Capability manifest (ADR-0002)
+
+`engine-check.v1` names its schema major and ruleset baseline. ADR-0002 adds
+two more axes, carried in an optional `capability` block:
+
+| Field | Meaning |
+| --- | --- |
+| `manifest_id` | The capability manifest this check was produced under |
+| `capability_set_id` | Hash of exactly which operations, procedures, clauses and exclusions the engine supports |
+| `implementation_identity` | Hash of the engine source files that ran |
+
+The manifest is derived from the engine, never written by hand:
+
+```powershell
+python ${CLAUDE_SKILL_DIR}/scripts/capability_manifest.py build `
+  --output manifest.json
+
+python ${CLAUDE_SKILL_DIR}/scripts/capability_manifest.py verify manifest.json
+```
+
+`verify` rebuilds from the live engine and lists every disagreement — a stale
+implementation hash, an operation the engine gained or lost, a changed
+locator — and exits non-zero without writing anything. The committed copy lives
+in `data/engine_capability_manifest/manifest.json` and CI fails when it is stale.
+
+The block is optional. A check without it is still valid; a check with it must
+carry all three fields, and binding one never changes the check's outcome or
+`result_hash`. Two builds that support the same things share a
+`capability_set_id` and differ only in `implementation_identity`.
+
 ## Version and extension rule
 
 The schema reserves `legal_action`/`legal_action_v1`, but the current runner

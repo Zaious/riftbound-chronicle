@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/engine-capability-manifest.schema.json",
+  "title": "Chronicle Engine Capability Manifest v1",
+  "description": "What one build of the bounded engine supports, derived from the engine's own declarations. Carries the capability-set and implementation identities that ADR-0002 adds beside schema major and ruleset baseline. Never claims a complete game or complete legality.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "capability_set_id",
+    "implementation",
+    "ruleset",
+    "components",
+    "operations",
+    "procedures",
+    "clauses",
+    "exclusions",
+    "claims"
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "citedEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule_locators"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "rule_locators": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": { "const": "engine-capability-manifest.v1" },
+    "manifest_id": { "type": "string", "pattern": "^capability-manifest:[0-9a-f]{24}$" },
+    "capability_set_id": { "$ref": "#/$defs/sha256" },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "files"],
+      "properties": {
+        "kind": { "const": "source_sha256" },
+        "value": { "$ref": "#/$defs/sha256" },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^[a-z_]+\\.py$" },
+              "sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {
+        "core": { "type": "string", "minLength": 1 },
+        "faq_as_of": { "type": "string", "minLength": 1 }
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_kind", "name", "version", "coverage_id", "supported_scope", "unsupported_scope"],
+        "properties": {
+          "check_kind": { "enum": ["timing", "effect", "resolution", "cleanup"] },
+          "name": { "enum": ["rules_core", "effect_ir", "resolution_bridge", "lethal_cleanup"] },
+          "version": { "type": "string", "minLength": 1 },
+          "coverage_id": { "enum": ["timing_permission_v1", "effect_program_v1", "combined_resolution_v1", "lethal_cleanup_v1"] },
+          "supported_scope": { "$ref": "#/$defs/stringList" },
+          "unsupported_scope": { "$ref": "#/$defs/stringList" }
+        }
+      }
+    },
+    "operations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/citedEntry" } },
+    "procedures": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/citedEntry" } },
+    "clauses": { "$ref": "#/$defs/stringList" },
+    "exclusions": { "$ref": "#/$defs/stringList" },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete_game", "complete_legality"],
+      "properties": {
+        "complete_game": { "const": false },
+        "complete_legality": { "const": false }
+      }
+    }
+  }
+}

@@ -208,6 +208,7 @@ def build_engine_check(
     assumptions: list[str] | None = None,
     missing_information: list[str] | None = None,
     include_raw: bool = False,
+    capability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if kind not in KIND_CONFIG:
         raise EngineCheckError(f"unsupported check kind {kind!r}")
@@ -243,6 +244,14 @@ def build_engine_check(
         check["state_label"] = state_node["state_label"]
     if decision is not None:
         check["decision_required"] = decision
+    if capability is not None:
+        # ADR-0002: which capability set and which build produced this check.
+        # Optional on purpose -- checks emitted before the manifest existed
+        # stay valid, and binding must never change outcome or result_hash.
+        problems = _capability_errors(capability)
+        if problems:
+            raise EngineCheckError("invalid capability binding: " + "; ".join(problems))
+        check["capability"] = copy.deepcopy(capability)
     if include_raw:
         check["raw_result"] = copy.deepcopy(result)
     errors = validate_engine_check(check)
@@ -259,7 +268,7 @@ def validate_engine_check(value: Any) -> list[str]:
         "coverage", "input_hashes", "result_hash", "reason", "rule_locators", "trace_summary",
         "assumptions", "missing_information",
     }
-    optional = {"state_label", "decision_required", "raw_result"}
+    optional = {"state_label", "decision_required", "raw_result", "capability"}
     errors = []
     if set(value) - required - optional or not required.issubset(value):
         errors.append("engine check top-level fields are invalid")
@@ -282,6 +291,25 @@ def validate_engine_check(value: Any) -> list[str]:
     for key in ("rule_locators", "assumptions", "missing_information"):
         if not isinstance(value.get(key), list) or any(not isinstance(item, str) or not item for item in value.get(key, [])):
             errors.append(f"{key} must be a string array")
+    if "capability" in value:
+        errors.extend(_capability_errors(value["capability"]))
+    return errors
+
+
+CAPABILITY_FIELDS = {"manifest_id", "capability_set_id", "implementation_identity"}
+
+
+def _capability_errors(value: Any) -> list[str]:
+    """Shape of the optional ADR-0002 binding; whether it names a real manifest is capability_manifest.verify."""
+    if not isinstance(value, dict) or set(value) != CAPABILITY_FIELDS:
+        return ["capability must contain exactly manifest_id, capability_set_id, implementation_identity"]
+    errors = []
+    if not isinstance(value["manifest_id"], str) or not value["manifest_id"].startswith("capability-manifest:"):
+        errors.append("capability.manifest_id is invalid")
+    for key in ("capability_set_id", "implementation_identity"):
+        item = value[key]
+        if not isinstance(item, str) or not item.startswith("sha256:") or len(item) != len("sha256:") + 64:
+            errors.append(f"capability.{key} must be a sha256 hash")
     return errors
 
 

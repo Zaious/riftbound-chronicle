@@ -1,0 +1,287 @@
+{
+  "schema_version": "engine-capability-manifest.v1",
+  "manifest_id": "capability-manifest:8680abb25fbebee8af6f93ae",
+  "capability_set_id": "sha256:8680abb25fbebee8af6f93ae162a45d71cf9dc78bbd5a91e5174866c935b5db3",
+  "implementation": {
+    "kind": "source_sha256",
+    "value": "sha256:a446fcb9d40339cd534bb187e9eaf72959f5afdb4cffcce4ab1e01e712af8e34",
+    "files": [
+      {
+        "path": "rules_core.py",
+        "sha256": "sha256:ea4b2cb0f4e3eef853acd9e222ef6d8c9c5a85cb92757d85f601f06bdb85a2c5"
+      },
+      {
+        "path": "effect_ir.py",
+        "sha256": "sha256:140e7619010ec3926a93a55b824a26bc742efb21371905f10bfe7335ec403bc4"
+      },
+      {
+        "path": "resolution_bridge.py",
+        "sha256": "sha256:428f2dc23de3e29bd7ed5698d6faed983e1522774eafa4a41f701963606cd695"
+      },
+      {
+        "path": "engine_check.py",
+        "sha256": "sha256:efd216e5c018c2dac3eb25b59efa71f6777439c3472f1ab2664f4737937bbf54"
+      }
+    ]
+  },
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "components": [
+    {
+      "check_kind": "cleanup",
+      "name": "lethal_cleanup",
+      "version": "riftbound-lethal-cleanup-result.v1",
+      "coverage_id": "lethal_cleanup_v1",
+      "supported_scope": [
+        "lethal_damage",
+        "self_death_triggers",
+        "bounded_simultaneous_prevention"
+      ],
+      "unsupported_scope": [
+        "full_cleanup",
+        "multi_descriptor_replacement",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "effect",
+      "name": "effect_ir",
+      "version": "riftbound-effect-program.v1",
+      "coverage_id": "effect_program_v1",
+      "supported_scope": [
+        "typed_atomic_effects",
+        "bounded_replacement",
+        "bounded_cleanup"
+      ],
+      "unsupported_scope": [
+        "arbitrary_card_text",
+        "combat",
+        "scoring",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "resolution",
+      "name": "resolution_bridge",
+      "version": "riftbound-resolution-bridge-result.v1",
+      "coverage_id": "combined_resolution_v1",
+      "supported_scope": [
+        "eligible_chain_item",
+        "typed_effect_program",
+        "bounded_cleanup",
+        "trigger_schedule"
+      ],
+      "unsupported_scope": [
+        "arbitrary_card_text",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "timing",
+      "name": "rules_core",
+      "version": "riftbound-rules-core-state.v1",
+      "coverage_id": "timing_permission_v1",
+      "supported_scope": [
+        "four_state_timing",
+        "priority_focus",
+        "hot_fepr"
+      ],
+      "unsupported_scope": [
+        "arbitrary_card_effects",
+        "complete_game",
+        "complete_legality"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "add_resource",
+      "rule_locators": [
+        "Core 429"
+      ]
+    },
+    {
+      "id": "deal_damage",
+      "rule_locators": [
+        "Core 417"
+      ]
+    },
+    {
+      "id": "draw",
+      "rule_locators": [
+        "Core 413"
+      ]
+    },
+    {
+      "id": "emit_reflexive",
+      "rule_locators": [
+        "Core 386–388"
+      ]
+    },
+    {
+      "id": "exhaust",
+      "rule_locators": [
+        "Core 414"
+      ]
+    },
+    {
+      "id": "heal_damage",
+      "rule_locators": [
+        "Core 418"
+      ]
+    },
+    {
+      "id": "kill",
+      "rule_locators": [
+        "Core 428"
+      ]
+    },
+    {
+      "id": "modify_might",
+      "rule_locators": [
+        "Core 135.2.e.3",
+        "Core 477"
+      ]
+    },
+    {
+      "id": "move_board_object",
+      "rule_locators": [
+        "Core 420",
+        "Core 445"
+      ]
+    },
+    {
+      "id": "play_token",
+      "rule_locators": [
+        "Core 143.4",
+        "Core 149.1",
+        "Core 184–186",
+        "Core 349",
+        "Core 375"
+      ]
+    },
+    {
+      "id": "ready",
+      "rule_locators": [
+        "Core 415"
+      ]
+    },
+    {
+      "id": "recycle_one",
+      "rule_locators": [
+        "Core 416"
+      ]
+    }
+  ],
+  "procedures": [
+    {
+      "id": "action",
+      "rule_locators": [
+        "Core 806"
+      ]
+    },
+    {
+      "id": "chain_exists",
+      "rule_locators": [
+        "Core 328–331"
+      ]
+    },
+    {
+      "id": "cleanup_lock",
+      "rule_locators": [
+        "Core 320–321"
+      ]
+    },
+    {
+      "id": "focus",
+      "rule_locators": [
+        "Core 313"
+      ]
+    },
+    {
+      "id": "four_states",
+      "rule_locators": [
+        "Core 308–310"
+      ]
+    },
+    {
+      "id": "hot_fepr",
+      "rule_locators": [
+        "Core 333–340"
+      ]
+    },
+    {
+      "id": "priority",
+      "rule_locators": [
+        "Core 312"
+      ]
+    },
+    {
+      "id": "reaction",
+      "rule_locators": [
+        "Core 807"
+      ]
+    },
+    {
+      "id": "showdown",
+      "rule_locators": [
+        "Core 341–348"
+      ]
+    },
+    {
+      "id": "timing_check",
+      "rule_locators": [
+        "Core 358.4"
+      ]
+    }
+  ],
+  "clauses": [
+    "Core 135.2.e.3",
+    "Core 143.4",
+    "Core 149.1",
+    "Core 184–186",
+    "Core 308–310",
+    "Core 312",
+    "Core 313",
+    "Core 320–321",
+    "Core 328–331",
+    "Core 333–340",
+    "Core 341–348",
+    "Core 349",
+    "Core 358.4",
+    "Core 375",
+    "Core 386–388",
+    "Core 413",
+    "Core 414",
+    "Core 415",
+    "Core 416",
+    "Core 417",
+    "Core 418",
+    "Core 420",
+    "Core 428",
+    "Core 429",
+    "Core 445",
+    "Core 477",
+    "Core 806",
+    "Core 807"
+  ],
+  "exclusions": [
+    "arbitrary_card_effects",
+    "arbitrary_card_text",
+    "combat",
+    "complete_game",
+    "complete_legality",
+    "full_cleanup",
+    "multi_descriptor_replacement",
+    "scoring"
+  ],
+  "claims": {
+    "complete_game": false,
+    "complete_legality": false
+  }
+}

@@ -107,6 +107,12 @@ jobs:
       - name: Documented engine-check CLI commands and failure surface
         run: python3 skill/scripts/check_engine_check_cli.py
 
+      # ADR-0002: the manifest is derived from the engine, so a stale committed
+      # copy, an over- or under-stated capability, or a tampered build hash
+      # all fail here rather than in a consumer.
+      - name: Engine capability manifest derives from the engine and binds optionally
+        run: python3 skill/scripts/check_capability_manifest.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -161,6 +167,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_resolution_bridge.py"
           python3 "$REPO/skill/scripts/check_engine_check.py"
           python3 "$REPO/skill/scripts/check_engine_check_cli.py"
+          python3 "$REPO/skill/scripts/check_capability_manifest.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

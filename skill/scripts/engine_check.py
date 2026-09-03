@@ -20,6 +20,7 @@ from effect_ir import (
     hash_value,
     perform_lethal_cleanup,
 )
+from engine_decisions import DECISIONS_VERSION as ENGINE_DECISIONS_VERSION, validate_engine_decisions
 from resolution_bridge import CLEANUP_DECISION_VERSION, resolve_with_program, validate_cleanup_decisions
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
@@ -42,13 +43,13 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions"],
         "unsupported": ["arbitrary_card_text", "combat", "scoring", "complete_game", "complete_legality"],
     },
     "resolution": {
         "component": ("resolution_bridge", "riftbound-resolution-bridge-result.v1"),
         "coverage": "combined_resolution_v1",
-        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule"],
+        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions"],
         "unsupported": ["arbitrary_card_text", "complete_game", "complete_legality"],
     },
     "cleanup": {
@@ -73,6 +74,7 @@ DECISION_REASON_CODES = {
     "trigger_finalize_choice_required": "trigger_choice",
     "trigger_order_required": "trigger_order",
     "effect_execution_confirmation_required": "effect_confirmation",
+    "target_selection_required": "target_choice",
 }
 
 
@@ -156,13 +158,14 @@ def _decision(result: dict[str, Any]) -> dict[str, Any] | None:
     reason_node = _first_mapping(result, lambda item: item.get("reason_code") in DECISION_REASON_CODES)
     if reason_node is not None:
         code = reason_node["reason_code"]
+        decision_ids = [item for item in reason_node.get("decision_ids", []) if isinstance(item, str)]
         return {
             "kind": DECISION_REASON_CODES[code],
             "controller": reason_node.get("decision_controller") or reason_node.get("controller"),
             "replacement_ids": [],
             "event_ids": [],
-            "decision_ids": [],
-            "decision_schema": None,
+            "decision_ids": decision_ids,
+            "decision_schema": ENGINE_DECISIONS_VERSION if decision_ids else None,
         }
     return None
 
@@ -363,9 +366,23 @@ def run_timing(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]
     return result, {"timing_state": state_hash(state)}
 
 
+def _engine_decisions(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    value = load_object(path)
+    errors = validate_engine_decisions(value)
+    if errors:
+        raise EngineCheckError("invalid engine-decisions.v1: " + "; ".join(errors))
+    return value
+
+
 def run_effect(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
     state, program = load_object(args.state), load_object(args.program)
-    return apply_program(state, program), {"effect_state": hash_value(state), "effect_program": canonical_hash(program)}
+    decisions = _engine_decisions(getattr(args, "decisions", None))
+    hashes = {"effect_state": hash_value(state), "effect_program": canonical_hash(program)}
+    if decisions is not None:
+        hashes["engine_decisions"] = canonical_hash(decisions)
+    return apply_program(state, program, decisions=decisions), hashes
 
 
 def _cleanup_decisions(path: Path | None) -> dict[str, Any] | None:
@@ -382,13 +399,15 @@ def run_resolution(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, 
     effect_state = load_object(args.effect_state)
     program = load_object(args.program)
     decisions = _cleanup_decisions(args.cleanup_decisions)
-    result = resolve_with_program(timing_state, args.item_id, effect_state, program, decisions)
+    result = resolve_with_program(timing_state, args.item_id, effect_state, program, decisions, engine_decisions=_engine_decisions(getattr(args, "decisions", None)))
     hashes = {
         "timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state),
         "effect_program": canonical_hash(program),
     }
     if decisions is not None:
         hashes["cleanup_decisions"] = canonical_hash(decisions)
+    if getattr(args, "decisions", None) is not None:
+        hashes["engine_decisions"] = canonical_hash(load_object(args.decisions))
     return result, hashes
 
 
@@ -407,6 +426,7 @@ def run_cleanup(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str
 
 
 def add_common(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--decisions", type=Path, help="engine-decisions.v1 envelope (ADR-0005)")
     parser.add_argument("--include-raw", action="store_true")
     parser.add_argument("--assumption", action="append", default=[])
     parser.add_argument("--missing-information", action="append", default=[])

@@ -104,6 +104,7 @@
           }
         },
         "is_token": {"type": "boolean"},
+        "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "ADR-0005 §3 object identity: '<object_id>@<generation>'. Absent means generation 0. Changes on any transition to or from a non-board zone; survives board moves."},
         "keywords": {
           "type": "array",
           "uniqueItems": true,

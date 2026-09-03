@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:c5077f82d6fd4251b8575fcd",
-  "capability_set_id": "sha256:c5077f82d6fd4251b8575fcd2885bd339f01f65c85e409c7aa6c6f0d1d738e74",
+  "manifest_id": "capability-manifest:1fdb5072022f70acf7fb52a0",
+  "capability_set_id": "sha256:1fdb5072022f70acf7fb52a047428545a065ed0d62c73d3242610de662b144ff",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:09a925933496424eeb7b75632581ec48c2179463256ac8d197fc7e3332830a42",
+    "value": "sha256:1acaedaf617d497d69e9a0243c6cd66e373236ad03ca42da2dd93f9525e0f980",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:140e7619010ec3926a93a55b824a26bc742efb21371905f10bfe7335ec403bc4"
+        "sha256": "sha256:2b116e9f5c89f9369f8975d3c03a2c7f4ba2b7b3df1b9423b74aa28f36f33dde"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:428f2dc23de3e29bd7ed5698d6faed983e1522774eafa4a41f701963606cd695"
+        "sha256": "sha256:1ac746accec7ebcd15d45f54950997ce59088a2c4408c70af310dab9217344a6"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:46203a616ea265248ad672342b222279a9df0de828bb78e7e5b8ed49bef7680c"
+        "sha256": "sha256:09f97c1e2600e5e3e944ab9af4b5302ff7ca4e8515cf37ad0987814a839b1de4"
       }
     ]
   },
@@ -54,7 +54,10 @@
       "supported_scope": [
         "typed_atomic_effects",
         "bounded_replacement",
-        "bounded_cleanup"
+        "bounded_cleanup",
+        "typed_selectors",
+        "object_identity",
+        "engine_decisions"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -94,7 +97,8 @@
         "eligible_chain_item",
         "typed_effect_program",
         "bounded_cleanup",
-        "trigger_schedule"
+        "trigger_schedule",
+        "engine_decisions"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",

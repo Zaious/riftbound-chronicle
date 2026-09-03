@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/engine-decisions.schema.json",
+  "title": "Chronicle Engine Decisions v1",
+  "description": "ADR-0005 §2: one envelope for every player/controller choice a transition needs, with explicit stages. Keyed to the input hash it was made against. The engine may list eligible options and name the owner; it never chooses.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "input_hash", "decisions"],
+  "properties": {
+    "schema_version": {"const": "engine-decisions.v1"},
+    "input_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "chain_item_id": {"type": "string", "minLength": 1},
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["decision_id", "stage", "kind", "controller", "value"],
+        "properties": {
+          "decision_id": {"type": "string", "minLength": 1},
+          "stage": {"enum": ["play_declaration", "trigger_finalization", "resolution"]},
+          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice"]},
+          "controller": {"type": "string", "minLength": 1},
+          "value": {},
+          "options": {"type": "array", "items": {}},
+          "provenance": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

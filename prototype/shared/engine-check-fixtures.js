@@ -155,7 +155,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "supported_scope": [
             "typed_atomic_effects",
             "bounded_replacement",
-            "bounded_cleanup"
+            "bounded_cleanup",
+            "typed_selectors",
+            "object_identity",
+            "engine_decisions"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -283,7 +286,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "supported_scope": [
             "typed_atomic_effects",
             "bounded_replacement",
-            "bounded_cleanup"
+            "bounded_cleanup",
+            "typed_selectors",
+            "object_identity",
+            "engine_decisions"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",

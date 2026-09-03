@@ -145,6 +145,14 @@ jobs:
       - name: Deck Coach engine-evidence intake is consume-only and content-preserving
         run: python3 skill/scripts/check_deck_coach_engine_intake.py
 
+      # ADR-0005 C-14: engine-decisions.v1, derived target status, object
+      # identity across non-board transitions, multi-target expansion with
+      # typed instruction outcomes. Fails on caller-overridden targeting, on a
+      # stale or wrong-stage decision being applied, and on a revalidation that
+      # accepts an object that has been through a non-board zone.
+      - name: Engine decisions, typed selectors, object identity and mistarget traces
+        run: python3 skill/scripts/check_engine_decisions.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -205,6 +213,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_r3_inventory.py"
           python3 "$REPO/skill/scripts/check_r3a1_ledger.py"
           python3 "$REPO/skill/scripts/check_deck_coach_engine_intake.py"
+          python3 "$REPO/skill/scripts/check_engine_decisions.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

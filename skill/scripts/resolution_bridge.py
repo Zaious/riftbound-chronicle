@@ -14,6 +14,8 @@ from rules_core import complete_resolution, schedule_triggered_items, state_hash
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
 
+import engine_decisions as _ed  # noqa: E402
+
 
 def validate_cleanup_decisions(value: Any) -> list[str]:
     if value is None:
@@ -45,6 +47,7 @@ def resolve_with_program(
     effect_state: dict[str, Any],
     program: dict[str, Any],
     cleanup_decisions: dict[str, Any] | None = None,
+    engine_decisions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     base = {
         "schema_version": "riftbound-resolution-bridge-result.v1",
@@ -84,7 +87,21 @@ def resolve_with_program(
         }
     if decision_errors := validate_cleanup_decisions(cleanup_decisions):
         return {**base, "valid": False, "committed": False, "stage": "cleanup_decision", "errors": decision_errors, "reason": "; ".join(decision_errors)}
-    effect_result = apply_program(effect_state, program)
+    # ADR-0005 §2 / ADR-0002 migration: the legacy cleanup-decisions object is
+    # still read, converted into resolution-stage entries; writers emit only
+    # engine-decisions.v1. Supplying both is ambiguous and refused.
+    if engine_decisions is not None and cleanup_decisions is not None:
+        return {**base, "valid": False, "committed": False, "stage": "cleanup_decision", "errors": ["supply engine_decisions or cleanup_decisions, not both"], "reason": "ambiguous decision envelopes"}
+    if engine_decisions is None and cleanup_decisions is not None:
+        engine_decisions = _ed.from_cleanup_decisions(cleanup_decisions, input_hash=hash_value(effect_state), controller=program.get("controller") or chain_item.get("controller") or "unknown")
+    if decision_errors := _ed.validate_engine_decisions(engine_decisions):
+        return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": decision_errors, "reason": "; ".join(decision_errors)}
+    if engine_decisions is not None and engine_decisions.get("input_hash") != hash_value(effect_state):
+        return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": ["engine_decisions.input_hash does not match the effect state"], "reason": "stale decision envelope"}
+    if engine_decisions is not None and engine_decisions.get("chain_item_id") not in (None, item_id):
+        return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": ["engine_decisions.chain_item_id does not match the resolving item"], "reason": "decision envelope for another chain item"}
+    order_map, choice_map = _ed.replacement_maps(engine_decisions)
+    effect_result = apply_program(effect_state, program, decisions=engine_decisions)
     if effect_result.get("committed") is not True:
         return {
             **base,
@@ -97,8 +114,8 @@ def resolve_with_program(
     cleanup_result = perform_lethal_cleanup(
         effect_result["next_state"],
         attributed_sources=[program.get("source_object")] if program.get("source_object") else [],
-        replacement_event_order=(cleanup_decisions or {}).get("replacement_event_order"),
-        replacement_choices=(cleanup_decisions or {}).get("replacement_choices"),
+        replacement_event_order=order_map,
+        replacement_choices=choice_map,
     )
     if cleanup_result.get("committed") is not True:
         return {

@@ -44,6 +44,33 @@ class ReplacementDecisionRequired(ValueError):
         super().__init__(message)
         self.replacement_ids = replacement_ids
 
+
+class TargetDecisionRequired(ValueError):
+    """A selector defers to a decision entry that was not supplied (ADR-0005 §1/§2)."""
+
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None):
+        super().__init__(message)
+        self.decision_ids = decision_ids
+        self.controller = controller
+
+
+def object_identity(state: dict[str, Any], object_id: str) -> str | None:
+    """ADR-0005 §3: identity survives board moves and changes on any transition
+    to or from a non-board zone. States written before this field existed carry
+    none; they are read as generation 0 without being rewritten."""
+    obj = state["objects"].get(object_id)
+    if obj is None:
+        return None
+    return obj.get("identity", f"{object_id}@0")
+
+
+def _bump_identity(state: dict[str, Any], object_id: str) -> str:
+    current = object_identity(state, object_id) or f"{object_id}@0"
+    base, _, generation = current.rpartition("@")
+    nxt = f"{base or object_id}@{int(generation) + 1 if generation.isdigit() else 1}"
+    state["objects"][object_id]["identity"] = nxt
+    return nxt
+
 OP_RULES = {
     "draw": ["Core 413"],
     "recycle_one": ["Core 416"],
@@ -159,6 +186,9 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid program/optional binding")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
+        identity = obj.get("identity")
+        if identity is not None and (not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit()):
+            errors.append(f"objects.{object_id}.identity must look like '<id>@<generation>' when supplied")
         keywords = obj.get("keywords", [])
         if not isinstance(keywords, list) or len(keywords) != len(set(keywords)) or any(keyword not in {"temporary"} for keyword in keywords):
             errors.append(f"objects.{object_id}.keywords must be a unique supported-keyword array")
@@ -269,11 +299,62 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].Base destination must match token controller")
             target = effect.get("target")
             if target is not None:
-                if not isinstance(target, dict) or not isinstance(target.get("object_id"), str):
-                    errors.append(f"effects[{index}].target must identify an object")
-                elif target.get("chosen_zone_class") not in {"board", "non_board"}:
-                    errors.append(f"effects[{index}].target.chosen_zone_class is required")
+                errors.extend(f"effects[{index}].target {e}" for e in _selector_errors(target))
+            targets = effect.get("targets")
+            if targets is not None:
+                if target is not None:
+                    errors.append(f"effects[{index}] may carry target or targets, not both")
+                if effect.get("op") not in MULTI_TARGET_OPS:
+                    errors.append(f"effects[{index}].targets is not supported for {effect.get('op')!r}")
+                if not isinstance(targets, dict) or set(targets) - {"selectors", "decision_ref", "min", "max", "restrictions"} or not {"min", "max"} <= set(targets):
+                    errors.append(f"effects[{index}].targets must carry min, max, and selectors or decision_ref")
+                else:
+                    if not isinstance(targets["min"], int) or not isinstance(targets["max"], int) or targets["min"] < 0 or targets["max"] < max(1, targets["min"]):
+                        errors.append(f"effects[{index}].targets.min/max are invalid")
+                    if ("selectors" in targets) == ("decision_ref" in targets):
+                        errors.append(f"effects[{index}].targets needs exactly one of selectors or decision_ref")
+                    for j, sel in enumerate(targets.get("selectors", []) or []):
+                        errors.extend(f"effects[{index}].targets.selectors[{j}] {e}" for e in _selector_errors(sel))
+                    if "selectors" in targets and len(targets["selectors"]) > targets["max"]:
+                        errors.append(f"effects[{index}].targets has more selectors than max")
+                    if "decision_ref" in targets and (not isinstance(targets["decision_ref"], str) or not targets["decision_ref"]):
+                        errors.append(f"effects[{index}].targets.decision_ref must be non-empty")
             seen.add(effect_id)
+    return errors
+
+
+MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "targeted", "decision_ref", "max_might"}
+
+
+def derive_targeted(selector: dict[str, Any]) -> bool:
+    """ADR-0005 §1: target status is compiled from the selector, never set by the caller.
+    A chosen object in a public zone (the board, or a public non-board zone such as
+    the trash) is a target; a choice from a non-public zone is not (Core 355.10.a)."""
+    if selector.get("chosen_zone_class") == "board":
+        return True
+    return selector.get("location") in {"trash", "banishment"}
+
+
+def _selector_errors(selector: Any) -> list[str]:
+    if not isinstance(selector, dict):
+        return ["must be an object"]
+    errors = []
+    if set(selector) - SELECTOR_FIELDS:
+        errors.append(f"has unsupported fields {sorted(set(selector) - SELECTOR_FIELDS)}")
+    if "decision_ref" in selector:
+        if not isinstance(selector["decision_ref"], str) or not selector["decision_ref"]:
+            errors.append("decision_ref must be non-empty")
+    elif not isinstance(selector.get("object_id"), str) or not selector.get("object_id"):
+        errors.append("must identify an object or defer to a decision_ref")
+    if selector.get("chosen_zone_class") not in {"board", "non_board"}:
+        errors.append("chosen_zone_class is required")
+    if "targeted" in selector and selector["targeted"] != derive_targeted(selector):
+        errors.append("targeted is derived from the selector and cannot be overridden")
+    if "bound_identity" in selector and (not isinstance(selector["bound_identity"], str) or "@" not in selector["bound_identity"]):
+        errors.append("bound_identity must be an identity token")
+    if "max_might" in selector and (not isinstance(selector["max_might"], int) or selector["max_might"] < 0):
+        errors.append("max_might must be a non-negative integer")
     return errors
 
 
@@ -320,6 +401,14 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
         return False, "target_controller_requirement_failed"
     if target.get("object_id") != target.get("bound_object_id", target.get("object_id")):
         return False, "target_identity_changed"
+    # ADR-0005 §3 / Core 359.3.e.4: the same physical card back in the same zone
+    # is a different object once it has been through a non-board zone.
+    bound = target.get("bound_identity")
+    if bound is not None and object_identity(state, object_id) != bound:
+        return False, "target_identity_changed"
+    max_might = target.get("max_might")
+    if max_might is not None and current_might(obj) > max_might:
+        return False, "target_might_requirement_failed"
     return True, "ok"
 
 
@@ -467,6 +556,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         if object_id not in new_state["objects"]:
             raise ValueError("recycle_one requires a known object")
         obj = new_state["objects"][object_id]
+        from_board = zone_class(find_location(new_state, object_id)) == "board"
         _remove_from_location(new_state, object_id)
         if obj.get("is_token"):
             del new_state["objects"][object_id]
@@ -477,6 +567,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             destination = "rune_deck" if obj["kind"] == "rune" else "main_deck"
             new_state["players"][obj["owner"]]["zones"][destination].append(object_id)
             trace.update({"object_id": object_id, "destination": f"{obj['owner']}.{destination}.bottom"})
+            if from_board:
+                trace["identity_after"] = _bump_identity(new_state, object_id)
+                trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
 
     elif op == "move_board_object":
         object_id, destination = effect.get("object_id"), effect.get("destination")
@@ -579,6 +672,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             "damage": 0,
             "exhausted": entry_state == "exhausted",
             "keywords": copy.deepcopy(keywords),
+            "identity": f"{object_id}@0",
         }
         if destination.get("kind") == "base" and destination.get("player") in new_state["players"]:
             new_state["players"][destination["player"]]["zones"]["base"].append(object_id)
@@ -616,6 +710,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         else:
             new_state["players"][obj["owner"]]["zones"]["trash"].append(object_id)
             destination = f"{obj['owner']}.trash"
+            trace["identity_after"] = _bump_identity(new_state, object_id)
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
         disabled_replacements = _prune_inactive_replacements(new_state)
         trace.update({
             "object_id": object_id,
@@ -899,9 +995,61 @@ def perform_lethal_cleanup(
     }
 
 
-def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacement_depth: int = 0) -> dict[str, Any]:
+def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Turn `targets` (or a decision_ref on `target`) into concrete selectors,
+    consuming a target_selection decision when the program defers to one.
+    Returns (selectors, meta) where meta says which decision was used."""
+    import engine_decisions as ed  # local import keeps effect_ir importable on its own
+    controller = program.get("controller")
+    targets = effect.get("targets")
+    template = {k: v for k, v in (targets or {}).get("restrictions", {}).items()} if targets else {}
+    if targets is None:
+        target = effect.get("target")
+        if target is not None and "decision_ref" in target:
+            entry = ed.target_selection(decisions, target["decision_ref"])
+            if entry is None:
+                raise TargetDecisionRequired(f"target selection {target['decision_ref']!r} is required", [target["decision_ref"]], controller)
+            if entry["controller"] != controller:
+                raise ValueError(f"target selection {target['decision_ref']!r} was made by {entry['controller']!r}, not the program controller")
+            if entry["stage"] not in {"play_declaration", "trigger_finalization"}:
+                raise ValueError(f"target selection {target['decision_ref']!r} was supplied at the wrong stage")
+            if len(entry["value"]) != 1:
+                raise ValueError(f"target selection {target['decision_ref']!r} must name exactly one object for a single-target instruction")
+            concrete = {k: v for k, v in target.items() if k != "decision_ref"}
+            concrete["object_id"] = entry["value"][0]
+            concrete.setdefault("bound_identity", object_identity(state, concrete["object_id"]) or f"{concrete['object_id']}@0")
+            return [concrete], {"decision_id": entry["decision_id"]}
+        return ([target] if target is not None else []), {}
+    if "selectors" in targets:
+        return [dict(sel) for sel in targets["selectors"]], {}
+    entry = ed.target_selection(decisions, targets["decision_ref"])
+    if entry is None:
+        raise TargetDecisionRequired(f"target selection {targets['decision_ref']!r} is required", [targets["decision_ref"]], controller)
+    if entry["controller"] != controller:
+        raise ValueError(f"target selection {targets['decision_ref']!r} was made by {entry['controller']!r}, not the program controller")
+    if entry["stage"] not in {"play_declaration", "trigger_finalization"}:
+        raise ValueError(f"target selection {targets['decision_ref']!r} was supplied at the wrong stage")
+    chosen = list(entry["value"])
+    if not (targets["min"] <= len(chosen) <= targets["max"]):
+        raise ValueError(f"target selection {targets['decision_ref']!r} chose {len(chosen)} objects; allowed {targets['min']}..{targets['max']}")
+    selectors = []
+    for object_id in chosen:
+        sel = dict(template)
+        sel["object_id"] = object_id
+        sel.setdefault("chosen_zone_class", zone_class(find_location(state, object_id)) or "non_board")
+        sel.setdefault("bound_identity", object_identity(state, object_id) or f"{object_id}@0")
+        selectors.append(sel)
+    return selectors, {"decision_id": entry["decision_id"]}
+
+
+def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: dict[str, Any] | None = None, _replacement_depth: int = 0) -> dict[str, Any]:
     state_errors = validate_state(state)
     program_errors = validate_program(program)
+    if decisions is not None:
+        import engine_decisions as ed
+        program_errors = program_errors + ed.validate_engine_decisions(decisions)
+        if not program_errors and decisions.get("input_hash") != hash_value(state):
+            program_errors = program_errors + ["engine_decisions.input_hash does not match the state being transitioned"]
     base = {
         "schema_version": "riftbound-effect-result.v1",
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -933,8 +1081,84 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
-        target = effect.get("target")
+        # ADR-0005 §1–3: resolve selectors (possibly from a decision), then either
+        # run the legacy single-target path unchanged or expand a multi-target
+        # instruction into per-object applications with a typed instruction outcome.
+        try:
+            selectors, selector_meta = _resolve_selectors(current, effect, program, decisions)
+        except TargetDecisionRequired as exc:
+            return {
+                **base, "valid": True, "committed": False, "target_decision_required": True,
+                "reason_code": "target_selection_required", "reason": str(exc),
+                "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                "failed_effect_index": index, "trace": trace,
+            }
+        except ValueError as exc:
+            return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+        if effect.get("targets") is not None:
+            verdicts = [(sel, *evaluate_target(current, sel, program.get("controller"))) for sel in selectors]
+            valid_sels = [sel for sel, ok, _ in verdicts if ok]
+            invalid = [{"object_id": sel.get("object_id"), "reason": reason} for sel, ok, reason in verdicts if not ok]
+            requested = len(selectors)
+            if requested and not valid_sels:
+                event = {
+                    "index": index, "effect_id": effect_id, "op": effect["op"],
+                    "outcome": "skipped_illegal_target", "target_outcome": "skipped_illegal_target", "completion": "none",
+                    "requested_targets": requested, "applied_targets": 0, "invalid_targets": invalid,
+                    "rule_locators": ["Core 359.3.e.5", "Core 359.3.e.7"],
+                    "before_state_hash": before_hash, "after_state_hash": before_hash, **selector_meta,
+                }
+                trace.append(event)
+                outcomes[effect_id] = "skipped_illegal_target"
+                continue
+            sub_trace = []
+            working = current
+            expansion_failed = None
+            for sel in valid_sels:
+                single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id"}}
+                single["object_id"] = sel["object_id"]
+                single["target"] = sel
+                single["effect_id"] = f"{effect_id}:{sel['object_id']}"
+                sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                               "program_id": f"expand:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
+                               "source_object": program.get("source_object"), "effects": [single]}
+                sub = apply_program(working, sub_program, decisions=None, _replacement_depth=_replacement_depth + 1)
+                if sub.get("committed") is not True:
+                    expansion_failed = sub
+                    break
+                working = sub["next_state"]
+                sub_trace.extend(sub["trace"])
+            if expansion_failed is not None:
+                return {
+                    **base, "valid": expansion_failed.get("valid", True), "committed": False,
+                    "unsupported": expansion_failed.get("unsupported", False),
+                    "replacement_decision_required": expansion_failed.get("replacement_decision_required", False),
+                    "replacement_ids": expansion_failed.get("replacement_ids", []),
+                    "failed_effect_index": index, "reason": expansion_failed.get("reason", "; ".join(expansion_failed.get("errors", [])) or "multi-target expansion failed"),
+                    "expansion_result": expansion_failed, "trace": trace,
+                }
+            current = working
+            applied = sum(1 for ev in sub_trace if ev.get("outcome") in {"applied", "replaced_modified_applied", "augmented_applied"})
+            target_outcome = "applied_full" if not invalid and applied == requested else "applied_to_subset"
+            below_min = len(valid_sels) < effect["targets"]["min"]
+            event = {
+                "index": index, "effect_id": effect_id, "op": effect["op"],
+                "outcome": "applied" if applied else "no_op",
+                "target_outcome": target_outcome,
+                "completion": "full" if (applied == requested and not invalid) else ("partial" if applied else "none"),
+                "requested_targets": requested, "applied_targets": applied, "invalid_targets": invalid,
+                "below_minimum": below_min,
+                "expansion_trace": sub_trace,
+                "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                "rule_locators": list(dict.fromkeys(["Core 355.13", "Core 359.3.e.8"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
+                "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,
+            }
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        target = selectors[0] if selectors else None
         if target is not None:
+            effect = {**effect, "target": target, "object_id": effect.get("object_id", target.get("object_id"))}
             legal_target, reason = evaluate_target(current, target, program.get("controller"))
             if not legal_target:
                 event = {
@@ -942,6 +1166,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                     "effect_id": effect_id,
                     "op": effect["op"],
                     "outcome": "ignored_illegal_target",
+                    "target_outcome": "skipped_illegal_target",
+                    "completion": "none",
                     "reason": reason,
                     "target_object_id": target["object_id"],
                     "rule_locators": ["Core 359.3.e.1–359.3.e.5", "Core 359.3.e.14"],
@@ -961,6 +1187,19 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                     "trace": trace,
                 }
         affected_before_damage = current["objects"].get(effect.get("object_id"), {}).get("damage")
+        if decisions is not None and (effect.get("replacement_order") is None or effect.get("replacement_choices") is None):
+            import engine_decisions as ed
+            order_map, choice_map = ed.replacement_maps(decisions)
+            effect = dict(effect)
+            key = effect.get("effect_id", effect_id)
+            if effect.get("replacement_order") is None and order_map and key in order_map:
+                effect["replacement_order"] = list(order_map[key])
+                effect.setdefault("replacement_decider", next((e["controller"] for e in ed.entries(decisions, kind="replacement_order")), None))
+            if effect.get("replacement_choices") is None and choice_map:
+                merged = {rid: by_event.get(key, by_event.get("*")) for rid, by_event in choice_map.items()}
+                merged = {rid: v for rid, v in merged.items() if isinstance(v, bool)}
+                if merged:
+                    effect["replacement_choices"] = merged
         try:
             replacement_selection = _select_replacement(current, effect)
         except ReplacementDecisionRequired as exc:
@@ -1194,6 +1433,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, _replacemen
                 "trace": trace,
             }
         event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
+        event.setdefault("completion", "full" if event.get("outcome") == "applied" else "none")
+        if effect.get("target") is not None:
+            event.setdefault("target_outcome", "applied_full")
         for trigger in event.get("pending_triggers", []):
             trigger.setdefault("batch_sequence", index)
             trigger.setdefault("batch_id", f"{program['program_id']}:{effect_id}")

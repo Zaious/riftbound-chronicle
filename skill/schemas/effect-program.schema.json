@@ -57,17 +57,23 @@
               "from_effect_id": {"type": ["string", "null"]}
             }
           },
-          "target": {
+          "target": {"$ref": "#/$defs/selector"},
+          "targets": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["object_id", "chosen_zone_class"],
+            "required": ["min", "max"],
             "properties": {
-              "object_id": {"type": "string", "minLength": 1},
-              "bound_object_id": {"type": "string", "minLength": 1},
-              "chosen_zone_class": {"enum": ["board", "non_board"]},
-              "kind": {"enum": ["unit", "gear", "spell", "rune"]},
-              "location": {"enum": ["board", "battlefield", "base", "non_board"]},
-              "controller_relation": {"enum": ["friendly", "enemy"]}
+              "min": {"type": "integer", "minimum": 0},
+              "max": {"type": "integer", "minimum": 1},
+              "selectors": {"type": "array", "items": {"$ref": "#/$defs/selector"}},
+              "decision_ref": {"type": "string", "minLength": 1},
+              "restrictions": {"type": "object", "additionalProperties": false, "properties": {
+                "chosen_zone_class": {"enum": ["board", "non_board"]},
+                "kind": {"enum": ["unit", "gear", "spell", "rune"]},
+                "location": {"enum": ["board", "battlefield", "base", "non_board", "trash", "banishment"]},
+                "controller_relation": {"enum": ["friendly", "enemy"]},
+                "max_might": {"type": "integer", "minimum": 0}
+              }}
             }
           },
           "triggers": {
@@ -80,6 +86,23 @@
     }
   },
   "$defs": {
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chosen_zone_class"],
+      "properties": {
+        "object_id": {"type": "string", "minLength": 1},
+        "decision_ref": {"type": "string", "minLength": 1},
+        "bound_object_id": {"type": "string", "minLength": 1},
+        "bound_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
+        "chosen_zone_class": {"enum": ["board", "non_board"]},
+        "kind": {"enum": ["unit", "gear", "spell", "rune"]},
+        "location": {"enum": ["board", "battlefield", "base", "non_board", "trash", "banishment"]},
+        "controller_relation": {"enum": ["friendly", "enemy"]},
+        "targeted": {"type": "boolean", "description": "Derived from the selector (Core 355.7–355.10); a supplied value that disagrees with the derivation is invalid."},
+        "max_might": {"type": "integer", "minimum": 0}
+      }
+    },
     "eventModifiers": {
       "type": "object",
       "additionalProperties": false,

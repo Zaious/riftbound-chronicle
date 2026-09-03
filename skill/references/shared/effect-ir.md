@@ -198,10 +198,38 @@ card.
 
 ## Targets and linked instructions
 
-R2 v1 records the target's object id and board/non-board zone class at choice
-time. At execution it can additionally require kind, Base/Battlefield location,
-and friendly/enemy controller relation. A failed requirement produces
-`ignored_illegal_target` without mutating state.
+A selector records the chosen object, its board/non-board zone class at choice
+time, and — since ADR-0005 — the object's **identity** (`<id>@<generation>`).
+Identity survives board moves and changes on any transition to or from a
+non-board zone (Core 124, 359.3.e.4), so the same physical card back in the
+same zone is a different object and fails revalidation. At execution a
+selector can additionally require kind, Base/Battlefield/trash location,
+friendly/enemy controller relation, and a Might ceiling.
+
+Whether a selector **targets** is derived from it (Core 355.7–355.10): a
+chosen object in a public zone targets; a choice from a non-public zone does
+not. A supplied `targeted` that disagrees with the derivation is
+`invalid_input`. Callers do not get to change the rules by flag.
+
+A single-target instruction that fails revalidation still records
+`ignored_illegal_target` (unchanged value) and now also carries
+`target_outcome: skipped_illegal_target` and `completion: none`. A
+multi-target instruction (`targets` with `min`/`max` and either concrete
+`selectors` or a `decision_ref`) expands into one application per valid
+object through the ordinary path — replacements included — and records one
+instruction event with `target_outcome` `applied_full` /
+`applied_to_subset` / `skipped_illegal_target`, `completion`
+`full` / `partial` / `none`, the invalid objects and why, and
+`below_minimum` when fewer valid targets remained than the instruction
+requires (Core 355.13, 359.3.e.7–8).
+
+Choices arrive through `engine-decisions.v1` (`--decisions` on the runner):
+`target_selection` at play declaration or trigger finalization,
+`replacement_order` / `replacement_choice` at resolution. A selector or
+`targets` with a `decision_ref` and no matching entry returns
+`decision_required` naming the decision and its owner; an entry for the wrong
+stage, wrong controller, or wrong input hash is refused. The legacy
+cleanup-decisions object is still read and converted; it is no longer written.
 
 Effects may carry `effect_id` and reference an earlier effect with `depends_on`.
 The default `if_applied` mode implements a bounded “if you do”/linked-

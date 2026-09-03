@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -53,7 +54,39 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+class _VisibleHTML(HTMLParser):
+    """Small, dependency-free extractor for locally captured official pages."""
+
+    BLOCKS = {"article", "br", "div", "h1", "h2", "h3", "h4", "li", "p", "section"}
+    SKIP = {"script", "style", "svg", "noscript"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self.SKIP:
+            self.depth += 1
+        elif not self.depth and tag in self.BLOCKS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.SKIP and self.depth:
+            self.depth -= 1
+        elif not self.depth and tag in self.BLOCKS:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if not self.depth:
+            self.parts.append(data)
+
+
 def extract_pages(path: Path) -> list[str]:
+    if path.suffix.casefold() in {".html", ".htm"}:
+        parser = _VisibleHTML()
+        parser.feed(path.read_text(encoding="utf-8", errors="replace"))
+        return ["".join(parser.parts)]
     executable = shutil.which("pdftotext")
     if executable:
         result = subprocess.run(
@@ -148,7 +181,7 @@ def build_index(root: Path, index_path: Path) -> dict[str, Any]:
         if path.is_file():
             installed.append((document, path))
     if not installed:
-        raise IndexError(f"no manifest PDFs found in {root}; run bootstrap_rules.py first")
+        raise IndexError(f"no manifest documents found in {root}; run bootstrap_rules.py first")
 
     index_path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temp_name = tempfile.mkstemp(prefix=f".{index_path.name}.", suffix=".tmp", dir=index_path.parent)
@@ -163,8 +196,6 @@ def build_index(root: Path, index_path: Path) -> dict[str, Any]:
         for document, path in installed:
             source = registry[document["source_id"]]
             digest = sha256(path)
-            if source["status"] == "superseded":
-                continue
             if document["source_id"] in locked and locked[document["source_id"]].get("sha256") != digest:
                 raise IndexError(f"hash mismatch against rules.lock.json: {document['source_id']}")
             pages = extract_pages(path)
@@ -372,7 +403,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 for index, item in enumerate(results, 1):
                     control = "controlling" if item["controlling_language"] else "translation/supporting"
-                    print(f"[{index}] {item['title']} ({item['version']}, {item['locale']}, {item['authority']}, {control})")
+                    print(f"[{index}] {item['title']} ({item['version']}, {item['locale']}, {item['authority']}, {control}, {item['status']})")
                     print(f"    {item['source_id']} · p.{item['page']} · {item['locator']} · score {item['score']}")
                     print(f"    {item['excerpt']}")
                 if not results:

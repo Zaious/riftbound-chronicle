@@ -241,24 +241,27 @@ PDF from being treated as a complete or permanently current authority.
 See [Rule Consult method](skill/references/rule-consult/rule-consult.md) and the
 [rule corpus engineering note](docs/architecture/RULE_CORPUS_ENGINEERING.md).
 
-### Optional local rule PDFs
+### Optional local rule documents
 
-The public repository does not commit Riot-owned rule PDFs. When exact clause
+The public repository does not commit Riot-owned rule documents. When exact clause
 work is needed, install the controlling English pair locally. The optional
 Simplified Chinese pack adds regional rules, FAQs, errata, and separately
 labeled judge guidance:
 
 ```powershell
 python skill/scripts/bootstrap_rules.py --yes
+python skill/scripts/bootstrap_rules.py --include-supplemental-en --yes
 python skill/scripts/bootstrap_rules.py --include-zh-cn --yes
 python skill/scripts/rules_index.py build
 python skill/scripts/rules_index.py search "連鎖 結算"
 ```
 
-Selected PDFs go into the ignored `skill/.local/rules/` directory with a local
+Selected files go into the ignored `skill/.local/rules/` directory with a local
 SHA-256 lock and a page-addressable SQLite index. Results retain source,
 version, locale, authority, page, and rule locator; they are evidence candidates,
-not automated rulings. A custom location is available through
+not automated rulings. The English supplemental pack includes errata PDFs and
+an HTML snapshot of the superseded Origins FAQ; default search masks that FAQ.
+A custom location is available through
 `RIFTBOUND_RULES_DIR` or `--rules-dir`. English controls translation conflicts,
 and superseded sources are excluded from current search by default.
 

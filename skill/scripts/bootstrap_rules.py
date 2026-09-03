@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Opt-in downloader for local Riftbound rules, FAQs, and errata PDFs.
+"""Opt-in downloader for local Riftbound rules, FAQs, and errata documents.
 
 The public repository ships only source pointers and verification tooling.
 Downloaded Riot-owned documents and generated indexes stay under an ignored
@@ -43,6 +43,18 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def media_type(document: dict) -> str:
+    return "html" if Path(document["relative_path"]).suffix.casefold() in {".html", ".htm"} else "pdf"
+
+
+def validate_download(path: Path, kind: str, content_type: str) -> None:
+    prefix = path.read_bytes()[:1024].lstrip().lower()
+    if kind == "pdf" and not prefix.startswith(b"%pdf"):
+        raise RuntimeError(f"download did not return a PDF (content type: {content_type})")
+    if kind == "html" and not (prefix.startswith(b"<!doctype html") or prefix.startswith(b"<html")):
+        raise RuntimeError(f"download did not return HTML (content type: {content_type})")
+
+
 def download(document: dict, destination: Path) -> dict:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temp_path: Path | None = None
@@ -61,8 +73,11 @@ def download(document: dict, destination: Path) -> dict:
                     if total > MAX_BYTES:
                         raise RuntimeError(f"{document['document_id']} exceeds the {MAX_BYTES // (1024 * 1024)} MiB safety limit")
                     temp.write(chunk)
-        if temp_path.read_bytes()[:4] != b"%PDF":
-            raise RuntimeError(f"{document['document_id']} did not return a PDF (content type: {content_type})")
+        kind = media_type(document)
+        try:
+            validate_download(temp_path, kind, content_type)
+        except RuntimeError as error:
+            raise RuntimeError(f"{document['document_id']}: {error}") from error
         os.replace(temp_path, destination)
     except Exception:
         if temp_path:
@@ -82,6 +97,7 @@ def lock_record(document: dict, destination: Path) -> dict:
         "region": document["region"],
         "document_class": document["document_class"],
         "status": document["status"],
+        "media_type": media_type(document),
         "path": str(destination),
         "sha256": sha256(destination),
         "bytes": destination.stat().st_size,
@@ -122,11 +138,11 @@ def main() -> int:
     except ValueError as error:
         print(f"FAILED: {error}", file=sys.stderr)
         return 2
-    documents = [item for item in manifest["documents"] if item["install_group"] in groups and item["status"] != "superseded"]
+    documents = [item for item in manifest["documents"] if item["install_group"] in groups]
     destination = args.rules_dir.expanduser().resolve()
     print(f"Install groups: {', '.join(groups)} ({len(documents)} documents)")
     print(f"Destination: {destination}")
-    print("PDFs remain local, outside Git, and may be subject to Riot Games' rights and terms.")
+    print("Downloaded official documents remain local, outside Git, and may be subject to Riot Games' rights and terms.")
     if not args.yes:
         if not sys.stdin.isatty():
             print("Non-interactive mode requires --yes.", file=sys.stderr)

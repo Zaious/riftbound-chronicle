@@ -1,6 +1,6 @@
 # Local official rule documents
 
-The public repository does not bundle Riot-owned rule PDFs. It ships a source
+The public repository does not bundle Riot-owned rule documents. It ships a source
 manifest and an explicit opt-in downloader instead:
 
 ```powershell
@@ -25,12 +25,19 @@ It writes `rules.lock.json` with the download timestamp, local paths, byte
 counts, and SHA-256 values. The lock file is local-only; it is not an authority
 claim and it does not replace a current Rules Hub check.
 
-Install the optional Simplified Chinese research pack, or every available PDF:
+Install the English errata and historical Origins FAQ, the optional Simplified
+Chinese research pack, or every available document:
 
 ```powershell
+python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --include-supplemental-en --yes
 python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --include-zh-cn --yes
 python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --all --yes
 ```
+
+The `supplemental-en` group contains English errata PDFs and a hashed local HTML
+snapshot of the Origins FAQ. The FAQ's own warning defers to newer rules, so it
+is indexed as superseded, excluded from default queries, and available only
+with `--include-superseded` for historical comparison.
 
 The `zh-cn` group contains current Chinese Core/Tournament Rules, the regional
 ban list, available official FAQs and errata, and separately labeled judge-team

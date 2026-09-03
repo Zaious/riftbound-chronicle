@@ -6,7 +6,10 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
+from bootstrap_rules import media_type, validate_download
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -34,6 +37,9 @@ def main() -> int:
         errors.append("core-en must contain exactly Core and Tournament Rules")
     if len([item for item in documents if item["install_group"] == "zh-cn"]) < 11:
         errors.append("zh-cn pack must include rules, ban list, errata, official FAQs, and judge FAQs")
+    origins_faq = next((item for item in documents if item.get("source_id") == "origins-faq-2025-10-16"), None)
+    if not origins_faq or origins_faq.get("install_group") != "supplemental-en" or origins_faq.get("status") != "superseded":
+        errors.append("historical English Origins FAQ must be downloadable in supplemental-en but non-controlling")
     seen_paths = set()
     for item in documents:
         required = {
@@ -49,8 +55,11 @@ def main() -> int:
         if item.get("relative_path") in seen_paths:
             errors.append(f"duplicate relative_path: {item.get('relative_path')}")
         seen_paths.add(item.get("relative_path"))
-        if not item.get("url", "").startswith("https://") or ".pdf" not in item.get("url", "").lower():
-            errors.append(f"{item.get('document_id')}: source URL is not an HTTPS PDF")
+        suffix = Path(item.get("relative_path", "")).suffix.casefold()
+        if not item.get("url", "").startswith("https://") or suffix not in {".pdf", ".html", ".htm"}:
+            errors.append(f"{item.get('document_id')}: source is not an HTTPS PDF/HTML document")
+        if suffix in {".html", ".htm"} and item.get("status") != "superseded":
+            errors.append(f"{item.get('document_id')}: historical HTML FAQ must not be installed as controlling")
     # Ask git whether the path is ignored, rather than looking for a literal
     # line: what matters is that a downloaded PDF cannot be committed, and any
     # pattern covering it (`skill/.local/` covers `skill/.local/rules/`) is a
@@ -69,7 +78,28 @@ def main() -> int:
         result = subprocess.run([sys.executable, "-m", "py_compile", str(candidate)], capture_output=True, text=True)
         if result.returncode:
             errors.append(f"{candidate.name} does not compile: {result.stderr.strip()}")
-    print(f"[info] rules manifest: {len(documents)} documents across {len(groups)} opt-in groups; PDFs and index stay local.")
+    with tempfile.TemporaryDirectory(prefix="rules-media-") as folder:
+        root = Path(folder)
+        pdf = root / "rule.pdf"
+        html = root / "faq.html"
+        wrong = root / "wrong.pdf"
+        pdf.write_bytes(b"%PDF-1.7\nfixture")
+        html.write_text("<!doctype html><html><body>fixture</body></html>", encoding="utf-8")
+        wrong.write_text("<html>not pdf</html>", encoding="utf-8")
+        try:
+            validate_download(pdf, "pdf", "application/pdf")
+            validate_download(html, "html", "text/html")
+        except RuntimeError as error:
+            errors.append(f"valid local media fixture rejected: {error}")
+        try:
+            validate_download(wrong, "pdf", "text/html")
+            errors.append("HTML payload accepted as PDF")
+        except RuntimeError:
+            pass
+        faq = next(item for item in documents if item.get("source_id") == "origins-faq-2025-10-16")
+        if media_type(faq) != "html":
+            errors.append("Origins FAQ is not classified as HTML")
+    print(f"[info] rules manifest: {len(documents)} documents across {len(groups)} opt-in groups; documents and index stay local.")
     if errors:
         print("\n[errors]")
         print("\n".join(f"  - {error}" for error in errors))

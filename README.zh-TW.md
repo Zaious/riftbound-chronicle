@@ -109,12 +109,13 @@ Rule Consult 將玩家提供的事實、假設、規則依據、分析、信心�
 
 ```powershell
 python skill/scripts/bootstrap_rules.py --yes
+python skill/scripts/bootstrap_rules.py --include-supplemental-en --yes
 python skill/scripts/bootstrap_rules.py --include-zh-cn --yes
 python skill/scripts/rules_index.py build
 python skill/scripts/rules_index.py search "連鎖 結算"
 ```
 
-預設下載英文 Core Rules 與 Tournament Rules；`--include-zh-cn` 另裝簡中規則、禁限卡、FAQ、勘誤與分級標示的裁判資料。檔案、SHA-256 lock 與頁碼索引都留在 Git ignored 的 `skill/.local/rules/`。查詢結果保留來源版本、語言、權威、頁碼與規則號碼，但不是自動裁定；翻譯衝突時英文優先，已被取代的來源預設不會出現在現行查詢。
+預設下載英文 Core Rules 與 Tournament Rules；`--include-supplemental-en` 加入英文勘誤及已標為歷史資料的 Origins FAQ HTML 快照；`--include-zh-cn` 另裝簡中規則、禁限卡、FAQ、勘誤與分級標示的裁判資料。檔案、SHA-256 lock 與索引都留在 Git ignored 的 `skill/.local/rules/`。查詢結果不是自動裁定；翻譯衝突時英文優先，已被取代的來源預設不會出現在現行查詢。
 
 競賽程序順序：
 

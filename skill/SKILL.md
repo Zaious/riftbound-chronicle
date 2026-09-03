@@ -58,7 +58,7 @@ or legality authority.
 
 Before quoting current card text, legality, errata, or tournament procedure, read `${CLAUDE_SKILL_DIR}/references/shared/source-authority.md`. Use local data for routine lookup only within its documented freshness and provenance limits. Do not answer a live, time-sensitive question from memory.
 
-For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.md`. The public repository does not bundle official PDFs. If the ignored local Core Rules and Tournament Rules files are absent, ask the user to run `python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --yes` (or provide a current official Rules Hub source) before making a precision claim. The optional `--include-zh-cn` pack supports bilingual retrieval; build and query its page-addressable index with `${CLAUDE_SKILL_DIR}/scripts/rules_index.py`.
+For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.md`. The public repository does not bundle official rule documents. If the ignored local Core Rules and Tournament Rules files are absent, ask the user to run `python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py --yes` (or provide a current official Rules Hub source) before making a precision claim. `--include-supplemental-en` adds English errata and a non-controlling historical Origins FAQ snapshot; `--include-zh-cn` supports bilingual retrieval. Build and query the local index with `${CLAUDE_SKILL_DIR}/scripts/rules_index.py`; superseded material stays excluded unless explicitly requested for historical comparison.
 
 ## Non-negotiable boundaries
 
@@ -81,7 +81,7 @@ For exact rule clauses, read `${CLAUDE_SKILL_DIR}/references/shared/local-rules.
 - Shared engine-result envelope and runner: `${CLAUDE_SKILL_DIR}/scripts/engine_check.py`
 - Card behavior manifest and Deck Coach projection: `${CLAUDE_SKILL_DIR}/scripts/card_behavior_coverage.py`
 - Deck Coach, Rule Consult, and P2-A schemas: `${CLAUDE_SKILL_DIR}/schemas/`
-- Local official rule PDFs, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
+- Local official rule documents, when the user has opted in: `${CLAUDE_SKILL_DIR}/.local/rules/` (ignored, never committed)
 - Read-only source-registry refresh proposal tool: `${CLAUDE_SKILL_DIR}/scripts/refresh_sources.py` (never edits the registry; reports stay in the ignored `.local/`)
 - Rift Atlas deck handoff adapter: `${CLAUDE_SKILL_DIR}/scripts/riftatlas_bridge.py` (user-pasted list, no upstream scraping)
 

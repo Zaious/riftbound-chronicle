@@ -109,12 +109,13 @@ Rule Consult는 사용자가 제공한 사실, 가정, 규칙 근거, 분석, �
 
 ```powershell
 python skill/scripts/bootstrap_rules.py --yes
+python skill/scripts/bootstrap_rules.py --include-supplemental-en --yes
 python skill/scripts/bootstrap_rules.py --include-zh-cn --yes
 python skill/scripts/rules_index.py build
 python skill/scripts/rules_index.py search "chain resolution"
 ```
 
-기본 설치는 영어 Core Rules와 Tournament Rules이며, `--include-zh-cn`은 중국어 규칙·금지 목록·FAQ·정오표·별도 등급의 심판 자료를 추가합니다. PDF, SHA-256 lock, 페이지 단위 검색 인덱스는 Git에서 무시되는 `skill/.local/rules/`에 남습니다. 검색 결과는 자동 판정이 아니며 번역 충돌 시 영어가 우선하고 대체된 출처는 기본 검색에서 제외됩니다.
+기본 설치는 영어 Core Rules와 Tournament Rules이며, `--include-supplemental-en`은 영어 정오표와 역사 자료로 표시된 Origins FAQ HTML 스냅샷을 추가합니다. `--include-zh-cn`은 중국어 규칙·금지 목록·FAQ·정오표·별도 등급의 심판 자료를 추가합니다. 다운로드 파일, SHA-256 lock, 검색 인덱스는 Git에서 무시되는 `skill/.local/rules/`에 남습니다. 검색 결과는 자동 판정이 아니며 번역 충돌 시 영어가 우선하고 대체된 출처는 기본 검색에서 제외됩니다.
 
 대회 절차 우선순위는 다음과 같습니다.
 

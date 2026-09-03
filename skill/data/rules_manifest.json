@@ -5,7 +5,7 @@
   "default_groups": ["core-en"],
   "groups": {
     "core-en": "Current controlling English Core and Tournament Rules",
-    "supplemental-en": "English Origins and Spiritforged errata PDFs",
+    "supplemental-en": "English historical Origins FAQ plus Origins and Spiritforged errata",
     "zh-cn": "Current Simplified Chinese rules, ban list, errata, official FAQs, and judge guidance"
   },
   "documents": [
@@ -55,6 +55,22 @@
       "superseded_by": null,
       "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/5bcbb23cb6131680ec8d469de6c87a3966a7622d.pdf",
       "source_page": "https://playriftbound.com/en-us/news/rules-and-releases/riftbound-origins-card-errata/",
+      "required": false
+    },
+    {
+      "document_id": "origins-faq-en",
+      "source_id": "origins-faq-2025-10-16",
+      "install_group": "supplemental-en",
+      "relative_path": "supplemental/origins-faq-2025-10-16.html",
+      "title": "Riftbound Origins FAQ",
+      "version": "2025-10-16",
+      "locale": "en-US",
+      "region": "global",
+      "document_class": "official_faq",
+      "status": "superseded",
+      "superseded_by": "core-rules-2026-07-16",
+      "url": "https://playriftbound.com/en-us/news/rules-and-releases/riftbound-origins-faq/",
+      "source_page": "https://playriftbound.com/en-us/news/rules-and-releases/riftbound-origins-faq/",
       "required": false
     },
     {

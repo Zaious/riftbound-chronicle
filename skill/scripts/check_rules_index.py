@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from rules_index import create_schema, search
+from rules_index import create_schema, extract_pages, search
 
 
 def add_document(connection, source_id, title, locale, authority, status, controlling, document_class="core_rules", successor=None):
@@ -29,7 +29,13 @@ def add_chunk(connection, source_id, locator, text):
 def main() -> int:
     errors = []
     with tempfile.TemporaryDirectory(prefix="riftbound-rules-index-test-") as folder:
-        database = Path(folder) / "fixture.sqlite3"
+        folder_path = Path(folder)
+        database = folder_path / "fixture.sqlite3"
+        captured = folder_path / "official-faq.html"
+        captured.write_text("<!doctype html><html><style>secret-css</style><body><h1>FAQ</h1><p>Visible ruling.</p><script>secret-js</script></body></html>", encoding="utf-8")
+        extracted = extract_pages(captured)
+        if len(extracted) != 1 or "Visible ruling" not in extracted[0] or "secret-css" in extracted[0] or "secret-js" in extracted[0]:
+            errors.append("HTML snapshot extraction did not preserve visible text and suppress executable/style content")
         connection = sqlite3.connect(database)
         create_schema(connection)
         add_document(connection, "core-en", "Core Rules", "en-US", "official", "active", True)

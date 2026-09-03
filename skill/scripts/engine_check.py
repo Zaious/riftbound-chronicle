@@ -57,6 +57,16 @@ KIND_CONFIG = {
         "supported": ["lethal_damage", "self_death_triggers", "bounded_simultaneous_prevention"],
         "unsupported": ["full_cleanup", "multi_descriptor_replacement", "complete_game", "complete_legality"],
     },
+    # ADR-0003 Phase A. The service classifies caller-supplied candidates
+    # against the timing kernel; it generates nothing, so enumeration and a
+    # complete action set are declared unsupported here and pinned false in
+    # legal-action-result.v1 itself.
+    "legal_action": {
+        "component": ("legal_action_service", "legal-action-result.v1"),
+        "coverage": "legal_action_v1",
+        "supported": ["user_supplied_candidates", "timing_permission_classification", "perspective_boundary", "hindsight_isolation"],
+        "unsupported": ["engine_enumeration", "complete_action_set", "cost_checks", "target_checks", "effect_prerequisites", "complete_game", "complete_legality"],
+    },
 }
 
 DECISION_REASON_CODES = {
@@ -156,6 +166,23 @@ def _decision(result: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def classify_outcome(kind: str, result: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    if kind == "legal_action":
+        # The result already carries one verdict per candidate; the envelope
+        # summarises and must not invent an outcome the result did not reach.
+        if result.get("valid") is False:
+            return "invalid_input", None
+        if result.get("reason_code") == "legal_action_decision_required":
+            pending = [c for c in result.get("candidates", []) if c.get("verdict") == "decision_required"]
+            return "decision_required", {
+                "kind": "other",
+                "controller": None,
+                "replacement_ids": [],
+                "event_ids": [str(c.get("decision_id")) for c in pending if c.get("decision_id")],
+                "decision_schema": None,
+            }
+        if result.get("reason_code") == "unsupported_all_candidates":
+            return "unsupported", None
+        return "supported", None
     decision = _decision(result)
     if decision is not None:
         return "decision_required", decision

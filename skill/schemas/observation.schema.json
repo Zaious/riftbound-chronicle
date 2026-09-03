@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/observation.schema.json",
+  "title": "Chronicle Observation v1",
+  "description": "What is known from one perspective, split by how it is known, with completeness per field group. Later-revealed and contradictory facts are carried but never feed a verdict; observation_hash covers only decision-time facts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "perspective", "source", "context", "component_states", "facts", "pending_decisions", "completeness", "observation_hash"],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact_id", "text", "provenance"],
+      "properties": {
+        "fact_id": {"type": "string", "minLength": 1},
+        "text": {"type": "string", "minLength": 1},
+        "provenance": {"enum": ["human_confirmed", "engine_state", "normalizer_proposed", "replay_log", "unknown"]}
+      }
+    },
+    "factList": {"type": "array", "items": {"$ref": "#/$defs/fact"}}
+  },
+  "properties": {
+    "schema_version": {"const": "observation.v1"},
+    "perspective": {"enum": ["player1", "player2", "public_observer", "omniscient_replay"]},
+    "source": {
+      "type": "object",
+      "required": ["kind", "state_seq"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1},
+        "state_seq": {"type": "integer", "minimum": 0},
+        "session_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "context": {
+      "type": "object",
+      "required": ["ruleset_core", "faq_as_of", "format", "card_data_version"],
+      "properties": {
+        "ruleset_core": {"type": "string", "minLength": 1},
+        "faq_as_of": {"type": "string", "minLength": 1},
+        "format": {"type": "string", "minLength": 1},
+        "region": {"type": "string", "minLength": 1},
+        "card_data_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "component_states": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timing_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "hash", "state"],
+          "properties": {
+            "schema_version": {"type": ["string", "null"]},
+            "hash": {"$ref": "#/$defs/sha256"},
+            "state": {"type": "object"}
+          }
+        }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confirmed_public", "own_private", "inferred", "later_revealed", "unknown", "contradictory"],
+      "properties": {
+        "confirmed_public": {"$ref": "#/$defs/factList"},
+        "own_private": {"$ref": "#/$defs/factList"},
+        "inferred": {"$ref": "#/$defs/factList"},
+        "later_revealed": {"$ref": "#/$defs/factList"},
+        "unknown": {"$ref": "#/$defs/factList"},
+        "contradictory": {"$ref": "#/$defs/factList"}
+      }
+    },
+    "pending_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision_id", "owner", "kind"],
+        "properties": {
+          "decision_id": {"type": "string", "minLength": 1},
+          "owner": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "completeness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timing_state", "board", "hands", "resources", "pending_decisions"],
+      "properties": {
+        "timing_state": {"enum": ["complete", "partial", "absent"]},
+        "board": {"enum": ["complete", "partial", "absent"]},
+        "hands": {"enum": ["complete", "partial", "absent"]},
+        "resources": {"enum": ["complete", "partial", "absent"]},
+        "pending_decisions": {"enum": ["complete", "partial", "absent"]}
+      }
+    },
+    "observation_hash": {"$ref": "#/$defs/sha256"}
+  }
+}

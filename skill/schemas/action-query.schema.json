@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/action-query.schema.json",
+  "title": "Chronicle Action Query v1",
+  "description": "Caller-supplied candidate actions bound to one observation hash. Phase A has exactly one candidate source, user_supplied; the engine generates nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_hash", "candidate_source_mode", "acting_player", "requested_action_families", "candidates", "query_hash"],
+  "properties": {
+    "schema_version": {"const": "action-query.v1"},
+    "observation_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "candidate_source_mode": {"const": "user_supplied"},
+    "acting_player": {"type": "string", "minLength": 1},
+    "requested_action_families": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["activate_ability", "pass_focus", "pass_priority", "play_card"]}
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_id", "description"],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1},
+          "action": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {"enum": ["activate_ability", "pass_focus", "pass_priority", "play_card"]},
+              "actor": {"type": "string", "minLength": 1},
+              "timing": {"enum": ["default", "action", "reaction", "triggered"]},
+              "object_kind": {"enum": ["spell", "unit", "gear", "ability"]},
+              "checks": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"enum": ["cost", "effect_prerequisites", "targets", "timing"]}
+              }
+            }
+          },
+          "requires_decision_id": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "query_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

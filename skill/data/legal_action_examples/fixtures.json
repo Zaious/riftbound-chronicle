@@ -1,0 +1,1232 @@
+{
+  "neutral_open_mixed": {
+    "note": "Complete timing state. c1 legal (Core 310.1.a/312.2.a/316); c2 illegal (no chain to pass in); c3 illegal via unknown timing; c4 unsupported: a cost check was requested and Phase A implements timing only.",
+    "observation": {
+      "schema_version": "observation.v1",
+      "perspective": "player1",
+      "source": {
+        "kind": "p2a_state_confirmed",
+        "state_seq": 1
+      },
+      "context": {
+        "ruleset_core": "2026-07-16",
+        "faq_as_of": "2026-08-14",
+        "format": "1v1 Constructed",
+        "region": "global",
+        "card_data_version": "fixture"
+      },
+      "component_states": {
+        "timing_state": {
+          "schema_version": "riftbound-rules-core-state.v1",
+          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "state": {
+            "schema_version": "riftbound-rules-core-state.v1",
+            "ruleset": {
+              "core": "2026-07-16",
+              "faq_as_of": "2026-08-14"
+            },
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "turn_order": [
+              "p1",
+              "p2"
+            ],
+            "turn_player": "p1",
+            "phase": "main",
+            "showdown": {
+              "active": false,
+              "kind": null,
+              "focus": null
+            },
+            "priority": "p1",
+            "outstanding_tasks": [],
+            "chain": {
+              "initiated_by": null,
+              "items": [],
+              "consecutive_passes": []
+            }
+          }
+        }
+      },
+      "facts": {
+        "confirmed_public": [
+          {
+            "fact_id": "f1",
+            "text": "Turn Player p1 holds Priority in Neutral Open.",
+            "provenance": "engine_state"
+          }
+        ],
+        "own_private": [
+          {
+            "fact_id": "f2",
+            "text": "p1 holds a default-timing unit in hand.",
+            "provenance": "human_confirmed"
+          }
+        ],
+        "inferred": [],
+        "later_revealed": [],
+        "unknown": [],
+        "contradictory": []
+      },
+      "pending_decisions": [],
+      "completeness": {
+        "timing_state": "complete",
+        "board": "complete",
+        "hands": "partial",
+        "resources": "absent",
+        "pending_decisions": "complete"
+      },
+      "observation_hash": "sha256:ce42add615ac2796f979b95d9a4a1cd506034e4036ea4decd5644cf52838d976"
+    },
+    "query": {
+      "schema_version": "action-query.v1",
+      "observation_hash": "sha256:ce42add615ac2796f979b95d9a4a1cd506034e4036ea4decd5644cf52838d976",
+      "candidate_source_mode": "user_supplied",
+      "acting_player": "p1",
+      "requested_action_families": [
+        "activate_ability",
+        "pass_focus",
+        "pass_priority",
+        "play_card"
+      ],
+      "candidates": [
+        {
+          "candidate_id": "c1-play-unit",
+          "description": "Play a unit at default timing",
+          "action": {
+            "kind": "play_card",
+            "actor": "p1",
+            "timing": "default",
+            "object_kind": "unit"
+          }
+        },
+        {
+          "candidate_id": "c2-pass-priority",
+          "description": "Pass Priority with no chain",
+          "action": {
+            "kind": "pass_priority",
+            "actor": "p1"
+          }
+        },
+        {
+          "candidate_id": "c3-mulligan",
+          "description": "Take a mulligan now",
+          "action": {
+            "kind": "play_card",
+            "actor": "p1",
+            "timing": "bogus",
+            "object_kind": "unit"
+          }
+        },
+        {
+          "candidate_id": "c4-can-afford",
+          "description": "Play the unit if the Rune Pool can pay for it",
+          "action": {
+            "kind": "play_card",
+            "actor": "p1",
+            "timing": "default",
+            "object_kind": "unit",
+            "checks": [
+              "cost",
+              "timing"
+            ]
+          }
+        }
+      ],
+      "query_hash": "sha256:f2fbf265944b056a861784c5b73a108ae454a6ce5c047022b401f256b736e36a"
+    },
+    "result": {
+      "schema_version": "legal-action-result.v1",
+      "valid": true,
+      "errors": [],
+      "observation_hash": "sha256:ce42add615ac2796f979b95d9a4a1cd506034e4036ea4decd5644cf52838d976",
+      "query_hash": "sha256:f2fbf265944b056a861784c5b73a108ae454a6ce5c047022b401f256b736e36a",
+      "perspective": "player1",
+      "acting_player": "p1",
+      "candidate_source_mode": "user_supplied",
+      "enumeration_attempted": false,
+      "complete_action_set": false,
+      "proof_scope": null,
+      "candidates": [
+        {
+          "candidate_id": "c1-play-unit",
+          "verdict": "legal",
+          "reason_code": "ok",
+          "explanation": "By default, the Turn Player with Priority may play cards or activate abilities during the Main Phase in Neutral Open.",
+          "rule_locators": [
+            "Core 310.1.a",
+            "Core 312.2.a",
+            "Core 316"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c2-pass-priority",
+          "verdict": "illegal",
+          "reason_code": "priority_required",
+          "explanation": "Only the current Priority holder may pass Priority during a Chain.",
+          "rule_locators": [
+            "Core 338.1.b",
+            "Core 339"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c3-mulligan",
+          "verdict": "illegal",
+          "reason_code": "unknown_timing",
+          "explanation": "Timing must be default, action, or reaction.",
+          "rule_locators": [],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c4-can-afford",
+          "verdict": "unsupported",
+          "reason_code": "unsupported_check:cost",
+          "explanation": "Phase A classifies timing only; the requested checks are not implemented.",
+          "rule_locators": [],
+          "required_capabilities": [
+            "timing_permission_v1",
+            "cost_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        }
+      ],
+      "summary": {
+        "legal": 1,
+        "illegal": 2,
+        "indeterminate": 0,
+        "unsupported": 1,
+        "decision_required": 0
+      },
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316",
+        "Core 338.1.b",
+        "Core 339"
+      ],
+      "reason_code": "ok",
+      "result_hash": "sha256:39349c3a7c06ac50edfaef870cfd85850eb740c568a36bdaa60e195b2d4dc6d4"
+    }
+  },
+  "neutral_closed_reaction_window": {
+    "note": "Response window: c1 legal, c2 illegal (Core 309.1.a/338.1.a/358.4/807), c3 legal.",
+    "observation": {
+      "schema_version": "observation.v1",
+      "perspective": "player2",
+      "source": {
+        "kind": "p2a_state_confirmed",
+        "state_seq": 3
+      },
+      "context": {
+        "ruleset_core": "2026-07-16",
+        "faq_as_of": "2026-08-14",
+        "format": "1v1 Constructed",
+        "region": "global",
+        "card_data_version": "fixture"
+      },
+      "component_states": {
+        "timing_state": {
+          "schema_version": "riftbound-rules-core-state.v1",
+          "hash": "sha256:7fc5a26701a44f13eee91d913a23c8734eb3af5e6926dc08f3edc905af94d160",
+          "state": {
+            "schema_version": "riftbound-rules-core-state.v1",
+            "ruleset": {
+              "core": "2026-07-16",
+              "faq_as_of": "2026-08-14"
+            },
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "turn_order": [
+              "p1",
+              "p2"
+            ],
+            "turn_player": "p1",
+            "phase": "main",
+            "showdown": {
+              "active": false,
+              "kind": null,
+              "focus": null
+            },
+            "priority": "p2",
+            "outstanding_tasks": [],
+            "chain": {
+              "initiated_by": "played_card",
+              "items": [
+                {
+                  "id": "spell-1",
+                  "controller": "p1",
+                  "object_kind": "spell",
+                  "timing": "default",
+                  "status": "finalized",
+                  "ability_kind": null
+                }
+              ],
+              "consecutive_passes": []
+            }
+          }
+        }
+      },
+      "facts": {
+        "confirmed_public": [
+          {
+            "fact_id": "f1",
+            "text": "spell-1 is finalized on the chain; p2 holds Priority.",
+            "provenance": "engine_state"
+          }
+        ],
+        "own_private": [],
+        "inferred": [],
+        "later_revealed": [],
+        "unknown": [],
+        "contradictory": []
+      },
+      "pending_decisions": [],
+      "completeness": {
+        "timing_state": "complete",
+        "board": "absent",
+        "hands": "absent",
+        "resources": "absent",
+        "pending_decisions": "complete"
+      },
+      "observation_hash": "sha256:bf6fc9c60b868d490a4e0e94583ca22c21c22eaa80f64066faf36c3d86f4cb6a"
+    },
+    "query": {
+      "schema_version": "action-query.v1",
+      "observation_hash": "sha256:bf6fc9c60b868d490a4e0e94583ca22c21c22eaa80f64066faf36c3d86f4cb6a",
+      "candidate_source_mode": "user_supplied",
+      "acting_player": "p2",
+      "requested_action_families": [
+        "activate_ability",
+        "pass_focus",
+        "pass_priority",
+        "play_card"
+      ],
+      "candidates": [
+        {
+          "candidate_id": "c1-reaction",
+          "description": "Play a Reaction spell",
+          "action": {
+            "kind": "play_card",
+            "actor": "p2",
+            "timing": "reaction",
+            "object_kind": "spell"
+          }
+        },
+        {
+          "candidate_id": "c2-default",
+          "description": "Play a default-timing unit",
+          "action": {
+            "kind": "play_card",
+            "actor": "p2",
+            "timing": "default",
+            "object_kind": "unit"
+          }
+        },
+        {
+          "candidate_id": "c3-pass",
+          "description": "Pass Priority",
+          "action": {
+            "kind": "pass_priority",
+            "actor": "p2"
+          }
+        }
+      ],
+      "query_hash": "sha256:4521e739345dc5f4c7374f06c8b445f2ad792fbe32c67e7b72cb777d1957bee8"
+    },
+    "result": {
+      "schema_version": "legal-action-result.v1",
+      "valid": true,
+      "errors": [],
+      "observation_hash": "sha256:bf6fc9c60b868d490a4e0e94583ca22c21c22eaa80f64066faf36c3d86f4cb6a",
+      "query_hash": "sha256:4521e739345dc5f4c7374f06c8b445f2ad792fbe32c67e7b72cb777d1957bee8",
+      "perspective": "player2",
+      "acting_player": "p2",
+      "candidate_source_mode": "user_supplied",
+      "enumeration_attempted": false,
+      "complete_action_set": false,
+      "proof_scope": null,
+      "candidates": [
+        {
+          "candidate_id": "c1-reaction",
+          "verdict": "legal",
+          "reason_code": "ok",
+          "explanation": "Only Reaction cards or abilities may be added while a Chain exists.",
+          "rule_locators": [
+            "Core 309.1.a",
+            "Core 338.1.a",
+            "Core 358.4",
+            "Core 807"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c2-default",
+          "verdict": "illegal",
+          "reason_code": "reaction_required_in_closed_state",
+          "explanation": "Only Reaction cards or abilities may be added while a Chain exists.",
+          "rule_locators": [
+            "Core 309.1.a",
+            "Core 338.1.a",
+            "Core 358.4",
+            "Core 807"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c3-pass",
+          "verdict": "legal",
+          "reason_code": "ok",
+          "explanation": "The player with Priority may pass during a Closed state.",
+          "rule_locators": [
+            "Core 338.1.b",
+            "Core 339"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        }
+      ],
+      "summary": {
+        "legal": 2,
+        "illegal": 1,
+        "indeterminate": 0,
+        "unsupported": 0,
+        "decision_required": 0
+      },
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 338.1.b",
+        "Core 339",
+        "Core 358.4",
+        "Core 807"
+      ],
+      "reason_code": "ok",
+      "result_hash": "sha256:566aea426baffe3a63c95256d5cb6772c65fd263be7c4048f67d396e763ecac2"
+    }
+  },
+  "prose_only_indeterminate": {
+    "note": "No structured timing state: both candidates indeterminate with the missing facts named.",
+    "observation": {
+      "schema_version": "observation.v1",
+      "perspective": "player2",
+      "source": {
+        "kind": "p2a_state_confirmed",
+        "state_seq": 5
+      },
+      "context": {
+        "ruleset_core": "2026-07-16",
+        "faq_as_of": "2026-08-14",
+        "format": "1v1 Constructed",
+        "region": "global",
+        "card_data_version": "fixture"
+      },
+      "component_states": {},
+      "facts": {
+        "confirmed_public": [
+          {
+            "fact_id": "f1",
+            "text": "Human-confirmed public board: two units each, no chain.",
+            "provenance": "human_confirmed"
+          }
+        ],
+        "own_private": [],
+        "inferred": [],
+        "later_revealed": [],
+        "unknown": [
+          {
+            "fact_id": "f2",
+            "text": "Whether a Showdown is active was not recorded.",
+            "provenance": "unknown"
+          }
+        ],
+        "contradictory": []
+      },
+      "pending_decisions": [],
+      "completeness": {
+        "timing_state": "absent",
+        "board": "absent",
+        "hands": "absent",
+        "resources": "absent",
+        "pending_decisions": "absent"
+      },
+      "observation_hash": "sha256:84d49313a970ef784074262e7471f7d8af43d5dea04b49925c2a5a2c2512bfc4"
+    },
+    "query": {
+      "schema_version": "action-query.v1",
+      "observation_hash": "sha256:84d49313a970ef784074262e7471f7d8af43d5dea04b49925c2a5a2c2512bfc4",
+      "candidate_source_mode": "user_supplied",
+      "acting_player": "p2",
+      "requested_action_families": [
+        "activate_ability",
+        "pass_focus",
+        "pass_priority",
+        "play_card"
+      ],
+      "candidates": [
+        {
+          "candidate_id": "c1-play",
+          "description": "Play a unit",
+          "action": {
+            "kind": "play_card",
+            "actor": "p2",
+            "timing": "default",
+            "object_kind": "unit"
+          }
+        },
+        {
+          "candidate_id": "c2-prose",
+          "description": "Do the obvious thing"
+        }
+      ],
+      "query_hash": "sha256:397a809c528402b5e95cca14e05b0268379146fe1e08be04a917660d3e7962c6"
+    },
+    "result": {
+      "schema_version": "legal-action-result.v1",
+      "valid": true,
+      "errors": [],
+      "observation_hash": "sha256:84d49313a970ef784074262e7471f7d8af43d5dea04b49925c2a5a2c2512bfc4",
+      "query_hash": "sha256:397a809c528402b5e95cca14e05b0268379146fe1e08be04a917660d3e7962c6",
+      "perspective": "player2",
+      "acting_player": "p2",
+      "candidate_source_mode": "user_supplied",
+      "enumeration_attempted": false,
+      "complete_action_set": false,
+      "proof_scope": null,
+      "candidates": [
+        {
+          "candidate_id": "c1-play",
+          "verdict": "indeterminate",
+          "reason_code": "observation_incomplete:timing_state",
+          "explanation": "No complete structured timing state; timing legality cannot be determined.",
+          "rule_locators": [],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [
+            "complete timing_state component"
+          ],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c2-prose",
+          "verdict": "indeterminate",
+          "reason_code": "candidate_not_structured",
+          "explanation": "Candidate has no structured action; prose is not classified.",
+          "rule_locators": [],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [
+            "structured action (kind, actor, timing, object_kind)"
+          ],
+          "decision_id": null
+        }
+      ],
+      "summary": {
+        "legal": 0,
+        "illegal": 0,
+        "indeterminate": 2,
+        "unsupported": 0,
+        "decision_required": 0
+      },
+      "rule_locators": [],
+      "reason_code": "ok",
+      "result_hash": "sha256:bf61e503da63163ae582af4a444f0c733b5a829530508cb38b4fe7a4141ac10f"
+    }
+  },
+  "pending_decision": {
+    "note": "c1 decision_required (owner p1, kind replacement_order); c2 indeterminate: unknown decision reference.",
+    "observation": {
+      "schema_version": "observation.v1",
+      "perspective": "player1",
+      "source": {
+        "kind": "p2a_state_confirmed",
+        "state_seq": 7
+      },
+      "context": {
+        "ruleset_core": "2026-07-16",
+        "faq_as_of": "2026-08-14",
+        "format": "1v1 Constructed",
+        "region": "global",
+        "card_data_version": "fixture"
+      },
+      "component_states": {
+        "timing_state": {
+          "schema_version": "riftbound-rules-core-state.v1",
+          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "state": {
+            "schema_version": "riftbound-rules-core-state.v1",
+            "ruleset": {
+              "core": "2026-07-16",
+              "faq_as_of": "2026-08-14"
+            },
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "turn_order": [
+              "p1",
+              "p2"
+            ],
+            "turn_player": "p1",
+            "phase": "main",
+            "showdown": {
+              "active": false,
+              "kind": null,
+              "focus": null
+            },
+            "priority": "p1",
+            "outstanding_tasks": [],
+            "chain": {
+              "initiated_by": null,
+              "items": [],
+              "consecutive_passes": []
+            }
+          }
+        }
+      },
+      "facts": {
+        "confirmed_public": [
+          {
+            "fact_id": "f1",
+            "text": "Two simultaneously lethal units await a replacement order.",
+            "provenance": "engine_state"
+          }
+        ],
+        "own_private": [],
+        "inferred": [],
+        "later_revealed": [],
+        "unknown": [],
+        "contradictory": []
+      },
+      "pending_decisions": [
+        {
+          "decision_id": "d1",
+          "owner": "p1",
+          "kind": "replacement_order"
+        }
+      ],
+      "completeness": {
+        "timing_state": "complete",
+        "board": "absent",
+        "hands": "absent",
+        "resources": "absent",
+        "pending_decisions": "complete"
+      },
+      "observation_hash": "sha256:45ba902f394449a9a142e3d44a162fc9ad041fa066a0e643b545c0ba63b9c71f"
+    },
+    "query": {
+      "schema_version": "action-query.v1",
+      "observation_hash": "sha256:45ba902f394449a9a142e3d44a162fc9ad041fa066a0e643b545c0ba63b9c71f",
+      "candidate_source_mode": "user_supplied",
+      "acting_player": "p1",
+      "requested_action_families": [
+        "activate_ability",
+        "pass_focus",
+        "pass_priority",
+        "play_card"
+      ],
+      "candidates": [
+        {
+          "candidate_id": "c1-after-order",
+          "description": "Play after choosing the replacement order",
+          "action": {
+            "kind": "play_card",
+            "actor": "p1",
+            "timing": "default",
+            "object_kind": "unit"
+          },
+          "requires_decision_id": "d1"
+        },
+        {
+          "candidate_id": "c2-unknown-ref",
+          "description": "Depends on a decision nobody recorded",
+          "requires_decision_id": "d9"
+        }
+      ],
+      "query_hash": "sha256:4d075f1a17529355f741aae5a89840d34c4ae858d0ab781e02e949c57ebab69b"
+    },
+    "result": {
+      "schema_version": "legal-action-result.v1",
+      "valid": true,
+      "errors": [],
+      "observation_hash": "sha256:45ba902f394449a9a142e3d44a162fc9ad041fa066a0e643b545c0ba63b9c71f",
+      "query_hash": "sha256:4d075f1a17529355f741aae5a89840d34c4ae858d0ab781e02e949c57ebab69b",
+      "perspective": "player1",
+      "acting_player": "p1",
+      "candidate_source_mode": "user_supplied",
+      "enumeration_attempted": false,
+      "complete_action_set": false,
+      "proof_scope": null,
+      "candidates": [
+        {
+          "candidate_id": "c1-after-order",
+          "verdict": "decision_required",
+          "reason_code": "controller_decision_pending",
+          "explanation": "Candidate depends on pending decision 'd1' owned by p1.",
+          "rule_locators": [],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": "d1"
+        },
+        {
+          "candidate_id": "c2-unknown-ref",
+          "verdict": "indeterminate",
+          "reason_code": "unknown_decision_reference",
+          "explanation": "Candidate references a decision the observation does not list.",
+          "rule_locators": [],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [
+            "pending decision 'd9'"
+          ],
+          "decision_id": null
+        }
+      ],
+      "summary": {
+        "legal": 0,
+        "illegal": 0,
+        "indeterminate": 1,
+        "unsupported": 0,
+        "decision_required": 1
+      },
+      "rule_locators": [],
+      "reason_code": "legal_action_decision_required",
+      "result_hash": "sha256:7c4df15ba80d8fa392dd0d80ffb5f68cb6c940a629256d35466559b7639d8efd"
+    }
+  },
+  "showdown_open_focus": {
+    "note": "c1 legal, c2 legal (Focus + Priority), c3 indeterminate: actor mismatch with the acting player.",
+    "observation": {
+      "schema_version": "observation.v1",
+      "perspective": "public_observer",
+      "source": {
+        "kind": "replay",
+        "state_seq": 2
+      },
+      "context": {
+        "ruleset_core": "2026-07-16",
+        "faq_as_of": "2026-08-14",
+        "format": "1v1 Constructed",
+        "region": "global",
+        "card_data_version": "fixture"
+      },
+      "component_states": {
+        "timing_state": {
+          "schema_version": "riftbound-rules-core-state.v1",
+          "hash": "sha256:372d68ce53dbd7dcf58ce160a981c8960e9a764744aa55c9eac797e0b2619ae1",
+          "state": {
+            "schema_version": "riftbound-rules-core-state.v1",
+            "ruleset": {
+              "core": "2026-07-16",
+              "faq_as_of": "2026-08-14"
+            },
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "turn_order": [
+              "p1",
+              "p2"
+            ],
+            "turn_player": "p1",
+            "phase": "main",
+            "showdown": {
+              "active": true,
+              "kind": "combat",
+              "focus": "p1"
+            },
+            "priority": "p1",
+            "outstanding_tasks": [],
+            "chain": {
+              "initiated_by": null,
+              "items": [],
+              "consecutive_passes": []
+            }
+          }
+        }
+      },
+      "facts": {
+        "confirmed_public": [
+          {
+            "fact_id": "f1",
+            "text": "Showdown Open; p1 holds Focus and Priority.",
+            "provenance": "engine_state"
+          }
+        ],
+        "own_private": [],
+        "inferred": [],
+        "later_revealed": [],
+        "unknown": [],
+        "contradictory": []
+      },
+      "pending_decisions": [],
+      "completeness": {
+        "timing_state": "complete",
+        "board": "absent",
+        "hands": "absent",
+        "resources": "absent",
+        "pending_decisions": "complete"
+      },
+      "observation_hash": "sha256:b898e3a75f52bba5fe97a7936eb577ae25a7024c8088a5f3546646f4fb700709"
+    },
+    "query": {
+      "schema_version": "action-query.v1",
+      "observation_hash": "sha256:b898e3a75f52bba5fe97a7936eb577ae25a7024c8088a5f3546646f4fb700709",
+      "candidate_source_mode": "user_supplied",
+      "acting_player": "p1",
+      "requested_action_families": [
+        "activate_ability",
+        "pass_focus",
+        "pass_priority",
+        "play_card"
+      ],
+      "candidates": [
+        {
+          "candidate_id": "c1-action-spell",
+          "description": "Play an Action spell",
+          "action": {
+            "kind": "play_card",
+            "actor": "p1",
+            "timing": "action",
+            "object_kind": "spell"
+          }
+        },
+        {
+          "candidate_id": "c2-pass-focus",
+          "description": "Pass Focus",
+          "action": {
+            "kind": "pass_focus",
+            "actor": "p1"
+          }
+        },
+        {
+          "candidate_id": "c3-p2-acts",
+          "description": "Opponent plays instead",
+          "action": {
+            "kind": "play_card",
+            "actor": "p2",
+            "timing": "action",
+            "object_kind": "spell"
+          }
+        }
+      ],
+      "query_hash": "sha256:233c5ed04c72353cdd3af08680348d3fc64b36f14d48119c91f755a5b8791063"
+    },
+    "result": {
+      "schema_version": "legal-action-result.v1",
+      "valid": true,
+      "errors": [],
+      "observation_hash": "sha256:b898e3a75f52bba5fe97a7936eb577ae25a7024c8088a5f3546646f4fb700709",
+      "query_hash": "sha256:233c5ed04c72353cdd3af08680348d3fc64b36f14d48119c91f755a5b8791063",
+      "perspective": "public_observer",
+      "acting_player": "p1",
+      "candidate_source_mode": "user_supplied",
+      "enumeration_attempted": false,
+      "complete_action_set": false,
+      "proof_scope": null,
+      "candidates": [
+        {
+          "candidate_id": "c1-action-spell",
+          "verdict": "legal",
+          "reason_code": "ok",
+          "explanation": "A Showdown Open state permits cards and abilities with Action or Reaction.",
+          "rule_locators": [
+            "Core 308.1.a",
+            "Core 313.1",
+            "Core 347.1",
+            "Core 806–807"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c2-pass-focus",
+          "verdict": "legal",
+          "reason_code": "ok",
+          "explanation": "The Focus holder may pass in a Showdown Open state.",
+          "rule_locators": [
+            "Core 313",
+            "Core 347.2"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        },
+        {
+          "candidate_id": "c3-p2-acts",
+          "verdict": "indeterminate",
+          "reason_code": "actor_mismatch",
+          "explanation": "Candidate actor differs from the query's acting player; not classified from this perspective.",
+          "rule_locators": [],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [
+            "a query whose acting_player is 'p2'"
+          ],
+          "decision_id": null
+        }
+      ],
+      "summary": {
+        "legal": 2,
+        "illegal": 0,
+        "indeterminate": 1,
+        "unsupported": 0,
+        "decision_required": 0
+      },
+      "rule_locators": [
+        "Core 308.1.a",
+        "Core 313",
+        "Core 313.1",
+        "Core 347.1",
+        "Core 347.2",
+        "Core 806–807"
+      ],
+      "reason_code": "ok",
+      "result_hash": "sha256:3e081515c7892fbe84d17f9bc9a36b4921e28669105a575c5135a966f4188b98"
+    }
+  },
+  "hindsight_without": {
+    "note": "Decision-time facts only.",
+    "observation": {
+      "schema_version": "observation.v1",
+      "perspective": "player1",
+      "source": {
+        "kind": "p2a_state_confirmed",
+        "state_seq": 9
+      },
+      "context": {
+        "ruleset_core": "2026-07-16",
+        "faq_as_of": "2026-08-14",
+        "format": "1v1 Constructed",
+        "region": "global",
+        "card_data_version": "fixture"
+      },
+      "component_states": {
+        "timing_state": {
+          "schema_version": "riftbound-rules-core-state.v1",
+          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "state": {
+            "schema_version": "riftbound-rules-core-state.v1",
+            "ruleset": {
+              "core": "2026-07-16",
+              "faq_as_of": "2026-08-14"
+            },
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "turn_order": [
+              "p1",
+              "p2"
+            ],
+            "turn_player": "p1",
+            "phase": "main",
+            "showdown": {
+              "active": false,
+              "kind": null,
+              "focus": null
+            },
+            "priority": "p1",
+            "outstanding_tasks": [],
+            "chain": {
+              "initiated_by": null,
+              "items": [],
+              "consecutive_passes": []
+            }
+          }
+        }
+      },
+      "facts": {
+        "confirmed_public": [
+          {
+            "fact_id": "f1",
+            "text": "p1 holds Priority in Neutral Open.",
+            "provenance": "engine_state"
+          }
+        ],
+        "own_private": [],
+        "inferred": [],
+        "later_revealed": [],
+        "unknown": [],
+        "contradictory": []
+      },
+      "pending_decisions": [],
+      "completeness": {
+        "timing_state": "complete",
+        "board": "absent",
+        "hands": "absent",
+        "resources": "absent",
+        "pending_decisions": "complete"
+      },
+      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206"
+    },
+    "query": {
+      "schema_version": "action-query.v1",
+      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
+      "candidate_source_mode": "user_supplied",
+      "acting_player": "p1",
+      "requested_action_families": [
+        "activate_ability",
+        "pass_focus",
+        "pass_priority",
+        "play_card"
+      ],
+      "candidates": [
+        {
+          "candidate_id": "c1",
+          "description": "Play a unit",
+          "action": {
+            "kind": "play_card",
+            "actor": "p1",
+            "timing": "default",
+            "object_kind": "unit"
+          }
+        }
+      ],
+      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161"
+    },
+    "result": {
+      "schema_version": "legal-action-result.v1",
+      "valid": true,
+      "errors": [],
+      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
+      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161",
+      "perspective": "player1",
+      "acting_player": "p1",
+      "candidate_source_mode": "user_supplied",
+      "enumeration_attempted": false,
+      "complete_action_set": false,
+      "proof_scope": null,
+      "candidates": [
+        {
+          "candidate_id": "c1",
+          "verdict": "legal",
+          "reason_code": "ok",
+          "explanation": "By default, the Turn Player with Priority may play cards or activate abilities during the Main Phase in Neutral Open.",
+          "rule_locators": [
+            "Core 310.1.a",
+            "Core 312.2.a",
+            "Core 316"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        }
+      ],
+      "summary": {
+        "legal": 1,
+        "illegal": 0,
+        "indeterminate": 0,
+        "unsupported": 0,
+        "decision_required": 0
+      },
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ],
+      "reason_code": "ok",
+      "result_hash": "sha256:a0251f2d947815bd5b96ea978d42b5ff030ec4323da485f5fdf70073ba0a30eb"
+    }
+  },
+  "hindsight_with": {
+    "note": "Same decision-time facts plus hindsight sets; must classify and hash identically to hindsight_without.",
+    "observation": {
+      "schema_version": "observation.v1",
+      "perspective": "player1",
+      "source": {
+        "kind": "p2a_state_confirmed",
+        "state_seq": 9
+      },
+      "context": {
+        "ruleset_core": "2026-07-16",
+        "faq_as_of": "2026-08-14",
+        "format": "1v1 Constructed",
+        "region": "global",
+        "card_data_version": "fixture"
+      },
+      "component_states": {
+        "timing_state": {
+          "schema_version": "riftbound-rules-core-state.v1",
+          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "state": {
+            "schema_version": "riftbound-rules-core-state.v1",
+            "ruleset": {
+              "core": "2026-07-16",
+              "faq_as_of": "2026-08-14"
+            },
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "turn_order": [
+              "p1",
+              "p2"
+            ],
+            "turn_player": "p1",
+            "phase": "main",
+            "showdown": {
+              "active": false,
+              "kind": null,
+              "focus": null
+            },
+            "priority": "p1",
+            "outstanding_tasks": [],
+            "chain": {
+              "initiated_by": null,
+              "items": [],
+              "consecutive_passes": []
+            }
+          }
+        }
+      },
+      "facts": {
+        "confirmed_public": [
+          {
+            "fact_id": "f1",
+            "text": "p1 holds Priority in Neutral Open.",
+            "provenance": "engine_state"
+          }
+        ],
+        "own_private": [],
+        "inferred": [],
+        "later_revealed": [
+          {
+            "fact_id": "h1",
+            "text": "Opponent held a Reaction that would have countered.",
+            "provenance": "replay_log"
+          }
+        ],
+        "unknown": [],
+        "contradictory": [
+          {
+            "fact_id": "h2",
+            "text": "Two summaries disagree on p2's hand size.",
+            "provenance": "normalizer_proposed"
+          }
+        ]
+      },
+      "pending_decisions": [],
+      "completeness": {
+        "timing_state": "complete",
+        "board": "absent",
+        "hands": "absent",
+        "resources": "absent",
+        "pending_decisions": "complete"
+      },
+      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206"
+    },
+    "query": {
+      "schema_version": "action-query.v1",
+      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
+      "candidate_source_mode": "user_supplied",
+      "acting_player": "p1",
+      "requested_action_families": [
+        "activate_ability",
+        "pass_focus",
+        "pass_priority",
+        "play_card"
+      ],
+      "candidates": [
+        {
+          "candidate_id": "c1",
+          "description": "Play a unit",
+          "action": {
+            "kind": "play_card",
+            "actor": "p1",
+            "timing": "default",
+            "object_kind": "unit"
+          }
+        }
+      ],
+      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161"
+    },
+    "result": {
+      "schema_version": "legal-action-result.v1",
+      "valid": true,
+      "errors": [],
+      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
+      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161",
+      "perspective": "player1",
+      "acting_player": "p1",
+      "candidate_source_mode": "user_supplied",
+      "enumeration_attempted": false,
+      "complete_action_set": false,
+      "proof_scope": null,
+      "candidates": [
+        {
+          "candidate_id": "c1",
+          "verdict": "legal",
+          "reason_code": "ok",
+          "explanation": "By default, the Turn Player with Priority may play cards or activate abilities during the Main Phase in Neutral Open.",
+          "rule_locators": [
+            "Core 310.1.a",
+            "Core 312.2.a",
+            "Core 316"
+          ],
+          "required_capabilities": [
+            "timing_permission_v1"
+          ],
+          "missing_information": [],
+          "decision_id": null
+        }
+      ],
+      "summary": {
+        "legal": 1,
+        "illegal": 0,
+        "indeterminate": 0,
+        "unsupported": 0,
+        "decision_required": 0
+      },
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ],
+      "reason_code": "ok",
+      "result_hash": "sha256:a0251f2d947815bd5b96ea978d42b5ff030ec4323da485f5fdf70073ba0a30eb"
+    }
+  }
+}

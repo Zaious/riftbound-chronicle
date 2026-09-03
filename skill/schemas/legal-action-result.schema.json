@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/legal-action-result.schema.json",
+  "title": "Chronicle Legal-Action Result v1",
+  "description": "One verdict per caller-supplied candidate. enumeration_attempted and complete_action_set are constants false in Phase A: nothing here ever claims to have found every legal action.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "valid", "errors", "observation_hash", "query_hash", "perspective", "acting_player", "candidate_source_mode", "enumeration_attempted", "complete_action_set", "proof_scope", "candidates", "summary", "rule_locators", "reason_code", "result_hash"],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "stringList": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  },
+  "properties": {
+    "schema_version": {"const": "legal-action-result.v1"},
+    "valid": {"type": "boolean"},
+    "errors": {"$ref": "#/$defs/stringList"},
+    "observation_hash": {"type": ["string", "null"]},
+    "query_hash": {"type": ["string", "null"]},
+    "perspective": {"type": ["string", "null"]},
+    "acting_player": {"type": ["string", "null"]},
+    "candidate_source_mode": {"const": "user_supplied"},
+    "enumeration_attempted": {"const": false},
+    "complete_action_set": {"const": false},
+    "proof_scope": {"type": "null"},
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_id", "verdict", "reason_code", "explanation", "rule_locators", "required_capabilities", "missing_information", "decision_id"],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "verdict": {"enum": ["legal", "illegal", "indeterminate", "unsupported", "decision_required"]},
+          "reason_code": {"type": "string", "minLength": 1},
+          "explanation": {"type": "string"},
+          "rule_locators": {"$ref": "#/$defs/stringList"},
+          "required_capabilities": {"$ref": "#/$defs/stringList"},
+          "missing_information": {"$ref": "#/$defs/stringList"},
+          "decision_id": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legal", "illegal", "indeterminate", "unsupported", "decision_required"],
+      "properties": {
+        "legal": {"type": "integer", "minimum": 0},
+        "illegal": {"type": "integer", "minimum": 0},
+        "indeterminate": {"type": "integer", "minimum": 0},
+        "unsupported": {"type": "integer", "minimum": 0},
+        "decision_required": {"type": "integer", "minimum": 0}
+      }
+    },
+    "rule_locators": {"$ref": "#/$defs/stringList"},
+    "reason_code": {"type": "string", "minLength": 1},
+    "result_hash": {"$ref": "#/$defs/sha256"}
+  }
+}

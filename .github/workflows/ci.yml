@@ -113,6 +113,12 @@ jobs:
       - name: Engine capability manifest derives from the engine and binds optionally
         run: python3 skill/scripts/check_capability_manifest.py
 
+      # ADR-0003 Phase A: caller-supplied candidates only. Fails on hidden
+      # information reaching a Player 2 query, on hindsight facts changing a
+      # verdict, on any complete-action-set claim, and on stale fixtures.
+      - name: Bounded legal-action service reaches all five verdicts and never enumerates
+        run: python3 skill/scripts/check_legal_action.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -168,6 +174,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_engine_check.py"
           python3 "$REPO/skill/scripts/check_engine_check_cli.py"
           python3 "$REPO/skill/scripts/check_capability_manifest.py"
+          python3 "$REPO/skill/scripts/check_legal_action.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

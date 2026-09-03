@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:8680abb25fbebee8af6f93ae",
-  "capability_set_id": "sha256:8680abb25fbebee8af6f93ae162a45d71cf9dc78bbd5a91e5174866c935b5db3",
+  "manifest_id": "capability-manifest:85342ce9d7a1c40797bed0d2",
+  "capability_set_id": "sha256:85342ce9d7a1c40797bed0d292bdbcd05e48d64e3b1fe31f9d6e13a2c046a256",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:a446fcb9d40339cd534bb187e9eaf72959f5afdb4cffcce4ab1e01e712af8e34",
+    "value": "sha256:f926164aa50cf164c81fc2366abbe71dd1e5743cd53a56cb9a3b22e7bc15f925",
     "files": [
       {
         "path": "rules_core.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:efd216e5c018c2dac3eb25b59efa71f6777439c3472f1ab2664f4737937bbf54"
+        "sha256": "sha256:7a33d7bfec91bb762eace7c9d029e4ac55bac6590d61ec24e2ce34d5c83aba20"
       }
     ]
   },
@@ -60,6 +60,27 @@
         "arbitrary_card_text",
         "combat",
         "scoring",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "legal_action",
+      "name": "legal_action_service",
+      "version": "legal-action-result.v1",
+      "coverage_id": "legal_action_v1",
+      "supported_scope": [
+        "user_supplied_candidates",
+        "timing_permission_classification",
+        "perspective_boundary",
+        "hindsight_isolation"
+      ],
+      "unsupported_scope": [
+        "engine_enumeration",
+        "complete_action_set",
+        "cost_checks",
+        "target_checks",
+        "effect_prerequisites",
         "complete_game",
         "complete_legality"
       ]
@@ -274,11 +295,16 @@
     "arbitrary_card_effects",
     "arbitrary_card_text",
     "combat",
+    "complete_action_set",
     "complete_game",
     "complete_legality",
+    "cost_checks",
+    "effect_prerequisites",
+    "engine_enumeration",
     "full_cleanup",
     "multi_descriptor_replacement",
-    "scoring"
+    "scoring",
+    "target_checks"
   ],
   "claims": {
     "complete_game": false,

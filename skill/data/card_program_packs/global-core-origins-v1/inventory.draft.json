@@ -19,7 +19,7 @@
     {
       "card_key": "annie - dark child (starter)",
       "canonical_name": "Annie - Dark Child (Starter)",
-      "current_text_hash": "sha256:94906fd67089298c933baf7fbce0d195cf336c3a3e5aeb00aeb1a88403bb6a97",
+      "current_text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
       "printing_ids": [
         "ogs-017-024"
       ],
@@ -34,8 +34,7 @@
           "program_id": null,
           "implemented_ops": [],
           "unsupported_mechanics": [
-            "end_of_turn_trigger",
-            "errata_join_missed_by_catalog"
+            "end_of_turn_trigger"
           ],
           "test_ids": [],
           "notes": "R3-A0 draft. text: At the end of your turn, ready up to 2 runes. | unblocked by: R3-A2-play-conditions-continuous | recommended eventual label: stale"

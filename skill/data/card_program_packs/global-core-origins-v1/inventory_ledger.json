@@ -11,24 +11,13 @@
     "deck legality",
     "full or partial coverage in the manifest"
   ],
-  "findings": [
-    {
-      "card": "Annie - Dark Child (Starter)",
-      "finding": "errata_join_missed_by_catalog",
-      "errata_official_name": "Dark Child, Starter",
-      "errata_card_ids": [
-        "OGN-?"
-      ],
-      "joined_by": "subtitle",
-      "consequence": "Deck Coach's catalog applies errata by name only, so it reads this card's pre-errata text; fix the overlay entry's official_name or card_ids."
-    }
-  ],
+  "findings": [],
   "counts": {
     "cards": 34,
     "clauses": 56,
     "stale_cards": 4,
     "vanilla_cards": 2,
-    "catalog_join_missed": 1,
+    "catalog_join_missed": 0,
     "unclassified_clauses": 0
   },
   "cards_by_mechanic": {
@@ -271,14 +260,14 @@
       ],
       "snapshot_text": "At the end of your turn, ready 2 runes.",
       "current_text": "At the end of your turn, ready up to 2 runes.",
-      "current_text_hash": "sha256:94906fd67089298c933baf7fbce0d195cf336c3a3e5aeb00aeb1a88403bb6a97",
+      "current_text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
       "inventory_text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
       "errata_applied": true,
-      "errata_join": "subtitle",
-      "catalog_join_missed": true,
-      "errata_official_name": "Dark Child, Starter",
+      "errata_join": "name",
+      "catalog_join_missed": false,
+      "errata_official_name": "Annie - Dark Child (Starter)",
       "errata_card_ids": [
-        "OGN-?"
+        "OGS-017"
       ],
       "errata_document": "origins",
       "errata_verification": "live-fetched",
@@ -2210,5 +2199,5 @@
       ]
     }
   ],
-  "ledger_hash": "sha256:ac980227a7681899667ce64e5b35ec0ac65812c5fef21a526c2047560ec2c463"
+  "ledger_hash": "sha256:e9d47df3cb3a960eed78d25555f2691dc4a5345bd3111ffea1d1ac3e40512b7b"
 }

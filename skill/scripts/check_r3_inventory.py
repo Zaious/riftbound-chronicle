@@ -110,11 +110,14 @@ def main() -> int:
                 errors.append(f"{cl['clause_id']} unblocked_by {cl['unblocked_by']!r} is not a known batch")
             if cl["recommended_label"] not in ("full", "partial", "unsupported", "stale"):
                 errors.append(f"{cl['clause_id']} recommendation label is invalid")
-    # The legend errata is filed under its subtitle with a placeholder card id;
-    # the inventory must reach it and must say the catalog cannot.
-    missed = {f["card"] for f in ledger["findings"]}
-    if not any(name.startswith("Annie - Dark Child") for name in missed):
-        errors.append("the Annie legend errata join miss is not recorded as a finding")
+    # Known overlays must join through the catalog's primary path. The fallback
+    # remains in the builder to expose future bad identities, not to normalize
+    # this already-repaired Annie entry forever.
+    annie = next(c for c in ledger["cards"] if c["canonical_name"].startswith("Annie - Dark Child"))
+    if annie["errata_join"] != "name" or annie["errata_card_ids"] != ["OGS-017"]:
+        errors.append("Annie Legend errata is not joined by canonical name and OGS-017")
+    if ledger["findings"] or ledger["counts"]["catalog_join_missed"]:
+        errors.append("a selected card still needs an errata fallback join")
     md = (PACK / "INVENTORY.md").read_text(encoding="utf-8") if (PACK / "INVENTORY.md").exists() else ""
     for entry in catalog.errata["entries"]:
         if entry.get("old_text") and entry["old_text"] in md:

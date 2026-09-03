@@ -2,11 +2,7 @@
 
 Generated from `selection.json` (global-core-origins-v1-selection-2026-09-03), the bundled card snapshot, and errata verified 2026-08-17. Draft only: no programs, no activation.
 
-34 cards, 56 clauses. 4 cards carry pre-errata text in the snapshot; 2 have no rules text; 0 clauses matched no mechanic rule; 1 errata entries are unreachable by the catalog's name join.
-
-## Findings for the overlay owner
-
-- **Annie - Dark Child (Starter)**: errata `Dark Child, Starter` (card_ids ['OGN-?']) is reachable only via `subtitle`. Deck Coach's catalog applies errata by name only, so it reads this card's pre-errata text; fix the overlay entry's official_name or card_ids.
+34 cards, 56 clauses. 4 cards carry pre-errata text in the snapshot; 2 have no rules text; 0 clauses matched no mechanic rule; 0 errata entries are unreachable by the catalog's name join.
 
 ## What unblocks how many cards
 
@@ -56,7 +52,7 @@ Generated from `selection.json` (global-core-origins-v1-selection-2026-09-03), t
 
 ## proving-grounds-annie
 
-### Annie - Dark Child (Starter) — Legend · `ogs-017-024` · **STALE snapshot** (pre-errata wording withheld; see inventory_ledger.json) · **catalog errata join missed** (reached via `subtitle`) · errata: origins (live-fetched)
+### Annie - Dark Child (Starter) — Legend · `ogs-017-024` · **STALE snapshot** (pre-errata wording withheld; see inventory_ledger.json) · errata: origins (live-fetched)
 - `223039b2` At the end of your turn, ready up to 2 runes.
   needs: end_of_turn_trigger · ops: — · unblocked by `R3-A2-play-conditions-continuous` · recommended: **stale** — bundled snapshot still carries pre-errata wording; reverify text before any program
 

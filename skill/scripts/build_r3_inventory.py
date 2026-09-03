@@ -108,11 +108,10 @@ BATCH_ORDER = ["E0", "R3-A1-choices-costs-zones", "R3-A2-play-conditions-continu
 def find_errata(catalog: CardCatalog, card: dict[str, Any], origins_ids: list[str]) -> tuple[dict[str, Any] | None, str]:
     """Locate the errata entry for a card and say which route found it.
 
-    Deck Coach's catalog joins by name only. The legend errata is filed under
-    its subtitle ("Dark Child, Starter") with a placeholder card id ("OGN-?"),
-    so the name join misses it. The inventory tries name, then card id, then
-    subtitle, and records which route worked; anything but `name` is a catalog
-    miss to report to the overlay's owner, not to paper over here.
+    Deck Coach's catalog joins by name. The inventory additionally tries card
+    id and subtitle so malformed overlay identities become visible findings
+    instead of silently restoring printed text. Anything but `name` is a
+    catalog miss to report to the overlay's owner, not to paper over here.
     """
     by_name = catalog.errata_by_name.get(name_key(card["name"]))
     if by_name:

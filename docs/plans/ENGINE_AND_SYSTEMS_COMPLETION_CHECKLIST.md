@@ -235,7 +235,10 @@ overlays. Codex selects the first pack and accepts coverage; Claude can
 collect/normalize card clauses and implement assigned cards.
 
 - [x] Accept the global-core card-program plus regional-overlay architecture.
-- [ ] Select two to four linear global-core Origins decks and Battlefields.
+- [x] Select Annie and Master Yi Proving Grounds as Wave A; defer Lux/Garen to
+  Wave B of the same global core pack.
+- [ ] Verify the candidate fixed decklists against a physical Proving Grounds
+  product or a second independent source.
 - [ ] Define the first `taiwan-origins-v1` release/legality/localization overlay.
 - [ ] Freeze applicable card text, errata, ruleset, global pack, and overlay.
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
@@ -530,6 +533,7 @@ push” does not isolate a commit on shared `main`.
 | C-09 | Implement ADR-0002 capability-manifest schema, validator, fixtures, and engine-check binding | ADR-0002 accepted; do not change existing schema semantics | Exact capability/exclusion/build identity, stale/mismatch tests, off-cwd CLI |
 | C-10 | Implement ADR-0003 observation/action-query/result schemas and Phase-A adversarial fixtures | ADR-0003 accepted; no Phase-B completeness claim | Five candidate verdicts, perspective boundary, missing-fact abstention, deterministic ids |
 | C-11 | Build R5-A coverage and abstention report over existing fixtures | ADR-0002 capability vocabulary accepted | Deterministic report only; no search, policy-strength, or P2-S claim |
+| C-12 | Execute R3-A0 Annie/Master Yi clause inventory | Selection record accepted; no engine changes allowed | Verify current text/errata, stable clause ids, draft full/partial/unsupported/stale labels, source ledger; no production activation |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first
@@ -556,7 +560,7 @@ real artifact migration should establish the presentation semantics first.
 | X-02 — completed 2026-09-01 | P2-A migration to `engine-check.v1` | Preserves human legality/state authority, rejects raw engine state, and calibrates verification without automation creep |
 | X-03 — completed 2026-09-01 | Deck behavior-coverage contract | Separates card lookup, current-text clause programs, unsupported mechanics, tests, and strategy evidence |
 | X-04 — governance completed 2026-09-02 | R1/R2 semantic expansion and schema versioning | ADR-0002 fixes version axes, composition, choices, feature acceptance, and migrations; mechanic implementations remain open |
-| X-05 — scope completed 2026-09-02 | R3 pack selection and acceptance gate | ADR-0004 fixes global-core plus regional overlays; exact deck selection remains open |
+| X-05 — selection completed 2026-09-03 | R3 pack selection and acceptance gate | ADR-0004 plus R3 selection fix Annie/Master Yi Wave A and Lux/Garen Wave B; physical list verification and pack activation remain open |
 | X-06 — architecture completed 2026-09-02 | R4 observation and legal-action architecture | ADR-0003 fixes Phase A/B, information sets, completeness, hidden-data safety, and abstention |
 | X-07 | Match Analyst normalization/review contract and router activation | Must keep Review/Commentary consistent and satisfy all gates |
 | X-08 | Riot authorization interpretation and P2-S boundary | Product authority cannot be inferred from an isolated coding task |

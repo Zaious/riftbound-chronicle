@@ -1,0 +1,179 @@
+{
+  "schema_version": "r3-pack-selection.v1",
+  "selection_id": "global-core-origins-v1-selection-2026-09-03",
+  "status": "selected_pending_physical_verification",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "global_pack": {
+    "pack_id": "global-core-origins-v1",
+    "controlling_locale": "en-US",
+    "set_ids": ["OGN", "OGS"],
+    "product_context": "Origins: Proving Grounds",
+    "format_scope": "proving_grounds_product_practice",
+    "support_claim": "selection_only_no_executable_pack"
+  },
+  "regional_overlays": [
+    {
+      "overlay_id": "taiwan-origins-v1",
+      "status": "planned",
+      "scope": ["release", "format_legality", "localization", "availability"]
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "riot-how-to-buy-riftbound-2025",
+      "authority": "official",
+      "url": "https://playriftbound.com/en-us/news/announcements/how-to-buy-riftbound/",
+      "accessed_at": "2026-09-03",
+      "supports": ["product_identity", "four_featured_legends", "teaching_positioning"],
+      "supports_exact_decklists": false
+    },
+    {
+      "source_id": "riftmana-proving-grounds-decklists-2025-08-04",
+      "authority": "community_transcription",
+      "url": "https://riftmana.com/riftbound-proving-grounds-decklists/",
+      "accessed_at": "2026-09-03",
+      "supports": ["candidate_fixed_decklists", "deck_codes", "printing_ids"],
+      "supports_exact_decklists": true,
+      "independent_verification_required": true
+    }
+  ],
+  "waves": [
+    {
+      "wave_id": "wave-a-annie-master-yi",
+      "status": "selected_pending_physical_verification",
+      "deck_ids": ["proving-grounds-annie", "proving-grounds-master-yi"],
+      "selection_reasons": [
+        "same fixed teaching product and physical practice context",
+        "existing Chronicle Annie construction example and Master Yi regional evidence",
+        "strong overlap with already implemented damage, draw, move, Might, ready, Kill, and replacement primitives",
+        "forces the next choices, costs, zones, continuous effects, and Combat contracts without claiming full-deck execution"
+      ]
+    },
+    {
+      "wave_id": "wave-b-lux-garen",
+      "status": "deferred_until_wave_a_inventory",
+      "deck_ids": ["proving-grounds-lux", "proving-grounds-garen"],
+      "selection_reasons": [
+        "complete the same product baseline after Wave A",
+        "add Mind and Order coverage without changing global-pack architecture",
+        "defer additional card inventory until Wave A exposes the real mechanic bottlenecks"
+      ]
+    }
+  ],
+  "selected_decks": [
+    {
+      "deck_id": "proving-grounds-annie",
+      "wave_id": "wave-a-annie-master-yi",
+      "legend": "Annie - Dark Child (Starter)",
+      "chosen_champion": "Annie - Stubborn",
+      "battlefields": ["Void Gate"],
+      "runes": {"Fury Rune": 6, "Chaos Rune": 6},
+      "main_deck": [
+        {"name": "Annie - Fiery", "count": 2},
+        {"name": "Annie - Stubborn", "count": 2},
+        {"name": "Disintegrate", "count": 3},
+        {"name": "Firestorm", "count": 3},
+        {"name": "Flash", "count": 2},
+        {"name": "Gust", "count": 3},
+        {"name": "Incinerate", "count": 3},
+        {"name": "Maddened Marauder", "count": 3},
+        {"name": "Morbid Return", "count": 3},
+        {"name": "Mystic Poro", "count": 3},
+        {"name": "Pouty Poro", "count": 2},
+        {"name": "Sai Scout", "count": 3},
+        {"name": "Sneaky Deckhand", "count": 3},
+        {"name": "Tibbers", "count": 2},
+        {"name": "Traveling Merchant", "count": 3}
+      ],
+      "mechanic_requirements": [
+        "action_reaction_timing", "play_lifecycle", "target_choice", "area_damage",
+        "bonus_damage_continuous", "return_board_to_hand", "return_trash_to_hand",
+        "look_then_optional_recycle", "discard_then_draw", "open_battlefield_play",
+        "tank", "deflect", "play_triggers", "move_triggers"
+      ]
+    },
+    {
+      "deck_id": "proving-grounds-master-yi",
+      "wave_id": "wave-a-annie-master-yi",
+      "legend": "Master Yi - Wuju Bladesman (Starter)",
+      "chosen_champion": "Master Yi - Meditative",
+      "battlefields": ["Fortified Position"],
+      "runes": {"Calm Rune": 6, "Body Rune": 6},
+      "main_deck": [
+        {"name": "Cannon Barrage", "count": 3},
+        {"name": "Confront", "count": 2},
+        {"name": "En Garde", "count": 3},
+        {"name": "Gentlemen's Duel", "count": 3},
+        {"name": "Highlander", "count": 2},
+        {"name": "Master Yi - Honed", "count": 2},
+        {"name": "Master Yi - Meditative", "count": 2},
+        {"name": "Meditation", "count": 3},
+        {"name": "Mobilize", "count": 3},
+        {"name": "Mountain Drake", "count": 2},
+        {"name": "Playful Phantom", "count": 3},
+        {"name": "Stalwart Poro", "count": 3},
+        {"name": "Stormclaw Ursine", "count": 3},
+        {"name": "Wielder of Water", "count": 3},
+        {"name": "Zephyr Sage", "count": 3}
+      ],
+      "mechanic_requirements": [
+        "action_reaction_timing", "play_lifecycle", "target_choice", "conditional_might",
+        "area_damage_in_combat", "enter_ready_replacement", "next_death_replacement",
+        "optional_additional_cost", "channel_rune_exhausted", "if_cannot_fallback",
+        "mutual_damage_equal_might", "ganking", "shield", "tank",
+        "attacking_defending_alone", "combat_state"
+      ]
+    }
+  ],
+  "capability_batches": [
+    {
+      "batch_id": "R3-A0-inventory",
+      "owner": "claude-ready",
+      "requires_engine_change": false,
+      "deliverables": [
+        "verify every selected card against current errata-applied text",
+        "split every card into stable clause ids",
+        "create draft behavior entries labelled full, partial, unsupported, or stale",
+        "do not create executable programs for unsupported mechanics"
+      ]
+    },
+    {
+      "batch_id": "R3-A1-choices-costs-zones",
+      "owner": "joint",
+      "requires_engine_change": true,
+      "mechanics": [
+        "target_choice", "optional_additional_cost", "return_board_to_hand",
+        "return_trash_to_hand", "discard", "look", "channel_rune", "recall"
+      ]
+    },
+    {
+      "batch_id": "R3-A2-play-conditions-continuous",
+      "owner": "joint",
+      "requires_engine_change": true,
+      "mechanics": [
+        "play_lifecycle", "area_targets", "play_and_move_triggers", "conditional_effects",
+        "bonus_damage", "deflect", "enter_ready", "duration_expiry"
+      ]
+    },
+    {
+      "batch_id": "R3-A3-combat",
+      "owner": "codex-context",
+      "requires_engine_change": true,
+      "milestone": "G1",
+      "mechanics": [
+        "combat_state", "attacker_defender", "tank", "shield", "ganking",
+        "combat_damage_assignment", "simultaneous_damage", "combat_cleanup"
+      ]
+    }
+  ],
+  "activation_gates": [
+    "verify candidate decklists against a physical product or a second independent source",
+    "hash current errata-applied text for every selected card",
+    "label every clause before claiming any executable pack coverage",
+    "publish support only for named scenarios whose required clauses are full",
+    "do not claim the decks are competitive, representative of a metagame, or fully simulated"
+  ]
+}

@@ -61,3 +61,8 @@ python ${CLAUDE_SKILL_DIR}/scripts/deck_coach_pipeline.py run --input deck.json 
 No production manifest is bundled yet. Until an R3 pack passes its clause and
 pack conformance gate, ordinary Deck Coach runs must report behavior coverage
 as unavailable.
+
+The first selected inventory is recorded in
+`${CLAUDE_SKILL_DIR}/data/card_program_packs/global-core-origins-v1/selection.json`.
+Its status is selection-only and pending decklist verification; it is not a
+behavior manifest and cannot activate coverage.

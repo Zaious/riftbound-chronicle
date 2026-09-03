@@ -250,6 +250,9 @@ fail-closed future work.
 [ADR-0004](../decisions/ADR-0004-global-card-programs-and-regional-overlays.md)
 keeps card semantics once under controlling current text; Taiwan and future
 regions add release, legality, localization, and availability overlays.
+Wave A is selected in
+[R3_FIRST_PACK_SELECTION.md](../plans/R3_FIRST_PACK_SELECTION.md) and remains
+pending physical/independent list verification before behavior activation.
 
 - select two to four linear global-core decks plus their relevant Battlefields;
 - implement only cards used by the bounded environment;

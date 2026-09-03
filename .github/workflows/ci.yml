@@ -57,6 +57,9 @@ jobs:
       - name: Card behavior manifest and Deck Coach coverage boundary
         run: python3 skill/scripts/check_card_behavior_coverage.py
 
+      - name: First R3 pack selection scope and source boundary
+        run: python3 skill/scripts/check_r3_pack_selection.py
+
       - name: Deck Coach static prototype contract
         run: python3 skill/scripts/check_deck_coach_prototype.py
 
@@ -145,6 +148,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_readme_connection_claims.py"
           python3 "$REPO/skill/scripts/check_deck_coach.py"
           python3 "$REPO/skill/scripts/check_card_behavior_coverage.py"
+          python3 "$REPO/skill/scripts/check_r3_pack_selection.py"
           python3 "$REPO/skill/scripts/check_deck_coach_prototype.py"
           python3 "$REPO/skill/scripts/check_tournament_lists.py"
           python3 "$REPO/skill/scripts/check_p2a_protocol.py"

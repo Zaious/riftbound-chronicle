@@ -66,6 +66,12 @@ The exact decks remain a separate recorded selection because they require a
 current product-direction and player-review decision. This ADR freezes the
 architecture, not that content choice.
 
+The first selection is now recorded in
+[R3_FIRST_PACK_SELECTION.md](../plans/R3_FIRST_PACK_SELECTION.md): Annie and
+Master Yi from Proving Grounds form Wave A; Lux and Garen are deferred to Wave
+B. The candidate fixed lists remain pending physical or independent
+verification.
+
 ## Acceptance gate
 
 - every used clause is `full`, `partial`, `unsupported`, or `stale`;

@@ -1,0 +1,675 @@
+{
+  "schema_version": "r5a-report.v1",
+  "identity": {
+    "manifest_id": "capability-manifest:85342ce9d7a1c40797bed0d2",
+    "capability_set_id": "sha256:85342ce9d7a1c40797bed0d292bdbcd05e48d64e3b1fe31f9d6e13a2c046a256",
+    "implementation_identity": "sha256:f926164aa50cf164c81fc2366abbe71dd1e5743cd53a56cb9a3b22e7bc15f925",
+    "ruleset": {
+      "core": "2026-07-16",
+      "faq_as_of": "2026-08-14"
+    },
+    "fixture_sources": [
+      {
+        "path": "data/rules_core_cases.json",
+        "sha256": "sha256:b3d507733941206ce247e18b1c66fd8768725d14e25189b70e17f3040eef21a4"
+      },
+      {
+        "path": "data/rule_consult_cases.json",
+        "sha256": "sha256:86f711a871c85580e1697b313f89f9b64ef08649e46287b508905d0dcd25547e"
+      },
+      {
+        "path": "data/legal_action_examples/fixtures.json",
+        "sha256": "sha256:c7363009297c64d4d2b7ce16d742cf1d3d61ab60b1c866e7c7669e18a232106c"
+      },
+      {
+        "path": "data/engine_check_examples/cleanup-decisions.json",
+        "sha256": "sha256:a06f87ab6b83d992d1de20ac7cd0e999a39d9327b913d3ada410b6bdb3d9df4a"
+      },
+      {
+        "path": "data/engine_check_examples/cleanup-state.json",
+        "sha256": "sha256:934b56cc192ea38be00b7861d744fd937aba46771cf618d075b859fdea3a7037"
+      },
+      {
+        "path": "data/engine_check_examples/closed-timing-state.json",
+        "sha256": "sha256:ffa990cc24ed283c85bc3fb73507ccd0f50b07f4ff6aeaead8da1e8c2d02ef06"
+      },
+      {
+        "path": "data/engine_check_examples/effect-program.json",
+        "sha256": "sha256:cd1955a54deddd01b2e3c74bc087183c218c00539275b37af7cb59218a7242f3"
+      },
+      {
+        "path": "data/engine_check_examples/effect-state.json",
+        "sha256": "sha256:8ea8c01aea0fa085f5f96e2f251c783a4bbc1c5df95548ff0d893e5c229b361a"
+      },
+      {
+        "path": "data/engine_check_examples/proposed-action.json",
+        "sha256": "sha256:ecdd735860a1600872b47af0db620aa3f089abdb0aa13c0fa8dc5f36af1e09f0"
+      },
+      {
+        "path": "data/engine_check_examples/timing-state.json",
+        "sha256": "sha256:4ae29989112ed9611435df53c497e1e6ecd0d749630974b0c0ca5d181c125acd"
+      },
+      {
+        "path": "data/match_analyst_fixtures/complete-showdown.json",
+        "sha256": "sha256:6fc3b072509cd47ef51fab1c99752c146f2fc9466d759ebadbcb69a9c3143453"
+      },
+      {
+        "path": "data/match_analyst_fixtures/contradictory-record.json",
+        "sha256": "sha256:cd15020fc35d3a4ffda430c7d64c3d5ad9949e63cbe991bd2c91183d0378f70b"
+      },
+      {
+        "path": "data/match_analyst_fixtures/partial-observer.json",
+        "sha256": "sha256:1b088834aabeb55c5759c219025b74bef4e3192bd90998793b96998282ea8913"
+      },
+      {
+        "path": "data/match_analyst_fixtures/perspective-safe-hidden.json",
+        "sha256": "sha256:ea3f649393ddd81199c2ac6ec4a4a9306b7ce491ebf0184a75dac012733d1314"
+      }
+    ]
+  },
+  "claims": {
+    "search": false,
+    "policy_strength": false,
+    "p2s": false,
+    "matchup_rates": false,
+    "complete_game": false,
+    "complete_legality": false
+  },
+  "engine_checks": {
+    "total": 39,
+    "by_kind": {
+      "cleanup": {
+        "decision_required": 2,
+        "supported": 1
+      },
+      "effect": {
+        "decision_required": 1,
+        "supported": 2,
+        "unsupported": 1
+      },
+      "legal_action": {
+        "decision_required": 1,
+        "supported": 6
+      },
+      "resolution": {
+        "supported": 1
+      },
+      "timing": {
+        "illegal": 10,
+        "supported": 14
+      }
+    },
+    "abstention_rate": 0.1282
+  },
+  "conformance": {
+    "rules_core": {
+      "cases": 21,
+      "passed": 21
+    }
+  },
+  "clause_coverage": {
+    "declared": 28,
+    "cited": 9,
+    "cited_ratio": 0.3214,
+    "cited_clauses": [
+      "Core 312",
+      "Core 313",
+      "Core 320–321",
+      "Core 333–340",
+      "Core 341–348",
+      "Core 358.4",
+      "Core 413",
+      "Core 428",
+      "Core 807"
+    ],
+    "uncited_clauses": [
+      "Core 135.2.e.3",
+      "Core 143.4",
+      "Core 149.1",
+      "Core 184–186",
+      "Core 308–310",
+      "Core 328–331",
+      "Core 349",
+      "Core 375",
+      "Core 386–388",
+      "Core 414",
+      "Core 415",
+      "Core 416",
+      "Core 417",
+      "Core 418",
+      "Core 420",
+      "Core 429",
+      "Core 445",
+      "Core 477",
+      "Core 806"
+    ],
+    "cited_outside_manifest": [
+      "Core 142.4",
+      "Core 308.1.a",
+      "Core 309.1.a",
+      "Core 310.1.a",
+      "Core 312.2.a",
+      "Core 313.1",
+      "Core 316",
+      "Core 322–323.5",
+      "Core 337.1–337.4",
+      "Core 338.1.a",
+      "Core 338.1.b",
+      "Core 339",
+      "Core 339.1",
+      "Core 340",
+      "Core 340.1–340.4",
+      "Core 346",
+      "Core 347.1",
+      "Core 347.2",
+      "Core 367–375",
+      "Core 370.1.b–370.2",
+      "Core 373–373.2.a.1",
+      "Core 429.2.a",
+      "Core 443",
+      "Core 806–807"
+    ]
+  },
+  "abstention": {
+    "missing_state": {
+      "count": 7,
+      "sources": [
+        "legal_action:pending_decision:c2-unknown-ref",
+        "legal_action:prose_only_indeterminate:c1-play",
+        "legal_action:prose_only_indeterminate:c2-prose",
+        "legal_action:showdown_open_focus:c3-p2-acts",
+        "match_analyst:contradictory-record",
+        "match_analyst:partial-observer",
+        "match_analyst:perspective-safe-hidden"
+      ]
+    },
+    "unsupported_mechanic": {
+      "count": 2,
+      "sources": [
+        "effect:counter_unsupported",
+        "legal_action:neutral_open_mixed:c4-can-afford"
+      ]
+    },
+    "source_conflict": {
+      "count": 4,
+      "sources": [
+        "match_analyst:contradictory-record",
+        "rule_consult:RC-010",
+        "rule_consult:RC-011",
+        "rule_consult:RC-012"
+      ]
+    },
+    "stale_data": {
+      "count": 2,
+      "sources": [
+        "behavior_coverage:available_stale_entry:copies=3",
+        "behavior_coverage:stale_manifest"
+      ]
+    },
+    "decision_required": {
+      "count": 4,
+      "sources": [
+        "cleanup:simultaneous_replacement_order",
+        "cli:cleanup_undecided",
+        "effect:optional_replacement_choice",
+        "legal_action:pending_decision"
+      ]
+    }
+  },
+  "legal_action_verdicts": {
+    "legal": 7,
+    "illegal": 3,
+    "indeterminate": 4,
+    "unsupported": 1,
+    "decision_required": 1
+  },
+  "rule_consult_categories": {
+    "general_mechanic": 12,
+    "source_conflict": 3,
+    "specific_interaction": 5,
+    "tournament_procedure": 2
+  },
+  "behavior_coverage": {
+    "statuses": {
+      "available": 2,
+      "incompatible": 1,
+      "stale": 1,
+      "unavailable": 1
+    },
+    "stale_copies": 3
+  },
+  "match_analyst": {
+    "complete-showdown": {
+      "uncertainty_entries": 0,
+      "contradictions": 0
+    },
+    "contradictory-record": {
+      "uncertainty_entries": 2,
+      "contradictions": 3
+    },
+    "partial-observer": {
+      "uncertainty_entries": 4,
+      "contradictions": 0
+    },
+    "perspective-safe-hidden": {
+      "uncertainty_entries": 3,
+      "contradictions": 0
+    }
+  },
+  "checks": [
+    {
+      "label": "cleanup:simultaneous_replacement_order",
+      "kind": "cleanup",
+      "outcome": "decision_required",
+      "reason_code": "replacement controller must order every qualifying simultaneous event",
+      "rule_locators": []
+    },
+    {
+      "label": "cli:cleanup_decided",
+      "kind": "cleanup",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 367–375",
+        "Core 370.1.b–370.2",
+        "Core 443",
+        "Core 373–373.2.a.1",
+        "Core 142.4",
+        "Core 322–323.5",
+        "Core 428"
+      ]
+    },
+    {
+      "label": "cli:cleanup_undecided",
+      "kind": "cleanup",
+      "outcome": "decision_required",
+      "reason_code": "replacement controller must order every qualifying simultaneous event",
+      "rule_locators": []
+    },
+    {
+      "label": "cli:effect",
+      "kind": "effect",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 413"
+      ]
+    },
+    {
+      "label": "cli:resolution",
+      "kind": "resolution",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 413",
+        "Core 339.1",
+        "Core 340",
+        "Core 346"
+      ]
+    },
+    {
+      "label": "cli:timing_next",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "neutral_turn_window",
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ]
+    },
+    {
+      "label": "cli:timing_payload",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ]
+    },
+    {
+      "label": "cli:timing_permissions",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "neutral_turn_window",
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ]
+    },
+    {
+      "label": "effect:counter_unsupported",
+      "kind": "effect",
+      "outcome": "unsupported",
+      "reason_code": "unsupported effect op 'counter'",
+      "rule_locators": []
+    },
+    {
+      "label": "effect:draw",
+      "kind": "effect",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 413"
+      ]
+    },
+    {
+      "label": "effect:optional_replacement_choice",
+      "kind": "effect",
+      "outcome": "decision_required",
+      "reason_code": "optional replacement requires an explicit apply/decline choice",
+      "rule_locators": []
+    },
+    {
+      "label": "legal_action:hindsight_with",
+      "kind": "legal_action",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ]
+    },
+    {
+      "label": "legal_action:hindsight_without",
+      "kind": "legal_action",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ]
+    },
+    {
+      "label": "legal_action:neutral_closed_reaction_window",
+      "kind": "legal_action",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 338.1.b",
+        "Core 339",
+        "Core 358.4",
+        "Core 807"
+      ]
+    },
+    {
+      "label": "legal_action:neutral_open_mixed",
+      "kind": "legal_action",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316",
+        "Core 338.1.b",
+        "Core 339"
+      ]
+    },
+    {
+      "label": "legal_action:pending_decision",
+      "kind": "legal_action",
+      "outcome": "decision_required",
+      "reason_code": "legal_action_decision_required",
+      "rule_locators": []
+    },
+    {
+      "label": "legal_action:prose_only_indeterminate",
+      "kind": "legal_action",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": []
+    },
+    {
+      "label": "legal_action:showdown_open_focus",
+      "kind": "legal_action",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 308.1.a",
+        "Core 313",
+        "Core 313.1",
+        "Core 347.1",
+        "Core 347.2",
+        "Core 806–807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-001",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316"
+      ]
+    },
+    {
+      "label": "rules_core:RK-002",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "priority_required",
+      "rule_locators": [
+        "Core 312"
+      ]
+    },
+    {
+      "label": "rules_core:RK-003",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "action_or_reaction_required_in_showdown",
+      "rule_locators": [
+        "Core 308.1.a",
+        "Core 313.1",
+        "Core 347.1",
+        "Core 806–807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-004",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 308.1.a",
+        "Core 313.1",
+        "Core 347.1",
+        "Core 806–807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-005",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 308.1.a",
+        "Core 313.1",
+        "Core 347.1",
+        "Core 806–807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-006",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "reaction_required_in_closed_state",
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 358.4",
+        "Core 807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-007",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 358.4",
+        "Core 807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-008",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 358.4",
+        "Core 807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-009",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "procedure_blocks_discretionary_action",
+      "rule_locators": [
+        "Core 333–340",
+        "Core 320–321"
+      ]
+    },
+    {
+      "label": "rules_core:RK-010",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "resolve_newest_finalized",
+      "rule_locators": [
+        "Core 339.1",
+        "Core 340.1–340.4"
+      ]
+    },
+    {
+      "label": "rules_core:RK-011",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 337.1–337.4",
+        "Core 429.2.a"
+      ]
+    },
+    {
+      "label": "rules_core:RK-012",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 337.1–337.4"
+      ]
+    },
+    {
+      "label": "rules_core:RK-013",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "procedure_blocks_discretionary_action",
+      "rule_locators": [
+        "Core 333–340",
+        "Core 320–321"
+      ]
+    },
+    {
+      "label": "rules_core:RK-014",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "focus_and_priority_required",
+      "rule_locators": [
+        "Core 313",
+        "Core 347.2"
+      ]
+    },
+    {
+      "label": "rules_core:RK-015",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "reaction_required_in_closed_state",
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 358.4",
+        "Core 807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-016",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "reaction_required_in_closed_state",
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 358.4",
+        "Core 807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-017",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "reaction_required_in_closed_state",
+      "rule_locators": [
+        "Core 309.1.a",
+        "Core 338.1.a",
+        "Core 358.4",
+        "Core 807"
+      ]
+    },
+    {
+      "label": "rules_core:RK-018",
+      "kind": "timing",
+      "outcome": "illegal",
+      "reason_code": "priority_required",
+      "rule_locators": [
+        "Core 312"
+      ]
+    },
+    {
+      "label": "rules_core:RK-019",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 313",
+        "Core 347.2"
+      ]
+    },
+    {
+      "label": "rules_core:RK-020",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 339.1",
+        "Core 340",
+        "Core 346",
+        "Core 341–348"
+      ]
+    },
+    {
+      "label": "rules_core:RK-021",
+      "kind": "timing",
+      "outcome": "supported",
+      "reason_code": "ok",
+      "rule_locators": [
+        "Core 339.1",
+        "Core 340",
+        "Core 346",
+        "Core 341–348"
+      ]
+    }
+  ],
+  "report_hash": "sha256:43a6b617b25d83a9742ddcc8d1a1c929cc4c475debba10320786a22f9753287f"
+}

@@ -119,6 +119,12 @@ jobs:
       - name: Bounded legal-action service reaches all five verdicts and never enumerates
         run: python3 skill/scripts/check_legal_action.py
 
+      # R5-A: measurement only. Runs every existing fixture through the real
+      # engines; fails on a stale report, an empty abstention bucket, or any
+      # search/policy/P2-S claim.
+      - name: R5-A coverage and abstention report is deterministic and refuses learning claims
+        run: python3 skill/scripts/check_r5a_report.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -175,6 +181,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_engine_check_cli.py"
           python3 "$REPO/skill/scripts/check_capability_manifest.py"
           python3 "$REPO/skill/scripts/check_legal_action.py"
+          python3 "$REPO/skill/scripts/check_r5a_report.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

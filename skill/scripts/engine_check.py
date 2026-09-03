@@ -150,6 +150,7 @@ def _decision(result: dict[str, Any]) -> dict[str, Any] | None:
             "controller": decision_node.get("decision_controller"),
             "replacement_ids": [item for item in decision_node.get("replacement_ids", []) if isinstance(item, str)],
             "event_ids": [item for item in decision_node.get("event_ids", []) if isinstance(item, str)],
+            "decision_ids": [],
             "decision_schema": CLEANUP_DECISION_VERSION if decision_node.get("event_ids") else None,
         }
     reason_node = _first_mapping(result, lambda item: item.get("reason_code") in DECISION_REASON_CODES)
@@ -160,6 +161,7 @@ def _decision(result: dict[str, Any]) -> dict[str, Any] | None:
             "controller": reason_node.get("decision_controller") or reason_node.get("controller"),
             "replacement_ids": [],
             "event_ids": [],
+            "decision_ids": [],
             "decision_schema": None,
         }
     return None
@@ -177,7 +179,8 @@ def classify_outcome(kind: str, result: dict[str, Any]) -> tuple[str, dict[str, 
                 "kind": "other",
                 "controller": None,
                 "replacement_ids": [],
-                "event_ids": [str(c.get("decision_id")) for c in pending if c.get("decision_id")],
+                "event_ids": [],
+                "decision_ids": [str(c.get("decision_id")) for c in pending if c.get("decision_id")],
                 "decision_schema": None,
             }
         if result.get("reason_code") == "unsupported_all_candidates":
@@ -315,6 +318,13 @@ def validate_engine_check(value: Any) -> list[str]:
     decision = value.get("decision_required")
     if (value.get("outcome") == "decision_required") != isinstance(decision, dict):
         errors.append("decision_required must exist only for that outcome")
+    elif isinstance(decision, dict):
+        required_decision = {"kind", "controller", "replacement_ids", "event_ids", "decision_ids"}
+        if not required_decision.issubset(decision):
+            errors.append("decision_required is missing actionable id arrays")
+        for key in ("replacement_ids", "event_ids", "decision_ids"):
+            if not isinstance(decision.get(key), list) or any(not isinstance(item, str) or not item for item in decision.get(key, [])):
+                errors.append(f"decision_required.{key} must be a string array")
     for key in ("rule_locators", "assumptions", "missing_information"):
         if not isinstance(value.get(key), list) or any(not isinstance(item, str) or not item for item in value.get(key, [])):
             errors.append(f"{key} must be a string array")

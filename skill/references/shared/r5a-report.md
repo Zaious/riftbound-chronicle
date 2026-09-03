@@ -5,8 +5,9 @@ Status: implemented. The first tier of R5 in
 deterministic runners and metrics, which need no simulator, no policy, and no
 Riot authorization.
 
-The report answers one question about the engine: **how much of what it says
-it supports do its own fixtures actually exercise, and when it declines, why?**
+The report answers one bounded question about the engine: **which exact
+locators from its declared list do its own fixtures cite, do stored fixture
+expectations still match, and when the engine declines, why?**
 
 ```powershell
 python ${CLAUDE_SKILL_DIR}/scripts/r5a_report.py build --output report.json
@@ -15,18 +16,22 @@ python ${CLAUDE_SKILL_DIR}/scripts/r5a_report.py validate report.json
 
 ## Denominators come from the engine
 
-Clause coverage is *clauses cited by executed fixtures* over *clauses the
-capability manifest declares*. The manifest is derived from the engine, so the
-denominator cannot be padded by hand and a clause the engine stops citing
-drops out of both sides at once.
+Locator exercise is *exact locator strings cited by executed fixtures* over
+*exact locator strings the capability manifest declares*. The manifest is
+derived from the engine, so the denominator cannot be padded by hand and a
+locator the engine stops citing drops out of both sides at once.
 
-Coverage is an exact-string match: a fixture that cites `Core 310.1.a`
+Matching is exact: a fixture that cites `Core 310.1.a`
 does not count toward the manifest's `Core 308–310`, and lands in
-`cited_outside_manifest` instead. That understates coverage on purpose. Range
-matching would be a new semantic — deciding that a sub-clause citation proves
-the whole range — and the report is not the place to decide it. Read the
-ratio together with `cited_outside_manifest`; the two lists are the finding,
-the ratio alone is not.
+`fixture_citations_outside_declared_locators` instead. This is the governing
+decision: a sub-clause proves only that exact citation was exercised; it never
+proves an entire declared range. The metric is therefore named
+`locator_exercise`, not rules coverage. Read both locator lists; the ratio
+alone is not a correctness or completeness score.
+
+Likewise, `fixture_conformance` only says the live code still matches stored
+expectations. It does not independently validate those expectations against
+the official rules.
 
 ## Abstention, split by cause
 

@@ -250,6 +250,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "u2",
             "u3"
           ],
+          "decision_ids": [],
           "decision_schema": "riftbound-cleanup-decisions.v1"
         }
       }

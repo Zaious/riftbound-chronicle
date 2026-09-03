@@ -90,6 +90,8 @@ def main() -> int:
     )
     if optional.get("outcome") != "decision_required" or optional.get("decision_required", {}).get("kind") != "replacement_choice":
         failures.append("replacement choice did not normalize as decision_required")
+    elif optional["decision_required"].get("decision_ids") != []:
+        failures.append("replacement choice invented generic decision ids")
 
     invalid_state = base_state()
     invalid_state["players"]["p1"]["zones"]["hand"].append("u1")
@@ -132,6 +134,8 @@ def main() -> int:
     decision = cleanup.get("decision_required", {})
     if cleanup.get("outcome") != "decision_required" or decision.get("replacement_ids") != ["guard-all"] or set(decision.get("event_ids", [])) != {"u2", "u3"}:
         failures.append(f"cleanup ordering decision lost its actionable ids: {decision}")
+    if decision.get("decision_ids") != []:
+        failures.append(f"cleanup ordering decision invented generic decision ids: {decision}")
 
     duplicate = make_check("timing", legal_result, {"timing_state": state_hash(timing_state)})
     if duplicate.get("check_id") != legal.get("check_id") or duplicate.get("result_hash") != legal.get("result_hash"):

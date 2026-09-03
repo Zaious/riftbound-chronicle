@@ -42,6 +42,41 @@ RULES = {
     "reaction": ["Core 807"],
 }
 
+# Executable entry points are deliberately declared separately from RULES.
+# RULES is a topic/locator dictionary used while producing explanations; a
+# topic such as ``showdown`` is not evidence that the complete Showdown
+# procedure is implemented. The capability manifest must only advertise
+# callable, bounded procedures and the locators those implementations use.
+SUPPORTED_PROCEDURES = {
+    "next_procedure": [
+        "Core 310.1.a", "Core 312.2.a", "Core 316", "Core 333–340",
+        "Core 338–339", "Core 339.1", "Core 340.1–340.4", "Core 341–348",
+    ],
+    "derive_permissions": [
+        "Core 308.1.a", "Core 309.1.a", "Core 310.1.a", "Core 312",
+        "Core 312.2.a", "Core 313", "Core 316", "Core 338–339",
+        "Core 347", "Core 358.4", "Core 806–807",
+    ],
+    "validate_timing": [
+        "Core 308.1.a", "Core 309.1.a", "Core 310.1.a", "Core 312",
+        "Core 312.2.a", "Core 313", "Core 313.1", "Core 316",
+        "Core 320–321", "Core 333–340", "Core 338.1.a", "Core 338.1.b",
+        "Core 339", "Core 341–348", "Core 347.1", "Core 347.2",
+        "Core 358.4", "Core 806–807", "Core 807",
+    ],
+    "finalize_oldest_pending": [
+        "Core 337.1–337.4", "Core 383.3.a–383.3.a.3", "Core 429.2.a",
+    ],
+    "add_pending_item": ["Core 328–330", "Core 334–337", "Core 358.4"],
+    "pass_priority": ["Core 338.1.b", "Core 339"],
+    "complete_resolution": [
+        "Core 337.2", "Core 339.1", "Core 340", "Core 346", "Core 429.2.a",
+    ],
+    "schedule_triggered_items": [
+        "Core 383.3", "Core 383.3.c–383.3.d.1", "Core 428.1.a.1.b",
+    ],
+}
+
 
 def state_hash(state: dict[str, Any]) -> str:
     encoded = json.dumps(state, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")

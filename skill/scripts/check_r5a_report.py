@@ -5,7 +5,7 @@ Regression gate for the R5-A coverage and abstention report (C-11).
 Must hold:
   - the committed report equals a fresh build (deterministic, not stale);
   - two builds in one process are byte-identical;
-  - the coverage denominator is the live capability manifest's clause list;
+  - the exact-locator denominator is the live capability manifest's locator list;
   - every check in the report was produced by the real engines — the outcome
     counts equal what re-running the same fixtures yields;
   - the five abstention buckets are all present and internally consistent;
@@ -61,14 +61,15 @@ def main() -> int:
     manifest = build_manifest()
     if live["identity"]["capability_set_id"] != manifest["capability_set_id"] or live["identity"]["implementation_identity"] != manifest["implementation"]["value"]:
         errors.append("report identity does not name the live manifest")
-    if live["clause_coverage"]["declared"] != len(manifest["clauses"]):
-        errors.append("coverage denominator is not the manifest's clause list")
-    if set(live["clause_coverage"]["cited_clauses"]) - set(manifest["clauses"]):
-        errors.append("cited_clauses contains a clause the manifest does not declare")
-    if live["clause_coverage"]["cited"] == 0:
+    exercise = live["locator_exercise"]
+    if exercise["declared_locators"] != len(manifest["clauses"]):
+        errors.append("locator denominator is not the manifest's locator list")
+    if set(exercise["exact_matches"]) - set(manifest["clauses"]):
+        errors.append("exact_matches contains a locator the manifest does not declare")
+    if exercise["exactly_cited_declared_locators"] == 0:
         errors.append("no declared clause was cited by any fixture — the report is measuring nothing")
-    if live["conformance"]["rules_core"]["passed"] != live["conformance"]["rules_core"]["cases"]:
-        errors.append(f"rules_core conformance regressed: {live['conformance']['rules_core']}")
+    if live["fixture_conformance"]["rules_core"]["matched_expectations"] != live["fixture_conformance"]["rules_core"]["cases"]:
+        errors.append(f"rules_core fixture conformance regressed: {live['fixture_conformance']['rules_core']}")
     if live["engine_checks"]["total"] < 30:
         errors.append(f"fewer fixtures than expected reached the engines: {live['engine_checks']['total']}")
     if set(live["abstention"]) != set(ABSTENTION_BUCKETS):
@@ -87,8 +88,8 @@ def main() -> int:
         expect_errors(f"claim {key}", validate_report(bad), "claims", errors)
     bad = copy.deepcopy(live); bad["abstention"]["unsupported_mechanic"]["count"] += 1
     expect_errors("abstention count lie", validate_report(bad), "inconsistent", errors)
-    bad = copy.deepcopy(live); bad["clause_coverage"]["cited"] += 1
-    expect_errors("coverage count lie", validate_report(bad), "add up", errors)
+    bad = copy.deepcopy(live); bad["locator_exercise"]["exactly_cited_declared_locators"] += 1
+    expect_errors("locator count lie", validate_report(bad), "add up", errors)
     bad = copy.deepcopy(live); bad["engine_checks"]["total"] += 1
     expect_errors("engine check total lie", validate_report(bad), "per-kind", errors)
     bad = copy.deepcopy(live); bad["identity"]["capability_set_id"] = "sha256:" + "0" * 64
@@ -122,8 +123,8 @@ def main() -> int:
     if errors:
         print("FAILED: R5-A report checks\n  - " + "\n  - ".join(errors))
         return 1
-    ec = live["engine_checks"]; cov = live["clause_coverage"]
-    print(f"OK: R5-A report is deterministic, measured against the live manifest, refuses every learning claim, and reaches all five abstention buckets ({ec['total']} checks, abstention {ec['abstention_rate']}, clauses {cov['cited']}/{cov['declared']}).")
+    ec = live["engine_checks"]; exercise = live["locator_exercise"]
+    print(f"OK: R5-A report is deterministic, measured against the live manifest, refuses every learning claim, and reaches all five abstention buckets ({ec['total']} checks, abstention {ec['abstention_rate']}, exact locators {exercise['exactly_cited_declared_locators']}/{exercise['declared_locators']}).")
     return 0
 
 

@@ -117,6 +117,11 @@ inside exact coverage. `unsupported` increases the human verification burden.
 `decision_required` must be returned to the human. No outcome changes
 `legality_authority: user_confirmed` or infers the resulting physical state.
 
+Actionable identifiers retain their type: `replacement_ids` identifies
+replacement effects, `event_ids` identifies events awaiting an order, and
+`decision_ids` identifies an unresolved decision from a consuming service.
+Consumers must not relabel one kind as another merely to fit the envelope.
+
 ### Match Analyst (planned)
 
 Bind each normalized source event to the check that reconstructed it. Review

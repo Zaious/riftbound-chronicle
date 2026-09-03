@@ -88,8 +88,13 @@ def main() -> int:
     import rules_core  # noqa: E402
     if {op["id"] for op in live["operations"]} != set(effect_ir.SUPPORTED_OPS):
         errors.append("manifest operations do not equal effect_ir.SUPPORTED_OPS")
-    if {p["id"] for p in live["procedures"]} != set(rules_core.RULES):
-        errors.append("manifest procedures do not equal rules_core.RULES")
+    if {p["id"] for p in live["procedures"]} != set(rules_core.SUPPORTED_PROCEDURES):
+        errors.append("manifest procedures do not equal rules_core.SUPPORTED_PROCEDURES")
+    if {p["id"] for p in live["procedures"]} & set(rules_core.RULES):
+        errors.append("manifest treats a RULES topic as an executable procedure")
+    for procedure in rules_core.SUPPORTED_PROCEDURES:
+        if not callable(getattr(rules_core, procedure, None)):
+            errors.append(f"declared procedure {procedure!r} is not callable")
     if [f["path"] for f in live["implementation"]["files"]] != list(ENGINE_SOURCES):
         errors.append("implementation identity does not cover the engine sources in order")
     if live["claims"] != {"complete_game": False, "complete_legality": False}:

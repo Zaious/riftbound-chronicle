@@ -2,8 +2,10 @@
 
 `manifest.json` is **generated**, not written. It is what
 `skill/scripts/capability_manifest.py build` derives from the engine's own
-declarations — `effect_ir.SUPPORTED_OPS` and `OP_RULES`, `rules_core.RULES`,
-and `engine_check.KIND_CONFIG` — plus a hash of the engine source files.
+declarations — `effect_ir.SUPPORTED_OPS` and `OP_RULES`,
+`rules_core.SUPPORTED_PROCEDURES`, and `engine_check.KIND_CONFIG` — plus a
+hash of the engine source files. `rules_core.RULES` is only a citation-topic
+dictionary; its entries are not executable procedure claims.
 
 It answers two questions ADR-0002 says every executable artifact must answer
 and `engine-check.v1` previously could not:

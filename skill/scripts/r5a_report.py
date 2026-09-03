@@ -3,17 +3,18 @@
 R5-A: a deterministic coverage and abstention report over the fixtures that
 already exist (package C-11).
 
-R5's first tier is measurement, not learning: clause-level coverage, an
-unsupported rate, conformance counts, and abstention split by *why* the engine
+R5's first tier is measurement, not learning: exact-locator fixture exercise,
+an unsupported rate, fixture-expectation counts, and abstention split by *why* the engine
 declined. None of that needs a simulator, a policy, or Riot authorization —
 which is why it can be built now while R5-B/R5-C stay closed.
 
 Everything here is run, not described. Every fixture below is pushed through
 the real component and wrapped by the real `engine_check.build_engine_check`,
 so the outcome counts are the engine's counts. The coverage denominator is the
-capability manifest's `clauses` — the engine's own declaration of what it
-cites — so "cited by a fixture" is measured against "declared by the engine",
-never against a hand-maintained list.
+capability manifest's exact locator strings — the engine's own declaration of
+what it cites — so "exactly cited by a fixture" is measured against "declared
+by the engine", never against a hand-maintained list. It is not a correctness
+or whole-rule-family coverage score.
 
 Abstention is split five ways, as R5 asks:
 
@@ -127,7 +128,7 @@ def _run_rules_core(tally: Tally) -> dict[str, Any]:
                 and t.get("immediate_resolution_required") == expected.get("immediate_resolution_required")
         passed += bool(ok)
         tally.add(f"rules_core:{case['case_id']}", build_engine_check("timing", result, input_hashes=hashes))
-    return {"cases": len(cases), "passed": passed}
+    return {"cases": len(cases), "matched_expectations": passed}
 
 
 def _run_effects(tally: Tally) -> None:
@@ -272,10 +273,15 @@ def build_report() -> dict[str, Any]:
         "claims": dict(CLAIMS),
         "engine_checks": {"total": total, "by_kind": {k: dict(sorted(v.items())) for k, v in sorted(outcomes.items())},
                           "abstention_rate": round(abst_total / total, 4) if total else 0.0},
-        "conformance": {"rules_core": conformance},
-        "clause_coverage": {"declared": len(declared), "cited": len(cited_declared), "cited_ratio": round(len(cited_declared) / len(declared), 4) if declared else 0.0,
-                            "cited_clauses": cited_declared, "uncited_clauses": [c for c in declared if c not in cited_declared],
-                            "cited_outside_manifest": [c for c in cited if c not in declared]},
+        "fixture_conformance": {"rules_core": conformance},
+        "locator_exercise": {
+            "declared_locators": len(declared),
+            "exactly_cited_declared_locators": len(cited_declared),
+            "exact_ratio": round(len(cited_declared) / len(declared), 4) if declared else 0.0,
+            "exact_matches": cited_declared,
+            "declared_without_exact_fixture_citation": [c for c in declared if c not in cited_declared],
+            "fixture_citations_outside_declared_locators": [c for c in cited if c not in declared],
+        },
         "abstention": {b: {"count": len(v), "sources": sorted(v)} for b, v in tally.abstention.items()},
         "legal_action_verdicts": la_verdicts,
         "rule_consult_categories": rc_categories,
@@ -291,7 +297,7 @@ def validate_report(value: Any) -> list[str]:
     if not isinstance(value, dict):
         return ["report must be an object"]
     errors: list[str] = []
-    required = {"schema_version", "identity", "claims", "engine_checks", "conformance", "clause_coverage", "abstention",
+    required = {"schema_version", "identity", "claims", "engine_checks", "fixture_conformance", "locator_exercise", "abstention",
                 "legal_action_verdicts", "rule_consult_categories", "behavior_coverage", "match_analyst", "checks", "report_hash"}
     if set(value) != required:
         errors.append("report top-level fields are invalid")
@@ -310,9 +316,11 @@ def validate_report(value: Any) -> list[str]:
         for b, item in abst.items():
             if not isinstance(item, dict) or item.get("count") != len(item.get("sources", [])) or item.get("sources") != sorted(item.get("sources", [])):
                 errors.append(f"abstention.{b} count/sources are inconsistent or unsorted")
-    cov = value.get("clause_coverage", {})
-    if not isinstance(cov, dict) or cov.get("cited") != len(cov.get("cited_clauses", [])) or cov.get("declared") != len(cov.get("cited_clauses", [])) + len(cov.get("uncited_clauses", [])):
-        errors.append("clause_coverage counts do not add up")
+    exercise = value.get("locator_exercise", {})
+    if (not isinstance(exercise, dict)
+            or exercise.get("exactly_cited_declared_locators") != len(exercise.get("exact_matches", []))
+            or exercise.get("declared_locators") != len(exercise.get("exact_matches", [])) + len(exercise.get("declared_without_exact_fixture_citation", []))):
+        errors.append("locator_exercise counts do not add up")
     ec = value.get("engine_checks", {})
     if isinstance(ec, dict) and ec.get("total") != sum(sum(v.values()) for v in ec.get("by_kind", {}).values()):
         errors.append("engine_checks.total does not equal the per-kind sum")
@@ -365,7 +373,8 @@ def main(argv: list[str] | None = None) -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(text, encoding="utf-8")
     ec = report["engine_checks"]
-    print(f"wrote {target}: {ec['total']} checks, abstention {ec['abstention_rate']}, clause coverage {report['clause_coverage']['cited']}/{report['clause_coverage']['declared']}")
+    exercise = report["locator_exercise"]
+    print(f"wrote {target}: {ec['total']} checks, abstention {ec['abstention_rate']}, exact locator exercise {exercise['exactly_cited_declared_locators']}/{exercise['declared_locators']}")
     return 0
 
 

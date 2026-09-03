@@ -143,6 +143,7 @@
     for (const [key, zh, en] of [
       ["replacement_ids", "相關取代效果", "Replacement effects involved"],
       ["event_ids", "待排序事件", "Events awaiting an order"],
+      ["decision_ids", "待處理決定", "Pending decisions"],
       ["options", "可選項", "Options"],
     ]) {
       const values = Array.isArray(decision?.[key]) ? decision[key] : [];

@@ -9,7 +9,8 @@ two, as a manifest that is *derived from the engine's own declarations* rather
 than written by hand:
 
   - operations   from `effect_ir.SUPPORTED_OPS` and their `OP_RULES` locators;
-  - procedures   from `rules_core.RULES`;
+  - procedures   from `rules_core.SUPPORTED_PROCEDURES` (callable bounded
+                 entry points, never the broader RULES topic dictionary);
   - components   from `engine_check.KIND_CONFIG` (coverage ids, supported and
                  unsupported scope per check kind);
   - clauses      the union of every official locator the above cite;
@@ -108,7 +109,10 @@ def build_manifest(script_dir: Path = SCRIPT_DIR) -> dict[str, Any]:
         raise ValueError(f"supported operations without rule locators: {missing}")
 
     operations = [{"id": op, "rule_locators": list(effect_ir.OP_RULES[op])} for op in sorted(effect_ir.SUPPORTED_OPS)]
-    procedures = [{"id": name, "rule_locators": list(locs)} for name, locs in sorted(rules_core.RULES.items())]
+    procedures = [
+        {"id": name, "rule_locators": list(locs)}
+        for name, locs in sorted(rules_core.SUPPORTED_PROCEDURES.items())
+    ]
     components = [
         {
             "check_kind": kind,

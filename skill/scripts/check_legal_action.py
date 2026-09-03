@@ -164,6 +164,8 @@ def main() -> int:
     dec = build_engine_check("legal_action", by["pending_decision"], input_hashes=hashes)
     if dec["outcome"] != "decision_required":
         errors.append("a result with a decision_required candidate must wrap as decision_required")
+    elif dec.get("decision_required", {}).get("decision_ids") != ["d1"] or dec.get("decision_required", {}).get("event_ids"):
+        errors.append("legal-action decision ids must not be mislabeled as event ids")
     inv = build_engine_check("legal_action", la.classify_candidates(fx["observation"], unbound), input_hashes=hashes)
     if inv["outcome"] != "invalid_input":
         errors.append("an invalid result must wrap as invalid_input")

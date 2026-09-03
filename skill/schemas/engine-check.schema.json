@@ -87,12 +87,13 @@
     "decision_required": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "controller", "replacement_ids", "event_ids"],
+      "required": ["kind", "controller", "replacement_ids", "event_ids", "decision_ids"],
       "properties": {
         "kind": {"enum": ["trigger_choice", "trigger_order", "replacement_choice", "replacement_order", "effect_confirmation", "other"]},
         "controller": {"type": ["string", "null"]},
         "replacement_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "event_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "decision_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "decision_schema": {"type": ["string", "null"]}
       }
     },

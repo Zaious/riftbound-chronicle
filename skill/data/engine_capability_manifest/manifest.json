@@ -1,14 +1,14 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:85342ce9d7a1c40797bed0d2",
-  "capability_set_id": "sha256:85342ce9d7a1c40797bed0d292bdbcd05e48d64e3b1fe31f9d6e13a2c046a256",
+  "manifest_id": "capability-manifest:c5077f82d6fd4251b8575fcd",
+  "capability_set_id": "sha256:c5077f82d6fd4251b8575fcd2885bd339f01f65c85e409c7aa6c6f0d1d738e74",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:f926164aa50cf164c81fc2366abbe71dd1e5743cd53a56cb9a3b22e7bc15f925",
+    "value": "sha256:09a925933496424eeb7b75632581ec48c2179463256ac8d197fc7e3332830a42",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:ea4b2cb0f4e3eef853acd9e222ef6d8c9c5a85cb92757d85f601f06bdb85a2c5"
+        "sha256": "sha256:b114cc85895c65bf31156937173b9e121330b9ea0d8daa8f1331ca2b174f8f2d"
       },
       {
         "path": "effect_ir.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:7a33d7bfec91bb762eace7c9d029e4ac55bac6590d61ec24e2ce34d5c83aba20"
+        "sha256": "sha256:46203a616ea265248ad672342b222279a9df0de828bb78e7e5b8ed49bef7680c"
       }
     ]
   },
@@ -201,63 +201,97 @@
   ],
   "procedures": [
     {
-      "id": "action",
+      "id": "add_pending_item",
       "rule_locators": [
-        "Core 806"
+        "Core 328–330",
+        "Core 334–337",
+        "Core 358.4"
       ]
     },
     {
-      "id": "chain_exists",
+      "id": "complete_resolution",
       "rule_locators": [
-        "Core 328–331"
+        "Core 337.2",
+        "Core 339.1",
+        "Core 340",
+        "Core 346",
+        "Core 429.2.a"
       ]
     },
     {
-      "id": "cleanup_lock",
+      "id": "derive_permissions",
       "rule_locators": [
-        "Core 320–321"
+        "Core 308.1.a",
+        "Core 309.1.a",
+        "Core 310.1.a",
+        "Core 312",
+        "Core 312.2.a",
+        "Core 313",
+        "Core 316",
+        "Core 338–339",
+        "Core 347",
+        "Core 358.4",
+        "Core 806–807"
       ]
     },
     {
-      "id": "focus",
+      "id": "finalize_oldest_pending",
       "rule_locators": [
-        "Core 313"
+        "Core 337.1–337.4",
+        "Core 383.3.a–383.3.a.3",
+        "Core 429.2.a"
       ]
     },
     {
-      "id": "four_states",
+      "id": "next_procedure",
       "rule_locators": [
-        "Core 308–310"
-      ]
-    },
-    {
-      "id": "hot_fepr",
-      "rule_locators": [
-        "Core 333–340"
-      ]
-    },
-    {
-      "id": "priority",
-      "rule_locators": [
-        "Core 312"
-      ]
-    },
-    {
-      "id": "reaction",
-      "rule_locators": [
-        "Core 807"
-      ]
-    },
-    {
-      "id": "showdown",
-      "rule_locators": [
+        "Core 310.1.a",
+        "Core 312.2.a",
+        "Core 316",
+        "Core 333–340",
+        "Core 338–339",
+        "Core 339.1",
+        "Core 340.1–340.4",
         "Core 341–348"
       ]
     },
     {
-      "id": "timing_check",
+      "id": "pass_priority",
       "rule_locators": [
-        "Core 358.4"
+        "Core 338.1.b",
+        "Core 339"
+      ]
+    },
+    {
+      "id": "schedule_triggered_items",
+      "rule_locators": [
+        "Core 383.3",
+        "Core 383.3.c–383.3.d.1",
+        "Core 428.1.a.1.b"
+      ]
+    },
+    {
+      "id": "validate_timing",
+      "rule_locators": [
+        "Core 308.1.a",
+        "Core 309.1.a",
+        "Core 310.1.a",
+        "Core 312",
+        "Core 312.2.a",
+        "Core 313",
+        "Core 313.1",
+        "Core 316",
+        "Core 320–321",
+        "Core 333–340",
+        "Core 338.1.a",
+        "Core 338.1.b",
+        "Core 339",
+        "Core 341–348",
+        "Core 347.1",
+        "Core 347.2",
+        "Core 358.4",
+        "Core 806–807",
+        "Core 807"
       ]
     }
   ],
@@ -266,16 +300,38 @@
     "Core 143.4",
     "Core 149.1",
     "Core 184–186",
-    "Core 308–310",
+    "Core 308.1.a",
+    "Core 309.1.a",
+    "Core 310.1.a",
     "Core 312",
+    "Core 312.2.a",
     "Core 313",
+    "Core 313.1",
+    "Core 316",
     "Core 320–321",
-    "Core 328–331",
+    "Core 328–330",
     "Core 333–340",
+    "Core 334–337",
+    "Core 337.1–337.4",
+    "Core 337.2",
+    "Core 338.1.a",
+    "Core 338.1.b",
+    "Core 338–339",
+    "Core 339",
+    "Core 339.1",
+    "Core 340",
+    "Core 340.1–340.4",
     "Core 341–348",
+    "Core 346",
+    "Core 347",
+    "Core 347.1",
+    "Core 347.2",
     "Core 349",
     "Core 358.4",
     "Core 375",
+    "Core 383.3",
+    "Core 383.3.a–383.3.a.3",
+    "Core 383.3.c–383.3.d.1",
     "Core 386–388",
     "Core 413",
     "Core 414",
@@ -285,10 +341,12 @@
     "Core 418",
     "Core 420",
     "Core 428",
+    "Core 428.1.a.1.b",
     "Core 429",
+    "Core 429.2.a",
     "Core 445",
     "Core 477",
-    "Core 806",
+    "Core 806–807",
     "Core 807"
   ],
   "exclusions": [

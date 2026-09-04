@@ -51,7 +51,7 @@ import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bump_identity, apply_program, derive_targeted, evaluate_target,
-    find_location, hash_value, object_identity, validate_program, validate_state, zone_class,
+    entity_identity, find_location, hash_value, object_identity, validate_program, validate_state, zone_class,
 )
 from rules_core import add_pending_item, state_hash  # noqa: E402
 
@@ -487,11 +487,12 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 raise PlayError("choices", "decision_controller_mismatch", f"target selection {ref!r} was made by {entry['controller']!r}, not the card's controller", rule_locators=["Core 355.5"])
             identities = entry.get("selection_identities") or {}
             for object_id in entry["value"]:
-                if object_id in identities and identities[object_id] != object_identity(effect_state, object_id):
-                    raise PlayError("choices", "selection_identity_mismatch", f"target selection {ref!r} was bound to {identities[object_id]!r}; the object is now {object_identity(effect_state, object_id)!r}", invalid=True)
+                current_identity = entity_identity(effect_state, object_id)
+                if object_id in identities and current_identity is not None and identities[object_id] != current_identity:
+                    raise PlayError("choices", "selection_identity_mismatch", f"target selection {ref!r} was bound to {identities[object_id]!r}; the entity is now {entity_identity(effect_state, object_id)!r}", invalid=True)
                 selector = {k: v for k, v in template.items() if k not in {"decision_ref", "object_id"}}
                 selector["object_id"] = object_id
-                selector.setdefault("chosen_zone_class", zone_class(find_location(effect_state, object_id)) or "non_board")
+                selector.setdefault("chosen_zone_class", "board" if template.get("kind") == "battlefield" else (zone_class(find_location(effect_state, object_id)) or "non_board"))
                 if derive_targeted(selector):
                     ok, reason = evaluate_target(effect_state, selector, actor)
                     if not ok:

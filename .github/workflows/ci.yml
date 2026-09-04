@@ -190,6 +190,11 @@ jobs:
       - name: Permanent entry, play triggers, open-Battlefield permission
         run: python3 skill/scripts/check_permanent_play.py
 
+      # ADR-0007 C-20: the Battlefield is the target, affected units are not;
+      # Bonus Damage is summed once and added before Prevent sees the amount.
+      - name: Battlefield targets, criteria expansion, Bonus Damage
+        run: python3 skill/scripts/check_area_and_bonus.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -257,6 +262,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_r3a1_programs.py"
           python3 "$REPO/skill/scripts/check_op_dispatch.py"
           python3 "$REPO/skill/scripts/check_permanent_play.py"
+          python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -158,7 +158,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "bounded_cleanup",
             "typed_selectors",
             "object_identity",
-            "engine_decisions"
+            "engine_decisions",
+            "battlefield_targets",
+            "criteria_expansion",
+            "bonus_damage"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -289,7 +292,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "bounded_cleanup",
             "typed_selectors",
             "object_identity",
-            "engine_decisions"
+            "engine_decisions",
+            "battlefield_targets",
+            "criteria_expansion",
+            "bonus_damage"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",

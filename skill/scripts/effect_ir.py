@@ -94,6 +94,19 @@ def object_identity(state: dict[str, Any], object_id: str) -> str | None:
     return obj.get("identity", f"{object_id}@0")
 
 
+def battlefield_identity(state: dict[str, Any], battlefield_id: str) -> str | None:
+    """ADR-0007 §4: a Battlefield is a target with a bindable identity."""
+    battlefield = state["battlefields"].get(battlefield_id)
+    if battlefield is None:
+        return None
+    return battlefield.get("identity", f"{battlefield_id}@0")
+
+
+def entity_identity(state: dict[str, Any], entity_id: str) -> str | None:
+    """Identity of an object or, failing that, a Battlefield."""
+    return object_identity(state, entity_id) if entity_id in state["objects"] else battlefield_identity(state, entity_id)
+
+
 def _bump_identity(state: dict[str, Any], object_id: str) -> str:
     current = object_identity(state, object_id) or f"{object_id}@0"
     base, _, generation = current.rpartition("@")
@@ -194,6 +207,9 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"battlefields.{battlefield_id}.contested_by must be a player or null")
         if battlefield.get("contested") and battlefield.get("contested_by") is None:
             errors.append(f"battlefields.{battlefield_id} is contested without contested_by")
+        identity = battlefield.get("identity")
+        if identity is not None and (not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit()):
+            errors.append(f"battlefields.{battlefield_id}.identity must look like '<id>@<generation>' when supplied")
         ids = battlefield["objects"]
         if len(ids) != len(set(ids)):
             errors.append(f"battlefields.{battlefield_id}.objects contains duplicates")
@@ -227,6 +243,36 @@ def validate_state(state: Any) -> list[str]:
             occupancy[entry["card"]].append(f"chain:{item_id}")
         if "effect_program_id" in entry and (not isinstance(entry["effect_program_id"], str) or not entry["effect_program_id"]):
             errors.append(f"chain_items.{item_id}.effect_program_id must be a non-empty string when supplied")
+
+    # ADR-0007 §5: Bonus Damage sources. A source is an object (active while on
+    # the board) or a Battlefield (active while it exists) — never pruned by the
+    # object rule.
+    modifiers = state.get("damage_modifiers", [])
+    if not isinstance(modifiers, list):
+        errors.append("damage_modifiers must be an array")
+        modifiers = []
+    modifier_ids: set[str] = set()
+    for index, modifier in enumerate(modifiers):
+        label = f"damage_modifiers[{index}]"
+        if not isinstance(modifier, dict) or set(modifier) != {"modifier_id", "source_object", "controller", "amount", "scope"}:
+            errors.append(f"{label} must carry exactly modifier_id, source_object, controller, amount, scope")
+            continue
+        if not isinstance(modifier["modifier_id"], str) or not modifier["modifier_id"] or modifier["modifier_id"] in modifier_ids:
+            errors.append(f"{label}.modifier_id is invalid or duplicated")
+        modifier_ids.add(modifier.get("modifier_id", ""))
+        if modifier["source_object"] not in objects and modifier["source_object"] not in battlefields:
+            errors.append(f"{label}.source_object is neither an object nor a battlefield")
+        if modifier["controller"] not in players:
+            errors.append(f"{label}.controller is not a player")
+        if not isinstance(modifier["amount"], int) or modifier["amount"] < 1:
+            errors.append(f"{label}.amount must be a positive integer (Core 714.1)")
+        scope = modifier["scope"]
+        if not isinstance(scope, dict) or not isinstance(scope.get("kind"), str):
+            errors.append(f"{label}.scope must carry a kind")
+        elif scope["kind"] == "location" and (set(scope) != {"kind", "battlefield"} or scope.get("battlefield") not in battlefields):
+            errors.append(f"{label}.scope.location must name a known battlefield")
+        elif scope["kind"] == "controller_sources" and set(scope) != {"kind"}:
+            errors.append(f"{label}.scope.controller_sources carries no other fields")
 
     for object_id, obj in objects.items():
         if not isinstance(obj, dict):
@@ -400,6 +446,26 @@ def validate_program(program: Any) -> list[str]:
             target = effect.get("target")
             if target is not None:
                 errors.extend(f"effects[{index}].target {e}" for e in _selector_errors(target))
+            affected = effect.get("affected")
+            if affected is not None:
+                criteria = affected.get("criteria") if isinstance(affected, dict) else None
+                if not isinstance(affected, dict) or set(affected) != {"criteria"} or not isinstance(criteria, dict) or set(criteria) - {"kind", "controller_relation", "location"} or "location" not in criteria:
+                    errors.append(f"effects[{index}].affected must be {{criteria: {{location, kind?, controller_relation?}}}}")
+                else:
+                    if criteria["location"] not in {"target_battlefield", "any_battlefield"}:
+                        errors.append(f"effects[{index}].affected.criteria.location is invalid")
+                    if "kind" in criteria and criteria["kind"] not in {"unit", "gear"}:
+                        errors.append(f"effects[{index}].affected.criteria.kind is invalid")
+                    if "controller_relation" in criteria and criteria["controller_relation"] not in {"friendly", "enemy"}:
+                        errors.append(f"effects[{index}].affected.criteria.controller_relation is invalid")
+                    if criteria["location"] == "target_battlefield" and (not isinstance(target, dict) or target.get("kind") != "battlefield"):
+                        errors.append(f"effects[{index}].affected over target_battlefield needs a battlefield target")
+                    if criteria["location"] == "any_battlefield" and target is not None:
+                        errors.append(f"effects[{index}].affected over any_battlefield targets nothing (Core 355.10.b)")
+                if effect.get("op") not in MULTI_TARGET_OPS:
+                    errors.append(f"effects[{index}].affected is not supported for {effect.get('op')!r}")
+                if effect.get("targets") is not None or effect.get("object_id") is not None:
+                    errors.append(f"effects[{index}].affected excludes targets and object_id")
             targets = effect.get("targets")
             if targets is not None:
                 if target is not None:
@@ -530,6 +596,47 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
     return applied < requested, ["Core 430.3", "Core 430.5", "Core 055"]
 
 
+BONUS_SCOPES = {"controller_sources", "location"}
+
+
+def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str | None) -> tuple[int, list[dict[str, Any]]]:
+    """Core 713–715: every active Bonus Damage that applies to this Deal,
+    summed once (714). `controller_sources` follows the spell's or ability's
+    controller; `location` follows the affected unit's current Battlefield.
+    An inactive source contributes nothing; an unknown scope is a mechanic
+    the engine does not have."""
+    total = 0
+    sources: list[dict[str, Any]] = []
+    location = find_location(state, object_id) if object_id is not None else None
+    for modifier in state.get("damage_modifiers", []) or []:
+        source = modifier["source_object"]
+        active = (source in state["battlefields"]) or zone_class(find_location(state, source)) == "board"
+        if not active:
+            continue
+        kind = modifier["scope"]["kind"]
+        if kind not in BONUS_SCOPES:
+            raise NotImplementedError(f"Bonus Damage scope {kind!r} is not modelled")
+        if kind == "controller_sources" and modifier["controller"] != controller:
+            continue
+        if kind == "location" and not (location is not None and location[0] == "battlefield" and location[1] == modifier["scope"]["battlefield"]):
+            continue
+        total += modifier["amount"]
+        sources.append({"modifier_id": modifier["modifier_id"], "source_object": source, "amount": modifier["amount"], "scope": dict(modifier["scope"])})
+    return total, sources
+
+
+def same_side(state: dict[str, Any], left: str | None, right: str | None) -> bool:
+    """Module-level friendliness for criteria expansion: the same player, or the
+    same declared team_id (2v2)."""
+    if left is None or right is None:
+        return False
+    if left == right:
+        return True
+    left_team = state["players"].get(left, {}).get("team_id")
+    right_team = state["players"].get(right, {}).get("team_id")
+    return left_team is not None and left_team == right_team
+
+
 def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str | None] | None:
     for player_id, player in state["players"].items():
         for zone, ids in player["zones"].items():
@@ -554,6 +661,17 @@ def zone_class(location: tuple[str, str, str | None] | None) -> str | None:
 
 def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: str | None) -> tuple[bool, str]:
     object_id = target["object_id"]
+    if target.get("kind") == "battlefield":
+        # ADR-0007 §4: "all units at a battlefield" targets the Battlefield
+        # (355.10.b), which has a bindable identity like any target.
+        if object_id not in state["battlefields"]:
+            return False, "target_battlefield_missing"
+        if target.get("chosen_zone_class") != "board":
+            return False, "target_changed_board_zone_class"
+        bound = target.get("bound_identity")
+        if bound is not None and battlefield_identity(state, object_id) != bound:
+            return False, "target_identity_changed"
+        return True, "ok"
     obj = state["objects"].get(object_id)
     if obj is None:
         return False, "target_object_missing"
@@ -895,6 +1013,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         after = before + amount if op == "deal_damage" else max(0, before - amount)
         new_state["objects"][object_id]["damage"] = after
         trace.update({"object_id": object_id, "before": before, "after": after})
+        if effect.get("bonus_damage"):
+            trace["bonus_damage"] = copy.deepcopy(effect["bonus_damage"])
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 713–715"]))
         if before == after:
             trace["outcome"] = "no_op"
 
@@ -1306,6 +1427,8 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
             concrete = {k: v for k, v in target.items() if k != "decision_ref"}
             concrete["object_id"] = entry["value"][0]
             concrete.setdefault("bound_identity", entry["selection_identities"][concrete["object_id"]])
+            if concrete.get("kind") == "battlefield":
+                concrete.setdefault("chosen_zone_class", "board")
             return [concrete], {"decision_id": entry["decision_id"]}
         return ([target] if target is not None else []), {}
     if "selectors" in targets:
@@ -1410,6 +1533,84 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             }
         except ValueError as exc:
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+        if effect.get("affected") is not None:
+            # ADR-0007 §4: two layers. The Battlefield (if any) is the target and is
+            # revalidated; the units are found by criteria now and are NOT targets —
+            # no 355.9 revalidation, no Deflect, no untargetability (355.10.b, 355.10.d).
+            criteria = effect["affected"]["criteria"]
+            battlefield_ids: list[str] = []
+            targeted_battlefield = None
+            if criteria["location"] == "target_battlefield":
+                sel = selectors[0]
+                legal, reason = evaluate_target(current, sel, program.get("controller"))
+                targeted_battlefield = sel["object_id"]
+                if not legal:
+                    event = {
+                        "index": index, "effect_id": effect_id, "op": effect["op"],
+                        "outcome": "skipped_illegal_target", "target_outcome": "skipped_illegal_target", "completion": "none",
+                        "targeted_battlefield": targeted_battlefield, "target_reason": reason, "affected_objects": [], "affected_are_targets": False,
+                        "criteria": dict(criteria), "rule_locators": ["Core 355.10.b", "Core 359.3.e.2", "Core 359.3.e.5"],
+                        "before_state_hash": before_hash, "after_state_hash": before_hash, **selector_meta,
+                    }
+                    trace.append(event)
+                    outcomes[effect_id] = "skipped_illegal_target"
+                    continue
+                battlefield_ids = [targeted_battlefield]
+            else:
+                battlefield_ids = sorted(current["battlefields"])
+            affected_ids: list[str] = []
+            for battlefield_id in battlefield_ids:
+                for candidate in current["battlefields"][battlefield_id]["objects"]:
+                    obj = current["objects"][candidate]
+                    if "kind" in criteria and obj["kind"] != criteria["kind"]:
+                        continue
+                    relation = criteria.get("controller_relation")
+                    if relation == "friendly" and not same_side(current, program.get("controller"), obj.get("controller")):
+                        continue
+                    if relation == "enemy" and same_side(current, program.get("controller"), obj.get("controller")):
+                        continue
+                    affected_ids.append(candidate)
+            snapshot_hash = hash_value({"state": before_hash, "criteria": criteria, "battlefields": battlefield_ids, "affected": affected_ids})
+            sub_trace = []
+            working = current
+            failure = None
+            for object_id in affected_ids:
+                single = {k: v for k, v in effect.items() if k not in {"affected", "target", "targets", "effect_id"}}
+                single["object_id"] = object_id
+                single["effect_id"] = f"{effect_id}:{object_id}"
+                sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                               "program_id": f"affected:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
+                               "source_object": program.get("source_object"), "effects": [single]}
+                sub = apply_program(working, sub_program, decisions=None, _replacement_depth=_replacement_depth + 1)
+                if sub.get("committed") is not True:
+                    failure = sub
+                    break
+                working = sub["next_state"]
+                sub_trace.extend(sub["trace"])
+            if failure is not None:
+                return {
+                    **base, "valid": failure.get("valid", True), "committed": False,
+                    "unsupported": failure.get("unsupported", False),
+                    "replacement_decision_required": failure.get("replacement_decision_required", False),
+                    "replacement_ids": failure.get("replacement_ids", []),
+                    "failed_effect_index": index, "reason": failure.get("reason", "; ".join(failure.get("errors", [])) or "criteria expansion failed"),
+                    "expansion_result": failure, "trace": trace,
+                }
+            current = working
+            applied = sum(1 for ev in sub_trace if ev.get("outcome") in {"applied", "replaced_modified_applied", "augmented_applied"})
+            event = {
+                "index": index, "effect_id": effect_id, "op": effect["op"],
+                "outcome": "applied" if applied else "no_op",
+                "completion": "full" if (applied == len(affected_ids)) else ("partial" if applied else "none") if affected_ids else "full",
+                "targeted_battlefield": targeted_battlefield, "affected_objects": affected_ids, "affected_are_targets": False,
+                "criteria": dict(criteria), "criteria_snapshot_hash": snapshot_hash, "expansion_trace": sub_trace,
+                "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                "rule_locators": list(dict.fromkeys(["Core 355.5.a", "Core 355.10.b", "Core 355.10.d"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
+                "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,
+            }
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         if effect.get("targets") is not None:
             verdicts = [(sel, *evaluate_target(current, sel, program.get("controller"))) for sel in selectors]
             valid_sels = [sel for sel, ok, _ in verdicts if ok]
@@ -1502,6 +1703,17 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "trace": trace,
                 }
         affected_before_damage = current["objects"].get(effect.get("object_id"), {}).get("damage")
+        # ADR-0007 §5: Bonus Damage is a property of the Deal action — added
+        # once the Deal is known to happen with a non-zero base (715.4), before
+        # any replacement or Prevent looks at the amount (437.1.a.1).
+        if effect.get("op") == "deal_damage" and isinstance(effect.get("amount"), int) and effect["amount"] >= 1 and "bonus_damage" not in effect:
+            try:
+                bonus, bonus_sources = bonus_damage(current, program.get("controller"), effect.get("object_id"))
+            except NotImplementedError as exc:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index, "reason": str(exc), "trace": trace}
+            if bonus:
+                effect = {**effect, "amount": effect["amount"] + bonus,
+                          "bonus_damage": {"base_amount": effect["amount"], "amount": bonus, "sources": bonus_sources, "rule_locators": ["Core 713", "Core 714", "Core 715.1", "Core 715.2", "Core 437.1.a.1"]}}
         if decisions is not None and (effect.get("replacement_order") is None or effect.get("replacement_choices") is None):
             import engine_decisions as ed
             order_map, choice_map = ed.replacement_maps(decisions)

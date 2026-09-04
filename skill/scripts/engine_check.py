@@ -47,6 +47,10 @@ FEATURE_RULES = {
     "permanent_entry": ["Core 359.2–359.2.d", "Core 143.4", "Core 124", "Core 190.3.a.1"],
     "play_triggers": ["Core 419.4.a", "Core 355.5.b", "Core 383.2.c"],
     "open_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.c"],
+    # C-20 (ADR-0007 §4–5).
+    "battlefield_targets": ["Core 355.10.b", "Core 359.3.e.2", "Core 359.3.e.5"],
+    "criteria_expansion": ["Core 355.5.a", "Core 355.10.d"],
+    "bonus_damage": ["Core 713–715.4", "Core 437.1.a.1"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -58,7 +62,7 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage"],
         "unsupported": ["arbitrary_card_text", "combat", "scoring", "complete_game", "complete_legality"],
     },
     "resolution": {

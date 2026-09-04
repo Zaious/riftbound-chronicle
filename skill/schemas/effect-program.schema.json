@@ -94,6 +94,24 @@
             }
           },
           "target": {"$ref": "#/$defs/selector"},
+          "affected": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["criteria"],
+            "description": "Objects found by criteria at resolution (Core 355.5.a, 355.10.d). They are not targets: no revalidation, no Deflect, no untargetability. Over target_battlefield the instruction also carries a battlefield target (355.10.b); over any_battlefield it targets nothing.",
+            "properties": {
+              "criteria": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["location"],
+                "properties": {
+                  "location": {"enum": ["target_battlefield", "any_battlefield"]},
+                  "kind": {"enum": ["unit", "gear"]},
+                  "controller_relation": {"enum": ["friendly", "enemy"]}
+                }
+              }
+            }
+          },
           "targets": {
             "type": "object",
             "additionalProperties": false,
@@ -133,7 +151,7 @@
         "bound_object_id": {"type": "string", "minLength": 1},
         "bound_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
         "chosen_zone_class": {"enum": ["board", "non_board"]},
-        "kind": {"enum": ["unit", "gear", "spell", "rune"]},
+        "kind": {"enum": ["unit", "gear", "spell", "rune", "battlefield"]},
         "location": {"enum": ["board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck"]},
         "controller_relation": {"enum": ["friendly", "enemy"]},
         "zone_owner_relation": {"enum": ["own", "opponent"]},

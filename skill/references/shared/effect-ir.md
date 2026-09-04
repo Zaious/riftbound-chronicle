@@ -325,6 +325,30 @@ is `invalid_input`. A death a replacement prevented
 builds nothing. Using `caused_kill` as an effect predicate answers
 `unsupported`.
 
+## Battlefield targets, affected objects, and Bonus Damage
+
+"Deal 3 to all enemy units at a battlefield" has one target — the
+Battlefield (Core 355.10.b), a selector of `kind: battlefield` with a
+bindable identity, chosen at play and revalidated at resolution — and a set
+of **affected objects** found by `affected.criteria` when the instruction
+executes (355.5.a, 355.10.d). Affected objects are not targets: they get no
+355.9 revalidation, no Deflect, no untargetability. The instruction's event
+records the targeted Battlefield, the affected non-target objects, the
+criteria and a snapshot hash, and one expansion event per object. A
+Battlefield target that vanished or changed identity leaves the spell
+resolving with that instruction `skipped_illegal_target`; "all units at
+battlefields" targets nothing and expands over every Battlefield.
+
+Bonus Damage (713–715) is a property of the Deal action. Sources live in
+`damage_modifiers` with a positive amount and a scope: `controller_sources`
+(the spell's or ability's controller) or `location` (the affected unit's
+current Battlefield); an object source is active on the board, a
+Battlefield source while it exists. Once a Deal with a non-zero base is
+known to happen (715.4), every active Bonus is summed once (714) and added
+per target (715.1–715.2) *before* any replacement, Prevent or
+`reduce_damage` sees the amount (437.1.a.1); the event records the base,
+the bonus and its sources. An unknown scope is `unsupported`.
+
 ## Permanent entry and play triggers
 
 A Unit or Gear resolves by the entry procedure (ADR-0007 §1), not the spell

@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:dc7769a37b06e5b5cf503dc5",
-    "capability_set_id": "sha256:dc7769a37b06e5b5cf503dc5db60799df19a19c171d425fbedcaed94527ee368",
-    "implementation_identity": "sha256:549e6182ab9ba97aa82215c657869cacaeddf17c4b2fb09eaa00db891d4bca24",
+    "manifest_id": "capability-manifest:abecdf253bdfab086b4cd546",
+    "capability_set_id": "sha256:abecdf253bdfab086b4cd54615c0990e1cb7a7ed45c752fdadab435932d1edbd",
+    "implementation_identity": "sha256:9823d08e43c397ca1f4acc653033d69a6bdb11ca154dfced8033f600d061195d",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 84,
+    "declared_locators": 91,
     "exactly_cited_declared_locators": 28,
-    "exact_ratio": 0.3333,
+    "exact_ratio": 0.3077,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -175,8 +175,11 @@
       "Core 349",
       "Core 354–358",
       "Core 355.1.a",
+      "Core 355.10.b",
+      "Core 355.10.d",
       "Core 355.1–355.17",
       "Core 355.2.a–355.2.b",
+      "Core 355.5.a",
       "Core 355.5.b",
       "Core 355.7–355.10.d.2",
       "Core 356.1–356.7",
@@ -187,7 +190,9 @@
       "Core 359.2–359.2.d",
       "Core 359.3.e.14",
       "Core 359.3.e.1–359.3.e.10",
+      "Core 359.3.e.2",
       "Core 359.3.e.4",
+      "Core 359.3.e.5",
       "Core 370–373",
       "Core 375",
       "Core 383.2.c",
@@ -208,12 +213,14 @@
       "Core 430.1",
       "Core 430.2.a",
       "Core 430.3",
+      "Core 437.1.a.1",
       "Core 445",
       "Core 446.2",
       "Core 455",
       "Core 456.1",
       "Core 458.1",
-      "Core 477"
+      "Core 477",
+      "Core 713–715.4"
     ],
     "fixture_citations_outside_declared_locators": [
       "Core 142.4",
@@ -728,5 +735,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:e0be837e4c68ad348c9af48476feaa3adc3a2d998a3d22448f58165826218924"
+  "report_hash": "sha256:c578b973f3fc85de6a3f3e6f23a8cf99bbc225c754dab7e47d2e9f853803055b"
 }

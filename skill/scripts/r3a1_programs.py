@@ -47,7 +47,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from card_behavior_coverage import validate_manifest  # noqa: E402
 from check_effect_ir import base_state  # noqa: E402
 from check_rules_core import fixture as timing_fixture, item as timing_item  # noqa: E402
-from effect_ir import CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, current_might, hash_value, object_identity  # noqa: E402
+from effect_ir import CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, current_might, entity_identity, hash_value, object_identity  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
 from resolution_bridge import resolve_with_program  # noqa: E402
@@ -194,7 +194,7 @@ def _compile_targets(program: dict[str, Any], fixture: dict[str, Any], state: di
         if single and effect.get("effect_id") == single["effect_id"] and isinstance(effect.get("target"), dict):
             selector = {k: v for k, v in effect["target"].items() if k != "decision_ref"}
             selector["object_id"] = single["object_id"]
-            selector["bound_identity"] = single.get("bound_identity") or object_identity(state, single["object_id"]) or f"{single['object_id']}@0"
+            selector["bound_identity"] = single.get("bound_identity") or entity_identity(state, single["object_id"]) or f"{single['object_id']}@0"
             effect["target"] = selector
             effect.setdefault("object_id", single["object_id"])
         if multi and effect.get("effect_id") == multi["effect_id"] and isinstance(effect.get("targets"), dict):
@@ -216,7 +216,7 @@ def _decisions(fixture: dict[str, Any], state: dict[str, Any], bindings: dict[st
     for entry in entries:
         entry = bind(copy.deepcopy(entry), bindings)
         if entry["kind"] == "target_selection" and "selection_identities" not in entry:
-            entry["selection_identities"] = {o: object_identity(state, o) or f"{o}@0" for o in entry["value"]}
+            entry["selection_identities"] = {o: entity_identity(state, o) or f"{o}@0" for o in entry["value"]}
         out.append(entry)
     return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(state), "decisions": out}
 

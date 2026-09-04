@@ -137,14 +137,21 @@ Claude may implement one bounded operation plus tests at a time.
   selection, and affected-player decisions.
 - [ ] Typed costs: Energy, Power, exhaust, sacrifice/kill, discard, banish,
   return, and alternative/additional costs.
+  (C-15: Energy, Power, exhaust, kill and mandatory/optional additional costs
+  inside an atomic play transaction with receipts; discard, banish, return,
+  alternative costs remain.)
 - [ ] Full card-play lifecycle for Units, Gear, Spells, Runes, Hidden, and
   abilities; `play_token` is not a substitute.
 - [ ] Look, reveal, search, shuffle, randomize, discard, and banish operations.
-- [ ] Recall as its own non-Move action and correct destination semantics.
+- [x] Recall as its own non-Move action and correct destination semantics.
+  (C-16: `recall` to the current controller's Base, damage/exhaustion/modifiers
+  retained, no Move trigger; Core 455–458.1.)
 - [ ] Countering Chain Items and counter-prevention interactions.
 - [ ] Attach, detach, Equip, Equipment, Gear Unit, Top-Most, and host changes.
 - [ ] Buff/debuff objects and spend/remove/copy behavior beyond raw Might.
-- [ ] Channel and Rune-specific entry, ready/exhaust, and zone behavior.
+- [x] Channel and Rune-specific entry, ready/exhaust, and zone behavior.
+  (C-16: `channel_rune` with entry state, partial completion per 430.3, new
+  identity per 124.)
 - [ ] Create/copy predefined tokens from a versioned token catalog.
 - [ ] Score, conquer, hold, battlefield control, and Victory Score operations.
 - [ ] Burn Out and its complete loss/continuation semantics.
@@ -157,9 +164,15 @@ program and cannot be safely inferred from isolated examples.
 - [ ] Open-ended target choice and target groups.
 - [ ] Location-relative targets such as “here” and “another location.”
 - [ ] Last-known information and objects that change identity or zone.
+  (C-14: object identity across non-board zone changes with selector
+  revalidation; last-known information remains.)
 - [ ] Conditions over Might, damage, tags, domains, types, counts, and events.
 - [ ] General typed forms for “if,” “if you do,” “if this kills,” “then,”
   “then do this,” “for each,” “instead,” and “up to.”
+  (C-15/C-17: “if you do” / “otherwise” via cost predicates, “if you can't”
+  via requested_count_not_reached, “if this kills it, do this” via
+  conditional reflexive triggers, “up to N” via bounded targets; “for each,”
+  “instead,” “then” remain.)
 - [ ] Impossible-instruction continuation beyond the bounded linked gate.
 - [ ] Simultaneous multi-object Move, Deal, Recycle, Kill, and token creation.
 - [ ] Player-targeted and uncontrolled-Battlefield replacement ordering.
@@ -244,6 +257,8 @@ collect/normalize card clauses and implement assigned cards.
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
   current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.
+  (C-18: the 11 R3-A1 cards — 15 clauses full, 1 partial, 5 unsupported,
+  4 stale — in `r3a1_programs.json`; remaining batches R3-A2/A3.)
 - [x] Label every selected Wave-A card and clause `unsupported` or `stale` in
   the R3-A0 draft; `full`/`partial` remain recommendations until tested programs exist.
 - [ ] Attach an official locator to every implemented clause.
@@ -252,6 +267,8 @@ collect/normalize card clauses and implement assigned cards.
 - [ ] Add cross-card fixtures for every deck's core lines.
 - [ ] Reconcile those lines with Deck Coach primers and expert review.
 - [ ] Publish machine-readable pack coverage and abstention reasons.
+  (C-18: `r3a1_behavior_manifest.json` derived from fixtures, still draft;
+  pack-wide coverage awaits the later batches.)
 - [ ] Require pack-level conformance before P2-A or Match Analyst may claim
   executable support for that environment.
 
@@ -538,6 +555,12 @@ push” does not isolate a commit on shared `main`.
 | C-10 — completed 2026-09-03 | Implement ADR-0003 observation/action-query/result schemas and Phase-A adversarial fixtures | ADR-0003 accepted; no Phase-B completeness claim | Five candidate verdicts, perspective boundary, missing-fact abstention, deterministic ids |
 | C-11 — completed 2026-09-03 | Build R5-A coverage and abstention report over existing fixtures | ADR-0002 capability vocabulary accepted | Deterministic report only; no search, policy-strength, or P2-S claim |
 | C-12 — completed 2026-09-03 | Execute R3-A0 Annie/Master Yi clause inventory | Selection record accepted; no engine changes allowed | Verify current text/errata, stable clause ids, draft unsupported/stale labels plus non-authoritative future recommendations, source ledger; no production activation |
+| C-13 — completed 2026-09-03 | R3-A1 clause ledger, fixture drafts, decision packets | Inventory accepted | Per-clause Core locators, four drafts per clause without expected outcomes, eleven packets for X-09 |
+| C-14 — completed 2026-09-04 | engine-decisions.v1, typed selectors, object identity, mistarget traces | ADR-0005 §1–3 | One decision envelope with stages; derived target status; identity across non-board zone changes; applied_full / applied_to_subset / skipped_illegal_target |
+| C-15 — completed 2026-09-04 | Atomic play/cost transaction and cost receipts | ADR-0005 §4; Codex conditional review applied | play_transaction.py; riftbound-cost-receipt.v1 with unique payment events; shared chain_items; Add window (429.3); cost_paid / cost_not_paid predicates |
+| C-16 — completed 2026-09-04 | return_to_hand, recall, channel_rune | ADR-0005 §6, §8; Codex Q1–Q3 | Three distinct zone events with their own trigger classes and identity rules |
+| C-17 — completed 2026-09-04 | Typed linked-result predicates and caused_kill | ADR-0005 §5; Codex Q4 (b), Q5 | action_performed on the original action; requested_count_not_reached; conditional reflexive triggers built after Cleanup with 428.5.c attribution |
+| C-18 — completed 2026-09-04 | R3-A1 card programs and derived behavior manifest | C-14..C-17 landed; Codex Q7, Q10 | r3a1_programs.json with cited fixtures; r3a1_programs.py derives a draft card-behavior-manifest.v1; Vision unsupported; stale cards stay stale |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first
@@ -551,7 +574,7 @@ real artifact migration should establish the presentation semantics first.
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
 | D-02 — completed 2026-09-01 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual shared viewer, five verification states, raw-result refusal, documented overrides, prototype regression |
 | D-03 — completed 2026-09-02 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied; production pack absent | Four status explanations, five copy counts, generated fixtures, bilingual display, strategy-boundary regressions |
-| D-04 | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts | Assigned card programs, clause locators, positive/negative tests |
+| D-04 — R3-A1 slice completed 2026-09-04 (C-18) | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts — R3-A2/A3 batches still need theirs | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
 | D-06 | Match Analyst schemas/runner projections | Normalized timeline and engine-binding contracts | Schema implementation, formatter, fixtures, no router activation |
 | D-07 | Fourth demo and navigation | Match Analyst gates satisfied except final activation review | Bilingual demo matching the shared visual shell |

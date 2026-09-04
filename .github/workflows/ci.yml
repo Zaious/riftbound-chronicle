@@ -171,6 +171,12 @@ jobs:
       - name: Linked-result predicates and conditional reflexive triggers
         run: python3 skill/scripts/check_linked_predicates.py
 
+      # C-18: card programs are fixtures with cited expectations; the behavior
+      # manifest is derived from them passing. Fails on a claim outranking
+      # its evidence, a stale clause gaining a program, or a stale output.
+      - name: R3-A1 card programs pass and the behavior manifest is derived from them
+        run: python3 skill/scripts/check_r3a1_programs.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -235,6 +241,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_play_transaction.py"
           python3 "$REPO/skill/scripts/check_zone_ops.py"
           python3 "$REPO/skill/scripts/check_linked_predicates.py"
+          python3 "$REPO/skill/scripts/check_r3a1_programs.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

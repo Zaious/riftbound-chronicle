@@ -1,0 +1,308 @@
+{
+  "schema_version": "card-behavior-manifest.v1",
+  "manifest_id": "manifest:ce6d1701c5dcb0f9305071e5",
+  "pack_id": "global-core-origins-v1",
+  "status": "draft",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "environment": {
+    "environment_id": "global-core-origins-v1",
+    "region": "global",
+    "formats": [
+      "proving_grounds_product_practice"
+    ]
+  },
+  "verified_at": "2026-08-17",
+  "cards": [
+    {
+      "card_key": "incinerate",
+      "canonical_name": "Incinerate",
+      "current_text_hash": "sha256:357d542160da7a3e5b04ffd8bdd5cdca5280ded425e82944ca761f8f812854e2",
+      "printing_ids": [
+        "ogs-003-024"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "incinerate#08866b32",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-003-024:08866b32",
+          "text_hash": "sha256:08866b329d28e545ce22c394ff4c5f8680b1e341536b3a62f0c14d767e8c258d",
+          "status": "full",
+          "program_id": "play:incinerate#08866b32",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "incinerate#08866b32:positive",
+            "incinerate#08866b32:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: [Action] | rules: Core 806, Core 338"
+        },
+        {
+          "clause_id": "incinerate#df9db2ea",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-003-024:df9db2ea",
+          "text_hash": "sha256:df9db2ea92777fc806cd3941d4b9b77a6c2b6e23d7422dbd7b58c6c841e8ef67",
+          "status": "full",
+          "program_id": "incinerate#df9db2ea",
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "incinerate#df9db2ea:positive",
+            "incinerate#df9db2ea:negative",
+            "incinerate#df9db2ea:missing_information",
+            "incinerate#df9db2ea:target_invalidated"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: Deal 2 to a unit at a battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 417.1.b"
+        }
+      ]
+    },
+    {
+      "card_key": "disintegrate",
+      "canonical_name": "Disintegrate",
+      "current_text_hash": "sha256:2156f0653971761b76a6a78a675dd027c7fff8d072f97fc3ccfe0851f2b0204f",
+      "printing_ids": [
+        "ogn-005-298"
+      ],
+      "behavior_status": "stale",
+      "clauses": [
+        {
+          "clause_id": "disintegrate#d3d94631",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogn-005-298:d3d94631",
+          "text_hash": "sha256:d3d94631d44833eee89b1a6c405a1899dcb0e98cc065f3585e3383aea0bd87a2",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "target_choice"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: Deal 3 to a unit at battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 417.1.b, errata: Disintegrate OGN-005"
+        },
+        {
+          "clause_id": "disintegrate#033ec095",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogn-005-298:033ec095",
+          "text_hash": "sha256:033ec0954cf93e2e9410ac8cd28c3afeb523248e0caa1241aca58c4dcc4cbeb3",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "conditional_effects",
+            "linked_instruction"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: If this kills it, do this: draw 1. | rules: Core 428.5.c, Core 387.2, Core 388.1, Core 359.3.e.14.b, errata: Disintegrate OGN-005"
+        }
+      ]
+    },
+    {
+      "card_key": "flash",
+      "canonical_name": "Flash",
+      "current_text_hash": "sha256:4e7eeb0d11428f1128fe93f6e560a0d358e01e9cfbbe10acc06dd3d7d314be71",
+      "printing_ids": [
+        "ogs-011-024",
+        "opp-011-024"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "flash#e7a1971e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-011-024:e7a1971e",
+          "text_hash": "sha256:e7a1971e3b99c1af151f7cf4720b697a3692f10dd730b2172bfb6a69fe58a9be",
+          "status": "full",
+          "program_id": "play:flash#e7a1971e",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "flash#e7a1971e:positive",
+            "flash#e7a1971e:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: [Reaction] | rules: Core 807, Core 338.1.b"
+        },
+        {
+          "clause_id": "flash#7a92a690",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-011-024:7a92a690",
+          "text_hash": "sha256:7a92a69077d2cf1843354348b5096a0ce2a774368d7ea5b13a290d3d4bb969b8",
+          "status": "full",
+          "program_id": "flash#7a92a690",
+          "implemented_ops": [
+            "move_board_object"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "flash#7a92a690:positive",
+            "flash#7a92a690:negative",
+            "flash#7a92a690:missing_information",
+            "flash#7a92a690:target_invalidated",
+            "flash#7a92a690:zero_chosen"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: Move up to 2 friendly units to base. | rules: Core 355.4, Core 355.4.a, Core 355.13, Core 446.3.c, Core 449.1"
+        }
+      ]
+    },
+    {
+      "card_key": "gentlemen's duel",
+      "canonical_name": "Gentlemen's Duel",
+      "current_text_hash": "sha256:eda9a65c04ef62fa4e13448e332fc711e28d225d1ed51ba279f9a14aece32dc2",
+      "printing_ids": [
+        "ogs-008-024"
+      ],
+      "behavior_status": "partial",
+      "clauses": [
+        {
+          "clause_id": "gentlemen's duel#08866b32",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-008-024:08866b32",
+          "text_hash": "sha256:08866b329d28e545ce22c394ff4c5f8680b1e341536b3a62f0c14d767e8c258d",
+          "status": "full",
+          "program_id": "play:gentlemen's duel#08866b32",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "gentlemen's duel#08866b32:positive",
+            "gentlemen's duel#08866b32:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: [Action] | rules: Core 806"
+        },
+        {
+          "clause_id": "gentlemen's duel#2ed49f33",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-008-024:2ed49f33",
+          "text_hash": "sha256:2ed49f333bd6a3acfccb0c5d350860c47be902d1c0639819ee58b90d7354a2a1",
+          "status": "partial",
+          "program_id": "gentlemen's duel#2ed49f33",
+          "implemented_ops": [
+            "modify_might"
+          ],
+          "unsupported_mechanics": [
+            "duration_expiry"
+          ],
+          "test_ids": [
+            "gentlemen's duel#2ed49f33:positive",
+            "gentlemen's duel#2ed49f33:negative",
+            "gentlemen's duel#2ed49f33:missing_information",
+            "gentlemen's duel#2ed49f33:target_invalidated"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: Give a friendly unit +3 :rb_might: this turn. | rules: Core 355.5, Core 355.9.b, Core 135.2.e.3, Core 477"
+        },
+        {
+          "clause_id": "gentlemen's duel#fd48e5d0",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-008-024:fd48e5d0",
+          "text_hash": "sha256:fd48e5d0ddc7b576fe6c3ec44cbdb7273482f5cf563b55dc9397e41fab4dc984",
+          "status": "unsupported",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "mutual_damage_equal_might"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: no program is activated for this clause. text: Then choose an enemy unit. | rules: Core 355.5, Core 355.16"
+        },
+        {
+          "clause_id": "gentlemen's duel#26a3859b",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-008-024:26a3859b",
+          "text_hash": "sha256:26a3859b85ca26b0486415ce77b78dc81cf54fd21f2fb684eeb6916ee1edd741",
+          "status": "unsupported",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "mutual_damage_equal_might"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: no program is activated for this clause. text: They deal damage equal to their Mights to each other. | rules: Core 417"
+        }
+      ]
+    },
+    {
+      "card_key": "meditation",
+      "canonical_name": "Meditation",
+      "current_text_hash": "sha256:62e1417befeba818dfa2da95e92e96b931c72662c99f2921be53813f31b084a3",
+      "printing_ids": [
+        "ogn-048-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "meditation#e7a1971e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-048-298:e7a1971e",
+          "text_hash": "sha256:e7a1971e3b99c1af151f7cf4720b697a3692f10dd730b2172bfb6a69fe58a9be",
+          "status": "full",
+          "program_id": "play:meditation#e7a1971e",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "meditation#e7a1971e:positive",
+            "meditation#e7a1971e:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: [Reaction] | rules: Core 807, Core 338.1.b"
+        },
+        {
+          "clause_id": "meditation#6ce549b5",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-048-298:6ce549b5",
+          "text_hash": "sha256:6ce549b5685aaa7ae01a5ab89ffd73fd38f2d7670c2de128dfbfc5e380b4fb03",
+          "status": "full",
+          "program_id": "play:meditation#6ce549b5",
+          "implemented_ops": [
+            "exhaust"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "meditation#6ce549b5:positive",
+            "meditation#6ce549b5:declined",
+            "meditation#6ce549b5:negative",
+            "meditation#6ce549b5:missing_information"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: As an additional cost to play this, you may exhaust a friendly unit. | rules: Core 355.1.a, Core 356.2.b.1, Core 357.2, Core 414.4, Core 356.4.f.1"
+        },
+        {
+          "clause_id": "meditation#8be0efa4",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-048-298:8be0efa4",
+          "text_hash": "sha256:8be0efa43f5b3a3cbfc50155a30a0cc671827db061d44a5eb967180ccb4c84d9",
+          "status": "full",
+          "program_id": "meditation#8be0efa4",
+          "implemented_ops": [
+            "draw"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "meditation#8be0efa4:positive",
+            "meditation#8be0efa4:negative",
+            "meditation#8be0efa4:missing_information"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: If you do, draw 2. | rules: Core 356.4.f.1, Core 413"
+        },
+        {
+          "clause_id": "meditation#083ddaf7",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-048-298:083ddaf7",
+          "text_hash": "sha256:083ddaf75d8ba1de5b2560e364c8c239fd44b38499a49321a44b06b5dc9f59a7",
+          "status": "full",
+          "program_id": "meditation#083ddaf7",
+          "implemented_ops": [
+            "draw"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "meditation#083ddaf7:positive",
+            "meditation#083ddaf7:negative",
+            "meditation#083ddaf7:missing_information"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: Otherwise, draw 1. | rules: Core 356.2.b.1, Core 413"
+        }
+      ]
+    }
+  ]
+}

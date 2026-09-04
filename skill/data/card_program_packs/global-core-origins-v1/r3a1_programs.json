@@ -1,0 +1,1567 @@
+{
+  "schema_version": "r3a1-card-programs.v1",
+  "batch": "R3-A1-choices-costs-zones",
+  "package": "global-core-origins-v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "shape_note": "One executable program per clause the engine can now run, with fixtures whose expected outcomes are written from the cited Core clause, not from the engine. Fixture setups are edits over check_effect_ir.base_state(): u1 = p1 unit 3 Might 1 damage at base; u2 = p2 unit 4 Might exhausted at base; c1,c2 = p1 spells in deck; c3 = p1 spell in trash; c4 = p2 spell in deck; r1 = p1 rune in rune_deck; bf1 empty. Play fixtures put the played card ('c1') in p1's hand. Resolution fixtures resolve chain item 'spell-1' controlled by p1. A clause's manifest status is derived by r3a1_programs.py from these fixtures passing; a claim never becomes a status on its own.",
+  "cards": [
+    {
+      "card": "Incinerate",
+      "card_key": "incinerate",
+      "clauses": [
+        {
+          "clause_id": "incinerate#08866b32",
+          "text": "[Action]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 806",
+            "Core 338"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "incinerate#08866b32:positive",
+              "kind": "positive",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 806"
+                ]
+              },
+              "why": "806: an Action may be played by the Turn Player during a Neutral Open state."
+            },
+            {
+              "fixture_id": "incinerate#08866b32:negative",
+              "kind": "negative",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "rule_locators": [
+                  "Core 806",
+                  "Core 807"
+                ]
+              },
+              "why": "806/807: with a Chain open only Reactions may be played; an Action is refused by the timing kernel and the payment is undone (358.5)."
+            },
+            {
+              "fixture_id": "incinerate#08866b32:missing_information",
+              "kind": "not_applicable",
+              "why": "a timing tag has no decision; recorded as n/a."
+            }
+          ]
+        },
+        {
+          "clause_id": "incinerate#df9db2ea",
+          "text": "Deal 2 to a unit at a battlefield.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 355.5",
+            "Core 355.9.b",
+            "Core 359.3.e.5",
+            "Core 417.1.b"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "incinerate#df9db2ea",
+              "effects": [
+                {
+                  "op": "deal_damage",
+                  "effect_id": "dmg",
+                  "amount": 2,
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit",
+                    "location": "battlefield"
+                  }
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "incinerate#df9db2ea"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "incinerate#df9db2ea:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "dmg",
+                "object_id": "u2"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u2",
+                      "damage"
+                    ],
+                    "equals": 2
+                  }
+                ],
+                "rule_locators": [
+                  "Core 417.1.b"
+                ]
+              },
+              "why": "417.1.b: dealing damage marks it on the unit; u2 is a unit at a battlefield so 355.9.b holds at resolution."
+            },
+            {
+              "fixture_id": "incinerate#df9db2ea:negative",
+              "kind": "negative",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": [
+                    "u2"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "target_illegal_at_play",
+                "rule_locators": [
+                  "Core 355.9.b"
+                ]
+              },
+              "why": "355.9.b: u2 is at Base, not at a battlefield, so it is not a valid target when chosen at play; the play is refused whole (358.5)."
+            },
+            {
+              "fixture_id": "incinerate#df9db2ea:missing_information",
+              "kind": "missing_information",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5"
+                ]
+              },
+              "why": "355.5: the target is chosen while playing; without the controller's choice the engine stops rather than choose."
+            },
+            {
+              "fixture_id": "incinerate#df9db2ea:target_invalidated",
+              "kind": "target_invalidated",
+              "timing": "resolution",
+              "setup": [],
+              "compiled_target": {
+                "effect_id": "dmg",
+                "object_id": "u2",
+                "bound_identity": "u2@0"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "ignored_illegal_target"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u2",
+                      "damage"
+                    ],
+                    "equals": 0
+                  }
+                ],
+                "rule_locators": [
+                  "Core 359.3.e.2",
+                  "Core 359.3.e.5"
+                ]
+              },
+              "why": "u2 was chosen at a battlefield and moved to Base before resolution: the spell still resolves (359.3.e.1) but the instruction related to the now-invalid target is not followed (359.3.e.5)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Disintegrate",
+      "card_key": "disintegrate",
+      "text_status_note": "The bundled snapshot still carries pre-errata wording, so the inventory marks this card stale. Programs below are written against the errata text (OGN-005) and stay inactive — manifest status stays stale with no program_id — until the text is reverified by a human.",
+      "clauses": [
+        {
+          "clause_id": "disintegrate#d3d94631",
+          "text": "Deal 3 to a unit at battlefield.",
+          "claim": "stale",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 355.5",
+            "Core 355.9.b",
+            "Core 359.3.e.5",
+            "Core 417.1.b",
+            "errata: Disintegrate OGN-005"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "disintegrate#d3d94631",
+              "effects": [
+                {
+                  "op": "deal_damage",
+                  "effect_id": "dmg",
+                  "amount": 3,
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit",
+                    "location": "battlefield"
+                  }
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "disintegrate#d3d94631:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "dmg",
+                "object_id": "u2"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u2",
+                      "damage"
+                    ],
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 417.1.b"
+                ]
+              },
+              "why": "417.1.b marks 3 damage; 3 < 4 Might so Cleanup does not kill (322)."
+            },
+            {
+              "fixture_id": "disintegrate#d3d94631:negative",
+              "kind": "negative",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "play_declaration": {
+                "chain_item": {
+                  "id": "spell-1",
+                  "object_kind": "spell",
+                  "timing": "default"
+                },
+                "cost": {
+                  "base": {
+                    "energy": 2,
+                    "power": {}
+                  }
+                },
+                "effect_program_id": "disintegrate#d3d94631"
+              },
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": [
+                    "u2"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "target_illegal_at_play",
+                "rule_locators": [
+                  "Core 355.9.b"
+                ]
+              },
+              "why": "355.9.b: u2 at Base is not at a battlefield."
+            }
+          ]
+        },
+        {
+          "clause_id": "disintegrate#033ec095",
+          "text": "If this kills it, do this: draw 1.",
+          "claim": "stale",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 428.5.c",
+            "Core 387.2",
+            "Core 388.1",
+            "Core 359.3.e.14.b",
+            "errata: Disintegrate OGN-005"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "disintegrate#033ec095",
+              "source_object": "spell-1",
+              "effects": [
+                {
+                  "op": "deal_damage",
+                  "effect_id": "dmg",
+                  "amount": 3,
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit",
+                    "location": "battlefield"
+                  }
+                }
+              ],
+              "conditional_triggers": [
+                {
+                  "trigger_id": "disintegrate-draw",
+                  "controller": "p1",
+                  "source_object": "spell-1",
+                  "controller_order": 0,
+                  "effect_program_id": "disintegrate-draw-effects",
+                  "optional_at_finalize": false,
+                  "condition": {
+                    "kind": "caused_kill",
+                    "effect_id": "dmg"
+                  }
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "disintegrate#033ec095:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "damage",
+                  "value": 1
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "dmg",
+                "object_id": "u2"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "chain_items": [
+                      "disintegrate-draw"
+                    ]
+                  },
+                  {
+                    "in": "p2.trash",
+                    "object": "u2"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 428.5.c",
+                  "Core 388.1"
+                ]
+              },
+              "why": "1 + 3 = 4 damage on a 4-Might unit: Cleanup kills it (322), the kill is attributed to the spell that dealt the damage immediately before (428.5.c), and the reflexive trigger goes on the chain as a Pending item (388.1)."
+            },
+            {
+              "fixture_id": "disintegrate#033ec095:negative",
+              "kind": "negative",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "dmg",
+                "object_id": "u2"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "chain_items": []
+                  }
+                ],
+                "rule_locators": [
+                  "Core 387.2"
+                ]
+              },
+              "why": "3 damage on a 4-Might unit does not kill; the condition of the reflexive trigger is not met (387.2), so nothing goes on the chain."
+            },
+            {
+              "fixture_id": "disintegrate#033ec095:target_invalidated",
+              "kind": "target_invalidated",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "damage",
+                  "value": 1
+                },
+                {
+                  "replacement": {
+                    "replacement_id": "guard",
+                    "controller": "p2",
+                    "source_object": "u2",
+                    "mode": "prevent_event",
+                    "event_op": "kill",
+                    "optional": false,
+                    "uses_remaining": null,
+                    "target_controller_relation": "friendly"
+                  }
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "dmg",
+                "object_id": "u2"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "chain_items": []
+                  },
+                  {
+                    "in": "bf1",
+                    "object": "u2"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 359.3.e.14.b",
+                  "Core 428.5.c"
+                ]
+              },
+              "why": "the death is replaced by a prevention effect: the kill never happens, so 'If this kills it' directly references a game action that was not performed (359.3.e.14.b) and no trigger is built."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Flash",
+      "card_key": "flash",
+      "clauses": [
+        {
+          "clause_id": "flash#e7a1971e",
+          "text": "[Reaction]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 807",
+            "Core 338.1.b"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "flash#e7a1971e:positive",
+              "kind": "positive",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 807"
+                ]
+              },
+              "why": "807: a Reaction may be played whenever its controller holds Priority, including while a Chain is open."
+            },
+            {
+              "fixture_id": "flash#e7a1971e:negative",
+              "kind": "negative",
+              "timing": "closed_p2_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "rule_locators": [
+                  "Core 338.1.b"
+                ]
+              },
+              "why": "338.1.b: only the Priority holder may play; p2 holds Priority, so p1's Reaction is refused and its payment undone (358.5)."
+            },
+            {
+              "fixture_id": "flash#e7a1971e:missing_information",
+              "kind": "not_applicable",
+              "why": "a timing tag has no decision; recorded as n/a."
+            }
+          ]
+        },
+        {
+          "clause_id": "flash#7a92a690",
+          "text": "Move up to 2 friendly units to base.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 355.4",
+            "Core 355.4.a",
+            "Core 355.13",
+            "Core 446.3.c",
+            "Core 449.1"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "flash#7a92a690",
+              "effects": [
+                {
+                  "op": "move_board_object",
+                  "effect_id": "mv",
+                  "destination": {
+                    "kind": "base",
+                    "player": "p1"
+                  },
+                  "targets": {
+                    "min": 0,
+                    "max": 2,
+                    "decision_ref": "t",
+                    "restrictions": {
+                      "chosen_zone_class": "board",
+                      "kind": "unit",
+                      "controller_relation": "friendly"
+                    }
+                  }
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "flash#7a92a690"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "flash#7a92a690:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                }
+              ],
+              "compiled_targets": {
+                "effect_id": "mv",
+                "object_ids": [
+                  "u1"
+                ]
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "in": "p1.base",
+                    "object": "u1"
+                  }
+                ],
+                "trace_target_outcome": "applied_full",
+                "rule_locators": [
+                  "Core 449.1"
+                ]
+              },
+              "why": "449.1: a Move relocates the unit to the chosen valid Location; one friendly unit chosen out of 'up to 2' is a complete instruction (355.13)."
+            },
+            {
+              "fixture_id": "flash#7a92a690:negative",
+              "kind": "negative",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": [
+                    "u2"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "target_illegal_at_play",
+                "rule_locators": [
+                  "Core 355.9"
+                ]
+              },
+              "why": "u2 is an enemy unit; 'friendly' is a restriction the chosen object must meet at play (355.9)."
+            },
+            {
+              "fixture_id": "flash#7a92a690:missing_information",
+              "kind": "missing_information",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.4",
+                  "Core 355.5"
+                ]
+              },
+              "why": "355.4: the units and their destination are chosen while playing; the engine will not pick them."
+            },
+            {
+              "fixture_id": "flash#7a92a690:target_invalidated",
+              "kind": "target_invalidated",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "to_hand": "u1"
+                }
+              ],
+              "compiled_targets": {
+                "effect_id": "mv",
+                "object_ids": [
+                  "u1"
+                ],
+                "bound_identities": {
+                  "u1": "u1@0"
+                }
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_target_outcome": "skipped_illegal_target",
+                "rule_locators": [
+                  "Core 359.3.e.2",
+                  "Core 359.3.e.7"
+                ]
+              },
+              "why": "u1 was returned to hand after being chosen: it is a new object (124) and no longer on the board, so every target of the instruction is invalid and the instruction does not execute (359.3.e.7); the spell still resolves (359.3.e.1)."
+            },
+            {
+              "fixture_id": "flash#7a92a690:zero_chosen",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [],
+              "compiled_targets": {
+                "effect_id": "mv",
+                "object_ids": []
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "no_op"
+                ],
+                "rule_locators": [
+                  "Core 355.13"
+                ]
+              },
+              "why": "355.13: 'up to 2' allows choosing none; the instruction completes with nothing to move."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Gentlemen's Duel",
+      "card_key": "gentlemen's duel",
+      "clauses": [
+        {
+          "clause_id": "gentlemen's duel#08866b32",
+          "text": "[Action]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 806"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 2,
+                  "power": {}
+                }
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "gentlemen's duel#08866b32:positive",
+              "kind": "positive",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 806"
+                ]
+              },
+              "why": "806: Action timing in a Neutral Open state."
+            },
+            {
+              "fixture_id": "gentlemen's duel#08866b32:negative",
+              "kind": "negative",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "rule_locators": [
+                  "Core 806",
+                  "Core 807"
+                ]
+              },
+              "why": "an Action cannot be played while a Chain is open (806/807)."
+            },
+            {
+              "fixture_id": "gentlemen's duel#08866b32:missing_information",
+              "kind": "not_applicable",
+              "why": "a timing tag has no decision."
+            }
+          ]
+        },
+        {
+          "clause_id": "gentlemen's duel#2ed49f33",
+          "text": "Give a friendly unit +3 :rb_might: this turn.",
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "duration_expiry"
+          ],
+          "rule_locators": [
+            "Core 355.5",
+            "Core 355.9.b",
+            "Core 135.2.e.3",
+            "Core 477"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "gentlemen's duel#2ed49f33",
+              "effects": [
+                {
+                  "op": "modify_might",
+                  "effect_id": "buff",
+                  "amount": 3,
+                  "duration": "this_turn",
+                  "source": "spell-1",
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit",
+                    "controller_relation": "friendly"
+                  }
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 2,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "gentlemen's duel#2ed49f33"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "gentlemen's duel#2ed49f33:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [],
+              "compiled_target": {
+                "effect_id": "buff",
+                "object_id": "u1"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "might": "u1",
+                    "equals": 6
+                  }
+                ],
+                "rule_locators": [
+                  "Core 135.2.e.3",
+                  "Core 477"
+                ]
+              },
+              "why": "a typed +3 Might modifier for this turn is appended (135.2.e.3, 477); its expiry at end of turn is the mechanic still unsupported."
+            },
+            {
+              "fixture_id": "gentlemen's duel#2ed49f33:negative",
+              "kind": "negative",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": [
+                    "u2"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "target_illegal_at_play",
+                "rule_locators": [
+                  "Core 355.9"
+                ]
+              },
+              "why": "u2 is not friendly (355.9)."
+            },
+            {
+              "fixture_id": "gentlemen's duel#2ed49f33:missing_information",
+              "kind": "missing_information",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5"
+                ]
+              },
+              "why": "355.5: the friendly unit is chosen at play."
+            },
+            {
+              "fixture_id": "gentlemen's duel#2ed49f33:target_invalidated",
+              "kind": "target_invalidated",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "to_hand": "u1"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "buff",
+                "object_id": "u1",
+                "bound_identity": "u1@0"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "ignored_illegal_target"
+                ],
+                "rule_locators": [
+                  "Core 359.3.e.2",
+                  "Core 359.3.e.5"
+                ]
+              },
+              "why": "u1 left the board and became a new object (124); the instruction related to it is not followed (359.3.e.5)."
+            }
+          ]
+        },
+        {
+          "clause_id": "gentlemen's duel#fd48e5d0",
+          "text": "Then choose an enemy unit.",
+          "claim": "unsupported",
+          "unsupported_mechanics": [
+            "mutual_damage_equal_might"
+          ],
+          "rule_locators": [
+            "Core 355.5",
+            "Core 355.16"
+          ],
+          "notes": "The choice exists only to feed 'They deal damage equal to their Mights to each other'; without that mechanic the choice has no executable consequence, so it is not claimed.",
+          "fixtures": []
+        },
+        {
+          "clause_id": "gentlemen's duel#26a3859b",
+          "text": "They deal damage equal to their Mights to each other.",
+          "claim": "unsupported",
+          "unsupported_mechanics": [
+            "mutual_damage_equal_might"
+          ],
+          "rule_locators": [
+            "Core 417"
+          ],
+          "fixtures": []
+        }
+      ]
+    },
+    {
+      "card": "Meditation",
+      "card_key": "meditation",
+      "clauses": [
+        {
+          "clause_id": "meditation#e7a1971e",
+          "text": "[Reaction]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 807",
+            "Core 338.1.b"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "meditation#e7a1971e:positive",
+              "kind": "positive",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 807"
+                ]
+              },
+              "why": "807: Reaction timing while holding Priority."
+            },
+            {
+              "fixture_id": "meditation#e7a1971e:negative",
+              "kind": "negative",
+              "timing": "closed_p2_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "rule_locators": [
+                  "Core 338.1.b"
+                ]
+              },
+              "why": "p1 does not hold Priority (338.1.b)."
+            },
+            {
+              "fixture_id": "meditation#e7a1971e:missing_information",
+              "kind": "not_applicable",
+              "why": "a timing tag has no decision."
+            }
+          ]
+        },
+        {
+          "clause_id": "meditation#6ce549b5",
+          "text": "As an additional cost to play this, you may exhaust a friendly unit.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 355.1.a",
+            "Core 356.2.b.1",
+            "Core 357.2",
+            "Core 414.4",
+            "Core 356.4.f.1"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                },
+                "additional": [
+                  {
+                    "cost_id": "meditation-exhaust",
+                    "mandatory": false,
+                    "payment": {
+                      "kind": "exhaust",
+                      "object_id": "u1"
+                    },
+                    "source": "c1"
+                  }
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "meditation#6ce549b5:positive",
+              "kind": "positive",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "to_deck_top": "c3"
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "meditation-exhaust",
+                  "kind": "optional_choice",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": true
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "exhausted"
+                    ],
+                    "equals": true
+                  },
+                  {
+                    "receipt_paid": "meditation-exhaust",
+                    "equals": true
+                  }
+                ],
+                "rule_locators": [
+                  "Core 355.1.a",
+                  "Core 357.2",
+                  "Core 356.4.f.1"
+                ]
+              },
+              "why": "the controller declares the optional cost at play (355.1.a); u1 is exhausted in step 4 (357.2); the receipt records it as paid because the decision was made (356.4.f.1)."
+            },
+            {
+              "fixture_id": "meditation#6ce549b5:declined",
+              "kind": "positive",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "to_deck_top": "c3"
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "meditation-exhaust",
+                  "kind": "optional_choice",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": false
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "exhausted"
+                    ],
+                    "equals": false
+                  },
+                  {
+                    "receipt_paid": "meditation-exhaust",
+                    "equals": false
+                  }
+                ],
+                "rule_locators": [
+                  "Core 356.2.b.1"
+                ]
+              },
+              "why": "356.2.b.1: an optional additional cost is paid only if the player chose to; declining commits the play with the cost recorded unpaid."
+            },
+            {
+              "fixture_id": "meditation#6ce549b5:negative",
+              "kind": "negative",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "set": "u1",
+                  "field": "exhausted",
+                  "value": true
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "meditation-exhaust",
+                  "kind": "optional_choice",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": true
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "cost_unpayable",
+                "assert_rolled_back": true,
+                "rule_locators": [
+                  "Core 414.4",
+                  "Core 203.3",
+                  "Core 358.5"
+                ]
+              },
+              "why": "414.4: an exhausted friendly unit may not be exhausted again as the additional cost; the cost cannot be paid (203.3) and the whole play is undone (358.5)."
+            },
+            {
+              "fixture_id": "meditation#6ce549b5:missing_information",
+              "kind": "missing_information",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "optional_cost_intent_required",
+                "rule_locators": [
+                  "Core 355.1.a"
+                ]
+              },
+              "why": "355.1.a: whether to pay an optional additional cost is a choice made while playing; absent, the engine stops."
+            },
+            {
+              "fixture_id": "meditation#6ce549b5:target_invalidated",
+              "kind": "not_applicable",
+              "why": "a cost does not target (355.10.c); recorded as n/a."
+            }
+          ]
+        },
+        {
+          "clause_id": "meditation#8be0efa4",
+          "text": "If you do, draw 2.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 356.4.f.1",
+            "Core 413"
+          ],
+          "execution": {
+            "kind": "effect",
+            "program": {
+              "program_id": "meditation#8be0efa4",
+              "effects": [
+                {
+                  "op": "draw",
+                  "effect_id": "draw2",
+                  "player": "p1",
+                  "count": 2,
+                  "predicate": {
+                    "kind": "cost_paid",
+                    "cost_id": "meditation-exhaust"
+                  }
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "meditation#8be0efa4:positive",
+              "kind": "positive",
+              "receipt_from": "meditation#6ce549b5:positive",
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "hand_size": "p1",
+                    "equals": 2
+                  }
+                ],
+                "rule_locators": [
+                  "Core 356.4.f.1",
+                  "Core 413"
+                ]
+              },
+              "why": "'If you do' tests the optional-cost receipt (356.4.f.1): the cost was chosen, so two cards are drawn (413)."
+            },
+            {
+              "fixture_id": "meditation#8be0efa4:negative",
+              "kind": "negative",
+              "receipt_from": "meditation#6ce549b5:declined",
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "skipped_linked_dependency"
+                ],
+                "assert": [
+                  {
+                    "hand_size": "p1",
+                    "equals": 0
+                  }
+                ],
+                "rule_locators": [
+                  "Core 356.2.b.1"
+                ]
+              },
+              "why": "the cost was declined, so the linked instruction does not execute."
+            },
+            {
+              "fixture_id": "meditation#8be0efa4:missing_information",
+              "kind": "missing_information",
+              "receipt_from": null,
+              "expected": {
+                "outcome": "invalid_input",
+                "rule_locators": [
+                  "Core 356.4.f.1"
+                ]
+              },
+              "why": "without the receipt there is nothing for 'If you do' to test; the program is refused rather than guessed."
+            }
+          ]
+        },
+        {
+          "clause_id": "meditation#083ddaf7",
+          "text": "Otherwise, draw 1.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 356.2.b.1",
+            "Core 413"
+          ],
+          "execution": {
+            "kind": "effect",
+            "program": {
+              "program_id": "meditation#083ddaf7",
+              "effects": [
+                {
+                  "op": "draw",
+                  "effect_id": "draw1",
+                  "player": "p1",
+                  "count": 1,
+                  "predicate": {
+                    "kind": "cost_not_paid",
+                    "cost_id": "meditation-exhaust"
+                  }
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "meditation#083ddaf7:positive",
+              "kind": "positive",
+              "receipt_from": "meditation#6ce549b5:declined",
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "hand_size": "p1",
+                    "equals": 1
+                  }
+                ],
+                "rule_locators": [
+                  "Core 356.2.b.1",
+                  "Core 413"
+                ]
+              },
+              "why": "the optional cost was not paid, so 'Otherwise' fires and one card is drawn."
+            },
+            {
+              "fixture_id": "meditation#083ddaf7:negative",
+              "kind": "negative",
+              "receipt_from": "meditation#6ce549b5:positive",
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "skipped_linked_dependency"
+                ],
+                "rule_locators": [
+                  "Core 356.4.f.1"
+                ]
+              },
+              "why": "the cost was paid, so 'Otherwise' does not fire."
+            },
+            {
+              "fixture_id": "meditation#083ddaf7:missing_information",
+              "kind": "missing_information",
+              "receipt_from": null,
+              "expected": {
+                "outcome": "invalid_input",
+                "rule_locators": [
+                  "Core 356.2.b.1"
+                ]
+              },
+              "why": "no receipt, no answer."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

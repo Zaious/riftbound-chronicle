@@ -29,6 +29,18 @@ Card status is derived from its clauses. A manifest also binds the Core/FAQ
 baseline, environment, region, and formats. Mismatched or non-active manifests
 cannot contribute active coverage.
 
+## Deriving statuses from programs (C-18)
+
+For the R3-A1 batch, `r3a1_programs.py` runs every clause's fixtures
+(`r3a1_programs.json`) through the same play / resolution / effect runners as
+the engine-check CLI and derives `r3a1_behavior_manifest.json`. A clause is
+`full` only when a positive and a negative fixture pass and no mechanic is
+left unsupported; `partial` when they pass and one is named; a failing
+fixture demotes the claim to `unsupported`; a clause the inventory marks
+`stale` stays stale with no `program_id` whatever its fixtures do. Fixture
+expectations cite the Core clause they follow, not the engine's behaviour.
+The manifest stays `draft`.
+
 ## Deck Coach projection
 
 `deck-behavior-coverage.v1` currently covers resolved Main Deck copies only.

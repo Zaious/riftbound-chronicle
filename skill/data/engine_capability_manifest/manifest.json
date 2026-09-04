@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:e904f0d29be1186d632a76b7",
-  "capability_set_id": "sha256:e904f0d29be1186d632a76b73fadf07c45f1ed7b16463ceceae0c3458cfd7773",
+  "manifest_id": "capability-manifest:96b638771ca7a27500c02aa3",
+  "capability_set_id": "sha256:96b638771ca7a27500c02aa3c431f5ce3baf7704ac3fac42027118dd773a0a3e",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:08597b9fcb0e89f227a1ef9caef77e1138c44a6bc6f665467c9f2e0174c947fe",
+    "value": "sha256:f70593dc20fa016006696fbea586fcdebc5a3b31393f3668b3abef71a0e1b8eb",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:6d6a8f4fc54fed05d12d9cc22845ef722238f04cd6f63d0b350408c9829a2b2a"
+        "sha256": "sha256:c46965ca05cec7774c91ddf44aefd65de26da7dcd5167a669c8d9a9ddde100fd"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:6298467205ad7da47b2ae05fd93c7678cf5efd33b8cae5c592ff26e1221a1638"
+        "sha256": "sha256:7cc702d01e8f27d9c8b1e52ccac0d1f17be690a18cd69e8fddf503b285329a79"
       }
     ]
   },
@@ -105,7 +105,9 @@
         "optional_cost_receipt",
         "cost_predicates",
         "engine_decisions",
-        "open_battlefield_permission"
+        "open_battlefield_permission",
+        "deflect",
+        "any_domain_power_allocation"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
@@ -393,6 +395,13 @@
   ],
   "features": [
     {
+      "id": "any_domain_power_allocation",
+      "rule_locators": [
+        "Core 809.1.c.1",
+        "Core 357.1"
+      ]
+    },
+    {
       "id": "atomic_play_transaction",
       "rule_locators": [
         "Core 354–358",
@@ -433,6 +442,14 @@
       "rule_locators": [
         "Core 355.5.a",
         "Core 355.10.d"
+      ]
+    },
+    {
+      "id": "deflect",
+      "rule_locators": [
+        "Core 809.1.c–809.1.d",
+        "Core 809.2",
+        "Core 356.2.a.2"
       ]
     },
     {
@@ -602,8 +619,10 @@
     "Core 355.5.b",
     "Core 355.7–355.10.d.2",
     "Core 356.1–356.7",
+    "Core 356.2.a.2",
     "Core 356.2.b.1",
     "Core 356.4.f.1",
+    "Core 357.1",
     "Core 357.1–357.2.a",
     "Core 358.4",
     "Core 358.5",
@@ -656,7 +675,10 @@
     "Core 477",
     "Core 713–715.4",
     "Core 806–807",
-    "Core 807"
+    "Core 807",
+    "Core 809.1.c.1",
+    "Core 809.1.c–809.1.d",
+    "Core 809.2"
   ],
   "exclusions": [
     "add_reaction_resolution_during_payment",

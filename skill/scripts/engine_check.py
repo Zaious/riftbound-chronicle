@@ -60,6 +60,9 @@ FEATURE_RULES = {
     "instruction_conditions": ["Core 135.2.b.5.a", "Core 359.3.e.14.a"],
     "move_triggers": ["Core 383.1", "Core 319.8", "Core 446.2", "Core 456.1"],
     "private_discard": ["Core 422.1–422.4", "Core 355.10.a", "Core 124"],
+    # C-23 (ADR-0007 §11).
+    "deflect": ["Core 809.1.c–809.1.d", "Core 809.2", "Core 356.2.a.2"],
+    "any_domain_power_allocation": ["Core 809.1.c.1", "Core 357.1"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -97,7 +100,7 @@ KIND_CONFIG = {
     "play": {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
-        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission"],
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation"],
         "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "battlefield_control_transfer", "counter", "complete_game", "complete_legality"],
     },
     # ADR-0007 §8: two turn-boundary procedures, not a turn transition.
@@ -123,6 +126,7 @@ DECISION_REASON_CODES = {
     "optional_cost_intent_required": "cost_choice",
     "add_window_confirmation_required": "cost_choice",
     "card_selection_required": "card_choice",
+    "resource_allocation_required": "cost_choice",
 }
 
 

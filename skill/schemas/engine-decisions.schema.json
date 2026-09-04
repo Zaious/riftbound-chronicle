@@ -19,7 +19,7 @@
         "properties": {
           "decision_id": {"type": "string", "minLength": 1},
           "stage": {"enum": ["play_declaration", "trigger_finalization", "resolution"]},
-          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection"]},
+          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation"]},
           "controller": {"type": "string", "minLength": 1},
           "value": {},
           "selection_identities": {

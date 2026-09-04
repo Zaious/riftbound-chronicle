@@ -86,7 +86,8 @@
       "required": ["energy", "power"],
       "properties": {
         "energy": {"type": "integer", "minimum": 0},
-        "power": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+        "power": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "power_any": {"type": "integer", "minimum": 0, "description": "Any-domain Power due (Core 809.1.c.1), paid by a resource_allocation."}
       }
     }
   }

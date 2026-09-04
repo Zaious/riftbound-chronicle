@@ -36,7 +36,7 @@ from typing import Any
 
 DECISIONS_VERSION = "engine-decisions.v1"
 STAGES = ("play_declaration", "trigger_finalization", "resolution")
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection")
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -97,6 +97,10 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must be a non-empty unique array of trigger ids")
         if kind == "card_selection" and (not isinstance(val, list) or not val or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
             errors.append(f"{label}.value must be a non-empty unique array of hand object ids")
+        if kind == "resource_allocation" and (not isinstance(val, dict) or not val or any(not isinstance(k, str) or not k or isinstance(n, bool) or not isinstance(n, int) or n < 0 for k, n in val.items())):
+            errors.append(f"{label}.value must map domains to non-negative integers (the complete allocation)")
+        if kind == "resource_allocation" and item["stage"] != "play_declaration":
+            errors.append(f"{label}: resource_allocation is decided while paying at play")
         if kind in ("replacement_order", "replacement_choice", "trigger_order", "card_selection") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
     return errors

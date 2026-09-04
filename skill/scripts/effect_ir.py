@@ -24,6 +24,9 @@ FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
 # ADR-0007 §3: compiled permissions that widen the valid play locations (355.2.b).
 PLAY_PERMISSIONS = {"open_battlefield"}
+# Keywords the state may carry on an object. `deflect` (Core 809) imposes a
+# mandatory any-domain Power cost on opponents' spells that choose the object.
+OBJECT_KEYWORDS = {"temporary", "deflect"}
 # ADR-0007 §6–8.
 TURN_EFFECT_KINDS = {"entry_state_for_played_units"}
 CONDITION_KINDS = {"runes_at_least"}
@@ -364,6 +367,9 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"{label}.condition.kind must be one of {sorted(CONDITION_KINDS)}")
             elif condition["kind"] == "runes_at_least" and (set(condition) != {"kind", "count"} or not isinstance(condition["count"], int) or condition["count"] < 0):
                 errors.append(f"{label}.condition.runes_at_least needs a non-negative count")
+        deflect_value = obj.get("deflect_value")
+        if deflect_value is not None and (not isinstance(deflect_value, int) or deflect_value < 1):
+            errors.append(f"objects.{object_id}.deflect_value must be a positive integer (Core 809.1.b)")
         permissions = obj.get("play_permissions", [])
         if not isinstance(permissions, list) or len(permissions) != len(set(permissions)) or any(p not in PLAY_PERMISSIONS for p in permissions):
             errors.append(f"objects.{object_id}.play_permissions must be a unique array drawn from {sorted(PLAY_PERMISSIONS)}")
@@ -373,7 +379,7 @@ def validate_state(state: Any) -> list[str]:
         if identity is not None and (not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit()):
             errors.append(f"objects.{object_id}.identity must look like '<id>@<generation>' when supplied")
         keywords = obj.get("keywords", [])
-        if not isinstance(keywords, list) or len(keywords) != len(set(keywords)) or any(keyword not in {"temporary"} for keyword in keywords):
+        if not isinstance(keywords, list) or len(keywords) != len(set(keywords)) or any(keyword not in OBJECT_KEYWORDS for keyword in keywords):
             errors.append(f"objects.{object_id}.keywords must be a unique supported-keyword array")
         modifiers = obj.get("might_modifiers")
         if not isinstance(modifiers, list):

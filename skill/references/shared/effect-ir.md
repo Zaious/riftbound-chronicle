@@ -292,6 +292,19 @@ per component, and `paid` for an optional cost is that decision — a cost
 discounted to zero is still paid (356.4.f.1). An unpayable supported cost is
 `illegal`.
 
+**Deflect** (809): once the play's targets are fixed and before the cost is
+determined, each time the spell chooses an object with the `deflect`
+keyword controlled by the opposing team adds a mandatory additional cost of
+`deflect_value` (1 when bare, summed across sources, 809.2) any-domain
+Power (`power_any`); objects merely affected by criteria are never chosen
+and add nothing. Any-domain Power is paid by the player's
+`resource_allocation` decision — the complete allocation, summing to the
+amount, each domain within the confirmed pool. When only one allocation is
+legal the engine proceeds; otherwise the play is `decision_required`
+(`cost_choice`), and the engine never spends domains in an arbitrary
+order. The Add window (429.3) is settled first; a pool still short after it
+is `illegal`; a non-positive Deflect value is `invalid_input`.
+
 A program may carry the receipt as `cost_receipt` and gate an instruction
 with `predicate: {kind: cost_paid | cost_not_paid, cost_id}` — "If you do"
 and "Otherwise" test the receipt, not whether a later instruction happened.

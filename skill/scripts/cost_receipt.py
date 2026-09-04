@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import Any
 
 RECEIPT_VERSION = "riftbound-cost-receipt.v1"
-RESOURCE_KINDS = {"energy", "power"}
+RESOURCE_KINDS = {"energy", "power", "power_any"}
 
 _TOP = {"schema_version", "play_id", "actor", "card", "base", "after_base_modifications", "components", "aggregate",
         "discount_order", "order_provenance", "payment_events", "total", "paid", "rule_locators"}
@@ -27,7 +27,8 @@ _COMPONENT = {"cost_id", "kind", "mandatory", "intent", "requested", "increases"
 
 
 def _is_resource(value: Any) -> bool:
-    return (isinstance(value, dict) and set(value) == {"energy", "power"} and isinstance(value["energy"], int) and value["energy"] >= 0
+    return (isinstance(value, dict) and {"energy", "power"} <= set(value) <= {"energy", "power", "power_any"} and isinstance(value["energy"], int) and value["energy"] >= 0
+            and (not isinstance(value.get("power_any", 0), bool)) and isinstance(value.get("power_any", 0), int) and value.get("power_any", 0) >= 0
             and isinstance(value["power"], dict) and all(isinstance(v, int) and v >= 0 for v in value["power"].values()))
 
 

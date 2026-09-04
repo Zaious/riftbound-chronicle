@@ -41,6 +41,8 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `recall` | relocate a board object to its current controller's Base keeping damage, exhaustion and modifiers; not a Move, so Move triggers never fire; already there is a no-op | Core 455, 456.1, 458.1 |
 | `grant_turn_effect` | record a 'this turn' effect for the controller (entry state for units played this turn), expiring at the Expiration Step | Core 369.3, 317.2.c |
 | `discard` | the player moves `count` cards from hand to trash by a private card_selection decision; short hands discard what they have (Core 422.4); not a target | Core 422.1, 422.1.a, 422.4, 124 |
+| `grant_replacement` | create a granted replacement bound to a board object's identity, once, for this turn ($granted_target binds inside its replacement_effects) | Core 370, 355.10.c, 124, 317.2.c |
+| `heal_all_damage` | clear all marked damage on one object; already clean is a no-op | Core 418 |
 | `channel_rune` | put the top runes of a player's Rune Deck on the board in the stated entry state, as many as possible when short; new objects | Core 430.1, 430.2.a, 430.3, 124 |
 
 Return, Recall and Move are three events with three trigger classes; the
@@ -343,6 +345,17 @@ the player, never the hand. When the whole hand must go the engine proceeds
 (422.4); a choice outside the hand or by another player is `illegal`; an
 unknown or stale identity is `invalid_input`. "Discard 1, then draw 1" is an
 `action_performed` gate: nothing discarded → nothing drawn.
+
+A replacement is either **source-backed** — a permanent's own ability,
+active while the source is on the board — or **granted** by an effect
+(`grant_replacement`, Highlander's "The next time it would die this turn
+…"): bound to the chosen object's identity at grant time, once, for this
+turn, stamped with `turn_id` and `granted_by`; exactly one of the two forms
+is valid. A granted replacement stops applying after its use, at the
+Expiration Step, when the target's identity changes (it left and came back,
+Core 124) or when the target is no longer a board object; while it applies
+it takes part in the ordinary replacement order and choice decisions.
+`heal_all_damage` clears every point of marked damage (418).
 
 `caused_kill` is not an in-program predicate. A Cleanup kill is only known
 after the spell has left the chain, so "If this kills it, …" is declared as

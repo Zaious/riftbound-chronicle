@@ -227,11 +227,25 @@
     "replacementEffect": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["replacement_id", "controller", "source_object", "mode", "event_op", "optional", "uses_remaining"],
+      "required": ["replacement_id", "controller", "mode", "event_op", "optional", "uses_remaining"],
+      "description": "Exactly one of source_object (a permanent's own ability, active while it is on the board) or granted (ADR-0007 §12: created by an effect, bound to one object's identity for this turn).",
+      "oneOf": [{"required": ["source_object"]}, {"required": ["granted"]}],
       "properties": {
         "replacement_id": {"type": "string", "minLength": 1},
         "controller": {"type": "string", "minLength": 1},
         "source_object": {"type": "string", "minLength": 1},
+        "granted": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_object", "target_identity", "duration", "turn_id", "granted_by"],
+          "properties": {
+            "target_object": {"type": "string", "minLength": 1},
+            "target_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
+            "duration": {"const": "this_turn"},
+            "turn_id": {"type": "string", "minLength": 1},
+            "granted_by": {"type": "string", "minLength": 1}
+          }
+        },
         "mode": {"enum": ["prevent_event", "replace_with", "augment_with", "reduce_damage"]},
         "event_op": {"type": "string", "minLength": 1},
         "optional": {"type": "boolean"},

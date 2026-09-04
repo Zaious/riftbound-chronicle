@@ -63,6 +63,8 @@ FEATURE_RULES = {
     # C-23 (ADR-0007 §11).
     "deflect": ["Core 809.1.c–809.1.d", "Core 809.2", "Core 356.2.a.2"],
     "any_domain_power_allocation": ["Core 809.1.c.1", "Core 357.1"],
+    # C-24 (ADR-0007 §12).
+    "granted_replacements": ["Core 370–373", "Core 355.10.c", "Core 124", "Core 317.2.c"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -74,7 +76,7 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements"],
         "unsupported": ["arbitrary_card_text", "combat", "scoring", "complete_game", "complete_legality"],
     },
     "resolution": {

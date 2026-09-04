@@ -69,6 +69,9 @@ SUPPORTED_OPS = {
     "grant_turn_effect",
     # C-22 (ADR-0007 §10): hand → trash by the discarding player's private choice.
     "discard",
+    # C-24 (ADR-0007 §12): a replacement created by an effect, bound to a target's identity for this turn.
+    "grant_replacement",
+    "heal_all_damage",
 }
 
 
@@ -153,6 +156,8 @@ OP_RULES = {
     "channel_rune": ["Core 430.1", "Core 430.2.a", "Core 430.3", "Core 124"],
     "grant_turn_effect": ["Core 369.3", "Core 317.2.c"],
     "discard": ["Core 422.1", "Core 422.1.a", "Core 422.4", "Core 124"],
+    "grant_replacement": ["Core 370", "Core 355.10.c", "Core 124", "Core 317.2.c"],
+    "heal_all_damage": ["Core 418"],
 }
 
 
@@ -393,7 +398,7 @@ def validate_state(state: Any) -> list[str]:
     replacement_ids: set[str] = set()
     for index, replacement in enumerate(replacements):
         label = f"replacement_effects[{index}]"
-        required = {"replacement_id", "controller", "source_object", "mode", "event_op", "optional", "uses_remaining"}
+        required = {"replacement_id", "controller", "mode", "event_op", "optional", "uses_remaining"}
         if not isinstance(replacement, dict) or not required.issubset(replacement):
             errors.append(f"{label} has invalid shape")
             continue
@@ -402,10 +407,37 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.replacement_id is invalid or duplicated")
         else:
             replacement_ids.add(replacement_id)
-        if replacement.get("controller") not in players or replacement.get("source_object") not in objects:
-            errors.append(f"{label} has unknown controller/source")
-        elif objects[replacement["source_object"]].get("controller") != replacement.get("controller"):
-            errors.append(f"{label}.controller must control its source object")
+        # ADR-0007 §12: a replacement is either source-backed (a permanent's own
+        # ability, active while it is on the board) or granted by an effect to
+        # one object's identity for this turn — exactly one of the two.
+        source_backed, granted = "source_object" in replacement, "granted" in replacement
+        if source_backed == granted:
+            errors.append(f"{label} must be exactly one of source-backed (source_object) or granted (granted)")
+            continue
+        if replacement.get("controller") not in players:
+            errors.append(f"{label} has unknown controller")
+        if source_backed:
+            if replacement.get("source_object") not in objects:
+                errors.append(f"{label} has unknown source")
+            elif objects[replacement["source_object"]].get("controller") != replacement.get("controller"):
+                errors.append(f"{label}.controller must control its source object")
+        else:
+            grant = replacement["granted"]
+            if not isinstance(grant, dict) or set(grant) != {"target_object", "target_identity", "duration", "turn_id", "granted_by"}:
+                errors.append(f"{label}.granted must carry target_object, target_identity, duration, turn_id, granted_by")
+            else:
+                if grant["target_object"] not in objects:
+                    errors.append(f"{label}.granted.target_object is unknown")
+                if not isinstance(grant["target_identity"], str) or "@" not in grant["target_identity"]:
+                    errors.append(f"{label}.granted.target_identity must be an identity token")
+                if grant["duration"] != "this_turn":
+                    errors.append(f"{label}.granted.duration must be this_turn")
+                if not isinstance(grant["turn_id"], str) or not grant["turn_id"] or not isinstance(grant["granted_by"], str) or not grant["granted_by"]:
+                    errors.append(f"{label}.granted needs turn_id and granted_by")
+                if replacement.get("uses_remaining") != 1:
+                    errors.append(f"{label} granted replacements apply once (uses_remaining 1)")
+                if replacement.get("target_object_id") != grant["target_object"]:
+                    errors.append(f"{label}.target_object_id must equal granted.target_object")
         if replacement.get("mode") not in {"prevent_event", "replace_with", "augment_with", "reduce_damage"}:
             errors.append(f"{label}.mode is unsupported")
         if replacement.get("event_op") not in SUPPORTED_OPS:
@@ -426,9 +458,10 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"{label}.reduce_damage may only replace deal_damage")
             if not isinstance(replacement.get("prevent_remaining"), int) or replacement.get("prevent_remaining", 0) <= 0:
                 errors.append(f"{label}.prevent_remaining must be a positive integer")
-        source_places = occupancy.get(replacement.get("source_object"), [])
-        if source_places and not any(place.startswith("battlefield:") or place.endswith(":base") for place in source_places):
-            errors.append(f"{label}.source_object must be active on the board")
+        if "source_object" in replacement:
+            source_places = occupancy.get(replacement.get("source_object"), [])
+            if source_places and not any(place.startswith("battlefield:") or place.endswith(":base") for place in source_places):
+                errors.append(f"{label}.source_object must be active on the board")
     return errors
 
 
@@ -566,7 +599,7 @@ def validate_program(program: Any) -> list[str]:
     return errors
 
 
-MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall"}
+MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage"}
 SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might"}
 
 
@@ -840,11 +873,25 @@ def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
         state["battlefields"][location[1]]["objects"].remove(object_id)
 
 
+def replacement_active(state: dict[str, Any], replacement: dict[str, Any]) -> bool:
+    """Source-backed: the source is on the board. Granted: the target still
+    exists on the board with the identity it had when granted (ADR-0007 §12);
+    a used-up granted replacement is gone."""
+    if "granted" in replacement:
+        grant = replacement["granted"]
+        target = grant["target_object"]
+        if replacement.get("uses_remaining") == 0:
+            return False
+        return (target in state["objects"] and zone_class(find_location(state, target)) == "board"
+                and object_identity(state, target) == grant["target_identity"])
+    return zone_class(find_location(state, replacement["source_object"])) == "board"
+
+
 def _prune_inactive_replacements(state: dict[str, Any]) -> list[str]:
     removed = []
     active = []
     for replacement in state["replacement_effects"]:
-        if zone_class(find_location(state, replacement["source_object"])) == "board":
+        if replacement_active(state, replacement):
             active.append(replacement)
         else:
             removed.append(replacement["replacement_id"])
@@ -862,6 +909,8 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any]) -> l
         if replacement["uses_remaining"] == 0:
             continue
         if replacement["mode"] == "reduce_damage" and replacement.get("prevent_remaining", 0) <= 0:
+            continue
+        if "granted" in replacement and not replacement_active(state, replacement):
             continue
         required_object = replacement.get("target_object_id")
         if required_object is not None and required_object != object_id:
@@ -1137,6 +1186,50 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
                       "completion": "full" if len(objects) == requested else ("partial" if objects else "none")})
         if not objects:
             trace["outcome"] = "no_op"
+
+    elif op == "heal_all_damage":
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("heal_all_damage requires a known object")
+        before = new_state["objects"][object_id]["damage"]
+        new_state["objects"][object_id]["damage"] = 0
+        trace.update({"object_id": object_id, "before": before, "after": 0})
+        if before == 0:
+            trace["outcome"] = "no_op"
+
+    elif op == "grant_replacement":
+        # ADR-0007 §12 (Highlander): "Choose a friendly unit. The next time it
+        # would die this turn, ... instead." creates a replacement bound to the
+        # chosen object's identity, once, for this turn; the spell itself is
+        # gone by then, so the replacement is granted, not source-backed.
+        object_id, spec, controller = effect.get("object_id"), effect.get("replacement"), effect.get("controller")
+        if object_id not in new_state["objects"] or not isinstance(spec, dict) or controller not in new_state["players"]:
+            raise ValueError("grant_replacement requires a known object, a replacement spec and a controller")
+        if zone_class(find_location(new_state, object_id)) != "board":
+            raise IllegalOperation(f"grant_replacement applies only to a board object; {object_id!r} is not on the board")
+        if not isinstance(effect.get("granted_by"), str) or not effect.get("granted_by"):
+            raise ValueError("grant_replacement requires granted_by")
+
+        def bind_target(value):
+            if isinstance(value, dict):
+                return {k: bind_target(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [bind_target(v) for v in value]
+            return object_id if value == "$granted_target" else value
+
+        granted = {
+            "replacement_id": spec.get("replacement_id") or f"granted:{effect.get('granted_by')}:{object_id}",
+            "controller": controller, "mode": spec.get("mode"), "event_op": spec.get("event_op"), "optional": bool(spec.get("optional", False)),
+            "uses_remaining": 1, "target_object_id": object_id,
+            "granted": {"target_object": object_id, "target_identity": object_identity(new_state, object_id) or f"{object_id}@0", "duration": "this_turn",
+                        "turn_id": new_state.get("turn_id", DEFAULT_TURN_ID), "granted_by": effect["granted_by"]},
+        }
+        if spec.get("replacement_effects") is not None:
+            granted["replacement_effects"] = bind_target(copy.deepcopy(spec["replacement_effects"]))
+        if any(r["replacement_id"] == granted["replacement_id"] for r in new_state["replacement_effects"]):
+            raise ValueError(f"replacement {granted['replacement_id']!r} already exists")
+        new_state["replacement_effects"].append(granted)
+        trace.update({"object_id": object_id, "replacement_id": granted["replacement_id"], "granted": copy.deepcopy(granted["granted"])})
 
     elif op == "grant_turn_effect":
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
@@ -2022,7 +2115,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                     "program_id": f"augmentation-extra:{replacement_id}:{program['program_id']}:{effect_id}",
                     "controller": replacement["controller"],
-                    "source_object": replacement["source_object"],
+                    **({"source_object": replacement["source_object"]} if "source_object" in replacement else {}),
                     "effects": augmentation_effects,
                 }
                 augmentation_result = apply_program(original_result["next_state"], augmentation_program, _replacement_depth=_replacement_depth + 1)
@@ -2034,9 +2127,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                         "replacement_id": replacement_id, "replacement_result": augmentation_result, "trace": trace,
                     }
                 current = augmentation_result["next_state"]
-                source_location = find_location(current, replacement["source_object"])
+                source_still_active = replacement_active(current, stored_replacement)
                 active_uses = stored_replacement.get("uses_remaining") is None or stored_replacement.get("uses_remaining", 0) > 0
-                if zone_class(source_location) == "board" and active_uses:
+                if source_still_active and active_uses:
                     current["replacement_effects"].insert(min(replacement_index, len(current["replacement_effects"])), stored_replacement)
                 if found := validate_state(current):
                     return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": found, "trace": trace}
@@ -2091,8 +2184,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             del recursive_state["replacement_effects"][replacement_index]
             if replacement["mode"] == "reduce_damage" and not replacement_program_effects:
                 current = recursive_state
-                source_location = find_location(current, replacement["source_object"])
-                if zone_class(source_location) == "board" and stored_replacement.get("prevent_remaining", 0) > 0:
+                if replacement_active(current, stored_replacement) and stored_replacement.get("prevent_remaining", 0) > 0:
                     current["replacement_effects"].insert(min(replacement_index, len(current["replacement_effects"])), stored_replacement)
                 event.update({
                     "outcome": "replaced_prevented",
@@ -2113,7 +2205,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                 "program_id": f"replacement:{replacement_id}:{program['program_id']}:{effect_id}",
                 "controller": replacement["controller"],
-                "source_object": replacement["source_object"],
+                **({"source_object": replacement["source_object"]} if "source_object" in replacement else {}),
                 "effects": replacement_program_effects,
             }
             recursive_result = apply_program(recursive_state, recursive_program, _replacement_depth=_replacement_depth + 1)
@@ -2130,9 +2222,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "trace": trace,
                 }
             current = recursive_result["next_state"]
-            source_location = find_location(current, replacement["source_object"])
             replacement_still_active = replacement["mode"] != "reduce_damage" or stored_replacement.get("prevent_remaining", 0) > 0
-            if zone_class(source_location) == "board" and replacement_still_active:
+            if replacement_active(current, stored_replacement) and replacement_still_active:
                 current["replacement_effects"].insert(min(replacement_index, len(current["replacement_effects"])), stored_replacement)
             if found := validate_state(current):
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": found, "trace": trace}

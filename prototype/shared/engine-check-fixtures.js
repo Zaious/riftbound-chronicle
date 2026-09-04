@@ -164,7 +164,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "bonus_damage",
             "instruction_conditions",
             "move_triggers",
-            "private_discard"
+            "private_discard",
+            "granted_replacements"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -301,7 +302,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "bonus_damage",
             "instruction_conditions",
             "move_triggers",
-            "private_discard"
+            "private_discard",
+            "granted_replacements"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",

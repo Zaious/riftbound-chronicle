@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:96b638771ca7a27500c02aa3",
-  "capability_set_id": "sha256:96b638771ca7a27500c02aa3c431f5ce3baf7704ac3fac42027118dd773a0a3e",
+  "manifest_id": "capability-manifest:7571d58cae7ea39e7b39da09",
+  "capability_set_id": "sha256:7571d58cae7ea39e7b39da0970147cf8bd9e232cf3fe802dcac94ac26d362318",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:f70593dc20fa016006696fbea586fcdebc5a3b31393f3668b3abef71a0e1b8eb",
+    "value": "sha256:6e3333a9390235c028ba4d160bd2365d0a621659c189e92b0cb3d8a85a2d4e73",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:c46965ca05cec7774c91ddf44aefd65de26da7dcd5167a669c8d9a9ddde100fd"
+        "sha256": "sha256:58a2f168aaa2393c8bd4bb5a4c5dcc008e47bfc8c2cd9eceda78d9e3ac077077"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:a7c17fa14fd29572866fe931eb9f11c27ee6ed5815b08f245ad6200574448ef5"
+        "sha256": "sha256:22c8b0bd5ca25a696f4a6ed11a3c1be846db494a19bc77062af3d5b7db6301ad"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:7cc702d01e8f27d9c8b1e52ccac0d1f17be690a18cd69e8fddf503b285329a79"
+        "sha256": "sha256:792abbf7579c286a3ecaa3a9e2611bc994f945489f0fc99907a678ed7ae3499b"
       }
     ]
   },
@@ -63,7 +63,8 @@
         "bonus_damage",
         "instruction_conditions",
         "move_triggers",
-        "private_discard"
+        "private_discard",
+        "granted_replacements"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -226,10 +227,25 @@
       ]
     },
     {
+      "id": "grant_replacement",
+      "rule_locators": [
+        "Core 370",
+        "Core 355.10.c",
+        "Core 124",
+        "Core 317.2.c"
+      ]
+    },
+    {
       "id": "grant_turn_effect",
       "rule_locators": [
         "Core 369.3",
         "Core 317.2.c"
+      ]
+    },
+    {
+      "id": "heal_all_damage",
+      "rule_locators": [
+        "Core 418"
       ]
     },
     {
@@ -485,6 +501,15 @@
       ]
     },
     {
+      "id": "granted_replacements",
+      "rule_locators": [
+        "Core 370–373",
+        "Core 355.10.c",
+        "Core 124",
+        "Core 317.2.c"
+      ]
+    },
+    {
       "id": "instruction_conditions",
       "rule_locators": [
         "Core 135.2.b.5.a",
@@ -612,6 +637,7 @@
     "Core 355.1.a",
     "Core 355.10.a",
     "Core 355.10.b",
+    "Core 355.10.c",
     "Core 355.10.d",
     "Core 355.1–355.17",
     "Core 355.2.a–355.2.b",
@@ -637,6 +663,7 @@
     "Core 364.3",
     "Core 365.1",
     "Core 369.3",
+    "Core 370",
     "Core 370–373",
     "Core 375",
     "Core 383.1",

@@ -1,0 +1,14 @@
+{
+  "schema_version": "engine-decisions.v1",
+  "input_hash": "sha256:678057cb7f7a3a64d804eee261a897de9c64f9cdcd5999032ca3bb53d6e4bba3",
+  "decisions": [
+    {
+      "decision_id": "keeper-optional",
+      "stage": "play_declaration",
+      "kind": "optional_choice",
+      "controller": "p1",
+      "value": true,
+      "provenance": "example: the controller chooses to pay the optional exhaust cost"
+    }
+  ]
+}

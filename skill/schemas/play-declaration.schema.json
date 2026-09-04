@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/play-declaration.schema.json",
+  "title": "Chronicle Play Declaration v1",
+  "description": "ADR-0005 §4: what a player declares when playing a card — the card, the chain item it becomes, and the typed cost context (Core 355–357). Optional-cost intent is not declared here; it arrives as an engine-decisions.v1 optional_choice at play_declaration stage, so the receipt can prove who chose it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ruleset", "play_id", "actor", "card", "chain_item", "cost"],
+  "properties": {
+    "schema_version": {"const": "riftbound-play-declaration.v1"},
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {"core": {"const": "2026-07-16"}, "faq_as_of": {"const": "2026-08-14"}}
+    },
+    "play_id": {"type": "string", "minLength": 1},
+    "actor": {"type": "string", "minLength": 1},
+    "card": {"type": "string", "minLength": 1, "description": "object id of the card in the actor's hand"},
+    "effect_program_id": {"type": "string", "minLength": 1},
+    "chain_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "object_kind", "timing"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "object_kind": {"enum": ["spell", "unit", "gear"]},
+        "timing": {"enum": ["default", "action", "reaction"]},
+        "ability_kind": {"enum": ["standard", "add", null]}
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base"],
+      "properties": {
+        "base": {"$ref": "#/$defs/resourceCost"},
+        "base_modifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {"enum": ["for_cost", "ignore_energy", "ignore_power", "ignore_all"]},
+              "cost": {"$ref": "#/$defs/resourceCost"},
+              "source": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "additional": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cost_id", "mandatory", "payment"],
+            "properties": {
+              "cost_id": {"type": "string", "minLength": 1},
+              "mandatory": {"type": "boolean"},
+              "payment": {
+                "type": "object",
+                "required": ["kind"],
+                "properties": {
+                  "kind": {"type": "string", "minLength": 1},
+                  "amount": {"type": "integer", "minimum": 0},
+                  "domain": {"type": "string", "minLength": 1},
+                  "object_id": {"type": "string", "minLength": 1}
+                }
+              },
+              "source": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "increases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "component", "amount"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "component": {"type": "string", "pattern": "^(energy|power:.+)$"},
+              "amount": {"type": "integer", "minimum": 1},
+              "source": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "discounts": {
+          "type": "array",
+          "description": "Applied in declared order within each class; component discounts before total discounts (Core 356.4.c–356.4.d); each minimum applies only to its own discount (356.4.e).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "applies_to", "amount"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "applies_to": {"type": "string", "pattern": "^(energy|power:.+|total|optional_additional)$"},
+              "amount": {"type": "integer", "minimum": 1},
+              "minimum": {"type": "integer", "minimum": 0},
+              "source": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "total_modifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {"enum": ["ignore_any_and_all"]},
+              "source": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "resourceCost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["energy", "power"],
+      "properties": {
+        "energy": {"type": "integer", "minimum": 0},
+        "power": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+      }
+    }
+  }
+}

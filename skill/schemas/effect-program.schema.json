@@ -17,6 +17,7 @@
       }
     },
     "program_id": {"type": "string", "minLength": 1},
+    "cost_receipt": {"$ref": "play-result.schema.json#/$defs/costReceipt"},
     "controller": {"type": "string", "minLength": 1},
     "source_object": {"type": "string", "minLength": 1},
     "effects": {
@@ -28,6 +29,16 @@
         "properties": {
           "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive"]},
           "effect_id": {"type": "string", "minLength": 1},
+          "predicate": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {"enum": ["cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill"]},
+              "cost_id": {"type": "string", "minLength": 1},
+              "effect_id": {"type": "string", "minLength": 1}
+            }
+          },
           "depends_on": {"type": "string", "minLength": 1},
           "dependency_mode": {"enum": ["if_applied", "always"]},
           "replacement_order": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},

@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:f7364f306c1b07dd2b4231ac",
-  "capability_set_id": "sha256:f7364f306c1b07dd2b4231ace4e91fe243512be954dfb92357aa3fd03bbaf2e8",
+  "manifest_id": "capability-manifest:6fcdcdeb4b4104cb80a496a6",
+  "capability_set_id": "sha256:6fcdcdeb4b4104cb80a496a6306ea56c5c1e9cc00650cc4b109be94709dfaef6",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:5d19bc935a87841a80392f189aba2e8a9819a5233ec1a2f0225fe0d346c61cfd",
+    "value": "sha256:69405f2c0db11342877bd6ccfa34f289df22cbc425b619c67068df3bedb7dc9d",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:e9e75c36a25140787b61e50254cd8bd7dcb51b5889b86a678b7d58826355244a"
+        "sha256": "sha256:8454971cbe98b37260150ae4b3c0c473a77c6c267b53a6b3e57a1e7ea3958a66"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:37474215dd03c23abcecf2be3b1c12e1a59091f8216423862ff01b6ff8841c23"
+        "sha256": "sha256:cc032bab325f0f4442fd91b637364b9f07ed24498afba7b16ef96505eca31131"
       }
     ]
   },
@@ -84,6 +84,26 @@
         "cost_checks",
         "target_checks",
         "effect_prerequisites",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "play",
+      "name": "play_transaction",
+      "version": "riftbound-play-result.v1",
+      "coverage_id": "play_transaction_v1",
+      "supported_scope": [
+        "atomic_play_transaction",
+        "typed_cost_payment",
+        "optional_cost_receipt",
+        "cost_predicates",
+        "engine_decisions"
+      ],
+      "unsupported_scope": [
+        "reaction_add_abilities_during_payment",
+        "cost_modification_sources",
+        "non_standard_costs_beyond_exhaust_kill",
         "complete_game",
         "complete_legality"
       ]
@@ -301,6 +321,20 @@
   ],
   "features": [
     {
+      "id": "atomic_play_transaction",
+      "rule_locators": [
+        "Core 354–358",
+        "Core 358.5"
+      ]
+    },
+    {
+      "id": "cost_predicates",
+      "rule_locators": [
+        "Core 356.4.f.1",
+        "Core 359.3.e.14"
+      ]
+    },
+    {
       "id": "engine_decisions",
       "rule_locators": [
         "Core 355.1–355.17",
@@ -313,6 +347,21 @@
       "rule_locators": [
         "Core 124–124.1",
         "Core 359.3.e.4"
+      ]
+    },
+    {
+      "id": "optional_cost_receipt",
+      "rule_locators": [
+        "Core 355.1.a",
+        "Core 356.2.b.1",
+        "Core 356.4.f.1"
+      ]
+    },
+    {
+      "id": "typed_cost_payment",
+      "rule_locators": [
+        "Core 356.1–356.7",
+        "Core 357.1–357.2.a"
       ]
     },
     {
@@ -358,9 +407,17 @@
     "Core 347.1",
     "Core 347.2",
     "Core 349",
+    "Core 354–358",
+    "Core 355.1.a",
     "Core 355.1–355.17",
     "Core 355.7–355.10.d.2",
+    "Core 356.1–356.7",
+    "Core 356.2.b.1",
+    "Core 356.4.f.1",
+    "Core 357.1–357.2.a",
     "Core 358.4",
+    "Core 358.5",
+    "Core 359.3.e.14",
     "Core 359.3.e.1–359.3.e.10",
     "Core 359.3.e.4",
     "Core 370–373",
@@ -394,10 +451,13 @@
     "complete_game",
     "complete_legality",
     "cost_checks",
+    "cost_modification_sources",
     "effect_prerequisites",
     "engine_enumeration",
     "full_cleanup",
     "multi_descriptor_replacement",
+    "non_standard_costs_beyond_exhaust_kill",
+    "reaction_add_abilities_during_payment",
     "scoring",
     "target_checks"
   ],

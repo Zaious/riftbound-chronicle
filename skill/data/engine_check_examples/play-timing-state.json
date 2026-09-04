@@ -1,0 +1,29 @@
+{
+  "schema_version": "riftbound-rules-core-state.v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "players": [
+    "p1",
+    "p2"
+  ],
+  "turn_order": [
+    "p1",
+    "p2"
+  ],
+  "turn_player": "p1",
+  "phase": "main",
+  "showdown": {
+    "active": false,
+    "kind": null,
+    "focus": null
+  },
+  "priority": "p1",
+  "outstanding_tasks": [],
+  "chain": {
+    "initiated_by": null,
+    "items": [],
+    "consecutive_passes": []
+  }
+}

@@ -22,6 +22,18 @@ PROGRAM_VERSION = "riftbound-effect-program.v1"
 CORE_RULESET = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
+# The chain is where a card sits between being played and resolving (Core 328).
+# Optional on the state so every state written before C-15 stays valid.
+OPTIONAL_PLAYER_ZONES = {"chain"}
+PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
+IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid"}
+COST_RECEIPT_VERSION = "riftbound-cost-receipt.v1"
+# The chain is where a card sits between being played and resolving (Core 328).
+# Optional on the state so every state written before C-15 stays valid.
+OPTIONAL_PLAYER_ZONES = {"chain"}
+PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
+IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid"}
+COST_RECEIPT_VERSION = "riftbound-cost-receipt.v1"
 OBJECT_KINDS = {"unit", "gear", "spell", "rune"}
 SUPPORTED_OPS = {
     "draw",
@@ -131,8 +143,8 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"players.{player_id} must be an object")
             continue
         zones = player.get("zones")
-        if not isinstance(zones, dict) or set(zones) != PLAYER_ZONES:
-            errors.append(f"players.{player_id}.zones must contain exactly {sorted(PLAYER_ZONES)}")
+        if not isinstance(zones, dict) or set(zones) - OPTIONAL_PLAYER_ZONES != PLAYER_ZONES:
+            errors.append(f"players.{player_id}.zones must contain exactly {sorted(PLAYER_ZONES)} (plus optionally {sorted(OPTIONAL_PLAYER_ZONES)})")
             continue
         for zone, ids in zones.items():
             if not isinstance(ids, list) or len(ids) != len(set(ids)):
@@ -258,6 +270,7 @@ def validate_program(program: Any) -> list[str]:
         errors.append("program ruleset must match the R2 v1 baseline")
     if not isinstance(program.get("program_id"), str) or not program.get("program_id"):
         errors.append("program_id must be non-empty")
+    errors.extend(_receipt_errors(program.get("cost_receipt")))
     effects = program.get("effects")
     if not isinstance(effects, list) or not effects:
         errors.append("effects must be a non-empty array")
@@ -277,6 +290,9 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].depends_on must reference an earlier effect")
             if effect.get("dependency_mode", "if_applied") not in {"if_applied", "always"}:
                 errors.append(f"effects[{index}].dependency_mode is invalid")
+            predicate = effect.get("predicate")
+            if predicate is not None:
+                errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt")))
             modifiers = effect.get("event_modifiers")
             if modifiers is not None:
                 if effect.get("op") != "play_token" or not isinstance(modifiers, dict) or not modifiers or set(modifiers) - {"entry_state", "result_keywords"}:
@@ -355,7 +371,7 @@ def _selector_errors(selector: Any) -> list[str]:
         errors.append("must identify an object or defer to a decision_ref")
     if selector.get("chosen_zone_class") not in {"board", "non_board"}:
         errors.append("chosen_zone_class is required")
-    if "location" in selector and selector["location"] not in {"board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck"}:
+    if "location" in selector and selector["location"] not in {"board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck", "chain"}:
         errors.append("location is invalid")
     if "controller_relation" in selector and selector["controller_relation"] not in {"friendly", "enemy"}:
         errors.append("controller_relation is invalid")
@@ -368,6 +384,44 @@ def _selector_errors(selector: Any) -> list[str]:
     if "max_might" in selector and (not isinstance(selector["max_might"], int) or selector["max_might"] < 0):
         errors.append("max_might must be a non-negative integer")
     return errors
+
+
+def _receipt_errors(receipt: Any) -> list[str]:
+    if receipt is None:
+        return []
+    if not isinstance(receipt, dict) or receipt.get("schema_version") != COST_RECEIPT_VERSION:
+        return [f"cost_receipt must be a {COST_RECEIPT_VERSION} object"]
+    components = receipt.get("components")
+    if not isinstance(components, list) or any(not isinstance(c, dict) or not isinstance(c.get("cost_id"), str) or not isinstance(c.get("paid"), bool) for c in components):
+        return ["cost_receipt.components must carry cost_id and paid"]
+    return []
+
+
+def _predicate_errors(predicate: Any, receipt: Any) -> list[str]:
+    """ADR-0005 §5: named predicates, not one ambiguous negative dependency.
+    A cost predicate must name a component of the program's receipt; an
+    unknown id is invalid_input. Recognized-but-unimplemented kinds validate
+    here and answer `unsupported` at execution."""
+    if not isinstance(predicate, dict) or predicate.get("kind") not in PREDICATE_KINDS or set(predicate) - {"kind", "cost_id", "effect_id"}:
+        return ["must carry a known kind"]
+    if predicate["kind"] in {"cost_paid", "cost_not_paid"}:
+        if not isinstance(predicate.get("cost_id"), str) or not predicate["cost_id"]:
+            return ["cost_id is required for cost predicates"]
+        if receipt is None:
+            return ["needs the program's cost_receipt"]
+        if predicate["cost_id"] not in {c.get("cost_id") for c in receipt.get("components", [])}:
+            return [f"cost_id {predicate['cost_id']!r} is not on the receipt"]
+    return []
+
+
+def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None) -> tuple[bool | None, list[str]]:
+    """Returns (holds, locators); holds is None when the kind is not implemented."""
+    kind = predicate["kind"]
+    if kind not in IMPLEMENTED_PREDICATES:
+        return None, []
+    component = next(c for c in receipt["components"] if c["cost_id"] == predicate["cost_id"])
+    paid = bool(component["paid"])
+    return (paid if kind == "cost_paid" else not paid), ["Core 356.4.f.1", "Core 356.2.b.1"]
 
 
 def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str | None] | None:
@@ -1107,6 +1161,24 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     for index, effect in enumerate(program["effects"]):
         before_hash = hash_value(current)
         effect_id = effect.get("effect_id", f"effect-{index}")
+        predicate = effect.get("predicate")
+        if predicate is not None:
+            holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"))
+            if holds is None:
+                return {
+                    **base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                    "reason": f"predicate kind {predicate['kind']!r} is recognized but not implemented", "trace": trace,
+                }
+            if not holds:
+                event = {
+                    "index": index, "effect_id": effect_id, "op": effect["op"],
+                    "outcome": "skipped_linked_dependency", "predicate": copy.deepcopy(predicate), "predicate_result": False,
+                    "completion": "none", "rule_locators": predicate_locators + ["Core 359.3.e.14"],
+                    "before_state_hash": before_hash, "after_state_hash": before_hash,
+                }
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
         dependency = effect.get("depends_on")
         if dependency is not None and effect.get("dependency_mode", "if_applied") == "if_applied" and outcomes.get(dependency) != "applied":
             event = {

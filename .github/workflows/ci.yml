@@ -153,6 +153,12 @@ jobs:
       - name: Engine decisions, typed selectors, object identity and mistarget traces
         run: python3 skill/scripts/check_engine_decisions.py
 
+      # ADR-0005 C-15: the play transaction is atomic — every failure after
+      # payment restores the pre-play state — and the cost receipt is the only
+      # evidence a cost predicate may test.
+      - name: Atomic play transaction, typed cost receipts, cost predicates
+        run: python3 skill/scripts/check_play_transaction.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -214,6 +220,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_r3a1_ledger.py"
           python3 "$REPO/skill/scripts/check_deck_coach_engine_intake.py"
           python3 "$REPO/skill/scripts/check_engine_decisions.py"
+          python3 "$REPO/skill/scripts/check_play_transaction.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

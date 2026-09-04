@@ -243,6 +243,40 @@ instruction gate: if the earlier instruction was ignored or a no-op, the later
 instruction records `skipped_linked_dependency`. This does not yet model every
 English linking template; card programs must cite and test the exact wording.
 
+## Costs and the play transaction
+
+Playing a card is one atomic transaction (`play_transaction.py`, engine-check
+kind `play`): choices (Core 355), total-cost determination (356), payment
+(357), legality and chain insertion through the timing kernel (358). Any
+failure restores the pre-play state — the result's next hashes equal its input
+hashes and the trace ends in `rolled_back` (358.5). A committed play returns
+both next states, the pending chain item, and a **cost receipt**.
+
+Costs are typed `cost_payment` records, not effects with a `cost: true`
+flag. The declaration states base cost, base modifications (356.1),
+additional costs marked mandatory or optional (356.2), increases (356.3),
+discounts (356.4 — component discounts before total discounts, each
+minimum its own), and total modifications (356.5); the engine applies them
+and floors at zero (356.6). Energy and Power are paid from the player's
+pool (357.1); exhaust and kill costs are paid through the ordinary
+operations with a friendly-only selector (357.2), and a payment a replacement
+effect prevents still counts as paid (357.2.a). Other non-standard costs are
+`unsupported` by name.
+
+An optional cost's intent is an `optional_choice` decision at
+`play_declaration` stage, owned by the card's controller; without it the play
+is `decision_required` (kind `cost_choice`). The receipt records that intent
+per component, and `paid` for an optional cost is that decision — a cost
+discounted to zero is still paid (356.4.f.1). An unpayable supported cost is
+`illegal`.
+
+A program may carry the receipt as `cost_receipt` and gate an instruction
+with `predicate: {kind: cost_paid | cost_not_paid, cost_id}` — "If you do"
+and "Otherwise" test the receipt, not whether a later instruction happened.
+A predicate that does not hold records `skipped_linked_dependency` with the
+predicate; an unknown `cost_id` is `invalid_input`; the other named
+predicate kinds validate but answer `unsupported` until C-17.
+
 ## Execution model
 
 An effect program is an ordered list. The interpreter executes it on a copied

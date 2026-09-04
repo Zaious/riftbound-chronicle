@@ -41,6 +41,7 @@ EXPECTED = {
     ("resolution", "closed-timing-state.json"): "supported",
     ("cleanup", "cleanup-state.json"): "decision_required",
     ("cleanup", "cleanup-state.json", "--cleanup-decisions"): "supported",
+    ("play", "play-timing-state.json"): "supported",
 }
 
 

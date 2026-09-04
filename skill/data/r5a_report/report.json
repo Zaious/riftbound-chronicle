@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:f7364f306c1b07dd2b4231ac",
-    "capability_set_id": "sha256:f7364f306c1b07dd2b4231ace4e91fe243512be954dfb92357aa3fd03bbaf2e8",
-    "implementation_identity": "sha256:5d19bc935a87841a80392f189aba2e8a9819a5233ec1a2f0225fe0d346c61cfd",
+    "manifest_id": "capability-manifest:6fcdcdeb4b4104cb80a496a6",
+    "capability_set_id": "sha256:6fcdcdeb4b4104cb80a496a6306ea56c5c1e9cc00650cc4b109be94709dfaef6",
+    "implementation_identity": "sha256:69405f2c0db11342877bd6ccfa34f289df22cbc425b619c67068df3bedb7dc9d",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -40,6 +40,22 @@
       {
         "path": "data/engine_check_examples/effect-state.json",
         "sha256": "sha256:8ea8c01aea0fa085f5f96e2f251c783a4bbc1c5df95548ff0d893e5c229b361a"
+      },
+      {
+        "path": "data/engine_check_examples/play-decisions.json",
+        "sha256": "sha256:cbbd4a2af69d682bd09f253ed92788a8c016eb2e2fdc3cb471f6bf49da5b8b25"
+      },
+      {
+        "path": "data/engine_check_examples/play-declaration.json",
+        "sha256": "sha256:42870b8fef69198bcc888b7678a7fbd5a6bbee233790704c468ea79b8175ce37"
+      },
+      {
+        "path": "data/engine_check_examples/play-effect-state.json",
+        "sha256": "sha256:de497b60663b82f9180bb219f2c51e606bbdc195b6ec8afa65045e5e30ae2a5a"
+      },
+      {
+        "path": "data/engine_check_examples/play-timing-state.json",
+        "sha256": "sha256:4ae29989112ed9611435df53c497e1e6ecd0d749630974b0c0ca5d181c125acd"
       },
       {
         "path": "data/engine_check_examples/proposed-action.json",
@@ -108,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 60,
+    "declared_locators": 68,
     "exactly_cited_declared_locators": 27,
-    "exact_ratio": 0.45,
+    "exact_ratio": 0.3971,
     "exact_matches": [
       "Core 308.1.a",
       "Core 309.1.a",
@@ -153,8 +169,16 @@
       "Core 338–339",
       "Core 347",
       "Core 349",
+      "Core 354–358",
+      "Core 355.1.a",
       "Core 355.1–355.17",
       "Core 355.7–355.10.d.2",
+      "Core 356.1–356.7",
+      "Core 356.2.b.1",
+      "Core 356.4.f.1",
+      "Core 357.1–357.2.a",
+      "Core 358.5",
+      "Core 359.3.e.14",
       "Core 359.3.e.1–359.3.e.10",
       "Core 359.3.e.4",
       "Core 370–373",
@@ -689,5 +713,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:3e17fd68596c6e3cdad1189780d3937fc69d395a05733a2c46be058e21564818"
+  "report_hash": "sha256:48484a390b8b421e3c4c864c4e96eecc7dfa6f2a3cbc2c31bd93806107981ec3"
 }

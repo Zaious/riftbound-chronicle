@@ -71,6 +71,9 @@ python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py cleanup cleanup-state.json `
 python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py cleanup cleanup-state.json `
   --cleanup-decisions cleanup-decisions.json --output resolved-cleanup-check.json
 
+python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py play play-timing-state.json `
+  play-effect-state.json play-declaration.json --decisions play-decisions.json `
+  --output play-check.json
 python ${CLAUDE_SKILL_DIR}/scripts/engine_check.py validate cleanup-check.json
 ```
 

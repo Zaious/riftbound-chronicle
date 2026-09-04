@@ -1,0 +1,92 @@
+{
+  "schema_version": "riftbound-effect-state.v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "players": {
+    "p1": {
+      "zones": {
+        "main_deck": [
+          "c2"
+        ],
+        "hand": [
+          "c1"
+        ],
+        "trash": [],
+        "banishment": [],
+        "base": [
+          "u1"
+        ],
+        "rune_deck": []
+      },
+      "resources": {
+        "energy": 3,
+        "power": {
+          "fury": 1
+        }
+      }
+    },
+    "p2": {
+      "zones": {
+        "main_deck": [],
+        "hand": [],
+        "trash": [],
+        "banishment": [],
+        "base": [
+          "u2"
+        ],
+        "rune_deck": []
+      },
+      "resources": {
+        "energy": 0,
+        "power": {}
+      }
+    }
+  },
+  "objects": {
+    "c1": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "spell",
+      "base_might": 0,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "c2": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "spell",
+      "base_might": 0,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "u1": {
+      "owner": "p1",
+      "controller": "p1",
+      "kind": "unit",
+      "base_might": 3,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    },
+    "u2": {
+      "owner": "p2",
+      "controller": "p2",
+      "kind": "unit",
+      "base_might": 4,
+      "might_modifiers": [],
+      "damage": 0,
+      "exhausted": false
+    }
+  },
+  "battlefields": {
+    "bf1": {
+      "controller": null,
+      "objects": []
+    }
+  },
+  "replacement_effects": []
+}

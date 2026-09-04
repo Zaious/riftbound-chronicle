@@ -45,7 +45,8 @@
         "trash": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
         "banishment": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
         "base": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "rune_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+        "rune_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "chain": {"type": "array", "uniqueItems": true, "items": {"type": "string"}, "description": "Cards played and not yet resolved (Core 328). Optional; absent means empty."}
       }
     },
     "player": {

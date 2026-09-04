@@ -21,6 +21,7 @@ from effect_ir import (
     perform_lethal_cleanup,
 )
 from engine_decisions import DECISIONS_VERSION as ENGINE_DECISIONS_VERSION, validate_engine_decisions
+from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card
 from resolution_bridge import CLEANUP_DECISION_VERSION, resolve_with_program, validate_cleanup_decisions
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
@@ -37,6 +38,11 @@ FEATURE_RULES = {
     "typed_selectors": ["Core 108.6.e", "Core 355.7–355.10.d.2", "Core 359.3.e.1–359.3.e.10"],
     "object_identity": ["Core 124–124.1", "Core 359.3.e.4"],
     "engine_decisions": ["Core 355.1–355.17", "Core 370–373", "Core 402–402.1"],
+    # C-15 (ADR-0005 §4–5): the play transaction and its receipt.
+    "atomic_play_transaction": ["Core 354–358", "Core 358.5"],
+    "typed_cost_payment": ["Core 356.1–356.7", "Core 357.1–357.2.a"],
+    "optional_cost_receipt": ["Core 355.1.a", "Core 356.2.b.1", "Core 356.4.f.1"],
+    "cost_predicates": ["Core 356.4.f.1", "Core 359.3.e.14"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -67,6 +73,16 @@ KIND_CONFIG = {
     # against the timing kernel; it generates nothing, so enumeration and a
     # complete action set are declared unsupported here and pinned false in
     # legal-action-result.v1 itself.
+    # ADR-0005 §4. One transaction across choices, cost, payment, legality and
+    # chain insertion; rollback on any failure. Resource-adding reactions
+    # during payment (357.1.a) and the sources of cost modifications are not
+    # modelled — the declaration states them, the engine applies them.
+    "play": {
+        "component": ("play_transaction", PLAY_RESULT_VERSION),
+        "coverage": "play_transaction_v1",
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions"],
+        "unsupported": ["reaction_add_abilities_during_payment", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "complete_game", "complete_legality"],
+    },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
         "coverage": "legal_action_v1",
@@ -80,6 +96,7 @@ DECISION_REASON_CODES = {
     "trigger_order_required": "trigger_order",
     "effect_execution_confirmation_required": "effect_confirmation",
     "target_selection_required": "target_choice",
+    "optional_cost_intent_required": "cost_choice",
 }
 
 
@@ -208,6 +225,10 @@ def classify_outcome(kind: str, result: dict[str, Any]) -> tuple[str, dict[str, 
         return "illegal", None
     if kind == "resolution" and result.get("committed") is not True:
         return ("invalid_input" if result.get("stage") in {"program_binding", "cleanup_decision"} else "illegal"), None
+    if kind == "play" and result.get("committed") is not True:
+        # A well-formed play the rules refuse: unpayable cost, card not in
+        # hand, illegal target at play, or the timing kernel's verdict.
+        return "illegal", None
     if result.get("applied") is False:
         return "illegal", None
     if kind in {"effect", "cleanup"} and result.get("committed") is not True:
@@ -430,6 +451,19 @@ def run_cleanup(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str
     return result, hashes
 
 
+def run_play(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
+    timing_state, effect_state, declaration = load_object(args.timing_state), load_object(args.effect_state), load_object(args.declaration)
+    decisions = _engine_decisions(getattr(args, "decisions", None))
+    program = load_object(args.program) if args.program else None
+    result = play_card(timing_state, effect_state, declaration, engine_decisions=decisions, effect_program=program)
+    hashes = {"timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state), "play_declaration": canonical_hash(declaration)}
+    if decisions is not None:
+        hashes["engine_decisions"] = canonical_hash(decisions)
+    if program is not None:
+        hashes["effect_program"] = canonical_hash(program)
+    return result, hashes
+
+
 def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--decisions", type=Path, help="engine-decisions.v1 envelope (ADR-0005)")
     parser.add_argument("--include-raw", action="store_true")
@@ -460,7 +494,14 @@ def build_parser() -> argparse.ArgumentParser:
     cleanup = sub.add_parser("cleanup")
     cleanup.add_argument("state", type=Path)
     cleanup.add_argument("--cleanup-decisions", type=Path)
+
+    play = sub.add_parser("play")
+    play.add_argument("timing_state", type=Path)
+    play.add_argument("effect_state", type=Path)
+    play.add_argument("declaration", type=Path)
+    play.add_argument("--program", type=Path)
     add_common(cleanup)
+    add_common(play)
     validate = sub.add_parser("validate")
     validate.add_argument("artifact", type=Path)
     return parser
@@ -475,7 +516,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise EngineCheckError("; ".join(errors))
             print("OK: valid engine-check.v1")
             return 0
-        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup}[args.command]
+        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup, "play": run_play}[args.command]
         result, input_hashes = runner(args)
         check = build_engine_check(
             args.command,

@@ -343,7 +343,8 @@ gates remain `[CODEX-CONTEXT]`.
 Default ownership: `[JOINT]`. Pipeline/evaluation/UI work is
 `[CLAUDE-READY]` after Codex defines the behavior-coverage contract.
 
-- [ ] Consume `engine-check.v1` for verified timing/effect examples.
+- [x] Consume `engine-check.v1` for verified timing/effect examples as
+  rules-consistency evidence only; first wiring does not produce checks.
 - [x] Rename `card_resolution_coverage` to `card_lookup_coverage` and state that
   it measures card-database name matching, not rules-engine coverage.
 - [ ] `[JOINT]` Rename the separate top-level Deck Profile `resolution` block to
@@ -460,12 +461,12 @@ fixtures, projection formatting, and the demo.
 - [x] CI and off-cwd portability checks for active scripts.
 - [x] Three-language README connection tables with an artifact-derived CI gate
   that rejects both overstatement and understatement.
-- [ ] Shared engine-check viewer across the three active demos.
+- [x] Shared engine-check viewer across the three active demos.
 - [ ] Match Analyst demo and four-system navigation.
-- [ ] `[JOINT]` After each system satisfies the six connection conditions,
+- [x] `[JOINT]` After each active system satisfies the six connection conditions,
   update English, Traditional Chinese, and Korean READMEs from “partial/planned”
   to the exact implemented connection scope.
-- [ ] `[CLAUDE-READY after the first migration]` Extend documentation CI to
+- [x] `[CLAUDE-READY after the first migration]` Extend documentation CI to
   reject README connection claims that diverge from the system artifacts; the
   existing routed-mode sync check is not sufficient.
 - [ ] One bounded end-to-end example spanning Deck Coach → P2-A → Rule Consult
@@ -492,7 +493,7 @@ connection as partial or planned.
 | System | Conditions passed | Status |
 | --- | ---: | --- |
 | Rule Consult | 6 / 6 | Connected to `engine-check.v1`; official sources remain authoritative |
-| Deck Coach | 0 / 6 | Planned; engine terminology is now disambiguated |
+| Deck Coach | 6 / 6 | Connected consume-only; engine evidence remains rules consistency, never strategy quality |
 | Player 2 Agent P2-A | 6 / 6 | Connected with calibrated human verification; state and legality remain user-confirmed |
 | Match Analyst | 0 / 6 | Not implemented or routed |
 

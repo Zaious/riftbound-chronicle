@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:ce6d1701c5dcb0f9305071e5",
+  "manifest_id": "manifest:a87dbb3f811042eab16b5457",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -301,6 +301,184 @@
             "meditation#083ddaf7:missing_information"
           ],
           "notes": "C-18 derived: every fixture passed. text: Otherwise, draw 1. | rules: Core 356.2.b.1, Core 413"
+        }
+      ]
+    },
+    {
+      "card_key": "gust",
+      "canonical_name": "Gust",
+      "current_text_hash": "sha256:9523e4c354e3d14fd874342a05a91ba279d68a1dd204ce5a82e22474852c275c",
+      "printing_ids": [
+        "ogn-169-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "gust#e7a1971e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-169-298:e7a1971e",
+          "text_hash": "sha256:e7a1971e3b99c1af151f7cf4720b697a3692f10dd730b2172bfb6a69fe58a9be",
+          "status": "full",
+          "program_id": "play:gust#e7a1971e",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "gust#e7a1971e:positive",
+            "gust#e7a1971e:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: [Reaction] | rules: Core 807, Core 338.1.b"
+        },
+        {
+          "clause_id": "gust#e661650e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-169-298:e661650e",
+          "text_hash": "sha256:e661650e52d8c4e3d9987907bf17dbd86f50f4e131d64cd10ec8cc1228c20c72",
+          "status": "full",
+          "program_id": "gust#e661650e",
+          "implemented_ops": [
+            "return_to_hand"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "gust#e661650e:positive",
+            "gust#e661650e:negative",
+            "gust#e661650e:missing_information",
+            "gust#e661650e:target_invalidated"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand. | rules: Core 355.5, Core 355.9, Core 359.3.e.4, Core 124, Core 124.1, Core 446.2"
+        }
+      ]
+    },
+    {
+      "card_key": "morbid return",
+      "canonical_name": "Morbid Return",
+      "current_text_hash": "sha256:78ed41bcdc9152035d66d649a45138a6725a6c34d3e8adf72f67ca2147cd5edf",
+      "printing_ids": [
+        "ogn-170-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "morbid return#08866b32",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-170-298:08866b32",
+          "text_hash": "sha256:08866b329d28e545ce22c394ff4c5f8680b1e341536b3a62f0c14d767e8c258d",
+          "status": "full",
+          "program_id": "play:morbid return#08866b32",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "morbid return#08866b32:positive",
+            "morbid return#08866b32:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: [Action] | rules: Core 806"
+        },
+        {
+          "clause_id": "morbid return#f3c76e58",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-170-298:f3c76e58",
+          "text_hash": "sha256:f3c76e58aead65a6ffbe2fbed29198632782526fd69204a6d186972c500be1b8",
+          "status": "full",
+          "program_id": "morbid return#f3c76e58",
+          "implemented_ops": [
+            "return_to_hand"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "morbid return#f3c76e58:positive",
+            "morbid return#f3c76e58:negative",
+            "morbid return#f3c76e58:missing_information",
+            "morbid return#f3c76e58:target_invalidated"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: Return a unit from your trash to your hand. | rules: Core 355.5, Core 355.10.a, Core 355.9, Core 124, Core 359.3.e.2"
+        }
+      ]
+    },
+    {
+      "card_key": "highlander",
+      "canonical_name": "Highlander",
+      "current_text_hash": "sha256:a47d58f8cfa31b53b6147b56d141208e3e582380426d8cb2f8a3f63fdfdad88d",
+      "printing_ids": [
+        "ogs-020-024",
+        "opp-020-024"
+      ],
+      "behavior_status": "stale",
+      "clauses": [
+        {
+          "clause_id": "highlander#d659b2ba",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogs-020-024:d659b2ba",
+          "text_hash": "sha256:d659b2ba5d85ad67bfed2da3a9454c59e097745bb3d5813020d97aa18c80f742",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "target_choice"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: Choose a friendly unit. | rules: Core 355.5, Core 355.9"
+        },
+        {
+          "clause_id": "highlander#b9d95a9d",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogs-020-024:b9d95a9d",
+          "text_hash": "sha256:b9d95a9dd3beb80afaaa1ed253c9585049bd8c92178fe8e836e5995fee07bdb9",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "next_death_replacement",
+            "recall"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: The next time it would die this turn, heal it, exhaust it, and recall it instead. | rules: Core 370, Core 455, Core 456.1, Core 458.1"
+        }
+      ]
+    },
+    {
+      "card_key": "mobilize",
+      "canonical_name": "Mobilize",
+      "current_text_hash": "sha256:3fefcc9cc7b3ebf1ea30249ce9d9fc69eae9cdcce6f0aa6ca52ae12717e84eda",
+      "printing_ids": [
+        "ogn-134-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "mobilize#3e791d2d",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-134-298:3e791d2d",
+          "text_hash": "sha256:3e791d2da73aea1145ef826a96d24212680372c8936cca3385990e19f3746b5f",
+          "status": "full",
+          "program_id": "mobilize#3e791d2d",
+          "implemented_ops": [
+            "channel_rune"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "mobilize#3e791d2d:positive",
+            "mobilize#3e791d2d:negative",
+            "mobilize#3e791d2d:empty"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: Channel 1 rune exhausted. | rules: Core 430.1, Core 430.2, Core 430.3, Core 124"
+        },
+        {
+          "clause_id": "mobilize#27e88ae5",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-134-298:27e88ae5",
+          "text_hash": "sha256:27e88ae58181742ecfc8bbba8e90e64ef625f44cd615a7b371a9bcbe30373d88",
+          "status": "full",
+          "program_id": "mobilize#27e88ae5",
+          "implemented_ops": [
+            "channel_rune",
+            "draw"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "mobilize#27e88ae5:positive",
+            "mobilize#27e88ae5:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed. text: If you can't, draw 1. | rules: Core 430.3, Core 430.5, Core 055, Core 413"
         }
       ]
     }

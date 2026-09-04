@@ -194,7 +194,7 @@ def run_fixture(clause: dict[str, Any], fixture: dict[str, Any], receipts: dict[
         result = apply_program(state, program)
         check = build_engine_check("effect", result, input_hashes={"effect_state": hash_value(state), "effect_program": canonical_hash(program)})
         next_state = result.get("next_state")
-    elif kind == "play" or fixture.get("timing") != "resolution":
+    elif kind == "play" or fixture.get("timing") not in (None, "resolution"):
         # Any fixture staged before resolution goes through the play
         # transaction: that is where choices are made (355) and refused (355.9).
         timing = _timing(fixture["timing"])
@@ -234,7 +234,7 @@ def run_fixture(clause: dict[str, Any], fixture: dict[str, Any], receipts: dict[
                 problems.append(f"target_outcome {got!r}, expected {expected['trace_target_outcome']!r}")
     else:
         state = materialise(fixture.get("setup"))
-        program = _program(template)
+        program = _program({**template, **fixture.get("program_override", {})})
         result = apply_program(state, program)
         check = build_engine_check("effect", result, input_hashes={"effect_state": hash_value(state), "effect_program": canonical_hash(program)})
         next_state = result.get("next_state")

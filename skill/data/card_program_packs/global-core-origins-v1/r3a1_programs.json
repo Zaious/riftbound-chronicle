@@ -1562,6 +1562,837 @@
           ]
         }
       ]
+    },
+    {
+      "card": "Gust",
+      "card_key": "gust",
+      "clauses": [
+        {
+          "clause_id": "gust#e7a1971e",
+          "text": "[Reaction]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 807",
+            "Core 338.1.b"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "gust#e7a1971e:positive",
+              "kind": "positive",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 807"
+                ]
+              },
+              "why": "807: a Reaction may be played whenever its controller holds Priority, including while a Chain is open."
+            },
+            {
+              "fixture_id": "gust#e7a1971e:negative",
+              "kind": "negative",
+              "timing": "closed_p2_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "rule_locators": [
+                  "Core 338.1.b"
+                ]
+              },
+              "why": "338.1.b: only the Priority holder may play; p2 holds Priority."
+            },
+            {
+              "fixture_id": "gust#e7a1971e:missing_information",
+              "kind": "not_applicable",
+              "why": "a timing tag has no decision."
+            }
+          ]
+        },
+        {
+          "clause_id": "gust#e661650e",
+          "text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 355.5",
+            "Core 355.9",
+            "Core 359.3.e.4",
+            "Core 124",
+            "Core 124.1",
+            "Core 446.2"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "gust#e661650e",
+              "effects": [
+                {
+                  "op": "return_to_hand",
+                  "effect_id": "ret",
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit",
+                    "location": "battlefield",
+                    "max_might": 3
+                  }
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "gust#e661650e"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "gust#e661650e:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "ret",
+                "object_id": "u1"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "in": "p1.hand",
+                    "object": "u1"
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "identity"
+                    ],
+                    "equals": "u1@1"
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "damage"
+                    ],
+                    "equals": 0
+                  }
+                ],
+                "rule_locators": [
+                  "Core 124",
+                  "Core 124.1",
+                  "Core 446.2"
+                ]
+              },
+              "why": "u1 (3 Might) at a battlefield meets the restriction; returning it to hand is a zone change, not a Move (446.2): it becomes a new object (124) with its damage gone (124.1)."
+            },
+            {
+              "fixture_id": "gust#e661650e:negative",
+              "kind": "negative",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": [
+                    "u2"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "target_illegal_at_play",
+                "rule_locators": [
+                  "Core 355.9"
+                ]
+              },
+              "why": "u2 has 4 Might, more than 3; the restriction is unmet at play (355.9)."
+            },
+            {
+              "fixture_id": "gust#e661650e:missing_information",
+              "kind": "missing_information",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                },
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5"
+                ]
+              },
+              "why": "355.5: the unit is chosen at play."
+            },
+            {
+              "fixture_id": "gust#e661650e:target_invalidated",
+              "kind": "target_invalidated",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "might_mod": "u1",
+                  "amount": 1
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "ret",
+                "object_id": "u1",
+                "bound_identity": "u1@0"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "ignored_illegal_target"
+                ],
+                "assert": [
+                  {
+                    "in": "bf1",
+                    "object": "u1"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 359.3.e.4"
+                ]
+              },
+              "why": "359.3.e.4's own example: the chosen unit was given +1 Might in reaction, so it no longer has 3 or less and is an invalid target at resolution; the spell resolves with that instruction ignored."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Morbid Return",
+      "card_key": "morbid return",
+      "clauses": [
+        {
+          "clause_id": "morbid return#08866b32",
+          "text": "[Action]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 806"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 2,
+                  "power": {}
+                }
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "morbid return#08866b32:positive",
+              "kind": "positive",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 806"
+                ]
+              },
+              "why": "806: Action timing in a Neutral Open state."
+            },
+            {
+              "fixture_id": "morbid return#08866b32:negative",
+              "kind": "negative",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "rule_locators": [
+                  "Core 806",
+                  "Core 807"
+                ]
+              },
+              "why": "an Action cannot be played while a Chain is open (806/807)."
+            },
+            {
+              "fixture_id": "morbid return#08866b32:missing_information",
+              "kind": "not_applicable",
+              "why": "a timing tag has no decision."
+            }
+          ]
+        },
+        {
+          "clause_id": "morbid return#f3c76e58",
+          "text": "Return a unit from your trash to your hand.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 355.5",
+            "Core 355.10.a",
+            "Core 355.9",
+            "Core 124",
+            "Core 359.3.e.2"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "morbid return#f3c76e58",
+              "effects": [
+                {
+                  "op": "return_to_hand",
+                  "effect_id": "ret",
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "non_board",
+                    "kind": "unit",
+                    "location": "trash"
+                  }
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "spell-1",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 2,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "morbid return#f3c76e58"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "morbid return#f3c76e58:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "set": "c3",
+                  "field": "kind",
+                  "value": "unit"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "ret",
+                "object_id": "c3"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "in": "p1.hand",
+                    "object": "c3"
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "c3",
+                      "identity"
+                    ],
+                    "equals": "c3@1"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 355.10.a",
+                  "Core 124"
+                ]
+              },
+              "why": "the trash is a public zone, so the choice targets (355.10.a); the unit returns to its owner's hand as a new object (124)."
+            },
+            {
+              "fixture_id": "morbid return#f3c76e58:negative",
+              "kind": "negative",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                },
+                {
+                  "set": "c2",
+                  "field": "kind",
+                  "value": "unit"
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "p1",
+                  "value": [
+                    "c2"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "target_illegal_at_play",
+                "rule_locators": [
+                  "Core 355.9"
+                ]
+              },
+              "why": "c2 is in the deck, not the trash; the restriction is unmet at play (355.9)."
+            },
+            {
+              "fixture_id": "morbid return#f3c76e58:missing_information",
+              "kind": "missing_information",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                },
+                {
+                  "set": "c3",
+                  "field": "kind",
+                  "value": "unit"
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5"
+                ]
+              },
+              "why": "355.5: the unit in the trash is chosen at play."
+            },
+            {
+              "fixture_id": "morbid return#f3c76e58:target_invalidated",
+              "kind": "target_invalidated",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "set": "c3",
+                  "field": "kind",
+                  "value": "unit"
+                },
+                {
+                  "to_deck_top": "c3"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "ret",
+                "object_id": "c3",
+                "bound_identity": "c3@0"
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "ignored_illegal_target"
+                ],
+                "assert": [
+                  {
+                    "in": "p1.main_deck",
+                    "object": "c3"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 359.3.e.2",
+                  "Core 359.3.e.5"
+                ]
+              },
+              "why": "the chosen card was recycled out of the trash before resolution: it changed zone and is no longer in the trash, so the instruction related to it is ignored (359.3.e.2, 359.3.e.5)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Highlander",
+      "card_key": "highlander",
+      "text_status_note": "Stale in the inventory (pre-errata snapshot). Its second clause needs a next-death replacement the engine does not have; no program is written this round.",
+      "clauses": [
+        {
+          "clause_id": "highlander#d659b2ba",
+          "text": "Choose a friendly unit.",
+          "claim": "stale",
+          "unsupported_mechanics": [
+            "next_death_replacement"
+          ],
+          "rule_locators": [
+            "Core 355.5",
+            "Core 355.9"
+          ],
+          "fixtures": []
+        },
+        {
+          "clause_id": "highlander#b9d95a9d",
+          "text": "The next time it would die this turn, heal it, exhaust it, and recall it instead.",
+          "claim": "stale",
+          "unsupported_mechanics": [
+            "next_death_replacement"
+          ],
+          "rule_locators": [
+            "Core 370",
+            "Core 455",
+            "Core 456.1",
+            "Core 458.1"
+          ],
+          "fixtures": []
+        }
+      ]
+    },
+    {
+      "card": "Mobilize",
+      "card_key": "mobilize",
+      "clauses": [
+        {
+          "clause_id": "mobilize#3e791d2d",
+          "text": "Channel 1 rune exhausted.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 430.1",
+            "Core 430.2",
+            "Core 430.3",
+            "Core 124"
+          ],
+          "execution": {
+            "kind": "effect",
+            "program": {
+              "program_id": "mobilize#3e791d2d",
+              "effects": [
+                {
+                  "op": "channel_rune",
+                  "effect_id": "ch",
+                  "player": "p1",
+                  "count": 1,
+                  "entry_state": "exhausted"
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "mobilize#3e791d2d:positive",
+              "kind": "positive",
+              "setup": [],
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "in": "p1.base",
+                    "object": "r1"
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "r1",
+                      "exhausted"
+                    ],
+                    "equals": true
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "r1",
+                      "identity"
+                    ],
+                    "equals": "r1@1"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 430.1",
+                  "Core 430.2",
+                  "Core 124"
+                ]
+              },
+              "why": "430.1: the top rune of the Rune Deck is put on the board; 430.2: in the stated exhausted state; entering from a non-board zone it is a new object (124)."
+            },
+            {
+              "fixture_id": "mobilize#3e791d2d:negative",
+              "kind": "negative",
+              "setup": [],
+              "program_override": {
+                "effects": [
+                  {
+                    "op": "channel_rune",
+                    "effect_id": "ch",
+                    "player": "p1",
+                    "count": 1,
+                    "entry_state": "stunned"
+                  }
+                ]
+              },
+              "expected": {
+                "outcome": "invalid_input",
+                "rule_locators": [
+                  "Core 430.2"
+                ]
+              },
+              "why": "430.2: a rune is channeled readied or exhausted; any other entry state is malformed input, not a game state."
+            },
+            {
+              "fixture_id": "mobilize#3e791d2d:empty",
+              "kind": "positive",
+              "setup": [],
+              "program_override": {
+                "effects": [
+                  {
+                    "op": "channel_rune",
+                    "effect_id": "ch",
+                    "player": "p2",
+                    "count": 1,
+                    "entry_state": "exhausted"
+                  }
+                ]
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "no_op"
+                ],
+                "rule_locators": [
+                  "Core 430.3"
+                ]
+              },
+              "why": "430.3: with no rune in the Rune Deck, channel as many as possible: none; the instruction completes with nothing done."
+            },
+            {
+              "fixture_id": "mobilize#3e791d2d:missing_information",
+              "kind": "not_applicable",
+              "why": "the Rune Deck is part of the modelled state; an observation without it is a Deck Coach / P2-A abstention, not an engine fixture."
+            }
+          ]
+        },
+        {
+          "clause_id": "mobilize#27e88ae5",
+          "text": "If you can't, draw 1.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 430.3",
+            "Core 430.5",
+            "Core 055",
+            "Core 413"
+          ],
+          "execution": {
+            "kind": "effect",
+            "program": {
+              "program_id": "mobilize#27e88ae5",
+              "effects": [
+                {
+                  "op": "channel_rune",
+                  "effect_id": "ch",
+                  "player": "p2",
+                  "count": 1,
+                  "entry_state": "exhausted"
+                },
+                {
+                  "op": "draw",
+                  "effect_id": "fallback",
+                  "player": "p2",
+                  "count": 1,
+                  "predicate": {
+                    "kind": "requested_count_not_reached",
+                    "effect_id": "ch"
+                  }
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "mobilize#27e88ae5:positive",
+              "kind": "positive",
+              "setup": [],
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "no_op",
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "hand_size": "p2",
+                    "equals": 1
+                  }
+                ],
+                "rule_locators": [
+                  "Core 430.3",
+                  "Core 430.5",
+                  "Core 413"
+                ]
+              },
+              "why": "p2's Rune Deck is empty: the channel reaches 0 of 1 (430.3), so 'If you can't' holds (430.5's own example) and one card is drawn (413)."
+            },
+            {
+              "fixture_id": "mobilize#27e88ae5:negative",
+              "kind": "negative",
+              "setup": [],
+              "program_override": {
+                "effects": [
+                  {
+                    "op": "channel_rune",
+                    "effect_id": "ch",
+                    "player": "p1",
+                    "count": 1,
+                    "entry_state": "exhausted"
+                  },
+                  {
+                    "op": "draw",
+                    "effect_id": "fallback",
+                    "player": "p1",
+                    "count": 1,
+                    "predicate": {
+                      "kind": "requested_count_not_reached",
+                      "effect_id": "ch"
+                    }
+                  }
+                ]
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied",
+                  "skipped_linked_dependency"
+                ],
+                "assert": [
+                  {
+                    "hand_size": "p1",
+                    "equals": 0
+                  }
+                ],
+                "rule_locators": [
+                  "Core 430.5"
+                ]
+              },
+              "why": "p1 channels the full 1 rune, so 'If you can't' does not hold and nothing is drawn."
+            },
+            {
+              "fixture_id": "mobilize#27e88ae5:missing_information",
+              "kind": "not_applicable",
+              "why": "same as the channel clause."
+            }
+          ]
+        }
+      ]
     }
   ]
 }

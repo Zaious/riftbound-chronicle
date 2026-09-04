@@ -33,6 +33,23 @@
       "type": "array",
       "items": {"$ref": "#/$defs/replacementEffect"}
     },
+    "turn_id": {"type": "string", "minLength": 1, "description": "The turn every 'this turn' effect created now belongs to (ADR-0007 §8). Absent means turn-0."},
+    "turn_effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["effect_id", "kind", "controller", "turn_id"],
+        "properties": {
+          "effect_id": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "controller": {"type": "string", "minLength": 1},
+          "turn_id": {"type": "string", "minLength": 1},
+          "value": {},
+          "source": {"type": "string"}
+        }
+      }
+    },
     "damage_modifiers": {
       "type": "array",
       "description": "Bonus Damage sources (Core 713–715). An object source is active while on the board; a Battlefield source while it exists.",
@@ -113,8 +130,9 @@
     "modifier": {
       "type": "object",
       "additionalProperties": false,
+      "$comment": "turn_id stamps a this_turn modifier with the turn it belongs to (ADR-0007 §8).",
       "required": ["amount", "duration", "source"],
-      "properties": {
+      "properties": {"turn_id": {"type": "string", "minLength": 1}, 
         "amount": {"type": "integer"},
         "duration": {"enum": ["this_turn", "persistent"]},
         "source": {"type": "string", "minLength": 1}
@@ -181,6 +199,9 @@
           }
         },
         "play_permissions": {"type": "array", "uniqueItems": true, "items": {"enum": ["open_battlefield"]}, "description": "Compiled permissions widening the valid play locations (Core 355.2.b)."},
+        "entry_replacements": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["mode", "value"], "properties": {"mode": {"const": "entry_state"}, "value": {"enum": ["ready", "exhausted"]}}}, "description": "Core 369.3: how this permanent enters, replacing the default (e.g. 'I enter ready')."},
+        "conditional_might": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "amount", "condition"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "amount": {"type": "integer"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["runes_at_least"]}, "count": {"type": "integer", "minimum": 0}}}}}, "description": "Conditional passives read by effective_might (Core 364.3)."},
+        "end_of_turn_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'At the end of your turn' abilities (Core 383.1), with an optional condition that is part of the trigger condition (383.2.a.1)."},
         "is_token": {"type": "boolean"},
         "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "ADR-0005 §3 object identity: '<object_id>@<generation>'. Absent means generation 0. Changes on any transition to or from a non-board zone; survives board moves."},
         "keywords": {

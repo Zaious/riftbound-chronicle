@@ -22,7 +22,7 @@ from effect_ir import (
 )
 from engine_decisions import DECISIONS_VERSION as ENGINE_DECISIONS_VERSION, validate_engine_decisions
 from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card, validate_play_result
-from resolution_bridge import CLEANUP_DECISION_VERSION, resolve_with_program, validate_cleanup_decisions
+from resolution_bridge import CLEANUP_DECISION_VERSION, TURN_STEP_VERSION, begin_ending_step, resolve_with_program, run_expiration_step, validate_cleanup_decisions
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
     derive_permissions,
@@ -51,6 +51,11 @@ FEATURE_RULES = {
     "battlefield_targets": ["Core 355.10.b", "Core 359.3.e.2", "Core 359.3.e.5"],
     "criteria_expansion": ["Core 355.5.a", "Core 355.10.d"],
     "bonus_damage": ["Core 713–715.4", "Core 437.1.a.1"],
+    # C-21 (ADR-0007 §6–8).
+    "entry_replacements": ["Core 369.3", "Core 143.4", "Core 359.2.c–359.2.d"],
+    "conditional_passives": ["Core 364.3", "Core 365.1"],
+    "ending_step": ["Core 316.9.b", "Core 317.1", "Core 383.1", "Core 383.2.a.1"],
+    "expiration_step": ["Core 317.2–317.2.d", "Core 324.2"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -90,6 +95,13 @@ KIND_CONFIG = {
         "coverage": "play_transaction_v1",
         "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission"],
         "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "battlefield_control_transfer", "counter", "complete_game", "complete_legality"],
+    },
+    # ADR-0007 §8: two turn-boundary procedures, not a turn transition.
+    "turn_step": {
+        "component": ("turn_steps", TURN_STEP_VERSION),
+        "coverage": "turn_step_v1",
+        "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives"],
+        "unsupported": ["beginning_phase", "full_turn_transition", "continuous_dependency", "complete_game", "complete_legality"],
     },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
@@ -234,6 +246,8 @@ def classify_outcome(kind: str, result: dict[str, Any]) -> tuple[str, dict[str, 
         return "illegal", None
     if kind == "resolution" and result.get("committed") is not True:
         return ("invalid_input" if result.get("stage") in {"program_binding", "cleanup_decision"} else "illegal"), None
+    if kind == "turn_step" and result.get("committed") is not True:
+        return "illegal", None
     if kind == "play" and result.get("committed") is not True:
         # A well-formed play the rules refuse: unpayable cost, card not in
         # hand, illegal target at play, or the timing kernel's verdict.
@@ -476,6 +490,19 @@ def run_play(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
     return result, hashes
 
 
+def run_turn_step(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
+    timing_state, effect_state = load_object(args.timing_state), load_object(args.effect_state)
+    decisions = _engine_decisions(getattr(args, "decisions", None))
+    if args.step == "begin_ending":
+        result = begin_ending_step(timing_state, effect_state, decisions)
+    else:
+        result = run_expiration_step(timing_state, effect_state)
+    hashes = {"timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state)}
+    if decisions is not None:
+        hashes["engine_decisions"] = canonical_hash(decisions)
+    return result, hashes
+
+
 def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--decisions", type=Path, help="engine-decisions.v1 envelope (ADR-0005)")
     parser.add_argument("--include-raw", action="store_true")
@@ -507,6 +534,12 @@ def build_parser() -> argparse.ArgumentParser:
     cleanup.add_argument("state", type=Path)
     cleanup.add_argument("--cleanup-decisions", type=Path)
 
+    turn = sub.add_parser("turn-step")
+    turn.add_argument("timing_state", type=Path)
+    turn.add_argument("effect_state", type=Path)
+    turn.add_argument("--step", choices=["begin_ending", "run_expiration"], required=True)
+    add_common(turn)
+
     play = sub.add_parser("play")
     play.add_argument("timing_state", type=Path)
     play.add_argument("effect_state", type=Path)
@@ -528,10 +561,11 @@ def main(argv: list[str] | None = None) -> int:
                 raise EngineCheckError("; ".join(errors))
             print("OK: valid engine-check.v1")
             return 0
-        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup, "play": run_play}[args.command]
+        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup, "play": run_play, "turn-step": run_turn_step}[args.command]
+        kind = "turn_step" if args.command == "turn-step" else args.command
         result, input_hashes = runner(args)
         check = build_engine_check(
-            args.command,
+            kind,
             result,
             input_hashes=input_hashes,
             assumptions=args.assumption,

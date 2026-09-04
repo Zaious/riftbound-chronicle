@@ -349,6 +349,36 @@ per target (715.1–715.2) *before* any replacement, Prevent or
 `reduce_damage` sees the amount (437.1.a.1); the event records the base,
 the bonus and its sources. An unknown scope is `unsupported`.
 
+## Entry replacements, conditional passives, and the end of the turn
+
+`enter_board` is a replaceable event (Core 369.3): a Unit defaults to
+exhausted, Gear to ready; an object's `entry_replacements` (Master Yi Honed:
+"I enter ready") and this turn's `turn_effects` of kind
+`entry_state_for_played_units` (Confront) replace that state, and the entry
+trace records the default, every replacement, and the final state.
+
+`effective_might(state, object)` is `current_might` plus every conditional
+passive on the object whose condition holds now (364.3), only while it is on
+the board (365.1). "You have N runes" counts the Runes the object's
+controller controls on the board — Base or any Board Location, ready or
+exhausted — and nothing in Non-Board Zones; a teammate's runes are not
+"yours". Target restrictions and lethal Cleanup read `effective_might`;
+`current_might` keeps its contract. Dependent or cyclic continuous effects
+cannot be expressed and stay `unsupported: continuous_dependency`.
+
+The end of the turn is two procedures (317). `begin_ending_step` leaves the
+Main Phase (316.9.b), schedules the turn player's "At the end of your turn"
+triggers as one batch — a trigger's own condition, such as "if I'm at a
+battlefield", is part of the trigger condition and is checked now
+(383.2.a.1) — and stops. `run_expiration_step` runs only once those chain
+items and every outstanding task are done: one Ending Special Cleanup that
+heals all Units, expires every "this turn" effect of this turn at once, and
+empties every pool (317.2.b–317.2.d). Every "this turn" modifier and turn
+effect carries the `turn_id` it belongs to, so another turn's effects are
+never cleared. Wrong phase, an unfinished chain, or outstanding tasks are
+`illegal`; an unknown turn-effect kind is `unsupported`. The next Beginning
+Phase is not modelled and no complete turn transition is claimed.
+
 ## Permanent entry and play triggers
 
 A Unit or Gear resolves by the entry procedure (ADR-0007 §1), not the spell

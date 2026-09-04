@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:abecdf253bdfab086b4cd546",
-  "capability_set_id": "sha256:abecdf253bdfab086b4cd54615c0990e1cb7a7ed45c752fdadab435932d1edbd",
+  "manifest_id": "capability-manifest:ecddabb0149a1b26431bbf87",
+  "capability_set_id": "sha256:ecddabb0149a1b26431bbf8782872b8d7f5c9b03792a5e6f33152f4364761393",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:9823d08e43c397ca1f4acc653033d69a6bdb11ca154dfced8033f600d061195d",
+    "value": "sha256:124d631612a7ceda88618612375ebd2d04b4d4064a07b6b32953d4d1d4d76959",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:7dd1cdb098c4192ad669eb403fb95194d19c98939c7e93d8e154f7157cb78fd2"
+        "sha256": "sha256:a2e91f0d8ac71d1ef383c5234fb079ac72145d5c14ebb7f3990a5dfc8981a7f3"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:95f70acb4aaee77163b45b4d90c96bdd33aba29a596a636c73523ec55d71048c"
+        "sha256": "sha256:a7c17fa14fd29572866fe931eb9f11c27ee6ed5815b08f245ad6200574448ef5"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:e7c3759c303fcfdb5b4a7fc3ea740908f4de4bff367e3ad4f277e6ac0a80b417"
+        "sha256": "sha256:e01fbb1bf07dcffdf553262a347502de307e118533d4d591d92bde3566ad431f"
       }
     ]
   },
@@ -150,6 +150,25 @@
         "complete_game",
         "complete_legality"
       ]
+    },
+    {
+      "check_kind": "turn_step",
+      "name": "turn_steps",
+      "version": "riftbound-turn-step-result.v1",
+      "coverage_id": "turn_step_v1",
+      "supported_scope": [
+        "ending_step",
+        "expiration_step",
+        "entry_replacements",
+        "conditional_passives"
+      ],
+      "unsupported_scope": [
+        "beginning_phase",
+        "full_turn_transition",
+        "continuous_dependency",
+        "complete_game",
+        "complete_legality"
+      ]
     }
   ],
   "operations": [
@@ -190,6 +209,13 @@
       "id": "exhaust",
       "rule_locators": [
         "Core 414"
+      ]
+    },
+    {
+      "id": "grant_turn_effect",
+      "rule_locators": [
+        "Core 369.3",
+        "Core 317.2.c"
       ]
     },
     {
@@ -377,6 +403,13 @@
       ]
     },
     {
+      "id": "conditional_passives",
+      "rule_locators": [
+        "Core 364.3",
+        "Core 365.1"
+      ]
+    },
+    {
       "id": "cost_predicates",
       "rule_locators": [
         "Core 356.4.f.1",
@@ -391,11 +424,35 @@
       ]
     },
     {
+      "id": "ending_step",
+      "rule_locators": [
+        "Core 316.9.b",
+        "Core 317.1",
+        "Core 383.1",
+        "Core 383.2.a.1"
+      ]
+    },
+    {
       "id": "engine_decisions",
       "rule_locators": [
         "Core 355.1–355.17",
         "Core 370–373",
         "Core 402–402.1"
+      ]
+    },
+    {
+      "id": "entry_replacements",
+      "rule_locators": [
+        "Core 369.3",
+        "Core 143.4",
+        "Core 359.2.c–359.2.d"
+      ]
+    },
+    {
+      "id": "expiration_step",
+      "rule_locators": [
+        "Core 317.2–317.2.d",
+        "Core 324.2"
       ]
     },
     {
@@ -472,7 +529,12 @@
     "Core 313",
     "Core 313.1",
     "Core 316",
+    "Core 316.9.b",
+    "Core 317.1",
+    "Core 317.2.c",
+    "Core 317.2–317.2.d",
     "Core 320–321",
+    "Core 324.2",
     "Core 328–330",
     "Core 333–340",
     "Core 334–337",
@@ -506,14 +568,20 @@
     "Core 357.1–357.2.a",
     "Core 358.4",
     "Core 358.5",
+    "Core 359.2.c–359.2.d",
     "Core 359.2–359.2.d",
     "Core 359.3.e.14",
     "Core 359.3.e.1–359.3.e.10",
     "Core 359.3.e.2",
     "Core 359.3.e.4",
     "Core 359.3.e.5",
+    "Core 364.3",
+    "Core 365.1",
+    "Core 369.3",
     "Core 370–373",
     "Core 375",
+    "Core 383.1",
+    "Core 383.2.a.1",
     "Core 383.2.c",
     "Core 383.3",
     "Core 383.3.a–383.3.a.3",
@@ -551,16 +619,19 @@
     "arbitrary_card_effects",
     "arbitrary_card_text",
     "battlefield_control_transfer",
+    "beginning_phase",
     "combat",
     "complete_action_set",
     "complete_game",
     "complete_legality",
+    "continuous_dependency",
     "cost_checks",
     "cost_modification_sources",
     "counter",
     "effect_prerequisites",
     "engine_enumeration",
     "full_cleanup",
+    "full_turn_transition",
     "multi_descriptor_replacement",
     "non_standard_costs_beyond_exhaust_kill",
     "payment_stage_replacement_decisions",

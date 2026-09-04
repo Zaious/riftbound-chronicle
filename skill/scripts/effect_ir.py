@@ -24,6 +24,11 @@ FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
 # ADR-0007 §3: compiled permissions that widen the valid play locations (355.2.b).
 PLAY_PERMISSIONS = {"open_battlefield"}
+# ADR-0007 §6–8.
+TURN_EFFECT_KINDS = {"entry_state_for_played_units"}
+CONDITION_KINDS = {"runes_at_least"}
+TRIGGER_CONDITION_KINDS = {"at_battlefield"}
+DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
 PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
@@ -57,6 +62,8 @@ SUPPORTED_OPS = {
     "return_to_hand",
     "recall",
     "channel_rune",
+    # C-21 (ADR-0007 §6): a "this turn" effect such as Confront's, expiring at 317.2.
+    "grant_turn_effect",
 }
 
 
@@ -130,6 +137,7 @@ OP_RULES = {
     "return_to_hand": ["Core 124", "Core 124.1", "Core 446.2"],
     "recall": ["Core 455", "Core 456.1", "Core 458.1"],
     "channel_rune": ["Core 430.1", "Core 430.2.a", "Core 430.3", "Core 124"],
+    "grant_turn_effect": ["Core 369.3", "Core 317.2.c"],
 }
 
 
@@ -244,6 +252,30 @@ def validate_state(state: Any) -> list[str]:
         if "effect_program_id" in entry and (not isinstance(entry["effect_program_id"], str) or not entry["effect_program_id"]):
             errors.append(f"chain_items.{item_id}.effect_program_id must be a non-empty string when supplied")
 
+    # ADR-0007 §8: every "this turn" effect is stamped with the turn it belongs
+    # to, so an Expiration Step never clears another turn's effects.
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    if not isinstance(turn_id, str) or not turn_id:
+        errors.append("turn_id must be a non-empty string when supplied")
+    turn_effects = state.get("turn_effects", [])
+    if not isinstance(turn_effects, list):
+        errors.append("turn_effects must be an array")
+        turn_effects = []
+    effect_ids: set[str] = set()
+    for index, effect in enumerate(turn_effects):
+        label = f"turn_effects[{index}]"
+        if not isinstance(effect, dict) or not {"effect_id", "kind", "controller", "turn_id"} <= set(effect) or set(effect) - {"effect_id", "kind", "controller", "turn_id", "value", "source"}:
+            errors.append(f"{label} must carry effect_id, kind, controller, turn_id (and value/source)")
+            continue
+        if not isinstance(effect["effect_id"], str) or not effect["effect_id"] or effect["effect_id"] in effect_ids:
+            errors.append(f"{label}.effect_id is invalid or duplicated")
+        effect_ids.add(effect.get("effect_id", ""))
+        if effect["controller"] not in players:
+            errors.append(f"{label}.controller is not a player")
+        if not isinstance(effect["turn_id"], str) or not effect["turn_id"]:
+            errors.append(f"{label}.turn_id must be a non-empty string")
+        if effect["kind"] == "entry_state_for_played_units" and effect.get("value") not in {"ready", "exhausted"}:
+            errors.append(f"{label}.value must be ready or exhausted")
     # ADR-0007 §5: Bonus Damage sources. A source is an object (active while on
     # the board) or a Battlefield (active while it exists) — never pruned by the
     # object rule.
@@ -288,7 +320,7 @@ def validate_state(state: Any) -> list[str]:
         if not isinstance(obj.get("exhausted"), bool):
             errors.append(f"objects.{object_id}.exhausted must be boolean")
         # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1).
-        for trigger_field in ("death_triggers", "play_triggers", "move_triggers"):
+        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers"):
             triggers = obj.get(trigger_field, [])
             if not isinstance(triggers, list):
                 errors.append(f"objects.{object_id}.{trigger_field} must be an array")
@@ -301,6 +333,25 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid source/controller")
                 elif not isinstance(trigger.get("effect_program_id"), str) or not trigger.get("effect_program_id") or not isinstance(trigger.get("optional_at_finalize"), bool):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid program/optional binding")
+                elif "condition" in trigger and (not isinstance(trigger["condition"], dict) or trigger["condition"].get("kind") not in TRIGGER_CONDITION_KINDS):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
+        for r_index, replacement in enumerate(obj.get("entry_replacements", []) or []):
+            if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"mode", "value"}:
+                errors.append(f"objects.{object_id}.entry_replacements[{r_index}] must be {{mode: entry_state, value: ready|exhausted}}")
+        seen_conditional: set[str] = set()
+        for c_index, conditional in enumerate(obj.get("conditional_might", []) or []):
+            label = f"objects.{object_id}.conditional_might[{c_index}]"
+            if not isinstance(conditional, dict) or set(conditional) != {"modifier_id", "amount", "condition"} or not isinstance(conditional["amount"], int):
+                errors.append(f"{label} must carry modifier_id, amount, condition")
+                continue
+            if not isinstance(conditional["modifier_id"], str) or not conditional["modifier_id"] or conditional["modifier_id"] in seen_conditional:
+                errors.append(f"{label}.modifier_id is invalid or duplicated")
+            seen_conditional.add(conditional.get("modifier_id", ""))
+            condition = conditional["condition"]
+            if not isinstance(condition, dict) or condition.get("kind") not in CONDITION_KINDS:
+                errors.append(f"{label}.condition.kind must be one of {sorted(CONDITION_KINDS)}")
+            elif condition["kind"] == "runes_at_least" and (set(condition) != {"kind", "count"} or not isinstance(condition["count"], int) or condition["count"] < 0):
+                errors.append(f"{label}.condition.runes_at_least needs a non-negative count")
         permissions = obj.get("play_permissions", [])
         if not isinstance(permissions, list) or len(permissions) != len(set(permissions)) or any(p not in PLAY_PERMISSIONS for p in permissions):
             errors.append(f"objects.{object_id}.play_permissions must be a unique array drawn from {sorted(PLAY_PERMISSIONS)}")
@@ -315,8 +366,9 @@ def validate_state(state: Any) -> list[str]:
         modifiers = obj.get("might_modifiers")
         if not isinstance(modifiers, list):
             errors.append(f"objects.{object_id}.might_modifiers must be an array")
-        elif any(not isinstance(item, dict) or set(item) != {"amount", "duration", "source"} for item in modifiers):
-            errors.append(f"objects.{object_id}.might_modifiers has invalid entries")
+        elif any(not isinstance(item, dict) or not {"amount", "duration", "source"} <= set(item) or set(item) - {"amount", "duration", "source", "turn_id"}
+                 or ("turn_id" in item and (not isinstance(item["turn_id"], str) or not item["turn_id"])) for item in modifiers):
+            errors.append(f"objects.{object_id}.might_modifiers has invalid entries (amount, duration, source, optional turn_id)")
         places = occupancy.get(object_id, [])
         if len(places) != 1:
             errors.append(f"object {object_id!r} must occupy exactly one zone/location, got {places}")
@@ -724,7 +776,7 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
     if bound is not None and object_identity(state, object_id) != bound:
         return False, "target_identity_changed"
     max_might = target.get("max_might")
-    if max_might is not None and current_might(obj) > max_might:
+    if max_might is not None and effective_might(state, object_id) > max_might:
         return False, "target_might_requirement_failed"
     return True, "ok"
 
@@ -1002,8 +1054,23 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             raise ValueError("modify_might requires a known object and integer amount")
         if duration not in {"this_turn", "persistent"} or not isinstance(source, str) or not source:
             raise ValueError("modify_might requires duration and source")
-        new_state["objects"][object_id]["might_modifiers"].append({"amount": amount, "duration": duration, "source": source})
-        trace.update({"object_id": object_id, "amount": amount, "duration": duration})
+        modifier = {"amount": amount, "duration": duration, "source": source}
+        if duration == "this_turn":
+            modifier["turn_id"] = new_state.get("turn_id", DEFAULT_TURN_ID)
+        new_state["objects"][object_id]["might_modifiers"].append(modifier)
+        trace.update({"object_id": object_id, "amount": amount, "duration": duration, "turn_id": modifier.get("turn_id")})
+
+    elif op == "grant_turn_effect":
+        kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
+        if kind not in TURN_EFFECT_KINDS:
+            raise NotImplementedError(f"turn effect {kind!r} is not modelled")
+        if controller not in new_state["players"] or value not in {"ready", "exhausted"}:
+            raise ValueError("grant_turn_effect requires a known controller and a ready|exhausted value")
+        turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+        granted = {"effect_id": f"{kind}:{controller}:{turn_id}:{len(new_state.get('turn_effects', []))}", "kind": kind, "controller": controller,
+                   "value": value, "turn_id": turn_id, "source": effect.get("source", "effect")}
+        new_state.setdefault("turn_effects", []).append(granted)
+        trace.update({"turn_effect": granted})
 
     elif op in {"deal_damage", "heal_damage"}:
         object_id, amount = effect.get("object_id"), effect.get("amount")
@@ -1151,6 +1218,34 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
 
 def current_might(obj: dict[str, Any]) -> int:
     return obj["base_might"] + sum(modifier["amount"] for modifier in obj.get("might_modifiers", []))
+
+
+def runes_on_board(state: dict[str, Any], controller: str) -> int:
+    """ADR-0007 §7: every Rune the player controls on the Board — Base or any
+    Board Location, ready or exhausted; nothing in Non-Board Zones; a
+    teammate's runes are not "yours"."""
+    count = 0
+    for object_id, obj in state["objects"].items():
+        if obj.get("kind") != "rune" or obj.get("controller") != controller:
+            continue
+        if zone_class(find_location(state, object_id)) == "board":
+            count += 1
+    return count
+
+
+def effective_might(state: dict[str, Any], object_id: str) -> int:
+    """Context-aware Might: current_might plus every conditional passive
+    whose condition holds now (Core 364.3, 365.1). current_might keeps its
+    contract; rules paths that must see passives call this."""
+    obj = state["objects"][object_id]
+    might = current_might(obj)
+    if zone_class(find_location(state, object_id)) != "board":
+        return might
+    for conditional in obj.get("conditional_might", []) or []:
+        condition = conditional["condition"]
+        if condition["kind"] == "runes_at_least" and runes_on_board(state, obj["controller"]) >= condition["count"]:
+            might += conditional["amount"]
+    return might
 
 
 def apply_simultaneous_kill_batch(
@@ -1335,7 +1430,7 @@ def perform_lethal_cleanup(
             location = find_location(current, object_id)
             if obj["kind"] != "unit" or location is None or not (location[0] == "battlefield" or location[2] == "base"):
                 continue
-            might = current_might(obj)
+            might = effective_might(current, object_id)
             if obj["damage"] > 0 and obj["damage"] >= might:
                 lethal.append((object_id, might, obj["damage"]))
         group = [object_id for object_id, _, _ in sorted(lethal)]

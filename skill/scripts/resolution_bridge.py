@@ -10,8 +10,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import _bump_identity, action_performed, apply_program, hash_value, perform_lethal_cleanup
+from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, perform_lethal_cleanup, validate_state, zone_class
 from rules_core import complete_resolution, schedule_triggered_items, state_hash
+from rules_core import validate_state as validate_timing_state
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
 
@@ -229,36 +230,9 @@ def resolve_with_program(
     # trigger_order decision (engine-decisions.v1) assigns 0..n-1 and the
     # resolution retries. Different controllers in one batch need no
     # decision — Turn Order settles them.
-    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for trigger in pending_triggers:
-        groups.setdefault((trigger.get("batch_id"), trigger.get("controller")), []).append(trigger)
-    for (batch_id, controller), members in sorted(groups.items(), key=lambda kv: (kv[0][0] or "", kv[0][1] or "")):
-        if len(members) < 2:
-            continue
-        orders = [t.get("controller_order") for t in members]
-        if all(isinstance(o, int) for o in orders) and len(set(orders)) == len(orders):
-            continue
-        trigger_ids = [t["trigger_id"] for t in members]
-        decision = _ed.trigger_order(engine_decisions, batch_id, controller)
-        decision_id = f"trigger_order:{batch_id}:{controller}"
-        if decision is None:
-            return {
-                **base, "valid": True, "committed": False, "stage": "trigger_order",
-                "reason_code": "trigger_order_required",
-                "reason": f"{controller} has {len(members)} abilities triggered together in batch {batch_id}; their order is {controller}'s choice (Core 383.3.d.1)",
-                "decision_ids": [decision_id], "decision_controller": controller,
-                "batch_id": batch_id, "trigger_ids": trigger_ids,
-                "rule_locators": ["Core 383.3.d", "Core 383.3.d.1"],
-            }
-        if decision["controller"] != controller:
-            return {**base, "valid": True, "committed": False, "applied": False, "stage": "trigger_order", "reason_code": "decision_controller_mismatch",
-                    "reason": f"trigger order for {controller} was supplied by {decision['controller']!r}", "batch_id": batch_id, "trigger_ids": trigger_ids}
-        if sorted(decision["value"]) != sorted(trigger_ids):
-            return {**base, "valid": False, "committed": False, "stage": "engine_decision",
-                    "errors": [f"trigger_order {decision_id} must list exactly {sorted(trigger_ids)}, once each; got {decision['value']}"],
-                    "reason": "trigger order decision does not match the batch"}
-        for position, trigger_id in enumerate(decision["value"]):
-            next(t for t in members if t["trigger_id"] == trigger_id)["controller_order"] = position
+    ordering_failure = _settle_trigger_orders(pending_triggers, engine_decisions, base)
+    if ordering_failure is not None:
+        return ordering_failure
     scheduled_result = schedule_triggered_items(timing_result["next_state"], pending_triggers)
     if scheduled_result.get("applied") is not True:
         return {
@@ -296,6 +270,44 @@ def resolve_with_program(
             + timing_result.get("rule_locators", [])
         )),
     }
+
+
+def _settle_trigger_orders(pending_triggers: list[dict[str, Any]], engine_decisions: dict[str, Any] | None, base: dict[str, Any]) -> dict[str, Any] | None:
+    """Core 383.3.d.1: one controller's simultaneously triggered abilities are
+    ordered by that controller. Missing or colliding controller_order inside
+    one batch is a decision_required; a supplied trigger_order decision
+    assigns 0..n-1. Returns a failure result or None."""
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for trigger in pending_triggers:
+        groups.setdefault((trigger.get("batch_id"), trigger.get("controller")), []).append(trigger)
+    for (batch_id, controller), members in sorted(groups.items(), key=lambda kv: (kv[0][0] or "", kv[0][1] or "")):
+        if len(members) < 2:
+            continue
+        orders = [t.get("controller_order") for t in members]
+        if all(isinstance(o, int) for o in orders) and len(set(orders)) == len(orders):
+            continue
+        trigger_ids = [t["trigger_id"] for t in members]
+        decision = _ed.trigger_order(engine_decisions, batch_id, controller)
+        decision_id = f"trigger_order:{batch_id}:{controller}"
+        if decision is None:
+            return {
+                **base, "valid": True, "committed": False, "stage": "trigger_order",
+                "reason_code": "trigger_order_required",
+                "reason": f"{controller} has {len(members)} abilities triggered together in batch {batch_id}; their order is {controller}'s choice (Core 383.3.d.1)",
+                "decision_ids": [decision_id], "decision_controller": controller,
+                "batch_id": batch_id, "trigger_ids": trigger_ids,
+                "rule_locators": ["Core 383.3.d", "Core 383.3.d.1"],
+            }
+        if decision["controller"] != controller:
+            return {**base, "valid": True, "committed": False, "applied": False, "stage": "trigger_order", "reason_code": "decision_controller_mismatch",
+                    "reason": f"trigger order for {controller} was supplied by {decision['controller']!r}", "batch_id": batch_id, "trigger_ids": trigger_ids}
+        if sorted(decision["value"]) != sorted(trigger_ids):
+            return {**base, "valid": False, "committed": False, "stage": "engine_decision",
+                    "errors": [f"trigger_order {decision_id} must list exactly {sorted(trigger_ids)}, once each; got {decision['value']}"],
+                    "reason": "trigger order decision does not match the batch"}
+        for position, trigger_id in enumerate(decision["value"]):
+            next(t for t in members if t["trigger_id"] == trigger_id)["controller_order"] = position
+    return None
 
 
 def entry_state_for(state: dict[str, Any], card: str, controller: str) -> tuple[str, str, list[dict[str, Any]]]:
@@ -365,6 +377,123 @@ def complete_permanent_play(state: dict[str, Any], item_id: str) -> tuple[dict[s
     trace["play_triggers"] = [t["trigger_id"] for t in triggers]
     trace["rule_locators"] += ["Core 419.4.a"] if triggers else []
     return working, trace, triggers
+
+
+TURN_STEP_VERSION = "riftbound-turn-step-result.v1"
+
+
+def _turn_base(step: str, timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
+    return {"schema_version": TURN_STEP_VERSION, "step": step,
+            "input_timing_state_hash": state_hash(timing_state), "input_effect_state_hash": hash_value(effect_state)}
+
+
+def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """ADR-0007 §8 / Core 317.1: enter the Ending Step, evaluate "At the end of
+    your turn" triggers of the turn player's board objects (383.1, with the
+    383.2.a.1 condition checked now) and schedule them as one batch. Nothing
+    expires here; that is run_expiration_step once the chain has emptied."""
+    base = _turn_base("begin_ending_step", timing_state, effect_state)
+    errors = [f"timing: {e}" for e in validate_timing_state(timing_state)] + [f"effect: {e}" for e in validate_state(effect_state)]
+    if errors:
+        return {**base, "valid": False, "committed": False, "errors": errors, "reason": "; ".join(errors)}
+    if timing_state.get("phase") != "main":
+        return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "ending_step_requires_main_phase", "reason": f"the Ending Step follows the Main Phase (316.9.b); phase is {timing_state.get('phase')!r}", "rule_locators": ["Core 316.9.b", "Core 317.1"]}
+    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"] or timing_state["showdown"]["active"]:
+        return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "turn_not_quiet", "reason": "the chain, outstanding tasks and any showdown must be finished before the turn ends (316.9)", "rule_locators": ["Core 316.9", "Core 317.1"]}
+    turn_player = timing_state["turn_player"]
+    turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
+    descriptors: list[dict[str, Any]] = []
+    evaluated: list[dict[str, Any]] = []
+    for object_id in sorted(effect_state["objects"]):
+        obj = effect_state["objects"][object_id]
+        for descriptor in obj.get("end_of_turn_triggers", []) or []:
+            record = {"trigger_id": descriptor["trigger_id"], "source_object": object_id, "controller": descriptor["controller"], "scheduled": False}
+            if obj.get("controller") != turn_player or zone_class(find_location(effect_state, object_id)) != "board":
+                record["reason"] = "not the turn player's board object"
+                evaluated.append(record); continue
+            condition = descriptor.get("condition")
+            if condition is not None and condition["kind"] == "at_battlefield":
+                location = find_location(effect_state, object_id)
+                if location is None or location[0] != "battlefield":
+                    record["reason"] = "condition at_battlefield not met (383.2.a.1)"
+                    evaluated.append(record); continue
+            copied = {k: v for k, v in descriptor.items() if k != "condition"}
+            copied.update({"trigger_kind": "triggered", "batch_sequence": 0, "batch_id": f"ending:{turn_id}", "ending_step": turn_id})
+            descriptors.append(copied)
+            record["scheduled"] = True
+            evaluated.append(record)
+    failure = _settle_trigger_orders(descriptors, engine_decisions, base)
+    if failure is not None:
+        return failure
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["phase"] = "ending"
+    next_timing["priority"] = None
+    next_timing["ending_step"] = {"status": "triggers_scheduled", "turn_id": turn_id, "scheduled_triggers": [d["trigger_id"] for d in descriptors]}
+    scheduled = schedule_triggered_items(next_timing, descriptors)
+    if scheduled.get("applied") is not True:
+        return {**base, "valid": scheduled.get("valid", True), "committed": False, "applied": False, "reason_code": scheduled.get("reason_code", "trigger_schedule_failed"), "reason": "; ".join(scheduled.get("errors", [])) or scheduled.get("reason_code", "trigger_schedule_failed"), "trigger_result": scheduled}
+    final_timing = scheduled["next_state"]
+    return {**base, "valid": True, "committed": True, "applied": True, "reason_code": "ok",
+            "next_timing_state": final_timing, "next_timing_state_hash": state_hash(final_timing),
+            "next_effect_state": copy.deepcopy(effect_state), "next_effect_state_hash": hash_value(effect_state),
+            "turn_id": turn_id, "trace": {"ending_triggers": evaluated, "trigger_schedule": scheduled.get("transition")},
+            "rule_locators": ["Core 316.9.b", "Core 317.1", "Core 317.1.a", "Core 383.1", "Core 383.2.a.1"]}
+
+
+def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
+    """ADR-0007 §8 / Core 317.2: one Ending Special Cleanup, only once the
+    Ending Step's triggers are done, the chain is empty and no task is
+    outstanding — 3c heal all Units, 3d every "this turn" effect of this
+    turn expires at once, 3e every pool empties. Follow-up cleanups are
+    normal Cleanups (324.2). The next Beginning Phase is not modelled."""
+    base = _turn_base("run_expiration_step", timing_state, effect_state)
+    errors = [f"timing: {e}" for e in validate_timing_state(timing_state)] + [f"effect: {e}" for e in validate_state(effect_state)]
+    if errors:
+        return {**base, "valid": False, "committed": False, "errors": errors, "reason": "; ".join(errors)}
+    ending = timing_state.get("ending_step") or {}
+    if timing_state.get("phase") != "ending" or ending.get("status") != "triggers_scheduled":
+        return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "expiration_requires_ending_step", "reason": "the Expiration Step follows the Ending Step (317.2); begin_ending_step has not run for this turn", "rule_locators": ["Core 317.1", "Core 317.2"]}
+    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+        return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "ending_triggers_unfinished", "reason": "end-of-turn chain items and outstanding tasks must finish before anything expires (317.1, 320)", "rule_locators": ["Core 317.1", "Core 320", "Core 317.2"]}
+    turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
+    if ending.get("turn_id") not in (None, turn_id):
+        return {**base, "valid": False, "committed": False, "errors": [f"ending_step is for turn {ending.get('turn_id')!r}, the effect state is turn {turn_id!r}"], "reason": "turn mismatch"}
+    for effect in effect_state.get("turn_effects", []) or []:
+        if effect["kind"] not in TURN_EFFECT_KINDS and effect.get("turn_id") == turn_id:
+            return {**base, "valid": True, "committed": False, "unsupported": True, "reason": f"turn effect kind {effect['kind']!r} is not modelled; it cannot be expired safely"}
+    working = copy.deepcopy(effect_state)
+    healed = []
+    for object_id, obj in working["objects"].items():
+        if obj.get("kind") == "unit" and obj.get("damage", 0) > 0 and zone_class(find_location(working, object_id)) == "board":
+            healed.append({"object_id": object_id, "damage": obj["damage"]})
+            obj["damage"] = 0
+    expired_modifiers = []
+    for object_id, obj in working["objects"].items():
+        kept = []
+        for modifier in obj.get("might_modifiers", []):
+            if modifier.get("duration") == "this_turn" and modifier.get("turn_id", turn_id) == turn_id:
+                expired_modifiers.append({"object_id": object_id, **modifier})
+            else:
+                kept.append(modifier)
+        obj["might_modifiers"] = kept
+    expired_effects = [e for e in working.get("turn_effects", []) if e.get("turn_id") == turn_id]
+    remaining = [e for e in working.get("turn_effects", []) if e.get("turn_id") != turn_id]
+    if remaining:
+        working["turn_effects"] = remaining
+    else:
+        working.pop("turn_effects", None)
+    emptied = {}
+    for player_id, player in working["players"].items():
+        emptied[player_id] = copy.deepcopy(player["resources"])
+        player["resources"] = {"energy": 0, "power": {}}
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["ending_step"] = {**ending, "status": "expired"}
+    return {**base, "valid": True, "committed": True, "applied": True, "reason_code": "ok", "turn_id": turn_id,
+            "next_timing_state": next_timing, "next_timing_state_hash": state_hash(next_timing),
+            "next_effect_state": working, "next_effect_state_hash": hash_value(working),
+            "trace": {"heal_all_units": healed, "expire_this_turn": {"might_modifiers": expired_modifiers, "turn_effects": expired_effects}, "empty_rune_pools": emptied,
+                      "simultaneous": True, "follow_up_cleanup": "normal (324.2)"},
+            "rule_locators": ["Core 317.2", "Core 317.2.a", "Core 317.2.b", "Core 317.2.c", "Core 317.2.d", "Core 324.2"]}
 
 
 def _load(path: Path) -> dict[str, Any]:

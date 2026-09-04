@@ -50,7 +50,7 @@
         "type": "object",
         "required": ["op"],
         "properties": {
-          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive", "return_to_hand", "recall", "channel_rune"]},
+          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive", "return_to_hand", "recall", "channel_rune", "grant_turn_effect"]},
           "effect_id": {"type": "string", "minLength": 1},
           "predicate": {
             "type": "object",
@@ -71,6 +71,8 @@
           "controller": {"type": "string", "minLength": 1},
           "token_kind": {"enum": ["unit", "gear"]},
           "entry_state": {"enum": ["ready", "exhausted"], "description": "channel_rune: the state the runes enter with (Core 430.2); ready by default (430.2.a)."},
+          "turn_effect_kind": {"enum": ["entry_state_for_played_units"], "description": "grant_turn_effect: a 'this turn' effect expiring at the Expiration Step (317.2)."},
+          "value": {},
           "base_might": {"type": "integer", "minimum": 0},
           "destination": {
             "type": "object",

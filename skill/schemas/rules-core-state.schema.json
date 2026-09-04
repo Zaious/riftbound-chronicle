@@ -32,6 +32,17 @@
     },
     "priority": {"type": ["string", "null"]},
     "outstanding_tasks": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "ending_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "turn_id"],
+      "description": "ADR-0007 §8: the Ending Step's progress for this turn (Core 317). Absent before begin_ending_step.",
+      "properties": {
+        "status": {"enum": ["triggers_scheduled", "expired"]},
+        "turn_id": {"type": "string", "minLength": 1},
+        "scheduled_triggers": {"type": "array", "items": {"type": "string"}}
+      }
+    },
     "chain": {
       "type": "object",
       "additionalProperties": false,

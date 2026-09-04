@@ -28,7 +28,7 @@ core: `rules_core.py` determines when and what procedure occurs;
 | --- | --- | --- |
 | `draw` | draw known available cards from the top of Main Deck | Core 413 |
 | `recycle_one` | recycle one known object to its owner's corresponding deck | Core 416 |
-| `move_board_object` | move one known object between Base/Battlefield locations | Core 420, 445 |
+| `move_board_object` | move one known object between Base/Battlefield locations; a Base destination may be `player_relation: object_controller` (each moved unit's own controller's Base, 355.4.a) | Core 420, 445 |
 | `modify_might` | append a typed Might modifier with source and duration | Core 135.2.e.3, 477 |
 | `deal_damage` | mark positive damage on one unit/object | Core 417 |
 | `heal_damage` | clear up to a specified amount of marked damage | Core 418 |
@@ -273,10 +273,11 @@ order, then total discounts on the aggregate Energy including chosen
 additional Energy costs, each minimum its own), and total modifications
 (356.5); the engine applies them and floors at zero (356.6). Energy and
 Power are paid from the player's pool (357.1) as unique payment events that
-the receipt's components reference with exact allocations. A pool short of
-the total is not yet illegal: the controller may use Add reactions during
-payment (429.3), so the play is `decision_required` until a human confirms
-the Add window closed in `payment_context`; exhaust and kill costs are paid through the ordinary
+the receipt's components reference with exact allocations. Any non-zero resource
+cost first needs a human to confirm the Add window closed in
+`payment_context` — the controller may use Add reactions during payment
+(429.3) and the engine never assumes they decline, whether or not the pool
+already covers the cost; until then the play is `decision_required`; exhaust and kill costs are paid through the ordinary
 operations with a friendly-only selector (357.2), and a payment a replacement
 effect prevents still counts as paid (357.2.a). Other non-standard costs are
 `unsupported` by name, as is a replacement that needs a choice during
@@ -301,8 +302,10 @@ game action happened — a partly prevented deal did (359.3.e.14.c), a wholly
 prevented or replaced one did not (359.3.e.14.b, 205), a no-op did not;
 `requested_count_not_reached` compares the event's applied count with its
 requested count (a short Channel satisfies Mobilize's "If you couldn't",
-430.5), and an instruction that did not happen at all did not reach it. The
-predicate must name an earlier instruction; otherwise `invalid_input`.
+430.5). It may only reference an instruction with a count contract —
+`channel_rune` or a bounded `targets` instruction; referencing anything else
+is `invalid_input`, never a guess. Every predicate must name an earlier
+instruction; otherwise `invalid_input`.
 
 `caused_kill` is not an in-program predicate. A Cleanup kill is only known
 after the spell has left the chain, so "If this kills it, …" is declared as
@@ -310,7 +313,10 @@ a program-level `conditional_triggers` entry: the resolution bridge runs the
 instructions, sends the spell to the trash, runs Cleanup, attributes each
 Cleanup kill to the spell that dealt the damage immediately before it
 (428.5.c) — or to a Kill instruction directly (428.5.b) — and only then
-builds the Pending reflexive item (387–388). A death a replacement prevented
+builds the Pending reflexive item (387–388). It shares the chronological
+batch of the death triggers the same Cleanup kill produced, so the two are
+ordered together by controller in Turn Order (383.3.d), never by an
+artificial "death trigger first" rule. A death a replacement prevented
 builds nothing. Using `caused_kill` as an effect predicate answers
 `unsupported`.
 

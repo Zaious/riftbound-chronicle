@@ -89,6 +89,9 @@ def main() -> int:
         errors.append("an unknown predicate effect_id was accepted")
     if not any("earlier instruction" in e for e in validate_program(program("i", gated_draw("action_performed"), deal))):
         errors.append("a forward predicate reference was accepted")
+    malformed_count = validate_program(program("j0", deal, gated_draw("requested_count_not_reached")))
+    if not any("count contract" in e for e in malformed_count):
+        errors.append("requested_count_not_reached on a single-target deal was not invalid_input")
     ck = apply_program(state, program("j", deal, gated_draw("caused_kill")))
     if ck.get("committed") or ck.get("unsupported") is not True:
         errors.append("caused_kill as an effect predicate was not unsupported")
@@ -129,6 +132,15 @@ def main() -> int:
     nct = (no_deal.get("trace", {}).get("conditional_triggers") or [{}])[0]
     if not no_deal.get("committed") or no_deal["next_timing_state"]["chain"]["items"] or nct.get("action_performed") is not False:
         errors.append("a prevented deal built the trigger")
+    # same Cleanup kill → death trigger and caused-kill trigger in one batch, Turn Player (p1) first (383.3.d)
+    with_death = copy.deepcopy(lethal)
+    with_death["objects"]["u2"]["death_triggers"] = [{"trigger_id": "u2-deathknell", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "u2-deathknell-effects", "optional_at_finalize": False}]
+    both = resolve_with_program(timing, "spell-1", with_death, disintegrate)
+    both_items = both.get("next_timing_state", {}).get("chain", {}).get("items", [])
+    if not both.get("committed") or [i["id"] for i in both_items] != ["disintegrate-draw", "u2-deathknell"]:
+        errors.append(f"death trigger and caused-kill trigger were not scheduled as one batch in Turn Order: {both.get('reason')} {[i.get('id') for i in both_items]}")
+    elif len({i.get("batch_id") for i in both_items}) != 1 or len({i.get("batch_sequence") for i in both_items}) != 1:
+        errors.append(f"simultaneous triggers carry different batches: {[(i.get('batch_id'), i.get('batch_sequence')) for i in both_items]}")
     kill_prog = {**program("spell-1-effects", {"op": "kill", "object_id": "u2", "effect_id": "dmg"}), "source_object": "spell-1", "conditional_triggers": [trigger]}
     direct = resolve_with_program(timing, "spell-1", state, kill_prog)
     dct = (direct.get("trace", {}).get("conditional_triggers") or [{}])[0]

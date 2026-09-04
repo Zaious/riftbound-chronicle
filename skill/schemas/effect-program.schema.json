@@ -79,6 +79,7 @@
             "properties": {
               "kind": {"enum": ["base", "battlefield"]},
               "player": {"type": "string", "minLength": 1},
+              "player_relation": {"enum": ["object_controller"], "description": "Base destination resolved per moved object to its own controller's Base (Core 355.4.a); use instead of a literal player so the program stays portable."},
               "battlefield": {"type": "string", "minLength": 1}
             }
           },

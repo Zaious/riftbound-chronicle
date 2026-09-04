@@ -95,6 +95,27 @@ def main() -> int:
         statuses = {c["status"] for c in card["clauses"]}
         if card["behavior_status"] == "full" and statuses != {"full"}:
             errors.append(f"{card['canonical_name']} claims full with clauses {sorted(statuses)}")
+    # Codex Round B acceptance: portability is proven, not assumed
+    for card in programs["cards"]:
+        for clause in card["clauses"]:
+            if not rp.template_is_portable(clause):
+                errors.append(f"{clause['clause_id']} template carries a literal player id")
+    for card in report["cards"]:
+        for cl in card["clauses"]:
+            for r in cl["fixtures"]:
+                if not r.get("skipped") and r.get("mirrored") is not True and cl["claim"] in {"full", "partial"}:
+                    errors.append(f"{r['fixture_id']} did not pass under the mirrored (players swapped) binding")
+    flash = next(cl for c in programs["cards"] if c["card"] == "Flash" for cl in c["clauses"] if cl["clause_id"] == "flash#7a92a690")
+    if flash["execution"]["program"]["effects"][0]["destination"] != {"kind": "base", "player_relation": "object_controller"}:
+        errors.append("Flash's Move destination is bound to a fixture player instead of each unit's own controller (355.4.a)")
+    morbid = next(cl for c in programs["cards"] if c["card"] == "Morbid Return" for cl in c["clauses"] if cl["clause_id"] == "morbid return#f3c76e58")
+    if morbid["execution"]["program"]["effects"][0]["target"].get("zone_owner_relation") != "own":
+        errors.append("Morbid Return does not restrict the choice to the caster's own trash")
+    rows = {r["fixture_id"]: r for c in report["cards"] for cl in c["clauses"] for r in cl["fixtures"]}
+    if rows.get("morbid return#f3c76e58:opponent_trash", {}).get("outcome") != "illegal":
+        errors.append("p1 returning a unit from p2's trash was not illegal")
+    if rows.get("incinerate#08866b32:add_window_unconfirmed", {}).get("outcome") != "decision_required":
+        errors.append("a sufficient pool without a confirmed Add window did not stop for confirmation (429.3)")
     # a claim never outranks its evidence
     probe = copy.deepcopy(programs)
     target = next(cl for c in probe["cards"] for cl in c["clauses"] if cl["claim"] == "full" and cl.get("fixtures"))

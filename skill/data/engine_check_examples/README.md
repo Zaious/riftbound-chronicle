@@ -18,7 +18,7 @@ rather than failing a reader.
 | `cleanup-decisions.json` | `cleanup --cleanup-decisions` | `supported` — the same state once the controller supplies the event order |
 | `play-timing-state.json` | `play` | Neutral Open, `p1` holds Priority, empty chain |
 | `play-effect-state.json` | `play` | `c1` in `p1`'s hand, 3 Energy and 1 Fury in the pool, one ready unit |
-| `play-declaration.json` | `play` | A 2-Energy 1-Fury spell with an optional exhaust-a-unit additional cost |
+| `play-declaration.json` | `play` | A 2-Energy 1-Fury spell with an optional exhaust-a-unit additional cost; carries a human-confirmed closed Add window (Core 429.3) |
 | `play-decisions.json` | `play --decisions` | `supported` — the controller's intent to pay the optional cost; without it the play is `decision_required` |
 
 The last two rows are the point of the set: the same state answers

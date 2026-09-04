@@ -77,18 +77,21 @@ def effect_state(*, energy=3, power=None, hand=("c1",)):
     return state
 
 
+CLOSED = {"add_window_closed": True, "confirmed_by": "human"}
+
+
 def declaration(**overrides):
+    # Every non-zero cost needs the human-confirmed Add window (Core 429.3);
+    # pass payment_context=None to test the unconfirmed path.
     value = {
         "schema_version": DECLARATION_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
         "play_id": "play-1", "actor": "p1", "card": "c1",
         "chain_item": {"id": "spell-1", "object_kind": "spell", "timing": "default"},
         "cost": {"base": {"energy": 2, "power": {"fury": 1}}},
+        "payment_context": dict(CLOSED),
     }
     value.update(overrides)
-    return value
-
-
-CLOSED = {"add_window_closed": True, "confirmed_by": "human"}
+    return {k: v for k, v in value.items() if v is not None}
 
 
 def decisions(state, *entries):
@@ -147,9 +150,15 @@ def main() -> int:
 
     # --- Add window (429.3): short pool → decision_required, then illegal ------------------
     poor = effect_state(energy=1)
-    ask = play_card(timing, poor, declaration())
+    ask = play_card(timing, poor, declaration(payment_context=None))
     if ask.get("committed") or ask.get("reason_code") != "add_window_confirmation_required" or ask.get("decision_controller") != "p1" or ask.get("decision_ids") != ["add_window:play-1"]:
         errors.append(f"short pool without add-window confirmation was not decision_required: {ask.get('reason_code')}")
+    rich_unconfirmed = play_card(timing, state, declaration(payment_context=None))
+    if rich_unconfirmed.get("committed") or rich_unconfirmed.get("reason_code") != "add_window_confirmation_required":
+        errors.append("a sufficient pool was paid without the Add window being confirmed closed (429.3)")
+    free = play_card(timing, state, declaration(cost={"base": {"energy": 0, "power": {}}}, payment_context=None))
+    if not free.get("committed"):
+        errors.append(f"a zero-cost play should need no Add window: {free.get('reason_code')}")
     bad = play_card(timing, poor, declaration(payment_context=CLOSED))
     if bad.get("committed") or bad.get("reason_code") != "cost_unpayable" or bad.get("stage") != "payment":
         errors.append(f"unpayable cost with the window closed was not illegal: {bad.get('stage')} {bad.get('reason_code')}")

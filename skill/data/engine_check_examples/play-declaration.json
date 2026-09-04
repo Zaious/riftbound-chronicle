@@ -30,5 +30,9 @@
         "source": "c1"
       }
     ]
+  },
+  "payment_context": {
+    "add_window_closed": true,
+    "confirmed_by": "example: the human operator confirmed no Add reaction is used"
   }
 }

@@ -177,6 +177,12 @@ jobs:
       - name: R3-A1 card programs pass and the behavior manifest is derived from them
         run: python3 skill/scripts/check_r3a1_programs.py
 
+      # Source-level uniqueness: one dispatch branch per supported op in
+      # _apply_one, no duplicated top-level def/class (a patch applied twice
+      # once left a dead second copy of three ops).
+      - name: Effect IR dispatch is unique per operation
+        run: python3 skill/scripts/check_op_dispatch.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -242,6 +248,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_zone_ops.py"
           python3 "$REPO/skill/scripts/check_linked_predicates.py"
           python3 "$REPO/skill/scripts/check_r3a1_programs.py"
+          python3 "$REPO/skill/scripts/check_op_dispatch.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -161,8 +161,28 @@ def resolve_with_program(
     # (387–388); a death a replacement prevented builds nothing.
     conditional_trace = []
     conditional_triggers = []
-    after_cleanup = max((t.get("batch_sequence", -1) for t in effect_triggers + cleanup_triggers), default=-1) + 1
     events = {e.get("effect_id"): e for e in effect_result.get("trace", [])}
+    # Codex Round B, point 5: a caused-kill reflexive trigger and the death
+    # triggers of the same Cleanup kill are simultaneously triggered — one
+    # chronological batch, ordered by controller in Turn Order (383.3.d). The
+    # batch is the Cleanup iteration that killed the object; for a Kill
+    # instruction (428.5.b) it is the instruction's own batch.
+    cleanup_kill_iteration = {e.get("object_id"): e.get("cleanup_iteration") for e in cleanup_result.get("trace", []) if e.get("op") == "kill" and e.get("outcome") in {"applied", "augmented_applied"}}
+    cleanup_prefix = f"lethal-cleanup:{hash_value(after_effect).split(':', 1)[1][:12]}"
+    all_batches = effect_triggers + cleanup_triggers
+
+    def batch_for(killed_ids: list[str], event: dict[str, Any]) -> tuple[int, str]:
+        if event.get("op") == "kill":
+            return event.get("index", 0), f"{program.get('program_id')}:{event.get('effect_id')}"
+        iteration = min(cleanup_kill_iteration.get(o, 0) for o in killed_ids)
+        return iteration + next_batch, f"{cleanup_prefix}:{iteration}"
+
+    def unique_order(controller: str, batch_id: str, wanted: int) -> int:
+        taken = {t.get("controller_order") for t in all_batches + conditional_triggers if t.get("controller") == controller and t.get("batch_id") == batch_id}
+        order = wanted
+        while order in taken:
+            order += 1
+        return order
     for ct in program.get("conditional_triggers", []) or []:
         event = events.get(ct["condition"]["effect_id"], {})
         performed = action_performed(event)
@@ -182,7 +202,9 @@ def resolve_with_program(
         })
         if held:
             descriptor = {k: ct[k] for k in ("trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize")}
-            descriptor.update({"trigger_kind": "reflexive", "batch_sequence": after_cleanup, "batch_id": f"conditional-reflexive:{item_id}",
+            batch_sequence, batch_id = batch_for(killed, event)
+            descriptor.update({"trigger_kind": "reflexive", "batch_sequence": batch_sequence, "batch_id": batch_id,
+                               "controller_order": unique_order(ct["controller"], batch_id, ct["controller_order"]),
                                "condition": dict(ct["condition"]), "killed_objects": killed})
             conditional_triggers.append(descriptor)
     pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers

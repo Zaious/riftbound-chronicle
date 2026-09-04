@@ -370,14 +370,17 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
     total = skeleton["total"]
     ctx = declaration.get("payment_context") or {}
     short = resources["energy"] < total["energy"] or any(resources["power"].get(d, 0) < a for d, a in total["power"].items())
+    nonzero = total["energy"] > 0 or any(a > 0 for a in total["power"].values())
+    # Core 429.3 (Codex Round B, point A): whenever a resource cost is paid, the
+    # controller may use Add reactions first. The engine never assumes they
+    # decline — a human confirms the window is closed before any non-zero
+    # payment, whether or not the pool already covers it. A zero cost pays
+    # nothing and needs no window.
+    if nonzero and ctx.get("add_window_closed") is not True:
+        raise PlayError("payment", "add_window_confirmation_required",
+                        f"a resource cost is due and the Add window (Core 429.3) has not been confirmed closed for {actor}",
+                        decision_ids=[f"add_window:{declaration['play_id']}"], decision_controller=actor, rule_locators=["Core 429.3", "Core 357.1.a"])
     if short:
-        # Core 429.3: the controller may use Add reactions during payment. The
-        # engine cannot see whether they will; a human must say the window is
-        # closed before a short pool becomes an illegal play.
-        if ctx.get("add_window_closed") is not True:
-            raise PlayError("payment", "add_window_confirmation_required",
-                            f"{actor}'s pool is short of the total cost and the Add window (Core 429.3) has not been confirmed closed",
-                            decision_ids=[f"add_window:{declaration['play_id']}"], decision_controller=actor, rule_locators=["Core 429.3", "Core 357.1.a"])
         raise PlayError("payment", "cost_unpayable", f"{actor} cannot pay {total} from {resources} with the Add window closed", rule_locators=["Core 357.1"])
 
     events: list[dict[str, Any]] = []

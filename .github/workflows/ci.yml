@@ -201,6 +201,12 @@ jobs:
       - name: Entry replacements, conditional passives, Ending and Expiration steps
         run: python3 skill/scripts/check_turn_steps.py
 
+      # ADR-0007 C-22: named instruction condition, Move triggers only on a
+      # Move, and discard by the player's private card_selection. Fails if an
+      # empty-handed discard still draws or a hand leaks into the decision.
+      - name: Instruction conditions, Move triggers, private discard
+        run: python3 skill/scripts/check_conditions_and_discard.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -270,6 +276,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_turn_steps.py"
+          python3 "$REPO/skill/scripts/check_conditions_and_discard.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

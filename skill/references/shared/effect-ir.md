@@ -39,6 +39,8 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `kill` | kill a supported Unit/Gear permanent with typed self-death trigger capture and replacement handling | Core 428 |
 | `return_to_hand` | return a board object or a card in its owner's trash to its owner's hand as a new object with nothing of the old one; not a Move; a token ceases to exist | Core 124, 124.1, 446.2, 186.1 |
 | `recall` | relocate a board object to its current controller's Base keeping damage, exhaustion and modifiers; not a Move, so Move triggers never fire; already there is a no-op | Core 455, 456.1, 458.1 |
+| `grant_turn_effect` | record a 'this turn' effect for the controller (entry state for units played this turn), expiring at the Expiration Step | Core 369.3, 317.2.c |
+| `discard` | the player moves `count` cards from hand to trash by a private card_selection decision; short hands discard what they have (Core 422.4); not a target | Core 422.1, 422.1.a, 422.4, 124 |
 | `channel_rune` | put the top runes of a player's Rune Deck on the board in the stated entry state, as many as possible when short; new objects | Core 430.1, 430.2.a, 430.3, 124 |
 
 Return, Recall and Move are three events with three trigger classes; the
@@ -306,6 +308,28 @@ requested count (a short Channel satisfies Mobilize's "If you couldn't",
 `channel_rune` or a bounded `targets` instruction; referencing anything else
 is `invalid_input`, never a guess. Every predicate must name an earlier
 instruction; otherwise `invalid_input`.
+
+`sole_controlled_unit_at_referent_location {effect_id}` (En Garde's "if it
+is the only unit you control there") reads the earlier instruction's legal
+referent at resolution — none, or a referent that was not acted on, means
+the condition fails — takes "there" as the referent's current location, and
+holds only when the effect's controller (teammates excluded) controls
+exactly one unit there and it is the referent. Not holding is
+`skipped_linked_dependency / completion: none`, never `illegal`.
+
+Only a completed `move_board_object` raises "When I move" (`move_triggers`;
+383.1, 319.8); Recall, return to hand and board entry are not Moves.
+
+`discard {player, count, decision_ref?}` moves cards from the player's hand
+to their owner's trash as new objects (422.1, 124). The choice is the
+discarding player's, made with private information (422.1.a): a
+`card_selection` decision (stage resolution, the player as controller, hand
+object ids with their identities) that belongs to that player's own-private
+artifacts only — the engine's `decision_required` names the decision and
+the player, never the hand. When the whole hand must go the engine proceeds
+(422.4); a choice outside the hand or by another player is `illegal`; an
+unknown or stale identity is `invalid_input`. "Discard 1, then draw 1" is an
+`action_performed` gate: nothing discarded → nothing drawn.
 
 `caused_kill` is not an in-program predicate. A Cleanup kill is only known
 after the spell has left the chain, so "If this kills it, …" is declared as

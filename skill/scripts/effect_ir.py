@@ -31,8 +31,8 @@ TRIGGER_CONDITION_KINDS = {"at_battlefield"}
 DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
-PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
-IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached"}
+PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill", "sole_controlled_unit_at_referent_location")
+IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "sole_controlled_unit_at_referent_location"}
 # Outcomes in which the *original* game action happened. A partly prevented
 # deal still happened (359.3.e.14.c); a wholly prevented or replaced one did
 # not (359.3.e.14.b, 205). `caused_kill` is not an in-program predicate: a
@@ -64,6 +64,8 @@ SUPPORTED_OPS = {
     "channel_rune",
     # C-21 (ADR-0007 §6): a "this turn" effect such as Confront's, expiring at 317.2.
     "grant_turn_effect",
+    # C-22 (ADR-0007 §10): hand → trash by the discarding player's private choice.
+    "discard",
 }
 
 
@@ -76,6 +78,15 @@ class ReplacementDecisionRequired(ValueError):
 class IllegalOperation(ValueError):
     """A well-formed instruction the rules refuse for this object (ADR-0005 §10
     `illegal`), as opposed to a malformed one (`invalid_input`)."""
+
+
+class CardSelectionRequired(ValueError):
+    """A private-zone choice (Core 355.10.a) the deciding player has not made."""
+
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None):
+        super().__init__(message)
+        self.decision_ids = decision_ids
+        self.controller = controller
 
 
 class TargetDecisionRequired(ValueError):
@@ -138,6 +149,7 @@ OP_RULES = {
     "recall": ["Core 455", "Core 456.1", "Core 458.1"],
     "channel_rune": ["Core 430.1", "Core 430.2.a", "Core 430.3", "Core 124"],
     "grant_turn_effect": ["Core 369.3", "Core 317.2.c"],
+    "discard": ["Core 422.1", "Core 422.1.a", "Core 422.4", "Core 124"],
 }
 
 
@@ -469,6 +481,13 @@ def validate_program(program: Any) -> list[str]:
             predicate = effect.get("predicate")
             if predicate is not None:
                 errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt"), seen, {e.get("effect_id", f"effect-{i}"): e for i, e in enumerate(effects[:index]) if isinstance(e, dict)}))
+            if effect.get("op") == "discard":
+                if not isinstance(effect.get("player"), str) or not isinstance(effect.get("count"), int) or effect.get("count", 0) < 1:
+                    errors.append(f"effects[{index}].discard requires player and a positive count")
+                if "decision_ref" in effect and (not isinstance(effect["decision_ref"], str) or not effect["decision_ref"]):
+                    errors.append(f"effects[{index}].discard.decision_ref must be a non-empty string")
+                if effect.get("target") is not None or effect.get("targets") is not None or effect.get("objects") is not None:
+                    errors.append(f"effects[{index}].discard is not a targeted instruction (Core 355.10.a) and resolves its own selection")
             modifiers = effect.get("event_modifiers")
             if modifiers is not None:
                 if effect.get("op") != "play_token" or not isinstance(modifiers, dict) or not modifiers or set(modifiers) - {"entry_state", "result_keywords"}:
@@ -621,7 +640,26 @@ def action_performed(event: dict[str, Any]) -> bool:
     return event.get("outcome") in PERFORMED_OUTCOMES
 
 
-def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None, events: dict[str, dict[str, Any]] | None = None) -> tuple[bool | None, list[str]]:
+def sole_controlled_unit_at_referent_location(state: dict[str, Any], controller: str | None, event: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    """ADR-0007 §9 (En Garde): the earlier instruction's legal referent must be
+    the only unit its controller — the effect's controller, teammates
+    excluded — controls at the referent's current location."""
+    referent = event.get("object_id") if action_performed(event) else None
+    if not isinstance(referent, str) or referent not in state["objects"]:
+        return False, {"referent": None, "reason": "no legal referent"}
+    location = find_location(state, referent)
+    if location is None:
+        return False, {"referent": referent, "reason": "referent has no location"}
+    if location[0] == "battlefield":
+        present = list(state["battlefields"][location[1]]["objects"])
+    else:
+        present = list(state["players"][location[1]]["zones"][location[2]])
+    controlled = [o for o in present if state["objects"][o].get("kind") == "unit" and state["objects"][o].get("controller") == controller]
+    holds = controlled == [referent]
+    return holds, {"referent": referent, "location": location, "controlled_units_there": controlled}
+
+
+def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None, events: dict[str, dict[str, Any]] | None = None, state: dict[str, Any] | None = None, controller: str | None = None) -> tuple[bool | None, list[str]]:
     """Returns (holds, locators); holds is None when the kind is not implemented."""
     kind = predicate["kind"]
     if kind not in IMPLEMENTED_PREDICATES:
@@ -637,6 +675,9 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
         return action_performed(event), ["Core 359.3.e.14.b", "Core 359.3.e.14.c", "Core 205"]
     if kind == "action_not_performed":
         return not action_performed(event), ["Core 359.3.e.14.b", "Core 205"]
+    if kind == "sole_controlled_unit_at_referent_location":
+        holds, _ = sole_controlled_unit_at_referent_location(state or {}, controller, event)
+        return holds, ["Core 135.2.b.5.a", "Core 359.3.e.14.a"]
     # requested_count_not_reached: "If you couldn't" tests actual < requested
     # (430.5); an instruction that did not happen at all also did not reach it.
     requested = event.get("requested_count", event.get("requested_targets"))
@@ -970,6 +1011,17 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         else:
             raise ValueError("unknown board destination")
         trace.update({"object_id": object_id, "from": source, "to": target})
+        # ADR-0007 §10: only a completed Move raises "When I move" (383.1, 319.8);
+        # Recall, return to hand and board entry are not Moves.
+        moved = new_state["objects"][object_id]
+        move_triggers = []
+        for descriptor in moved.get("move_triggers", []) or []:
+            copied = copy.deepcopy(descriptor)
+            copied.setdefault("trigger_kind", "triggered")
+            copied["move"] = {"from": source, "to": target}
+            move_triggers.append(copied)
+        if move_triggers:
+            trace["pending_triggers"] = move_triggers
 
     elif op == "return_to_hand":
         # DP-06 / Q1: a zone change (446.2 — not a Move), so a new object (124)
@@ -1059,6 +1111,26 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             modifier["turn_id"] = new_state.get("turn_id", DEFAULT_TURN_ID)
         new_state["objects"][object_id]["might_modifiers"].append(modifier)
         trace.update({"object_id": object_id, "amount": amount, "duration": duration, "turn_id": modifier.get("turn_id")})
+
+    elif op == "discard":
+        player_id, objects = effect.get("player"), effect.get("objects")
+        if player_id not in new_state["players"] or not isinstance(objects, list):
+            raise ValueError("discard requires a known player and a resolved selection")
+        hand = new_state["players"][player_id]["zones"]["hand"]
+        identities = {}
+        for object_id in objects:
+            if object_id not in hand:
+                raise IllegalOperation(f"{object_id!r} is not in {player_id}'s hand")
+            hand.remove(object_id)
+            owner = new_state["objects"][object_id]["owner"]
+            new_state["players"][owner]["zones"]["trash"].append(object_id)
+            identities[object_id] = _bump_identity(new_state, object_id)
+        requested = effect.get("count")
+        trace.update({"player": player_id, "requested_count": requested, "applied_count": len(objects), "objects": list(objects), "identities_after": identities,
+                      "not_a_target": True, "selection": effect.get("selection_meta", {}),
+                      "completion": "full" if len(objects) == requested else ("partial" if objects else "none")})
+        if not objects:
+            trace["outcome"] = "no_op"
 
     elif op == "grant_turn_effect":
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
@@ -1499,6 +1571,38 @@ def perform_lethal_cleanup(
     }
 
 
+def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, Any]:
+    """ADR-0007 §10 / Core 422: the discarding player chooses from their own
+    hand with private information (422.1.a) — a card_selection decision, never
+    a target. When the whole hand must go and only one set is legal, the
+    engine proceeds; otherwise it stops for the decision."""
+    import engine_decisions as ed
+    player_id, count = effect.get("player"), effect.get("count")
+    if player_id not in state["players"] or not isinstance(count, int) or count < 1:
+        raise ValueError("discard requires a known player and a positive count")
+    hand = list(state["players"][player_id]["zones"]["hand"])
+    if len(hand) <= count:
+        return {**effect, "objects": hand, "selection_meta": {"forced": True, "reason": "every card in hand must be discarded (Core 422.4)"}}
+    ref = effect.get("decision_ref")
+    entry = next((e for e in ed.entries(decisions, kind="card_selection") if e["decision_id"] == ref), None) if ref else None
+    if entry is None:
+        raise CardSelectionRequired(f"{player_id} chooses {count} card(s) from hand to discard (Core 422.1.a)", [ref or f"discard:{player_id}"], player_id)
+    if entry["controller"] != player_id:
+        raise IllegalDecision(f"card selection {ref!r} was made by {entry['controller']!r}, not the discarding player")
+    if entry["stage"] != "resolution":
+        raise ValueError(f"card selection {ref!r} must be a resolution-stage decision")
+    chosen = list(entry["value"])
+    if len(chosen) != count:
+        raise ValueError(f"card selection {ref!r} names {len(chosen)} cards; {count} required")
+    for object_id in chosen:
+        if object_id not in hand:
+            raise IllegalOperation(f"card selection {ref!r} names {object_id!r}, which is not in {player_id}'s hand")
+        bound = (entry.get("selection_identities") or {}).get(object_id)
+        if bound is not None and bound != object_identity(state, object_id):
+            raise ValueError(f"card selection {ref!r} was bound to {bound!r}; {object_id} is now {object_identity(state, object_id)!r}")
+    return {**effect, "objects": chosen, "selection_meta": {"forced": False, "decision_id": entry["decision_id"]}}
+
+
 def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Turn `targets` (or a decision_ref on `target`) into concrete selectors,
     consuming a target_selection decision when the program defers to one.
@@ -1575,7 +1679,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         predicate = effect.get("predicate")
         if predicate is not None:
             try:
-                holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"), {e.get("effect_id"): e for e in trace})
+                holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"), {e.get("effect_id"): e for e in trace}, current, program.get("controller"))
             except ValueError as exc:
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
             if holds is None:
@@ -1628,6 +1732,22 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             }
         except ValueError as exc:
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+        if effect.get("op") == "discard":
+            try:
+                effect = _resolve_discard(current, effect, decisions)
+            except CardSelectionRequired as exc:
+                return {
+                    **base, "valid": True, "committed": False, "card_selection_required": True,
+                    "reason_code": "card_selection_required", "reason": str(exc),
+                    "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                    "failed_effect_index": index, "trace": trace,
+                }
+            except IllegalDecision as exc:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch", "reason": str(exc), "failed_effect_index": index, "trace": trace}
+            except IllegalOperation as exc:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "illegal_operation", "reason": str(exc), "failed_effect_index": index, "trace": trace}
+            except ValueError as exc:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
         if effect.get("affected") is not None:
             # ADR-0007 §4: two layers. The Battlefield (if any) is the target and is
             # revalidated; the units are found by criteria now and are NOT targets —

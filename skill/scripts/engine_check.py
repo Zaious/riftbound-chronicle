@@ -56,6 +56,10 @@ FEATURE_RULES = {
     "conditional_passives": ["Core 364.3", "Core 365.1"],
     "ending_step": ["Core 316.9.b", "Core 317.1", "Core 383.1", "Core 383.2.a.1"],
     "expiration_step": ["Core 317.2–317.2.d", "Core 324.2"],
+    # C-22 (ADR-0007 §9–10).
+    "instruction_conditions": ["Core 135.2.b.5.a", "Core 359.3.e.14.a"],
+    "move_triggers": ["Core 383.1", "Core 319.8", "Core 446.2", "Core 456.1"],
+    "private_discard": ["Core 422.1–422.4", "Core 355.10.a", "Core 124"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -67,7 +71,7 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard"],
         "unsupported": ["arbitrary_card_text", "combat", "scoring", "complete_game", "complete_legality"],
     },
     "resolution": {
@@ -118,6 +122,7 @@ DECISION_REASON_CODES = {
     "target_selection_required": "target_choice",
     "optional_cost_intent_required": "cost_choice",
     "add_window_confirmation_required": "cost_choice",
+    "card_selection_required": "card_choice",
 }
 
 

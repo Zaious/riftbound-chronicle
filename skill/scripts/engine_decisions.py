@@ -36,7 +36,7 @@ from typing import Any
 
 DECISIONS_VERSION = "engine-decisions.v1"
 STAGES = ("play_declaration", "trigger_finalization", "resolution")
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order")
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -85,8 +85,8 @@ def validate_engine_decisions(value: Any) -> list[str]:
                 errors.append(f"{label}.selection_identities must map every selected object id exactly once")
             elif any(not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit() for identity in identities.values()):
                 errors.append(f"{label}.selection_identities values must be identity tokens")
-        elif "selection_identities" in item:
-            errors.append(f"{label}.selection_identities is only valid for target_selection")
+        elif "selection_identities" in item and kind != "card_selection":
+            errors.append(f"{label}.selection_identities is only valid for target_selection or card_selection")
         if kind == "replacement_order" and (not isinstance(val, dict) or any(not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) for ids in val.values())):
             errors.append(f"{label}.value must map event ids to non-empty unique replacement-id arrays")
         if kind == "replacement_choice" and (not isinstance(val, dict) or any(not isinstance(by_event, dict) or any(not isinstance(c, bool) for c in by_event.values()) for by_event in val.values())):
@@ -95,7 +95,9 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must be a boolean")
         if kind == "trigger_order" and (not isinstance(val, list) or not val or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
             errors.append(f"{label}.value must be a non-empty unique array of trigger ids")
-        if kind in ("replacement_order", "replacement_choice", "trigger_order") and item["stage"] != "resolution":
+        if kind == "card_selection" and (not isinstance(val, list) or not val or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
+            errors.append(f"{label}.value must be a non-empty unique array of hand object ids")
+        if kind in ("replacement_order", "replacement_choice", "trigger_order", "card_selection") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
     return errors
 

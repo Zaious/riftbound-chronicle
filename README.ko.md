@@ -40,7 +40,7 @@ Deck Coach는 이 봉투를 규칙 일관성 증거로만 소비합니다(ADR-00
 네 시스템은 **Chronicle이 직접 소유하고 관리하는 규칙 코어**를 공유하며, 이 코어는 conformance 스위트가 실제로 실행하는 것만 주장합니다:
 
 - 타이밍·권한 커널: 네 가지 턴 상태, Action／Reaction, Priority／Focus, HOT／FEPR —— 21개 실행 가능한 케이스(`skill/data/rules_core_cases.json`);
-- 제한된 typed effect IR: 15개 연산과 시퀀스, 대상, 연결 효과, 치명 정리, 트리거 방출을 포함하며, 모델링되지 않은 카드 동작을 만나면 추측하지 않고 **fail closed**;
+- 제한된 typed effect IR: 17개 연산과 시퀀스, 대상, 연결 효과, 치명 정리, 트리거 방출을 포함하며, 모델링되지 않은 카드 동작을 만나면 추측하지 않고 **fail closed**;
 - 둘 사이의 원자적 브리지: 타이밍 판정과 해당 typed effect는 함께 커밋되거나 함께 롤백됩니다.
 
 다른 팬 시뮬레이터에 런타임 의존성이 없으며, 모든 카드 효과를 결산할 수 있다고 주장하지 않습니다 —— `unsupported`는 오류 경로가 아니라 일급 결과입니다. 아키텍처와 흡수 경계는 [주권 규칙 레이어](docs/architecture/SOVEREIGN_RULES_LAYER.md)를, 두 차례의 감사가 규칙 엔진을 만들지 말라고 권고했음에도 만든 이유는 [ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md)을 참조하세요.

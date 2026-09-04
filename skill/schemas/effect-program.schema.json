@@ -50,14 +50,14 @@
         "type": "object",
         "required": ["op"],
         "properties": {
-          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive", "return_to_hand", "recall", "channel_rune", "grant_turn_effect"]},
+          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive", "return_to_hand", "recall", "channel_rune", "grant_turn_effect", "discard"]},
           "effect_id": {"type": "string", "minLength": 1},
           "predicate": {
             "type": "object",
             "additionalProperties": false,
             "required": ["kind"],
             "properties": {
-              "kind": {"enum": ["cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill"]},
+              "kind": {"enum": ["cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill", "sole_controlled_unit_at_referent_location"]},
               "cost_id": {"type": "string", "minLength": 1},
               "effect_id": {"type": "string", "minLength": 1}
             }
@@ -72,6 +72,7 @@
           "token_kind": {"enum": ["unit", "gear"]},
           "entry_state": {"enum": ["ready", "exhausted"], "description": "channel_rune: the state the runes enter with (Core 430.2); ready by default (430.2.a)."},
           "turn_effect_kind": {"enum": ["entry_state_for_played_units"], "description": "grant_turn_effect: a 'this turn' effect expiring at the Expiration Step (317.2)."},
+          "decision_ref": {"type": "string", "minLength": 1, "description": "discard: the card_selection decision the discarding player supplies (Core 422.1.a); not needed when the whole hand must go."},
           "value": {},
           "base_might": {"type": "integer", "minimum": 0},
           "destination": {

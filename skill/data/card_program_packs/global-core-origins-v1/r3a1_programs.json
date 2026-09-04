@@ -239,7 +239,7 @@
                   "decision_id": "t",
                   "kind": "target_selection",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": [
                     "u2"
                   ]
@@ -446,7 +446,7 @@
                   "decision_id": "t",
                   "kind": "target_selection",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": [
                     "u2"
                   ]
@@ -859,7 +859,7 @@
                   "decision_id": "t",
                   "kind": "target_selection",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": [
                     "u2"
                   ]
@@ -1172,7 +1172,7 @@
                   "decision_id": "t",
                   "kind": "target_selection",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": [
                     "u2"
                   ]
@@ -1439,7 +1439,7 @@
                   "decision_id": "meditation-exhaust",
                   "kind": "optional_choice",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": true
                 }
               ],
@@ -1495,7 +1495,7 @@
                   "decision_id": "meditation-exhaust",
                   "kind": "optional_choice",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": false
                 }
               ],
@@ -1551,7 +1551,7 @@
                   "decision_id": "meditation-exhaust",
                   "kind": "optional_choice",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": true
                 }
               ],
@@ -2029,7 +2029,7 @@
                   "decision_id": "t",
                   "kind": "target_selection",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": [
                     "u2"
                   ]
@@ -2339,7 +2339,7 @@
                   "decision_id": "t",
                   "kind": "target_selection",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": [
                     "c2"
                   ]
@@ -2470,7 +2470,7 @@
                   "decision_id": "t",
                   "kind": "target_selection",
                   "stage": "play_declaration",
-                  "controller": "p1",
+                  "controller": "$controller",
                   "value": [
                     "c4"
                   ]

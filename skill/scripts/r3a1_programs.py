@@ -350,6 +350,8 @@ def _strip_volatile(result: dict[str, Any]) -> dict[str, Any]:
             return [strip(x) for x in v]
         if isinstance(v, str) and v.startswith("sha256:"):
             return "<hash>"
+        if isinstance(v, str):
+            return re.sub(r"[0-9a-f]{12}", "<hash>", v)  # batch ids embed a state-hash prefix
         return v
     return strip(result)
 

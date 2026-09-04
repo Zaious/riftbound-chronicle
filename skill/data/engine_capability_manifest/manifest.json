@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:0070f9584a4bcb6dd04356ed",
-  "capability_set_id": "sha256:0070f9584a4bcb6dd04356ed96ca02a6fe8d848f6a5661e61a4c98b0281f26db",
+  "manifest_id": "capability-manifest:dc7769a37b06e5b5cf503dc5",
+  "capability_set_id": "sha256:dc7769a37b06e5b5cf503dc5db60799df19a19c171d425fbedcaed94527ee368",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:e483e3f9f9d69db506600de1de93f4fdacbdc6c0733cb30ccbc79dafebcc79c6",
+    "value": "sha256:549e6182ab9ba97aa82215c657869cacaeddf17c4b2fb09eaa00db891d4bca24",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:fc4685ad4bd294d114895b98a0286fe19ae6bad7f3e1d104e46336f33462ed1d"
+        "sha256": "sha256:546fcc4966a98cbcda4291275892b5c071ae693490b3dcd52733f6a1e47820ce"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:b0a0176813fae2cf0df6c8a1d422dc78363ec2f46ecf064ab142eb3a942c2735"
+        "sha256": "sha256:95f70acb4aaee77163b45b4d90c96bdd33aba29a596a636c73523ec55d71048c"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:92d9ebec4f990e14900b5c3ebf59171ed7d72e398addba6c371a5c4cd244a6ee"
+        "sha256": "sha256:b778eb281421e8c6a9a5874532f13f38132768ba55f71d8524400752f08edde3"
       }
     ]
   },
@@ -98,14 +98,16 @@
         "typed_cost_payment",
         "optional_cost_receipt",
         "cost_predicates",
-        "engine_decisions"
+        "engine_decisions",
+        "open_battlefield_permission"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
         "payment_stage_replacement_decisions",
         "cost_modification_sources",
         "non_standard_costs_beyond_exhaust_kill",
-        "unit_gear_board_entry",
+        "battlefield_control_transfer",
+        "counter",
         "complete_game",
         "complete_legality"
       ]
@@ -120,7 +122,9 @@
         "typed_effect_program",
         "bounded_cleanup",
         "trigger_schedule",
-        "engine_decisions"
+        "engine_decisions",
+        "permanent_entry",
+        "play_triggers"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -377,11 +381,35 @@
       ]
     },
     {
+      "id": "open_battlefield_permission",
+      "rule_locators": [
+        "Core 355.2.a–355.2.b",
+        "Core 170.11.c"
+      ]
+    },
+    {
       "id": "optional_cost_receipt",
       "rule_locators": [
         "Core 355.1.a",
         "Core 356.2.b.1",
         "Core 356.4.f.1"
+      ]
+    },
+    {
+      "id": "permanent_entry",
+      "rule_locators": [
+        "Core 359.2–359.2.d",
+        "Core 143.4",
+        "Core 124",
+        "Core 190.3.a.1"
+      ]
+    },
+    {
+      "id": "play_triggers",
+      "rule_locators": [
+        "Core 419.4.a",
+        "Core 355.5.b",
+        "Core 383.2.c"
       ]
     },
     {
@@ -408,7 +436,9 @@
     "Core 135.2.e.3",
     "Core 143.4",
     "Core 149.1",
+    "Core 170.11.c",
     "Core 184–186",
+    "Core 190.3.a.1",
     "Core 308.1.a",
     "Core 309.1.a",
     "Core 310.1.a",
@@ -439,6 +469,8 @@
     "Core 354–358",
     "Core 355.1.a",
     "Core 355.1–355.17",
+    "Core 355.2.a–355.2.b",
+    "Core 355.5.b",
     "Core 355.7–355.10.d.2",
     "Core 356.1–356.7",
     "Core 356.2.b.1",
@@ -446,11 +478,13 @@
     "Core 357.1–357.2.a",
     "Core 358.4",
     "Core 358.5",
+    "Core 359.2–359.2.d",
     "Core 359.3.e.14",
     "Core 359.3.e.1–359.3.e.10",
     "Core 359.3.e.4",
     "Core 370–373",
     "Core 375",
+    "Core 383.2.c",
     "Core 383.3",
     "Core 383.3.a–383.3.a.3",
     "Core 383.3.c–383.3.d.1",
@@ -462,6 +496,7 @@
     "Core 416",
     "Core 417",
     "Core 418",
+    "Core 419.4.a",
     "Core 420",
     "Core 428",
     "Core 428.1.a.1.b",
@@ -483,12 +518,14 @@
     "add_reaction_resolution_during_payment",
     "arbitrary_card_effects",
     "arbitrary_card_text",
+    "battlefield_control_transfer",
     "combat",
     "complete_action_set",
     "complete_game",
     "complete_legality",
     "cost_checks",
     "cost_modification_sources",
+    "counter",
     "effect_prerequisites",
     "engine_enumeration",
     "full_cleanup",
@@ -496,8 +533,7 @@
     "non_standard_costs_beyond_exhaust_kill",
     "payment_stage_replacement_decisions",
     "scoring",
-    "target_checks",
-    "unit_gear_board_entry"
+    "target_checks"
   ],
   "claims": {
     "complete_game": false,

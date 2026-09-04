@@ -325,6 +325,27 @@ is `invalid_input`. A death a replacement prevented
 builds nothing. Using `caused_kill` as an effect predicate answers
 `unsupported`.
 
+## Permanent entry and play triggers
+
+A Unit or Gear resolves by the entry procedure (ADR-0007 §1), not the spell
+path: it leaves the shared chain and becomes a new object on the board
+(Core 124); entry replacements apply to the default state — Unit exhausted
+(143.4, 359.2.c), Non-Unit Gear ready (359.2.d); the Unit enters the
+`entry_location` chosen while playing (355.2) and stored on the chain entry,
+Gear its controller's Base; then the play is complete and "When you play
+me" triggers are collected (419.4.a) as one batch, scheduled with the
+resolution's other triggers, before the board-entry Cleanup (319.6). A Unit
+entering a Battlefield its controller does not control marks it `contested`
+with `contested_by`; no control transfer, Showdown or Combat is inferred.
+
+A Unit's location is legal at play if it is the controller's Base, a
+Battlefield the controller controls, or an open Battlefield (unoccupied and
+uncontrolled, 170.11.c) when the card carries the compiled permission
+`play_permissions: ["open_battlefield"]` (355.2.b). A Battlefield missing
+from the state is `invalid_input`; one that exists but fails the rule is
+`illegal`. The choice is not reopened later: the permanent enters the chosen
+location whatever happened to it since (359.2.c).
+
 ## Execution model
 
 An effect program is an ordered list. The interpreter executes it on a copied

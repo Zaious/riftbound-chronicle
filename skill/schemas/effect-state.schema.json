@@ -43,12 +43,22 @@
         "properties": {
           "card": {"type": "string", "minLength": 1},
           "controller": {"type": "string", "minLength": 1},
-          "effect_program_id": {"type": "string", "minLength": 1}
+          "effect_program_id": {"type": "string", "minLength": 1},
+          "entry_location": {"$ref": "#/$defs/entryLocation"}
         }
       }
     }
   },
   "$defs": {
+    "entryLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["base", "battlefield"]},
+        "battlefield": {"type": "string", "minLength": 1}
+      }
+    },
     "zones": {
       "type": "object",
       "additionalProperties": false,
@@ -118,6 +128,39 @@
             }
           }
         },
+        "play_triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+            "properties": {
+              "trigger_id": {"type": "string", "minLength": 1},
+              "controller": {"type": "string", "minLength": 1},
+              "source_object": {"type": "string", "minLength": 1},
+              "controller_order": {"type": "integer", "minimum": 0},
+              "effect_program_id": {"type": "string", "minLength": 1},
+              "optional_at_finalize": {"type": "boolean"}
+            }
+          }
+        },
+        "move_triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+            "properties": {
+              "trigger_id": {"type": "string", "minLength": 1},
+              "controller": {"type": "string", "minLength": 1},
+              "source_object": {"type": "string", "minLength": 1},
+              "controller_order": {"type": "integer", "minimum": 0},
+              "effect_program_id": {"type": "string", "minLength": 1},
+              "optional_at_finalize": {"type": "boolean"}
+            }
+          }
+        },
+        "play_permissions": {"type": "array", "uniqueItems": true, "items": {"enum": ["open_battlefield"]}, "description": "Compiled permissions widening the valid play locations (Core 355.2.b)."},
         "is_token": {"type": "boolean"},
         "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "ADR-0005 §3 object identity: '<object_id>@<generation>'. Absent means generation 0. Changes on any transition to or from a non-board zone; survives board moves."},
         "keywords": {
@@ -133,7 +176,9 @@
       "required": ["controller", "objects"],
       "properties": {
         "controller": {"type": ["string", "null"]},
-        "objects": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+        "objects": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+        "contested": {"type": "boolean", "description": "A unit whose controller does not control this Battlefield entered it (Core 190.3.a.1). No control transfer is inferred."},
+        "contested_by": {"type": ["string", "null"]}
       }
     },
     "replacementEffect": {

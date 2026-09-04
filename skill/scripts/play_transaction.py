@@ -66,7 +66,7 @@ STAGES = ("declaration", "choices", "cost_determination", "payment", "legality",
 DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required"}
 
 RULES = {
-    "choices": ["Core 355.1", "Core 355.1.a", "Core 355.5", "Core 355.9"],
+    "choices": ["Core 355.1", "Core 355.1.a", "Core 355.2", "Core 355.5", "Core 355.9"],
     "cost": ["Core 356.1", "Core 356.2", "Core 356.3", "Core 356.4", "Core 356.5", "Core 356.6", "Core 356.7"],
     "payment": ["Core 357.1", "Core 357.2", "Core 357.2.a", "Core 429.3"],
     "legality": ["Core 358", "Core 358.4", "Core 358.5"],
@@ -95,8 +95,19 @@ def validate_declaration(value: Any) -> list[str]:
         errors.append(f"schema_version must be {DECLARATION_VERSION}")
     if value.get("ruleset") != {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}:
         errors.append("ruleset must match the engine ruleset")
-    if set(value) - {"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id", "chain_item", "cost", "payment_context"}:
+    if set(value) - {"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id", "chain_item", "cost", "payment_context", "entry_location"}:
         errors.append("declaration contains unsupported fields")
+    location = value.get("entry_location")
+    if location is not None and (not isinstance(location, dict) or location.get("kind") not in {"base", "battlefield"} or set(location) - {"kind", "battlefield"}
+                                 or (location.get("kind") == "battlefield" and (not isinstance(location.get("battlefield"), str) or not location.get("battlefield")))):
+        errors.append("entry_location must be {kind: base} or {kind: battlefield, battlefield: <id>}")
+    item_kind = (value.get("chain_item") or {}).get("object_kind") if isinstance(value.get("chain_item"), dict) else None
+    if item_kind == "unit" and location is None:
+        errors.append("a Unit's entry_location is chosen while playing (Core 355.2) and must be declared")
+    if item_kind == "gear" and location is not None and location.get("kind") != "base":
+        errors.append("a Non-Unit Gear enters the controller's Base (Core 359.2.d); entry_location may only be base")
+    if item_kind == "spell" and location is not None:
+        errors.append("a spell has no entry_location")
     for key in ("play_id", "actor", "card"):
         if not isinstance(value.get(key), str) or not value.get(key):
             errors.append(f"{key} must be a non-empty string")
@@ -532,6 +543,23 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if effect_state["objects"][card]["kind"] != declaration["chain_item"]["object_kind"]:
             raise PlayError("choices", "object_kind_mismatch", f"{card!r} is a {effect_state['objects'][card]['kind']}; the chain item says {declaration['chain_item']['object_kind']}", invalid=True)
 
+        # --- 355.2: the Unit's location is chosen now. Own Base, a Battlefield
+        # the controller controls, or — with the compiled permission — an open
+        # Battlefield (170.11.c). A missing Battlefield is malformed input; an
+        # existing one the rules refuse is illegal (ADR-0007 §1, §3).
+        location = declaration.get("entry_location")
+        if location is not None and location["kind"] == "battlefield":
+            battlefield = effect_state["battlefields"].get(location["battlefield"])
+            if battlefield is None:
+                raise PlayError("choices", "unknown_battlefield", f"entry_location names battlefield {location['battlefield']!r}, which is not in the state", invalid=True)
+            controlled = battlefield.get("controller") == actor
+            is_open = battlefield.get("controller") is None and not battlefield.get("objects")
+            permitted = "open_battlefield" in effect_state["objects"][card].get("play_permissions", [])
+            if not (controlled or (is_open and permitted)):
+                raise PlayError("choices", "entry_location_illegal",
+                                f"{card!r} may enter its controller's Base or a Battlefield {actor} controls (355.2.a); {location['battlefield']!r} is "
+                                + ("open but the card has no permission to enter open Battlefields (355.2.b)" if is_open else "neither controlled nor open"),
+                                rule_locators=["Core 355.2.a", "Core 355.2.b", "Core 170.11.c"])
         # --- 355: choices.
         intents: dict[str, bool] = {}
         missing: list[str] = []
@@ -577,6 +605,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         entry = {"card": card, "controller": actor}
         if declaration.get("effect_program_id"):
             entry["effect_program_id"] = declaration["effect_program_id"]
+        if declaration.get("entry_location") is not None:
+            entry["entry_location"] = dict(declaration["entry_location"])
         working.setdefault("chain_items", {})[item_id] = entry
         identity_after = _bump_identity(working, card)
         state_errors = validate_state(working)

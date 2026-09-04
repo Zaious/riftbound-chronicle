@@ -22,6 +22,8 @@ PROGRAM_VERSION = "riftbound-effect-program.v1"
 CORE_RULESET = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
+# ADR-0007 §3: compiled permissions that widen the valid play locations (355.2.b).
+PLAY_PERMISSIONS = {"open_battlefield"}
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
 PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
@@ -183,6 +185,15 @@ def validate_state(state: Any) -> list[str]:
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
             errors.append(f"battlefields.{battlefield_id}.objects must be an array")
             continue
+        # ADR-0007 §1: a unit entering a Battlefield its controller does not
+        # control marks it contested (190.3.a.1); who contests is recorded, and
+        # nothing about control transfer is inferred.
+        if "contested" in battlefield and not isinstance(battlefield["contested"], bool):
+            errors.append(f"battlefields.{battlefield_id}.contested must be boolean when supplied")
+        if "contested_by" in battlefield and battlefield["contested_by"] is not None and battlefield["contested_by"] not in players:
+            errors.append(f"battlefields.{battlefield_id}.contested_by must be a player or null")
+        if battlefield.get("contested") and battlefield.get("contested_by") is None:
+            errors.append(f"battlefields.{battlefield_id} is contested without contested_by")
         ids = battlefield["objects"]
         if len(ids) != len(set(ids)):
             errors.append(f"battlefields.{battlefield_id}.objects contains duplicates")
@@ -199,9 +210,15 @@ def validate_state(state: Any) -> list[str]:
         errors.append("chain_items must be an object keyed by chain item id")
         chain_items = {}
     for item_id, entry in chain_items.items():
-        if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - {"card", "controller", "effect_program_id"} or not {"card", "controller"} <= set(entry):
+        if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - {"card", "controller", "effect_program_id", "entry_location"} or not {"card", "controller"} <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller")
             continue
+        location = entry.get("entry_location")
+        if location is not None:
+            if not isinstance(location, dict) or location.get("kind") not in {"base", "battlefield"} or set(location) - {"kind", "battlefield"}:
+                errors.append(f"chain_items.{item_id}.entry_location must be {{kind: base}} or {{kind: battlefield, battlefield}}")
+            elif location["kind"] == "battlefield" and location.get("battlefield") not in battlefields:
+                errors.append(f"chain_items.{item_id}.entry_location names an unknown battlefield")
         if entry["controller"] not in players:
             errors.append(f"chain_items.{item_id}.controller is not a player")
         if entry["card"] not in objects:
@@ -224,18 +241,23 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.{field} must be a non-negative integer")
         if not isinstance(obj.get("exhausted"), bool):
             errors.append(f"objects.{object_id}.exhausted must be boolean")
-        death_triggers = obj.get("death_triggers", [])
-        if not isinstance(death_triggers, list):
-            errors.append(f"objects.{object_id}.death_triggers must be an array")
-        else:
-            for trigger_index, trigger in enumerate(death_triggers):
+        # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1).
+        for trigger_field in ("death_triggers", "play_triggers", "move_triggers"):
+            triggers = obj.get(trigger_field, [])
+            if not isinstance(triggers, list):
+                errors.append(f"objects.{object_id}.{trigger_field} must be an array")
+                continue
+            for trigger_index, trigger in enumerate(triggers):
                 required = {"trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"}
                 if not isinstance(trigger, dict) or not required.issubset(trigger):
-                    errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid shape")
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid shape")
                 elif trigger.get("source_object") != object_id or trigger.get("controller") not in players:
-                    errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid source/controller")
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid source/controller")
                 elif not isinstance(trigger.get("effect_program_id"), str) or not trigger.get("effect_program_id") or not isinstance(trigger.get("optional_at_finalize"), bool):
-                    errors.append(f"objects.{object_id}.death_triggers[{trigger_index}] has invalid program/optional binding")
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid program/optional binding")
+        permissions = obj.get("play_permissions", [])
+        if not isinstance(permissions, list) or len(permissions) != len(set(permissions)) or any(p not in PLAY_PERMISSIONS for p in permissions):
+            errors.append(f"objects.{object_id}.play_permissions must be a unique array drawn from {sorted(PLAY_PERMISSIONS)}")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         identity = obj.get("identity")

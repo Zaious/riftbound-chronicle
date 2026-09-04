@@ -360,8 +360,10 @@ def main() -> int:
             errors.append(f"resolved spell did not go chain → trash with a new identity: {fin.get('chain_items')} {resolved['trace'].get('chain_card')}")
     unit_state = copy.deepcopy(ok["next_effect_state"]); unit_state["objects"]["c1"]["kind"] = "unit"
     unit_res = resolve_with_program(res_timing, "spell-1", unit_state, res_prog)
-    if unit_res.get("committed") or unit_res.get("unsupported") is not True or unit_res.get("stage") != "chain_card":
-        errors.append("a unit on the chain resolved through the spell path instead of unsupported")
+    # C-19: a unit on the chain now enters by the entry procedure; one without
+    # the entry_location chosen at play (355.2) is malformed, not a spell.
+    if unit_res.get("committed") or unit_res.get("valid") is not False or unit_res.get("stage") != "permanent_entry":
+        errors.append(f"a unit chain entry without entry_location resolved or was not invalid_input: {unit_res.get('stage')} {unit_res.get('reason')}")
 
     # --- engine-check wrapping, manifest scope, result validator -----------------------------
     hashes = {"timing_state": state_hash(timing), "effect_state": hash_value(state), "play_declaration": "sha256:" + "0" * 64}

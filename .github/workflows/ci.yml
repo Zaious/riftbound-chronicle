@@ -183,6 +183,13 @@ jobs:
       - name: Effect IR dispatch is unique per operation
         run: python3 skill/scripts/check_op_dispatch.py
 
+      # ADR-0007 C-19: permanents enter by an explicit procedure; play
+      # triggers fire on play completion; open-Battlefield permission is
+      # checked at play. Fails on a claimed control transfer or a trigger
+      # raised by mere entry.
+      - name: Permanent entry, play triggers, open-Battlefield permission
+        run: python3 skill/scripts/check_permanent_play.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -249,6 +256,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_linked_predicates.py"
           python3 "$REPO/skill/scripts/check_r3a1_programs.py"
           python3 "$REPO/skill/scripts/check_op_dispatch.py"
+          python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

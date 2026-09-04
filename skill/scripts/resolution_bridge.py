@@ -46,7 +46,7 @@ def resolve_with_program(
     timing_state: dict[str, Any],
     item_id: str,
     effect_state: dict[str, Any],
-    program: dict[str, Any],
+    program: dict[str, Any] | None,
     cleanup_decisions: dict[str, Any] | None = None,
     engine_decisions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -59,6 +59,12 @@ def resolve_with_program(
     chain_item = next((item for item in timing_state.get("chain", {}).get("items", []) if item.get("id") == item_id), None)
     if chain_item is None:
         return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "chain_item_not_found"}
+    # ADR-0007 §1: a permanent with no rules text to execute resolves with no
+    # program; its resolution is the entry procedure. A spell always needs one.
+    if program is None:
+        if chain_item.get("object_kind") not in {"unit", "gear"} or chain_item.get("effect_program_id"):
+            return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_required"}
+        program = {}
     bound_program = chain_item.get("effect_program_id")
     if bound_program is not None and program.get("program_id") != bound_program:
         return {
@@ -102,7 +108,10 @@ def resolve_with_program(
     if engine_decisions is not None and engine_decisions.get("chain_item_id") not in (None, item_id):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": ["engine_decisions.chain_item_id does not match the resolving item"], "reason": "decision envelope for another chain item"}
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
-    effect_result = apply_program(effect_state, program, decisions=engine_decisions)
+    if program:
+        effect_result = apply_program(effect_state, program, decisions=engine_decisions)
+    else:
+        effect_result = {"committed": True, "next_state": copy.deepcopy(effect_state), "trace": [], "pending_triggers": []}
     if effect_result.get("committed") is not True:
         return {
             **base,
@@ -118,12 +127,17 @@ def resolve_with_program(
     # finalization (359.2) by a procedure this bridge does not have.
     after_effect = effect_result["next_state"]
     chain_card_trace = []
+    entry_triggers: list[dict[str, Any]] = []
     chain_entry = (after_effect.get("chain_items") or {}).get(item_id)
+    if chain_entry is not None and after_effect["objects"][chain_entry["card"]]["kind"] in {"unit", "gear"}:
+        # ADR-0007 §1–2: the permanent entry procedure, then "When you play me".
+        after_effect, entry_trace, entry_triggers = complete_permanent_play(after_effect, item_id)
+        if entry_trace.get("error"):
+            return {**base, "valid": False, "committed": False, "stage": "permanent_entry", "errors": [entry_trace["error"]], "reason": entry_trace["error"], "effect_result": effect_result}
+        chain_card_trace.append(entry_trace)
+        chain_entry = None
     if chain_entry is not None:
         card = chain_entry["card"]
-        if after_effect["objects"][card]["kind"] != "spell":
-            return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "chain_card",
-                    "reason": "unit_gear_board_entry_not_modelled", "effect_result": effect_result}
         after_effect = copy.deepcopy(after_effect)
         del after_effect["chain_items"][item_id]
         if not after_effect["chain_items"]:
@@ -150,6 +164,13 @@ def resolve_with_program(
         }
     final_effect_state = cleanup_result["next_state"]
     effect_triggers = [dict(trigger) for trigger in effect_result.get("pending_triggers", [])]
+    # Play-completion triggers form one batch after the item's own effect
+    # triggers and before anything the board-entry Cleanup raises (419.4.a).
+    play_batch = max((trigger.get("batch_sequence", -1) for trigger in effect_triggers), default=-1) + 1
+    for trigger in entry_triggers:
+        trigger["batch_sequence"] = play_batch
+        trigger["batch_id"] = f"play:{item_id}"
+    effect_triggers += entry_triggers
     cleanup_triggers = [dict(trigger) for trigger in cleanup_result.get("pending_triggers", [])]
     next_batch = max((trigger.get("batch_sequence", -1) for trigger in effect_triggers), default=-1) + 1
     for trigger in cleanup_triggers:
@@ -275,6 +296,75 @@ def resolve_with_program(
             + timing_result.get("rule_locators", [])
         )),
     }
+
+
+def entry_state_for(state: dict[str, Any], card: str, controller: str) -> tuple[str, str, list[dict[str, Any]]]:
+    """Core 143.4 / 359.2.c–d defaults, then entry replacements (369.3): the
+    object's own `entry_replacements` and this turn's `turn_effects` that set
+    the entry state for units the controller plays (ADR-0007 §6). Returns
+    (default, final, applied replacements)."""
+    obj = state["objects"][card]
+    default = "exhausted" if obj["kind"] == "unit" else "ready"
+    final = default
+    applied: list[dict[str, Any]] = []
+    for replacement in obj.get("entry_replacements", []) or []:
+        if replacement.get("mode") == "entry_state" and replacement.get("value") in {"ready", "exhausted"}:
+            final = replacement["value"]
+            applied.append({"source": card, "mode": "entry_state", "value": final, "rule_locators": ["Core 369.3"]})
+    for effect in state.get("turn_effects", []) or []:
+        if effect.get("kind") == "entry_state_for_played_units" and effect.get("controller") == controller and obj["kind"] == "unit" and effect.get("value") in {"ready", "exhausted"}:
+            final = effect["value"]
+            applied.append({"source": effect.get("source"), "mode": "entry_state_for_played_units", "value": final, "turn_id": effect.get("turn_id"), "rule_locators": ["Core 369.3"]})
+    return default, final, applied
+
+
+def complete_permanent_play(state: dict[str, Any], item_id: str) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+    """ADR-0007 §1 (Core 359.2): the permanent leaves the chain and becomes a
+    new object on the board (124); entry replacements apply; a Unit enters the
+    location chosen at play, a Non-Unit Gear its controller's Base (359.2.d);
+    the play is then complete and "When you play me" triggers are collected
+    (419.4.a) for the caller to schedule before the board-entry Cleanup."""
+    working = copy.deepcopy(state)
+    entry = working["chain_items"][item_id]
+    card, controller = entry["card"], entry["controller"]
+    obj = working["objects"][card]
+    location = entry.get("entry_location")
+    if obj["kind"] == "unit" and location is None:
+        return state, {"error": f"unit {card!r} on the chain has no entry_location; it is chosen at play (Core 355.2)"}, []
+    if obj["kind"] == "gear" and location is not None and location.get("kind") != "base":
+        return state, {"error": f"gear {card!r} may only enter its controller's Base (Core 359.2.d)"}, []
+    del working["chain_items"][item_id]
+    if not working["chain_items"]:
+        del working["chain_items"]
+    default, final, replacements = entry_state_for(working, card, controller)
+    obj["exhausted"] = final == "exhausted"
+    trace: dict[str, Any] = {"card": card, "chain_item_id": item_id, "kind": obj["kind"], "default_entry_state": default,
+                             "entry_replacements": replacements, "entry_state": final, "not_a_move": True,
+                             "rule_locators": ["Core 359.2", "Core 359.2.a", "Core 143.4", "Core 124", "Core 446.2"]}
+    if obj["kind"] == "unit" and location["kind"] == "battlefield":
+        battlefield = working["battlefields"][location["battlefield"]]
+        battlefield["objects"].append(card)
+        trace["destination"] = f"battlefield:{location['battlefield']}"
+        trace["rule_locators"].append("Core 359.2.c")
+        if battlefield.get("controller") != controller:
+            battlefield["contested"] = True
+            battlefield["contested_by"] = controller
+            trace["contested"] = {"battlefield": location["battlefield"], "contested_by": controller}
+            trace["rule_locators"].append("Core 190.3.a.1")
+    else:
+        working["players"][controller]["zones"]["base"].append(card)
+        trace["destination"] = f"{controller}.base"
+        trace["rule_locators"].append("Core 359.2.c" if obj["kind"] == "unit" else "Core 359.2.d")
+    trace["identity_after"] = _bump_identity(working, card)
+    triggers = []
+    for descriptor in obj.get("play_triggers", []) or []:
+        copied = copy.deepcopy(descriptor)
+        copied.setdefault("trigger_kind", "triggered")
+        copied["play_completion"] = item_id
+        triggers.append(copied)
+    trace["play_triggers"] = [t["trigger_id"] for t in triggers]
+    trace["rule_locators"] += ["Core 419.4.a"] if triggers else []
+    return working, trace, triggers
 
 
 def _load(path: Path) -> dict[str, Any]:

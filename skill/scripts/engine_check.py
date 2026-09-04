@@ -43,6 +43,10 @@ FEATURE_RULES = {
     "typed_cost_payment": ["Core 356.1–356.7", "Core 357.1–357.2.a"],
     "optional_cost_receipt": ["Core 355.1.a", "Core 356.2.b.1", "Core 356.4.f.1"],
     "cost_predicates": ["Core 356.4.f.1", "Core 359.3.e.14"],
+    # C-19 (ADR-0007 §1–3).
+    "permanent_entry": ["Core 359.2–359.2.d", "Core 143.4", "Core 124", "Core 190.3.a.1"],
+    "play_triggers": ["Core 419.4.a", "Core 355.5.b", "Core 383.2.c"],
+    "open_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.c"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -60,7 +64,7 @@ KIND_CONFIG = {
     "resolution": {
         "component": ("resolution_bridge", "riftbound-resolution-bridge-result.v1"),
         "coverage": "combined_resolution_v1",
-        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions"],
+        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions", "permanent_entry", "play_triggers"],
         "unsupported": ["arbitrary_card_text", "complete_game", "complete_legality"],
     },
     "cleanup": {
@@ -80,8 +84,8 @@ KIND_CONFIG = {
     "play": {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
-        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions"],
-        "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "unit_gear_board_entry", "complete_game", "complete_legality"],
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission"],
+        "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "battlefield_control_transfer", "counter", "complete_game", "complete_legality"],
     },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
@@ -424,12 +428,12 @@ def _cleanup_decisions(path: Path | None) -> dict[str, Any] | None:
 def run_resolution(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
     timing_state = load_object(args.timing_state)
     effect_state = load_object(args.effect_state)
-    program = load_object(args.program)
+    program = load_object(args.program) if args.program else None
     decisions = _cleanup_decisions(args.cleanup_decisions)
     result = resolve_with_program(timing_state, args.item_id, effect_state, program, decisions, engine_decisions=_engine_decisions(getattr(args, "decisions", None)))
     hashes = {
         "timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state),
-        "effect_program": canonical_hash(program),
+        "effect_program": canonical_hash(program) if program is not None else canonical_hash(None),
     }
     if decisions is not None:
         hashes["cleanup_decisions"] = canonical_hash(decisions)
@@ -492,7 +496,7 @@ def build_parser() -> argparse.ArgumentParser:
     resolution.add_argument("timing_state", type=Path)
     resolution.add_argument("item_id")
     resolution.add_argument("effect_state", type=Path)
-    resolution.add_argument("program", type=Path)
+    resolution.add_argument("program", type=Path, nargs="?", default=None, help="omit for a permanent with no rules text to execute")
     resolution.add_argument("--cleanup-decisions", type=Path)
     add_common(resolution)
     cleanup = sub.add_parser("cleanup")

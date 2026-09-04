@@ -25,7 +25,15 @@ PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
 PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
-IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid"}
+IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached"}
+# Outcomes in which the *original* game action happened. A partly prevented
+# deal still happened (359.3.e.14.c); a wholly prevented or replaced one did
+# not (359.3.e.14.b, 205). `caused_kill` is not an in-program predicate: a
+# kill by Cleanup is only known after the spell has left the chain (428.5.c),
+# so it lives on `conditional_triggers` and is evaluated by the resolution
+# bridge.
+PERFORMED_OUTCOMES = {"applied", "replaced_modified_applied", "augmented_applied"}
+CONDITIONAL_TRIGGER_KINDS = {"caused_kill"}
 OBJECT_KINDS = {"unit", "gear", "spell", "rune"}
 SUPPORTED_OPS = {
     "draw",
@@ -299,6 +307,28 @@ def validate_program(program: Any) -> list[str]:
     if not isinstance(program.get("program_id"), str) or not program.get("program_id"):
         errors.append("program_id must be non-empty")
     errors.extend(_receipt_errors(program.get("cost_receipt")))
+    conditional = program.get("conditional_triggers")
+    if conditional is not None:
+        effect_ids = {e.get("effect_id", f"effect-{i}") for i, e in enumerate(program.get("effects") or []) if isinstance(e, dict)}
+        if not isinstance(conditional, list):
+            errors.append("conditional_triggers must be an array")
+        else:
+            required = {"trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize", "condition"}
+            ids: set[str] = set()
+            for i, ct in enumerate(conditional):
+                if not isinstance(ct, dict) or not required <= set(ct) or set(ct) - required:
+                    errors.append(f"conditional_triggers[{i}] must carry exactly {sorted(required)}")
+                    continue
+                if not isinstance(ct["trigger_id"], str) or not ct["trigger_id"] or ct["trigger_id"] in ids:
+                    errors.append(f"conditional_triggers[{i}].trigger_id is invalid or duplicated")
+                ids.add(ct.get("trigger_id", ""))
+                cond = ct["condition"]
+                if not isinstance(cond, dict) or cond.get("kind") not in CONDITIONAL_TRIGGER_KINDS or set(cond) != {"kind", "effect_id"}:
+                    errors.append(f"conditional_triggers[{i}].condition must be {{kind: caused_kill, effect_id}}")
+                elif cond["effect_id"] not in effect_ids:
+                    errors.append(f"conditional_triggers[{i}].condition.effect_id {cond['effect_id']!r} is not an instruction of this program")
+                if not isinstance(ct["optional_at_finalize"], bool) or not isinstance(ct["controller_order"], int) or ct["controller_order"] < 0:
+                    errors.append(f"conditional_triggers[{i}] optional_at_finalize/controller_order are invalid")
     effects = program.get("effects")
     if not isinstance(effects, list) or not effects:
         errors.append("effects must be a non-empty array")
@@ -320,7 +350,7 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].dependency_mode is invalid")
             predicate = effect.get("predicate")
             if predicate is not None:
-                errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt")))
+                errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt"), seen))
             modifiers = effect.get("event_modifiers")
             if modifiers is not None:
                 if effect.get("op") != "play_token" or not isinstance(modifiers, dict) or not modifiers or set(modifiers) - {"entry_state", "result_keywords"}:
@@ -421,11 +451,12 @@ def _receipt_errors(receipt: Any) -> list[str]:
     return [f"cost_receipt {e}" for e in validate_cost_receipt(receipt)]
 
 
-def _predicate_errors(predicate: Any, receipt: Any) -> list[str]:
+def _predicate_errors(predicate: Any, receipt: Any, earlier: set[str] | None = None) -> list[str]:
     """ADR-0005 §5: named predicates, not one ambiguous negative dependency.
     A cost predicate must name a component of the program's receipt; an
-    unknown id is invalid_input. Recognized-but-unimplemented kinds validate
-    here and answer `unsupported` at execution."""
+    action predicate must name an earlier instruction; an unknown id is
+    invalid_input. Recognized-but-unimplemented kinds validate here and
+    answer `unsupported` at execution."""
     if not isinstance(predicate, dict) or predicate.get("kind") not in PREDICATE_KINDS or set(predicate) - {"kind", "cost_id", "effect_id"}:
         return ["must carry a known kind"]
     if predicate["kind"] in {"cost_paid", "cost_not_paid"}:
@@ -435,17 +466,42 @@ def _predicate_errors(predicate: Any, receipt: Any) -> list[str]:
             return ["needs the program's cost_receipt"]
         if predicate["cost_id"] not in {c.get("cost_id") for c in receipt.get("components", [])}:
             return [f"cost_id {predicate['cost_id']!r} is not on the receipt"]
+    else:
+        if not isinstance(predicate.get("effect_id"), str) or not predicate["effect_id"]:
+            return ["effect_id is required for action predicates"]
+        if earlier is not None and predicate["effect_id"] not in earlier:
+            return [f"effect_id {predicate['effect_id']!r} must reference an earlier instruction"]
     return []
 
 
-def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None) -> tuple[bool | None, list[str]]:
+def action_performed(event: dict[str, Any]) -> bool:
+    """Did the original game action of this instruction happen (359.3.e.14.b, 205)?"""
+    return event.get("outcome") in PERFORMED_OUTCOMES
+
+
+def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None, events: dict[str, dict[str, Any]] | None = None) -> tuple[bool | None, list[str]]:
     """Returns (holds, locators); holds is None when the kind is not implemented."""
     kind = predicate["kind"]
     if kind not in IMPLEMENTED_PREDICATES:
         return None, []
-    component = next(c for c in receipt["components"] if c["cost_id"] == predicate["cost_id"])
-    paid = bool(component["paid"])
-    return (paid if kind == "cost_paid" else not paid), ["Core 356.4.f.1", "Core 356.2.b.1"]
+    if kind in {"cost_paid", "cost_not_paid"}:
+        component = next(c for c in receipt["components"] if c["cost_id"] == predicate["cost_id"])
+        paid = bool(component["paid"])
+        return (paid if kind == "cost_paid" else not paid), ["Core 356.4.f.1", "Core 356.2.b.1"]
+    event = (events or {}).get(predicate["effect_id"])
+    if event is None:
+        return False, ["Core 359.3.e.14.a"]
+    if kind == "action_performed":
+        return action_performed(event), ["Core 359.3.e.14.b", "Core 359.3.e.14.c", "Core 205"]
+    if kind == "action_not_performed":
+        return not action_performed(event), ["Core 359.3.e.14.b", "Core 205"]
+    # requested_count_not_reached: "If you couldn't" tests actual < requested
+    # (430.5); an instruction that did not happen at all also did not reach it.
+    requested = event.get("requested_count", event.get("requested_targets"))
+    applied = event.get("applied_count", event.get("applied_targets"))
+    if isinstance(requested, int) and isinstance(applied, int):
+        return applied < requested, ["Core 430.3", "Core 430.5", "Core 055"]
+    return not action_performed(event), ["Core 430.5", "Core 055"]
 
 
 def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str | None] | None:
@@ -1344,7 +1400,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         effect_id = effect.get("effect_id", f"effect-{index}")
         predicate = effect.get("predicate")
         if predicate is not None:
-            holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"))
+            holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"), {e.get("effect_id"): e for e in trace})
             if holds is None:
                 return {
                     **base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
@@ -1759,6 +1815,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         "valid": True,
         "committed": True,
         "unsupported": False,
+        "conditional_triggers": copy.deepcopy(program.get("conditional_triggers", [])),
         "next_state": current,
         "next_state_hash": hash_value(current),
         "trace": trace,

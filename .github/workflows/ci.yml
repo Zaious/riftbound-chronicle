@@ -165,6 +165,12 @@ jobs:
       - name: Return, recall and channel are distinct zone events
         run: python3 skill/scripts/check_zone_ops.py
 
+      # ADR-0005 C-17: linked predicates read the earlier instruction's event
+      # (a replaced action is not performed) and "If this kills it" is a
+      # reflexive trigger built only after Cleanup with 428.5.c attribution.
+      - name: Linked-result predicates and conditional reflexive triggers
+        run: python3 skill/scripts/check_linked_predicates.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -228,6 +234,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_engine_decisions.py"
           python3 "$REPO/skill/scripts/check_play_transaction.py"
           python3 "$REPO/skill/scripts/check_zone_ops.py"
+          python3 "$REPO/skill/scripts/check_linked_predicates.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

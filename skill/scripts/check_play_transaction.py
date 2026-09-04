@@ -334,7 +334,7 @@ def main() -> int:
     tampered = copy.deepcopy(receipt_yes); tampered["components"][0]["payment_refs"] = []
     if not any("allocates" in e for e in validate_program({**gated, "cost_receipt": tampered})):
         errors.append("a receipt whose allocations do not sum to its events was accepted")
-    later = apply_program(after_yes, {**program("mobilize", {"op": "draw", "player": "p1", "count": 1, "predicate": {"kind": "caused_kill", "effect_id": "x"}}), "cost_receipt": receipt_yes})
+    later = apply_program(after_yes, {**program("mobilize", {"op": "deal_damage", "object_id": "u2", "amount": 1, "effect_id": "x"}, {"op": "draw", "player": "p1", "count": 1, "predicate": {"kind": "caused_kill", "effect_id": "x"}}), "cost_receipt": receipt_yes})
     if later.get("committed") or later.get("unsupported") is not True:
         errors.append("a recognized-but-unimplemented predicate kind was not unsupported")
 

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import _bump_identity, apply_program, hash_value, perform_lethal_cleanup
+from effect_ir import _bump_identity, action_performed, apply_program, hash_value, perform_lethal_cleanup
 from rules_core import complete_resolution, schedule_triggered_items, state_hash
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
@@ -154,7 +154,38 @@ def resolve_with_program(
     next_batch = max((trigger.get("batch_sequence", -1) for trigger in effect_triggers), default=-1) + 1
     for trigger in cleanup_triggers:
         trigger["batch_sequence"] = trigger.get("batch_sequence", 0) + next_batch
-    pending_triggers = effect_triggers + cleanup_triggers
+    # ADR-0005 §5 / Codex Q4 (b): "If this kills it" is a conditional reflexive
+    # trigger. The spell has left the chain, Cleanup has killed (or not), and
+    # 428.5.c attributes a Cleanup kill to the spell that dealt the damage
+    # immediately before it. Only then is the Pending reflexive item built
+    # (387–388); a death a replacement prevented builds nothing.
+    conditional_trace = []
+    conditional_triggers = []
+    after_cleanup = max((t.get("batch_sequence", -1) for t in effect_triggers + cleanup_triggers), default=-1) + 1
+    events = {e.get("effect_id"): e for e in effect_result.get("trace", [])}
+    for ct in program.get("conditional_triggers", []) or []:
+        event = events.get(ct["condition"]["effect_id"], {})
+        performed = action_performed(event)
+        touched = [event["object_id"]] if isinstance(event.get("object_id"), str) else [x.get("object_id") for x in event.get("expansion_trace", []) if action_performed(x)]
+        if event.get("op") == "kill":
+            killed = [o for o in touched if performed]  # 428.5.b: a Kill instruction kills directly
+            locators = ["Core 428.5.b", "Core 387.2", "Core 388.1"]
+        else:
+            killed = [o for o in touched if performed and o in cleanup_result.get("killed_objects", [])]
+            locators = ["Core 428.5.c", "Core 428.5.c.1", "Core 387.2", "Core 388.1"]
+        prevented = [o for o in touched if o in cleanup_result.get("stable_prevented_objects", [])]
+        held = bool(killed)
+        conditional_trace.append({
+            "trigger_id": ct["trigger_id"], "condition": dict(ct["condition"]), "held": held,
+            "action_performed": performed, "touched_objects": touched, "killed_objects": killed, "prevented_objects": prevented,
+            "attributed_to": program.get("source_object"), "responsible_player": program.get("controller"), "rule_locators": locators,
+        })
+        if held:
+            descriptor = {k: ct[k] for k in ("trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize")}
+            descriptor.update({"trigger_kind": "reflexive", "batch_sequence": after_cleanup, "batch_id": f"conditional-reflexive:{item_id}",
+                               "condition": dict(ct["condition"]), "killed_objects": killed})
+            conditional_triggers.append(descriptor)
+    pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers
     scheduled_result = schedule_triggered_items(timing_result["next_state"], pending_triggers)
     if scheduled_result.get("applied") is not True:
         return {
@@ -180,12 +211,14 @@ def resolve_with_program(
             "effect": effect_result["trace"],
             "chain_card": chain_card_trace,
             "cleanup": cleanup_result["trace"],
+            "conditional_triggers": conditional_trace,
             "trigger_schedule": scheduled_result["transition"],
             "timing": timing_result["transition"],
         },
         "rule_locators": list(dict.fromkeys(
             [locator for event in effect_result["trace"] for locator in event.get("rule_locators", [])]
             + [locator for event in cleanup_result["trace"] for locator in event.get("rule_locators", [])]
+            + [locator for event in conditional_trace for locator in event.get("rule_locators", [])]
             + scheduled_result.get("rule_locators", [])
             + timing_result.get("rule_locators", [])
         )),

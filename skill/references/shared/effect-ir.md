@@ -293,8 +293,26 @@ A program may carry the receipt as `cost_receipt` and gate an instruction
 with `predicate: {kind: cost_paid | cost_not_paid, cost_id}` — "If you do"
 and "Otherwise" test the receipt, not whether a later instruction happened.
 A predicate that does not hold records `skipped_linked_dependency` with the
-predicate; an unknown `cost_id` is `invalid_input`; the other named
-predicate kinds validate but answer `unsupported` until C-17.
+predicate; an unknown `cost_id` is `invalid_input`.
+
+The action predicates read the earlier instruction's event, not a flag:
+`action_performed` / `action_not_performed` ask whether the **original**
+game action happened — a partly prevented deal did (359.3.e.14.c), a wholly
+prevented or replaced one did not (359.3.e.14.b, 205), a no-op did not;
+`requested_count_not_reached` compares the event's applied count with its
+requested count (a short Channel satisfies Mobilize's "If you couldn't",
+430.5), and an instruction that did not happen at all did not reach it. The
+predicate must name an earlier instruction; otherwise `invalid_input`.
+
+`caused_kill` is not an in-program predicate. A Cleanup kill is only known
+after the spell has left the chain, so "If this kills it, …" is declared as
+a program-level `conditional_triggers` entry: the resolution bridge runs the
+instructions, sends the spell to the trash, runs Cleanup, attributes each
+Cleanup kill to the spell that dealt the damage immediately before it
+(428.5.c) — or to a Kill instruction directly (428.5.b) — and only then
+builds the Pending reflexive item (387–388). A death a replacement prevented
+builds nothing. Using `caused_kill` as an effect predicate answers
+`unsupported`.
 
 ## Execution model
 

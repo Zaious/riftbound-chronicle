@@ -17,7 +17,17 @@
     "play_id": {"type": "string", "minLength": 1},
     "actor": {"type": "string", "minLength": 1},
     "card": {"type": "string", "minLength": 1, "description": "object id of the card in the actor's hand"},
-    "effect_program_id": {"type": "string", "minLength": 1},
+    "effect_program_id": {"type": "string", "minLength": 1, "description": "Must equal the supplied effect program's program_id; carried onto the chain item."},
+    "payment_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["add_window_closed", "confirmed_by"],
+      "description": "Core 429.3: the controller may use Add reactions while paying. When the pool is short, the engine will not assume they decline; a human must confirm the window is closed before the play is illegal.",
+      "properties": {
+        "add_window_closed": {"type": "boolean"},
+        "confirmed_by": {"type": "string", "minLength": 1}
+      }
+    },
     "chain_item": {
       "type": "object",
       "additionalProperties": false,
@@ -94,7 +104,8 @@
             "required": ["id", "applies_to", "amount"],
             "properties": {
               "id": {"type": "string", "minLength": 1},
-              "applies_to": {"type": "string", "pattern": "^(energy|power:.+|total|optional_additional)$"},
+              "applies_to": {"type": "string", "pattern": "^(energy|power:.+|total|optional_additional)$", "description": "total: the aggregate Energy after component discounts, including chosen additional Energy costs (356.4.d). optional_additional: every chosen optional cost of the named resource (356.4.c)."},
+              "resource": {"type": "string", "pattern": "^(energy|power:.+)$"},
               "amount": {"type": "integer", "minimum": 1},
               "minimum": {"type": "integer", "minimum": 0},
               "source": {"type": "string", "minLength": 1}

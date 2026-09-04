@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import apply_program, hash_value, perform_lethal_cleanup
+from effect_ir import _bump_identity, apply_program, hash_value, perform_lethal_cleanup
 from rules_core import complete_resolution, schedule_triggered_items, state_hash
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
@@ -111,8 +112,28 @@ def resolve_with_program(
             "reason": effect_result.get("reason", "; ".join(effect_result.get("errors", [])) or "effect_program_failed"),
             "effect_result": effect_result,
         }
+    # Core 157 / Codex ruling on C-15: after its instructions, a spell goes to
+    # its owner's trash as a new object (124) and leaves the chain, and only
+    # then does Cleanup run. A Unit or Gear on the chain enters the board at
+    # finalization (359.2) by a procedure this bridge does not have.
+    after_effect = effect_result["next_state"]
+    chain_card_trace = []
+    chain_entry = (after_effect.get("chain_items") or {}).get(item_id)
+    if chain_entry is not None:
+        card = chain_entry["card"]
+        if after_effect["objects"][card]["kind"] != "spell":
+            return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "chain_card",
+                    "reason": "unit_gear_board_entry_not_modelled", "effect_result": effect_result}
+        after_effect = copy.deepcopy(after_effect)
+        del after_effect["chain_items"][item_id]
+        if not after_effect["chain_items"]:
+            del after_effect["chain_items"]
+        owner = after_effect["objects"][card]["owner"]
+        after_effect["players"][owner]["zones"]["trash"].append(card)
+        chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.trash",
+                                 "identity_after": _bump_identity(after_effect, card), "rule_locators": ["Core 157", "Core 124"]})
     cleanup_result = perform_lethal_cleanup(
-        effect_result["next_state"],
+        after_effect,
         attributed_sources=[program.get("source_object")] if program.get("source_object") else [],
         replacement_event_order=order_map,
         replacement_choices=choice_map,
@@ -157,6 +178,7 @@ def resolve_with_program(
         "next_effect_state_hash": cleanup_result["next_state_hash"],
         "trace": {
             "effect": effect_result["trace"],
+            "chain_card": chain_card_trace,
             "cleanup": cleanup_result["trace"],
             "trigger_schedule": scheduled_result["transition"],
             "timing": timing_result["transition"],

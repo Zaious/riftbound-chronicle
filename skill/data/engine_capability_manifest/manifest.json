@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:6fcdcdeb4b4104cb80a496a6",
-  "capability_set_id": "sha256:6fcdcdeb4b4104cb80a496a6306ea56c5c1e9cc00650cc4b109be94709dfaef6",
+  "manifest_id": "capability-manifest:4ed8808911e38febc4a01cd3",
+  "capability_set_id": "sha256:4ed8808911e38febc4a01cd34e77a9714098f181fcdf391e77a869466613d293",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:69405f2c0db11342877bd6ccfa34f289df22cbc425b619c67068df3bedb7dc9d",
+    "value": "sha256:a1c9d8cec74f3c16573742d0f50dd103f8e378240580b178cee512d7aac1afd2",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:8454971cbe98b37260150ae4b3c0c473a77c6c267b53a6b3e57a1e7ea3958a66"
+        "sha256": "sha256:f066b7315641cf0c08cbd52a7e635f2fccaf98d4cc8d80c95c266e21fbcc0143"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:1ac746accec7ebcd15d45f54950997ce59088a2c4408c70af310dab9217344a6"
+        "sha256": "sha256:da0c44d07c996e195481c36f72e282e71fa6c5fd72d1cb97098fa685d9fce15b"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:cc032bab325f0f4442fd91b637364b9f07ed24498afba7b16ef96505eca31131"
+        "sha256": "sha256:92d9ebec4f990e14900b5c3ebf59171ed7d72e398addba6c371a5c4cd244a6ee"
       }
     ]
   },
@@ -101,9 +101,11 @@
         "engine_decisions"
       ],
       "unsupported_scope": [
-        "reaction_add_abilities_during_payment",
+        "add_reaction_resolution_during_payment",
+        "payment_stage_replacement_decisions",
         "cost_modification_sources",
         "non_standard_costs_beyond_exhaust_kill",
+        "unit_gear_board_entry",
         "complete_game",
         "complete_legality"
       ]
@@ -444,6 +446,7 @@
     "Core 807"
   ],
   "exclusions": [
+    "add_reaction_resolution_during_payment",
     "arbitrary_card_effects",
     "arbitrary_card_text",
     "combat",
@@ -457,9 +460,10 @@
     "full_cleanup",
     "multi_descriptor_replacement",
     "non_standard_costs_beyond_exhaust_kill",
-    "reaction_add_abilities_during_payment",
+    "payment_stage_replacement_decisions",
     "scoring",
-    "target_checks"
+    "target_checks",
+    "unit_gear_board_entry"
   ],
   "claims": {
     "complete_game": false,

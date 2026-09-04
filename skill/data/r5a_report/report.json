@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:6fcdcdeb4b4104cb80a496a6",
-    "capability_set_id": "sha256:6fcdcdeb4b4104cb80a496a6306ea56c5c1e9cc00650cc4b109be94709dfaef6",
-    "implementation_identity": "sha256:69405f2c0db11342877bd6ccfa34f289df22cbc425b619c67068df3bedb7dc9d",
+    "manifest_id": "capability-manifest:4ed8808911e38febc4a01cd3",
+    "capability_set_id": "sha256:4ed8808911e38febc4a01cd34e77a9714098f181fcdf391e77a869466613d293",
+    "implementation_identity": "sha256:a1c9d8cec74f3c16573742d0f50dd103f8e378240580b178cee512d7aac1afd2",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -713,5 +713,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:48484a390b8b421e3c4c864c4e96eecc7dfa6f2a3cbc2c31bd93806107981ec3"
+  "report_hash": "sha256:49745ffdf5a751b2aacc09d406b6ac1c46d4712c272da02f4f0b27750574fdf7"
 }

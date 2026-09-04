@@ -5,7 +5,7 @@
   "description": "ADR-0005 §4: the outcome of one atomic play transaction. Either every step committed and both next states are present, or nothing did and the input hashes are the next hashes (Core 358.5). The cost receipt is the only evidence a later 'If you do' may test (Core 356.4.f.1).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "ruleset", "play_id", "input_timing_state_hash", "input_effect_state_hash", "valid", "committed", "unsupported", "stage", "reason_code", "trace", "rule_locators"],
+  "required": ["schema_version", "ruleset", "play_id", "input_timing_state_hash", "input_effect_state_hash", "valid", "committed", "unsupported", "rolled_back", "stage", "reason_code", "trace", "rule_locators"],
   "properties": {
     "schema_version": {"const": "riftbound-play-result.v1"},
     "ruleset": {
@@ -25,56 +25,17 @@
     "reason_code": {"type": "string", "minLength": 1},
     "reason": {"type": "string"},
     "errors": {"type": "array", "items": {"type": "string"}},
-    "optional_cost_decision_required": {"type": "boolean"},
+    "replacement_ids": {"type": "array", "items": {"type": "string"}},
     "decision_ids": {"type": "array", "items": {"type": "string"}},
     "decision_controller": {"type": ["string", "null"]},
     "legality": {"type": "object"},
     "chain_item_id": {"type": "string"},
-    "cost_receipt": {"$ref": "#/$defs/costReceipt"},
+    "cost_receipt": {"$ref": "cost-receipt.schema.json"},
     "next_timing_state": {"type": "object"},
     "next_timing_state_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "next_effect_state": {"type": "object"},
     "next_effect_state_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "trace": {"type": "array", "items": {"type": "object"}},
     "rule_locators": {"type": "array", "items": {"type": "string"}}
-  },
-  "$defs": {
-    "costReceipt": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["schema_version", "play_id", "actor", "card", "components", "total", "paid", "rule_locators"],
-      "properties": {
-        "schema_version": {"const": "riftbound-cost-receipt.v1"},
-        "play_id": {"type": "string", "minLength": 1},
-        "actor": {"type": "string", "minLength": 1},
-        "card": {"type": "string", "minLength": 1},
-        "base": {"type": "object"},
-        "after_base_modifications": {"type": "object"},
-        "components": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["cost_id", "kind", "mandatory", "intent", "requested", "final", "paid", "rule_locators"],
-            "properties": {
-              "cost_id": {"type": "string", "minLength": 1},
-              "kind": {"type": "string", "minLength": 1},
-              "mandatory": {"type": "boolean"},
-              "intent": {"type": ["boolean", "null"], "description": "For optional costs, the controller's declared choice (Core 355.1.a); null for mandatory and base costs."},
-              "requested": {},
-              "increases": {"type": "array", "items": {"type": "object"}},
-              "reductions": {"type": "array", "items": {"type": "object"}},
-              "final": {},
-              "payment_events": {"type": "array", "items": {"type": "object"}},
-              "paid": {"type": "boolean", "description": "Whether the rules consider the cost paid: for optional costs, the decision to pay (Core 356.4.f.1); replaced payments still count (Core 357.2.a)."},
-              "rule_locators": {"type": "array", "items": {"type": "string"}}
-            }
-          }
-        },
-        "total": {"type": "object"},
-        "paid": {"type": "boolean"},
-        "rule_locators": {"type": "array", "items": {"type": "string"}}
-      }
-    }
   }
 }

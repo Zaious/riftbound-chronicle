@@ -22,18 +22,10 @@ PROGRAM_VERSION = "riftbound-effect-program.v1"
 CORE_RULESET = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
-# The chain is where a card sits between being played and resolving (Core 328).
-# Optional on the state so every state written before C-15 stays valid.
-OPTIONAL_PLAYER_ZONES = {"chain"}
+# ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
+# reserved so C-17 does not bump the program major.
 PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
 IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid"}
-COST_RECEIPT_VERSION = "riftbound-cost-receipt.v1"
-# The chain is where a card sits between being played and resolving (Core 328).
-# Optional on the state so every state written before C-15 stays valid.
-OPTIONAL_PLAYER_ZONES = {"chain"}
-PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill")
-IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid"}
-COST_RECEIPT_VERSION = "riftbound-cost-receipt.v1"
 OBJECT_KINDS = {"unit", "gear", "spell", "rune"}
 SUPPORTED_OPS = {
     "draw",
@@ -143,8 +135,8 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"players.{player_id} must be an object")
             continue
         zones = player.get("zones")
-        if not isinstance(zones, dict) or set(zones) - OPTIONAL_PLAYER_ZONES != PLAYER_ZONES:
-            errors.append(f"players.{player_id}.zones must contain exactly {sorted(PLAYER_ZONES)} (plus optionally {sorted(OPTIONAL_PLAYER_ZONES)})")
+        if not isinstance(zones, dict) or set(zones) != PLAYER_ZONES:
+            errors.append(f"players.{player_id}.zones must contain exactly {sorted(PLAYER_ZONES)}")
             continue
         for zone, ids in zones.items():
             if not isinstance(ids, list) or len(ids) != len(set(ids)):
@@ -176,6 +168,25 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"unknown object {object_id!r} at battlefield {battlefield_id}")
             else:
                 occupancy[object_id].append(f"battlefield:{battlefield_id}")
+
+    # The chain is one shared zone (Core 328), not a per-player zone: cards
+    # played and not yet resolved sit here keyed by their timing item id.
+    chain_items = state.get("chain_items", {})
+    if not isinstance(chain_items, dict):
+        errors.append("chain_items must be an object keyed by chain item id")
+        chain_items = {}
+    for item_id, entry in chain_items.items():
+        if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - {"card", "controller", "effect_program_id"} or not {"card", "controller"} <= set(entry):
+            errors.append(f"chain_items.{item_id} must carry card and controller")
+            continue
+        if entry["controller"] not in players:
+            errors.append(f"chain_items.{item_id}.controller is not a player")
+        if entry["card"] not in objects:
+            errors.append(f"unknown object {entry['card']!r} on the chain as {item_id}")
+        else:
+            occupancy[entry["card"]].append(f"chain:{item_id}")
+        if "effect_program_id" in entry and (not isinstance(entry["effect_program_id"], str) or not entry["effect_program_id"]):
+            errors.append(f"chain_items.{item_id}.effect_program_id must be a non-empty string when supplied")
 
     for object_id, obj in objects.items():
         if not isinstance(obj, dict):
@@ -389,12 +400,8 @@ def _selector_errors(selector: Any) -> list[str]:
 def _receipt_errors(receipt: Any) -> list[str]:
     if receipt is None:
         return []
-    if not isinstance(receipt, dict) or receipt.get("schema_version") != COST_RECEIPT_VERSION:
-        return [f"cost_receipt must be a {COST_RECEIPT_VERSION} object"]
-    components = receipt.get("components")
-    if not isinstance(components, list) or any(not isinstance(c, dict) or not isinstance(c.get("cost_id"), str) or not isinstance(c.get("paid"), bool) for c in components):
-        return ["cost_receipt.components must carry cost_id and paid"]
-    return []
+    from cost_receipt import validate_cost_receipt  # standalone module; no cycle
+    return [f"cost_receipt {e}" for e in validate_cost_receipt(receipt)]
 
 
 def _predicate_errors(predicate: Any, receipt: Any) -> list[str]:
@@ -432,6 +439,9 @@ def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str 
     for battlefield_id, battlefield in state["battlefields"].items():
         if object_id in battlefield["objects"]:
             return ("battlefield", battlefield_id, None)
+    for item_id, entry in (state.get("chain_items") or {}).items():
+        if entry.get("card") == object_id:
+            return ("chain", item_id, None)
     return None
 
 
@@ -508,6 +518,8 @@ def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
         raise ValueError(f"object {object_id!r} has no location")
     if location[0] == "player":
         state["players"][location[1]]["zones"][location[2]].remove(object_id)
+    elif location[0] == "chain":
+        del state["chain_items"][location[1]]
     else:
         state["battlefields"][location[1]]["objects"].remove(object_id)
 

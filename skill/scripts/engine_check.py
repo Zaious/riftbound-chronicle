@@ -21,7 +21,7 @@ from effect_ir import (
     perform_lethal_cleanup,
 )
 from engine_decisions import DECISIONS_VERSION as ENGINE_DECISIONS_VERSION, validate_engine_decisions
-from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card
+from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card, validate_play_result
 from resolution_bridge import CLEANUP_DECISION_VERSION, resolve_with_program, validate_cleanup_decisions
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
@@ -81,7 +81,7 @@ KIND_CONFIG = {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
         "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions"],
-        "unsupported": ["reaction_add_abilities_during_payment", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "complete_game", "complete_legality"],
+        "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "unit_gear_board_entry", "complete_game", "complete_legality"],
     },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
@@ -97,6 +97,7 @@ DECISION_REASON_CODES = {
     "effect_execution_confirmation_required": "effect_confirmation",
     "target_selection_required": "target_choice",
     "optional_cost_intent_required": "cost_choice",
+    "add_window_confirmation_required": "cost_choice",
 }
 
 
@@ -456,6 +457,9 @@ def run_play(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
     decisions = _engine_decisions(getattr(args, "decisions", None))
     program = load_object(args.program) if args.program else None
     result = play_card(timing_state, effect_state, declaration, engine_decisions=decisions, effect_program=program)
+    problems = validate_play_result(result)
+    if problems:
+        raise EngineCheckError("inconsistent play result: " + "; ".join(problems))
     hashes = {"timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state), "play_declaration": canonical_hash(declaration)}
     if decisions is not None:
         hashes["engine_decisions"] = canonical_hash(decisions)

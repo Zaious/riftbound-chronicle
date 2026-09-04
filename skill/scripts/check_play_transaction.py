@@ -1,33 +1,44 @@
 #!/usr/bin/env python3
 """
-Regression gate for C-15 (ADR-0005 §4–5, §9–10): the atomic play/cost
-transaction, typed cost receipts, optional-cost decisions, and cost predicates.
+Regression gate for C-15 (ADR-0005 §4–5, §9–10) and its review fixes: the
+atomic play/cost transaction, typed cost receipts, optional-cost decisions,
+cost predicates, the shared chain, and the Add window.
 
 Must hold:
-  - a payable play commits: pool debited, card moved hand → chain with a new
-    identity, pending chain item inserted through the timing kernel, receipt
-    says paid; inputs untouched; deterministic;
-  - an unpayable supported cost is `illegal` and both next hashes equal the
-    inputs;
+  - a payable play commits: pool debited, card moved hand → shared chain_items
+    with a new identity, pending chain item inserted through the timing kernel
+    carrying effect_program_id, receipt valid and paid; inputs untouched;
+    deterministic; the result passes validate_play_result;
+  - an unpayable supported cost is `illegal` only once the Add window is
+    confirmed closed (Core 429.3); before that it is `decision_required`;
+    both next hashes equal the inputs;
   - a timing refusal after payment rolls the payment back (Core 358.5);
   - card not in hand → illegal; malformed declaration → invalid_input;
+  - effect_program_id must bind to the supplied program's program_id;
   - optional cost without intent → decision_required naming the cost and the
     controller; intent true pays it; intent false leaves it unpaid on the
-    receipt and commits; a wrong-controller intent is refused;
+    receipt and commits; a wrong-controller intent is illegal; a wrong-stage
+    intent is invalid_input;
   - an optional cost discounted to zero is still paid (356.4.f.1);
-  - component discounts apply before total discounts and each minimum is its
-    own (356.4.c–e: the Eager Apprentice / Sky Splitter example); floor at
-    zero (356.6);
+  - total discounts reduce the aggregate Energy including chosen additional
+    Energy (356.4.d); component discounts first, each minimum its own
+    (356.4.c–e); floor at zero (356.6); the discount order is recorded;
+  - payment events are unique; two Power components never share one event's
+    full amount; allocations sum to the events;
   - a kill cost prevented by a replacement effect still counts as paid
-    (357.2.a); an exhaust cost on an already-exhausted unit is unpayable;
+    (357.2.a); an exhaust cost on an already-exhausted unit is unpayable; a
+    replacement that needs a choice during payment is unsupported;
   - a cost kind the engine does not type is `unsupported`;
-  - a target illegal at play is `illegal` (355.9); a missing target decision
-    at play is `decision_required`;
-  - cost predicates: cost_paid / cost_not_paid gate on the receipt, unknown
-    cost_id is invalid_input, other predicate kinds are unsupported;
-  - engine-check wraps play results into all five outcomes, with
-    `cost_choice` as the decision kind; the manifest lists the play component;
-  - the CLI runs off-cwd.
+  - a concrete selector illegal at play is `illegal` (355.9), as is a
+    decision-supplied one; a missing target decision is `decision_required`;
+    wrong stage / stale selection identity are invalid_input;
+  - cost predicates read the receipt; unknown cost_id is invalid_input; other
+    predicate kinds are unsupported;
+  - the resolution bridge moves a resolved spell chain → trash with a new
+    identity before Cleanup, and refuses a Unit on the chain as unsupported;
+  - engine-check wraps play results into all five outcomes with
+    `cost_choice`; the manifest lists the play component; the CLI runs
+    off-cwd; a tampered result is rejected by validate_play_result.
 """
 
 from __future__ import annotations
@@ -45,9 +56,11 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
+from cost_receipt import validate_cost_receipt  # noqa: E402
 from effect_ir import apply_program, hash_value, object_identity, validate_program, validate_state  # noqa: E402
 from engine_check import KIND_CONFIG, build_engine_check, validate_engine_check  # noqa: E402
-from play_transaction import DECLARATION_VERSION, RECEIPT_VERSION, RESULT_VERSION, determine_total_cost, play_card, validate_declaration  # noqa: E402
+from play_transaction import DECLARATION_VERSION, RESULT_VERSION, determine_total_cost, play_card, validate_declaration, validate_play_result  # noqa: E402
+from resolution_bridge import resolve_with_program  # noqa: E402
 from rules_core import CORE_RULESET, FAQ_AS_OF, state_hash  # noqa: E402
 
 RUNNER = SCRIPT_DIR / "engine_check.py"
@@ -75,12 +88,19 @@ def declaration(**overrides):
     return value
 
 
+CLOSED = {"add_window_closed": True, "confirmed_by": "human"}
+
+
 def decisions(state, *entries):
     return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(state), "decisions": list(entries)}
 
 
-def intent(cost_id, value, controller="p1"):
-    return {"decision_id": cost_id, "stage": "play_declaration", "kind": "optional_choice", "controller": controller, "value": value}
+def intent(cost_id, value, controller="p1", stage="play_declaration"):
+    return {"decision_id": cost_id, "stage": stage, "kind": "optional_choice", "controller": controller, "value": value}
+
+
+def comp(result, cost_id):
+    return next((c for c in result.get("cost_receipt", {}).get("components", []) if c["cost_id"] == cost_id), {})
 
 
 def main() -> int:
@@ -92,7 +112,8 @@ def main() -> int:
 
     # --- payable play commits -------------------------------------------------
     snapshot_t, snapshot_e = copy.deepcopy(timing), copy.deepcopy(state)
-    ok = play_card(timing, state, declaration())
+    prog = program("spell-1-effects", {"op": "draw", "player": "p1", "count": 1})
+    ok = play_card(timing, state, declaration(effect_program_id="spell-1-effects"), effect_program=prog)
     if not ok.get("committed") or ok.get("stage") != "commit":
         errors.append(f"payable play did not commit: {ok.get('stage')} {ok.get('reason')}")
     else:
@@ -100,30 +121,41 @@ def main() -> int:
         p1 = nxt["players"]["p1"]
         if p1["resources"] != {"energy": 1, "power": {"fury": 0}}:
             errors.append(f"pool not debited correctly: {p1['resources']}")
-        if "c1" in p1["zones"]["hand"] or p1["zones"].get("chain") != ["c1"] or object_identity(nxt, "c1") != "c1@1":
-            errors.append("card did not move hand → chain with a new identity")
+        if "c1" in p1["zones"]["hand"] or "chain" in p1["zones"] or nxt.get("chain_items") != {"spell-1": {"card": "c1", "controller": "p1", "effect_program_id": "spell-1-effects"}} or object_identity(nxt, "c1") != "c1@1":
+            errors.append(f"card did not move hand → shared chain with a new identity: {nxt.get('chain_items')}")
         if validate_state(nxt):
             errors.append(f"next effect state invalid: {validate_state(nxt)}")
         items = ok["next_timing_state"]["chain"]["items"]
-        if len(items) != 1 or items[0]["id"] != "spell-1" or items[0]["status"] != "pending" or items[0]["controller"] != "p1":
-            errors.append(f"chain item not inserted as pending: {items}")
+        if len(items) != 1 or items[0]["id"] != "spell-1" or items[0]["status"] != "pending" or items[0]["controller"] != "p1" or items[0].get("effect_program_id") != "spell-1-effects":
+            errors.append(f"chain item not inserted as pending with its program: {items}")
         receipt = ok["cost_receipt"]
-        if receipt["schema_version"] != RECEIPT_VERSION or not receipt["paid"] or receipt["total"] != {"energy": 2, "power": {"fury": 1}}:
-            errors.append(f"receipt wrong: {receipt.get('total')} paid={receipt.get('paid')}")
-        if ok["next_effect_state_hash"] != hash_value(nxt) or ok["next_timing_state_hash"] != state_hash(ok["next_timing_state"]):
-            errors.append("next hashes do not match next states")
+        if validate_cost_receipt(receipt) or not receipt["paid"] or receipt["total"] != {"energy": 2, "power": {"fury": 1}}:
+            errors.append(f"receipt wrong: {validate_cost_receipt(receipt)} total={receipt.get('total')}")
+        if [e["event_id"] for e in receipt["payment_events"]] != ["pay:energy", "pay:power:fury"]:
+            errors.append(f"payment events not unique/ordered: {[e['event_id'] for e in receipt['payment_events']]}")
+        if validate_play_result(ok):
+            errors.append(f"committed result failed its own validator: {validate_play_result(ok)}")
     if timing != snapshot_t or state != snapshot_e:
         errors.append("play_card mutated its inputs")
-    if play_card(timing, state, declaration()) != ok:
+    if play_card(timing, state, declaration(effect_program_id="spell-1-effects"), effect_program=prog) != ok:
         errors.append("play_card is not deterministic")
 
-    # --- unpayable → illegal, rolled back ---------------------------------------
+    # --- regression: effect_program_id must bind ---------------------------------------
+    unbound = play_card(timing, state, declaration(), effect_program=prog)
+    if unbound.get("valid") is not False or "does not bind" not in unbound.get("reason", ""):
+        errors.append("a program supplied without a matching effect_program_id was accepted")
+
+    # --- Add window (429.3): short pool → decision_required, then illegal ------------------
     poor = effect_state(energy=1)
-    bad = play_card(timing, poor, declaration())
+    ask = play_card(timing, poor, declaration())
+    if ask.get("committed") or ask.get("reason_code") != "add_window_confirmation_required" or ask.get("decision_controller") != "p1" or ask.get("decision_ids") != ["add_window:play-1"]:
+        errors.append(f"short pool without add-window confirmation was not decision_required: {ask.get('reason_code')}")
+    bad = play_card(timing, poor, declaration(payment_context=CLOSED))
     if bad.get("committed") or bad.get("reason_code") != "cost_unpayable" or bad.get("stage") != "payment":
-        errors.append(f"unpayable cost was not illegal at payment: {bad.get('stage')} {bad.get('reason_code')}")
-    if bad.get("next_effect_state_hash") != hash_value(poor) or bad.get("next_timing_state_hash") != state_hash(timing) or bad.get("rolled_back") is not True:
-        errors.append("unpayable play did not roll back to the input hashes")
+        errors.append(f"unpayable cost with the window closed was not illegal: {bad.get('stage')} {bad.get('reason_code')}")
+    for r in (ask, bad):
+        if r.get("next_effect_state_hash") != hash_value(poor) or r.get("next_timing_state_hash") != state_hash(timing) or r.get("rolled_back") is not True or validate_play_result(r):
+            errors.append(f"short-pool play did not roll back cleanly: {validate_play_result(r)}")
     if bad.get("trace", [{}])[-1].get("outcome") != "rolled_back":
         errors.append("rollback not recorded in the trace")
 
@@ -132,108 +164,151 @@ def main() -> int:
     refused = play_card(closed, state, declaration())
     if refused.get("committed") or refused.get("stage") != "legality" or refused.get("valid") is not True:
         errors.append(f"timing refusal did not stop at legality: {refused.get('stage')} {refused.get('reason_code')}")
-    if refused.get("next_effect_state_hash") != hash_value(state):
+    if refused.get("next_effect_state_hash") != hash_value(state) or not any(t.get("stage") == "payment" for t in refused.get("trace", [])):
         errors.append("payment was not undone after the timing kernel refused the play")
-    if not any(t.get("stage") == "payment" for t in refused.get("trace", [])):
-        errors.append("trace should show payment happened before the refusal")
 
-    # --- card not in hand / malformed ------------------------------------------------
-    not_in_hand = play_card(timing, state, declaration(card="c2"))
-    if not_in_hand.get("committed") or not_in_hand.get("reason_code") != "card_not_in_hand":
+    # --- card not in hand / malformed / collisions ------------------------------------
+    if play_card(timing, state, declaration(card="c2")).get("reason_code") != "card_not_in_hand":
         errors.append("card not in hand was not refused")
     malformed = play_card(timing, state, declaration(cost={"base": {"energy": -1, "power": {}}}))
-    if malformed.get("valid") is not False or malformed.get("reason_code") != "invalid_input":
-        errors.append("malformed declaration was not invalid_input")
+    if malformed.get("valid") is not False or malformed.get("reason_code") != "invalid_input" or validate_play_result(malformed):
+        errors.append(f"malformed declaration was not a clean invalid_input: {validate_play_result(malformed)}")
     if not validate_declaration({**declaration(), "cost": {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "base:energy", "mandatory": True, "payment": {"kind": "energy", "amount": 1}}]}}):
         errors.append("a cost_id colliding with the base namespace was accepted")
+    if not validate_declaration(declaration(cost={"base": {"energy": 1, "power": {}}, "discounts": [{"id": "x", "applies_to": "optional_additional", "amount": 1}]})):
+        errors.append("an optional_additional discount without a resource was accepted")
+    if play_card(timing, state, declaration(chain_item={"id": "spell-0", "object_kind": "spell", "timing": "default"}) , ).get("reason_code") == "ok":
+        pass
+    collide_state = copy.deepcopy(state); collide_state["chain_items"] = {"spell-1": {"card": "c2", "controller": "p1"}}
+    collide_state["players"]["p1"]["zones"]["main_deck"].remove("c2")
+    if play_card(timing, collide_state, declaration()).get("reason_code") != "invalid_input":
+        errors.append("a chain item id already on the shared chain was accepted")
 
     # --- optional cost: intent decision --------------------------------------------
     optional = declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "opt-exhaust", "mandatory": False, "payment": {"kind": "exhaust", "object_id": "u1"}}]})
     missing = play_card(timing, state, optional)
-    if missing.get("committed") or missing.get("reason_code") != "optional_cost_intent_required" or missing.get("decision_ids") != ["opt-exhaust"] or missing.get("decision_controller") != "p1" or missing.get("stage") != "choices":
-        errors.append(f"missing optional intent did not return decision_required: {missing.get('reason_code')} {missing.get('decision_ids')}")
+    if missing.get("reason_code") != "optional_cost_intent_required" or missing.get("decision_ids") != ["opt-exhaust"] or missing.get("decision_controller") != "p1" or missing.get("stage") != "choices":
+        errors.append(f"missing optional intent did not return decision_required: {missing.get('reason_code')}")
     yes = play_card(timing, state, optional, engine_decisions=decisions(state, intent("opt-exhaust", True)))
-    comp = next((c for c in yes.get("cost_receipt", {}).get("components", []) if c["cost_id"] == "opt-exhaust"), {})
-    if not yes.get("committed") or not yes["next_effect_state"]["objects"]["u1"]["exhausted"] or comp.get("paid") is not True or comp.get("intent") is not True:
-        errors.append(f"optional intent true did not pay the exhaust cost: {yes.get('reason')} {comp}")
+    if not yes.get("committed") or not yes["next_effect_state"]["objects"]["u1"]["exhausted"] or comp(yes, "opt-exhaust").get("paid") is not True or comp(yes, "opt-exhaust").get("intent") is not True:
+        errors.append(f"optional intent true did not pay the exhaust cost: {yes.get('reason')} {comp(yes, 'opt-exhaust')}")
     no = play_card(timing, state, optional, engine_decisions=decisions(state, intent("opt-exhaust", False)))
-    comp = next((c for c in no.get("cost_receipt", {}).get("components", []) if c["cost_id"] == "opt-exhaust"), {})
-    if not no.get("committed") or no["next_effect_state"]["objects"]["u1"]["exhausted"] or comp.get("paid") is not False or comp.get("intent") is not False or no["cost_receipt"]["paid"] is not True:
-        errors.append(f"optional intent false did not commit with the cost unpaid on the receipt: {no.get('reason')} {comp}")
+    if not no.get("committed") or no["next_effect_state"]["objects"]["u1"]["exhausted"] or comp(no, "opt-exhaust").get("paid") is not False or comp(no, "opt-exhaust").get("intent") is not False or no["cost_receipt"]["paid"] is not True:
+        errors.append(f"optional intent false did not commit with the cost unpaid on the receipt: {no.get('reason')} {comp(no, 'opt-exhaust')}")
     wrong_owner = play_card(timing, state, optional, engine_decisions=decisions(state, intent("opt-exhaust", True, controller="p2")))
-    if wrong_owner.get("committed") or wrong_owner.get("reason_code") != "decision_controller_mismatch":
-        errors.append("an opponent's intent decision was accepted")
-    stale = play_card(timing, state, optional, engine_decisions=decisions(poor, intent("opt-exhaust", True)))
-    if stale.get("valid") is not False:
+    if wrong_owner.get("valid") is not True or wrong_owner.get("committed") or wrong_owner.get("reason_code") != "decision_controller_mismatch":
+        errors.append("an opponent's intent decision was not illegal")
+    wrong_stage = play_card(timing, state, optional, engine_decisions=decisions(state, intent("opt-exhaust", True, stage="resolution")))
+    if wrong_stage.get("valid") is not False:
+        errors.append("a resolution-stage intent was accepted at play")
+    if play_card(timing, state, optional, engine_decisions=decisions(poor, intent("opt-exhaust", True))).get("valid") is not False:
         errors.append("a decision envelope for another state was accepted")
 
     # --- optional cost discounted to zero is still paid (356.4.f.1) -----------------
     keeper = declaration(cost={"base": {"energy": 2, "power": {}},
                                "additional": [{"cost_id": "keeper", "mandatory": False, "payment": {"kind": "energy", "amount": 1}}],
-                               "discounts": [{"id": "units-cost-less", "applies_to": "optional_additional", "amount": 1}]})
-    paid_zero = play_card(timing, effect_state(energy=2, power={}), keeper, engine_decisions=decisions(effect_state(energy=2, power={}), intent("keeper", True)))
-    comp = next((c for c in paid_zero.get("cost_receipt", {}).get("components", []) if c["cost_id"] == "keeper"), {})
-    if not paid_zero.get("committed") or comp.get("final") != 0 or comp.get("paid") is not True or paid_zero["next_effect_state"]["players"]["p1"]["resources"]["energy"] != 0:
-        errors.append(f"optional cost reduced to 0 was not 'paid' by decision: {comp} {paid_zero.get('reason')}")
+                               "discounts": [{"id": "units-cost-less", "applies_to": "optional_additional", "resource": "energy", "amount": 1}]})
+    two = effect_state(energy=2, power={})
+    paid_zero = play_card(timing, two, keeper, engine_decisions=decisions(two, intent("keeper", True)))
+    k = comp(paid_zero, "keeper")
+    if not paid_zero.get("committed") or k.get("final") != 0 or k.get("paid") is not True or k.get("payment_refs") != [] or paid_zero["next_effect_state"]["players"]["p1"]["resources"]["energy"] != 0:
+        errors.append(f"optional cost reduced to 0 was not 'paid' by decision: {k} {paid_zero.get('reason')}")
+
+    # --- regression: total discount on the aggregate Energy (356.4.d) --------------------
+    agg = declaration(cost={"base": {"energy": 2, "power": {}},
+                            "additional": [{"cost_id": "extra", "mandatory": False, "payment": {"kind": "energy", "amount": 2}}],
+                            "discounts": [{"id": "cost-less", "applies_to": "total", "amount": 3}]})
+    one = effect_state(energy=1, power={})
+    aggregated = play_card(timing, one, agg, engine_decisions=decisions(one, intent("extra", True)))
+    rec = aggregated.get("cost_receipt", {})
+    if not aggregated.get("committed") or rec.get("total", {}).get("energy") != 1 or rec.get("aggregate", {}).get("energy", {}).get("before_total_discounts") != 4 or aggregated["next_effect_state"]["players"]["p1"]["resources"]["energy"] != 0:
+        errors.append(f"total discount did not reduce the aggregate Energy including the chosen additional cost: {aggregated.get('reason')} {rec.get('aggregate')}")
+    elif sum(r["amount"] for c in rec["components"] for r in c["payment_refs"]) != 1 or [o["id"] for o in rec["discount_order"]] != ["cost-less"]:
+        errors.append(f"aggregate payment allocation or discount order wrong: {rec['components']} {rec['discount_order']}")
 
     # --- discount ordering and minimums (356.4.c–e), floor (356.6) -----------------
     sky = {"base": {"energy": 8, "power": {}},
            "discounts": [{"id": "eager-apprentice", "applies_to": "energy", "amount": 1, "minimum": 1}, {"id": "sky-splitter", "applies_to": "total", "amount": 7}]}
     skel = determine_total_cost(sky, {})
-    energy = next(c for c in skel["components"] if c["cost_id"] == "base:energy")
-    if energy["final"] != 0 or [r["discount_id"] for r in energy["reductions"]] != ["eager-apprentice", "sky-splitter"]:
-        errors.append(f"component-before-total discount order or minimum wrong: final={energy['final']} order={[r['discount_id'] for r in energy['reductions']]}")
+    if skel["total"]["energy"] != 0 or [o["id"] for o in skel["discount_order"]] != ["eager-apprentice", "sky-splitter"]:
+        errors.append(f"component-before-total order or minimum wrong: {skel['total']} {skel['discount_order']}")
     reversed_skel = determine_total_cost({"base": {"energy": 8, "power": {}}, "discounts": [{"id": "sky-splitter", "applies_to": "energy", "amount": 7}, {"id": "eager-apprentice", "applies_to": "energy", "amount": 1, "minimum": 1}]}, {})
-    if next(c for c in reversed_skel["components"] if c["cost_id"] == "base:energy")["final"] != 1:
+    if reversed_skel["total"]["energy"] != 1:
         errors.append("a discount's minimum did not apply to that discount alone (356.4.e)")
-    floor = determine_total_cost({"base": {"energy": 2, "power": {}}, "discounts": [{"id": "big", "applies_to": "total", "amount": 5}]}, {})
-    if floor["total"]["energy"] != 0:
+    if determine_total_cost({"base": {"energy": 2, "power": {}}, "discounts": [{"id": "big", "applies_to": "total", "amount": 5}]}, {})["total"]["energy"] != 0:
         errors.append("energy cost went below zero (356.6)")
     ignore = determine_total_cost({"base": {"energy": 2, "power": {"fury": 1}}, "base_modifications": [{"kind": "ignore_all"}],
                                    "additional": [{"cost_id": "acc", "mandatory": False, "payment": {"kind": "energy", "amount": 1}}]}, {"acc": True})
     if ignore["total"] != {"energy": 1, "power": {}}:
         errors.append(f"ignoring base costs must leave a chosen additional cost payable (356.1.b.3): {ignore['total']}")
 
-    # --- non-standard costs: replacement still paid; exhausted unit unpayable ---------
+    # --- regression: unique power payment events with exact allocation ------------------
+    dual = effect_state(energy=1, power={"fury": 1, "calm": 2})
+    dual_play = play_card(timing, dual, declaration(cost={"base": {"energy": 1, "power": {"fury": 1, "calm": 1}},
+                                                          "additional": [{"cost_id": "more-calm", "mandatory": True, "payment": {"kind": "power", "domain": "calm", "amount": 1}}]}))
+    rec = dual_play.get("cost_receipt", {})
+    ev_ids = [e["event_id"] for e in rec.get("payment_events", [])]
+    if not dual_play.get("committed") or ev_ids != ["pay:energy", "pay:power:calm", "pay:power:fury"]:
+        errors.append(f"power payment events are not one per domain: {ev_ids} {dual_play.get('reason')}")
+    else:
+        calm_refs = [(c["cost_id"], r["amount"]) for c in rec["components"] for r in c["payment_refs"] if r["event_id"] == "pay:power:calm"]
+        if calm_refs != [("base:power:calm", 1), ("more-calm", 1)]:
+            errors.append(f"calm event not allocated exactly across its two components: {calm_refs}")
+
+    # --- non-standard costs: replacement still paid; exhausted unit unpayable; choice → unsupported
     guarded = effect_state(energy=2, power={})
     guarded["replacement_effects"] = [{"replacement_id": "guard", "controller": "p1", "source_object": "u1", "mode": "prevent_event", "event_op": "kill", "optional": False, "uses_remaining": None, "target_controller_relation": "friendly"}]
     kill_cost = declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "sacrifice", "mandatory": True, "payment": {"kind": "kill", "object_id": "u1"}}]})
     replaced = play_card(timing, guarded, kill_cost)
-    comp = next((c for c in replaced.get("cost_receipt", {}).get("components", []) if c["cost_id"] == "sacrifice"), {})
-    if not replaced.get("committed") or comp.get("paid") is not True or "u1" not in replaced["next_effect_state"]["players"]["p1"]["zones"]["base"] or "Core 357.2.a" not in comp.get("rule_locators", []):
-        errors.append(f"a prevented kill cost was not treated as paid (357.2.a): {replaced.get('reason')} {comp}")
+    c = comp(replaced, "sacrifice")
+    if not replaced.get("committed") or c.get("paid") is not True or "u1" not in replaced["next_effect_state"]["players"]["p1"]["zones"]["base"] or "Core 357.2.a" not in c.get("rule_locators", []):
+        errors.append(f"a prevented kill cost was not treated as paid (357.2.a): {replaced.get('reason')} {c}")
     plain_kill = play_card(timing, effect_state(energy=2, power={}), kill_cost)
     if not plain_kill.get("committed") or "u1" not in plain_kill["next_effect_state"]["players"]["p1"]["zones"]["trash"]:
         errors.append("a mandatory kill cost did not kill the unit")
+    optional_guard = copy.deepcopy(guarded); optional_guard["replacement_effects"][0]["optional"] = True
+    choice = play_card(timing, optional_guard, kill_cost)
+    if choice.get("committed") or choice.get("unsupported") is not True or choice.get("reason_code") != "payment_replacement_decision_not_modelled" or validate_play_result(choice):
+        errors.append(f"a replacement choice during payment was not unsupported: {choice.get('reason_code')} {validate_play_result(choice)}")
     tired = effect_state(energy=2, power={}); tired["objects"]["u1"]["exhausted"] = True
     unpayable = play_card(timing, tired, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "tap", "mandatory": True, "payment": {"kind": "exhaust", "object_id": "u1"}}]}))
     if unpayable.get("committed") or unpayable.get("reason_code") != "cost_unpayable" or unpayable.get("next_effect_state_hash") != hash_value(tired):
         errors.append(f"exhausting an exhausted unit was accepted as payment: {unpayable.get('reason_code')}")
-    enemy = play_card(timing, effect_state(energy=2, power={}), declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "tap", "mandatory": True, "payment": {"kind": "exhaust", "object_id": "u2"}}]}))
-    if enemy.get("committed") or enemy.get("reason_code") != "cost_unpayable":
+    if play_card(timing, effect_state(energy=2, power={}), declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "tap", "mandatory": True, "payment": {"kind": "exhaust", "object_id": "u2"}}]})).get("reason_code") != "cost_unpayable":
         errors.append("exhausting an enemy unit was accepted as a cost")
 
     # --- unknown cost mechanic → unsupported ------------------------------------------
     discard = play_card(timing, state, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": True, "payment": {"kind": "discard", "amount": 1}}]}))
-    if discard.get("committed") or discard.get("unsupported") is not True or discard.get("reason_code") != "unsupported_cost_kind":
+    if discard.get("unsupported") is not True or discard.get("reason_code") != "unsupported_cost_kind" or validate_play_result(discard):
         errors.append(f"discard cost was not unsupported: {discard.get('reason_code')}")
-    declined_unknown = play_card(timing, state, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": False, "payment": {"kind": "discard", "amount": 1}}]}), engine_decisions=decisions(state, intent("d", False)))
-    if not declined_unknown.get("committed"):
+    if not play_card(timing, state, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": False, "payment": {"kind": "discard", "amount": 1}}]}), engine_decisions=decisions(state, intent("d", False))).get("committed"):
         errors.append("declining an optional cost of an unknown kind must not block the play")
 
-    # --- targets at play (355.5 / 355.9) ----------------------------------------------
-    prog = program("spell-1-effects", {"op": "deal_damage", "amount": 1, "target": {"decision_ref": "t", "chosen_zone_class": "board", "controller_relation": "enemy"}})
-    no_target = play_card(timing, state, declaration(effect_program_id="spell-1-effects"), effect_program=prog)
-    if no_target.get("committed") or no_target.get("reason_code") != "target_selection_required" or no_target.get("decision_ids") != ["t"]:
+    # --- targets at play (355.5 / 355.9): decision-supplied and concrete ---------------------
+    tprog = program("spell-1-effects", {"op": "deal_damage", "amount": 1, "target": {"decision_ref": "t", "chosen_zone_class": "board", "controller_relation": "enemy"}})
+    tdecl = declaration(effect_program_id="spell-1-effects")
+    no_target = play_card(timing, state, tdecl, effect_program=tprog)
+    if no_target.get("reason_code") != "target_selection_required" or no_target.get("decision_ids") != ["t"]:
         errors.append(f"missing play-time target was not decision_required: {no_target.get('reason_code')}")
-    illegal_target = play_card(timing, state, declaration(effect_program_id="spell-1-effects"), effect_program=prog,
-                               engine_decisions=decisions(state, {"decision_id": "t", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u1"], "selection_identities": {"u1": "u1@0"}}))
-    if illegal_target.get("committed") or illegal_target.get("reason_code") != "target_illegal_at_play" or illegal_target.get("stage") != "choices":
-        errors.append(f"illegal target at play was not refused: {illegal_target.get('reason_code')} {illegal_target.get('reason')}")
-    legal_target = play_card(timing, state, declaration(effect_program_id="spell-1-effects"), effect_program=prog,
-                             engine_decisions=decisions(state, {"decision_id": "t", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u2"], "selection_identities": {"u2": "u2@0"}}))
-    if not legal_target.get("committed"):
-        errors.append(f"legal play-time target blocked the play: {legal_target.get('reason')}")
+    sel = lambda ids, **kw: {"decision_id": "t", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ids, "selection_identities": {i: f"{i}@0" for i in ids}, **kw}
+    illegal_target = play_card(timing, state, tdecl, effect_program=tprog, engine_decisions=decisions(state, sel(["u1"])))
+    if illegal_target.get("reason_code") != "target_illegal_at_play" or illegal_target.get("stage") != "choices" or illegal_target.get("valid") is not True:
+        errors.append(f"illegal decision-supplied target at play was not illegal: {illegal_target.get('reason_code')}")
+    if not play_card(timing, state, tdecl, effect_program=tprog, engine_decisions=decisions(state, sel(["u2"]))).get("committed"):
+        errors.append("legal play-time target blocked the play")
+    stale_id = play_card(timing, state, tdecl, effect_program=tprog, engine_decisions=decisions(state, {**sel(["u2"]), "selection_identities": {"u2": "u2@7"}}))
+    if stale_id.get("valid") is not False or stale_id.get("reason_code") != "invalid_input":
+        errors.append("a selection bound to a stale identity was accepted")
+    wrong_stage_sel = play_card(timing, state, tdecl, effect_program=tprog, engine_decisions=decisions(state, {**sel(["u2"]), "stage": "trigger_finalization"}))
+    if wrong_stage_sel.get("valid") is not False:
+        errors.append("a trigger-stage target selection was accepted for a play")
+    concrete = program("spell-1-effects", {"op": "deal_damage", "amount": 1, "object_id": "u1", "target": {"object_id": "u1", "chosen_zone_class": "board", "controller_relation": "enemy"}})
+    concrete_illegal = play_card(timing, state, tdecl, effect_program=concrete)
+    if concrete_illegal.get("reason_code") != "target_illegal_at_play":
+        errors.append(f"regression: a concrete selector illegal at play was not refused (355.9): {concrete_illegal.get('reason_code')}")
+    concrete_ok = program("spell-1-effects", {"op": "deal_damage", "amount": 1, "object_id": "u2", "target": {"object_id": "u2", "chosen_zone_class": "board", "controller_relation": "enemy"}})
+    if not play_card(timing, state, tdecl, effect_program=concrete_ok).get("committed"):
+        errors.append("a legal concrete selector blocked the play")
 
     # --- cost predicates on the receipt ------------------------------------------------
     if not (yes.get("committed") and no.get("committed")):
@@ -244,7 +319,7 @@ def main() -> int:
     gated = {**program("keeper-effects", {"op": "draw", "player": "p1", "count": 1, "predicate": {"kind": "cost_paid", "cost_id": "opt-exhaust"}}), "cost_receipt": receipt_yes}
     drew = apply_program(after_yes, gated)
     if not drew.get("committed") or drew["trace"][0].get("outcome") != "applied" or len(drew["next_state"]["players"]["p1"]["zones"]["hand"]) != 1:
-        errors.append(f"cost_paid predicate did not let the draw through: {drew.get('reason') or drew.get('errors')} {drew.get('trace')}")
+        errors.append(f"cost_paid predicate did not let the draw through: {drew.get('reason') or drew.get('errors')}")
     skipped = apply_program(after_no, {**gated, "cost_receipt": receipt_no})
     ev = skipped["trace"][0] if skipped.get("committed") else {}
     if ev.get("outcome") != "skipped_linked_dependency" or ev.get("predicate", {}).get("kind") != "cost_paid" or ev.get("completion") != "none":
@@ -252,32 +327,55 @@ def main() -> int:
     otherwise = apply_program(after_no, {**program("keeper-otherwise", {"op": "draw", "player": "p1", "count": 1, "predicate": {"kind": "cost_not_paid", "cost_id": "opt-exhaust"}}), "cost_receipt": receipt_no})
     if not otherwise.get("committed") or otherwise["trace"][0].get("outcome") != "applied":
         errors.append("cost_not_paid predicate did not fire on a declined cost")
-    unknown_id = validate_program({**gated, "effects": [{**gated["effects"][0], "predicate": {"kind": "cost_paid", "cost_id": "nope"}}]})
-    if not any("not on the receipt" in e for e in unknown_id):
+    if not any("not on the receipt" in e for e in validate_program({**gated, "effects": [{**gated["effects"][0], "predicate": {"kind": "cost_paid", "cost_id": "nope"}}]})):
         errors.append("unknown predicate cost_id was not invalid_input")
-    if not validate_program({**gated, "cost_receipt": None} | {k: v for k, v in gated.items() if k != "cost_receipt"}) and False:
-        pass
-    no_receipt = validate_program({k: v for k, v in gated.items() if k != "cost_receipt"})
-    if not any("cost_receipt" in e for e in no_receipt):
+    if not any("cost_receipt" in e for e in validate_program({k: v for k, v in gated.items() if k != "cost_receipt"})):
         errors.append("a cost predicate without a receipt was accepted")
+    tampered = copy.deepcopy(receipt_yes); tampered["components"][0]["payment_refs"] = []
+    if not any("allocates" in e for e in validate_program({**gated, "cost_receipt": tampered})):
+        errors.append("a receipt whose allocations do not sum to its events was accepted")
     later = apply_program(after_yes, {**program("mobilize", {"op": "draw", "player": "p1", "count": 1, "predicate": {"kind": "caused_kill", "effect_id": "x"}}), "cost_receipt": receipt_yes})
     if later.get("committed") or later.get("unsupported") is not True:
         errors.append("a recognized-but-unimplemented predicate kind was not unsupported")
 
-    # --- engine-check wrapping and manifest scope ---------------------------------------
+    # --- resolution: spell leaves the chain for the trash before Cleanup ----------------------
+    res_prog = {**program("spell-1-effects", {"op": "draw", "player": "p1", "count": 1}), "cost_receipt": ok["cost_receipt"]}
+    res_timing = copy.deepcopy(ok["next_timing_state"])
+    res_timing["chain"]["items"][0]["status"] = "finalized"; res_timing["priority"] = "p2"; res_timing["chain"]["consecutive_passes"] = ["p1", "p2"]
+    resolved = resolve_with_program(res_timing, "spell-1", ok["next_effect_state"], res_prog)
+    if not resolved.get("committed"):
+        errors.append(f"spell resolution from the shared chain did not commit: {resolved.get('stage')} {resolved.get('reason')}")
+    else:
+        fin = resolved["next_effect_state"]
+        if "chain_items" in fin or "c1" not in fin["players"]["p1"]["zones"]["trash"] or object_identity(fin, "c1") != "c1@2" or resolved["trace"].get("chain_card", [{}])[0].get("destination") != "p1.trash":
+            errors.append(f"resolved spell did not go chain → trash with a new identity: {fin.get('chain_items')} {resolved['trace'].get('chain_card')}")
+    unit_state = copy.deepcopy(ok["next_effect_state"]); unit_state["objects"]["c1"]["kind"] = "unit"
+    unit_res = resolve_with_program(res_timing, "spell-1", unit_state, res_prog)
+    if unit_res.get("committed") or unit_res.get("unsupported") is not True or unit_res.get("stage") != "chain_card":
+        errors.append("a unit on the chain resolved through the spell path instead of unsupported")
+
+    # --- engine-check wrapping, manifest scope, result validator -----------------------------
     hashes = {"timing_state": state_hash(timing), "effect_state": hash_value(state), "play_declaration": "sha256:" + "0" * 64}
-    expect = {"supported": ok, "illegal": bad, "unsupported": discard, "decision_required": missing, "invalid_input": malformed}
-    for outcome, result in expect.items():
+    for outcome, result in {"supported": ok, "illegal": bad, "unsupported": discard, "decision_required": missing, "invalid_input": malformed}.items():
         check = build_engine_check("play", result, input_hashes=hashes)
-        if validate_engine_check(check) or check["outcome"] != outcome or check["component"]["name"] != "play_transaction" or check["component"]["version"] != RESULT_VERSION:
-            errors.append(f"engine-check for {outcome} came out as {check['outcome']} ({check['component']})")
-        if outcome == "decision_required" and (check["decision_required"]["kind"] != "cost_choice" or check["decision_required"]["decision_ids"] != ["opt-exhaust"] or check["decision_required"]["controller"] != "p1"):
+        if validate_engine_check(check) or check["outcome"] != outcome or check["component"]["version"] != RESULT_VERSION:
+            errors.append(f"engine-check for {outcome} came out as {check['outcome']}")
+        if outcome == "decision_required" and (check["decision_required"]["kind"] != "cost_choice" or check["decision_required"]["decision_ids"] != ["opt-exhaust"]):
             errors.append(f"cost decision did not wrap as cost_choice: {check['decision_required']}")
-    if "play" not in KIND_CONFIG or "typed_cost_payment" not in KIND_CONFIG["play"]["supported"]:
-        errors.append("KIND_CONFIG lacks the play component")
+    ask_check = build_engine_check("play", ask, input_hashes=hashes)
+    if ask_check["outcome"] != "decision_required" or ask_check["decision_required"]["kind"] != "cost_choice" or ask_check["decision_required"]["controller"] != "p1":
+        errors.append("add-window confirmation did not wrap as a cost_choice decision")
+    if "play" not in KIND_CONFIG or "payment_stage_replacement_decisions" not in KIND_CONFIG["play"]["unsupported"]:
+        errors.append("KIND_CONFIG play scope is missing the declared exclusions")
     manifest = json.loads((SKILL_DIR / "data" / "engine_capability_manifest" / "manifest.json").read_text(encoding="utf-8"))
     if not any(c.get("check_kind") == "play" for c in manifest.get("components", [])):
         errors.append("committed capability manifest does not list the play component; rebuild it")
+    forged = copy.deepcopy(ok); del forged["cost_receipt"]
+    if not validate_play_result(forged):
+        errors.append("a committed result without a receipt passed validation")
+    forged2 = copy.deepcopy(bad); forged2["next_effect_state_hash"] = hash_value(state)
+    if not any("358.5" in e for e in validate_play_result(forged2)):
+        errors.append("an uncommitted result pointing at a different state passed validation")
 
     # --- CLI off-cwd ---------------------------------------------------------------------
     with tempfile.TemporaryDirectory(prefix="play-transaction-") as temp_name:
@@ -301,9 +399,9 @@ def main() -> int:
             errors.append(f"play_transaction.py CLI failed off-cwd: {run3.stderr.strip()}")
 
     if errors:
-        print("FAILED: play transaction checks\n  - " + "\n  - ".join(errors))
+        print("FAILED: play transaction checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: the play transaction commits or restores the pre-play state whole (Core 358.5), pays typed costs in Core 356/357 order with per-discount minimums, treats an optional cost as paid by decision even at zero (356.4.f.1) and a replaced payment as paid (357.2.a), refuses unpayable / not-in-hand / illegal-at-play as illegal and untyped cost kinds as unsupported, gates instructions on the receipt through cost_paid / cost_not_paid, wraps as engine-check kind play with cost_choice decisions, and runs off-cwd.")
+    print("OK: the play transaction commits or restores the pre-play state whole (Core 358.5); costs are typed in Core 356/357 order with total discounts on the aggregate Energy and per-discount minimums; payment events are unique with exact allocations; an optional cost is paid by decision even at zero (356.4.f.1) and a replaced payment is paid (357.2.a); a short pool waits for the Add window (429.3) before it is illegal; every play-time target is checked (355.9); the played card sits on the shared chain and a resolved spell goes chain → trash before Cleanup; cost_paid / cost_not_paid read the validated receipt; it wraps as engine-check kind play and runs off-cwd.")
     return 0
 
 

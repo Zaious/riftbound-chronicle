@@ -32,6 +32,20 @@
     "replacement_effects": {
       "type": "array",
       "items": {"$ref": "#/$defs/replacementEffect"}
+    },
+    "chain_items": {
+      "type": "object",
+      "description": "The shared chain (Core 328): cards played and not yet resolved, keyed by their timing chain item id and bound to the item's controller and effect program. Optional; absent means empty.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["card", "controller"],
+        "properties": {
+          "card": {"type": "string", "minLength": 1},
+          "controller": {"type": "string", "minLength": 1},
+          "effect_program_id": {"type": "string", "minLength": 1}
+        }
+      }
     }
   },
   "$defs": {
@@ -45,8 +59,7 @@
         "trash": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
         "banishment": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
         "base": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "rune_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "chain": {"type": "array", "uniqueItems": true, "items": {"type": "string"}, "description": "Cards played and not yet resolved (Core 328). Optional; absent means empty."}
+        "rune_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
       }
     },
     "player": {

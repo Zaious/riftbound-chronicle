@@ -252,16 +252,31 @@ failure restores the pre-play state — the result's next hashes equal its input
 hashes and the trace ends in `rolled_back` (358.5). A committed play returns
 both next states, the pending chain item, and a **cost receipt**.
 
+The played card leaves the hand for the **shared chain** — the effect
+state's top-level `chain_items[item_id]`, bound to the timing item, its
+controller and its effect program — as a new object (Core 124). When a spell's
+instructions finish, the resolution bridge moves it to its owner's trash
+(Core 157) with another identity change, removes the chain entry, and only
+then runs Cleanup. A Unit or Gear on the chain enters the board at
+finalization (359.2) by a procedure the bridge does not have yet, so that
+resolution is `unsupported`.
+
 Costs are typed `cost_payment` records, not effects with a `cost: true`
 flag. The declaration states base cost, base modifications (356.1),
 additional costs marked mandatory or optional (356.2), increases (356.3),
-discounts (356.4 — component discounts before total discounts, each
-minimum its own), and total modifications (356.5); the engine applies them
-and floors at zero (356.6). Energy and Power are paid from the player's
-pool (357.1); exhaust and kill costs are paid through the ordinary
+discounts (356.4 — component discounts in the declared, player-confirmed
+order, then total discounts on the aggregate Energy including chosen
+additional Energy costs, each minimum its own), and total modifications
+(356.5); the engine applies them and floors at zero (356.6). Energy and
+Power are paid from the player's pool (357.1) as unique payment events that
+the receipt's components reference with exact allocations. A pool short of
+the total is not yet illegal: the controller may use Add reactions during
+payment (429.3), so the play is `decision_required` until a human confirms
+the Add window closed in `payment_context`; exhaust and kill costs are paid through the ordinary
 operations with a friendly-only selector (357.2), and a payment a replacement
 effect prevents still counts as paid (357.2.a). Other non-standard costs are
-`unsupported` by name.
+`unsupported` by name, as is a replacement that needs a choice during
+payment.
 
 An optional cost's intent is an `optional_choice` decision at
 `play_declaration` stage, owned by the card's controller; without it the play

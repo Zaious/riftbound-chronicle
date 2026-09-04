@@ -37,9 +37,13 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `add_resource` | add Energy or domain-labelled Power | Core 429 |
 | `play_token` | create one explicitly identified Unit/Gear token at a Base or Battlefield; Units default exhausted and Gear ready | Core 143.4, 149.1, 184–186, 349, 375 |
 | `kill` | kill a supported Unit/Gear permanent with typed self-death trigger capture and replacement handling | Core 428 |
+| `return_to_hand` | return a board object or a card in its owner's trash to its owner's hand as a new object with nothing of the old one; not a Move; a token ceases to exist | Core 124, 124.1, 446.2, 186.1 |
+| `recall` | relocate a board object to its current controller's Base keeping damage, exhaustion and modifiers; not a Move, so Move triggers never fire; already there is a no-op | Core 455, 456.1, 458.1 |
+| `channel_rune` | put the top runes of a player's Rune Deck on the board in the stated entry state, as many as possible when short; new objects | Core 430.1, 430.2.a, 430.3, 124 |
 
-This version deliberately excludes Burn Out, simultaneous multi-card recycle,
-cost payment, the full Cleanup procedure, open-ended target choice and target
+Return, Recall and Move are three events with three trigger classes; the
+engine never derives one from another (DP-06). This version deliberately
+excludes Burn Out, simultaneous multi-card recycle, the full Cleanup procedure, open-ended target choice and target
 groups, countering, attachments, unrestricted replacement modification inheritance,
 layers, cross-object triggers,
 scoring, and open-ended token construction. Those require additional state and ordering

@@ -40,6 +40,10 @@ SUPPORTED_OPS = {
     "play_token",
     "kill",
     "emit_reflexive",
+    # C-16 (ADR-0005 §6, §8): three distinct events, not one "move".
+    "return_to_hand",
+    "recall",
+    "channel_rune",
 }
 
 
@@ -47,6 +51,16 @@ class ReplacementDecisionRequired(ValueError):
     def __init__(self, message: str, replacement_ids: list[str]):
         super().__init__(message)
         self.replacement_ids = replacement_ids
+
+
+class IllegalOperation(ValueError):
+    """A well-formed instruction the rules refuse for this object (ADR-0005 §10
+    `illegal`), as opposed to a malformed one (`invalid_input`)."""
+
+
+class IllegalOperation(ValueError):
+    """A well-formed instruction the rules refuse for this object (ADR-0005 §10
+    `illegal`), as opposed to a malformed one (`invalid_input`)."""
 
 
 class TargetDecisionRequired(ValueError):
@@ -92,6 +106,9 @@ OP_RULES = {
     "play_token": ["Core 143.4", "Core 149.1", "Core 184–186", "Core 349", "Core 375"],
     "kill": ["Core 428"],
     "emit_reflexive": ["Core 386–388"],
+    "return_to_hand": ["Core 124", "Core 124.1", "Core 446.2"],
+    "recall": ["Core 455", "Core 456.1", "Core 458.1"],
+    "channel_rune": ["Core 430.1", "Core 430.2.a", "Core 430.3", "Core 124"],
 }
 
 
@@ -356,7 +373,7 @@ def validate_program(program: Any) -> list[str]:
     return errors
 
 
-MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one"}
+MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall"}
 SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might"}
 
 
@@ -695,6 +712,158 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         else:
             raise ValueError("unknown board destination")
         trace.update({"object_id": object_id, "from": source, "to": target})
+
+    elif op == "return_to_hand":
+        # DP-06 / Q1: a zone change (446.2 — not a Move), so a new object (124)
+        # that keeps nothing of the old one (124.1). Board or the owner's trash
+        # only; a token entering a non-board zone ceases to exist (186.1).
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("return_to_hand requires a known object")
+        obj = new_state["objects"][object_id]
+        source = find_location(new_state, object_id)
+        on_board = source is not None and (source[0] == "battlefield" or source[2] == "base")
+        in_owner_trash = source == ("player", obj["owner"], "trash")
+        if not (on_board or in_owner_trash):
+            raise IllegalOperation(f"return_to_hand applies only to a board object or a card in its owner's trash; {object_id!r} is at {source}")
+        _remove_from_location(new_state, object_id)
+        if obj.get("is_token"):
+            del new_state["objects"][object_id]
+            trace.update({"object_id": object_id, "from": source, "destination": "ceased_to_exist", "not_a_move": True})
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 186.1"]))
+        else:
+            obj["damage"] = 0
+            obj["might_modifiers"] = []
+            obj["exhausted"] = False
+            for transient in ("statuses", "counters"):
+                obj.pop(transient, None)
+            new_state["players"][obj["owner"]]["zones"]["hand"].append(object_id)
+            trace.update({"object_id": object_id, "from": source, "destination": f"{obj['owner']}.hand",
+                          "identity_after": _bump_identity(new_state, object_id), "not_a_move": True})
+        if on_board:
+            trace["disabled_replacements"] = _prune_inactive_replacements(new_state)
+
+    elif op == "recall":
+        # DP-06 / Q2: relocation to the current controller's Base (455); not a
+        # Move (456.1), so Move triggers never fire; damage, exhaustion and
+        # modifiers stay (458.1); the object is the same object.
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("recall requires a known object")
+        obj = new_state["objects"][object_id]
+        source = find_location(new_state, object_id)
+        if source is None or not (source[0] == "battlefield" or source[2] == "base"):
+            raise IllegalOperation(f"recall applies only to a board object; {object_id!r} is at {source}")
+        controller = obj["controller"]
+        retained = {"damage": obj["damage"], "exhausted": obj["exhausted"], "might_modifiers": len(obj.get("might_modifiers", []))}
+        if source == ("player", controller, "base"):
+            trace.update({"object_id": object_id, "from": source, "to": f"base:{controller}", "not_a_move": True, "retained": retained, "outcome": "no_op"})
+        else:
+            _remove_from_location(new_state, object_id)
+            new_state["players"][controller]["zones"]["base"].append(object_id)
+            trace.update({"object_id": object_id, "from": source, "to": f"base:{controller}", "not_a_move": True, "retained": retained,
+                          "identity_after": object_identity(new_state, object_id)})
+
+    elif op == "channel_rune":
+        # DP-08 / Q3: top runes of the Rune Deck enter the board (430.1) with the
+        # stated entry state (430.2, ready by default 430.2.a); as many as
+        # possible when short (430.3); a non-board → board change, so new
+        # objects (124). Not a Move; runes are not permanents.
+        player_id, count = effect.get("player"), effect.get("count")
+        entry_state = effect.get("entry_state", "ready")
+        if player_id not in new_state["players"] or not isinstance(count, int) or count < 1:
+            raise ValueError("channel_rune requires a known player and positive count")
+        if entry_state not in {"ready", "exhausted"}:
+            raise ValueError("channel_rune entry_state must be ready or exhausted")
+        rune_deck = new_state["players"][player_id]["zones"]["rune_deck"]
+        taken = rune_deck[:count]
+        del rune_deck[:count]
+        for rune_id in taken:
+            new_state["objects"][rune_id]["exhausted"] = entry_state == "exhausted"
+            new_state["players"][player_id]["zones"]["base"].append(rune_id)
+            _bump_identity(new_state, rune_id)
+        applied = len(taken)
+        trace.update({"player": player_id, "requested_count": count, "applied_count": applied, "entry_state": entry_state,
+                      "objects": taken, "identities_after": {rune_id: object_identity(new_state, rune_id) for rune_id in taken},
+                      "completion": "full" if applied == count else ("partial" if applied else "none"), "not_a_move": True})
+        if applied == 0:
+            trace["outcome"] = "no_op"
+
+    elif op == "return_to_hand":
+        # DP-06 / Q1: a zone change (446.2 — not a Move), so a new object (124)
+        # that keeps nothing of the old one (124.1). Board or the owner's trash
+        # only; a token entering a non-board zone ceases to exist (186.1).
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("return_to_hand requires a known object")
+        obj = new_state["objects"][object_id]
+        source = find_location(new_state, object_id)
+        on_board = source is not None and (source[0] == "battlefield" or source[2] == "base")
+        in_owner_trash = source == ("player", obj["owner"], "trash")
+        if not (on_board or in_owner_trash):
+            raise IllegalOperation(f"return_to_hand applies only to a board object or a card in its owner's trash; {object_id!r} is at {source}")
+        _remove_from_location(new_state, object_id)
+        if obj.get("is_token"):
+            del new_state["objects"][object_id]
+            trace.update({"object_id": object_id, "from": source, "destination": "ceased_to_exist", "not_a_move": True})
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 186.1"]))
+        else:
+            obj["damage"] = 0
+            obj["might_modifiers"] = []
+            obj["exhausted"] = False
+            for transient in ("statuses", "counters"):
+                obj.pop(transient, None)
+            new_state["players"][obj["owner"]]["zones"]["hand"].append(object_id)
+            trace.update({"object_id": object_id, "from": source, "destination": f"{obj['owner']}.hand",
+                          "identity_after": _bump_identity(new_state, object_id), "not_a_move": True})
+        if on_board:
+            trace["disabled_replacements"] = _prune_inactive_replacements(new_state)
+
+    elif op == "recall":
+        # DP-06 / Q2: relocation to the current controller's Base (455); not a
+        # Move (456.1), so Move triggers never fire; damage, exhaustion and
+        # modifiers stay (458.1); the object is the same object.
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("recall requires a known object")
+        obj = new_state["objects"][object_id]
+        source = find_location(new_state, object_id)
+        if source is None or not (source[0] == "battlefield" or source[2] == "base"):
+            raise IllegalOperation(f"recall applies only to a board object; {object_id!r} is at {source}")
+        controller = obj["controller"]
+        retained = {"damage": obj["damage"], "exhausted": obj["exhausted"], "might_modifiers": len(obj.get("might_modifiers", []))}
+        if source == ("player", controller, "base"):
+            trace.update({"object_id": object_id, "from": source, "to": f"base:{controller}", "not_a_move": True, "retained": retained, "outcome": "no_op"})
+        else:
+            _remove_from_location(new_state, object_id)
+            new_state["players"][controller]["zones"]["base"].append(object_id)
+            trace.update({"object_id": object_id, "from": source, "to": f"base:{controller}", "not_a_move": True, "retained": retained,
+                          "identity_after": object_identity(new_state, object_id)})
+
+    elif op == "channel_rune":
+        # DP-08 / Q3: top runes of the Rune Deck enter the board (430.1) with the
+        # stated entry state (430.2, ready by default 430.2.a); as many as
+        # possible when short (430.3); a non-board → board change, so new
+        # objects (124). Not a Move; runes are not permanents.
+        player_id, count = effect.get("player"), effect.get("count")
+        entry_state = effect.get("entry_state", "ready")
+        if player_id not in new_state["players"] or not isinstance(count, int) or count < 1:
+            raise ValueError("channel_rune requires a known player and positive count")
+        if entry_state not in {"ready", "exhausted"}:
+            raise ValueError("channel_rune entry_state must be ready or exhausted")
+        rune_deck = new_state["players"][player_id]["zones"]["rune_deck"]
+        taken = rune_deck[:count]
+        del rune_deck[:count]
+        for rune_id in taken:
+            new_state["objects"][rune_id]["exhausted"] = entry_state == "exhausted"
+            new_state["players"][player_id]["zones"]["base"].append(rune_id)
+            _bump_identity(new_state, rune_id)
+        applied = len(taken)
+        trace.update({"player": player_id, "requested_count": count, "applied_count": applied, "entry_state": entry_state,
+                      "objects": taken, "identities_after": {rune_id: object_identity(new_state, rune_id) for rune_id in taken},
+                      "completion": "full" if applied == count else ("partial" if applied else "none"), "not_a_move": True})
+        if applied == 0:
+            trace["outcome"] = "no_op"
 
     elif op == "modify_might":
         object_id, amount = effect.get("object_id"), effect.get("amount")
@@ -1344,6 +1513,12 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "replacement_ids": exc.replacement_ids,
                 "trace": trace,
             }
+        except IllegalOperation as exc:
+            return {
+                **base, "valid": True, "committed": False, "applied": False,
+                "reason_code": "illegal_operation", "reason": str(exc),
+                "failed_effect_index": index, "trace": trace,
+            }
         except ValueError as exc:
             return {
                 **base,
@@ -1553,6 +1728,12 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "failed_effect_index": index,
                 "reason": str(exc),
                 "trace": trace,
+            }
+        except IllegalOperation as exc:
+            return {
+                **base, "valid": True, "committed": False, "applied": False,
+                "reason_code": "illegal_operation", "reason": str(exc),
+                "failed_effect_index": index, "trace": trace,
             }
         except ValueError as exc:
             return {

@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:a87dbb3f811042eab16b5457",
+  "manifest_id": "manifest:39e37195b10100f93b7f8387",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -479,6 +479,76 @@
             "mobilize#27e88ae5:negative"
           ],
           "notes": "C-18 derived: every fixture passed. text: If you can't, draw 1. | rules: Core 430.3, Core 430.5, Core 055, Core 413"
+        }
+      ]
+    },
+    {
+      "card_key": "mystic poro",
+      "canonical_name": "Mystic Poro",
+      "current_text_hash": "sha256:825f4546ec6fba89d6f570b01784ba3b25cf4abfe645d1d16cdf58023628282b",
+      "printing_ids": [
+        "ogn-171-298",
+        "unl-224-219"
+      ],
+      "behavior_status": "unsupported",
+      "clauses": [
+        {
+          "clause_id": "mystic poro#f4a07c4d",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-171-298:f4a07c4d",
+          "text_hash": "sha256:f4a07c4dac085fdaeed9fb3a9f0e90299962b8d611cb97d7d1666f7188f4e7b1",
+          "status": "unsupported",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "predict_not_modelled",
+            "look",
+            "play_and_move_triggers"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: no program is activated for this clause. text: [Vision] | rules: Core 817, Core 436.1, Core 128.3, Core 128.4"
+        }
+      ]
+    },
+    {
+      "card_key": "sai scout",
+      "canonical_name": "Sai Scout",
+      "current_text_hash": "sha256:174ce3f290b0d6a31dbb1e08720671474782fb19f5b18d1211f4e61d2eb0fc24",
+      "printing_ids": [
+        "ogn-174-298"
+      ],
+      "behavior_status": "unsupported",
+      "clauses": [
+        {
+          "clause_id": "sai scout#f4a07c4d",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-174-298:f4a07c4d",
+          "text_hash": "sha256:f4a07c4dac085fdaeed9fb3a9f0e90299962b8d611cb97d7d1666f7188f4e7b1",
+          "status": "unsupported",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "predict_not_modelled",
+            "look",
+            "play_and_move_triggers"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: no program is activated for this clause. text: [Vision] | rules: Core 817, Core 436.1, Core 128.3, Core 128.4"
+        },
+        {
+          "clause_id": "sai scout#0ede37d4",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-174-298:0ede37d4",
+          "text_hash": "sha256:0ede37d423d7644a27f9a96adcab757937c526df5400d0de4c873a31acdbebe6",
+          "status": "unsupported",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "open_battlefield_play",
+            "play_lifecycle"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: no program is activated for this clause. text: You may play me to an open battlefield. | rules: Core 355.2, Core 355.2.b, Core 359.2"
         }
       ]
     }

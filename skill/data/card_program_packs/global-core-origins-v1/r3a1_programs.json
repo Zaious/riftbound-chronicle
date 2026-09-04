@@ -2393,6 +2393,69 @@
           ]
         }
       ]
+    },
+    {
+      "card": "Mystic Poro",
+      "card_key": "mystic poro",
+      "text_status_note": "Vision (817) is a Predict (436): looking at a Secret card and choosing whether to recycle it. The look yields own-private knowledge and the recycle is a resolution-stage choice (DP-07); neither the information boundary nor the private-fact adapter is modelled this round, so the clause stays unsupported with the reason named. No program is written; no card-level or deck-level support follows from the other R3-A1 cards.",
+      "clauses": [
+        {
+          "clause_id": "mystic poro#f4a07c4d",
+          "text": "[Vision]",
+          "claim": "unsupported",
+          "unsupported_mechanics": [
+            "predict_not_modelled",
+            "look",
+            "play_and_move_triggers"
+          ],
+          "rule_locators": [
+            "Core 817",
+            "Core 436.1",
+            "Core 128.3",
+            "Core 128.4"
+          ],
+          "fixtures": []
+        }
+      ]
+    },
+    {
+      "card": "Sai Scout",
+      "card_key": "sai scout",
+      "text_status_note": "Vision (817) is a Predict (436): looking at a Secret card and choosing whether to recycle it. The look yields own-private knowledge and the recycle is a resolution-stage choice (DP-07); neither the information boundary nor the private-fact adapter is modelled this round, so the clause stays unsupported with the reason named. No program is written; no card-level or deck-level support follows from the other R3-A1 cards.",
+      "clauses": [
+        {
+          "clause_id": "sai scout#f4a07c4d",
+          "text": "[Vision]",
+          "claim": "unsupported",
+          "unsupported_mechanics": [
+            "predict_not_modelled",
+            "look",
+            "play_and_move_triggers"
+          ],
+          "rule_locators": [
+            "Core 817",
+            "Core 436.1",
+            "Core 128.3",
+            "Core 128.4"
+          ],
+          "fixtures": []
+        },
+        {
+          "clause_id": "sai scout#0ede37d4",
+          "text": "You may play me to an open battlefield.",
+          "claim": "unsupported",
+          "unsupported_mechanics": [
+            "open_battlefield_play",
+            "play_lifecycle"
+          ],
+          "rule_locators": [
+            "Core 355.2",
+            "Core 355.2.b",
+            "Core 359.2"
+          ],
+          "fixtures": []
+        }
+      ]
     }
   ]
 }

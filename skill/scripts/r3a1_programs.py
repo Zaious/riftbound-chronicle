@@ -104,7 +104,7 @@ def bind(template: Any, bindings: dict[str, str]) -> Any:
     return template
 
 
-_PLAYER_TOKEN = re.compile(r"(p1|p2)")
+_PLAYER_TOKEN = re.compile(r"\b(p1|p2)\b")
 
 
 def swap_players(value: Any) -> Any:

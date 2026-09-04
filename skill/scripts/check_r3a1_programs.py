@@ -17,6 +17,11 @@ Must hold:
   - inventory.draft.json is untouched by this pipeline;
   - text hashes equal the inventory's (the same "current text");
   - Vision clauses, when present, are unsupported with predict named;
+  - C-25: every R3-A2 clause is in the pack; passives and probes are portable;
+    "When you play me" has a play_entry fixture; the four stale cards derive
+    stale with no program_id / test_ids even though they carry programs;
+    passive-only clauses derive passive:<clause_id> with no ops; Annie - Fiery
+    is partial naming the unmodelled Legend object;
   - off-cwd run.
 """
 
@@ -132,6 +137,46 @@ def main() -> int:
     derived = next(cl for c in probe_manifest["cards"] for cl in c["clauses"] if cl["clause_id"] == target["clause_id"])
     if derived["status"] != "unsupported" or derived["program_id"] is not None:
         errors.append("a full claim with a failing fixture still derived a supported status")
+    # C-25 (ADR-0007): every R3-A2 clause is in the pack; passives and probes are
+    # portable; "When you play me" is observed through a play_entry fixture; the
+    # four stale cards may carry programs but derive no program_id or test_ids;
+    # a passive-only clause derives passive:<clause_id> with no implemented ops.
+    r3a2 = {c["clause_id"] for card in inventory["cards"] for c in card["clauses"] if "R3-A2-play-conditions-continuous" in c["notes"]}
+    in_pack = {cl["clause_id"] for c in programs["cards"] for cl in c["clauses"]}
+    if missing := sorted(r3a2 - in_pack):
+        errors.append(f"R3-A2 clauses absent from the pack: {missing}")
+    for card in programs["cards"]:
+        for clause in card["clauses"]:
+            execution = clause.get("execution") or {}
+            if execution.get("passive") and rp.literal_players(execution["passive"]):
+                errors.append(f"{clause['clause_id']} passive carries a literal player id")
+            if rp.literal_players([fx.get("probe") for fx in clause.get("fixtures", []) if fx.get("probe")]):
+                errors.append(f"{clause['clause_id']} probe carries a literal player id")
+            if any(fx.get("run") not in (None, *rp.RUNS) for fx in clause.get("fixtures", [])):
+                errors.append(f"{clause['clause_id']} names an unknown run path")
+            if clause["text"].startswith("When you play me") and not any(fx.get("run") == "play_entry" and fx["kind"] == "positive" for fx in clause.get("fixtures", [])):
+                errors.append(f"{clause['clause_id']} has no play_entry fixture showing the trigger scheduled on play completion")
+    manifest_rows = {cl["clause_id"]: cl for card in manifest["cards"] for cl in card["clauses"]}
+    for stale_card in ("annie - dark child (starter)", "void gate", "highlander", "disintegrate"):
+        card = next((c for c in manifest["cards"] if c["card_key"] == stale_card), None)
+        if card is None or card["behavior_status"] != "stale" or any(cl["program_id"] or cl["test_ids"] or cl["status"] != "stale" for cl in card["clauses"]):
+            errors.append(f"{stale_card} must derive stale with no program_id or test_ids")
+    for cid in ("highlander#b9d95a9d", "void gate#3aa2e8f7", "annie - dark child (starter)#223039b2"):
+        if not next((cl.get("execution") for c in programs["cards"] for cl in c["clauses"] if cl["clause_id"] == cid), None):
+            errors.append(f"{cid} should carry a program in the pack even though it stays stale")
+    for cid, expected_ops in (("pouty poro#f8dcb74f", []), ("master yi - honed#0be72750", []), ("sai scout#0ede37d4", []), ("tibbers#ca766089", ["deal_damage"]), ("traveling merchant#92d985e1", ["discard", "draw"])):
+        row = manifest_rows.get(cid, {})
+        if row.get("status") != "full" or row.get("implemented_ops") != expected_ops or not row.get("program_id"):
+            errors.append(f"{cid} derived {row.get('status')} / {row.get('implemented_ops')} / {row.get('program_id')}, expected full with ops {expected_ops}")
+        if not expected_ops and not row.get("program_id", "").startswith("passive:"):
+            errors.append(f"{cid} passive-only clause should derive a passive program id")
+    fiery = manifest_rows.get("annie - fiery#24035ea0", {})
+    if fiery.get("status") != "partial" or "legend_zone_object" not in fiery.get("unsupported_mechanics", []):
+        errors.append("Annie - Fiery must derive partial naming the unmodelled Legend object")
+    if rows.get("pouty poro#f8dcb74f:missing_information", {}).get("outcome") != "decision_required":
+        errors.append("two Power domains for a Deflect cost were not left to the opponent's allocation")
+    if rows.get("traveling merchant#92d985e1:recall_is_not_a_move", {}).get("outcome") != "supported":
+        errors.append("the recall probe for Traveling Merchant did not run")
     # committed outputs are current and deterministic
     outs = rp.outputs()
     for path, text in outs.items():
@@ -151,7 +196,7 @@ def main() -> int:
     if errors:
         print("FAILED: R3-A1 program checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print(f"OK: R3-A1 card programs — {len(manifest['cards'])} cards, {fixtures} fixtures passing with cited expectations; derived clause statuses full={counts['full']} partial={counts['partial']} unsupported={counts['unsupported']} stale={counts['stale']}; manifest draft, validated, deterministic, inventory untouched.")
+    print(f"OK: R3-A1 / R3-A2 card programs — {len(manifest['cards'])} cards, {fixtures} fixtures passing with cited expectations; derived clause statuses full={counts['full']} partial={counts['partial']} unsupported={counts['unsupported']} stale={counts['stale']}; manifest draft, validated, deterministic, inventory untouched.")
     return 0
 
 

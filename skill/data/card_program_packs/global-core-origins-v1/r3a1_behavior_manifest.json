@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:358b83199b89e97982441256",
+  "manifest_id": "manifest:9a2d989646c8de961ee37940",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -17,48 +17,151 @@
   "verified_at": "2026-08-17",
   "cards": [
     {
-      "card_key": "incinerate",
-      "canonical_name": "Incinerate",
-      "current_text_hash": "sha256:357d542160da7a3e5b04ffd8bdd5cdca5280ded425e82944ca761f8f812854e2",
+      "card_key": "annie - dark child (starter)",
+      "canonical_name": "Annie - Dark Child (Starter)",
+      "current_text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
       "printing_ids": [
-        "ogs-003-024"
+        "ogs-017-024"
+      ],
+      "behavior_status": "stale",
+      "clauses": [
+        {
+          "clause_id": "annie - dark child (starter)#223039b2",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogs-017-024:223039b2",
+          "text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "end_of_turn_trigger"
+          ],
+          "test_ids": [],
+          "notes": "C-25 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. passive state, probed by fixtures. text: At the end of your turn, ready up to 2 runes. | rules: Core 317.1, Core 383.1, Core 355.13"
+        }
+      ]
+    },
+    {
+      "card_key": "annie - fiery",
+      "canonical_name": "Annie - Fiery",
+      "current_text_hash": "sha256:399be2b71aee4aadd03303d30c381e0138ba62baf1a1a52e1ecfb97930fe9214",
+      "printing_ids": [
+        "ogs-001-024",
+        "opp-001-024"
+      ],
+      "behavior_status": "partial",
+      "clauses": [
+        {
+          "clause_id": "annie - fiery#24035ea0",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-001-024:24035ea0",
+          "text_hash": "sha256:24035ea03c00f129097805ca72336fa592705524a909c77f8e5452531a15e28c",
+          "status": "partial",
+          "program_id": "passive:annie - fiery#24035ea0",
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "legend_zone_object"
+          ],
+          "test_ids": [
+            "annie - fiery#24035ea0:positive",
+            "annie - fiery#24035ea0:negative",
+            "annie - fiery#24035ea0:source_absent"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: Your spells and abilities deal 1 Bonus Damage. | rules: Core 713, Core 714, Core 715.1, Core 417.6.b.2.a"
+        }
+      ]
+    },
+    {
+      "card_key": "annie - stubborn",
+      "canonical_name": "Annie - Stubborn",
+      "current_text_hash": "sha256:5086e61a30cdd2f049264fdbcd994b6b705fbda72272aa2023411c8e12d21c9f",
+      "printing_ids": [
+        "ogs-010-024",
+        "opp-010-024"
       ],
       "behavior_status": "full",
       "clauses": [
         {
-          "clause_id": "incinerate#08866b32",
+          "clause_id": "annie - stubborn#5086e61a",
           "source_id": "riftcodex-cards-raw-snapshot",
-          "locator": "ogs-003-024:08866b32",
+          "locator": "ogs-010-024:5086e61a",
+          "text_hash": "sha256:5086e61a30cdd2f049264fdbcd994b6b705fbda72272aa2023411c8e12d21c9f",
+          "status": "full",
+          "program_id": "annie - stubborn#5086e61a",
+          "implemented_ops": [
+            "return_to_hand"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "annie - stubborn#5086e61a:play_entry",
+            "annie - stubborn#5086e61a:play_refused",
+            "annie - stubborn#5086e61a:positive",
+            "annie - stubborn#5086e61a:negative",
+            "annie - stubborn#5086e61a:target_invalidated"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, return a spell from your trash to your hand. | rules: Core 419.4.a, Core 355.5.b, Core 355.10.a, Core 124"
+        }
+      ]
+    },
+    {
+      "card_key": "confront",
+      "canonical_name": "Confront",
+      "current_text_hash": "sha256:b1ebf46a8c72b2b7a4b2aa491d9b7629a8c67f7cec1353e0027fb11966e41076",
+      "printing_ids": [
+        "ogn-129-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "confront#08866b32",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-129-298:08866b32",
           "text_hash": "sha256:08866b329d28e545ce22c394ff4c5f8680b1e341536b3a62f0c14d767e8c258d",
           "status": "full",
-          "program_id": "play:incinerate#08866b32",
+          "program_id": "play:confront#08866b32",
           "implemented_ops": [],
           "unsupported_mechanics": [],
           "test_ids": [
-            "incinerate#08866b32:positive",
-            "incinerate#08866b32:negative",
-            "incinerate#08866b32:add_window_unconfirmed"
+            "confront#08866b32:positive",
+            "confront#08866b32:negative",
+            "confront#08866b32:add_window_unconfirmed"
           ],
           "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Action] | rules: Core 338, Core 429.3, Core 806"
         },
         {
-          "clause_id": "incinerate#df9db2ea",
+          "clause_id": "confront#5ee34de4",
           "source_id": "riftcodex-cards-raw-snapshot",
-          "locator": "ogs-003-024:df9db2ea",
-          "text_hash": "sha256:df9db2ea92777fc806cd3941d4b9b77a6c2b6e23d7422dbd7b58c6c841e8ef67",
+          "locator": "ogn-129-298:5ee34de4",
+          "text_hash": "sha256:5ee34de42a71bdf3713de0ae32dec3d26c69847fcdc1c02639509304c2d165e4",
           "status": "full",
-          "program_id": "incinerate#df9db2ea",
+          "program_id": "confront#5ee34de4",
           "implemented_ops": [
-            "deal_damage"
+            "grant_turn_effect"
           ],
           "unsupported_mechanics": [],
           "test_ids": [
-            "incinerate#df9db2ea:positive",
-            "incinerate#df9db2ea:negative",
-            "incinerate#df9db2ea:missing_information",
-            "incinerate#df9db2ea:target_invalidated"
+            "confront#5ee34de4:positive",
+            "confront#5ee34de4:unit_enters_ready",
+            "confront#5ee34de4:negative"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Deal 2 to a unit at a battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 417.1.b"
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. text: Units you play this turn enter ready. | rules: Core 369.3, Core 317.2.c, Core 143.4"
+        },
+        {
+          "clause_id": "confront#e8c50cd4",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-129-298:e8c50cd4",
+          "text_hash": "sha256:e8c50cd480b55af4add0e6fafdab53301ceade71e9f5dbefd31b9d7b3b69a2e6",
+          "status": "full",
+          "program_id": "confront#e8c50cd4",
+          "implemented_ops": [
+            "draw"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "confront#e8c50cd4:positive",
+            "confront#e8c50cd4:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Draw 1. | rules: Core 413"
         }
       ]
     },
@@ -99,6 +202,84 @@
           ],
           "test_ids": [],
           "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: If this kills it, do this: draw 1. | rules: Core 428.5.c, Core 387.2, Core 388.1, Core 359.3.e.14.b, errata: Disintegrate OGN-005"
+        }
+      ]
+    },
+    {
+      "card_key": "en garde",
+      "canonical_name": "En Garde",
+      "current_text_hash": "sha256:a60253826f86e8a3096d680b3337fdf9434173a50043a7f3624e8133c8c05644",
+      "printing_ids": [
+        "ogn-046-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "en garde#e7a1971e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-046-298:e7a1971e",
+          "text_hash": "sha256:e7a1971e3b99c1af151f7cf4720b697a3692f10dd730b2172bfb6a69fe58a9be",
+          "status": "full",
+          "program_id": "play:en garde#e7a1971e",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "en garde#e7a1971e:positive",
+            "en garde#e7a1971e:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Reaction] | rules: Core 807, Core 338.1.b"
+        },
+        {
+          "clause_id": "en garde#6dd9b599",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-046-298:6dd9b599",
+          "text_hash": "sha256:6dd9b599d81e74c250ce70f76789d2fc7046b0166ece47ce077b25b064803802",
+          "status": "full",
+          "program_id": "en garde#6dd9b599",
+          "implemented_ops": [
+            "modify_might"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "en garde#6dd9b599:positive",
+            "en garde#6dd9b599:negative",
+            "en garde#6dd9b599:enemy_company",
+            "en garde#6dd9b599:play_negative",
+            "en garde#6dd9b599:missing_information",
+            "en garde#6dd9b599:target_invalidated"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Give a friendly unit +1 :rb_might: this turn, then an additional +1 :rb_might: this turn if it is the only unit you control there. | rules: Core 135.2.b.5.a, Core 355.5, Core 317.2.c, Core 477"
+        }
+      ]
+    },
+    {
+      "card_key": "firestorm",
+      "canonical_name": "Firestorm",
+      "current_text_hash": "sha256:95a3c682efa3aee1c09e48f831c266478721af4d7d8d66bddd6691f2e41aa100",
+      "printing_ids": [
+        "ogs-002-024"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "firestorm#95a3c682",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-002-024:95a3c682",
+          "text_hash": "sha256:95a3c682efa3aee1c09e48f831c266478721af4d7d8d66bddd6691f2e41aa100",
+          "status": "full",
+          "program_id": "firestorm#95a3c682",
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "firestorm#95a3c682:positive",
+            "firestorm#95a3c682:negative",
+            "firestorm#95a3c682:missing_information",
+            "firestorm#95a3c682:target_invalidated",
+            "firestorm#95a3c682:empty_battlefield"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Deal 3 to all enemy units at a battlefield. | rules: Core 355.10.b, Core 355.10.d, Core 355.5.a, Core 417.1.b"
         }
       ]
     },
@@ -178,21 +359,19 @@
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogs-008-024:2ed49f33",
           "text_hash": "sha256:2ed49f333bd6a3acfccb0c5d350860c47be902d1c0639819ee58b90d7354a2a1",
-          "status": "partial",
+          "status": "full",
           "program_id": "gentlemen's duel#2ed49f33",
           "implemented_ops": [
             "modify_might"
           ],
-          "unsupported_mechanics": [
-            "duration_expiry"
-          ],
+          "unsupported_mechanics": [],
           "test_ids": [
             "gentlemen's duel#2ed49f33:positive",
             "gentlemen's duel#2ed49f33:negative",
             "gentlemen's duel#2ed49f33:missing_information",
             "gentlemen's duel#2ed49f33:target_invalidated"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Give a friendly unit +3 :rb_might: this turn. | rules: Core 355.5, Core 355.9.b, Core 135.2.e.3, Core 477"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Give a friendly unit +3 :rb_might: this turn. | rules: Core 135.2.e.3, Core 317.2.c, Core 355.5, Core 355.9.b, Core 477"
         },
         {
           "clause_id": "gentlemen's duel#fd48e5d0",
@@ -221,6 +400,253 @@
           ],
           "test_ids": [],
           "notes": "C-18 derived: no program is activated for this clause. text: They deal damage equal to their Mights to each other. | rules: Core 417"
+        }
+      ]
+    },
+    {
+      "card_key": "gust",
+      "canonical_name": "Gust",
+      "current_text_hash": "sha256:9523e4c354e3d14fd874342a05a91ba279d68a1dd204ce5a82e22474852c275c",
+      "printing_ids": [
+        "ogn-169-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "gust#e7a1971e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-169-298:e7a1971e",
+          "text_hash": "sha256:e7a1971e3b99c1af151f7cf4720b697a3692f10dd730b2172bfb6a69fe58a9be",
+          "status": "full",
+          "program_id": "play:gust#e7a1971e",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "gust#e7a1971e:positive",
+            "gust#e7a1971e:negative"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Reaction] | rules: Core 807, Core 338.1.b"
+        },
+        {
+          "clause_id": "gust#e661650e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-169-298:e661650e",
+          "text_hash": "sha256:e661650e52d8c4e3d9987907bf17dbd86f50f4e131d64cd10ec8cc1228c20c72",
+          "status": "full",
+          "program_id": "gust#e661650e",
+          "implemented_ops": [
+            "return_to_hand"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "gust#e661650e:positive",
+            "gust#e661650e:negative",
+            "gust#e661650e:missing_information",
+            "gust#e661650e:target_invalidated"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand. | rules: Core 355.5, Core 355.9, Core 359.3.e.4, Core 124, Core 124.1, Core 446.2"
+        }
+      ]
+    },
+    {
+      "card_key": "highlander",
+      "canonical_name": "Highlander",
+      "current_text_hash": "sha256:a47d58f8cfa31b53b6147b56d141208e3e582380426d8cb2f8a3f63fdfdad88d",
+      "printing_ids": [
+        "ogs-020-024",
+        "opp-020-024"
+      ],
+      "behavior_status": "stale",
+      "clauses": [
+        {
+          "clause_id": "highlander#d659b2ba",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogs-020-024:d659b2ba",
+          "text_hash": "sha256:d659b2ba5d85ad67bfed2da3a9454c59e097745bb3d5813020d97aa18c80f742",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "target_choice"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: Choose a friendly unit. | rules: Core 355.5, Core 355.9"
+        },
+        {
+          "clause_id": "highlander#b9d95a9d",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogs-020-024:b9d95a9d",
+          "text_hash": "sha256:b9d95a9dd3beb80afaaa1ed253c9585049bd8c92178fe8e836e5995fee07bdb9",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "next_death_replacement",
+            "recall"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: The next time it would die this turn, heal it, exhaust it, and recall it instead. | rules: Core 355.10.c, Core 370, Core 124, Core 317.2.c"
+        }
+      ]
+    },
+    {
+      "card_key": "incinerate",
+      "canonical_name": "Incinerate",
+      "current_text_hash": "sha256:357d542160da7a3e5b04ffd8bdd5cdca5280ded425e82944ca761f8f812854e2",
+      "printing_ids": [
+        "ogs-003-024"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "incinerate#08866b32",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-003-024:08866b32",
+          "text_hash": "sha256:08866b329d28e545ce22c394ff4c5f8680b1e341536b3a62f0c14d767e8c258d",
+          "status": "full",
+          "program_id": "play:incinerate#08866b32",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "incinerate#08866b32:positive",
+            "incinerate#08866b32:negative",
+            "incinerate#08866b32:add_window_unconfirmed"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Action] | rules: Core 338, Core 429.3, Core 806"
+        },
+        {
+          "clause_id": "incinerate#df9db2ea",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-003-024:df9db2ea",
+          "text_hash": "sha256:df9db2ea92777fc806cd3941d4b9b77a6c2b6e23d7422dbd7b58c6c841e8ef67",
+          "status": "full",
+          "program_id": "incinerate#df9db2ea",
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "incinerate#df9db2ea:positive",
+            "incinerate#df9db2ea:negative",
+            "incinerate#df9db2ea:missing_information",
+            "incinerate#df9db2ea:target_invalidated"
+          ],
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Deal 2 to a unit at a battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 417.1.b"
+        }
+      ]
+    },
+    {
+      "card_key": "maddened marauder",
+      "canonical_name": "Maddened Marauder",
+      "current_text_hash": "sha256:014567718993e7cd9d403802bf694fdbebd5d996eb9d556b9cc31097e70b8bea",
+      "printing_ids": [
+        "ogn-191-298"
+      ],
+      "behavior_status": "partial",
+      "clauses": [
+        {
+          "clause_id": "maddened marauder#7a66c5e8",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-191-298:7a66c5e8",
+          "text_hash": "sha256:7a66c5e865b9736200ca6f4c81326c7775eaddeeb90b54d8f826c740d219c341",
+          "status": "unsupported",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "tank",
+            "combat_state"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: no program is activated for this clause. text: [Tank] | rules: "
+        },
+        {
+          "clause_id": "maddened marauder#8815ca64",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-191-298:8815ca64",
+          "text_hash": "sha256:8815ca64391594c99bedba9f546c0dae79ea2c7d8bb59c95cf5e89707187e253",
+          "status": "full",
+          "program_id": "maddened marauder#8815ca64",
+          "implemented_ops": [
+            "move_board_object"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "maddened marauder#8815ca64:play_entry",
+            "maddened marauder#8815ca64:play_refused",
+            "maddened marauder#8815ca64:positive",
+            "maddened marauder#8815ca64:negative"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, move a unit from a battlefield to its base. | rules: Core 419.4.a, Core 355.5.b, Core 449.1, Core 355.4.a"
+        }
+      ]
+    },
+    {
+      "card_key": "master yi - honed",
+      "canonical_name": "Master Yi - Honed",
+      "current_text_hash": "sha256:cab1bb1d9a67f52439a40a51bf073ace18ecb927af3ef3e8ff5bc4a02ff9b2d9",
+      "printing_ids": [
+        "ogs-009-024",
+        "opp-009-024"
+      ],
+      "behavior_status": "partial",
+      "clauses": [
+        {
+          "clause_id": "master yi - honed#ba87989e",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-009-024:ba87989e",
+          "text_hash": "sha256:ba87989e8be0027b12c4ef653e293f6bad33abc740969acc0119bbf7dfcd420a",
+          "status": "unsupported",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "ganking",
+            "combat_state"
+          ],
+          "test_ids": [],
+          "notes": "C-18 derived: no program is activated for this clause. text: [Ganking] | rules: "
+        },
+        {
+          "clause_id": "master yi - honed#0be72750",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-009-024:0be72750",
+          "text_hash": "sha256:0be72750c194e36e9713edd0e2434ccc105d2535c52345dba6585ae8baaff573",
+          "status": "full",
+          "program_id": "passive:master yi - honed#0be72750",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "master yi - honed#0be72750:positive",
+            "master yi - honed#0be72750:negative"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: I enter ready. | rules: Core 369.3, Core 143.4, Core 359.2.c"
+        }
+      ]
+    },
+    {
+      "card_key": "master yi - meditative",
+      "canonical_name": "Master Yi - Meditative",
+      "current_text_hash": "sha256:d767e9dd3194920001d186bb2523ea0b0cfd8873cd1544324980d8f9d42d0404",
+      "printing_ids": [
+        "ogs-004-024",
+        "opp-004-024"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "master yi - meditative#d767e9dd",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-004-024:d767e9dd",
+          "text_hash": "sha256:d767e9dd3194920001d186bb2523ea0b0cfd8873cd1544324980d8f9d42d0404",
+          "status": "full",
+          "program_id": "passive:master yi - meditative#d767e9dd",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "master yi - meditative#d767e9dd:positive",
+            "master yi - meditative#d767e9dd:negative",
+            "master yi - meditative#d767e9dd:teammate_runes"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: While you have 8+ runes, I have +4 :rb_might:. | rules: Core 364.3, Core 364.1, Core 365.1"
         }
       ]
     },
@@ -306,47 +732,49 @@
       ]
     },
     {
-      "card_key": "gust",
-      "canonical_name": "Gust",
-      "current_text_hash": "sha256:9523e4c354e3d14fd874342a05a91ba279d68a1dd204ce5a82e22474852c275c",
+      "card_key": "mobilize",
+      "canonical_name": "Mobilize",
+      "current_text_hash": "sha256:3fefcc9cc7b3ebf1ea30249ce9d9fc69eae9cdcce6f0aa6ca52ae12717e84eda",
       "printing_ids": [
-        "ogn-169-298"
+        "ogn-134-298"
       ],
       "behavior_status": "full",
       "clauses": [
         {
-          "clause_id": "gust#e7a1971e",
+          "clause_id": "mobilize#3e791d2d",
           "source_id": "riftcodex-cards-raw-snapshot",
-          "locator": "ogn-169-298:e7a1971e",
-          "text_hash": "sha256:e7a1971e3b99c1af151f7cf4720b697a3692f10dd730b2172bfb6a69fe58a9be",
+          "locator": "ogn-134-298:3e791d2d",
+          "text_hash": "sha256:3e791d2da73aea1145ef826a96d24212680372c8936cca3385990e19f3746b5f",
           "status": "full",
-          "program_id": "play:gust#e7a1971e",
-          "implemented_ops": [],
+          "program_id": "mobilize#3e791d2d",
+          "implemented_ops": [
+            "channel_rune"
+          ],
           "unsupported_mechanics": [],
           "test_ids": [
-            "gust#e7a1971e:positive",
-            "gust#e7a1971e:negative"
+            "mobilize#3e791d2d:positive",
+            "mobilize#3e791d2d:negative",
+            "mobilize#3e791d2d:empty"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Reaction] | rules: Core 807, Core 338.1.b"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Channel 1 rune exhausted. | rules: Core 430.1, Core 430.2, Core 430.3, Core 124"
         },
         {
-          "clause_id": "gust#e661650e",
+          "clause_id": "mobilize#27e88ae5",
           "source_id": "riftcodex-cards-raw-snapshot",
-          "locator": "ogn-169-298:e661650e",
-          "text_hash": "sha256:e661650e52d8c4e3d9987907bf17dbd86f50f4e131d64cd10ec8cc1228c20c72",
+          "locator": "ogn-134-298:27e88ae5",
+          "text_hash": "sha256:27e88ae58181742ecfc8bbba8e90e64ef625f44cd615a7b371a9bcbe30373d88",
           "status": "full",
-          "program_id": "gust#e661650e",
+          "program_id": "mobilize#27e88ae5",
           "implemented_ops": [
-            "return_to_hand"
+            "channel_rune",
+            "draw"
           ],
           "unsupported_mechanics": [],
           "test_ids": [
-            "gust#e661650e:positive",
-            "gust#e661650e:negative",
-            "gust#e661650e:missing_information",
-            "gust#e661650e:target_invalidated"
+            "mobilize#27e88ae5:positive",
+            "mobilize#27e88ae5:negative"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand. | rules: Core 355.5, Core 355.9, Core 359.3.e.4, Core 124, Core 124.1, Core 446.2"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: If you can't, draw 1. | rules: Core 430.3, Core 430.5, Core 055, Core 413"
         }
       ]
     },
@@ -397,94 +825,6 @@
       ]
     },
     {
-      "card_key": "highlander",
-      "canonical_name": "Highlander",
-      "current_text_hash": "sha256:a47d58f8cfa31b53b6147b56d141208e3e582380426d8cb2f8a3f63fdfdad88d",
-      "printing_ids": [
-        "ogs-020-024",
-        "opp-020-024"
-      ],
-      "behavior_status": "stale",
-      "clauses": [
-        {
-          "clause_id": "highlander#d659b2ba",
-          "source_id": "origins-errata-2025-10-28",
-          "locator": "ogs-020-024:d659b2ba",
-          "text_hash": "sha256:d659b2ba5d85ad67bfed2da3a9454c59e097745bb3d5813020d97aa18c80f742",
-          "status": "stale",
-          "program_id": null,
-          "implemented_ops": [],
-          "unsupported_mechanics": [
-            "target_choice"
-          ],
-          "test_ids": [],
-          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: Choose a friendly unit. | rules: Core 355.5, Core 355.9"
-        },
-        {
-          "clause_id": "highlander#b9d95a9d",
-          "source_id": "origins-errata-2025-10-28",
-          "locator": "ogs-020-024:b9d95a9d",
-          "text_hash": "sha256:b9d95a9dd3beb80afaaa1ed253c9585049bd8c92178fe8e836e5995fee07bdb9",
-          "status": "stale",
-          "program_id": null,
-          "implemented_ops": [],
-          "unsupported_mechanics": [
-            "next_death_replacement",
-            "recall"
-          ],
-          "test_ids": [],
-          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: The next time it would die this turn, heal it, exhaust it, and recall it instead. | rules: Core 370, Core 455, Core 456.1, Core 458.1"
-        }
-      ]
-    },
-    {
-      "card_key": "mobilize",
-      "canonical_name": "Mobilize",
-      "current_text_hash": "sha256:3fefcc9cc7b3ebf1ea30249ce9d9fc69eae9cdcce6f0aa6ca52ae12717e84eda",
-      "printing_ids": [
-        "ogn-134-298"
-      ],
-      "behavior_status": "full",
-      "clauses": [
-        {
-          "clause_id": "mobilize#3e791d2d",
-          "source_id": "riftcodex-cards-raw-snapshot",
-          "locator": "ogn-134-298:3e791d2d",
-          "text_hash": "sha256:3e791d2da73aea1145ef826a96d24212680372c8936cca3385990e19f3746b5f",
-          "status": "full",
-          "program_id": "mobilize#3e791d2d",
-          "implemented_ops": [
-            "channel_rune"
-          ],
-          "unsupported_mechanics": [],
-          "test_ids": [
-            "mobilize#3e791d2d:positive",
-            "mobilize#3e791d2d:negative",
-            "mobilize#3e791d2d:empty"
-          ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Channel 1 rune exhausted. | rules: Core 430.1, Core 430.2, Core 430.3, Core 124"
-        },
-        {
-          "clause_id": "mobilize#27e88ae5",
-          "source_id": "riftcodex-cards-raw-snapshot",
-          "locator": "ogn-134-298:27e88ae5",
-          "text_hash": "sha256:27e88ae58181742ecfc8bbba8e90e64ef625f44cd615a7b371a9bcbe30373d88",
-          "status": "full",
-          "program_id": "mobilize#27e88ae5",
-          "implemented_ops": [
-            "channel_rune",
-            "draw"
-          ],
-          "unsupported_mechanics": [],
-          "test_ids": [
-            "mobilize#27e88ae5:positive",
-            "mobilize#27e88ae5:negative"
-          ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: If you can't, draw 1. | rules: Core 430.3, Core 430.5, Core 055, Core 413"
-        }
-      ]
-    },
-    {
       "card_key": "mystic poro",
       "canonical_name": "Mystic Poro",
       "current_text_hash": "sha256:825f4546ec6fba89d6f570b01784ba3b25cf4abfe645d1d16cdf58023628282b",
@@ -513,13 +853,43 @@
       ]
     },
     {
+      "card_key": "pouty poro",
+      "canonical_name": "Pouty Poro",
+      "current_text_hash": "sha256:701afa540248b3c1404a796e763e641e8e8c5e0d08758f0f3d9d99e8940b1b44",
+      "printing_ids": [
+        "ogn-013-298",
+        "opp-013-298",
+        "unl-220-219"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "pouty poro#f8dcb74f",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-013-298:f8dcb74f",
+          "text_hash": "sha256:f8dcb74fb1ae79975322842f5c9f5676210707fcc212282ca60aca017d540f20",
+          "status": "full",
+          "program_id": "passive:pouty poro#f8dcb74f",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "pouty poro#f8dcb74f:positive",
+            "pouty poro#f8dcb74f:negative",
+            "pouty poro#f8dcb74f:missing_information",
+            "pouty poro#f8dcb74f:own_spell"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: [Deflect] | rules: Core 809.1.c, Core 809.1.c.1, Core 809.1.d, Core 356.2.a.2"
+        }
+      ]
+    },
+    {
       "card_key": "sai scout",
       "canonical_name": "Sai Scout",
       "current_text_hash": "sha256:174ce3f290b0d6a31dbb1e08720671474782fb19f5b18d1211f4e61d2eb0fc24",
       "printing_ids": [
         "ogn-174-298"
       ],
-      "behavior_status": "unsupported",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "sai scout#f4a07c4d",
@@ -542,15 +912,180 @@
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-174-298:0ede37d4",
           "text_hash": "sha256:0ede37d423d7644a27f9a96adcab757937c526df5400d0de4c873a31acdbebe6",
+          "status": "full",
+          "program_id": "passive:sai scout#0ede37d4",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "sai scout#0ede37d4:positive",
+            "sai scout#0ede37d4:negative",
+            "sai scout#0ede37d4:opponent_controlled",
+            "sai scout#0ede37d4:own_base"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: You may play me to an open battlefield. | rules: Core 355.2.a, Core 355.2.b, Core 170.11.c"
+        }
+      ]
+    },
+    {
+      "card_key": "sneaky deckhand",
+      "canonical_name": "Sneaky Deckhand",
+      "current_text_hash": "sha256:0ede37d423d7644a27f9a96adcab757937c526df5400d0de4c873a31acdbebe6",
+      "printing_ids": [
+        "ogn-176-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "sneaky deckhand#0ede37d4",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-176-298:0ede37d4",
+          "text_hash": "sha256:0ede37d423d7644a27f9a96adcab757937c526df5400d0de4c873a31acdbebe6",
+          "status": "full",
+          "program_id": "passive:sneaky deckhand#0ede37d4",
+          "implemented_ops": [],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "sneaky deckhand#0ede37d4:positive",
+            "sneaky deckhand#0ede37d4:negative",
+            "sneaky deckhand#0ede37d4:opponent_controlled",
+            "sneaky deckhand#0ede37d4:own_base"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: You may play me to an open battlefield. | rules: Core 355.2.a, Core 355.2.b, Core 170.11.c"
+        }
+      ]
+    },
+    {
+      "card_key": "stormclaw ursine",
+      "canonical_name": "Stormclaw Ursine",
+      "current_text_hash": "sha256:2e17f1568879a9baec3f43cefe6a9709cdf08711808fbd8587652caa6e109f5a",
+      "printing_ids": [
+        "ogn-137-298",
+        "opp-137-298"
+      ],
+      "behavior_status": "partial",
+      "clauses": [
+        {
+          "clause_id": "stormclaw ursine#7a66c5e8",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-137-298:7a66c5e8",
+          "text_hash": "sha256:7a66c5e865b9736200ca6f4c81326c7775eaddeeb90b54d8f826c740d219c341",
           "status": "unsupported",
           "program_id": null,
           "implemented_ops": [],
           "unsupported_mechanics": [
-            "open_battlefield_play",
-            "play_lifecycle"
+            "tank",
+            "combat_state"
           ],
           "test_ids": [],
-          "notes": "C-18 derived: no program is activated for this clause. text: You may play me to an open battlefield. | rules: Core 355.2, Core 355.2.b, Core 359.2"
+          "notes": "C-18 derived: no program is activated for this clause. text: [Tank] | rules: "
+        },
+        {
+          "clause_id": "stormclaw ursine#2b579376",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-137-298:2b579376",
+          "text_hash": "sha256:2b579376062bc3f9b9dec53444ecf28acd7a121a619cf210394ae0df9b80e121",
+          "status": "full",
+          "program_id": "stormclaw ursine#2b579376",
+          "implemented_ops": [
+            "channel_rune"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "stormclaw ursine#2b579376:play_entry",
+            "stormclaw ursine#2b579376:play_refused",
+            "stormclaw ursine#2b579376:positive",
+            "stormclaw ursine#2b579376:negative"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, channel 1 rune exhausted. | rules: Core 419.4.a, Core 430.1, Core 430.2, Core 430.3"
+        }
+      ]
+    },
+    {
+      "card_key": "tibbers",
+      "canonical_name": "Tibbers",
+      "current_text_hash": "sha256:ca7660897c387532cfa751bc3a37a6a9b120231c59a1136a03ab66459c3e55a4",
+      "printing_ids": [
+        "ogs-018-024",
+        "opp-018-024"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "tibbers#ca766089",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogs-018-024:ca766089",
+          "text_hash": "sha256:ca7660897c387532cfa751bc3a37a6a9b120231c59a1136a03ab66459c3e55a4",
+          "status": "full",
+          "program_id": "tibbers#ca766089",
+          "implemented_ops": [
+            "deal_damage"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "tibbers#ca766089:play_entry",
+            "tibbers#ca766089:play_refused",
+            "tibbers#ca766089:positive",
+            "tibbers#ca766089:negative"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, deal 3 to all units at battlefields. | rules: Core 419.4.a, Core 355.10.b, Core 417.1.b"
+        }
+      ]
+    },
+    {
+      "card_key": "traveling merchant",
+      "canonical_name": "Traveling Merchant",
+      "current_text_hash": "sha256:92d985e197c3e79ba7d4a59d586f8d1dc11a9db596c3d96e9e7ad4e31ee4c9f2",
+      "printing_ids": [
+        "ogn-185-298"
+      ],
+      "behavior_status": "full",
+      "clauses": [
+        {
+          "clause_id": "traveling merchant#92d985e1",
+          "source_id": "riftcodex-cards-raw-snapshot",
+          "locator": "ogn-185-298:92d985e1",
+          "text_hash": "sha256:92d985e197c3e79ba7d4a59d586f8d1dc11a9db596c3d96e9e7ad4e31ee4c9f2",
+          "status": "full",
+          "program_id": "traveling merchant#92d985e1",
+          "implemented_ops": [
+            "discard",
+            "draw"
+          ],
+          "unsupported_mechanics": [],
+          "test_ids": [
+            "traveling merchant#92d985e1:moves",
+            "traveling merchant#92d985e1:recall_is_not_a_move",
+            "traveling merchant#92d985e1:positive",
+            "traveling merchant#92d985e1:missing_information",
+            "traveling merchant#92d985e1:negative",
+            "traveling merchant#92d985e1:forced"
+          ],
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When I move, discard 1, then draw 1. | rules: Core 383.1, Core 383.2.c, Core 422.1, Core 422.1.a, Core 422.4, Core 446.2, Core 456.1"
+        }
+      ]
+    },
+    {
+      "card_key": "void gate",
+      "canonical_name": "Void Gate",
+      "current_text_hash": "sha256:3aa2e8f71efe85b94007987b7d9e5053795d1a6b457e7f67ce307a6098071e16",
+      "printing_ids": [
+        "ogn-296-298"
+      ],
+      "behavior_status": "stale",
+      "clauses": [
+        {
+          "clause_id": "void gate#3aa2e8f7",
+          "source_id": "origins-errata-2025-10-28",
+          "locator": "ogn-296-298:3aa2e8f7",
+          "text_hash": "sha256:3aa2e8f71efe85b94007987b7d9e5053795d1a6b457e7f67ce307a6098071e16",
+          "status": "stale",
+          "program_id": null,
+          "implemented_ops": [],
+          "unsupported_mechanics": [
+            "bonus_damage"
+          ],
+          "test_ids": [],
+          "notes": "C-25 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. passive state, probed by fixtures. text: Spells and abilities deal 1 Bonus Damage to units here. | rules: Core 713, Core 715.1, Core 715.2"
         }
       ]
     }

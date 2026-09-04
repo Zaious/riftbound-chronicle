@@ -41,6 +41,16 @@ fixture demotes the claim to `unsupported`; a clause the inventory marks
 expectations cite the Core clause they follow, not the engine's behaviour.
 The manifest stays `draft`.
 
+The R3-A2 batch (C-25, ADR-0007) adds the state a card contributes while it
+exists — play or move triggers, entry replacements, a play permission, a
+keyword, a conditional passive, a Bonus Damage source — as a `passive` on the
+clause, applied to the scenario and probed by fixtures; "When you play me" is
+observed through a `play_entry` fixture that plays the permanent and resolves
+its entry. A passive-only clause derives `passive:<clause_id>` with no
+implemented ops. Legends are not modelled as objects, so a Legend's passive
+is anchored to a stand-in gear and the clause stays `partial` naming that
+limit; the four stale cards carry programs but derive no `program_id`.
+
 ## Deck Coach projection
 
 `deck-behavior-coverage.v1` currently covers resolved Main Deck copies only.

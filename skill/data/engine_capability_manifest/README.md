@@ -12,7 +12,7 @@ and `engine-check.v1` previously could not:
 
 | Field | Question | Same across builds? |
 | --- | --- | --- |
-| `capability_set_id` | Which operations, procedures, clauses and exclusions does this engine support? | Yes, if the capabilities are identical |
+| `capability_set_id` | Which operations, procedures, cited cross-operation features, clauses and exclusions does this engine support? | Yes, if the capabilities are identical |
 | `implementation.value` | Which exact source produced it? | No — any engine edit changes it |
 
 An `engine-check.v1` may carry both under an optional `capability` block. Old

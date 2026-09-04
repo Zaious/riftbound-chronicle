@@ -12,7 +12,8 @@ to something it was not about.
 
 Kinds and the values they carry:
 
-  target_selection   value: [object_id, ...]           stage play_declaration
+  target_selection   value: [object_id, ...] plus a matching
+                     selection_identities map          stage play_declaration
                      (or trigger_finalization for triggered abilities)
   replacement_order  value: {event_id: [replacement_id...]}   stage resolution
   replacement_choice value: {replacement_id: {event_id: bool}} stage resolution
@@ -58,7 +59,7 @@ def validate_engine_decisions(value: Any) -> list[str]:
     seen: set[str] = set()
     for index, item in enumerate(items):
         label = f"decisions[{index}]"
-        if not isinstance(item, dict) or not {"decision_id", "stage", "kind", "controller", "value"} <= set(item) or set(item) - {"decision_id", "stage", "kind", "controller", "value", "options", "provenance"}:
+        if not isinstance(item, dict) or not {"decision_id", "stage", "kind", "controller", "value"} <= set(item) or set(item) - {"decision_id", "stage", "kind", "controller", "value", "selection_identities", "options", "provenance"}:
             errors.append(f"{label} has invalid fields")
             continue
         if not isinstance(item["decision_id"], str) or not item["decision_id"] or item["decision_id"] in seen:
@@ -71,8 +72,16 @@ def validate_engine_decisions(value: Any) -> list[str]:
         if not isinstance(item["controller"], str) or not item["controller"]:
             errors.append(f"{label}.controller is required")
         kind, val = item["kind"], item["value"]
-        if kind == "target_selection" and (not isinstance(val, list) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
-            errors.append(f"{label}.value must be a unique array of object ids")
+        if kind == "target_selection":
+            if not isinstance(val, list) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
+                errors.append(f"{label}.value must be a unique array of object ids")
+            identities = item.get("selection_identities")
+            if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, list) else []):
+                errors.append(f"{label}.selection_identities must map every selected object id exactly once")
+            elif any(not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit() for identity in identities.values()):
+                errors.append(f"{label}.selection_identities values must be identity tokens")
+        elif "selection_identities" in item:
+            errors.append(f"{label}.selection_identities is only valid for target_selection")
         if kind == "replacement_order" and (not isinstance(val, dict) or any(not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) for ids in val.values())):
             errors.append(f"{label}.value must map event ids to non-empty unique replacement-id arrays")
         if kind == "replacement_choice" and (not isinstance(val, dict) or any(not isinstance(by_event, dict) or any(not isinstance(c, bool) for c in by_event.values()) for by_event in val.values())):

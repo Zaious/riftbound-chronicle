@@ -70,8 +70,9 @@
               "restrictions": {"type": "object", "additionalProperties": false, "properties": {
                 "chosen_zone_class": {"enum": ["board", "non_board"]},
                 "kind": {"enum": ["unit", "gear", "spell", "rune"]},
-                "location": {"enum": ["board", "battlefield", "base", "non_board", "trash", "banishment"]},
+                "location": {"enum": ["board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck"]},
                 "controller_relation": {"enum": ["friendly", "enemy"]},
+                "zone_owner_relation": {"enum": ["own", "opponent"]},
                 "max_might": {"type": "integer", "minimum": 0}
               }}
             }
@@ -97,8 +98,9 @@
         "bound_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
         "chosen_zone_class": {"enum": ["board", "non_board"]},
         "kind": {"enum": ["unit", "gear", "spell", "rune"]},
-        "location": {"enum": ["board", "battlefield", "base", "non_board", "trash", "banishment"]},
+        "location": {"enum": ["board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck"]},
         "controller_relation": {"enum": ["friendly", "enemy"]},
+        "zone_owner_relation": {"enum": ["own", "opponent"]},
         "targeted": {"type": "boolean", "description": "Derived from the selector (Core 355.7–355.10); a supplied value that disagrees with the derivation is invalid."},
         "max_might": {"type": "integer", "minimum": 0}
       }

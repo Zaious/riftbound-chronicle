@@ -53,6 +53,7 @@
       "additionalProperties": false,
       "required": ["zones", "resources"],
       "properties": {
+        "team_id": {"type": "string", "minLength": 1},
         "zones": {"$ref": "#/$defs/zones"},
         "resources": {
           "type": "object",

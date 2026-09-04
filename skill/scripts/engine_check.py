@@ -33,6 +33,11 @@ from rules_core import (
 
 SCHEMA_VERSION = "engine-check.v1"
 OUTCOMES = {"supported", "illegal", "unsupported", "decision_required", "invalid_input"}
+FEATURE_RULES = {
+    "typed_selectors": ["Core 108.6.e", "Core 355.7–355.10.d.2", "Core 359.3.e.1–359.3.e.10"],
+    "object_identity": ["Core 124–124.1", "Core 359.3.e.4"],
+    "engine_decisions": ["Core 355.1–355.17", "Core 370–373", "Core 402–402.1"],
+}
 KIND_CONFIG = {
     "timing": {
         "component": ("rules_core", RULES_CORE_VERSION),

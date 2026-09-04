@@ -54,6 +54,10 @@ class TargetDecisionRequired(ValueError):
         self.controller = controller
 
 
+class IllegalDecision(ValueError):
+    """A well-formed supplied decision is owned by another controller."""
+
+
 def object_identity(state: dict[str, Any], object_id: str) -> str | None:
     """ADR-0005 §3: identity survives board moves and changes on any transition
     to or from a non-board zone. States written before this field existed carry
@@ -145,6 +149,8 @@ def validate_state(state: Any) -> list[str]:
         power = resources.get("power") if isinstance(resources, dict) else None
         if not isinstance(power, dict) or any(not isinstance(v, int) or v < 0 for v in power.values()):
             errors.append(f"players.{player_id}.resources.power must map domains to non-negative integers")
+        if "team_id" in player and (not isinstance(player["team_id"], str) or not player["team_id"]):
+            errors.append(f"players.{player_id}.team_id must be a non-empty string when supplied")
 
     for battlefield_id, battlefield in battlefields.items():
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
@@ -324,7 +330,7 @@ def validate_program(program: Any) -> list[str]:
 
 
 MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "targeted", "decision_ref", "max_might"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might"}
 
 
 def derive_targeted(selector: dict[str, Any]) -> bool:
@@ -349,6 +355,12 @@ def _selector_errors(selector: Any) -> list[str]:
         errors.append("must identify an object or defer to a decision_ref")
     if selector.get("chosen_zone_class") not in {"board", "non_board"}:
         errors.append("chosen_zone_class is required")
+    if "location" in selector and selector["location"] not in {"board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck"}:
+        errors.append("location is invalid")
+    if "controller_relation" in selector and selector["controller_relation"] not in {"friendly", "enemy"}:
+        errors.append("controller_relation is invalid")
+    if "zone_owner_relation" in selector and selector["zone_owner_relation"] not in {"own", "opponent"}:
+        errors.append("zone_owner_relation is invalid")
     if "targeted" in selector and selector["targeted"] != derive_targeted(selector):
         errors.append("targeted is derived from the selector and cannot be overridden")
     if "bound_identity" in selector and (not isinstance(selector["bound_identity"], str) or "@" not in selector["bound_identity"]):
@@ -394,11 +406,35 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
         return False, "target_location_requirement_failed"
     if required_location == "base" and (location is None or location[0] != "player" or location[2] != "base"):
         return False, "target_location_requirement_failed"
+    if required_location == "board" and current_class != "board":
+        return False, "target_location_requirement_failed"
+    if required_location == "non_board" and current_class != "non_board":
+        return False, "target_location_requirement_failed"
+    if required_location in PLAYER_ZONES - {"base"} and (location is None or location[0] != "player" or location[2] != required_location):
+        return False, "target_location_requirement_failed"
+    def friendly_players(left: str | None, right: str | None) -> bool:
+        if left is None or right is None:
+            return False
+        if left == right:
+            return True
+        left_team = state["players"].get(left, {}).get("team_id")
+        right_team = state["players"].get(right, {}).get("team_id")
+        return bool(left_team and right_team and left_team == right_team)
     relation = target.get("controller_relation")
-    if relation == "friendly" and controller is not None and obj.get("controller") != controller:
+    if relation is not None and controller not in state["players"]:
+        return False, "target_controller_context_missing"
+    if relation == "friendly" and not friendly_players(controller, obj.get("controller")):
         return False, "target_controller_requirement_failed"
-    if relation == "enemy" and controller is not None and obj.get("controller") == controller:
+    if relation == "enemy" and friendly_players(controller, obj.get("controller")):
         return False, "target_controller_requirement_failed"
+    zone_owner_relation = target.get("zone_owner_relation")
+    if zone_owner_relation is not None and controller not in state["players"]:
+        return False, "target_controller_context_missing"
+    zone_owner = location[1] if location is not None and location[0] == "player" else None
+    if zone_owner_relation == "own" and zone_owner != controller:
+        return False, "target_zone_owner_requirement_failed"
+    if zone_owner_relation == "opponent" and friendly_players(controller, zone_owner):
+        return False, "target_zone_owner_requirement_failed"
     if target.get("object_id") != target.get("bound_object_id", target.get("object_id")):
         return False, "target_identity_changed"
     # ADR-0005 §3 / Core 359.3.e.4: the same physical card back in the same zone
@@ -549,14 +585,18 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         drawn = deck[:count]
         del deck[:count]
         new_state["players"][player_id]["zones"]["hand"].extend(drawn)
+        for object_id in drawn:
+            _bump_identity(new_state, object_id)
         trace["objects"] = drawn
+        trace["identities_after"] = {object_id: object_identity(new_state, object_id) for object_id in drawn}
+        trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
 
     elif op == "recycle_one":
         object_id = effect.get("object_id")
         if object_id not in new_state["objects"]:
             raise ValueError("recycle_one requires a known object")
         obj = new_state["objects"][object_id]
-        from_board = zone_class(find_location(new_state, object_id)) == "board"
+        source = find_location(new_state, object_id)
         _remove_from_location(new_state, object_id)
         if obj.get("is_token"):
             del new_state["objects"][object_id]
@@ -567,7 +607,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             destination = "rune_deck" if obj["kind"] == "rune" else "main_deck"
             new_state["players"][obj["owner"]]["zones"][destination].append(object_id)
             trace.update({"object_id": object_id, "destination": f"{obj['owner']}.{destination}.bottom"})
-            if from_board:
+            source_zone = source[2] if source and source[0] == "player" else None
+            if source is not None and (source[0] == "battlefield" or source_zone != destination):
                 trace["identity_after"] = _bump_identity(new_state, object_id)
                 trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
 
@@ -1010,14 +1051,14 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
             if entry is None:
                 raise TargetDecisionRequired(f"target selection {target['decision_ref']!r} is required", [target["decision_ref"]], controller)
             if entry["controller"] != controller:
-                raise ValueError(f"target selection {target['decision_ref']!r} was made by {entry['controller']!r}, not the program controller")
+                raise IllegalDecision(f"target selection {target['decision_ref']!r} was made by {entry['controller']!r}, not the program controller")
             if entry["stage"] not in {"play_declaration", "trigger_finalization"}:
                 raise ValueError(f"target selection {target['decision_ref']!r} was supplied at the wrong stage")
             if len(entry["value"]) != 1:
                 raise ValueError(f"target selection {target['decision_ref']!r} must name exactly one object for a single-target instruction")
             concrete = {k: v for k, v in target.items() if k != "decision_ref"}
             concrete["object_id"] = entry["value"][0]
-            concrete.setdefault("bound_identity", object_identity(state, concrete["object_id"]) or f"{concrete['object_id']}@0")
+            concrete.setdefault("bound_identity", entry["selection_identities"][concrete["object_id"]])
             return [concrete], {"decision_id": entry["decision_id"]}
         return ([target] if target is not None else []), {}
     if "selectors" in targets:
@@ -1026,7 +1067,7 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
     if entry is None:
         raise TargetDecisionRequired(f"target selection {targets['decision_ref']!r} is required", [targets["decision_ref"]], controller)
     if entry["controller"] != controller:
-        raise ValueError(f"target selection {targets['decision_ref']!r} was made by {entry['controller']!r}, not the program controller")
+        raise IllegalDecision(f"target selection {targets['decision_ref']!r} was made by {entry['controller']!r}, not the program controller")
     if entry["stage"] not in {"play_declaration", "trigger_finalization"}:
         raise ValueError(f"target selection {targets['decision_ref']!r} was supplied at the wrong stage")
     chosen = list(entry["value"])
@@ -1037,7 +1078,7 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
         sel = dict(template)
         sel["object_id"] = object_id
         sel.setdefault("chosen_zone_class", zone_class(find_location(state, object_id)) or "non_board")
-        sel.setdefault("bound_identity", object_identity(state, object_id) or f"{object_id}@0")
+        sel.setdefault("bound_identity", entry["selection_identities"][object_id])
         selectors.append(sel)
     return selectors, {"decision_id": entry["decision_id"]}
 
@@ -1091,6 +1132,12 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 **base, "valid": True, "committed": False, "target_decision_required": True,
                 "reason_code": "target_selection_required", "reason": str(exc),
                 "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                "failed_effect_index": index, "trace": trace,
+            }
+        except IllegalDecision as exc:
+            return {
+                **base, "valid": True, "committed": False, "applied": False,
+                "reason_code": "decision_controller_mismatch", "reason": str(exc),
                 "failed_effect_index": index, "trace": trace,
             }
         except ValueError as exc:

@@ -78,6 +78,13 @@ Targets are validated when chosen and revalidated at the instruction that uses
 them. A target that changes to or from a non-board zone has a new object
 identity even if the same physical card returns.
 
+This is an invariant, not a list limited to operations available when the ADR
+was written. C-14 enforces it for the existing `draw`, `kill`, and cross-zone
+`recycle_one` paths; same-zone recycle and board Move retain identity. C-15 and
+later packages must add explicit identity-preservation/change tests together
+with `return_to_hand`, `recall`, `channel_rune`, or any future zone-changing
+op, according to the zones that operation actually crosses.
+
 The chain item still resolves when targets become invalid. Trace outcomes are
 typed:
 

@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:1fdb5072022f70acf7fb52a0",
-    "capability_set_id": "sha256:1fdb5072022f70acf7fb52a047428545a065ed0d62c73d3242610de662b144ff",
-    "implementation_identity": "sha256:1acaedaf617d497d69e9a0243c6cd66e373236ad03ca42da2dd93f9525e0f980",
+    "manifest_id": "capability-manifest:f7364f306c1b07dd2b4231ac",
+    "capability_set_id": "sha256:f7364f306c1b07dd2b4231ace4e91fe243512be954dfb92357aa3fd03bbaf2e8",
+    "implementation_identity": "sha256:5d19bc935a87841a80392f189aba2e8a9819a5233ec1a2f0225fe0d346c61cfd",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -108,9 +108,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 52,
+    "declared_locators": 60,
     "exactly_cited_declared_locators": 27,
-    "exact_ratio": 0.5192,
+    "exact_ratio": 0.45,
     "exact_matches": [
       "Core 308.1.a",
       "Core 309.1.a",
@@ -141,6 +141,8 @@
       "Core 807"
     ],
     "declared_without_exact_fixture_citation": [
+      "Core 108.6.e",
+      "Core 124–124.1",
       "Core 135.2.e.3",
       "Core 143.4",
       "Core 149.1",
@@ -151,11 +153,17 @@
       "Core 338–339",
       "Core 347",
       "Core 349",
+      "Core 355.1–355.17",
+      "Core 355.7–355.10.d.2",
+      "Core 359.3.e.1–359.3.e.10",
+      "Core 359.3.e.4",
+      "Core 370–373",
       "Core 375",
       "Core 383.3",
       "Core 383.3.a–383.3.a.3",
       "Core 383.3.c–383.3.d.1",
       "Core 386–388",
+      "Core 402–402.1",
       "Core 414",
       "Core 415",
       "Core 416",
@@ -168,6 +176,7 @@
       "Core 477"
     ],
     "fixture_citations_outside_declared_locators": [
+      "Core 124",
       "Core 142.4",
       "Core 322–323.5",
       "Core 367–375",
@@ -298,7 +307,8 @@
       "outcome": "supported",
       "reason_code": "ok",
       "rule_locators": [
-        "Core 413"
+        "Core 413",
+        "Core 124"
       ]
     },
     {
@@ -308,6 +318,7 @@
       "reason_code": "ok",
       "rule_locators": [
         "Core 413",
+        "Core 124",
         "Core 339.1",
         "Core 340",
         "Core 346"
@@ -359,7 +370,8 @@
       "outcome": "supported",
       "reason_code": "ok",
       "rule_locators": [
-        "Core 413"
+        "Core 413",
+        "Core 124"
       ]
     },
     {
@@ -677,5 +689,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:3d9430e535a5897b21d2d840dcec6cff228f5be5cc7c076932ae4672943a5813"
+  "report_hash": "sha256:3e17fd68596c6e3cdad1189780d3937fc69d395a05733a2c46be058e21564818"
 }

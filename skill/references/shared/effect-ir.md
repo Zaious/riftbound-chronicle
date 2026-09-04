@@ -204,11 +204,14 @@ Identity survives board moves and changes on any transition to or from a
 non-board zone (Core 124, 359.3.e.4), so the same physical card back in the
 same zone is a different object and fails revalidation. At execution a
 selector can additionally require kind, Base/Battlefield/trash location,
-friendly/enemy controller relation, and a Might ceiling.
+zone ownership, team-aware friendly/enemy controller relation, and a Might
+ceiling. A `team_id` on player state makes allied controllers friendly; without
+one, distinct controllers are opponents.
 
 Whether a selector **targets** is derived from it (Core 355.7–355.10): a
-chosen object in a public zone targets; a choice from a non-public zone does
-not. A supplied `targeted` that disagrees with the derivation is
+chosen object on the board, in Trash, or in Banishment targets within the
+currently represented zones (Core 355.10.a, 108.6.e); a choice from a
+non-public zone does not. A supplied `targeted` that disagrees with the derivation is
 `invalid_input`. Callers do not get to change the rules by flag.
 
 A single-target instruction that fails revalidation still records
@@ -227,8 +230,11 @@ Choices arrive through `engine-decisions.v1` (`--decisions` on the runner):
 `target_selection` at play declaration or trigger finalization,
 `replacement_order` / `replacement_choice` at resolution. A selector or
 `targets` with a `decision_ref` and no matching entry returns
-`decision_required` naming the decision and its owner; an entry for the wrong
-stage, wrong controller, or wrong input hash is refused. The legacy
+`decision_required` naming the decision and its owner. Target selections also
+carry `selection_identities`, binding each object when it was chosen so a
+leave-and-return cannot be rebound during resolution. Wrong stage, stale hash,
+or a missing identity is `invalid_input`; a well-formed choice from the wrong
+controller is `illegal`. The legacy
 cleanup-decisions object is still read and converted; it is no longer written.
 
 Effects may carry `effect_id` and reference an earlier effect with `depends_on`.

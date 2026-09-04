@@ -4,8 +4,8 @@ Regression gate for C-14 (ADR-0005 §1–3, §9): engine-decisions.v1, typed
 selectors, object identity, and mistarget traces.
 
 Must hold:
-  - identity: a kill or recycle from the board bumps the object's identity;
-    a board move does not; play_token starts at generation 0; states without
+  - identity: draw and every actual cross-zone kill/recycle bump identity;
+    same-zone recycle and board move do not; play_token starts at generation 0; states without
     the field read as generation 0 and are not rewritten;
   - revalidation: a selector bound to an identity fails once the object has
     been through a non-board zone, even if it is back in the same zone;
@@ -13,9 +13,9 @@ Must hold:
   - multi-target: all valid → applied_full; some invalid → applied_to_subset
     with the invalid ids and reasons; none valid → skipped_illegal_target and
     no state change; below_minimum is reported;
-  - decisions: a target_selection supplies a deferred selector; missing →
-    decision_required naming the decision and controller; wrong controller,
-    wrong stage, wrong count, or stale input hash → invalid_input;
+  - decisions: a target_selection supplies a deferred selector and the identity
+    bound when chosen; missing → decision_required; wrong controller → illegal;
+    wrong stage, wrong count, stale input hash, or missing identity → invalid_input;
   - the legacy cleanup-decisions object still resolves the same lethal
     cleanup through the bridge, byte-for-byte, as the new envelope does;
   - supplying both envelopes is refused;
@@ -41,7 +41,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import engine_decisions as ed  # noqa: E402
 from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
-from effect_ir import apply_program, evaluate_target, hash_value, object_identity, validate_program, validate_state  # noqa: E402
+from effect_ir import apply_program, derive_targeted, evaluate_target, hash_value, object_identity, validate_program, validate_state  # noqa: E402
 from engine_check import build_engine_check, validate_engine_check  # noqa: E402
 from resolution_bridge import CLEANUP_DECISION_VERSION, resolve_with_program  # noqa: E402
 
@@ -55,11 +55,31 @@ def decisions(state, *entries, chain_item_id=None):
     return env
 
 
+def target_decision(state, decision_id, controller, object_ids, stage="play_declaration"):
+    return {
+        "decision_id": decision_id,
+        "stage": stage,
+        "kind": "target_selection",
+        "controller": controller,
+        "value": list(object_ids),
+        "selection_identities": {object_id: object_identity(state, object_id) for object_id in object_ids},
+    }
+
+
 def main() -> int:
     errors: list[str] = []
     schema = json.loads((SKILL_DIR / "schemas" / "engine-decisions.schema.json").read_text(encoding="utf-8"))
     if schema["properties"]["schema_version"]["const"] != ed.DECISIONS_VERSION:
         errors.append("engine-decisions schema and module version diverged")
+    decision_item = schema["properties"]["decisions"]["items"]
+    if "selection_identities" not in decision_item.get("properties", {}) or not decision_item.get("allOf"):
+        errors.append("engine-decisions schema does not require target-selection identities")
+    state_schema = json.loads((SKILL_DIR / "schemas" / "effect-state.schema.json").read_text(encoding="utf-8"))
+    if "team_id" not in state_schema["$defs"]["player"]["properties"]:
+        errors.append("effect-state schema cannot represent 2v2 team relations")
+    program_schema = json.loads((SKILL_DIR / "schemas" / "effect-program.schema.json").read_text(encoding="utf-8"))
+    if "zone_owner_relation" not in program_schema["$defs"]["selector"]["properties"]:
+        errors.append("effect-program selector cannot represent zone ownership")
     ec_schema = json.loads((SKILL_DIR / "schemas" / "engine-check.schema.json").read_text(encoding="utf-8"))
     if "target_choice" not in ec_schema["properties"]["decision_required"]["properties"]["kind"]["enum"]:
         errors.append("engine-check schema lacks the target_choice decision kind")
@@ -78,6 +98,17 @@ def main() -> int:
     recycled = apply_program(state, program("recycle", {"op": "recycle_one", "object_id": "u1"}))
     if not recycled.get("committed") or object_identity(recycled["next_state"], "u1") != "u1@1":
         errors.append("recycle from the board did not bump identity")
+    recycled_trash = apply_program(state, program("recycle-trash", {"op": "recycle_one", "object_id": "c3"}))
+    if not recycled_trash.get("committed") or object_identity(recycled_trash["next_state"], "c3") != "c3@1":
+        errors.append("recycle from trash to Main Deck did not bump identity")
+    same_deck = copy.deepcopy(state)
+    same_deck["players"]["p1"]["zones"]["main_deck"] = ["c1", "c2"]
+    recycled_same = apply_program(same_deck, program("recycle-same", {"op": "recycle_one", "object_id": "c1"}))
+    if not recycled_same.get("committed") or object_identity(recycled_same["next_state"], "c1") != "c1@0":
+        errors.append("recycle within the same Main Deck incorrectly changed identity")
+    drawn = apply_program(state, program("draw-identity", {"op": "draw", "player": "p1", "count": 1}))
+    if not drawn.get("committed") or object_identity(drawn["next_state"], "c1") != "c1@1":
+        errors.append("draw from Main Deck to hand did not bump identity")
     token = apply_program(state, program("tok", {"op": "play_token", "object_id": "t1", "owner": "p1", "controller": "p1", "token_kind": "unit", "base_might": 1, "destination": {"kind": "base", "player": "p1"}}))
     if not token.get("committed") or token["next_state"]["objects"]["t1"].get("identity") != "t1@0":
         errors.append("play_token did not assign generation 0")
@@ -101,6 +132,24 @@ def main() -> int:
     good = program("good", {"op": "deal_damage", "object_id": "u2", "amount": 1, "target": {"object_id": "u2", "chosen_zone_class": "board", "targeted": True}})
     if validate_program(good):
         errors.append(f"correctly derived targeted was rejected: {validate_program(good)}")
+    if not derive_targeted({"chosen_zone_class": "non_board", "location": "trash"}) or not derive_targeted({"chosen_zone_class": "non_board", "location": "banishment"}):
+        errors.append("public trash/banishment choice was not derived as targeted")
+    if derive_targeted({"chosen_zone_class": "non_board", "location": "hand"}):
+        errors.append("private hand choice was derived as targeted")
+    own_trash = {"object_id": "c3", "chosen_zone_class": "non_board", "location": "trash", "zone_owner_relation": "own", "bound_identity": "c3@0"}
+    if evaluate_target(state, own_trash, "p1") != (True, "ok"):
+        errors.append("own-trash selector rejected a public card in the actor's trash")
+    wrong_zone = {**own_trash, "location": "banishment"}
+    if evaluate_target(state, wrong_zone, "p1")[1] != "target_location_requirement_failed":
+        errors.append("selector did not enforce the exact non-board zone")
+    team_state = copy.deepcopy(state)
+    team_state["players"]["p1"]["team_id"] = "team-a"
+    team_state["players"]["p2"]["team_id"] = "team-a"
+    allied = {"object_id": "u2", "chosen_zone_class": "board", "controller_relation": "friendly", "bound_identity": "u2@0"}
+    if evaluate_target(team_state, allied, "p1") != (True, "ok"):
+        errors.append("2v2 teammate-controlled unit was not friendly")
+    if evaluate_target(team_state, {**allied, "controller_relation": "enemy"}, "p1")[1] != "target_controller_requirement_failed":
+        errors.append("2v2 teammate-controlled unit was treated as an enemy")
 
     # --- multi-target expansion ---------------------------------------------------
     two = copy.deepcopy(state)
@@ -128,25 +177,55 @@ def main() -> int:
     missing = apply_program(on_bf, deferred)
     if missing.get("committed") or missing.get("reason_code") != "target_selection_required" or missing.get("decision_ids") != ["d-flash"] or missing.get("decision_controller") != "p1":
         errors.append(f"missing target decision did not return decision_required naming it: {missing.get('reason_code')}")
-    supplied = apply_program(on_bf, deferred, decisions=decisions(on_bf, {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u1"]}))
+    supplied = apply_program(on_bf, deferred, decisions=decisions(on_bf, target_decision(on_bf, "d-flash", "p1", ["u1"])))
     if not supplied.get("committed") or "u1" not in supplied["next_state"]["players"]["p1"]["zones"]["base"] or supplied["trace"][0].get("decision_id") != "d-flash":
         errors.append(f"supplied target decision was not consumed: {supplied.get('reason') or supplied.get('errors')}")
-    zero = apply_program(on_bf, deferred, decisions=decisions(on_bf, {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": []}))
+    # The envelope is assembled for the resolution state, but retains the
+    # identity bound when the target was chosen. A leave-and-return cannot be
+    # rebound to the new identity merely because the object id is unchanged.
+    reentered = copy.deepcopy(on_bf)
+    reentered["objects"]["u1"]["identity"] = "u1@1"
+    historical = target_decision(on_bf, "d-flash", "p1", ["u1"])
+    mistargeted = apply_program(reentered, deferred, decisions=decisions(reentered, historical))
+    mev = mistargeted.get("trace", [{}])[0]
+    if not mistargeted.get("committed") or mev.get("target_outcome") != "skipped_illegal_target" or mev.get("invalid_targets", [{}])[0].get("reason") != "target_identity_changed":
+        errors.append(f"decision-time identity was rebound at resolution: {mistargeted}")
+    zero = apply_program(on_bf, deferred, decisions=decisions(on_bf, target_decision(on_bf, "d-flash", "p1", [])))
     zev = zero["trace"][0] if zero.get("committed") else {}
     if zev.get("outcome") != "no_op" or zev.get("requested_targets") != 0 or zev.get("completion") != "full" or zev.get("after_state_hash") != hash_value(on_bf):
         errors.append("'up to' with zero chosen did not resolve as a no-target instruction (Core 355.13)")
     for label, entry, needle in (
-        ("wrong controller", {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p2", "value": ["u1"]}, "not the program controller"),
-        ("wrong stage", {"decision_id": "d-flash", "stage": "resolution", "kind": "target_selection", "controller": "p1", "value": ["u1"]}, "wrong stage"),
-        ("too many", {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u1", "u2", "c1"]}, "allowed"),
+        ("wrong controller", target_decision(on_bf, "d-flash", "p2", ["u1"]), "not the program controller"),
+        ("wrong stage", target_decision(on_bf, "d-flash", "p1", ["u1"], stage="resolution"), "wrong stage"),
+        ("too many", target_decision(on_bf, "d-flash", "p1", ["u1", "u2", "c1"]), "allowed"),
     ):
         r = apply_program(on_bf, deferred, decisions=decisions(on_bf, entry))
-        if r.get("committed") or r.get("valid") is not False or not any(needle in e for e in r.get("errors", [])):
+        if label == "wrong controller":
+            if r.get("committed") or r.get("valid") is not True or r.get("applied") is not False or needle not in r.get("reason", ""):
+                errors.append(f"wrong-controller decision was not refused as illegal: {r}")
+        elif r.get("committed") or r.get("valid") is not False or not any(needle in e for e in r.get("errors", [])):
             errors.append(f"{label} decision was not refused as invalid_input: {r.get('errors') or r.get('reason')}")
-    stale = decisions(state, {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u1"]})
+    wrong_controller_result = apply_program(on_bf, deferred, decisions=decisions(on_bf, target_decision(on_bf, "d-flash", "p2", ["u1"])))
+    wrong_controller_check = build_engine_check(
+        "effect", wrong_controller_result,
+        input_hashes={"effect_state": hash_value(on_bf), "effect_program": "sha256:" + "2" * 64},
+    )
+    if wrong_controller_check["outcome"] != "illegal":
+        errors.append("well-formed wrong-controller decision did not normalize to illegal")
+    stale = decisions(state, target_decision(state, "d-flash", "p1", ["u1"]))
     r = apply_program(on_bf, deferred, decisions=stale)
     if r.get("valid") is not False or not any("input_hash" in e for e in r.get("errors", [])):
         errors.append("a decision envelope for a different state was applied")
+    missing_identity = target_decision(on_bf, "d-flash", "p1", ["u1"])
+    del missing_identity["selection_identities"]
+    r = apply_program(on_bf, deferred, decisions=decisions(on_bf, missing_identity))
+    if r.get("valid") is not False or not any("selection_identities" in e for e in r.get("errors", [])):
+        errors.append("target decision without decision-time identities was accepted")
+    extra_identity = target_decision(on_bf, "d-flash", "p1", ["u1"])
+    extra_identity["selection_identities"]["u2"] = "u2@0"
+    r = apply_program(on_bf, deferred, decisions=decisions(on_bf, extra_identity))
+    if r.get("valid") is not False or not any("exactly once" in e for e in r.get("errors", [])):
+        errors.append("target decision with an unselected identity was accepted")
 
     # --- legacy adapter equivalence through the bridge ----------------------------
     timing = fixture(priority="p2", items=[item("spell-1", "p1", "spell", "default", "finalized")], passes=["p1", "p2"])
@@ -185,8 +264,8 @@ def main() -> int:
 
     # --- determinism / purity with decisions -------------------------------------
     snapshot = copy.deepcopy(on_bf)
-    a = apply_program(on_bf, deferred, decisions=decisions(on_bf, {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u1"]}))
-    b = apply_program(on_bf, deferred, decisions=decisions(on_bf, {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u1"]}))
+    a = apply_program(on_bf, deferred, decisions=decisions(on_bf, target_decision(on_bf, "d-flash", "p1", ["u1"])))
+    b = apply_program(on_bf, deferred, decisions=decisions(on_bf, target_decision(on_bf, "d-flash", "p1", ["u1"])))
     if a != b or on_bf != snapshot:
         errors.append("decisions broke determinism or purity")
     if validate_state(a["next_state"]):
@@ -197,7 +276,7 @@ def main() -> int:
         temp = Path(temp_name)
         (temp / "state.json").write_text(json.dumps(on_bf), encoding="utf-8")
         (temp / "program.json").write_text(json.dumps(deferred), encoding="utf-8")
-        (temp / "decisions.json").write_text(json.dumps(decisions(on_bf, {"decision_id": "d-flash", "stage": "play_declaration", "kind": "target_selection", "controller": "p1", "value": ["u1"]})), encoding="utf-8")
+        (temp / "decisions.json").write_text(json.dumps(decisions(on_bf, target_decision(on_bf, "d-flash", "p1", ["u1"]))), encoding="utf-8")
         out = temp / "check.json"
         run = subprocess.run([sys.executable, str(RUNNER), "effect", str(temp / "state.json"), str(temp / "program.json"), "--decisions", str(temp / "decisions.json"), "--output", str(out)], cwd=temp, text=True, capture_output=True, check=False)
         if run.returncode != 0 or not out.exists():

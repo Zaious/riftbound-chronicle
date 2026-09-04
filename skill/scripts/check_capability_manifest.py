@@ -43,7 +43,7 @@ from capability_manifest import (  # noqa: E402
     verify_manifest,
 )
 from check_rules_core import fixture  # noqa: E402
-from engine_check import build_engine_check, validate_engine_check  # noqa: E402
+from engine_check import FEATURE_RULES, build_engine_check, validate_engine_check  # noqa: E402
 from rules_core import state_hash, validate_timing  # noqa: E402
 
 RUNNER = SCRIPT_DIR / "capability_manifest.py"
@@ -95,6 +95,10 @@ def main() -> int:
     for procedure in rules_core.SUPPORTED_PROCEDURES:
         if not callable(getattr(rules_core, procedure, None)):
             errors.append(f"declared procedure {procedure!r} is not callable")
+    if {feature["id"]: feature["rule_locators"] for feature in live.get("features", [])} != FEATURE_RULES:
+        errors.append("manifest features do not equal engine_check.FEATURE_RULES")
+    if not {locator for locators in FEATURE_RULES.values() for locator in locators}.issubset(live["clauses"]):
+        errors.append("feature rule locators are absent from the manifest clause union")
     if [f["path"] for f in live["implementation"]["files"]] != list(ENGINE_SOURCES):
         errors.append("implementation identity does not cover the engine sources in order")
     if live["claims"] != {"complete_game": False, "complete_legality": False}:
@@ -110,12 +114,19 @@ def main() -> int:
     under["operations"] = [op for op in under["operations"] if op["id"] != "draw"]
     # Re-hash so the *shape* is valid; only `verify` can see the understatement.
     from capability_manifest import canonical_hash  # noqa: E402
-    content = {k: under[k] for k in ("ruleset", "components", "operations", "procedures", "clauses", "exclusions", "claims")}
+    content = {k: under[k] for k in ("ruleset", "components", "operations", "procedures", "features", "clauses", "exclusions", "claims")}
     under["capability_set_id"] = canonical_hash(content)
     under["manifest_id"] = "capability-manifest:" + under["capability_set_id"].split(":", 1)[1][:24]
     if validate_manifest(under):
         errors.append("understated manifest should still be well-formed")
     expect_findings("understated operation (verify)", verify_manifest(under), "engine supports 'draw'", errors)
+
+    under_feature = copy.deepcopy(live)
+    under_feature["features"] = [feature for feature in under_feature["features"] if feature["id"] != "typed_selectors"]
+    feature_content = {k: under_feature[k] for k in ("ruleset", "components", "operations", "procedures", "features", "clauses", "exclusions", "claims")}
+    under_feature["capability_set_id"] = canonical_hash(feature_content)
+    under_feature["manifest_id"] = "capability-manifest:" + under_feature["capability_set_id"].split(":", 1)[1][:24]
+    expect_findings("understated cited feature (verify)", verify_manifest(under_feature), "typed_selectors", errors)
 
     tampered = copy.deepcopy(live)
     tampered["implementation"]["files"][0]["sha256"] = "sha256:" + "0" * 64

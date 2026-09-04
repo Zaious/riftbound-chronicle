@@ -22,9 +22,21 @@
           "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice"]},
           "controller": {"type": "string", "minLength": 1},
           "value": {},
+          "selection_identities": {
+            "description": "For target_selection, the object identity bound when the choice was made. Keys exactly match value; enforced by the runtime validator.",
+            "type": "object",
+            "additionalProperties": {"type": "string", "pattern": "^.+@[0-9]+$"}
+          },
           "options": {"type": "array", "items": {}},
           "provenance": {"type": "string", "minLength": 1}
-        }
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"kind": {"const": "target_selection"}}, "required": ["kind"]},
+            "then": {"required": ["selection_identities"]},
+            "else": {"not": {"required": ["selection_identities"]}}
+          }
+        ]
       }
     }
   }

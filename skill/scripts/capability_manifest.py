@@ -13,6 +13,8 @@ than written by hand:
                  entry points, never the broader RULES topic dictionary);
   - components   from `engine_check.KIND_CONFIG` (coverage ids, supported and
                  unsupported scope per check kind);
+  - features     from `engine_check.FEATURE_RULES`, binding cross-operation
+                 capabilities to their official locators;
   - clauses      the union of every official locator the above cite;
   - exclusions   the union of every unsupported scope the above declare.
 
@@ -64,7 +66,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import effect_ir  # noqa: E402
 import rules_core  # noqa: E402
-from engine_check import KIND_CONFIG  # noqa: E402
+from engine_check import FEATURE_RULES, KIND_CONFIG  # noqa: E402
 
 SCHEMA_VERSION = "engine-capability-manifest.v1"
 
@@ -124,13 +126,23 @@ def build_manifest(script_dir: Path = SCRIPT_DIR) -> dict[str, Any]:
         }
         for kind, config in sorted(KIND_CONFIG.items())
     ]
+    declared_scopes = {scope for component in components for scope in component["supported_scope"]}
+    unknown_features = sorted(set(FEATURE_RULES) - declared_scopes)
+    if unknown_features:
+        raise ValueError(f"feature rules name undeclared supported scopes: {unknown_features}")
+    features = [{"id": name, "rule_locators": list(locs)} for name, locs in sorted(FEATURE_RULES.items())]
 
     capability_content = {
         "ruleset": {"core": rules_core.CORE_RULESET, "faq_as_of": rules_core.FAQ_AS_OF},
         "components": components,
         "operations": operations,
         "procedures": procedures,
-        "clauses": _locators(*(op["rule_locators"] for op in operations), *(p["rule_locators"] for p in procedures)),
+        "features": features,
+        "clauses": _locators(
+            *(op["rule_locators"] for op in operations),
+            *(p["rule_locators"] for p in procedures),
+            *(feature["rule_locators"] for feature in features),
+        ),
         "exclusions": sorted({item for c in components for item in c["unsupported_scope"]}),
         "claims": {"complete_game": False, "complete_legality": False},
     }
@@ -153,8 +165,9 @@ def validate_manifest(value: Any) -> list[str]:
         "schema_version", "manifest_id", "capability_set_id", "implementation", "ruleset",
         "components", "operations", "procedures", "clauses", "exclusions", "claims",
     }
+    optional = {"features"}
     errors: list[str] = []
-    if set(value) != required:
+    if set(value) - required - optional or not required.issubset(value):
         errors.append("manifest top-level fields are invalid")
     if value.get("schema_version") != SCHEMA_VERSION:
         errors.append(f"schema_version must be {SCHEMA_VERSION}")
@@ -179,8 +192,10 @@ def validate_manifest(value: Any) -> list[str]:
     if not isinstance(ruleset, dict) or set(ruleset) != {"core", "faq_as_of"} or not all(isinstance(v, str) and v for v in ruleset.values()):
         errors.append("ruleset is invalid")
 
-    for key in ("components", "operations", "procedures"):
+    for key in ("components", "operations", "procedures", "features"):
         items = value.get(key)
+        if key == "features" and items is None:
+            continue
         if not isinstance(items, list) or not items:
             errors.append(f"{key} must be a non-empty array")
             continue
@@ -209,7 +224,11 @@ def validate_manifest(value: Any) -> list[str]:
         errors.append("claims must reject complete-game and complete-legality")
 
     if not errors:
-        content = {k: value[k] for k in ("ruleset", "components", "operations", "procedures", "clauses", "exclusions", "claims")}
+        content_keys = ["ruleset", "components", "operations", "procedures"]
+        if "features" in value:
+            content_keys.append("features")
+        content_keys += ["clauses", "exclusions", "claims"]
+        content = {k: value[k] for k in content_keys}
         if canonical_hash(content) != value["capability_set_id"]:
             errors.append("capability_set_id does not hash the capability content")
         if not value["manifest_id"].endswith(value["capability_set_id"].split(":", 1)[1][:24]):
@@ -231,7 +250,10 @@ def verify_manifest(value: dict[str, Any], script_dir: Path = SCRIPT_DIR) -> lis
         ]
         findings.append(f"stale implementation identity; changed sources: {changed}")
     if value["capability_set_id"] != live["capability_set_id"]:
-        for key in ("operations", "procedures"):
+        for key in ("operations", "procedures", "features"):
+            if key not in value:
+                findings.append("features: manifest predates cited feature capabilities")
+                continue
             have = {item["id"]: item["rule_locators"] for item in value[key]}
             want = {item["id"]: item["rule_locators"] for item in live[key]}
             for gained in sorted(set(want) - set(have)):

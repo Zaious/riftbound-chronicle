@@ -95,6 +95,12 @@ def main() -> int:
         statuses = {c["status"] for c in card["clauses"]}
         if card["behavior_status"] == "full" and statuses != {"full"}:
             errors.append(f"{card['canonical_name']} claims full with clauses {sorted(statuses)}")
+    # injection test: the literal-player guard must catch composite strings too
+    for poison in ("base:p1", "p2.hand", "p1", "lethal-cleanup:p2:0"):
+        if not rp.literal_players({"destination": {"kind": "base", "player": poison}}):
+            errors.append(f"literal-player guard missed {poison!r}")
+    if rp.literal_players({"x": "spell-1", "y": "$controller", "z": "up1"}):
+        errors.append("literal-player guard flagged a non-player token")
     # Codex Round B acceptance: portability is proven, not assumed
     for card in programs["cards"]:
         for clause in card["clauses"]:

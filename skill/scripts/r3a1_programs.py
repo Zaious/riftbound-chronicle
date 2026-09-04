@@ -85,8 +85,8 @@ def literal_players(value: Any) -> list[str]:
     elif isinstance(value, list):
         for v in value:
             found += literal_players(v)
-    elif isinstance(value, str) and value in PLAYERS:
-        found.append(value)
+    elif isinstance(value, str):
+        found += _PLAYER_TOKEN.findall(value)  # same word-bound token as swap_players: base:p1, p2.hand, ...
     return found
 
 

@@ -177,12 +177,6 @@ def resolve_with_program(
         iteration = min(cleanup_kill_iteration.get(o, 0) for o in killed_ids)
         return iteration + next_batch, f"{cleanup_prefix}:{iteration}"
 
-    def unique_order(controller: str, batch_id: str, wanted: int) -> int:
-        taken = {t.get("controller_order") for t in all_batches + conditional_triggers if t.get("controller") == controller and t.get("batch_id") == batch_id}
-        order = wanted
-        while order in taken:
-            order += 1
-        return order
     for ct in program.get("conditional_triggers", []) or []:
         event = events.get(ct["condition"]["effect_id"], {})
         performed = action_performed(event)
@@ -204,10 +198,46 @@ def resolve_with_program(
             descriptor = {k: ct[k] for k in ("trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize")}
             batch_sequence, batch_id = batch_for(killed, event)
             descriptor.update({"trigger_kind": "reflexive", "batch_sequence": batch_sequence, "batch_id": batch_id,
-                               "controller_order": unique_order(ct["controller"], batch_id, ct["controller_order"]),
                                "condition": dict(ct["condition"]), "killed_objects": killed})
             conditional_triggers.append(descriptor)
     pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers
+    # Core 383.3.d.1: when one controller has several abilities triggered at
+    # once, that controller orders them. The engine never picks: a missing or
+    # colliding controller_order inside one batch is a decision_required
+    # naming the controller, the batch and the trigger ids; a supplied
+    # trigger_order decision (engine-decisions.v1) assigns 0..n-1 and the
+    # resolution retries. Different controllers in one batch need no
+    # decision — Turn Order settles them.
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for trigger in pending_triggers:
+        groups.setdefault((trigger.get("batch_id"), trigger.get("controller")), []).append(trigger)
+    for (batch_id, controller), members in sorted(groups.items(), key=lambda kv: (kv[0][0] or "", kv[0][1] or "")):
+        if len(members) < 2:
+            continue
+        orders = [t.get("controller_order") for t in members]
+        if all(isinstance(o, int) for o in orders) and len(set(orders)) == len(orders):
+            continue
+        trigger_ids = [t["trigger_id"] for t in members]
+        decision = _ed.trigger_order(engine_decisions, batch_id, controller)
+        decision_id = f"trigger_order:{batch_id}:{controller}"
+        if decision is None:
+            return {
+                **base, "valid": True, "committed": False, "stage": "trigger_order",
+                "reason_code": "trigger_order_required",
+                "reason": f"{controller} has {len(members)} abilities triggered together in batch {batch_id}; their order is {controller}'s choice (Core 383.3.d.1)",
+                "decision_ids": [decision_id], "decision_controller": controller,
+                "batch_id": batch_id, "trigger_ids": trigger_ids,
+                "rule_locators": ["Core 383.3.d", "Core 383.3.d.1"],
+            }
+        if decision["controller"] != controller:
+            return {**base, "valid": True, "committed": False, "applied": False, "stage": "trigger_order", "reason_code": "decision_controller_mismatch",
+                    "reason": f"trigger order for {controller} was supplied by {decision['controller']!r}", "batch_id": batch_id, "trigger_ids": trigger_ids}
+        if sorted(decision["value"]) != sorted(trigger_ids):
+            return {**base, "valid": False, "committed": False, "stage": "engine_decision",
+                    "errors": [f"trigger_order {decision_id} must list exactly {sorted(trigger_ids)}, once each; got {decision['value']}"],
+                    "reason": "trigger order decision does not match the batch"}
+        for position, trigger_id in enumerate(decision["value"]):
+            next(t for t in members if t["trigger_id"] == trigger_id)["controller_order"] = position
     scheduled_result = schedule_triggered_items(timing_result["next_state"], pending_triggers)
     if scheduled_result.get("applied") is not True:
         return {

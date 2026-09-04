@@ -315,8 +315,13 @@ Cleanup kill to the spell that dealt the damage immediately before it
 (428.5.c) — or to a Kill instruction directly (428.5.b) — and only then
 builds the Pending reflexive item (387–388). It shares the chronological
 batch of the death triggers the same Cleanup kill produced, so the two are
-ordered together by controller in Turn Order (383.3.d), never by an
-artificial "death trigger first" rule. A death a replacement prevented
+ordered together by controller in Turn Order (383.3.d). When one controller
+owns several triggers in that batch with missing or colliding orders, the
+engine never picks: the resolution answers `decision_required`
+(`trigger_order_required`, naming controller, batch and trigger ids) and
+retries once a `trigger_order` decision in `engine-decisions.v1` supplies
+the complete order (383.3.d.1); an incomplete, duplicated or foreign order
+is `invalid_input`. A death a replacement prevented
 builds nothing. Using `caused_kill` as an effect predicate answers
 `unsupported`.
 

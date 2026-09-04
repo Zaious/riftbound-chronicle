@@ -18,6 +18,11 @@ Kinds and the values they carry:
   replacement_order  value: {event_id: [replacement_id...]}   stage resolution
   replacement_choice value: {replacement_id: {event_id: bool}} stage resolution
   optional_choice    value: bool                       any stage (C-15 uses it)
+  trigger_order      value: [trigger_id, ...]           stage resolution — the
+                     complete order of one controller's simultaneously
+                     triggered abilities in one chronological batch
+                     (Core 383.3.d.1); decision_id is
+                     trigger_order:<batch_id>:<controller>
 
 The legacy `riftbound-cleanup-decisions.v1` object is still *read* — the
 adapter below turns it into resolution-stage entries — but writers emit only
@@ -31,7 +36,7 @@ from typing import Any
 
 DECISIONS_VERSION = "engine-decisions.v1"
 STAGES = ("play_declaration", "trigger_finalization", "resolution")
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice")
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -88,7 +93,9 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must map replacement ids to {{event_id: bool}}")
         if kind == "optional_choice" and not isinstance(val, bool):
             errors.append(f"{label}.value must be a boolean")
-        if kind in ("replacement_order", "replacement_choice") and item["stage"] != "resolution":
+        if kind == "trigger_order" and (not isinstance(val, list) or not val or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
+            errors.append(f"{label}.value must be a non-empty unique array of trigger ids")
+        if kind in ("replacement_order", "replacement_choice", "trigger_order") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
     return errors
 
@@ -130,6 +137,14 @@ def replacement_maps(decisions: dict[str, Any] | None) -> tuple[dict[str, list[s
         for replacement_id, by_event in item["value"].items():
             choices.setdefault(replacement_id, {}).update(by_event)
     return (order or None), (choices or None)
+
+
+def trigger_order(decisions: dict[str, Any] | None, batch_id: str, controller: str) -> dict[str, Any] | None:
+    wanted = f"trigger_order:{batch_id}:{controller}"
+    for item in entries(decisions, kind="trigger_order", stage="resolution"):
+        if item["decision_id"] == wanted:
+            return item
+    return None
 
 
 def target_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:

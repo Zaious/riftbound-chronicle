@@ -69,8 +69,8 @@ def main() -> int:
         {"trigger_id": "u2-b", "controller": "p2", "source_object": "u2", "controller_order": 0, "effect_program_id": "b", "optional_at_finalize": False},
     ]
     ambiguous_result = resolve_with_program(timing, "spell-1", ambiguous, lethal_program)
-    if ambiguous_result.get("committed") or ambiguous_result.get("stage") != "trigger_schedule":
-        failures.append("ambiguous same-controller death-trigger order did not block the atomic commit")
+    if ambiguous_result.get("committed") or ambiguous_result.get("stage") not in {"trigger_schedule", "trigger_order"} or ambiguous_result.get("reason_code") != "trigger_order_required":
+        failures.append("ambiguous same-controller death-trigger order did not block the atomic commit as a trigger_order decision")
     if "next_timing_state" in ambiguous_result or "next_effect_state" in ambiguous_result:
         failures.append("ambiguous trigger ordering leaked a partial next state")
 

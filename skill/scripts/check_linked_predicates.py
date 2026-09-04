@@ -141,6 +141,34 @@ def main() -> int:
         errors.append(f"death trigger and caused-kill trigger were not scheduled as one batch in Turn Order: {both.get('reason')} {[i.get('id') for i in both_items]}")
     elif len({i.get("batch_id") for i in both_items}) != 1 or len({i.get("batch_sequence") for i in both_items}) != 1:
         errors.append(f"simultaneous triggers carry different batches: {[(i.get('batch_id'), i.get('batch_sequence')) for i in both_items]}")
+    # same controller owns the death trigger and the caused-kill trigger: no auto-avoidance —
+    # first run asks, a trigger_order decision settles it, and the two orders give the two chains
+    same_owner = copy.deepcopy(lethal)
+    same_owner["objects"]["u2"]["death_triggers"] = [{"trigger_id": "u2-deathknell", "controller": "p1", "source_object": "u2", "controller_order": 0, "effect_program_id": "u2-deathknell-effects", "optional_at_finalize": False}]
+    ask = resolve_with_program(timing, "spell-1", same_owner, disintegrate)
+    if ask.get("committed") or ask.get("reason_code") != "trigger_order_required" or ask.get("decision_controller") != "p1" or sorted(ask.get("trigger_ids", [])) != ["disintegrate-draw", "u2-deathknell"] or not ask.get("batch_id") or "next_timing_state" in ask:
+        errors.append(f"same-controller collision was not a trigger_order decision_required: {ask.get('stage')} {ask.get('reason_code')} {ask.get('trigger_ids')}")
+    else:
+        wrapped = build_engine_check("resolution", ask, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(same_owner), "effect_program": "sha256:" + "3" * 64})
+        if wrapped["outcome"] != "decision_required" or wrapped["decision_required"]["kind"] != "trigger_order" or wrapped["decision_required"]["decision_ids"] != ask["decision_ids"]:
+            errors.append(f"trigger_order decision did not wrap as trigger_order: {wrapped.get('decision_required')}")
+        def ordered(value, controller="p1"):
+            return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(same_owner), "chain_item_id": "spell-1",
+                    "decisions": [{"decision_id": ask["decision_ids"][0], "stage": "resolution", "kind": "trigger_order", "controller": controller, "value": value}]}
+        ab = resolve_with_program(timing, "spell-1", same_owner, disintegrate, engine_decisions=ordered(["disintegrate-draw", "u2-deathknell"]))
+        ba = resolve_with_program(timing, "spell-1", same_owner, disintegrate, engine_decisions=ordered(["u2-deathknell", "disintegrate-draw"]))
+        ids = lambda r: [i["id"] for i in r.get("next_timing_state", {}).get("chain", {}).get("items", [])]
+        if not ab.get("committed") or ids(ab) != ["disintegrate-draw", "u2-deathknell"]:
+            errors.append(f"A→B trigger order did not produce that chain: {ab.get('reason')} {ids(ab)}")
+        if not ba.get("committed") or ids(ba) != ["u2-deathknell", "disintegrate-draw"]:
+            errors.append(f"B→A trigger order did not produce the reversed chain: {ba.get('reason')} {ids(ba)}")
+        for label, bad in (("incomplete", ["disintegrate-draw"]), ("duplicate", ["disintegrate-draw", "disintegrate-draw"]), ("foreign", ["disintegrate-draw", "u2-deathknell", "nope"])):
+            r = resolve_with_program(timing, "spell-1", same_owner, disintegrate, engine_decisions=ordered(bad))
+            if r.get("valid") is not False or r.get("committed"):
+                errors.append(f"{label} trigger order was not invalid_input: {r.get('stage')} {r.get('reason')}")
+        wrong_owner = resolve_with_program(timing, "spell-1", same_owner, disintegrate, engine_decisions=ordered(["disintegrate-draw", "u2-deathknell"], controller="p2"))
+        if wrong_owner.get("committed") or wrong_owner.get("reason_code") != "decision_controller_mismatch":
+            errors.append("an opponent's trigger order was accepted")
     kill_prog = {**program("spell-1-effects", {"op": "kill", "object_id": "u2", "effect_id": "dmg"}), "source_object": "spell-1", "conditional_triggers": [trigger]}
     direct = resolve_with_program(timing, "spell-1", state, kill_prog)
     dct = (direct.get("trace", {}).get("conditional_triggers") or [{}])[0]

@@ -469,6 +469,17 @@ leaving and returning is a new object and does. A Battlefield's own
 controller gains that designation; uncontrolled, "you" refers to no one
 (190.6.a, 190.6.d).
 
+ADR-0009 §1, §7 add the scoring state: `mode: {victory_score, teams}` (the
+Mode of Play; absent makes every scoring procedure `unsupported: mode_unknown`,
+teams or any `team_id` make it `unsupported: team_scoring`), each player's
+`points` (absent means 0) and `scored_this_turn: {turn_id: [battlefields]}`
+(only the current turn's entry is read; 470), and `conquer_triggers` /
+`hold_triggers` on objects — scope `unit_here` fires for the scoring player's
+Unit at the Battlefield scored, scope `controller` from any board object the
+scoring player controls (383.4.c–d) — and on Battlefields, whose own Score
+trigger belongs to their controller (190.6). Sources the engine does not model
+as board objects (Legends, Runes) cannot carry them.
+
 ## Combat-relative Might and granted characteristics (ADR-0008 §5)
 
 `effective_might` stays the rules-facing read and adds, on top of the

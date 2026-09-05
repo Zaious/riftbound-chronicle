@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:385564b8b8665356d46c360b",
-  "capability_set_id": "sha256:385564b8b8665356d46c360b8c8eb9eed4d0af09545c74b456de8e490e68edf8",
+  "manifest_id": "capability-manifest:17d8319a9faefd4a5271b4de",
+  "capability_set_id": "sha256:17d8319a9faefd4a5271b4dea601fed0244ce9256e197b7008cc3e1459997924",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:efe38218e49e2fc23faa0f6a4d947728956a5c513407c803039716c493aff875",
+    "value": "sha256:ded015b1f6573c4033fedfe8273352b1f4c72c643fc6aa9cea5bdaad4ea082a8",
     "files": [
       {
         "path": "rules_core.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:4628ac05c550e082c21fcc43708302262f19f9c49b86630fcfe23ae922ae96c7"
+        "sha256": "sha256:3b541823738f66289d12bd4916c243d0141e4624c85afe4ba21b8b0cb01fcce4"
       },
       {
         "path": "combat.py",
@@ -28,7 +28,7 @@
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:7365cfa9bac83e5996a2d179219790323bd9dc9166f4c82cc966f075b800f74e"
+        "sha256": "sha256:7a4cfc4b766593500d3d9819f861c375d8bd75ffce0aef253591a785c26fe49d"
       }
     ]
   },
@@ -98,7 +98,8 @@
         "score_triggers",
         "victory_facts",
         "non_combat_showdown",
-        "board_cleanup"
+        "board_cleanup",
+        "hold_scoring"
       ],
       "unsupported_scope": [
         "team_scoring",
@@ -778,6 +779,15 @@
       ]
     },
     {
+      "id": "hold_scoring",
+      "rule_locators": [
+        "Core 315.2.b–315.2.b.2",
+        "Core 469.2",
+        "Core 471.1.a.1",
+        "Core 471.2.b"
+      ]
+    },
+    {
       "id": "instruction_conditions",
       "rule_locators": [
         "Core 135.2.b.5.a",
@@ -940,6 +950,7 @@
     "Core 312.2.a",
     "Core 313",
     "Core 313.1",
+    "Core 315.2.b–315.2.b.2",
     "Core 316",
     "Core 316.8.b–316.8.b.1.a",
     "Core 316.9.b",
@@ -1083,8 +1094,11 @@
     "Core 466.7.c",
     "Core 466.7–466.7.c",
     "Core 469.1",
+    "Core 469.2",
     "Core 470",
+    "Core 471.1.a.1",
     "Core 471.1–471.1.b.1",
+    "Core 471.2.b",
     "Core 471.2–471.2.c",
     "Core 472",
     "Core 477",

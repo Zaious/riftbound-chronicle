@@ -181,6 +181,32 @@ at its Base, an exhausted Unit, the wrong turn or state) is `illegal`; a
 missing cost confirmation is `decision_required` of kind `cost_choice`;
 a malformed declaration or a stale unit identity is `invalid_input`.
 
+## Battlefield control and scoring (ADR-0009)
+
+`check_kind: control_step` wraps `battlefield_control.py`: `control-step
+<timing> <effect> --step resolve|stage_showdown|open_showdown|board_cleanup|
+scoring_step|victory_facts`. Supported scope names control resolution after a
+Combat or a Non-Combat Showdown (466.5, 348.2), Conquer scoring with the Final
+Point rule, Hold in the Scoring Step, Score triggers from modelled board
+sources, Non-Combat Showdown staging and opening, the board Cleanup steps
+323.6 / 323.11 / 323.11.a, and the victory facts. Unsupported and declared:
+team scoring, Hidden cards (466.5.c), Gear/Rune Recall in Cleanup (323.7),
+point sources other than Conquer and Hold, "activate" of named triggers
+(383.4.g), the Beginning Phase state machine (the phase fact is supplied by
+the caller), the terminal state and Burn Out (G3).
+
+A `location_selection_required` result for `showdown_location` wraps as
+`decision_required` of kind `location_choice` naming the Turn Player; a
+`trigger_order_required` result for colliding Score triggers wraps as
+`trigger_order`. A missing Mode of Play (`mode_unknown`), any team
+(`team_scoring`), a draw-instead that would Burn Out (`burn_out`: the whole
+control/score transaction is refused and nothing changes), a Showdown
+ending with both players present (`showdown_participants_inconsistent`) and
+two non-controllers left after Contested removal
+(`contested_reapplication_ambiguous`) wrap as `unsupported`. `victory_check`
+in every trace and the `victory_facts` step report `threshold_met`,
+`strict_leader` and `tied_at_threshold` (472) without declaring a winner.
+
 ## Version and extension rule
 
 The schema reserves `legal_action`/`legal_action_v1`, but the current runner

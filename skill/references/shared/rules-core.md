@@ -164,6 +164,13 @@ control loss, 323.11 Contested removal and 323.11.a re-application by the
 one non-controller present (two different ones are unsupported), and reports
 the victory facts; a Cleanup boundary runs it before `stage_showdown` /
 `open_showdown`, which run before `stage_combat` / `open_combat`.
+`run_scoring_step` is the Scoring Step (315.2.b, ADR-0009 §8): with the
+caller-supplied phase `beginning`, an empty chain and no Showdown or Combat,
+the Turn Player Holds every Battlefield they control and have not scored this
+turn (469.2, 470), gaining a point each with no Final Point restriction
+(471.1.a.1); the Hold triggers of all held Battlefields form one batch
+(315.2.b.2, 471.2.b). Every scoring trace and the `victory_facts` step report
+472 as facts only.
 
 `validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open

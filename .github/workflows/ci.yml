@@ -265,6 +265,12 @@ jobs:
       - name: Non-Combat Showdowns and board Cleanup
         run: python3 skill/scripts/check_showdown_and_board_cleanup.py
 
+      # ADR-0009 C-35: Hold scores every controlled Battlefield not yet scored
+      # this turn with no Final Point restriction, the Hold triggers are one
+      # batch, and the victory condition is reported as facts only.
+      - name: Scoring Step (Hold) and victory facts
+        run: python3 skill/scripts/check_scoring_step.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -346,6 +352,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_combat_review_fix.py"
           python3 "$REPO/skill/scripts/check_control_resolution.py"
           python3 "$REPO/skill/scripts/check_showdown_and_board_cleanup.py"
+          python3 "$REPO/skill/scripts/check_scoring_step.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -101,6 +101,8 @@ FEATURE_RULES = {
     # C-34 (ADR-0009 §3, §4, §9).
     "non_combat_showdown": ["Core 316.8.b–316.8.b.1.a", "Core 323.8–323.8.a", "Core 323.12", "Core 344.2", "Core 345", "Core 348.2–348.2.a.1"],
     "board_cleanup": ["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.11–323.11.a"],
+    # C-35 (ADR-0009 §8, §10).
+    "hold_scoring": ["Core 315.2.b–315.2.b.2", "Core 469.2", "Core 471.1.a.1", "Core 471.2.b"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -166,7 +168,7 @@ KIND_CONFIG = {
     "control_step": {
         "component": ("battlefield_control", CONTROL_STEP_VERSION),
         "coverage": "control_step_v1",
-        "supported": ["battlefield_control_resolution", "conquer_scoring", "score_triggers", "victory_facts", "non_combat_showdown", "board_cleanup"],
+        "supported": ["battlefield_control_resolution", "conquer_scoring", "score_triggers", "victory_facts", "non_combat_showdown", "board_cleanup", "hold_scoring"],
         "unsupported": ["team_scoring", "hidden_cards", "gear_rune_recall_cleanup", "non_conquer_point_sources", "activate_named_triggers", "beginning_phase", "terminal_state", "burn_out", "complete_game", "complete_legality"],
     },
     "legal_action": {

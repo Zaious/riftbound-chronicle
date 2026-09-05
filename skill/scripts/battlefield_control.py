@@ -390,6 +390,78 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
     return _commit(base, copy.deepcopy(timing_state), next_effect, trace=trace, locators=["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.11", "Core 323.11.a"])
 
 
+# ------------------------------------------------------------ Scoring Step --
+
+SCORING_TASK = "scoring_step"
+
+
+def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Core 315.2.b, 469.2: in the Beginning Phase (the phase fact is
+    caller-supplied until G3) with an empty chain and no Showdown or Combat,
+    the Turn Player Holds every Battlefield they control that they have not
+    scored this turn, in Battlefield-id order, gaining a point each (Hold is
+    never subject to the Final Point rule, 471.1.a.1); the Hold triggers of
+    all held Battlefields are one batch. Control and Contested do not change.
+    One transaction: all or nothing."""
+    base = _base("run_scoring_step", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    if timing_state.get("phase") != "beginning":
+        return _refuse(base, "scoring_step_requires_beginning_phase", "the Scoring Step is a step of the Beginning Phase (315.2.b); the phase fact must say beginning", ["Core 315.2.b", "Core 469.2"])
+    if timing_state["chain"]["items"] or [t for t in timing_state["outstanding_tasks"] if t != SCORING_TASK]:
+        return _refuse(base, "requires_quiet_cleanup_boundary", "the Scoring Step runs with nothing on the chain and no other outstanding task (315.2.b.1)", ["Core 315.2.b.1"])
+    if timing_state["showdown"]["active"] or (timing_state.get("combat") is not None and timing_state["combat"]["status"] != "closed"):
+        return _refuse(base, "showdown_or_combat_ongoing", "no Showdown or Combat is ongoing in the Beginning Phase", ["Core 315.2", "Core 344"])
+    player = timing_state["turn_player"]
+    turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
+    controlled = sorted(b for b, bf in effect_state["battlefields"].items() if bf.get("controller") == player)
+    already = scored_this_turn(effect_state, player, turn_id)
+    to_hold = [b for b in controlled if b not in already]
+    next_effect = copy.deepcopy(effect_state)
+    records: list[dict[str, Any]] = []
+    triggers: list[dict[str, Any]] = []
+    try:
+        for battlefield_id in to_hold:
+            next_effect, record, found = score_battlefield(next_effect, player, battlefield_id, "hold", turn_id)
+            records.append(record)
+            triggers += found
+    except ScoringUnsupported as exc:
+        return _unsupported(base, exc.code, exc.reason, exc.locators, would_hold=to_hold)
+    if not to_hold:
+        _, problem = mode_of_play(effect_state)
+        if problem is not None:
+            return _unsupported(base, problem.code, problem.reason, problem.locators, would_hold=[])
+    batch_id = f"score:hold:{turn_id}:{player}"
+    for descriptor in triggers:  # 315.2.b.2: one Task holds all Battlefields at once, so their triggers are one batch
+        descriptor["batch_id"] = batch_id
+        descriptor["batch_sequence"] = 0
+    from resolution_bridge import _settle_trigger_orders
+    failure = _settle_trigger_orders(triggers, engine_decisions, base)
+    if failure is not None:
+        return failure
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["outstanding_tasks"] = [t for t in next_timing["outstanding_tasks"] if t != SCORING_TASK]
+    scheduled = schedule_triggered_items(next_timing, triggers)
+    if scheduled.get("applied") is not True:
+        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Hold triggers could not be scheduled", ["Core 471.2.b"], trigger_result=scheduled)
+    trace = {"player": player, "controlled": controlled, "held": to_hold, "skipped_already_scored": [b for b in controlled if b in already], "scoring": records,
+             "scheduled_triggers": [t["trigger_id"] for t in triggers], "trigger_schedule": scheduled.get("transition"), "victory_check": victory_check(next_effect), "atomic": True}
+    return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 315.2.b", "Core 315.2.b.2", "Core 469.2", "Core 470", "Core 471.1", "Core 471.1.a.1", "Core 471.2.b"])
+
+
+def report_victory_facts(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Core 472 as facts only (ADR-0009 §10): who is at or above the Victory
+    Score, whether one of them alone leads, whether it is a tie. Nothing
+    changes and no winner is declared; the terminal state is G3."""
+    base = _base("victory_facts", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    facts = victory_check(effect_state)
+    if not facts.get("available"):
+        return _unsupported(base, facts["reason"], "the victory facts need the Mode of Play and no teams", ["Core 456.3", "Core 472"])
+    return _commit(base, copy.deepcopy(timing_state), copy.deepcopy(effect_state), trace={"victory_check": facts, "winner_declared": False, "terminal_state": "not_modelled (G3)"}, locators=["Core 472"])
+
+
 # ------------------------------------------------------------------------ CLI --
 
 def _load(path: Path) -> dict[str, Any]:
@@ -399,7 +471,8 @@ def _load(path: Path) -> dict[str, Any]:
     return value
 
 
-STEPS = {"resolve": resolve_battlefield_control, "stage_showdown": stage_showdown, "open_showdown": open_showdown, "board_cleanup": run_board_cleanup}
+STEPS = {"resolve": resolve_battlefield_control, "stage_showdown": stage_showdown, "open_showdown": open_showdown, "board_cleanup": run_board_cleanup,
+         "scoring_step": run_scoring_step, "victory_facts": report_victory_facts}
 
 
 def main(argv: list[str] | None = None) -> int:

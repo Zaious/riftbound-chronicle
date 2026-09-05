@@ -162,6 +162,17 @@ carry all three fields, and binding one never changes the check's outcome or
 `result_hash`. Two builds that support the same things share a
 `capability_set_id` and differ only in `implementation_identity`.
 
+## Combat steps (ADR-0008)
+
+`check_kind: combat_step` wraps `combat.py`: `combat-step <timing> <effect>
+--step stage|open|sync`. Supported scope names staging, opening, designations
+and Attack/Defend triggers; Combat Damage, the Combat Cleanup, the result, and
+G2 control or scoring stay in the unsupported scope until their packages land.
+A `location_selection_required` result wraps as `decision_required` of kind
+`location_choice` naming the Turn Player; a Battlefield with three
+controllers, an active Showdown of unknown location, or a `contested_by`
+outside the participants wraps as `unsupported`, never as a guessed Combat.
+
 ## Version and extension rule
 
 The schema reserves `legal_action`/`legal_action_v1`, but the current runner

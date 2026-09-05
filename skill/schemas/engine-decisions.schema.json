@@ -8,7 +8,7 @@
   "required": ["schema_version", "input_hash", "decisions"],
   "properties": {
     "schema_version": {"const": "engine-decisions.v1"},
-    "input_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "input_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "The hash of the input the decisions were made against: the effect state for effect/resolution/play decisions; for a two-state procedure (ADR-0008) the combined timing/effect hash the procedure's result reports as input_hash."},
     "chain_item_id": {"type": "string", "minLength": 1},
     "decisions": {
       "type": "array",
@@ -18,8 +18,8 @@
         "required": ["decision_id", "stage", "kind", "controller", "value"],
         "properties": {
           "decision_id": {"type": "string", "minLength": 1},
-          "stage": {"enum": ["play_declaration", "trigger_finalization", "resolution"]},
-          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation"]},
+          "stage": {"enum": ["play_declaration", "trigger_finalization", "resolution", "procedure"]},
+          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection"]},
           "controller": {"type": "string", "minLength": 1},
           "value": {},
           "selection_identities": {

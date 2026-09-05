@@ -1,26 +1,30 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:7571d58cae7ea39e7b39da09",
-  "capability_set_id": "sha256:7571d58cae7ea39e7b39da0970147cf8bd9e232cf3fe802dcac94ac26d362318",
+  "manifest_id": "capability-manifest:13cbd1b5baa45f7f74a2f343",
+  "capability_set_id": "sha256:13cbd1b5baa45f7f74a2f3437995397649dd78ebef47b58b66270a9109beb67c",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:bbeb2edcb611311312b948789bf4a8e120ac7f6b20518fba22b9d620006261d5",
+    "value": "sha256:7ea6688e860f69031cff3c983c62c59af49639184b90b2f86c4a0c7105955735",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:b114cc85895c65bf31156937173b9e121330b9ea0d8daa8f1331ca2b174f8f2d"
+        "sha256": "sha256:b0387bc338a843f00670ca72a891731f60b565125458bf513b5878da02cb3392"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:f376606310acdd31d35a1674ffb06731d54f08c20e311c9f9cd0659287977693"
+        "sha256": "sha256:69693b2739c4467dea2bc4774673c808cf5c462c0e5f3a617b3db3c641ff24d2"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:ebd612a94d5cb3a65ecd133f85b269f1d91e10f1247b83cf2558068266d6fe5f"
+        "sha256": "sha256:f7b5ba4cc8efd4b4a14abbaf7d37ab847615d99aa1fe63a6aee5c175853e2c0e"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:792abbf7579c286a3ecaa3a9e2611bc994f945489f0fc99907a678ed7ae3499b"
+        "sha256": "sha256:481083a2d5fc2368de89cdf67be9a2b21be3b1d78eb454b993295d22294bb0fc"
+      },
+      {
+        "path": "combat.py",
+        "sha256": "sha256:3c8cfcf698e9edd7c5a6552b19a677996d25d8e6fc611109893b1dba58880ca7"
       }
     ]
   },
@@ -42,6 +46,30 @@
       "unsupported_scope": [
         "full_cleanup",
         "multi_descriptor_replacement",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "combat_step",
+      "name": "combat",
+      "version": "riftbound-combat-step-result.v1",
+      "coverage_id": "combat_step_v1",
+      "supported_scope": [
+        "combat_staging",
+        "combat_opening",
+        "combat_designations",
+        "attack_defend_triggers"
+      ],
+      "unsupported_scope": [
+        "start_of_combat_effects",
+        "player_level_attack_defend_triggers",
+        "multi_player_combat",
+        "combat_damage",
+        "combat_cleanup",
+        "combat_result",
+        "battlefield_control_resolution",
+        "scoring",
         "complete_game",
         "complete_legality"
       ]
@@ -425,6 +453,13 @@
       ]
     },
     {
+      "id": "attack_defend_triggers",
+      "rule_locators": [
+        "Core 383.4.e–383.4.f.3",
+        "Core 464.2.e.1"
+      ]
+    },
+    {
       "id": "battlefield_targets",
       "rule_locators": [
         "Core 355.10.b",
@@ -437,6 +472,30 @@
       "rule_locators": [
         "Core 713–715.4",
         "Core 437.1.a.1"
+      ]
+    },
+    {
+      "id": "combat_designations",
+      "rule_locators": [
+        "Core 323.2–323.2.c",
+        "Core 464.2.c.3–464.2.c.3.a"
+      ]
+    },
+    {
+      "id": "combat_opening",
+      "rule_locators": [
+        "Core 464.2.b–464.2.g",
+        "Core 345",
+        "Core 464.2.c.1.a–464.2.c.1.b"
+      ]
+    },
+    {
+      "id": "combat_staging",
+      "rule_locators": [
+        "Core 323.9",
+        "Core 323.13",
+        "Core 323.14",
+        "Core 460–462"
       ]
     },
     {
@@ -614,6 +673,10 @@
     "Core 317.2–317.2.d",
     "Core 319.8",
     "Core 320–321",
+    "Core 323.13",
+    "Core 323.14",
+    "Core 323.2–323.2.c",
+    "Core 323.9",
     "Core 324.2",
     "Core 328–330",
     "Core 333–340",
@@ -628,6 +691,7 @@
     "Core 340",
     "Core 340.1–340.4",
     "Core 341–348",
+    "Core 345",
     "Core 346",
     "Core 347",
     "Core 347.1",
@@ -672,6 +736,7 @@
     "Core 383.3",
     "Core 383.3.a–383.3.a.3",
     "Core 383.3.c–383.3.d.1",
+    "Core 383.4.e–383.4.f.3",
     "Core 386–388",
     "Core 402–402.1",
     "Core 413",
@@ -699,6 +764,11 @@
     "Core 455",
     "Core 456.1",
     "Core 458.1",
+    "Core 460–462",
+    "Core 464.2.b–464.2.g",
+    "Core 464.2.c.1.a–464.2.c.1.b",
+    "Core 464.2.c.3–464.2.c.3.a",
+    "Core 464.2.e.1",
     "Core 477",
     "Core 713–715.4",
     "Core 806–807",
@@ -711,9 +781,13 @@
     "add_reaction_resolution_during_payment",
     "arbitrary_card_effects",
     "arbitrary_card_text",
+    "battlefield_control_resolution",
     "battlefield_control_transfer",
     "beginning_phase",
     "combat",
+    "combat_cleanup",
+    "combat_damage",
+    "combat_result",
     "complete_action_set",
     "complete_game",
     "complete_legality",
@@ -726,9 +800,12 @@
     "full_cleanup",
     "full_turn_transition",
     "multi_descriptor_replacement",
+    "multi_player_combat",
     "non_standard_costs_beyond_exhaust_kill",
     "payment_stage_replacement_decisions",
+    "player_level_attack_defend_triggers",
     "scoring",
+    "start_of_combat_effects",
     "target_checks"
   ],
   "claims": {

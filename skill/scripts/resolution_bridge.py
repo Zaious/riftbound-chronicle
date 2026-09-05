@@ -174,6 +174,22 @@ def resolve_with_program(
             "cleanup_result": cleanup_result,
         }
     final_effect_state = cleanup_result["next_state"]
+    # ADR-0008 §3 / Core 323.2: while a Combat is in progress, the Cleanup that
+    # follows a resolution assigns or removes designations to match presence
+    # at the Combat Battlefield; a Unit that gains one raises its Attack /
+    # Defend trigger once per identity, in a batch after the Cleanup's own.
+    combat_sync_trace = None
+    combat_sync_triggers: list[dict[str, Any]] = []
+    next_timing_for_schedule = timing_result["next_state"]
+    combat_record = timing_state.get("combat")
+    if combat_record is not None and combat_record.get("status") in ("open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined"):
+        from combat import sync_designations
+        sync_index = int(combat_record.get("sync_count", 0))
+        final_effect_state, next_record, combat_sync_trace, combat_sync_triggers = sync_designations(
+            combat_record, final_effect_state, f"combat:{combat_record['combat_id']}:sync:{sync_index}", 0)
+        next_record["sync_count"] = sync_index + 1
+        next_timing_for_schedule = copy.deepcopy(next_timing_for_schedule)
+        next_timing_for_schedule["combat"] = next_record
     effect_triggers = [dict(trigger) for trigger in effect_result.get("pending_triggers", [])]
     # Play-completion triggers form one batch after the item's own effect
     # triggers and before anything the board-entry Cleanup raises (419.4.a).
@@ -232,7 +248,10 @@ def resolve_with_program(
             descriptor.update({"trigger_kind": "reflexive", "batch_sequence": batch_sequence, "batch_id": batch_id,
                                "condition": dict(ct["condition"]), "killed_objects": killed})
             conditional_triggers.append(descriptor)
-    pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers
+    sync_batch = max((trigger.get("batch_sequence", -1) for trigger in effect_triggers + cleanup_triggers + conditional_triggers), default=-1) + 1
+    for trigger in combat_sync_triggers:
+        trigger["batch_sequence"] = sync_batch
+    pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers + combat_sync_triggers
     # Core 383.3.d.1: when one controller has several abilities triggered at
     # once, that controller orders them. The engine never picks: a missing or
     # colliding controller_order inside one batch is a decision_required
@@ -243,7 +262,7 @@ def resolve_with_program(
     ordering_failure = _settle_trigger_orders(pending_triggers, engine_decisions, base)
     if ordering_failure is not None:
         return ordering_failure
-    scheduled_result = schedule_triggered_items(timing_result["next_state"], pending_triggers)
+    scheduled_result = schedule_triggered_items(next_timing_for_schedule, pending_triggers)
     if scheduled_result.get("applied") is not True:
         return {
             **base,
@@ -269,6 +288,7 @@ def resolve_with_program(
             "chain_card": chain_card_trace,
             "cleanup": cleanup_result["trace"],
             "conditional_triggers": conditional_trace,
+            "combat_designations": combat_sync_trace,
             "trigger_schedule": scheduled_result["transition"],
             "timing": timing_result["transition"],
         },

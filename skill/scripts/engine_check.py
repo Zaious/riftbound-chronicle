@@ -23,6 +23,7 @@ from effect_ir import (
 from engine_decisions import DECISIONS_VERSION as ENGINE_DECISIONS_VERSION, validate_engine_decisions
 from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card, validate_play_result
 from resolution_bridge import CLEANUP_DECISION_VERSION, TURN_STEP_VERSION, begin_ending_step, resolve_with_program, run_expiration_step, validate_cleanup_decisions
+from combat import COMBAT_STEP_VERSION, STEPS as COMBAT_STEPS  # noqa: E402
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
     derive_permissions,
@@ -65,6 +66,11 @@ FEATURE_RULES = {
     "any_domain_power_allocation": ["Core 809.1.c.1", "Core 357.1"],
     # C-24 (ADR-0007 §12).
     "granted_replacements": ["Core 370–373", "Core 355.10.c", "Core 124", "Core 317.2.c"],
+    # C-26 (ADR-0008 §1–3).
+    "combat_staging": ["Core 323.9", "Core 323.13", "Core 323.14", "Core 460–462"],
+    "combat_opening": ["Core 464.2.b–464.2.g", "Core 345", "Core 464.2.c.1.a–464.2.c.1.b"],
+    "combat_designations": ["Core 323.2–323.2.c", "Core 464.2.c.3–464.2.c.3.a"],
+    "attack_defend_triggers": ["Core 383.4.e–383.4.f.3", "Core 464.2.e.1"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -112,6 +118,13 @@ KIND_CONFIG = {
         "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives"],
         "unsupported": ["beginning_phase", "full_turn_transition", "continuous_dependency", "complete_game", "complete_legality"],
     },
+    # ADR-0008: Combat procedures over the timing/effect pair.
+    "combat_step": {
+        "component": ("combat", COMBAT_STEP_VERSION),
+        "coverage": "combat_step_v1",
+        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers"],
+        "unsupported": ["start_of_combat_effects", "player_level_attack_defend_triggers", "multi_player_combat", "combat_damage", "combat_cleanup", "combat_result", "battlefield_control_resolution", "scoring", "complete_game", "complete_legality"],
+    },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
         "coverage": "legal_action_v1",
@@ -129,6 +142,7 @@ DECISION_REASON_CODES = {
     "add_window_confirmation_required": "cost_choice",
     "card_selection_required": "card_choice",
     "resource_allocation_required": "cost_choice",
+    "location_selection_required": "location_choice",
 }
 
 
@@ -257,7 +271,7 @@ def classify_outcome(kind: str, result: dict[str, Any]) -> tuple[str, dict[str, 
         return "illegal", None
     if kind == "resolution" and result.get("committed") is not True:
         return ("invalid_input" if result.get("stage") in {"program_binding", "cleanup_decision"} else "illegal"), None
-    if kind == "turn_step" and result.get("committed") is not True:
+    if kind in {"turn_step", "combat_step"} and result.get("committed") is not True:
         return "illegal", None
     if kind == "play" and result.get("committed") is not True:
         # A well-formed play the rules refuse: unpayable cost, card not in
@@ -514,6 +528,16 @@ def run_turn_step(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, s
     return result, hashes
 
 
+def run_combat_step(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
+    timing_state, effect_state = load_object(args.timing_state), load_object(args.effect_state)
+    decisions = _engine_decisions(getattr(args, "decisions", None))
+    result = COMBAT_STEPS[args.step](timing_state, effect_state, decisions)
+    hashes = {"timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state)}
+    if decisions is not None:
+        hashes["engine_decisions"] = canonical_hash(decisions)
+    return result, hashes
+
+
 def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--decisions", type=Path, help="engine-decisions.v1 envelope (ADR-0005)")
     parser.add_argument("--include-raw", action="store_true")
@@ -551,6 +575,12 @@ def build_parser() -> argparse.ArgumentParser:
     turn.add_argument("--step", choices=["begin_ending", "run_expiration"], required=True)
     add_common(turn)
 
+    combat_step = sub.add_parser("combat-step")
+    combat_step.add_argument("timing_state", type=Path)
+    combat_step.add_argument("effect_state", type=Path)
+    combat_step.add_argument("--step", choices=sorted(COMBAT_STEPS), required=True)
+    add_common(combat_step)
+
     play = sub.add_parser("play")
     play.add_argument("timing_state", type=Path)
     play.add_argument("effect_state", type=Path)
@@ -572,8 +602,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise EngineCheckError("; ".join(errors))
             print("OK: valid engine-check.v1")
             return 0
-        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup, "play": run_play, "turn-step": run_turn_step}[args.command]
-        kind = "turn_step" if args.command == "turn-step" else args.command
+        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup, "play": run_play, "turn-step": run_turn_step, "combat-step": run_combat_step}[args.command]
+        kind = {"turn-step": "turn_step", "combat-step": "combat_step"}.get(args.command, args.command)
         result, input_hashes = runner(args)
         check = build_engine_check(
             kind,

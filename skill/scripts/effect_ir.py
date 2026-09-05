@@ -26,7 +26,10 @@ PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
 PLAY_PERMISSIONS = {"open_battlefield"}
 # Keywords the state may carry on an object. `deflect` (Core 809) imposes a
 # mandatory any-domain Power cost on opponents' spells that choose the object.
-OBJECT_KEYWORDS = {"temporary", "deflect"}
+# ADR-0008 §5: Shield, Tank, Ganking (and Backline, required by the Tank
+# contract) are characteristics printed on the object.
+OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline"}
+COMBAT_ROLES = {"attacker", "defender"}
 # ADR-0007 §6–8.
 TURN_EFFECT_KINDS = {"entry_state_for_played_units"}
 CONDITION_KINDS = {"runes_at_least"}
@@ -339,8 +342,18 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.{field} must be a non-negative integer")
         if not isinstance(obj.get("exhausted"), bool):
             errors.append(f"objects.{object_id}.exhausted must be boolean")
-        # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1).
-        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers"):
+        # ADR-0008 §1: a Unit's current Combat designation, kept in step by Cleanup (323.2).
+        designation = obj.get("combat_designation")
+        if designation is not None and (not isinstance(designation, dict) or set(designation) != {"combat_id", "role"} or not isinstance(designation["combat_id"], str)
+                                        or not designation["combat_id"] or designation["role"] not in COMBAT_ROLES):
+            errors.append(f"objects.{object_id}.combat_designation must be {{combat_id, role: attacker|defender}}")
+        elif designation is not None and obj.get("kind") != "unit":
+            errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
+        if "shield_value" in obj and (not isinstance(obj["shield_value"], int) or isinstance(obj["shield_value"], bool) or obj["shield_value"] < 1):
+            errors.append(f"objects.{object_id}.shield_value must be a positive integer (Core 814.1.b)")
+        # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1),
+        # end of turn (317.1), attack / defend (383.4.e–f).
+        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers"):
             triggers = obj.get(trigger_field, [])
             if not isinstance(triggers, list):
                 errors.append(f"objects.{object_id}.{trigger_field} must be an array")
@@ -1107,8 +1120,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
             obj["damage"] = 0
             obj["might_modifiers"] = []
             obj["exhausted"] = False
-            for transient in ("statuses", "counters"):
-                obj.pop(transient, None)
+            for transient in ("statuses", "counters", "combat_designation"):
+                obj.pop(transient, None)  # a new object carries no designation (124.1, 464.2.c.3)
             new_state["players"][obj["owner"]]["zones"]["hand"].append(object_id)
             trace.update({"object_id": object_id, "from": source, "destination": f"{obj['owner']}.hand",
                           "identity_after": _bump_identity(new_state, object_id), "not_a_move": True})
@@ -1364,6 +1377,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         else:
             new_state["players"][obj["owner"]]["zones"]["trash"].append(object_id)
             destination = f"{obj['owner']}.trash"
+            obj.pop("combat_designation", None)
             trace["identity_after"] = _bump_identity(new_state, object_id)
             trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
         disabled_replacements = _prune_inactive_replacements(new_state)

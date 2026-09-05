@@ -27,7 +27,34 @@
       "properties": {
         "active": {"type": "boolean"},
         "kind": {"type": ["string", "null"], "enum": ["combat", "non_combat", null]},
-        "focus": {"type": ["string", "null"]}
+        "focus": {"type": ["string", "null"]},
+        "battlefield": {"type": ["string", "null"], "description": "ADR-0008 §2: the Battlefield the Showdown is at; required to match a staged Combat to it (323.14, 464.1)."}
+      }
+    },
+    "combat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["combat_id", "battlefield", "battlefield_identity", "status", "attacker", "defender", "participants", "triggered_identities"],
+      "description": "ADR-0008 §1: the one Combat staged or in progress. Absent means none — never an unknown Combat fact.",
+      "properties": {
+        "combat_id": {"type": "string", "minLength": 1},
+        "battlefield": {"type": "string", "minLength": 1},
+        "battlefield_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
+        "status": {"enum": ["staged", "open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"]},
+        "attacker": {"type": ["string", "null"]},
+        "defender": {"type": ["string", "null"]},
+        "participants": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "triggered_identities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["attacker", "defender"],
+          "properties": {
+            "attacker": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^.+@[0-9]+$"}},
+            "defender": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^.+@[0-9]+$"}}
+          }
+        },
+        "opened_with": {"enum": ["new_showdown", "existing_showdown"]},
+        "sync_count": {"type": "integer", "minimum": 0}
       }
     },
     "priority": {"type": ["string", "null"]},

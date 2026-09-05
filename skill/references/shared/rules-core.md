@@ -73,6 +73,26 @@ items finalize oldest-first, while Finalized items resolve newest-first.
   hidden information or timing facts must produce `unknown`, not a misplay or
   invented narration.
 
+## Combat record (ADR-0008 §1–3)
+
+The timing state may carry one `combat` record — `combat_id`, the Battlefield
+and its identity, `status` (staged, open, then the damage / cleanup / result /
+closed steps), attacker, defender, the two participants, and the object
+identities whose Attack / Defend triggers already fired this Combat. The
+Showdown record gains an optional `battlefield`. Absence means no Combat is
+staged or open; it is never read as an unknown Combat fact. `combat.py`
+holds the procedures over the timing/effect pair: `stage_combat` (Contested
+applied, Units of exactly two opposing players; the Turn Player chooses among
+several by a `location_selection` decision; three controllers at one
+Battlefield are unsupported, never reduced to a pair), `open_combat` (the
+attacker is `contested_by`, the defender the other participant; a new Combat
+Showdown gives the attacker Focus, an existing one at that Battlefield keeps
+its Focus; Units present gain designations and their triggers form the Combat
+Chain attacker first, defender last), and `sync_combat_designations` (the
+Cleanup task of 323.2, also run by the resolution bridge after its Cleanup).
+Decisions for these procedures bind to `combined_input_hash(timing, effect)`,
+which every result reports as `input_hash`.
+
 ## Current coverage
 
 Version 1 covers the four-state permission model, the next HOT/FEPR procedure,

@@ -28,6 +28,9 @@ OBJECT_KINDS = {"spell", "unit", "gear", "ability"}
 ITEM_STATUSES = {"pending", "finalized"}
 ABILITY_KINDS = {"standard", "add", None}
 CHAIN_ORIGINS = {"played_card", "activated_ability", "triggered_ability", "add_ability", None}
+# ADR-0008 §1: the Combat record's progress. Staged and open are C-26; the
+# later steps are named so the record can carry them without a schema change.
+COMBAT_STATUSES = {"staged", "open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"}
 
 RULES = {
     "four_states": ["Core 308–310"],
@@ -166,6 +169,42 @@ def validate_state(state: dict[str, Any]) -> list[str]:
         errors.append("an active showdown must name a focus player")
     if not showdown.get("active") and focus is not None:
         errors.append("a neutral state cannot retain focus")
+    if "battlefield" in showdown and showdown["battlefield"] is not None and (not isinstance(showdown["battlefield"], str) or not showdown["battlefield"]):
+        errors.append("showdown.battlefield must be a battlefield id when supplied")
+    if not showdown.get("active") and showdown.get("battlefield") is not None:
+        errors.append("a neutral state has no showdown battlefield")
+    # ADR-0008 §1: one optional Combat record. Absence means no Combat is
+    # staged or open; a present record must be complete and self-consistent.
+    combat = state.get("combat")
+    if combat is not None:
+        if not isinstance(combat, dict) or {"combat_id", "battlefield", "battlefield_identity", "status", "attacker", "defender", "participants", "triggered_identities"} - set(combat):
+            errors.append("combat must carry combat_id, battlefield, battlefield_identity, status, attacker, defender, participants, triggered_identities")
+        else:
+            if not isinstance(combat["combat_id"], str) or not combat["combat_id"] or not isinstance(combat["battlefield"], str) or not combat["battlefield"]:
+                errors.append("combat.combat_id and combat.battlefield must be non-empty strings")
+            if not isinstance(combat["battlefield_identity"], str) or "@" not in combat["battlefield_identity"]:
+                errors.append("combat.battlefield_identity must be an identity token")
+            if combat["status"] not in COMBAT_STATUSES:
+                errors.append(f"combat.status must be one of {sorted(COMBAT_STATUSES)}")
+            participants = combat["participants"]
+            if not isinstance(participants, list) or len(participants) != 2 or len(set(participants)) != 2 or any(p not in players for p in participants):
+                errors.append("combat.participants must name exactly two distinct players (Core 462)")
+            if combat["status"] == "staged":
+                if combat["attacker"] is not None or combat["defender"] is not None:
+                    errors.append("a staged combat has no attacker or defender yet (464.2.c)")
+            else:
+                if combat["attacker"] not in players or combat["defender"] not in players or combat["attacker"] == combat["defender"]:
+                    errors.append("an open combat names distinct attacker and defender players (464.2.c.1–464.2.c.2)")
+                elif isinstance(participants, list) and sorted(participants) != sorted([combat["attacker"], combat["defender"]]):
+                    errors.append("combat.participants must be the attacker and the defender")
+                if combat["status"] != "closed" and not (showdown.get("active") and showdown.get("kind") == "combat" and showdown.get("battlefield") == combat["battlefield"]):
+                    errors.append("a Combat in progress is a Combat Showdown at its Battlefield (464.2)")
+            identities = combat["triggered_identities"]
+            if not isinstance(identities, dict) or set(identities) != {"attacker", "defender"} or any(
+                    not isinstance(ids, list) or any(not isinstance(i, str) or "@" not in i for i in ids) or len(ids) != len(set(ids)) for ids in identities.values()):
+                errors.append("combat.triggered_identities must map attacker and defender to unique identity tokens")
+            if "sync_count" in combat and (not isinstance(combat["sync_count"], int) or combat["sync_count"] < 0):
+                errors.append("combat.sync_count must be a non-negative integer")
 
     tasks = state.get("outstanding_tasks")
     if not isinstance(tasks, list) or not all(isinstance(item, str) and item for item in tasks):

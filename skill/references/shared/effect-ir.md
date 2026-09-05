@@ -450,6 +450,22 @@ from the state is `invalid_input`; one that exists but fails the rule is
 `illegal`. The choice is not reopened later: the permanent enters the chosen
 location whatever happened to it since (359.2.c).
 
+## Combat designations and Attack / Defend triggers (ADR-0008 §1, §3)
+
+A Unit in a Combat carries `combat_designation: {combat_id, role}`; nothing
+else in the effect state says a Combat is happening. Designations are
+assigned when the Combat opens and kept in step with presence by Cleanup
+(323.2): a Unit of a participant that becomes present at the Combat
+Battlefield gains its controller's designation, one elsewhere loses it, and
+a zone change to a non-Board zone drops it with the old object (124.1).
+`attack_triggers` / `defend_triggers` are trigger descriptors (optionally
+with the `at_battlefield` condition) that fire when the Unit gains the
+matching designation, once per object identity per Combat (383.4.e.2.a,
+383.4.f.2.a): losing and regaining the designation does not trigger again,
+leaving and returning is a new object and does. The keywords `shield`
+(with `shield_value`), `tank`, `ganking` and `backline` are printed
+characteristics; their reads arrive with the later Combat packages.
+
 ## Execution model
 
 An effect program is an ordered list. The interpreter executes it on a copied

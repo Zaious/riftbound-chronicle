@@ -199,6 +199,10 @@
           }
         },
         "play_permissions": {"type": "array", "uniqueItems": true, "items": {"enum": ["open_battlefield"]}, "description": "Compiled permissions widening the valid play locations (Core 355.2.b)."},
+        "combat_designation": {"type": "object", "additionalProperties": false, "required": ["combat_id", "role"], "properties": {"combat_id": {"type": "string", "minLength": 1}, "role": {"enum": ["attacker", "defender"]}}, "description": "ADR-0008 §1: the Unit's designation in the Combat in progress, synchronized by Cleanup (323.2)."},
+        "attack_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I attack' (Core 383.4.e): fires once per object identity per Combat when the Unit gains the Attacker designation."},
+        "defend_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I defend' (Core 383.4.f): fires once per object identity per Combat when the Unit gains the Defender designation."},
+        "shield_value": {"type": "integer", "minimum": 1, "description": "Shield [X] (Core 814.1.b); 1 when the keyword is bare. Only meaningful with keyword shield."},
         "deflect_value": {"type": "integer", "minimum": 1, "description": "Deflect [X] (Core 809.1.b); 1 when the keyword is bare. Only meaningful with keyword deflect."},
         "entry_replacements": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["mode", "value"], "properties": {"replacement_id": {"type": "string", "minLength": 1}, "mode": {"const": "entry_state"}, "value": {"enum": ["ready", "exhausted"]}}}, "description": "Core 369.3: how this permanent enters, replacing the default (e.g. 'I enter ready'). Conflicting replacements require a replacement_order decision."},
         "conditional_might": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "amount", "condition"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "amount": {"type": "integer"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["runes_at_least"]}, "count": {"type": "integer", "minimum": 0}}}}}, "description": "Conditional passives read by effective_might (Core 364.3)."},
@@ -208,7 +212,7 @@
         "keywords": {
           "type": "array",
           "uniqueItems": true,
-          "items": {"enum": ["temporary", "deflect"]}
+          "items": {"enum": ["temporary", "deflect", "shield", "tank", "ganking", "backline"]}
         }
       }
     },

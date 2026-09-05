@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:7571d58cae7ea39e7b39da09",
-    "capability_set_id": "sha256:7571d58cae7ea39e7b39da0970147cf8bd9e232cf3fe802dcac94ac26d362318",
-    "implementation_identity": "sha256:bbeb2edcb611311312b948789bf4a8e120ac7f6b20518fba22b9d620006261d5",
+    "manifest_id": "capability-manifest:13cbd1b5baa45f7f74a2f343",
+    "capability_set_id": "sha256:13cbd1b5baa45f7f74a2f3437995397649dd78ebef47b58b66270a9109beb67c",
+    "implementation_identity": "sha256:7ea6688e860f69031cff3c983c62c59af49639184b90b2f86c4a0c7105955735",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 117,
+    "declared_locators": 128,
     "exactly_cited_declared_locators": 28,
-    "exact_ratio": 0.2393,
+    "exact_ratio": 0.2188,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -173,11 +173,16 @@
       "Core 317.2.c",
       "Core 317.2–317.2.d",
       "Core 319.8",
+      "Core 323.13",
+      "Core 323.14",
+      "Core 323.2–323.2.c",
+      "Core 323.9",
       "Core 324.2",
       "Core 328–330",
       "Core 334–337",
       "Core 337.2",
       "Core 338–339",
+      "Core 345",
       "Core 347",
       "Core 349",
       "Core 354–358",
@@ -218,6 +223,7 @@
       "Core 383.3",
       "Core 383.3.a–383.3.a.3",
       "Core 383.3.c–383.3.d.1",
+      "Core 383.4.e–383.4.f.3",
       "Core 386–388",
       "Core 402–402.1",
       "Core 414",
@@ -242,6 +248,11 @@
       "Core 455",
       "Core 456.1",
       "Core 458.1",
+      "Core 460–462",
+      "Core 464.2.b–464.2.g",
+      "Core 464.2.c.1.a–464.2.c.1.b",
+      "Core 464.2.c.3–464.2.c.3.a",
+      "Core 464.2.e.1",
       "Core 477",
       "Core 713–715.4",
       "Core 809.1.c.1",
@@ -761,5 +772,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:a7e3bd430158397b2c158d9450b97e67d47850cb87ab67fd46877b6a180c305a"
+  "report_hash": "sha256:dd7580a542d96d68bf6cb0340540a017116564caf212d527a47e9b3839a9a2b2"
 }

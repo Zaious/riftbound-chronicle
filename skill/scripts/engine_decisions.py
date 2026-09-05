@@ -35,8 +35,10 @@ import copy
 from typing import Any
 
 DECISIONS_VERSION = "engine-decisions.v1"
-STAGES = ("play_declaration", "trigger_finalization", "resolution")
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation")
+# "procedure": a choice a two-state procedure asks for (ADR-0008 §2: the Turn
+# Player's Combat location), bound to combat.combined_input_hash.
+STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -101,6 +103,10 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}: resource_allocation is decided while paying at play")
         if kind in ("replacement_order", "replacement_choice", "trigger_order", "card_selection") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
+        if kind == "location_selection" and (not isinstance(val, str) or not val):
+            errors.append(f"{label}.value must be a battlefield id")
+        if kind == "location_selection" and item["stage"] != "procedure":
+            errors.append(f"{label}: location_selection is a procedure-stage decision")
     return errors
 
 

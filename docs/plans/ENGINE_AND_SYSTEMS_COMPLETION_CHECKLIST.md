@@ -113,6 +113,19 @@ frozen, fixture expansion and official-example encoding become
 - [x] Typed target snapshots and supported target revalidation.
 - [x] Bounded linked `if_applied` instructions.
 - [x] Atomic timing/effect resolution bridge with rollback.
+- [x] Permanent entry procedure: Units enter exhausted at the location chosen
+  at play, Gear ready at the Base, new identity, not a Move (C-19; Core 359.2,
+  143.4, 446.2).
+- [x] Battlefield targets whose criteria-found affected objects are not
+  targets; "all units at battlefields" targets nothing (C-20; Core 355.10.b/d).
+- [x] Bonus Damage as a property of the Deal action: summed once from active
+  sources, per affected object, before Prevent (C-20; Core 713–715, 437.1.a.1).
+- [x] Discard from hand by the discarding player's private card_selection, as
+  many as possible (C-22; Core 422).
+- [x] Deflect as a mandatory any-domain Power additional cost, paid by the
+  player's resource_allocation (C-23; Core 809, 356.2.a.2).
+- [x] Granted one-turn, one-use replacement bound to an object's identity, and
+  heal-all-damage (C-24; Core 370, 355.10.c, 124).
 
 ### Implemented triggers, replacement, and cleanup slices
 
@@ -127,6 +140,18 @@ frozen, fixture expansion and official-example encoding become
 - [x] One-descriptor simultaneous Kill prevention sequence.
 - [x] Core 370.4 source-leaves-simultaneously behavior for that sequence.
 - [x] Versioned cleanup decision artifact and atomic resubmission path.
+- [x] Play triggers on play completion and Move triggers on completed Moves,
+  scheduled as chronological batches with trigger_order decisions (C-19, C-22;
+  Core 419.4.a, 383.2.c).
+- [x] Entry-state replacements: an object's own "I enter ready" and a this-turn
+  effect over the controller's played units; conflicting results require the
+  controller's replacement_order decision (C-21; Core 369.3).
+- [x] Conditional passives evaluated on read (`effective_might`,
+  `runes_at_least` over board runes), no dependency ordering (C-21; Core 364.3).
+- [x] Ending Step trigger scheduling and Expiration Step (heal all, simultaneous
+  this-turn expiry, empty pools) as two refusable procedures (C-21; Core 317).
+- [x] Granted replacement variant next to source-backed ones, pruned on use,
+  expiry, identity change, or the target leaving the board (C-24; ADR-0007 §12).
 
 ### Effect vocabulary still required
 
@@ -138,11 +163,16 @@ Claude may implement one bounded operation plus tests at a time.
 - [ ] Typed costs: Energy, Power, exhaust, sacrifice/kill, discard, banish,
   return, and alternative/additional costs.
   (C-15: Energy, Power, exhaust, kill and mandatory/optional additional costs
-  inside an atomic play transaction with receipts; discard, banish, return,
-  alternative costs remain.)
+  inside an atomic play transaction with receipts; C-23: any-domain Power
+  (`power_any`) for Deflect; discard, banish, return, alternative costs remain.)
 - [ ] Full card-play lifecycle for Units, Gear, Spells, Runes, Hidden, and
   abilities; `play_token` is not a substitute.
+  (C-19: Units and Gear resolve by the permanent entry procedure with the
+  location chosen at play and the open-Battlefield permission, 355.2; play
+  triggers fire on play completion, 419.4.a; Spells since C-15, Runes via
+  channel since C-16. Hidden and activated abilities remain.)
 - [ ] Look, reveal, search, shuffle, randomize, discard, and banish operations.
+  (C-22: discard as the player's private selection, 422; the rest remain.)
 - [x] Recall as its own non-Move action and correct destination semantics.
   (C-16: `recall` to the current controller's Base, damage/exhaustion/modifiers
   retained, no Move trigger; Core 455–458.1.)
@@ -163,18 +193,26 @@ program and cannot be safely inferred from isolated examples.
 
 - [ ] Open-ended target choice and target groups.
 - [ ] Location-relative targets such as “here” and “another location.”
+  (C-20: "at a battlefield" as a Battlefield target with criteria expansion,
+  "here" as a location-scoped Bonus Damage source; C-22: "there" as the
+  referent's current location. "another location" remains.)
 - [ ] Last-known information and objects that change identity or zone.
   (C-14: object identity across non-board zone changes with selector
   revalidation; last-known information remains.)
 - [ ] Conditions over Might, damage, tags, domains, types, counts, and events.
+  (C-21: "while you have N+ runes" as `runes_at_least`, 364.3; C-22: "the only
+  unit you control there" as a named predicate. General forms remain.)
 - [ ] General typed forms for “if,” “if you do,” “if this kills,” “then,”
   “then do this,” “for each,” “instead,” and “up to.”
   (C-15/C-17: “if you do” / “otherwise” via cost predicates, “if you can't”
   via requested_count_not_reached, “if this kills it, do this” via
-  conditional reflexive triggers, “up to N” via bounded targets; “for each,”
-  “instead,” “then” remain.)
+  conditional reflexive triggers, “up to N” via bounded targets; C-22/C-24:
+  “then” as sequence order with a named condition, “instead” for one granted
+  next-death replacement; “for each” and the general forms remain.)
 - [ ] Impossible-instruction continuation beyond the bounded linked gate.
 - [ ] Simultaneous multi-object Move, Deal, Recycle, Kill, and token creation.
+  (C-20: area Deal over criteria-found units, each with its own Bonus Damage,
+  715.2; the rest remain.)
 - [ ] Player-targeted and uncontrolled-Battlefield replacement ordering.
 
 ### Continuous effects, triggers, and replacement still required
@@ -183,11 +221,19 @@ Default ownership: `[CODEX-CONTEXT]`. Fixture/data expansion after a contract is
 accepted is `[CLAUDE-READY]`.
 
 - [ ] Cross-object watchers and zone-dependent trigger eligibility.
+  (C-19/C-21/C-22: play, end-of-turn and move triggers on the object itself,
+  with the at_battlefield trigger condition; cross-object watchers remain.)
 - [ ] Delayed triggers and duration-bound trigger registration.
 - [ ] First/Nth-time, once-per-turn, and per-object event counters.
 - [ ] Instruction-level optional choices made during resolution.
 - [ ] Complete continuous-effect dependency/layer system.
+  (C-21: conditional passives evaluated on read via `effective_might`;
+  interacting passives stay `unsupported: continuous_dependency`.)
 - [ ] Duration expiry for this turn, next event, while/source-zone, and cleanup.
+  (C-21: this-turn effects are active only for their stamped turn and expire
+  at that turn's Expiration Step, 317.2.c; C-24: granted replacements follow
+  the same active-turn boundary; next event, while/source-zone, cleanup
+  durations remain.)
 - [ ] Multiple simultaneous replacement descriptors controlled by one player.
 - [ ] Different-controller simultaneous replacement execution in Turn Order.
 - [ ] Non-prevention replacement programs across simultaneous events.
@@ -216,10 +262,14 @@ Dependency milestones are defined in
 - [ ] Combat damage assignment, Tank/Backline conflicts, and simultaneous Deal.
 - [ ] Showdown staging, opening, action cycle, resolution, and closure.
 - [ ] Battlefield Contested/control transitions.
+  (C-19: `contested` / `contested_by` recorded on entering an uncontrolled
+  Battlefield, 190.3.a.1; control transitions remain for G2.)
 - [ ] Implement the Conquer/point/control components required by G2.
 - [ ] Implement terminal detection, ties, Burn Out, and reward adapter required
   by G3.
 - [ ] Complete turn start/main/ending phase transitions.
+  (C-21: `begin_ending_step` and `run_expiration_step` as two procedures,
+  317; the Beginning and Main phases remain caller-supplied facts.)
 - [ ] Multi-player edge cases and Turn Order changes.
 
 ### Engine quality gates still required
@@ -257,8 +307,10 @@ collect/normalize card clauses and implement assigned cards.
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
   current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.
-  (C-18: the 11 R3-A1 cards — 15 clauses full, 1 partial, 5 unsupported,
-  4 stale — in `r3a1_programs.json`; remaining batches R3-A2/A3.)
+  (C-18/C-25: the R3-A1 and R3-A2 batches — 26 cards, 27 clauses full,
+  6 partial, 7 unsupported, 6 stale — in `r3a1_programs.json`; Legends are
+  not engine objects, so Annie - Fiery stays partial; Draw clauses stay
+  partial until Burn Out is implemented; remaining batch R3-A3.)
 - [x] Label every selected Wave-A card and clause `unsupported` or `stale` in
   the R3-A0 draft; `full`/`partial` remain recommendations until tested programs exist.
 - [ ] Attach an official locator to every implemented clause.
@@ -561,6 +613,13 @@ push” does not isolate a commit on shared `main`.
 | C-16 — completed 2026-09-04 | return_to_hand, recall, channel_rune | ADR-0005 §6, §8; Codex Q1–Q3 | Three distinct zone events with their own trigger classes and identity rules |
 | C-17 — completed 2026-09-04 | Typed linked-result predicates and caused_kill | ADR-0005 §5; Codex Q4 (b), Q5 | action_performed on the original action; requested_count_not_reached; conditional reflexive triggers built after Cleanup with 428.5.c attribution |
 | C-18 — completed 2026-09-04 | R3-A1 card programs and derived behavior manifest | C-14..C-17 landed; Codex Q7, Q10 | r3a1_programs.json with cited fixtures; r3a1_programs.py derives a draft card-behavior-manifest.v1; Vision unsupported; stale cards stay stale |
+| C-19 — completed 2026-09-05 | Permanent entry procedure, play triggers, open-Battlefield permission | ADR-0007 §1–3 | complete_permanent_play; entry_location chosen at play; contested_by without control; play triggers batch play:<item>; no Battlefield-control or Showdown claim |
+| C-20 — completed 2026-09-05 | Battlefield targets with criteria expansion, Bonus Damage | ADR-0007 §4–5 | `affected.criteria` next to targets, affected units never targets; damage_modifiers summed once, per unit, before Prevent |
+| C-21 — completed 2026-09-05 | Entry replacements, conditional passives, Ending and Expiration steps | ADR-0007 §6–8 | entry_replacements and turn_effects; effective_might with runes_at_least; begin_ending_step / run_expiration_step, Expiration refused before Ending triggers finish |
+| C-22 — completed 2026-09-05 | Named instruction condition, Move triggers, private discard | ADR-0007 §9–10 | sole_controlled_unit_at_referent_location; move_triggers on move_board_object only; discard with card_selection, empty hand draws nothing, hand never listed |
+| C-23 — completed 2026-09-05 | Deflect as any-domain Power with resource_allocation | ADR-0007 §11 | power_any mandatory additional cost per choice; one legal allocation paid, two or more asked; Add window first |
+| C-24 — completed 2026-09-05 | Granted replacements | ADR-0007 §12 | grant_replacement / heal_all_damage; exactly one of source-backed or granted; not applicable after the target leaves and returns; expires with its turn; Highlander stays stale |
+| C-25 — completed 2026-09-05 | R3-A2 card programs and re-derived manifest | C-19..C-24 landed | 19 R3-A2 clauses with passives, probes and play_entry fixtures; symbolic bindings, mirrored runs; stale cards carry programs without program_id; manifest draft |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first
@@ -574,7 +633,7 @@ real artifact migration should establish the presentation semantics first.
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
 | D-02 — completed 2026-09-01 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual shared viewer, five verification states, raw-result refusal, documented overrides, prototype regression |
 | D-03 — completed 2026-09-02 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied; production pack absent | Four status explanations, five copy counts, generated fixtures, bilingual display, strategy-boundary regressions |
-| D-04 — R3-A1 slice completed 2026-09-04 (C-18) | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts — R3-A2/A3 batches still need theirs | Assigned card programs, clause locators, positive/negative tests |
+| D-04 — R3-A1/A2 slices completed 2026-09-05 (C-18, C-25) | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts — the R3-A3 batch still needs theirs | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
 | D-06 | Match Analyst schemas/runner projections | Normalized timeline and engine-binding contracts | Schema implementation, formatter, fixtures, no router activation |
 | D-07 | Fourth demo and navigation | Match Analyst gates satisfied except final activation review | Bilingual demo matching the shared visual shell |

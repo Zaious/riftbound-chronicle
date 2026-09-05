@@ -167,7 +167,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "private_discard",
             "granted_replacements",
             "combat_relative_might",
-            "keyword_modifiers"
+            "keyword_modifiers",
+            "active_combat_criteria",
+            "mutual_current_might_damage"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -307,7 +309,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "private_discard",
             "granted_replacements",
             "combat_relative_might",
-            "keyword_modifiers"
+            "keyword_modifiers",
+            "active_combat_criteria",
+            "mutual_current_might_damage"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",

@@ -78,6 +78,9 @@ FEATURE_RULES = {
     # C-28 (ADR-0008 §6).
     "standard_move": ["Core 144.1–144.4.b", "Core 446"],
     "ganking": ["Core 144.4.c–144.4.c.1", "Core 810.1–810.3"],
+    # C-29 (ADR-0008 §7).
+    "active_combat_criteria": ["Core 740.2.c", "Core 355.10.d", "Core 355.5.a"],
+    "mutual_current_might_damage": ["Core 417.1.d", "Core 417.6.b.3–417.6.b.4", "Core 143.2.b"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -89,7 +92,7 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers", "active_combat_criteria", "mutual_current_might_damage"],
         "unsupported": ["arbitrary_card_text", "combat", "scoring", "complete_game", "complete_legality"],
     },
     "resolution": {

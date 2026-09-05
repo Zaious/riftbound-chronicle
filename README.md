@@ -70,7 +70,7 @@ claims what its conformance suite executes:
 - a timing and permission kernel for the four turn states, Action/Reaction,
   Priority/Focus, and HOT/FEPR —
   21 executable cases (`skill/data/rules_core_cases.json`);
-- a bounded typed-effect IR — 20 operations plus sequencing, targets, linked
+- a bounded typed-effect IR — 21 operations plus sequencing, targets, linked
   effects, lethal cleanup, and trigger emission, which **fails closed** on any
   card behaviour it does not model rather than guessing one;
 - an atomic bridge between the two, so a timing decision and its typed effects

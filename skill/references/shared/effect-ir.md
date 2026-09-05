@@ -44,6 +44,7 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `grant_replacement` | create a granted replacement bound to a board object's identity, once, for this turn ($granted_target binds inside its replacement_effects) | Core 370, 355.10.c, 124, 317.2.c |
 | `heal_all_damage` | clear all marked damage on one object; already clean is a no-op | Core 418 |
 | `grant_keyword` | grant Shield X / Tank / Ganking / Backline to a Unit on the board for this combat or this turn, bound to its identity | Core 814.2, 466.7.c, 317.2.c, 124 |
+| `mutual_damage_current_might` | two chosen Units deal their current rules-facing Might to each other as one simultaneous action, the Units being the sources; one illegal Unit skips the pair | Core 417.1.d, 417.6.b.3–417.6.b.4, 143.2.b |
 | `channel_rune` | put the top runes of a player's Rune Deck on the board in the stated entry state, as many as possible when short; new objects | Core 430.1, 430.2.a, 430.3, 124 |
 
 Return, Recall and Move are three events with three trigger classes; the
@@ -485,6 +486,21 @@ Combat in progress (`this_combat`, active only while the Unit's designation
 names that Combat, expiring together at 466.7.c) or to this turn
 (`this_turn`). A 'this combat' grant outside a Combat is unsupported: the
 context comes from the resolution bridge, never from a caller's flag.
+
+## Combat-scoped area effects and mutual Might damage (ADR-0008 §7)
+
+`affected.criteria.location: active_combat` finds the Units at the Combat
+Battlefield that carry that Combat's designation (740.2.c) — affected
+objects, never targets, with the controller relation team-aware. The Combat
+comes from the procedure context the resolution bridge supplies; with no
+Combat in progress the set is empty and the instruction is a supported
+no-op, and a claimed Combat whose Battlefield the state cannot confirm is
+unsupported. `mutual_damage_current_might` revalidates both chosen Units,
+snapshots both rules-facing Mights before either Deal, then performs the two
+Deal events atomically with the Units as the damage sources (417.6.b.3, so
+no spell-scoped Bonus Damage and the responsible player is each Unit's
+controller); replacements apply to each Deal as usual; a Might that reads 0
+deals nothing (417.1.e); it is not Combat Damage.
 
 ## Execution model
 

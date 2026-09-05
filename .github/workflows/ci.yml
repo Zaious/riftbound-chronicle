@@ -233,6 +233,11 @@ jobs:
       - name: Standard Move and Ganking
         run: python3 skill/scripts/check_standard_move.py
 
+      # ADR-0008 C-29: "in combat" is read from designations under the procedure
+      # context, never inferred; mutual Might damage is one simultaneous action.
+      - name: Active-Combat criteria and mutual Might damage
+        run: python3 skill/scripts/check_combat_area_and_mutual.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -308,6 +313,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_combat_staging.py"
           python3 "$REPO/skill/scripts/check_combat_characteristics.py"
           python3 "$REPO/skill/scripts/check_standard_move.py"
+          python3 "$REPO/skill/scripts/check_combat_area_and_mutual.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

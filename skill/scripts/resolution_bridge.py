@@ -112,7 +112,7 @@ def resolve_with_program(
     # ADR-0008 §5: a 'this combat' grant binds to the Combat in progress, which
     # only the timing state knows.
     combat_in_progress = timing_state.get("combat")
-    context = {"combat": {"combat_id": combat_in_progress["combat_id"], "battlefield": combat_in_progress["battlefield"]}} if combat_in_progress and combat_in_progress.get("status") in ("open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined") else None
+    context = {"combat": {"combat_id": combat_in_progress["combat_id"], "battlefield": combat_in_progress["battlefield"], "battlefield_identity": combat_in_progress["battlefield_identity"]}} if combat_in_progress and combat_in_progress.get("status") in ("open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined") else None
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:

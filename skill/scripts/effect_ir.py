@@ -83,7 +83,12 @@ SUPPORTED_OPS = {
     "heal_all_damage",
     # C-27 (ADR-0008 §5): a granted characteristic (Shield X, Tank, ...) for this combat or this turn.
     "grant_keyword",
+    # C-29 (ADR-0008 §7): two chosen Units deal their current Might to each other, simultaneously.
+    "mutual_damage_current_might",
 }
+# Composite instructions resolved by apply_program itself (they consist of
+# several Deal events that each pass through the replacement path).
+COMPOSITE_OPS = {"mutual_damage_current_might"}
 
 
 class ReplacementDecisionRequired(ValueError):
@@ -170,6 +175,7 @@ OP_RULES = {
     "grant_replacement": ["Core 370", "Core 355.10.c", "Core 124", "Core 317.2.c"],
     "heal_all_damage": ["Core 418"],
     "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
+    "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
 }
 
 
@@ -611,6 +617,15 @@ def validate_program(program: Any) -> list[str]:
             predicate = effect.get("predicate")
             if predicate is not None:
                 errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt"), seen, {e.get("effect_id", f"effect-{i}"): e for i, e in enumerate(effects[:index]) if isinstance(e, dict)}))
+            if effect.get("op") == "mutual_damage_current_might":
+                units = effect.get("units")
+                if not isinstance(units, list) or len(units) != 2:
+                    errors.append(f"effects[{index}].mutual_damage_current_might needs exactly two unit selectors")
+                else:
+                    for j, sel in enumerate(units):
+                        errors.extend(f"effects[{index}].units[{j}] {e}" for e in _selector_errors(sel))
+                if effect.get("target") is not None or effect.get("targets") is not None or effect.get("object_id") is not None or effect.get("affected") is not None:
+                    errors.append(f"effects[{index}].mutual_damage_current_might carries its two units, not target/targets/object_id/affected")
             if effect.get("op") == "grant_keyword":
                 if effect.get("keyword") not in GRANTABLE_KEYWORDS:
                     errors.append(f"effects[{index}].grant_keyword.keyword must be one of {sorted(GRANTABLE_KEYWORDS)}")
@@ -662,8 +677,10 @@ def validate_program(program: Any) -> list[str]:
                 if not isinstance(affected, dict) or set(affected) != {"criteria"} or not isinstance(criteria, dict) or set(criteria) - {"kind", "controller_relation", "location"} or "location" not in criteria:
                     errors.append(f"effects[{index}].affected must be {{criteria: {{location, kind?, controller_relation?}}}}")
                 else:
-                    if criteria["location"] not in {"target_battlefield", "any_battlefield"}:
+                    if criteria["location"] not in {"target_battlefield", "any_battlefield", "active_combat"}:
                         errors.append(f"effects[{index}].affected.criteria.location is invalid")
+                    if criteria["location"] == "active_combat" and target is not None:
+                        errors.append(f"effects[{index}].affected over active_combat targets nothing (Core 355.10.d, 740.2.c)")
                     if "kind" in criteria and criteria["kind"] not in {"unit", "gear"}:
                         errors.append(f"effects[{index}].affected.criteria.kind is invalid")
                     if "controller_relation" in criteria and criteria["controller_relation"] not in {"friendly", "enemy"}:
@@ -1374,6 +1391,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         new_state.setdefault("turn_effects", []).append(granted)
         trace.update({"turn_effect": granted})
 
+    elif op == "mutual_damage_current_might":
+        raise ValueError("mutual_damage_current_might is resolved by apply_program as two simultaneous Deal events")
+
     elif op in {"deal_damage", "heal_damage"}:
         object_id, amount = effect.get("object_id"), effect.get("amount")
         if object_id not in new_state["objects"] or not isinstance(amount, int) or amount < 1:
@@ -1382,6 +1402,11 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         after = before + amount if op == "deal_damage" else max(0, before - amount)
         new_state["objects"][object_id]["damage"] = after
         trace.update({"object_id": object_id, "before": before, "after": after})
+        if effect.get("source_object") is not None:
+            # Core 417.6.b.3: a Unit named as the source is the source, not the spell.
+            trace.update({"source_object": effect["source_object"], "source_kind": effect.get("source_kind", "object"),
+                          "responsible_player": new_state["objects"].get(effect["source_object"], {}).get("controller")})
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 417.6.b.3", "Core 417.6.b.4"]))
         if effect.get("bonus_damage"):
             trace["bonus_damage"] = copy.deepcopy(effect["bonus_damage"])
             trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 713–715"]))
@@ -2065,6 +2090,76 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "illegal_operation", "reason": str(exc), "failed_effect_index": index, "trace": trace}
             except ValueError as exc:
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+        if effect.get("op") == "mutual_damage_current_might":
+            # ADR-0008 §7 (Gentlemen's Duel): both Units are revalidated, both
+            # rules-facing Mights are read before either Deal, then the two Deal
+            # events happen as one simultaneous action with the Units as sources
+            # (417.6.b.3); one illegal Unit skips the whole pair (each Deal
+            # relates to both). Never Combat Damage, never sequential reads.
+            pair = []
+            try:
+                for position, selector in enumerate(effect["units"]):
+                    resolved, meta = _resolve_selectors(current, {"target": selector}, program, decisions)
+                    pair.append((resolved[0], meta))
+            except TargetDecisionRequired as exc:
+                return {**base, "valid": True, "committed": False, "target_decision_required": True, "reason_code": "target_selection_required", "reason": str(exc),
+                        "decision_ids": exc.decision_ids, "decision_controller": exc.controller, "failed_effect_index": index, "trace": trace}
+            except IllegalDecision as exc:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch", "reason": str(exc), "failed_effect_index": index, "trace": trace}
+            except ValueError as exc:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+            verdicts = [(sel, *evaluate_target(current, sel, program.get("controller"))) for sel, _ in pair]
+            ids = [sel["object_id"] for sel, _, _ in verdicts]
+            invalid = [{"object_id": sel["object_id"], "reason": reason} for sel, ok, reason in verdicts if not ok]
+            if ids[0] == ids[1] and not invalid:
+                invalid = [{"object_id": ids[0], "reason": "same_unit_twice"}]
+            if invalid:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "ignored_illegal_target", "target_outcome": "skipped_illegal_target",
+                         "completion": "none", "units": ids, "invalid_targets": invalid, "reason": "a Unit of the pair is not a legal referent; both Deals relate to it (359.3.e.5)",
+                         "rule_locators": ["Core 359.3.e.1–359.3.e.5", "Core 359.3.e.14"], "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            snapshot = {object_id: effective_might(current, object_id) for object_id in ids}
+            working = current
+            sub_trace = []
+            failure = None
+            for source, receiver in ((ids[0], ids[1]), (ids[1], ids[0])):
+                amount = snapshot[source]
+                if amount < 1:
+                    sub_trace.append({"op": "deal_damage", "effect_id": f"{effect_id}:{source}->{receiver}", "object_id": receiver, "source_object": source, "source_kind": "unit",
+                                      "amount": amount, "outcome": "no_op", "completion": "none", "reason": "no valid damage: the source's Might reads as 0 (417.1.e, 143.2.b)",
+                                      "rule_locators": ["Core 417.1.e", "Core 143.2.b"]})
+                    continue
+                single = {"op": "deal_damage", "effect_id": f"{effect_id}:{source}->{receiver}", "object_id": receiver, "amount": amount, "source_object": source, "source_kind": "unit"}
+                for key in ("replacement_order", "replacement_decider", "replacement_choices"):
+                    if key in effect:
+                        single[key] = effect[key]
+                sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                               "program_id": f"mutual:{program['program_id']}:{effect_id}", "controller": program.get("controller"), "source_object": source, "effects": [single]}
+                sub = apply_program(working, sub_program, decisions=None, context=context, _replacement_depth=_replacement_depth + 1)
+                if sub.get("committed") is not True:
+                    failure = sub
+                    break
+                working = sub["next_state"]
+                sub_trace.extend(sub["trace"])
+            if failure is not None:
+                return {**base, "valid": failure.get("valid", True), "committed": False, "unsupported": failure.get("unsupported", False),
+                        "replacement_decision_required": failure.get("replacement_decision_required", False), "replacement_ids": failure.get("replacement_ids", []),
+                        "failed_effect_index": index, "reason": failure.get("reason", "; ".join(failure.get("errors", [])) or "mutual damage failed"), "expansion_result": failure, "trace": trace}
+            current = working
+            applied = sum(1 for ev in sub_trace if ev.get("outcome") in PERFORMED_OUTCOMES)
+            event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "applied" if applied else "no_op",
+                     "completion": "full" if applied == 2 else ("partial" if applied else "none"), "units": ids, "might_snapshot": snapshot,
+                     "simultaneous": True, "not_combat_damage": True, "sources": {ids[0]: ids[1], ids[1]: ids[0]}, "expansion_trace": sub_trace,
+                     "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                     "rule_locators": list(dict.fromkeys(OP_RULES["mutual_damage_current_might"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
+                     "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
+            for _, meta in pair:
+                event.update(meta)
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         if effect.get("affected") is not None:
             # ADR-0007 §4: two layers. The Battlefield (if any) is the target and is
             # revalidated; the units are found by criteria now and are NOT targets —
@@ -2072,7 +2167,20 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             criteria = effect["affected"]["criteria"]
             battlefield_ids: list[str] = []
             targeted_battlefield = None
-            if criteria["location"] == "target_battlefield":
+            active_combat = None
+            if criteria["location"] == "active_combat":
+                # ADR-0008 §7 (Cannon Barrage): Units at the Combat Battlefield that
+                # carry that Combat's designation (740.2.c). No Combat in progress
+                # is an empty set — a supported no-op; a claimed Combat whose
+                # Battlefield or identity the state cannot confirm is unsupported.
+                active_combat = (context or {}).get("combat")
+                if active_combat is not None:
+                    combat_battlefield = active_combat.get("battlefield")
+                    if combat_battlefield not in current["battlefields"] or (active_combat.get("battlefield_identity") is not None and battlefield_identity(current, combat_battlefield) != active_combat["battlefield_identity"]):
+                        return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                                "reason": f"the Combat context names Battlefield {combat_battlefield!r}, which the state cannot confirm; 'in combat' is not inferred", "trace": trace}
+                    battlefield_ids = [combat_battlefield]
+            elif criteria["location"] == "target_battlefield":
                 sel = selectors[0]
                 legal, reason = evaluate_target(current, sel, program.get("controller"))
                 targeted_battlefield = sel["object_id"]
@@ -2096,6 +2204,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     obj = current["objects"][candidate]
                     if "kind" in criteria and obj["kind"] != criteria["kind"]:
                         continue
+                    if active_combat is not None and (obj.get("combat_designation") or {}).get("combat_id") != active_combat.get("combat_id"):
+                        continue  # present but not yet designated: not "in combat" (740.2.c)
                     relation = criteria.get("controller_relation")
                     if relation == "friendly" and not same_side(current, program.get("controller"), obj.get("controller")):
                         continue
@@ -2136,6 +2246,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "completion": "full" if (applied == len(affected_ids)) else ("partial" if applied else "none") if affected_ids else "full",
                 "targeted_battlefield": targeted_battlefield, "affected_objects": affected_ids, "affected_are_targets": False,
                 "criteria": dict(criteria), "criteria_snapshot_hash": snapshot_hash, "expansion_trace": sub_trace,
+                **({"active_combat": dict(active_combat) if active_combat else None} if criteria["location"] == "active_combat" else {}),
                 "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
                 "rule_locators": list(dict.fromkeys(["Core 355.5.a", "Core 355.10.b", "Core 355.10.d"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                 "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,
@@ -2238,7 +2349,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         # ADR-0007 §5: Bonus Damage is a property of the Deal action — added
         # once the Deal is known to happen with a non-zero base (715.4), before
         # any replacement or Prevent looks at the amount (437.1.a.1).
-        if effect.get("op") == "deal_damage" and isinstance(effect.get("amount"), int) and effect["amount"] >= 1 and "bonus_damage" not in effect:
+        if effect.get("op") == "deal_damage" and isinstance(effect.get("amount"), int) and effect["amount"] >= 1 and "bonus_damage" not in effect and effect.get("source_kind") != "unit":
             try:
                 bonus, bonus_sources = bonus_damage(current, program.get("controller"), effect.get("object_id"))
             except NotImplementedError as exc:

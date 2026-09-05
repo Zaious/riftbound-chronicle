@@ -24,7 +24,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from effect_ir import SUPPORTED_OPS  # noqa: E402
+from effect_ir import COMPOSITE_OPS, SUPPORTED_OPS  # noqa: E402
 
 FILES = ["effect_ir.py", "resolution_bridge.py", "play_transaction.py", "engine_check.py", "engine_decisions.py", "cost_receipt.py", "combat.py"]
 
@@ -49,6 +49,11 @@ def main() -> int:
     for op in sorted(SUPPORTED_OPS):
         if branches.get(op, 0) != 1:
             errors.append(f"{op}: {branches.get(op, 0)} dispatch branches in _apply_one, expected 1")
+    # ADR-0008 §7: a composite op keeps a refusing branch in _apply_one and is
+    # resolved by apply_program as several Deal events.
+    for op in sorted(COMPOSITE_OPS):
+        if f'effect.get("op") == "{op}"' not in source:
+            errors.append(f"{op}: composite op is not resolved by apply_program")
     for op, n in branches.items():
         if op not in SUPPORTED_OPS:
             errors.append(f"_apply_one dispatches {op!r}, which is not a supported op")

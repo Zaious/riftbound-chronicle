@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:56e730312dcbc226c0cc8641",
-  "capability_set_id": "sha256:56e730312dcbc226c0cc86413419e3c58580e621462595c264f76f79f41e7a35",
+  "manifest_id": "capability-manifest:68dc22d854e3afc325634002",
+  "capability_set_id": "sha256:68dc22d854e3afc325634002f8a50be7c0e81fe91dbbb14ed4d549d2aacd271e",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:34bcc543b665b8ed65487b7be28d497ae34fd9caf78b3bf5fc7ecc938c4a8a37",
+    "value": "sha256:dd5b5c0995fbf3a4b7a80f3321ef374dfc92665ab5bc3c98d803b3eacac43ce1",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:86de38bdfe7fab04debef13ea14f4b02198d1929d0a78f8373298286939943d7"
+        "sha256": "sha256:39130f68f3929beca1b40dce6f6e2d51bbc6a99bd50d09a80935be990fa830ae"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:696821ae0cf0ced6e65b1dabdb781cd161f064d0a03d24de09e16f3e72e7ba76"
+        "sha256": "sha256:eced7253c3a38ff99525373701d616447bb1e7cbdbb2da897fd48a33de3dbece"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:05176936d5bd8212aeb80f8b289423f21458c41b850095e9fee32b2289f0a15f"
+        "sha256": "sha256:f3ae9d6f36077485bd9a2d8c5d440a93ca4cee3d47229fc68b787ba31e84b056"
       },
       {
         "path": "combat.py",
@@ -95,7 +95,9 @@
         "private_discard",
         "granted_replacements",
         "combat_relative_might",
-        "keyword_modifiers"
+        "keyword_modifiers",
+        "active_combat_criteria",
+        "mutual_current_might_damage"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -334,6 +336,16 @@
       ]
     },
     {
+      "id": "mutual_damage_current_might",
+      "rule_locators": [
+        "Core 417.1.d",
+        "Core 417.6.b.3",
+        "Core 417.6.b.4",
+        "Core 143.2.b",
+        "Core 359.3.e.5"
+      ]
+    },
+    {
       "id": "play_token",
       "rule_locators": [
         "Core 143.4",
@@ -470,6 +482,14 @@
     }
   ],
   "features": [
+    {
+      "id": "active_combat_criteria",
+      "rule_locators": [
+        "Core 740.2.c",
+        "Core 355.10.d",
+        "Core 355.5.a"
+      ]
+    },
     {
       "id": "any_domain_power_allocation",
       "rule_locators": [
@@ -649,6 +669,14 @@
       ]
     },
     {
+      "id": "mutual_current_might_damage",
+      "rule_locators": [
+        "Core 417.1.d",
+        "Core 417.6.b.3–417.6.b.4",
+        "Core 143.2.b"
+      ]
+    },
+    {
       "id": "object_identity",
       "rule_locators": [
         "Core 124–124.1",
@@ -822,6 +850,10 @@
     "Core 415",
     "Core 416",
     "Core 417",
+    "Core 417.1.d",
+    "Core 417.6.b.3",
+    "Core 417.6.b.3–417.6.b.4",
+    "Core 417.6.b.4",
     "Core 418",
     "Core 419.4.a",
     "Core 420",
@@ -852,6 +884,7 @@
     "Core 477",
     "Core 713–715.4",
     "Core 740.2.a",
+    "Core 740.2.c",
     "Core 806–807",
     "Core 807",
     "Core 809.1.c.1",

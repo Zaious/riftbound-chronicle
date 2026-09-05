@@ -1,12 +1,12 @@
 {
   "schema_version": "r3a1-card-programs.v3",
-  "batch": "R3-A1-choices-costs-zones + R3-A2-play-conditions-continuous",
+  "batch": "R3-A1-choices-costs-zones + R3-A2-play-conditions-continuous + R3-A3-combat",
   "package": "global-core-origins-v1",
   "ruleset": {
     "core": "2026-07-16",
     "faq_as_of": "2026-08-14"
   },
-  "shape_note": "Card-program templates with symbolic references ($controller, $opponent, $card, $chain_item, $source_object), bound per fixture by r3a1_programs.bind() into a concrete effect-program.v1 / play declaration. No literal player id may appear in a template; fixtures carry `bindings` and every program fixture is also run mirrored (players swapped) and must produce the player-relative same result before a clause can be full or partial. Fixture setups are edits over check_effect_ir.base_state(): u1 = p1 unit 3 Might 1 damage at base; u2 = p2 unit 4 Might exhausted at base; c1,c2 = p1 spells in deck; c3 = p1 spell in trash; c4 = p2 spell in deck; r1 = p1 rune in rune_deck; bf1 empty. Expected outcomes cite the Core clause they follow, not the engine. C-25 (ADR-0007): a clause may carry a `passive` (object_fields on $source_object, or state_lists such as damage_modifiers) applied to the scenario before it runs; a fixture may carry a `probe` (a program or play declaration that is not the card's text but exercises the passive) and a `run` path (play, resolution, effect, play_entry — play a permanent with its entry_location, then resolve by the entry procedure). Stand-ins: Legends are not modelled as objects, so a Legend's passive is anchored to a gear at the controller's Base and the clause says so.",
+  "shape_note": "Card-program templates with symbolic references ($controller, $opponent, $card, $chain_item, $source_object), bound per fixture by r3a1_programs.bind() into a concrete effect-program.v1 / play declaration. No literal player id may appear in a template; fixtures carry `bindings` and every program fixture is also run mirrored (players swapped) and must produce the player-relative same result before a clause can be full or partial. Fixture setups are edits over check_effect_ir.base_state(): u1 = p1 unit 3 Might 1 damage at base; u2 = p2 unit 4 Might exhausted at base; c1,c2 = p1 spells in deck; c3 = p1 spell in trash; c4 = p2 spell in deck; r1 = p1 rune in rune_deck; bf1 empty. Expected outcomes cite the Core clause they follow, not the engine. C-25 (ADR-0007): a clause may carry a `passive` (object_fields on $source_object, or state_lists such as damage_modifiers) applied to the scenario before it runs; a fixture may carry a `probe` (a program or play declaration that is not the card's text but exercises the passive) and a `run` path (play, resolution, effect, play_entry — play a permanent with its entry_location, then resolve by the entry procedure). Stand-ins: Legends are not modelled as objects, so a Legend's passive is anchored to a gear at the controller's Base and the clause says so. C-32 (ADR-0008): a fixture may carry a `combat` block (battlefield, attacker $controller|$opponent, phase open|showdown_closed) staged and opened by the real procedures, `after_combat_setup` edits, a `combat_open` / `combat_step` (with `step`) / `standard_move` (with `declaration`) run, `chain_item_kind: triggered` for a Battlefield's own trigger, `compiled_units` for a composite instruction, and `$combat_id` bound after opening (also inside composite strings). A vanilla Unit declares `intrinsic: unit_combat` and is probed; `(no rules text)` is never an invented instruction. C-32 (ADR-0008): a fixture may carry a `combat` block (battlefield, attacker $controller|$opponent, phase open|showdown_closed) staged and opened by the real procedures, `after_combat_setup` edits, a `combat_open` / `combat_step` (with `step`) / `standard_move` (with `declaration`) run, `chain_item_kind: triggered` for a Battlefield's own trigger, `compiled_units` for a composite instruction, and `$combat_id` bound after opening (also inside composite strings). A vanilla Unit declares `intrinsic: unit_combat` and is probed; `(no rules text)` is never an invented instruction.",
   "cards": [
     {
       "card": "Annie - Dark Child (Starter)",
@@ -615,6 +615,281 @@
               "fixture_id": "annie - stubborn#5086e61a:missing_information",
               "kind": "not_applicable",
               "why": "a passive or trigger has no play-time decision of its own; recorded as n/a."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Cannon Barrage",
+      "card_key": "cannon barrage",
+      "clauses": [
+        {
+          "clause_id": "cannon barrage#e7a1971e",
+          "text": "[Reaction]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 807",
+            "Core 338.1.b"
+          ],
+          "execution": {
+            "kind": "play",
+            "declaration": {
+              "chain_item": {
+                "id": "$chain_item",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 1,
+                  "power": {}
+                }
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "cannon barrage#e7a1971e:positive",
+              "kind": "positive",
+              "timing": "closed_p1_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 807"
+                ]
+              },
+              "why": "807: a Reaction may be played whenever its controller holds Priority, including while a Chain is open.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "cannon barrage#e7a1971e:negative",
+              "kind": "negative",
+              "timing": "closed_p2_priority",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 1,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "rule_locators": [
+                  "Core 338.1.b"
+                ]
+              },
+              "why": "338.1.b: only the Priority holder may play; p2 holds Priority, so p1's Reaction is refused and its payment undone (358.5).",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "cannon barrage#e7a1971e:missing_information",
+              "kind": "not_applicable",
+              "why": "a timing tag has no decision; recorded as n/a."
+            }
+          ]
+        },
+        {
+          "clause_id": "cannon barrage#3c6691c9",
+          "text": "Deal 2 to all enemy units in combat.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 740.2.c",
+            "Core 355.10.d",
+            "Core 355.5.a",
+            "Core 417.1.b"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "cannon barrage#3c6691c9",
+              "effects": [
+                {
+                  "op": "deal_damage",
+                  "effect_id": "barrage",
+                  "amount": 2,
+                  "affected": {
+                    "criteria": {
+                      "kind": "unit",
+                      "controller_relation": "enemy",
+                      "location": "active_combat"
+                    }
+                  }
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "$chain_item",
+                "object_kind": "spell",
+                "timing": "reaction"
+              },
+              "cost": {
+                "base": {
+                  "energy": 2,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "cannon barrage#3c6691c9"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "cannon barrage#3c6691c9:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "after_combat_setup": [
+                {
+                  "add": "u4",
+                  "owner": "p2",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u5",
+                  "owner": "p2",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "base:p2"
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u2",
+                      "damage"
+                    ],
+                    "equals": 2
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u4",
+                      "damage"
+                    ],
+                    "equals": 0
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u5",
+                      "damage"
+                    ],
+                    "equals": 0
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "damage"
+                    ],
+                    "equals": 1
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.c",
+                  "Core 355.10.d",
+                  "Core 417.1.b"
+                ]
+              },
+              "why": "740.2.c: a Unit is in combat when it occupies the Combat Battlefield and has a designation; the designated enemy Unit takes 2, an enemy Unit that arrived after the opening (no designation until Cleanup) and one at its Base do not; none is a target (355.10.d).",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "cannon barrage#3c6691c9:negative",
+              "kind": "negative",
+              "run": "effect",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "no_op"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u2",
+                      "damage"
+                    ],
+                    "equals": 0
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.c"
+                ]
+              },
+              "why": "with no Combat in progress no Unit is in combat: the instruction finds nothing and is a supported no-op; 'in combat' is never inferred from presence.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "cannon barrage#3c6691c9:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
             }
           ]
         }
@@ -2410,6 +2685,535 @@
       ]
     },
     {
+      "card": "Fortified Position",
+      "card_key": "fortified position",
+      "clauses": [
+        {
+          "clause_id": "fortified position#d0ee5f77",
+          "text": "When you defend here, choose a unit.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 190.6.a",
+            "Core 190.6.d",
+            "Core 383.4.f",
+            "Core 355.5.b"
+          ],
+          "execution": {
+            "kind": "combat_open",
+            "passive": {
+              "battlefield_fields": {
+                "defend_triggers": [
+                  {
+                    "trigger_id": "fp-defend",
+                    "controller_order": 0,
+                    "effect_program_id": "fortified position#9b46c0cf",
+                    "optional_at_finalize": false
+                  }
+                ]
+              }
+            },
+            "program": {
+              "program_id": "fortified position#9b46c0cf",
+              "effects": [
+                {
+                  "op": "grant_keyword",
+                  "effect_id": "grant",
+                  "keyword": "shield",
+                  "value": 2,
+                  "duration": "this_combat",
+                  "source": "$source_object",
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit"
+                  }
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "fortified position#d0ee5f77:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf1",
+                  "field": "controller",
+                  "value": "p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "chain_items": [
+                      "fp-defend"
+                    ]
+                  },
+                  {
+                    "trace_path": [
+                      "battlefield_triggers",
+                      0,
+                      "fired"
+                    ],
+                    "equals": true
+                  },
+                  {
+                    "trace_path": [
+                      "battlefield_triggers",
+                      0,
+                      "controller"
+                    ],
+                    "equals": "$controller"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 190.6.a",
+                  "Core 383.4.f",
+                  "Core 464.2.e.1"
+                ]
+              },
+              "why": "190.6.a / 190.6.d: 'you' is the Battlefield's controller; when that player gains the Defender designation the trigger goes on the Combat Chain, controlled by them.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "fp-defend",
+                "source_object": "bf1"
+              }
+            },
+            {
+              "fixture_id": "fortified position#d0ee5f77:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf1",
+                  "field": "controller",
+                  "value": "p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "chain_items": []
+                  },
+                  {
+                    "trace_path": [
+                      "battlefield_triggers",
+                      0,
+                      "fired"
+                    ],
+                    "equals": false
+                  }
+                ],
+                "rule_locators": [
+                  "Core 190.6.d"
+                ]
+              },
+              "why": "the Battlefield's controller is the attacker here: they did not gain the Defender designation, so 'when you defend' does not trigger.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "fp-defend",
+                "source_object": "bf1"
+              }
+            },
+            {
+              "fixture_id": "fortified position#d0ee5f77:uncontrolled",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "chain_items": []
+                  }
+                ],
+                "rule_locators": [
+                  "Core 190.6.d",
+                  "Core 190.6.b"
+                ]
+              },
+              "why": "190.6.d: while the Battlefield is Uncontrolled, 'you' refers to no one and the instruction is ignored — the Turn Player is not 'you'.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "fp-defend",
+                "source_object": "bf1"
+              }
+            },
+            {
+              "fixture_id": "fortified position#d0ee5f77:missing_information",
+              "kind": "missing_information",
+              "run": "resolution",
+              "chain_item_kind": "triggered",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf1",
+                  "field": "controller",
+                  "value": "p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5.b"
+                ]
+              },
+              "why": "355.5.b: the Unit is chosen when the triggered ability is finalized; without the controller's choice the resolution waits.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "fp-defend",
+                "source_object": "bf1"
+              }
+            }
+          ]
+        },
+        {
+          "clause_id": "fortified position#9b46c0cf",
+          "text": "It gains [Shield 2] this combat.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 814.2",
+            "Core 466.7.c",
+            "Core 814.1.c"
+          ],
+          "execution": {
+            "kind": "resolution",
+            "passive": {
+              "battlefield_fields": {
+                "defend_triggers": [
+                  {
+                    "trigger_id": "fp-defend",
+                    "controller_order": 0,
+                    "effect_program_id": "fortified position#9b46c0cf",
+                    "optional_at_finalize": false
+                  }
+                ]
+              }
+            },
+            "program": {
+              "program_id": "fortified position#9b46c0cf",
+              "effects": [
+                {
+                  "op": "grant_keyword",
+                  "effect_id": "grant",
+                  "keyword": "shield",
+                  "value": 2,
+                  "duration": "this_combat",
+                  "source": "$source_object",
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit"
+                  }
+                }
+              ]
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "fortified position#9b46c0cf:positive",
+              "kind": "positive",
+              "run": "resolution",
+              "chain_item_kind": "triggered",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf1",
+                  "field": "controller",
+                  "value": "p1"
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "base:p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "trigger_finalization",
+                  "controller": "$controller",
+                  "value": [
+                    "u3"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u3",
+                      "keyword_modifiers",
+                      0,
+                      "keyword"
+                    ],
+                    "equals": "shield"
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u3",
+                      "keyword_modifiers",
+                      0,
+                      "value"
+                    ],
+                    "equals": 2
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u3",
+                      "keyword_modifiers",
+                      0,
+                      "combat_id"
+                    ],
+                    "equals": "$combat_id"
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u3",
+                      "keyword_modifiers",
+                      0,
+                      "target_identity"
+                    ],
+                    "equals": "u3@0"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.2",
+                  "Core 466.7.c",
+                  "Core 124"
+                ]
+              },
+              "why": "the chosen Unit — any Unit, the text says nothing about 'here' — gains a granted Shield 2 bound to its identity and to this Combat; it expires with the Combat (466.7.c).",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "fp-defend",
+                "source_object": "bf1"
+              }
+            },
+            {
+              "fixture_id": "fortified position#9b46c0cf:sums_with_printed",
+              "kind": "positive",
+              "run": "resolution",
+              "chain_item_kind": "triggered",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf1",
+                  "field": "controller",
+                  "value": "p1"
+                },
+                {
+                  "set": "u1",
+                  "field": "keywords",
+                  "value": [
+                    "shield"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "trigger_finalization",
+                  "controller": "$controller",
+                  "value": [
+                    "u1"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 6
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.2",
+                  "Core 814.1.c"
+                ]
+              },
+              "why": "814.2: granted to the lone defender that already has a printed Shield, the values sum — Shield 3 while it defends.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "fp-defend",
+                "source_object": "bf1"
+              }
+            },
+            {
+              "fixture_id": "fortified position#9b46c0cf:negative",
+              "kind": "negative",
+              "run": "effect",
+              "setup": [
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "base:p1"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "grant",
+                "object_id": "u3"
+              },
+              "expected": {
+                "outcome": "unsupported",
+                "rule_locators": [
+                  "Core 466.7.c"
+                ]
+              },
+              "why": "'this combat' outside a Combat: there is no Combat for the grant to belong to; the engine declines rather than invent one.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "bf1"
+              }
+            },
+            {
+              "fixture_id": "fortified position#9b46c0cf:missing_information",
+              "kind": "missing_information",
+              "run": "resolution",
+              "chain_item_kind": "triggered",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf1",
+                  "field": "controller",
+                  "value": "p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5.b"
+                ]
+              },
+              "why": "the grant needs the chosen Unit.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "fp-defend",
+                "source_object": "bf1"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "card": "Gentlemen's Duel",
       "card_key": "gentlemen's duel",
       "clauses": [
@@ -2689,28 +3493,491 @@
         {
           "clause_id": "gentlemen's duel#fd48e5d0",
           "text": "Then choose an enemy unit.",
-          "claim": "unsupported",
-          "unsupported_mechanics": [
-            "mutual_damage_equal_might"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 355.5",
-            "Core 355.16"
+            "Core 355.9",
+            "Core 740.1.b"
           ],
-          "notes": "The choice exists only to feed 'They deal damage equal to their Mights to each other'; without that mechanic the choice has no executable consequence, so it is not claimed.",
-          "fixtures": []
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "gentlemen's duel#26a3859b",
+              "effects": [
+                {
+                  "op": "modify_might",
+                  "effect_id": "buff",
+                  "amount": 3,
+                  "duration": "this_turn",
+                  "source": "$chain_item",
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit",
+                    "controller_relation": "friendly"
+                  }
+                },
+                {
+                  "op": "mutual_damage_current_might",
+                  "effect_id": "duel",
+                  "units": [
+                    {
+                      "decision_ref": "t",
+                      "chosen_zone_class": "board",
+                      "kind": "unit",
+                      "controller_relation": "friendly"
+                    },
+                    {
+                      "decision_ref": "e",
+                      "chosen_zone_class": "board",
+                      "kind": "unit",
+                      "controller_relation": "enemy"
+                    }
+                  ]
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "$chain_item",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 2,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "gentlemen's duel#26a3859b"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "gentlemen's duel#fd48e5d0:positive",
+              "kind": "positive",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "$controller",
+                  "value": [
+                    "u1"
+                  ]
+                },
+                {
+                  "decision_id": "e",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "$controller",
+                  "value": [
+                    "u2"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 355.5"
+                ]
+              },
+              "why": "both choices are made at play (355.5): the friendly Unit of the earlier instruction and the enemy Unit.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "gentlemen's duel#fd48e5d0:negative",
+              "kind": "negative",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "$controller",
+                  "value": [
+                    "u1"
+                  ]
+                },
+                {
+                  "decision_id": "e",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "$controller",
+                  "value": [
+                    "u1"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "target_illegal_at_play",
+                "rule_locators": [
+                  "Core 355.9",
+                  "Core 740.1.b"
+                ]
+              },
+              "why": "740.1.b: an enemy Unit has an opposing controller; naming the caster's own Unit as the enemy is refused at play.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "gentlemen's duel#fd48e5d0:missing_information",
+              "kind": "missing_information",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "decisions": [
+                {
+                  "decision_id": "t",
+                  "kind": "target_selection",
+                  "stage": "play_declaration",
+                  "controller": "$controller",
+                  "value": [
+                    "u1"
+                  ]
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5"
+                ]
+              },
+              "why": "with the friendly Unit chosen but not the enemy, the play waits for the enemy choice.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            }
+          ]
         },
         {
           "clause_id": "gentlemen's duel#26a3859b",
           "text": "They deal damage equal to their Mights to each other.",
-          "claim": "unsupported",
-          "unsupported_mechanics": [
-            "mutual_damage_equal_might"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 417"
+            "Core 417.1.d",
+            "Core 417.6.b.3",
+            "Core 417.6.b.4",
+            "Core 143.2.b",
+            "Core 359.3.e.5"
           ],
-          "fixtures": []
+          "execution": {
+            "kind": "resolution",
+            "program": {
+              "program_id": "gentlemen's duel#26a3859b",
+              "effects": [
+                {
+                  "op": "modify_might",
+                  "effect_id": "buff",
+                  "amount": 3,
+                  "duration": "this_turn",
+                  "source": "$chain_item",
+                  "target": {
+                    "decision_ref": "t",
+                    "chosen_zone_class": "board",
+                    "kind": "unit",
+                    "controller_relation": "friendly"
+                  }
+                },
+                {
+                  "op": "mutual_damage_current_might",
+                  "effect_id": "duel",
+                  "units": [
+                    {
+                      "decision_ref": "t",
+                      "chosen_zone_class": "board",
+                      "kind": "unit",
+                      "controller_relation": "friendly"
+                    },
+                    {
+                      "decision_ref": "e",
+                      "chosen_zone_class": "board",
+                      "kind": "unit",
+                      "controller_relation": "enemy"
+                    }
+                  ]
+                }
+              ]
+            },
+            "play_declaration": {
+              "chain_item": {
+                "id": "$chain_item",
+                "object_kind": "spell",
+                "timing": "action"
+              },
+              "cost": {
+                "base": {
+                  "energy": 2,
+                  "power": {}
+                }
+              },
+              "effect_program_id": "gentlemen's duel#26a3859b"
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "gentlemen's duel#26a3859b:positive",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [],
+              "compiled_target": {
+                "effect_id": "buff",
+                "object_id": "u1"
+              },
+              "compiled_units": {
+                "effect_id": "duel",
+                "object_ids": [
+                  "u1",
+                  "u2"
+                ]
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied",
+                  "applied"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u2",
+                      "damage"
+                    ],
+                    "equals": 6
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "damage"
+                    ],
+                    "equals": 5
+                  },
+                  {
+                    "trace_path": [
+                      "effect",
+                      1,
+                      "might_snapshot"
+                    ],
+                    "equals": {
+                      "u1": 6,
+                      "u2": 4
+                    }
+                  },
+                  {
+                    "trace_path": [
+                      "effect",
+                      1,
+                      "not_combat_damage"
+                    ],
+                    "equals": true
+                  }
+                ],
+                "rule_locators": [
+                  "Core 417.1.d",
+                  "Core 417.6.b.3",
+                  "Core 143.2.b"
+                ]
+              },
+              "why": "after the +3 the friendly Unit reads 6 and the enemy 4; both Mights are read before either Deal, then the two Deals happen at once with the Units as sources (417.6.b.3), not as Combat Damage.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "gentlemen's duel#26a3859b:negative",
+              "kind": "negative",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "to_hand": "u2"
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "buff",
+                "object_id": "u1"
+              },
+              "compiled_units": {
+                "effect_id": "duel",
+                "object_ids": [
+                  "u1",
+                  "u2"
+                ],
+                "bound_identities": {
+                  "u2": "u2@0"
+                }
+              },
+              "expected": {
+                "outcome": "supported",
+                "trace_outcomes": [
+                  "applied",
+                  "ignored_illegal_target"
+                ],
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "damage"
+                    ],
+                    "equals": 1
+                  }
+                ],
+                "rule_locators": [
+                  "Core 359.3.e.5",
+                  "Core 359.3.e.14"
+                ]
+              },
+              "why": "359.3.e.5: the enemy Unit left the board before resolution; every Deal of the pair relates to it, so the pair is skipped while the earlier +3 stands.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "gentlemen's duel#26a3859b:prevented_one_way",
+              "kind": "positive",
+              "timing": "resolution",
+              "setup": [
+                {
+                  "replacement": {
+                    "replacement_id": "guard",
+                    "controller": "p2",
+                    "source_object": "u2",
+                    "mode": "reduce_damage",
+                    "event_op": "deal_damage",
+                    "optional": false,
+                    "uses_remaining": null,
+                    "prevent_remaining": 1,
+                    "target_object_id": "u2"
+                  }
+                }
+              ],
+              "compiled_target": {
+                "effect_id": "buff",
+                "object_id": "u1"
+              },
+              "compiled_units": {
+                "effect_id": "duel",
+                "object_ids": [
+                  "u1",
+                  "u2"
+                ]
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u2",
+                      "damage"
+                    ],
+                    "equals": 5
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "damage"
+                    ],
+                    "equals": 5
+                  }
+                ],
+                "rule_locators": [
+                  "Core 437.1",
+                  "Core 417.1.d"
+                ]
+              },
+              "why": "a Prevent on the enemy Unit replaces the Deal to it only; the other Deal is untouched.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            },
+            {
+              "fixture_id": "gentlemen's duel#26a3859b:missing_information",
+              "kind": "missing_information",
+              "timing": "open",
+              "setup": [
+                {
+                  "to_hand": "c1"
+                },
+                {
+                  "resources": "p1",
+                  "energy": 2,
+                  "power": {}
+                }
+              ],
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "target_selection_required",
+                "rule_locators": [
+                  "Core 355.5"
+                ]
+              },
+              "why": "both Units are chosen at play; nothing chosen, nothing resolves.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1"
+              }
+            }
+          ]
         }
       ]
     },
@@ -3512,13 +4779,789 @@
         {
           "clause_id": "maddened marauder#7a66c5e8",
           "text": "[Tank]",
-          "claim": "unsupported",
-          "unsupported_mechanics": [
-            "tank",
-            "combat_state"
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 815.1.b",
+            "Core 815.1.c",
+            "Core 815.1.c.1",
+            "Core 815.1.c.2",
+            "Core 465.2.c.6",
+            "Core 465.2.c.8"
           ],
-          "rule_locators": [],
-          "fixtures": []
+          "execution": {
+            "kind": "combat_step",
+            "passive": {
+              "object_fields": {
+                "keywords": [
+                  "tank"
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 3,
+                    "u4": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "combat_status": "damage_assigned"
+                  },
+                  {
+                    "trace_path": [
+                      "assignments",
+                      "attacker",
+                      "amounts",
+                      "u1"
+                    ],
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 815.1.b",
+                  "Core 465.2.c.6"
+                ]
+              },
+              "why": "815.1.b / 465.2.c.6: the attacker's 7 damage goes to the Tank in full first, then the plain Unit, then the Backline Unit; the defender's own assignment has one opposing Unit and proceeds by itself.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 2,
+                    "u3": 3,
+                    "u4": 2
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 815.1.c.2",
+                  "Core 465.2.c.3"
+                ]
+              },
+              "why": "815.1.c.2: Units without Tank are invalid assignments until every Tank has lethal damage assigned; lethal to the plain Unit while the Tank is short is refused.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:backline_before_plain",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u4": 3,
+                    "u3": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 465.2.c.6"
+                ]
+              },
+              "why": "465.2.c.6: Tank first, then the Unit with no requirement, then Backline last; Backline before the plain Unit is refused even with the Tank satisfied.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:two_tanks",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u3",
+                  "field": "keywords",
+                  "value": [
+                    "tank"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 3,
+                    "u4": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 815.1.c.2",
+                  "Core 465.2.c.7"
+                ]
+              },
+              "why": "815.1.c.2 / 465.2.c.7: with two Tanks damage may go to either first, but both need lethal before the Backline Unit.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:two_tanks_negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u3",
+                  "field": "keywords",
+                  "value": [
+                    "tank"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 1,
+                    "u4": 3
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 815.1.c.2"
+                ]
+              },
+              "why": "the Backline Unit received lethal damage while the second Tank was still short.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:both_requirements_choice",
+              "kind": "missing_information",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u1",
+                  "field": "keyword_modifiers",
+                  "value": [
+                    {
+                      "modifier_id": "granted-backline",
+                      "keyword": "backline",
+                      "source": "fixture",
+                      "duration": "this_turn",
+                      "turn_id": "turn-0",
+                      "target_identity": "u1@0"
+                    }
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 3,
+                    "u4": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 465.2.c.8"
+                ]
+              },
+              "why": "465.2.c.8: a Unit that has Tank and Backline cannot satisfy both; the assigning player must choose which applies, and an assignment that names no choice is refused.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:both_requirements_tank",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u1",
+                  "field": "keyword_modifiers",
+                  "value": [
+                    {
+                      "modifier_id": "granted-backline",
+                      "keyword": "backline",
+                      "source": "fixture",
+                      "duration": "this_turn",
+                      "turn_id": "turn-0",
+                      "target_identity": "u1@0"
+                    }
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "amounts": {
+                      "u1": 3,
+                      "u3": 3,
+                      "u4": 1
+                    },
+                    "requirement_choices": {
+                      "u1": "tank"
+                    }
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 465.2.c.8"
+                ]
+              },
+              "why": "choosing Tank: the Unit is assigned first.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:both_requirements_backline",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u1",
+                  "field": "keyword_modifiers",
+                  "value": [
+                    {
+                      "modifier_id": "granted-backline",
+                      "keyword": "backline",
+                      "source": "fixture",
+                      "duration": "this_turn",
+                      "turn_id": "turn-0",
+                      "target_identity": "u1@0"
+                    }
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "amounts": {
+                      "u3": 3,
+                      "u4": 3,
+                      "u1": 1
+                    },
+                    "requirement_choices": {
+                      "u1": "backline"
+                    }
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 465.2.c.8"
+                ]
+              },
+              "why": "choosing Backline: the plain Unit first, then the two Backline Units in either order.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "maddened marauder#7a66c5e8:missing_information",
+              "kind": "missing_information",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 5
+                },
+                {
+                  "set": "u4",
+                  "field": "keywords",
+                  "value": []
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": null,
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "damage_assignment_required",
+                "rule_locators": [
+                  "Core 465.2.c"
+                ]
+              },
+              "why": "465.2.c: the attacker assigns; with two plain Units behind the Tank and 5 damage, the leftover 2 may go to either, so the engine stops and names the assigning player.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            }
+          ]
         },
         {
           "clause_id": "maddened marauder#8815ca64",
@@ -3792,13 +5835,240 @@
         {
           "clause_id": "master yi - honed#ba87989e",
           "text": "[Ganking]",
-          "claim": "unsupported",
-          "unsupported_mechanics": [
-            "ganking",
-            "combat_state"
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 810.1.b",
+            "Core 810.1.c",
+            "Core 810.1.c.1",
+            "Core 144.4.c"
           ],
-          "rule_locators": [],
-          "fixtures": []
+          "execution": {
+            "kind": "standard_move",
+            "passive": {
+              "object_fields": {
+                "keywords": [
+                  "ganking"
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "master yi - honed#ba87989e:positive",
+              "kind": "positive",
+              "run": "standard_move",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf2",
+                  "field": "controller",
+                  "value": null
+                }
+              ],
+              "declaration": {
+                "schema_version": "riftbound-standard-move-declaration.v1",
+                "actor": "$controller",
+                "units": [
+                  "$source_object"
+                ],
+                "destination": {
+                  "kind": "battlefield",
+                  "battlefield": "bf2"
+                },
+                "cost_confirmation": {
+                  "exhaust_confirmed": true
+                }
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "in": "bf2",
+                    "object": "u1"
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "exhausted"
+                    ],
+                    "equals": true
+                  }
+                ],
+                "rule_locators": [
+                  "Core 810.1.b",
+                  "Core 144.4.c.1",
+                  "Core 144.2"
+                ]
+              },
+              "why": "810.1.b: with Ganking the Unit's Standard Move may go from a Battlefield to another Battlefield; the exhaust cost is unchanged (144.2).",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "master yi - honed#ba87989e:negative",
+              "kind": "negative",
+              "run": "standard_move",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "bf1"
+                },
+                {
+                  "battlefield": "bf2",
+                  "field": "controller",
+                  "value": null
+                }
+              ],
+              "declaration": {
+                "schema_version": "riftbound-standard-move-declaration.v1",
+                "actor": "$controller",
+                "units": [
+                  "u3"
+                ],
+                "destination": {
+                  "kind": "battlefield",
+                  "battlefield": "bf2"
+                },
+                "cost_confirmation": {
+                  "exhaust_confirmed": true
+                }
+              },
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "ganking_required",
+                "rule_locators": [
+                  "Core 144.4.c",
+                  "Core 810.1.b"
+                ]
+              },
+              "why": "144.4.c: without Ganking a Unit cannot move from a Battlefield to another Battlefield.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "master yi - honed#ba87989e:adds_nothing_else",
+              "kind": "positive",
+              "run": "standard_move",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                }
+              ],
+              "declaration": {
+                "schema_version": "riftbound-standard-move-declaration.v1",
+                "actor": "$controller",
+                "units": [
+                  "$source_object"
+                ],
+                "destination": {
+                  "kind": "base"
+                },
+                "cost_confirmation": {
+                  "exhaust_confirmed": true
+                }
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "in": "p1.base",
+                    "object": "u1"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 810.1.c.1",
+                  "Core 144.4.b"
+                ]
+              },
+              "why": "810.1.c.1: Ganking adds an option and removes none; the Unit may still move from a Battlefield to its own Base.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "master yi - honed#ba87989e:exhausted",
+              "kind": "negative",
+              "run": "standard_move",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "exhausted",
+                  "value": true
+                },
+                {
+                  "battlefield": "bf2",
+                  "field": "controller",
+                  "value": null
+                }
+              ],
+              "declaration": {
+                "schema_version": "riftbound-standard-move-declaration.v1",
+                "actor": "$controller",
+                "units": [
+                  "$source_object"
+                ],
+                "destination": {
+                  "kind": "battlefield",
+                  "battlefield": "bf2"
+                },
+                "cost_confirmation": {
+                  "exhaust_confirmed": true
+                }
+              },
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "unit_exhausted",
+                "rule_locators": [
+                  "Core 144.2",
+                  "Core 810.1.c.2"
+                ]
+              },
+              "why": "810.1.c.2: Ganking has no activation cost of its own — the Standard Move's exhaust cost still applies, so an exhausted Unit cannot Gank.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "master yi - honed#ba87989e:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
+            }
+          ]
         },
         {
           "clause_id": "master yi - honed#0be72750",
@@ -4125,6 +6395,247 @@
               "fixture_id": "master yi - meditative#d767e9dd:missing_information",
               "kind": "not_applicable",
               "why": "a passive or trigger has no play-time decision of its own; recorded as n/a."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Master Yi - Wuju Bladesman (Starter)",
+      "card_key": "master yi - wuju bladesman (starter)",
+      "clauses": [
+        {
+          "clause_id": "master yi - wuju bladesman (starter)#96ecd8e6",
+          "text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "legend_zone_object"
+          ],
+          "rule_locators": [
+            "Core 740.2.a",
+            "Core 740.1.a",
+            "Core 365.1"
+          ],
+          "execution": {
+            "kind": "combat_open",
+            "passive": {
+              "state_lists": {
+                "might_auras": [
+                  {
+                    "modifier_id": "wuju",
+                    "source_object": "$source_object",
+                    "controller": "$controller",
+                    "amount": 2,
+                    "condition": {
+                      "kind": "friendly_unit_defends_alone"
+                    }
+                  }
+                ]
+              }
+            },
+            "probe": {
+              "program": {
+                "program_id": "probe:mark-1",
+                "effects": [
+                  {
+                    "op": "deal_damage",
+                    "effect_id": "probe",
+                    "object_id": "u2",
+                    "amount": 1
+                  }
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "master yi - wuju bladesman (starter)#96ecd8e6:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "add": "g1",
+                  "owner": "p1",
+                  "kind": "gear",
+                  "to": "base:p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 5
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.a",
+                  "Core 365.1"
+                ]
+              },
+              "why": "a friendly Unit that is the lone defender gets +2 from the aura. The Legend is not modelled as a Game Object (no Legend Zone), so the aura is anchored to a gear at the controller's Base; that limit is the named unsupported mechanic.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "g1"
+              }
+            },
+            {
+              "fixture_id": "master yi - wuju bladesman (starter)#96ecd8e6:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "add": "g1",
+                  "owner": "p1",
+                  "kind": "gear",
+                  "to": "base:p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.a"
+                ]
+              },
+              "why": "'defends': a lone attacker is not covered.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "g1"
+              }
+            },
+            {
+              "fixture_id": "master yi - wuju bladesman (starter)#96ecd8e6:with_company",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "add": "g1",
+                  "owner": "p1",
+                  "kind": "gear",
+                  "to": "base:p1"
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.a"
+                ]
+              },
+              "why": "a second friendly Unit there means the defender is not alone.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "g1"
+              }
+            },
+            {
+              "fixture_id": "master yi - wuju bladesman (starter)#96ecd8e6:source_absent",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "add": "g1",
+                  "owner": "p1",
+                  "kind": "gear",
+                  "to": "trash:p1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 365.1"
+                ]
+              },
+              "why": "365.1: an aura whose source is not on the board contributes nothing.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "g1"
+              }
+            },
+            {
+              "fixture_id": "master yi - wuju bladesman (starter)#96ecd8e6:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
             }
           ]
         }
@@ -5261,6 +7772,180 @@
       ]
     },
     {
+      "card": "Mountain Drake",
+      "card_key": "mountain drake",
+      "clauses": [
+        {
+          "clause_id": "mountain drake#a95a0531",
+          "text": "(no rules text)",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 464.2.c.3",
+            "Core 465.2.a",
+            "Core 143.2"
+          ],
+          "execution": {
+            "kind": "combat_open",
+            "intrinsic": "unit_combat",
+            "passive": {
+              "object_fields": {}
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "mountain drake#a95a0531:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation",
+                      "role"
+                    ],
+                    "equals": "attacker"
+                  },
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 464.2.c.3",
+                  "Core 143.2"
+                ]
+              },
+              "why": "a Unit with no rules text has only its intrinsic Combat behaviour: present at the Contested Battlefield when Combat opens, it gains its controller's designation (464.2.c.3) and fights with its printed Might.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "mountain drake#a95a0531:contributes_might",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "trace_path": [
+                      "assignments",
+                      "attacker",
+                      "available"
+                    ],
+                    "equals": 3
+                  },
+                  {
+                    "combat_status": "damage_assigned"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 465.2.a",
+                  "Core 465.2.c"
+                ]
+              },
+              "why": "465.2.a: its Might is the attacker's Combat Damage; with one opposing Unit the sole legal assignment proceeds.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "mountain drake#a95a0531:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation"
+                    ],
+                    "equals": null
+                  }
+                ],
+                "rule_locators": [
+                  "Core 464.2.c.3",
+                  "Core 740.2.c"
+                ]
+              },
+              "why": "a Unit at its Base is not at the Combat Battlefield and gains no designation; it is not in combat (740.2.c).",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "mountain drake#a95a0531:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "card": "Mystic Poro",
       "card_key": "mystic poro",
       "text_status_note": "Vision (817) is a Predict (436): looking at a Secret card and choosing whether to recycle it. The look yields own-private knowledge and the recycle is a resolution-stage choice (DP-07); neither the information boundary nor the private-fact adapter is modelled this round, so the clause stays unsupported with the reason named. No program is written; no card-level or deck-level support follows from the other R3-A1 cards.",
@@ -5281,6 +7966,180 @@
             "Core 128.4"
           ],
           "fixtures": []
+        }
+      ]
+    },
+    {
+      "card": "Playful Phantom",
+      "card_key": "playful phantom",
+      "clauses": [
+        {
+          "clause_id": "playful phantom#a95a0531",
+          "text": "(no rules text)",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 464.2.c.3",
+            "Core 465.2.a",
+            "Core 143.2"
+          ],
+          "execution": {
+            "kind": "combat_open",
+            "intrinsic": "unit_combat",
+            "passive": {
+              "object_fields": {}
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "playful phantom#a95a0531:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation",
+                      "role"
+                    ],
+                    "equals": "attacker"
+                  },
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 464.2.c.3",
+                  "Core 143.2"
+                ]
+              },
+              "why": "a Unit with no rules text has only its intrinsic Combat behaviour: present at the Contested Battlefield when Combat opens, it gains its controller's designation (464.2.c.3) and fights with its printed Might.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "playful phantom#a95a0531:contributes_might",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "trace_path": [
+                      "assignments",
+                      "attacker",
+                      "available"
+                    ],
+                    "equals": 3
+                  },
+                  {
+                    "combat_status": "damage_assigned"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 465.2.a",
+                  "Core 465.2.c"
+                ]
+              },
+              "why": "465.2.a: its Might is the attacker's Combat Damage; with one opposing Unit the sole legal assignment proceeds.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "playful phantom#a95a0531:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation"
+                    ],
+                    "equals": null
+                  }
+                ],
+                "rule_locators": [
+                  "Core 464.2.c.3",
+                  "Core 740.2.c"
+                ]
+              },
+              "why": "a Unit at its Base is not at the Combat Battlefield and gains no designation; it is not in combat (740.2.c).",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "playful phantom#a95a0531:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
+            }
+          ]
         }
       ]
     },
@@ -6097,19 +8956,967 @@
       ]
     },
     {
+      "card": "Stalwart Poro",
+      "card_key": "stalwart poro",
+      "clauses": [
+        {
+          "clause_id": "stalwart poro#8b9eb35a",
+          "text": "[Shield]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 814.1.c",
+            "Core 814.1.d",
+            "Core 814.1.b.3"
+          ],
+          "execution": {
+            "kind": "combat_open",
+            "passive": {
+              "object_fields": {
+                "keywords": [
+                  "shield"
+                ]
+              }
+            },
+            "probe": {
+              "program": {
+                "program_id": "probe:mark-1",
+                "effects": [
+                  {
+                    "op": "deal_damage",
+                    "effect_id": "probe",
+                    "object_id": "u2",
+                    "amount": 1
+                  }
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "stalwart poro#8b9eb35a:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 4
+                  },
+                  {
+                    "might": "u1",
+                    "equals": 3
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation",
+                      "role"
+                    ],
+                    "equals": "defender"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.1.c",
+                  "Core 814.1.b.3"
+                ]
+              },
+              "why": "814.1.c: while the Unit is a defender it has +X Might, X being 1 when omitted (814.1.b.3); the printed Might and its modifiers are untouched.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stalwart poro#8b9eb35a:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation",
+                      "role"
+                    ],
+                    "equals": "attacker"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.1.d"
+                ]
+              },
+              "why": "814.1.d: being a defender means having gained the Defender designation; an attacker with Shield gets nothing.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stalwart poro#8b9eb35a:no_combat",
+              "kind": "negative",
+              "run": "effect",
+              "setup": [],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.1.d"
+                ]
+              },
+              "why": "outside a Combat no Unit has a designation, so Shield adds nothing.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stalwart poro#8b9eb35a:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "card": "Stormclaw Ursine",
       "card_key": "stormclaw ursine",
       "clauses": [
         {
           "clause_id": "stormclaw ursine#7a66c5e8",
           "text": "[Tank]",
-          "claim": "unsupported",
-          "unsupported_mechanics": [
-            "tank",
-            "combat_state"
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 815.1.b",
+            "Core 815.1.c",
+            "Core 815.1.c.1",
+            "Core 815.1.c.2",
+            "Core 465.2.c.6",
+            "Core 465.2.c.8"
           ],
-          "rule_locators": [],
-          "fixtures": []
+          "execution": {
+            "kind": "combat_step",
+            "passive": {
+              "object_fields": {
+                "keywords": [
+                  "tank"
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 3,
+                    "u4": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "combat_status": "damage_assigned"
+                  },
+                  {
+                    "trace_path": [
+                      "assignments",
+                      "attacker",
+                      "amounts",
+                      "u1"
+                    ],
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 815.1.b",
+                  "Core 465.2.c.6"
+                ]
+              },
+              "why": "815.1.b / 465.2.c.6: the attacker's 7 damage goes to the Tank in full first, then the plain Unit, then the Backline Unit; the defender's own assignment has one opposing Unit and proceeds by itself.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 2,
+                    "u3": 3,
+                    "u4": 2
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 815.1.c.2",
+                  "Core 465.2.c.3"
+                ]
+              },
+              "why": "815.1.c.2: Units without Tank are invalid assignments until every Tank has lethal damage assigned; lethal to the plain Unit while the Tank is short is refused.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:backline_before_plain",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u4": 3,
+                    "u3": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 465.2.c.6"
+                ]
+              },
+              "why": "465.2.c.6: Tank first, then the Unit with no requirement, then Backline last; Backline before the plain Unit is refused even with the Tank satisfied.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:two_tanks",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u3",
+                  "field": "keywords",
+                  "value": [
+                    "tank"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 3,
+                    "u4": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 815.1.c.2",
+                  "Core 465.2.c.7"
+                ]
+              },
+              "why": "815.1.c.2 / 465.2.c.7: with two Tanks damage may go to either first, but both need lethal before the Backline Unit.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:two_tanks_negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u3",
+                  "field": "keywords",
+                  "value": [
+                    "tank"
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 1,
+                    "u4": 3
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 815.1.c.2"
+                ]
+              },
+              "why": "the Backline Unit received lethal damage while the second Tank was still short.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:both_requirements_choice",
+              "kind": "missing_information",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u1",
+                  "field": "keyword_modifiers",
+                  "value": [
+                    {
+                      "modifier_id": "granted-backline",
+                      "keyword": "backline",
+                      "source": "fixture",
+                      "duration": "this_turn",
+                      "turn_id": "turn-0",
+                      "target_identity": "u1@0"
+                    }
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "u1": 3,
+                    "u3": 3,
+                    "u4": 1
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "illegal",
+                "reason_code": "damage_assignment_illegal",
+                "rule_locators": [
+                  "Core 465.2.c.8"
+                ]
+              },
+              "why": "465.2.c.8: a Unit that has Tank and Backline cannot satisfy both; the assigning player must choose which applies, and an assignment that names no choice is refused.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:both_requirements_tank",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u1",
+                  "field": "keyword_modifiers",
+                  "value": [
+                    {
+                      "modifier_id": "granted-backline",
+                      "keyword": "backline",
+                      "source": "fixture",
+                      "duration": "this_turn",
+                      "turn_id": "turn-0",
+                      "target_identity": "u1@0"
+                    }
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "amounts": {
+                      "u1": 3,
+                      "u3": 3,
+                      "u4": 1
+                    },
+                    "requirement_choices": {
+                      "u1": "tank"
+                    }
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 465.2.c.8"
+                ]
+              },
+              "why": "choosing Tank: the Unit is assigned first.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:both_requirements_backline",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u1",
+                  "field": "keyword_modifiers",
+                  "value": [
+                    {
+                      "modifier_id": "granted-backline",
+                      "keyword": "backline",
+                      "source": "fixture",
+                      "duration": "this_turn",
+                      "turn_id": "turn-0",
+                      "target_identity": "u1@0"
+                    }
+                  ]
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": [
+                {
+                  "decision_id": "damage_assignment:$combat_id:attacker",
+                  "stage": "procedure",
+                  "kind": "damage_assignment",
+                  "controller": "$opponent",
+                  "value": {
+                    "amounts": {
+                      "u3": 3,
+                      "u4": 3,
+                      "u1": 1
+                    },
+                    "requirement_choices": {
+                      "u1": "backline"
+                    }
+                  }
+                }
+              ],
+              "expected": {
+                "outcome": "supported",
+                "rule_locators": [
+                  "Core 465.2.c.8"
+                ]
+              },
+              "why": "choosing Backline: the plain Unit first, then the two Backline Units in either order.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "stormclaw ursine#7a66c5e8:missing_information",
+              "kind": "missing_information",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u1",
+                  "field": "damage",
+                  "value": 0
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 7
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1"
+                },
+                {
+                  "add": "u4",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 3,
+                  "to": "bf1",
+                  "keywords": [
+                    "backline"
+                  ]
+                },
+                {
+                  "set": "u2",
+                  "field": "base_might",
+                  "value": 5
+                },
+                {
+                  "set": "u4",
+                  "field": "keywords",
+                  "value": []
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent",
+                "phase": "showdown_closed"
+              },
+              "run": "combat_step",
+              "step": "assign",
+              "decisions": null,
+              "expected": {
+                "outcome": "decision_required",
+                "reason_code": "damage_assignment_required",
+                "rule_locators": [
+                  "Core 465.2.c"
+                ]
+              },
+              "why": "465.2.c: the attacker assigns; with two plain Units behind the Tank and 5 damage, the leftover 2 may go to either, so the engine stops and names the assigning player.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            }
+          ]
         },
         {
           "clause_id": "stormclaw ursine#2b579376",
@@ -7079,6 +10886,380 @@
                 "chain_item": "spell-1",
                 "source_object": "bf1"
               }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Wielder of Water",
+      "card_key": "wielder of water",
+      "clauses": [
+        {
+          "clause_id": "wielder of water#d2dd9c3e",
+          "text": "While I'm attacking or defending alone, I have +2 :rb_might:.",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 740.2.a",
+            "Core 364.3",
+            "Core 740.1.a"
+          ],
+          "execution": {
+            "kind": "combat_open",
+            "passive": {
+              "object_fields": {
+                "conditional_might": [
+                  {
+                    "modifier_id": "wielder",
+                    "amount": 2,
+                    "condition": {
+                      "kind": "attacking_or_defending_alone"
+                    }
+                  }
+                ]
+              }
+            },
+            "probe": {
+              "program": {
+                "program_id": "probe:mark-1",
+                "effects": [
+                  {
+                    "op": "deal_damage",
+                    "effect_id": "probe",
+                    "object_id": "u2",
+                    "amount": 1
+                  }
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "wielder of water#d2dd9c3e:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 5
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.a",
+                  "Core 364.3"
+                ]
+              },
+              "why": "740.2.a: alone means no other friendly Unit at the location; the lone attacker has the +2 while the passive's condition holds (364.3).",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "wielder of water#d2dd9c3e:defending_alone",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 5
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.a"
+                ]
+              },
+              "why": "the condition names either designation: a lone defender has it too.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "wielder of water#d2dd9c3e:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                },
+                {
+                  "add": "u3",
+                  "owner": "p1",
+                  "kind": "unit",
+                  "might": 2,
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.a",
+                  "Core 740.1.a"
+                ]
+              },
+              "why": "a friendly Unit at the same location means the Unit is not alone; the enemy's presence never mattered.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "wielder of water#d2dd9c3e:no_combat",
+              "kind": "negative",
+              "run": "effect",
+              "setup": [],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 740.2.c"
+                ]
+              },
+              "why": "attacking or defending needs a designation; a Unit alone at its Base outside Combat is neither.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "wielder of water#d2dd9c3e:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "card": "Zephyr Sage",
+      "card_key": "zephyr sage",
+      "clauses": [
+        {
+          "clause_id": "zephyr sage#8b9eb35a",
+          "text": "[Shield]",
+          "claim": "full",
+          "unsupported_mechanics": [],
+          "rule_locators": [
+            "Core 814.1.c",
+            "Core 814.1.d",
+            "Core 814.1.b.3"
+          ],
+          "execution": {
+            "kind": "combat_open",
+            "passive": {
+              "object_fields": {
+                "keywords": [
+                  "shield"
+                ]
+              }
+            },
+            "probe": {
+              "program": {
+                "program_id": "probe:mark-1",
+                "effects": [
+                  {
+                    "op": "deal_damage",
+                    "effect_id": "probe",
+                    "object_id": "u2",
+                    "amount": 1
+                  }
+                ]
+              }
+            }
+          },
+          "fixtures": [
+            {
+              "fixture_id": "zephyr sage#8b9eb35a:positive",
+              "kind": "positive",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$opponent"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 4
+                  },
+                  {
+                    "might": "u1",
+                    "equals": 3
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation",
+                      "role"
+                    ],
+                    "equals": "defender"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.1.c",
+                  "Core 814.1.b.3"
+                ]
+              },
+              "why": "814.1.c: while the Unit is a defender it has +X Might, X being 1 when omitted (814.1.b.3); the printed Might and its modifiers are untouched.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "zephyr sage#8b9eb35a:negative",
+              "kind": "negative",
+              "setup": [
+                {
+                  "move": "u1",
+                  "to": "bf1"
+                },
+                {
+                  "move": "u2",
+                  "to": "bf1"
+                }
+              ],
+              "combat": {
+                "battlefield": "bf1",
+                "attacker": "$controller"
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "u1",
+                      "combat_designation",
+                      "role"
+                    ],
+                    "equals": "attacker"
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.1.d"
+                ]
+              },
+              "why": "814.1.d: being a defender means having gained the Defender designation; an attacker with Shield gets nothing.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "zephyr sage#8b9eb35a:no_combat",
+              "kind": "negative",
+              "run": "effect",
+              "setup": [],
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "effective_might": "u1",
+                    "equals": 3
+                  }
+                ],
+                "rule_locators": [
+                  "Core 814.1.d"
+                ]
+              },
+              "why": "outside a Combat no Unit has a designation, so Shield adds nothing.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "u1"
+              }
+            },
+            {
+              "fixture_id": "zephyr sage#8b9eb35a:missing_information",
+              "kind": "not_applicable",
+              "why": "a characteristic or intrinsic behaviour has no decision of its own; recorded as n/a."
             }
           ]
         }

@@ -17,6 +17,9 @@ Must hold:
   - inventory.draft.json is untouched by this pipeline;
   - text hashes equal the inventory's (the same "current text");
   - Vision clauses, when present, are unsupported with predict named;
+  - C-32: every R3-A3 clause is in the pack; vanilla Units are probed through
+    intrinsic unit_combat; Tank covers Backline and Tank+Backline; the Legend
+    clause stays partial; combat blocks and declarations are portable;
   - C-25: every R3-A2 clause is in the pack; passives and probes are portable;
     "When you play me" has a play_entry fixture; the four stale cards derive
     stale with no program_id / test_ids even though they carry programs;
@@ -183,6 +186,41 @@ def main() -> int:
         errors.append("two Power domains for a Deflect cost were not left to the opponent's allocation")
     if rows.get("traveling merchant#92d985e1:recall_is_not_a_move", {}).get("outcome") != "supported":
         errors.append("the recall probe for Traveling Merchant did not run")
+    # C-32 (ADR-0008 §11): every R3-A3 clause is in the pack; vanilla Units are
+    # probed through a named intrinsic behaviour and carry no invented program;
+    # Tank fixtures cover Backline and the Tank+Backline choice; Cannon Barrage
+    # has its no-Combat no-op; Fortified Position its uncontrolled case; the
+    # Legend clause stays partial; combat scenarios and declarations are portable.
+    r3a3 = {c["clause_id"] for card in inventory["cards"] for c in card["clauses"] if "R3-A3" in c["notes"]}
+    if missing := sorted(r3a3 - in_pack):
+        errors.append(f"R3-A3 clauses absent from the pack: {missing}")
+    for card in programs["cards"]:
+        for clause in card["clauses"]:
+            execution = clause.get("execution") or {}
+            fixtures = clause.get("fixtures", [])
+            if clause["text"] == "(no rules text)" and (execution.get("intrinsic") != "unit_combat" or "program" in execution):
+                errors.append(f"{clause['clause_id']}: a vanilla Unit must be probed through intrinsic unit_combat and carry no program")
+            if clause["text"] == "[Tank]" and clause["claim"] == "full":
+                ids = {fx["fixture_id"].rsplit(":", 1)[1] for fx in fixtures}
+                if not {"backline_before_plain", "both_requirements_choice", "both_requirements_tank", "both_requirements_backline", "two_tanks"} <= ids:
+                    errors.append(f"{clause['clause_id']}: Tank claims full without the Backline and Tank+Backline fixtures (ADR-0008 §8)")
+            if clause["clause_id"] == "cannon barrage#3c6691c9" and not any(fx.get("run") == "effect" and fx["kind"] == "negative" for fx in fixtures):
+                errors.append("Cannon Barrage lacks the no-Combat no-op fixture")
+            if clause["clause_id"] == "fortified position#d0ee5f77" and not any(fx["fixture_id"].endswith(":uncontrolled") for fx in fixtures):
+                errors.append("Fortified Position lacks the uncontrolled-Battlefield fixture (190.6.d)")
+            for fx in fixtures:
+                if fx.get("run") in rp.COMBAT_RUNS and not (fx.get("combat") or fx.get("run") == "standard_move"):
+                    errors.append(f"{fx['fixture_id']} runs a combat path without a combat block")
+    wuju = manifest_rows.get("master yi - wuju bladesman (starter)#96ecd8e6", {})
+    if wuju.get("status") != "partial" or "legend_zone_object" not in wuju.get("unsupported_mechanics", []):
+        errors.append("Master Yi - Wuju Bladesman must derive partial naming the unmodelled Legend object")
+    for cid in ("mountain drake#a95a0531", "playful phantom#a95a0531"):
+        row = manifest_rows.get(cid, {})
+        if row.get("status") != "full" or not row.get("program_id", "").startswith("intrinsic:unit_combat:") or row.get("implemented_ops"):
+            errors.append(f"{cid} derived {row.get('status')} / {row.get('program_id')}; expected full with an intrinsic probe and no ops")
+    for cid in ("maddened marauder#7a66c5e8", "stormclaw ursine#7a66c5e8", "master yi - honed#ba87989e", "stalwart poro#8b9eb35a", "zephyr sage#8b9eb35a", "wielder of water#d2dd9c3e", "cannon barrage#3c6691c9", "fortified position#d0ee5f77", "fortified position#9b46c0cf", "gentlemen's duel#fd48e5d0", "gentlemen's duel#26a3859b"):
+        if manifest_rows.get(cid, {}).get("status") != "full":
+            errors.append(f"{cid} derived {manifest_rows.get(cid, {}).get('status')}; its procedure gates pass, so the fixtures must carry it to full")
     # committed outputs are current and deterministic
     outs = rp.outputs()
     for path, text in outs.items():
@@ -202,7 +240,7 @@ def main() -> int:
     if errors:
         print("FAILED: R3-A1 program checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print(f"OK: R3-A1 / R3-A2 card programs — {len(manifest['cards'])} cards, {fixtures} fixtures passing with cited expectations; derived clause statuses full={counts['full']} partial={counts['partial']} unsupported={counts['unsupported']} stale={counts['stale']}; manifest draft, validated, deterministic, inventory untouched.")
+    print(f"OK: R3-A1 / R3-A2 / R3-A3 card programs — {len(manifest['cards'])} cards, {fixtures} fixtures passing with cited expectations; derived clause statuses full={counts['full']} partial={counts['partial']} unsupported={counts['unsupported']} stale={counts['stale']}; manifest draft, validated, deterministic, inventory untouched.")
     return 0
 
 

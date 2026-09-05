@@ -37,6 +37,22 @@ unit, a Move that raises a move trigger) — and a `run` path: `play`,
 entry_location and then resolves by the entry procedure, so "When you play
 me" is observed as the Pending item it schedules). A passive-only clause
 derives `program_id` passive:<clause_id> with no implemented ops.
+
+C-32 (ADR-0008) adds Combat scenarios. A fixture with a `combat` block
+({battlefield, attacker: $controller | $opponent, phase: open |
+showdown_closed}) is staged and opened by the real procedures after its
+setup (Contested applied by the named attacker), optionally closed by every
+player passing Focus, and optionally edited afterwards (`after_combat_setup`,
+for Units that arrive after the opening); the Combat's id is then bound as
+`$combat_id`, also inside composite strings such as decision ids. Runs:
+`combat_open` observes the opening itself (designations, Combat Chain,
+Battlefield triggers, the reads of effective_might); `combat_step` runs one
+named Combat step (`assign`, `deal`, ...) with procedure-stage decisions
+bound to the combined timing/effect hash; `standard_move` runs the player
+action with a bound declaration; `resolution` / `effect` under a `combat`
+block resolve on the Combat Chain (a spell, or a `triggered` item of the
+bound source) with the Combat context. A vanilla Unit declares
+`intrinsic: unit_combat` and is probed, never given invented text.
 """
 
 from __future__ import annotations
@@ -60,21 +76,24 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from card_behavior_coverage import validate_manifest  # noqa: E402
 from check_effect_ir import base_state  # noqa: E402
+from combat import STEPS as COMBAT_STEPS, combined_input_hash, open_combat, stage_combat, standard_move  # noqa: E402
 from check_rules_core import fixture as timing_fixture, item as timing_item  # noqa: E402
 from effect_ir import CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, current_might, effective_might, entity_identity, hash_value, object_identity  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
 from resolution_bridge import resolve_with_program  # noqa: E402
-from rules_core import state_hash  # noqa: E402
+from rules_core import pass_focus, state_hash  # noqa: E402
 
 PROGRAMS_VERSION = "r3a1-card-programs.v3"
 CLAIMS = {"full", "partial", "unsupported", "stale"}
 FIXTURE_KINDS = {"positive", "negative", "missing_information", "target_invalidated", "not_applicable"}
-SYMBOLS = ("$controller", "$opponent", "$card", "$chain_item", "$source_object")
+SYMBOLS = ("$controller", "$opponent", "$card", "$chain_item", "$source_object", "$combat_id")
 # Bound by the engine when the effect runs (grant_replacement binds
 # $granted_target at grant time), never by a scenario.
 ENGINE_SYMBOLS = {"$granted_target"}
-RUNS = {"play", "resolution", "effect", "play_entry"}
+COMBAT_RUNS = {"combat_open", "combat_step", "standard_move"}
+RUNS = {"play", "resolution", "effect", "play_entry"} | COMBAT_RUNS
+_SYMBOL_TOKEN = re.compile(r"\$([a-z_]+)")
 PLAYERS = ("p1", "p2")
 CLOSED_WINDOW = {"add_window_closed": True, "confirmed_by": "fixture: human-confirmed closed Add window"}
 
@@ -114,13 +133,16 @@ def bind(template: Any, bindings: dict[str, str]) -> Any:
         return {k: bind(v, bindings) for k, v in template.items()}
     if isinstance(template, list):
         return [bind(v, bindings) for v in template]
-    if isinstance(template, str) and template.startswith("$"):
+    if isinstance(template, str) and "$" in template:
         if template in ENGINE_SYMBOLS:
             return template
-        key = template[1:]
-        if key not in bindings:
-            raise ValueError(f"unbound symbol {template}")
-        return bindings[key]
+
+        def substitute(match: re.Match) -> str:
+            key = match.group(1)
+            if key not in bindings:
+                raise ValueError(f"unbound symbol ${key}")
+            return bindings[key]
+        return _SYMBOL_TOKEN.sub(substitute, template)  # whole symbols and composites such as "damage_assignment:$combat_id:attacker"
     return template
 
 
@@ -198,7 +220,10 @@ def _new_object(owner: str, **fields: Any) -> dict[str, Any]:
 
 
 def materialise(setup: list[dict[str, Any]]) -> dict[str, Any]:
-    state = base_state()
+    return apply_edits(base_state(), setup)
+
+
+def apply_edits(state: dict[str, Any], setup: list[dict[str, Any]] | None) -> dict[str, Any]:
     for edit in setup or []:
         if "move" in edit:
             _detach(state, edit["move"])
@@ -219,7 +244,7 @@ def materialise(setup: list[dict[str, Any]]) -> dict[str, Any]:
         elif "damage_modifier" in edit:
             state.setdefault("damage_modifiers", []).append(copy.deepcopy(edit["damage_modifier"]))
         elif "battlefield" in edit:
-            state["battlefields"][edit["battlefield"]][edit["field"]] = edit["value"]
+            state["battlefields"].setdefault(edit["battlefield"], {"controller": None, "objects": []})[edit["field"]] = edit["value"]
         elif "to_hand" in edit:
             obj = edit["to_hand"]; _detach(state, obj)
             state["players"][state["objects"][obj]["owner"]]["zones"]["hand"].append(obj)
@@ -251,6 +276,8 @@ def apply_passive(state: dict[str, Any], passive: dict[str, Any], bindings: dict
     bound = bind(copy.deepcopy(passive), bindings)
     if bound.get("object_fields"):
         state["objects"][bound.get("object", bindings["source_object"])].update(bound["object_fields"])
+    if bound.get("battlefield_fields"):
+        state["battlefields"][bound.get("battlefield", bindings["source_object"])].update(bound["battlefield_fields"])
     for key, entries in (bound.get("state_lists") or {}).items():
         state.setdefault(key, []).extend(entries)
 
@@ -266,8 +293,17 @@ def _compile_targets(program: dict[str, Any], fixture: dict[str, Any], state: di
     the identities the objects had when chosen (ADR-0005 §1, §3)."""
     single = fixture.get("compiled_target")
     multi = fixture.get("compiled_targets")
+    units = fixture.get("compiled_units")
     single_ids = (single.get("effect_ids") or [single["effect_id"]]) if single else []
     for effect in program["effects"]:
+        if units and effect.get("effect_id") == units["effect_id"] and isinstance(effect.get("units"), list):
+            compiled = []
+            for selector, object_id in zip(effect["units"], units["object_ids"]):
+                concrete = {k: v for k, v in selector.items() if k != "decision_ref"}
+                concrete["object_id"] = object_id
+                concrete["bound_identity"] = (units.get("bound_identities") or {}).get(object_id) or entity_identity(state, object_id) or f"{object_id}@0"
+                compiled.append(concrete)
+            effect["units"] = compiled
         if single and effect.get("effect_id") in single_ids and isinstance(effect.get("target"), dict):
             selector = {k: v for k, v in effect["target"].items() if k != "decision_ref"}
             selector["object_id"] = single["object_id"]
@@ -286,7 +322,7 @@ def _compile_targets(program: dict[str, Any], fixture: dict[str, Any], state: di
             effect["targets"] = {"min": effect["targets"]["min"], "max": effect["targets"]["max"], "selectors": selectors}
 
 
-def _decisions(fixture: dict[str, Any], state: dict[str, Any], bindings: dict[str, str]) -> dict[str, Any] | None:
+def _decisions(fixture: dict[str, Any], state: dict[str, Any], bindings: dict[str, str], input_hash: str | None = None) -> dict[str, Any] | None:
     entries = fixture.get("decisions")
     if not entries:
         return None
@@ -295,8 +331,11 @@ def _decisions(fixture: dict[str, Any], state: dict[str, Any], bindings: dict[st
         entry = bind(copy.deepcopy(entry), bindings)
         if entry["kind"] in {"target_selection", "card_selection"} and "selection_identities" not in entry:
             entry["selection_identities"] = {o: entity_identity(state, o) or f"{o}@0" for o in entry["value"]}
+        if entry["kind"] == "damage_assignment" and "selection_identities" not in entry:
+            amounts = entry["value"]["amounts"] if isinstance(entry["value"], dict) and "amounts" in entry["value"] else entry["value"]
+            entry["selection_identities"] = {o: entity_identity(state, o) or f"{o}@0" for o in amounts}
         out.append(entry)
-    return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(state), "decisions": out}
+    return {"schema_version": "engine-decisions.v1", "input_hash": input_hash or hash_value(state), "decisions": out}
 
 
 def _declaration(clause: dict[str, Any], fixture: dict[str, Any], program_id: str | None, bindings: dict[str, str]) -> dict[str, Any]:
@@ -319,6 +358,44 @@ def _declaration(clause: dict[str, Any], fixture: dict[str, Any], program_id: st
 
 # ------------------------------------------------------------------- running --
 
+def _combat_scenario(fixture: dict[str, Any], bindings: dict[str, str], mirror, state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, str]]:
+    """Stage and open the fixture's Combat by the real procedures (ADR-0008
+    §2), optionally close its Showdown by Focus passes, then apply the edits
+    that happen after the opening. Returns (timing, effect, open result,
+    bindings with $combat_id)."""
+    spec = fixture["combat"]
+    battlefield = spec.get("battlefield", "bf1")
+    attacker = bind(spec.get("attacker", "$controller"), bindings)
+    state["battlefields"][battlefield]["contested"] = True
+    state["battlefields"][battlefield]["contested_by"] = attacker
+    timing = mirror(_timing("open"))
+    staged = stage_combat(timing, state)
+    if not staged.get("committed"):
+        raise ValueError(f"combat scenario could not stage: {staged.get('reason') or staged.get('errors')}")
+    opened = open_combat(staged["next_timing_state"], state)
+    if not opened.get("committed"):
+        raise ValueError(f"combat scenario could not open: {opened.get('reason') or opened.get('errors')}")
+    timing, state = opened["next_timing_state"], opened["next_effect_state"]
+    if spec.get("phase") == "showdown_closed":
+        if timing["chain"]["items"]:
+            raise ValueError("the Combat Chain must resolve before the Showdown can close")
+        focus = timing["showdown"]["focus"]
+        order = timing["turn_order"]
+        for player in order[order.index(focus):] + order[:order.index(focus)]:
+            passed = pass_focus(timing, player)
+            if not passed.get("applied"):
+                raise ValueError(f"combat scenario could not pass Focus: {passed.get('reason_code')}")
+            timing = passed["next_state"]
+    if fixture.get("after_combat_setup"):
+        state = apply_edits(copy.deepcopy(state), mirror(fixture["after_combat_setup"]))
+    return timing, state, opened, {**bindings, "combat_id": timing["combat"]["combat_id"]}
+
+
+def _combat_context(timing: dict[str, Any]) -> dict[str, Any]:
+    record = timing["combat"]
+    return {"combat": {"combat_id": record["combat_id"], "battlefield": record["battlefield"], "battlefield_identity": record["battlefield_identity"]}}
+
+
 def _execute(clause: dict[str, Any], fixture: dict[str, Any], receipts: dict[str, dict[str, Any]], bindings: dict[str, str], *, mirrored: bool = False) -> dict[str, Any]:
     """One run of a fixture under given bindings. Returns the engine result,
     the engine-check, and the next state, or raises for malformed fixtures."""
@@ -336,6 +413,57 @@ def _execute(clause: dict[str, Any], fixture: dict[str, Any], receipts: dict[str
         if execution.get("passive"):
             apply_passive(state, execution["passive"], bindings)
         return state
+
+    if fixture.get("combat"):
+        before = scenario()
+        timing, state, opened, bindings = _combat_scenario(fixture, bindings, mirror, before)
+        if run == "combat_open":
+            check = build_engine_check("combat_step", opened, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(before)})
+            return {"result": opened, "check": check, "next_state": opened["next_effect_state"], "state": before, "timing": timing, "bindings": bindings}
+        if run == "combat_step":
+            decisions = _decisions(fixture, state, bindings, combined_input_hash(timing, state))
+            result = COMBAT_STEPS[fixture["step"]](timing, state, decisions)
+            check = build_engine_check("combat_step", result, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(state)})
+            return {"result": result, "check": check, "next_state": result.get("next_effect_state"), "state": state, "timing": timing, "bindings": bindings}
+        if run == "resolution":
+            other = next(p for p in timing["players"] if p != bindings["controller"])
+            scheduled = [i["id"] for i in timing["chain"]["items"]]
+            if scheduled and fixture.get("chain_item_kind") == "triggered" and scheduled == [bindings["chain_item"]]:
+                # the opening itself scheduled the bound trigger (a Battlefield's own): finalize it and let both players pass
+                timing["chain"]["items"][0]["status"] = "finalized"
+                timing["chain"]["consecutive_passes"] = [bindings["controller"], other]
+            elif scheduled:
+                raise ValueError(f"the fixture's Combat opened with a Combat Chain {scheduled}; resolve it first")
+            elif fixture.get("chain_item_kind") == "triggered":
+                item = timing_item(bindings["chain_item"], bindings["controller"], "ability", "triggered", "finalized", "standard")
+                item.update({"source_object": bindings["source_object"], "effect_program_id": program_id, "optional_at_finalize": False, "trigger_kind": "triggered", "batch_sequence": 0, "batch_id": "fixture"})
+                timing["chain"] = {"initiated_by": "triggered_ability", "items": [item], "consecutive_passes": [bindings["controller"], other]}
+            else:
+                timing["chain"] = {"initiated_by": "played_card", "items": [timing_item(bindings["chain_item"], bindings["controller"], "spell", "reaction", "finalized")], "consecutive_passes": [bindings["controller"], other]}
+            timing["priority"] = other
+            program = _program(template, bindings)
+            _compile_targets(program, fixture, state)
+            decisions = _decisions(fixture, state, bindings)
+            result = resolve_with_program(timing, bindings["chain_item"], state, program, engine_decisions=decisions)
+            check = build_engine_check("resolution", result, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(state), "effect_program": canonical_hash(program)})
+            return {"result": result, "check": check, "next_state": result.get("next_effect_state"), "state": state, "timing": timing, "bindings": bindings}
+        if run == "effect":
+            program = _program({**template, **fixture.get("program_override", {})}, bindings)
+            _compile_targets(program, fixture, state)
+            decisions = _decisions(fixture, state, bindings)
+            result = apply_program(state, program, decisions=decisions, context=_combat_context(timing))
+            check = build_engine_check("effect", result, input_hashes={"effect_state": hash_value(state), "effect_program": canonical_hash(program)})
+            return {"result": result, "check": check, "next_state": result.get("next_state"), "state": state, "bindings": bindings}
+        raise ValueError(f"run {run!r} does not take a combat block")
+    if run == "standard_move":
+        timing = mirror(_timing(fixture.get("timing", "open")))
+        state = scenario()
+        declaration = bind(copy.deepcopy(fixture.get("declaration") or probe.get("declaration")), bindings)
+        result = standard_move(timing, state, declaration)
+        check = build_engine_check("standard_move", result, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(state), "move_declaration": canonical_hash(declaration)})
+        return {"result": result, "check": check, "next_state": result.get("next_effect_state"), "state": state, "timing": timing, "bindings": bindings}
+    if run in COMBAT_RUNS:
+        raise ValueError(f"run {run!r} needs a combat block")
 
     if fixture.get("receipt_from", "absent") != "absent":
         source = fixture["receipt_from"]
@@ -395,14 +523,43 @@ def _execute(clause: dict[str, Any], fixture: dict[str, Any], receipts: dict[str
     return {"result": result, "check": check, "next_state": result.get("next_state"), "state": state}
 
 
+def _nested_reason_code(value: Any) -> str | None:
+    """The first reason_code in the result, breadth-first (top level first)."""
+    queue = [value]
+    while queue:
+        item = queue.pop(0)
+        if isinstance(item, dict):
+            if isinstance(item.get("reason_code"), str):
+                return item["reason_code"]
+            queue.extend(item.values())
+        elif isinstance(item, list):
+            queue.extend(item)
+    return None
+
+
 def _compare(fixture: dict[str, Any], run: dict[str, Any]) -> list[str]:
-    expected = fixture["expected"]
+    expected = bind(copy.deepcopy(fixture["expected"]), run.get("bindings") or fixture["bindings"]) if "$" in json.dumps(fixture["expected"]) else fixture["expected"]
     result, check, next_state = run["result"], run["check"], run["next_state"]
     problems: list[str] = []
+    for item in expected.get("assert", []):
+        if "trace_path" in item:
+            value = result.get("trace")
+            for key in item["trace_path"]:
+                if isinstance(value, list) and isinstance(key, int):
+                    value = value[key] if key < len(value) else None
+                else:
+                    value = (value or {}).get(key) if isinstance(value, dict) else None
+            if value != item["equals"]:
+                problems.append(f"trace.{'.'.join(str(k) for k in item['trace_path'])} = {value!r}, expected {item['equals']!r}")
+        elif "combat_status" in item:
+            status = (result.get("next_timing_state") or {}).get("combat", {}).get("status") if isinstance(result.get("next_timing_state"), dict) else None
+            if status != item["combat_status"]:
+                problems.append(f"combat status {status!r}, expected {item['combat_status']!r}")
     if check["outcome"] != expected["outcome"]:
         problems.append(f"outcome {check['outcome']!r}, expected {expected['outcome']!r} ({check['reason']['message'][:160]})")
-    if "reason_code" in expected and result.get("reason_code") != expected["reason_code"]:
-        problems.append(f"reason_code {result.get('reason_code')!r}, expected {expected['reason_code']!r}")
+    got_code = _nested_reason_code(result)  # a refusal nested in a resolution's effect result carries the code
+    if "reason_code" in expected and got_code != expected["reason_code"]:
+        problems.append(f"reason_code {got_code!r}, expected {expected['reason_code']!r}")
     if "trace_outcomes" in expected:
         trace = result.get("trace")
         events = trace.get("effect", []) if isinstance(trace, dict) else (trace or [])
@@ -425,6 +582,8 @@ def _compare(fixture: dict[str, Any], run: dict[str, Any]) -> list[str]:
             items = [i["id"] for i in result.get("next_timing_state", {}).get("chain", {}).get("items", [])]
             if items != item["chain_items"]:
                 problems.append(f"timing chain items {items}, expected {item['chain_items']}")
+        elif "trace_path" in item or "combat_status" in item:
+            pass  # handled above
         elif "receipt_absent" in item:
             if any(c["cost_id"] == item["receipt_absent"] for c in result.get("cost_receipt", {}).get("components", [])):
                 problems.append(f"receipt component {item['receipt_absent']} is present")
@@ -471,7 +630,10 @@ def _strip_volatile(result: dict[str, Any]) -> dict[str, Any]:
         if isinstance(v, dict):
             return {k: strip(x) for k, x in v.items() if not (k.endswith("_hash") or k in {"input_hashes", "check_id", "result_hash", "play_id", "chain_item_id", "program_id", "manifest_id"})}
         if isinstance(v, list):
-            return [strip(x) for x in v]
+            stripped = [strip(x) for x in v]
+            if stripped and all(isinstance(x, str) and re.fullmatch(r"p[12]", x) for x in stripped):
+                return sorted(stripped)  # a list of player ids is a set here: its alphabetical order is not player-relative
+            return stripped
         if isinstance(v, str) and v.startswith("sha256:"):
             return "<hash>"
         if isinstance(v, str):
@@ -525,7 +687,8 @@ def template_is_portable(clause: dict[str, Any]) -> bool:
         return True
     templates = {k: v for k, v in execution.items() if k in {"program", "declaration", "play_declaration", "passive"}}
     probes = [fx.get("probe") for fx in clause.get("fixtures", []) if fx.get("probe")]
-    return not literal_players(templates) and not literal_players(probes)
+    per_fixture = [{k: v for k, v in fx.items() if k in {"declaration", "combat", "decisions"}} for fx in clause.get("fixtures", [])]
+    return not literal_players(templates) and not literal_players(probes) and not literal_players(per_fixture)
 
 
 def derive_status(clause: dict[str, Any], rows: list[dict[str, Any]]) -> tuple[str, str]:
@@ -572,6 +735,8 @@ def build_manifest(programs: dict[str, Any] | None = None, report: dict[str, Any
                 program_id = None
             elif "program" in execution:
                 program_id = execution["program"]["program_id"]
+            elif execution.get("intrinsic"):
+                program_id = f"intrinsic:{execution['intrinsic']}:{clause['clause_id']}"  # a vanilla Unit's inherent Combat behaviour, probed — never invented text
             elif execution.get("passive"):
                 program_id = f"passive:{clause['clause_id']}"
             else:
@@ -587,7 +752,7 @@ def build_manifest(programs: dict[str, Any] | None = None, report: dict[str, Any
                 "clause_id": clause["clause_id"], "source_id": base["source_id"], "locator": base["locator"], "text_hash": base["text_hash"],
                 "status": status, "program_id": program_id, "implemented_ops": ops, "unsupported_mechanics": unsupported,
                 "test_ids": [r["fixture_id"] for r in rows if not r.get("skipped") and r["passed"]] if status in {"full", "partial"} else [],
-                "notes": f"{'C-25' if execution.get('passive') or any(fx.get('probe') or fx.get('run') for fx in clause.get('fixtures', [])) else 'C-18'} derived: {reason}."
+                "notes": f"{'C-32' if execution.get('intrinsic') or any(fx.get('combat') or fx.get('run') in COMBAT_RUNS for fx in clause.get('fixtures', [])) else 'C-25' if execution.get('passive') or any(fx.get('probe') or fx.get('run') for fx in clause.get('fixtures', [])) else 'C-18'} derived: {reason}."
                          f"{' passive state, probed by fixtures.' if execution.get('passive') else ''} text: {clause['text']} | rules: {', '.join(clause.get('rule_locators', []))}",
             })
         statuses = {c["status"] for c in clause_rows}
@@ -604,7 +769,7 @@ def build_manifest(programs: dict[str, Any] | None = None, report: dict[str, Any
 
 
 def render_report(report: dict[str, Any], manifest: dict[str, Any]) -> str:
-    lines = ["# R3-A1 / R3-A2 card programs — fixture run and derived statuses", "",
+    lines = ["# R3-A1 / R3-A2 / R3-A3 card programs — fixture run and derived statuses", "",
              "Generated by `r3a1_programs.py`. Templates carry symbolic references and are bound per fixture; every executed fixture also runs mirrored (players swapped) and must agree. Passives (the state a card contributes) are applied to the scenario and probed; `play_entry` fixtures play a permanent and resolve its entry. Statuses are derived from fixtures passing against the engine, never copied from a claim. The manifest stays `draft`; nothing here activates a pack.", ""]
     statuses = {c["clause_id"]: c["status"] for card in manifest["cards"] for c in card["clauses"]}
     card_statuses = {c["canonical_name"]: c["behavior_status"] for c in manifest["cards"]}

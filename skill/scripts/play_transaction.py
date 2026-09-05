@@ -535,6 +535,11 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 candidates.append((sel, None))
             if "decision_ref" in effect["targets"]:
                 candidates.append((dict(effect["targets"].get("restrictions", {}), chosen_zone_class=effect["targets"].get("restrictions", {}).get("chosen_zone_class", "board")), effect["targets"]["decision_ref"]))
+        if isinstance(effect.get("units"), list):
+            # ADR-0008 s7: a composite instruction's Units are chosen at play like any target (355.5)
+            for sel in effect["units"]:
+                if isinstance(sel, dict):
+                    candidates.append((sel, sel.get("decision_ref")))
         for template, ref in candidates:
             if ref is None:
                 if derive_targeted(template):

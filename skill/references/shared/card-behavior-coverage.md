@@ -51,6 +51,18 @@ implemented ops. Legends are not modelled as objects, so a Legend's passive
 is anchored to a stand-in gear and the clause stays `partial` naming that
 limit; the four stale cards carry programs but derive no `program_id`.
 
+The R3-A3 batch (C-32, ADR-0008) runs its clauses inside Combats the real
+procedures stage and open: a fixture's `combat` block names the Battlefield
+and who applied Contested, the Showdown can be closed by Focus passes, and
+the clause is observed through `combat_open` (designations, the Combat
+Chain, the Combat-relative Might reads), one `combat_step` such as the
+damage assignment with the assigning player's decision, a `standard_move`
+declaration, or a resolution on the Combat Chain with the Combat context.
+A vanilla Unit derives `intrinsic:unit_combat:<clause_id>` from probes of
+its inherent Combat behaviour; `(no rules text)` is never an invented
+instruction. Tank derives full only with the Backline and Tank+Backline
+fixtures beside it; the Master Yi Legend clause stays `partial`.
+
 ## Deck Coach projection
 
 `deck-behavior-coverage.v1` currently covers resolved Main Deck copies only.

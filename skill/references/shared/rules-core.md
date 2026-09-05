@@ -144,11 +144,26 @@ of the Battlefield form the chain that must empty before the Combat closes
 point only when every Battlefield was scored this turn and otherwise draws
 instead, and a draw that would Burn Out refuses the whole transaction as
 unsupported. The victory condition is reported as facts (threshold_met,
-strict_leader, tied_at_threshold; 472) and never enacted. Formerly, where 466.5 would
-establish control or make the Battlefield Uncontrolled it abstains as
-`unsupported: battlefield_control_resolution` with the handoff facts — G2 is
-not invented here — and it only clears Contested for a controller who
-already holds the Battlefield.
+strict_leader, tied_at_threshold; 472) and never enacted.
+
+Non-Combat Showdowns (ADR-0009 §3, §4, §9) live in the same module. At a
+quiet Cleanup boundary `stage_showdown` rebuilds `staged_showdowns` from the
+board (Contested applied, the applier's Units present, no opposing Units,
+nothing ongoing there; 316.8.b, 323.8, 323.8.a) and `open_showdown` opens one
+from a Neutral Open State — several staged need the Turn Player's
+`location_selection` `showdown_location` (323.12) — as a `non_combat`
+Showdown whose Focus goes to the player who applied Contested (345), before
+323.13 stages any Combat. When every player has passed Focus in it,
+`pass_focus` marks the Showdown `closing` and `resolve_battlefield_control`
+is the next required procedure (348.2): exactly one player with Units there
+establishes control and may Conquer, no Units at all closes the Showdown and
+leaves control loss to the next board Cleanup (323.6), both players present
+is refused as unsupported. `run_board_cleanup` applies, per Battlefield with
+no ongoing Showdown or Combat (a merely staged one exempts nothing), 323.6
+control loss, 323.11 Contested removal and 323.11.a re-application by the
+one non-controller present (two different ones are unsupported), and reports
+the victory facts; a Cleanup boundary runs it before `stage_showdown` /
+`open_showdown`, which run before `stage_combat` / `open_combat`.
 
 `validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open

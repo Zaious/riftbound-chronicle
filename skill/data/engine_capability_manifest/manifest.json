@@ -1,14 +1,14 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:1f04e2f183d216f36ab7655c",
-  "capability_set_id": "sha256:1f04e2f183d216f36ab7655cfc2aca962ff6498fcc37d436ed75c3b00b2b26a1",
+  "manifest_id": "capability-manifest:385564b8b8665356d46c360b",
+  "capability_set_id": "sha256:385564b8b8665356d46c360b8c8eb9eed4d0af09545c74b456de8e490e68edf8",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:6d969e7d229578ba762aaa576f7f87527b736cbeb13ff7c79691ebdd3c0396b7",
+    "value": "sha256:efe38218e49e2fc23faa0f6a4d947728956a5c513407c803039716c493aff875",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:1c18d2e0bc62f79bc07ee07f14b230172d1e4814d574cec6fa2c2e297b517d28"
+        "sha256": "sha256:06b8947cde808093ac11b4cd309508175126af5039b4a268e9ac5144a6d20a76"
       },
       {
         "path": "effect_ir.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:feca444742e4b47685f082bf65fb6bf0b851d92a6b5f4596a166074605e7ef8d"
+        "sha256": "sha256:4628ac05c550e082c21fcc43708302262f19f9c49b86630fcfe23ae922ae96c7"
       },
       {
         "path": "combat.py",
@@ -28,7 +28,7 @@
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:4d4f8089b683fa0e29026e901a2eed4d854774e259c06147038a7322ef1abdb5"
+        "sha256": "sha256:7365cfa9bac83e5996a2d179219790323bd9dc9166f4c82cc966f075b800f74e"
       }
     ]
   },
@@ -96,7 +96,9 @@
         "battlefield_control_resolution",
         "conquer_scoring",
         "score_triggers",
-        "victory_facts"
+        "victory_facts",
+        "non_combat_showdown",
+        "board_cleanup"
       ],
       "unsupported_scope": [
         "team_scoring",
@@ -481,7 +483,7 @@
       "id": "pass_focus",
       "rule_locators": [
         "Core 347.2–347.2.b",
-        "Core 348–348.1",
+        "Core 348–348.2",
         "Core 465.2"
       ]
     },
@@ -586,6 +588,15 @@
         "Core 355.10.b",
         "Core 359.3.e.2",
         "Core 359.3.e.5"
+      ]
+    },
+    {
+      "id": "board_cleanup",
+      "rule_locators": [
+        "Core 190.4.a",
+        "Core 190.4.c",
+        "Core 323.6",
+        "Core 323.11–323.11.a"
       ]
     },
     {
@@ -799,6 +810,17 @@
       ]
     },
     {
+      "id": "non_combat_showdown",
+      "rule_locators": [
+        "Core 316.8.b–316.8.b.1.a",
+        "Core 323.8–323.8.a",
+        "Core 323.12",
+        "Core 344.2",
+        "Core 345",
+        "Core 348.2–348.2.a.1"
+      ]
+    },
+    {
       "id": "object_identity",
       "rule_locators": [
         "Core 124–124.1",
@@ -907,6 +929,8 @@
     "Core 184–186",
     "Core 190.3.a.1",
     "Core 190.4",
+    "Core 190.4.a",
+    "Core 190.4.c",
     "Core 190.6.a",
     "Core 190.6.d",
     "Core 308.1.a",
@@ -917,6 +941,7 @@
     "Core 313",
     "Core 313.1",
     "Core 316",
+    "Core 316.8.b–316.8.b.1.a",
     "Core 316.9.b",
     "Core 317.1",
     "Core 317.2.c",
@@ -924,10 +949,14 @@
     "Core 319.8",
     "Core 320–321",
     "Core 323.1",
+    "Core 323.11–323.11.a",
+    "Core 323.12",
     "Core 323.13",
     "Core 323.14",
     "Core 323.2–323.2.c",
     "Core 323.2–323.5",
+    "Core 323.6",
+    "Core 323.8–323.8.a",
     "Core 323.9",
     "Core 324.2",
     "Core 328–330",
@@ -943,6 +972,7 @@
     "Core 340",
     "Core 340.1–340.4",
     "Core 341–348",
+    "Core 344.2",
     "Core 345",
     "Core 346",
     "Core 347",
@@ -950,7 +980,9 @@
     "Core 347.2",
     "Core 347.2–347.2.b",
     "Core 348.2.a–348.2.a.1",
+    "Core 348.2–348.2.a.1",
     "Core 348–348.1",
+    "Core 348–348.2",
     "Core 349",
     "Core 354–358",
     "Core 355.1.a",

@@ -76,7 +76,7 @@ SUPPORTED_PROCEDURES = {
     ],
     "add_pending_item": ["Core 328–330", "Core 334–337", "Core 358.4"],
     "pass_priority": ["Core 338.1.b", "Core 339"],
-    "pass_focus": ["Core 347.2–347.2.b", "Core 348–348.1", "Core 465.2"],
+    "pass_focus": ["Core 347.2–347.2.b", "Core 348–348.2", "Core 465.2"],
     "complete_resolution": [
         "Core 337.2", "Core 339.1", "Core 340", "Core 346", "Core 429.2.a",
     ],
@@ -710,8 +710,9 @@ def pass_focus(state: dict[str, Any], actor: str) -> dict[str, Any]:
     When all have, the Showdown closes (348): a Combat Showdown proceeds to
     the Combat Damage Step (348.1, 465.2) — the record moves to
     showdown_closed and the state stays a Showdown State (343.1) with no
-    discretionary play; a Non-Combat Showdown's close establishes control
-    (348.2), which is G2 and is refused as unsupported here."""
+    discretionary play; a Non-Combat Showdown becomes `closing`, and
+    battlefield_control.resolve_battlefield_control (348.2, ADR-0009 §4) is
+    the next required procedure."""
     verdict = validate_timing(state, {"actor": actor, "kind": "pass_focus", "timing": "default"})
     if verdict.get("legal") is not True:
         return _result(state, valid=verdict.get("valid", True), applied=False, reason_code=verdict.get("reason_code"), legality=verdict)
@@ -730,15 +731,22 @@ def pass_focus(state: dict[str, Any], actor: str) -> dict[str, Any]:
         locators = ["Core 347.2", "Core 347.2.b"]
     else:
         combat = new_state.get("combat")
-        if new_state["showdown"].get("kind") != "combat" or combat is None or combat.get("status") != "open":
-            return _result(state, valid=True, applied=False, unsupported=True, reason_code="unsupported_battlefield_control_resolution",
-                           explanation="every player passed Focus, so a Non-Combat Showdown closes and control is established (348.2) — that is the G2 milestone, not modelled here",
-                           rule_locators=["Core 348", "Core 348.2", "Core 348.2.a"])
-        combat["status"] = "showdown_closed"
-        new_state["showdown"]["focus_passes"] = []
-        new_state["priority"] = new_state["showdown"]["focus"]
-        transition = {"type": "combat_showdown_closed", "actor": actor, "combat_id": combat["combat_id"], "showdown_closed": True}
-        locators = ["Core 347.2.a", "Core 348", "Core 348.1", "Core 465.2"]
+        if new_state["showdown"].get("kind") == "non_combat":
+            new_state["showdown"]["closing"] = True
+            new_state["showdown"]["focus_passes"] = []
+            new_state["priority"] = new_state["showdown"]["focus"]
+            transition = {"type": "non_combat_showdown_closing", "actor": actor, "battlefield": new_state["showdown"].get("battlefield"), "showdown_closed": True}
+            locators = ["Core 347.2.a", "Core 348", "Core 348.2", "Core 348.2.a"]
+        elif new_state["showdown"].get("kind") != "combat" or combat is None or combat.get("status") != "open":
+            return _result(state, valid=True, applied=False, unsupported=True, reason_code="unsupported_showdown_kind",
+                           explanation="every player passed Focus in a Showdown that is neither an open Combat Showdown nor a non_combat one; its close is not modelled",
+                           rule_locators=["Core 348", "Core 348.1", "Core 348.2"])
+        else:
+            combat["status"] = "showdown_closed"
+            new_state["showdown"]["focus_passes"] = []
+            new_state["priority"] = new_state["showdown"]["focus"]
+            transition = {"type": "combat_showdown_closed", "actor": actor, "combat_id": combat["combat_id"], "showdown_closed": True}
+            locators = ["Core 347.2.a", "Core 348", "Core 348.1", "Core 465.2"]
     return _result(
         state,
         valid=True,

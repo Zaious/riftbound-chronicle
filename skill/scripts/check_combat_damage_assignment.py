@@ -107,8 +107,8 @@ def main() -> int:
     non_combat = copy.deepcopy(timing); non_combat["showdown"]["kind"] = "non_combat"; del non_combat["combat"]
     nc1 = pass_focus(non_combat, "p1")
     nc2 = pass_focus(nc1["next_state"], "p2") if nc1.get("applied") else {}
-    if nc2.get("applied") or nc2.get("unsupported") is not True:
-        errors.append("a Non-Combat Showdown's close did not stop at the G2 boundary")
+    if not nc2.get("applied") or nc2["next_state"]["showdown"].get("closing") is not True or nc2.get("next_procedure", {}).get("procedure") != "control_resolution_pending":
+        errors.append("a Non-Combat Showdown's close did not become closing with control resolution next (348.2, ADR-0009)")
     if assign_combat_damage(timing, effect).get("reason_code") != "combat_showdown_not_closed":
         errors.append("damage was assigned before the Showdown closed")
 

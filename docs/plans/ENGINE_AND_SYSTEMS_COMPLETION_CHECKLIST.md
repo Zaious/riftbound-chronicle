@@ -251,6 +251,8 @@ Dependency milestones are defined in
 
 - [ ] **G1 — Showdown and Combat.** Complete the supported Showdown/Combat
   procedure and its state/trace contract.
+  (ADR-0008 fixes the R3-A3/G1 state, designation, assignment, Cleanup and
+  closure contracts; C-26 through C-31 remain to implement.)
 - [ ] **G2 — Battlefield control, Conquer, and Scoring.** Complete control,
   point, and scoring semantics.
 - [ ] **G3 — Victory and Terminal State.** Complete Victory Score, ties,
@@ -620,6 +622,13 @@ push” does not isolate a commit on shared `main`.
 | C-23 — completed 2026-09-05 | Deflect as any-domain Power with resource_allocation | ADR-0007 §11 | power_any mandatory additional cost per choice; one legal allocation paid, two or more asked; Add window first |
 | C-24 — completed 2026-09-05 | Granted replacements | ADR-0007 §12 | grant_replacement / heal_all_damage; exactly one of source-backed or granted; not applicable after the target leaves and returns; expires with its turn; Highlander stays stale |
 | C-25 — completed 2026-09-05 | R3-A2 card programs and re-derived manifest | C-19..C-24 landed | 19 R3-A2 clauses with passives, probes and play_entry fixtures; symbolic bindings, mirrored runs; stale cards carry programs without program_id; manifest draft |
+| C-26 | Combat staging/opening, designations and trigger synchronization | ADR-0008 §1–3 | Two-state atomic procedure; location choice; attacker/defender attribution; once-per-identity Attack/Defend triggers |
+| C-27 | Battlefield Defend triggers and combat-relative characteristics | ADR-0008 §4–5 | Fortified Position controller semantics; Shield/alone Might; typed this-combat keyword modifiers and expiry |
+| C-28 | Atomic Standard Move and Ganking | ADR-0008 §6 | Timing/cost/destination validation; simultaneous exhaust and one destination; Ganking adds only Battlefield-to-Battlefield permission |
+| C-29 | Active-Combat criteria and mutual Might damage | ADR-0008 §7 | Combat-area affected objects are not targets; simultaneous snapshotted mutual Deal with source attribution |
+| C-30 | Combat Damage assignment and replacement preview receipts | ADR-0008 §8–9 | Complete allocation decision; lethal/overassignment/Tank/Backline/conflict rules; assignment replacements applied exactly once |
+| C-31 | Simultaneous Combat Deal, Cleanup, result and closure boundary | ADR-0008 §10 | Damage attribution; death/FEPR barrier; Recall No Result; this-combat expiry; no G2 control or scoring mutation |
+| C-32 | R3-A3 card programs and re-derived manifest | C-26..C-31 landed; ADR-0008 §11 | 13 clauses/12 cards; official-locator fixtures; symbolic mirrors; Legend clause remains partial |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first
@@ -633,7 +642,7 @@ real artifact migration should establish the presentation semantics first.
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
 | D-02 — completed 2026-09-01 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual shared viewer, five verification states, raw-result refusal, documented overrides, prototype regression |
 | D-03 — completed 2026-09-02 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied; production pack absent | Four status explanations, five copy counts, generated fixtures, bilingual display, strategy-boundary regressions |
-| D-04 — R3-A1/A2 slices completed 2026-09-05 (C-18, C-25) | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts — the R3-A3 batch still needs theirs | Assigned card programs, clause locators, positive/negative tests |
+| D-04 — R3-A1/A2 slices completed 2026-09-05 (C-18, C-25) | Per-card R3 effect programs | ADR-0008 accepted; C-26..C-31 must land before the R3-A3 batch | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
 | D-06 | Match Analyst schemas/runner projections | Normalized timeline and engine-binding contracts | Schema implementation, formatter, fixtures, no router activation |
 | D-07 | Fourth demo and navigation | Match Analyst gates satisfied except final activation review | Bilingual demo matching the shared visual shell |

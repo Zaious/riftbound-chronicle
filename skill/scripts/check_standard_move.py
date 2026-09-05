@@ -44,12 +44,14 @@ from rules_core import state_hash, validate_state as validate_timing  # noqa: E4
 RUNNER = SCRIPT_DIR / "engine_check.py"
 
 
-def declare(units, destination, *, actor="p1", confirm=True, identities=None):
+def declare(units, destination, *, actor="p1", confirm=True, identities=None, bind=True):
     value = {"schema_version": STANDARD_MOVE_DECLARATION_VERSION, "actor": actor, "units": list(units), "destination": destination}
     if confirm:
         value["cost_confirmation"] = {"exhaust_confirmed": True}
     if identities:
         value["unit_identities"] = identities
+    elif bind:
+        value["unit_identities"] = {u: f"{u}@0" for u in units}
     return value
 
 
@@ -141,13 +143,15 @@ def main() -> int:
     if standard_move(ending, state, declare(["u1"], to_bf1)).get("reason_code") not in {"standard_move_requires_own_main_phase", "procedure_blocks_discretionary_action"}:
         errors.append("a Standard Move ran outside the Main Phase (144.1.a)")
     staged = stage_combat(quiet, contested_board())
-    if staged.get("committed") and standard_move(staged["next_timing_state"], contested_board(), declare(["u1"], {"kind": "base"})).get("reason_code") != "standard_move_blocked_by_combat":
+    if staged.get("committed") and standard_move(staged["next_timing_state"], contested_board(), declare(["u1"], {"kind": "base"})).get("reason_code") not in {"standard_move_blocked_by_combat", "procedure_blocks_discretionary_action"}:
         errors.append("a Standard Move ran with a Combat staged (144.1.c)")
     # invalid input
     if standard_move(quiet, state, declare(["u1"], {"kind": "battlefield", "battlefield": "bf9"})).get("valid") is not False:
         errors.append("an unknown Battlefield was accepted")
     if standard_move(quiet, state, declare(["u1"], to_bf1, identities={"u1": "u1@4"})).get("valid") is not False:
         errors.append("a stale unit identity was accepted")
+    if standard_move(quiet, state, declare(["u1"], to_bf1, bind=False)).get("valid") is not False or standard_move(quiet, state, declare(["u1", "u3"], to_bf1, identities={"u1": "u1@0"})).get("valid") is not False:
+        errors.append("a declaration without identities for every selected Unit was accepted")
     if standard_move(quiet, state, {"schema_version": "x"}).get("valid") is not False or standard_move(quiet, state, declare([], to_bf1)).get("valid") is not False:
         errors.append("a malformed declaration was accepted")
     with tempfile.TemporaryDirectory(prefix="standard-move-") as temp_name:

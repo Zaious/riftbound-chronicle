@@ -200,7 +200,7 @@ def main() -> int:
             fixtures = clause.get("fixtures", [])
             if clause["text"] == "(no rules text)" and (execution.get("intrinsic") != "unit_combat" or "program" in execution):
                 errors.append(f"{clause['clause_id']}: a vanilla Unit must be probed through intrinsic unit_combat and carry no program")
-            if clause["text"] == "[Tank]" and clause["claim"] == "full":
+            if clause["text"] == "[Tank]" and clause["claim"] in {"full", "partial"}:
                 ids = {fx["fixture_id"].rsplit(":", 1)[1] for fx in fixtures}
                 if not {"backline_before_plain", "both_requirements_choice", "both_requirements_tank", "both_requirements_backline", "two_tanks"} <= ids:
                     errors.append(f"{clause['clause_id']}: Tank claims full without the Backline and Tank+Backline fixtures (ADR-0008 §8)")
@@ -218,9 +218,17 @@ def main() -> int:
         row = manifest_rows.get(cid, {})
         if row.get("status") != "full" or not row.get("program_id", "").startswith("intrinsic:unit_combat:") or row.get("implemented_ops"):
             errors.append(f"{cid} derived {row.get('status')} / {row.get('program_id')}; expected full with an intrinsic probe and no ops")
-    for cid in ("maddened marauder#7a66c5e8", "stormclaw ursine#7a66c5e8", "master yi - honed#ba87989e", "stalwart poro#8b9eb35a", "zephyr sage#8b9eb35a", "wielder of water#d2dd9c3e", "cannon barrage#3c6691c9", "fortified position#d0ee5f77", "fortified position#9b46c0cf", "gentlemen's duel#fd48e5d0", "gentlemen's duel#26a3859b"):
+    for cid in ("master yi - honed#ba87989e", "stalwart poro#8b9eb35a", "zephyr sage#8b9eb35a", "wielder of water#d2dd9c3e", "cannon barrage#3c6691c9", "fortified position#d0ee5f77", "fortified position#9b46c0cf", "gentlemen's duel#fd48e5d0"):
         if manifest_rows.get(cid, {}).get("status") != "full":
             errors.append(f"{cid} derived {manifest_rows.get(cid, {}).get('status')}; its procedure gates pass, so the fixtures must carry it to full")
+    # Codex Round D: the Combat Damage assignment is a bounded slice of 465.2.c
+    # (Prevent-only preview, no damage-exemption sources) and the mutual Deal
+    # batch is bounded (Prevent-only, no shared descriptor): those clauses stay
+    # partial naming the gap, whatever their fixtures pass.
+    for cid, gaps in (("maddened marauder#7a66c5e8", {"damage_exemption_sources", "assignment_replacement_modes"}), ("stormclaw ursine#7a66c5e8", {"damage_exemption_sources", "assignment_replacement_modes"}), ("gentlemen's duel#26a3859b", {"simultaneous_replacement_modes"})):
+        row = manifest_rows.get(cid, {})
+        if row.get("status") != "partial" or not gaps <= set(row.get("unsupported_mechanics", [])):
+            errors.append(f"{cid} must derive partial naming {sorted(gaps)}; got {row.get('status')} {row.get('unsupported_mechanics')}")
     # committed outputs are current and deterministic
     outs = rp.outputs()
     for path, text in outs.items():

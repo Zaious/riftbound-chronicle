@@ -497,10 +497,14 @@ Combat in progress the set is empty and the instruction is a supported
 no-op, and a claimed Combat whose Battlefield the state cannot confirm is
 unsupported. `mutual_damage_current_might` revalidates both chosen Units,
 snapshots both rules-facing Mights before either Deal, then performs the two
-Deal events atomically with the Units as the damage sources (417.6.b.3, so
-no spell-scoped Bonus Damage and the responsible player is each Unit's
-controller); replacements apply to each Deal as usual; a Might that reads 0
-deals nothing (417.1.e); it is not Combat Damage.
+Deal events as one simultaneous Deal batch with the Units as the damage
+sources (417.6.b.3, so no spell-scoped Bonus Damage and the responsible
+player is each Unit's controller): every replacement's applicability is read
+from the one pre-Deal state, and only mandatory Prevent values that belong to
+exactly one of the two Deals are applied; any other mode, an optional
+descriptor, or one descriptor over both Deals is unsupported rather than
+resolved one Deal after the other; a Might that reads 0 deals nothing
+(417.1.e); it is not Combat Damage.
 
 ## Execution model
 

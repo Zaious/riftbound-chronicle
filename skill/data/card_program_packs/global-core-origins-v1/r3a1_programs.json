@@ -6,7 +6,7 @@
     "core": "2026-07-16",
     "faq_as_of": "2026-08-14"
   },
-  "shape_note": "Card-program templates with symbolic references ($controller, $opponent, $card, $chain_item, $source_object), bound per fixture by r3a1_programs.bind() into a concrete effect-program.v1 / play declaration. No literal player id may appear in a template; fixtures carry `bindings` and every program fixture is also run mirrored (players swapped) and must produce the player-relative same result before a clause can be full or partial. Fixture setups are edits over check_effect_ir.base_state(): u1 = p1 unit 3 Might 1 damage at base; u2 = p2 unit 4 Might exhausted at base; c1,c2 = p1 spells in deck; c3 = p1 spell in trash; c4 = p2 spell in deck; r1 = p1 rune in rune_deck; bf1 empty. Expected outcomes cite the Core clause they follow, not the engine. C-25 (ADR-0007): a clause may carry a `passive` (object_fields on $source_object, or state_lists such as damage_modifiers) applied to the scenario before it runs; a fixture may carry a `probe` (a program or play declaration that is not the card's text but exercises the passive) and a `run` path (play, resolution, effect, play_entry — play a permanent with its entry_location, then resolve by the entry procedure). Stand-ins: Legends are not modelled as objects, so a Legend's passive is anchored to a gear at the controller's Base and the clause says so. C-32 (ADR-0008): a fixture may carry a `combat` block (battlefield, attacker $controller|$opponent, phase open|showdown_closed) staged and opened by the real procedures, `after_combat_setup` edits, a `combat_open` / `combat_step` (with `step`) / `standard_move` (with `declaration`) run, `chain_item_kind: triggered` for a Battlefield's own trigger, `compiled_units` for a composite instruction, and `$combat_id` bound after opening (also inside composite strings). A vanilla Unit declares `intrinsic: unit_combat` and is probed; `(no rules text)` is never an invented instruction. C-32 (ADR-0008): a fixture may carry a `combat` block (battlefield, attacker $controller|$opponent, phase open|showdown_closed) staged and opened by the real procedures, `after_combat_setup` edits, a `combat_open` / `combat_step` (with `step`) / `standard_move` (with `declaration`) run, `chain_item_kind: triggered` for a Battlefield's own trigger, `compiled_units` for a composite instruction, and `$combat_id` bound after opening (also inside composite strings). A vanilla Unit declares `intrinsic: unit_combat` and is probed; `(no rules text)` is never an invented instruction.",
+  "shape_note": "Card-program templates with symbolic references ($controller, $opponent, $card, $chain_item, $source_object), bound per fixture by r3a1_programs.bind() into a concrete effect-program.v1 / play declaration. No literal player id may appear in a template; fixtures carry `bindings` and every program fixture is also run mirrored (players swapped) and must produce the player-relative same result before a clause can be full or partial. Fixture setups are edits over check_effect_ir.base_state(): u1 = p1 unit 3 Might 1 damage at base; u2 = p2 unit 4 Might exhausted at base; c1,c2 = p1 spells in deck; c3 = p1 spell in trash; c4 = p2 spell in deck; r1 = p1 rune in rune_deck; bf1 empty. Expected outcomes cite the Core clause they follow, not the engine. C-25 (ADR-0007): a clause may carry a `passive` (object_fields on $source_object, or state_lists such as damage_modifiers) applied to the scenario before it runs; a fixture may carry a `probe` (a program or play declaration that is not the card's text but exercises the passive) and a `run` path (play, resolution, effect, play_entry — play a permanent with its entry_location, then resolve by the entry procedure). Stand-ins: Legends are not modelled as objects, so a Legend's passive is anchored to a gear at the controller's Base and the clause says so. C-32 (ADR-0008): a fixture may carry a `combat` block (battlefield, attacker $controller|$opponent, phase open|showdown_closed) staged and opened by the real procedures, `after_combat_setup` edits, a `combat_open` / `combat_step` (with `step`) / `standard_move` (with `declaration`) run, `chain_item_kind: triggered` for a Battlefield's own trigger, `compiled_units` for a composite instruction, and `$combat_id` bound after opening (also inside composite strings). A vanilla Unit declares `intrinsic: unit_combat` and is probed; `(no rules text)` is never an invented instruction. C-32 (ADR-0008): a fixture may carry a `combat` block (battlefield, attacker $controller|$opponent, phase open|showdown_closed) staged and opened by the real procedures, `after_combat_setup` edits, a `combat_open` / `combat_step` (with `step`) / `standard_move` (with `declaration`) run, `chain_item_kind: triggered` for a Battlefield's own trigger, `compiled_units` for a composite instruction, and `$combat_id` bound after opening (also inside composite strings). A vanilla Unit declares `intrinsic: unit_combat` and is probed; `(no rules text)` is never an invented instruction. C-32 (ADR-0008): a fixture may carry a `combat` block (battlefield, attacker $controller|$opponent, phase open|showdown_closed) staged and opened by the real procedures, `after_combat_setup` edits, a `combat_open` / `combat_step` (with `step`) / `standard_move` (with `declaration`) run, `chain_item_kind: triggered` for a Battlefield's own trigger, `compiled_units` for a composite instruction, and `$combat_id` bound after opening (also inside composite strings). A vanilla Unit declares `intrinsic: unit_combat` and is probed; `(no rules text)` is never an invented instruction.",
   "cards": [
     {
       "card": "Annie - Dark Child (Starter)",
@@ -3697,8 +3697,10 @@
         {
           "clause_id": "gentlemen's duel#26a3859b",
           "text": "They deal damage equal to their Mights to each other.",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "simultaneous_replacement_modes"
+          ],
           "rule_locators": [
             "Core 417.1.d",
             "Core 417.6.b.3",
@@ -4779,8 +4781,11 @@
         {
           "clause_id": "maddened marauder#7a66c5e8",
           "text": "[Tank]",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "damage_exemption_sources",
+            "assignment_replacement_modes"
+          ],
           "rule_locators": [
             "Core 815.1.b",
             "Core 815.1.c",
@@ -5875,6 +5880,9 @@
                 "units": [
                   "$source_object"
                 ],
+                "unit_identities": {
+                  "$source_object": "$source_object@0"
+                },
                 "destination": {
                   "kind": "battlefield",
                   "battlefield": "bf2"
@@ -5942,6 +5950,9 @@
                 "units": [
                   "u3"
                 ],
+                "unit_identities": {
+                  "u3": "u3@0"
+                },
                 "destination": {
                   "kind": "battlefield",
                   "battlefield": "bf2"
@@ -5983,6 +5994,9 @@
                 "units": [
                   "$source_object"
                 ],
+                "unit_identities": {
+                  "$source_object": "$source_object@0"
+                },
                 "destination": {
                   "kind": "base"
                 },
@@ -6038,6 +6052,9 @@
                 "units": [
                   "$source_object"
                 ],
+                "unit_identities": {
+                  "$source_object": "$source_object@0"
+                },
                 "destination": {
                   "kind": "battlefield",
                   "battlefield": "bf2"
@@ -9134,8 +9151,11 @@
         {
           "clause_id": "stormclaw ursine#7a66c5e8",
           "text": "[Tank]",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "damage_exemption_sources",
+            "assignment_replacement_modes"
+          ],
           "rule_locators": [
             "Core 815.1.b",
             "Core 815.1.c",

@@ -1667,8 +1667,12 @@ def apply_simultaneous_kill_batch(
     replacement_choices: dict[str, dict[str, bool]] | None = None,
     kill_mode: str = "simultaneous",
     attributed_sources: list[str] | None = None,
+    attributed_sources_by_object: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
-    """Resolve a bounded Core 373 batch with at most one prevent descriptor."""
+    """Resolve a bounded Core 373 batch with at most one prevent descriptor.
+    `attributed_sources_by_object` names the sources of each kill separately
+    (Combat Damage: the opposing side's Units, 428.5.c.2); the flat list stays
+    the default for every object it does not name."""
     base = {
         "schema_version": "riftbound-simultaneous-kill-result.v1",
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -1691,7 +1695,7 @@ def apply_simultaneous_kill_batch(
     events = {
         object_id: {
             "effect_id": f"simultaneous-kill:{object_id}", "op": "kill", "object_id": object_id,
-            "kill_mode": kill_mode, "attributed_sources": attributed_sources or [],
+            "kill_mode": kill_mode, "attributed_sources": list((attributed_sources_by_object or {}).get(object_id, attributed_sources or [])),
         }
         for object_id in object_ids
     }
@@ -1819,6 +1823,7 @@ def perform_lethal_cleanup(
     attributed_sources: list[str] | None = None,
     replacement_event_order: dict[str, list[str]] | None = None,
     replacement_choices: dict[str, dict[str, bool]] | None = None,
+    attributed_sources_by_object: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
     base = {
         "schema_version": "riftbound-lethal-cleanup-result.v1",
@@ -1858,6 +1863,7 @@ def perform_lethal_cleanup(
             replacement_choices=replacement_choices if iterations == 0 else None,
             kill_mode="passive_lethal_cleanup",
             attributed_sources=attributed_sources,
+            attributed_sources_by_object=attributed_sources_by_object,
         )
         if batch.get("committed") is not True:
             return {
@@ -2123,37 +2129,61 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 outcomes[effect_id] = event["outcome"]
                 continue
             snapshot = {object_id: effective_might(current, object_id) for object_id in ids}
-            working = current
-            sub_trace = []
-            failure = None
+            # One simultaneous Deal batch (417.1.d): every replacement's
+            # applicability is read from the same pre-Deal state, and only
+            # Prevent values that belong to exactly one of the two events are
+            # applied; anything else (other modes, optional descriptors, one
+            # descriptor over both events) is outside the bounded batch and is
+            # refused rather than resolved one Deal after the other.
+            plans = []
+            seen_descriptors: set[str] = set()
+            batch_problem = None
             for source, receiver in ((ids[0], ids[1]), (ids[1], ids[0])):
                 amount = snapshot[source]
+                applicable = _applicable_replacements(current, {"op": "deal_damage", "object_id": receiver, "amount": amount}) if amount >= 1 else []
+                for descriptor in applicable:
+                    if descriptor["mode"] != "reduce_damage" or descriptor.get("optional"):
+                        batch_problem = f"replacement {descriptor['replacement_id']} on {receiver} is not a mandatory Prevent value; the simultaneous Deal batch cannot apply it"
+                    elif descriptor["replacement_id"] in seen_descriptors:
+                        batch_problem = f"replacement {descriptor['replacement_id']} applies to both Deals of the pair; one descriptor over two simultaneous events is outside the bounded batch"
+                    seen_descriptors.add(descriptor["replacement_id"])
+                plans.append((source, receiver, amount, applicable))
+            if batch_problem is not None:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index, "reason": batch_problem, "trace": trace}
+            working = copy.deepcopy(current)
+            sub_trace = []
+            for source, receiver, amount, applicable in plans:
+                sub_id = f"{effect_id}:{source}->{receiver}"
+                responsible = working["objects"][source]["controller"]
                 if amount < 1:
-                    sub_trace.append({"op": "deal_damage", "effect_id": f"{effect_id}:{source}->{receiver}", "object_id": receiver, "source_object": source, "source_kind": "unit",
+                    sub_trace.append({"op": "deal_damage", "effect_id": sub_id, "object_id": receiver, "source_object": source, "source_kind": "unit", "responsible_player": responsible,
                                       "amount": amount, "outcome": "no_op", "completion": "none", "reason": "no valid damage: the source's Might reads as 0 (417.1.e, 143.2.b)",
                                       "rule_locators": ["Core 417.1.e", "Core 143.2.b"]})
                     continue
-                single = {"op": "deal_damage", "effect_id": f"{effect_id}:{source}->{receiver}", "object_id": receiver, "amount": amount, "source_object": source, "source_kind": "unit"}
-                for key in ("replacement_order", "replacement_decider", "replacement_choices"):
-                    if key in effect:
-                        single[key] = effect[key]
-                sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
-                               "program_id": f"mutual:{program['program_id']}:{effect_id}", "controller": program.get("controller"), "source_object": source, "effects": [single]}
-                sub = apply_program(working, sub_program, decisions=None, context=context, _replacement_depth=_replacement_depth + 1)
-                if sub.get("committed") is not True:
-                    failure = sub
-                    break
-                working = sub["next_state"]
-                sub_trace.extend(sub["trace"])
-            if failure is not None:
-                return {**base, "valid": failure.get("valid", True), "committed": False, "unsupported": failure.get("unsupported", False),
-                        "replacement_decision_required": failure.get("replacement_decision_required", False), "replacement_ids": failure.get("replacement_ids", []),
-                        "failed_effect_index": index, "reason": failure.get("reason", "; ".join(failure.get("errors", [])) or "mutual damage failed"), "expansion_result": failure, "trace": trace}
+                remaining, prevented, consumed = amount, 0, []
+                for descriptor in applicable:
+                    stored = next(r for r in working["replacement_effects"] if r["replacement_id"] == descriptor["replacement_id"])
+                    take = min(remaining, stored.get("prevent_remaining", 0))
+                    if take > 0:
+                        stored["prevent_remaining"] -= take
+                        remaining -= take
+                        prevented += take
+                        consumed.append({"replacement_id": descriptor["replacement_id"], "prevented": take})
+                before = working["objects"][receiver]["damage"]
+                working["objects"][receiver]["damage"] = before + remaining
+                outcome = "applied" if not applicable else ("replaced_modified_applied" if remaining > 0 else "replaced_prevented")
+                sub_trace.append({"op": "deal_damage", "effect_id": sub_id, "object_id": receiver, "source_object": source, "source_kind": "unit", "responsible_player": responsible,
+                                  "amount": amount, "prevented": prevented, "applied": remaining, "before": before, "after": before + remaining, "outcome": outcome,
+                                  "completion": "full" if remaining > 0 else "none", "consumed_replacements": consumed,
+                                  "rule_locators": ["Core 417.1.b", "Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4"] + (["Core 437.1–437.4"] if applicable else [])})
+            working["replacement_effects"] = [r for r in working["replacement_effects"] if not (r.get("mode") == "reduce_damage" and r.get("prevent_remaining", 0) <= 0)]
+            if found := validate_state(working):
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": found, "trace": trace}
             current = working
             applied = sum(1 for ev in sub_trace if ev.get("outcome") in PERFORMED_OUTCOMES)
             event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "applied" if applied else "no_op",
                      "completion": "full" if applied == 2 else ("partial" if applied else "none"), "units": ids, "might_snapshot": snapshot,
-                     "simultaneous": True, "not_combat_damage": True, "sources": {ids[0]: ids[1], ids[1]: ids[0]}, "expansion_trace": sub_trace,
+                     "simultaneous": True, "batch": "one_pre_deal_state_prevent_only", "not_combat_damage": True, "sources": {ids[0]: ids[1], ids[1]: ids[0]}, "expansion_trace": sub_trace,
                      "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
                      "rule_locators": list(dict.fromkeys(OP_RULES["mutual_damage_current_might"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                      "before_state_hash": before_hash, "after_state_hash": hash_value(current)}

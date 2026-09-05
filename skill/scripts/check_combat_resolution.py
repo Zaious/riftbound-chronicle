@@ -35,10 +35,10 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_combat_damage_assignment import add_unit, closed_combat  # noqa: E402
 from check_combat_staging import trigger  # noqa: E402
-from combat import assign_combat_damage, close_combat, combat_cleanup, deal_combat_damage, determine_combat_result, stage_combat  # noqa: E402
+from combat import assign_combat_damage, close_combat, combat_cleanup, deal_combat_damage, determine_combat_result, open_combat  # noqa: E402
 from effect_ir import hash_value, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
-from rules_core import state_hash, validate_state as validate_timing  # noqa: E402
+from rules_core import next_procedure, state_hash, validate_state as validate_timing  # noqa: E402
 
 
 def main() -> int:
@@ -158,9 +158,14 @@ def main() -> int:
             if not reclosed.get("committed") or reclosed["trace"].get("restage_required") is not True or reclosed["next_effect_state"]["battlefields"]["bf1"].get("contested") is not True:
                 errors.append(f"the restage close did not keep Contested for the next staging: {reclosed.get('reason_code')} {reclosed.get('reason')}")
             else:
-                again = stage_combat(reclosed["next_timing_state"], reclosed["next_effect_state"])
-                if not again.get("committed") or again["next_timing_state"].get("combat", {}).get("status") != "staged":
-                    errors.append(f"after a both-remain No Result the Combat did not stage again: {again.get('reason_code')} {again.get('reason')}")
+                staged_again = reclosed["next_timing_state"].get("combat") or {}
+                if staged_again.get("status") != "staged" or staged_again.get("restaged_from") != rr["next_timing_state"]["combat"]["combat_id"] or staged_again.get("triggered_identities") != {"attacker": [], "defender": []}:
+                    errors.append(f"466.3.d.1: closing a both-remain No Result did not stage a new Combat with a fresh identity: {staged_again}")
+                if next_procedure(reclosed["next_timing_state"]).get("discretionary_actions_allowed") is not False:
+                    errors.append("after the restage the state allowed discretionary actions before the Combat opens")
+                again = open_combat(reclosed["next_timing_state"], reclosed["next_effect_state"])
+                if not again.get("committed") or again["next_timing_state"]["combat"]["status"] != "open":
+                    errors.append(f"the restaged Combat did not open: {again.get('reason_code')} {again.get('reason')}")
     # --- neither remains: No Result; an Uncontrolled Battlefield stays so, a controlled one is the boundary --
     t, e = closed_combat([("d1", {"might": 5})], attacker_might=5)
     a = assign_combat_damage(t, e); d = deal_combat_damage(a["next_timing_state"], a["next_effect_state"]); c2 = combat_cleanup(d["next_timing_state"], d["next_effect_state"])

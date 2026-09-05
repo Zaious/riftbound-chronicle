@@ -1,30 +1,30 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:d05cf3f0fceb662b9057c0b8",
-  "capability_set_id": "sha256:d05cf3f0fceb662b9057c0b8d58ea27384bfd611097e506f92b68fa70eb5e82d",
+  "manifest_id": "capability-manifest:54230d2296de01c3a7f011b6",
+  "capability_set_id": "sha256:54230d2296de01c3a7f011b697511aa5cee3809799d390191cca2cb7aa1c6ce0",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:100d87291e0fc02e8f318683625a2e95f04ffbcd298f53e0354b37369b4ccf96",
+    "value": "sha256:5b40a04f3e731be4b3c5e27e8bc9706e31e0118ff017d4630ed758f2a5161edf",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:3dd412d16f5fe4ae54c878fed0ab44f10f4e20d4d5c029cede477bb25a592acb"
+        "sha256": "sha256:30d78b6ba632e39ba3a3bb5a0373bbb1fdc602459ee61d4b4c8949c5bdcf02ff"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:0d8607182608be4f27bd91cfe672ce211f13012d3dc5c511a5c25d24c456f29d"
+        "sha256": "sha256:faee1a1dde87ee0470af04a4254075654e19bf04fec9dd82981368e8ce2f5588"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:eced7253c3a38ff99525373701d616447bb1e7cbdbb2da897fd48a33de3dbece"
+        "sha256": "sha256:19ffa0ab2d1a8f3fbc5edd1bc847b500d21a19a88eebc95dd065b86c965435ca"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:36b762717d9261340301fd122896a9af800e38f6d44901fa536cd67d16eb9387"
+        "sha256": "sha256:35d59527c81e3d8dcb61d74bc664ed6e5e91c055fcbd9b90762b828db9074afc"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:5071dffd18d461d20cd649dcffde6d0382a4170fa7c136bfb0fd54928a301bed"
+        "sha256": "sha256:fd1323a6c88ecd928b0966e6383d0e0a32f879e693383fba3683803851dddc7c"
       }
     ]
   },
@@ -68,7 +68,8 @@
         "combat_damage_deal",
         "combat_cleanup",
         "combat_result",
-        "combat_close"
+        "combat_close",
+        "combat_restage"
       ],
       "unsupported_scope": [
         "start_of_combat_effects",
@@ -619,6 +620,13 @@
       ]
     },
     {
+      "id": "combat_restage",
+      "rule_locators": [
+        "Core 466.3.d.1",
+        "Core 323.13"
+      ]
+    },
+    {
       "id": "combat_result",
       "rule_locators": [
         "Core 466.2–466.3.d.1"
@@ -978,6 +986,7 @@
     "Core 465.3",
     "Core 466.1–466.1.a.2",
     "Core 466.2–466.3.d.1",
+    "Core 466.3.d.1",
     "Core 466.5.a",
     "Core 466.7.c",
     "Core 466.7–466.7.c",

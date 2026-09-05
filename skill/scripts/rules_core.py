@@ -215,6 +215,10 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append("combat.triggered_identities must map attacker and defender to unique identity tokens")
             if "sync_count" in combat and (not isinstance(combat["sync_count"], int) or combat["sync_count"] < 0):
                 errors.append("combat.sync_count must be a non-negative integer")
+            if "restaged_from" in combat and (not isinstance(combat["restaged_from"], str) or not combat["restaged_from"]):
+                errors.append("combat.restaged_from must name the closed Combat")
+            if "assignment_snapshot" in combat and (not isinstance(combat["assignment_snapshot"], dict) or set(combat["assignment_snapshot"]) != {"effect_state_hash", "receipts_hash"}):
+                errors.append("combat.assignment_snapshot must carry effect_state_hash and receipts_hash")
             fired = combat.get("battlefield_triggered", [])
             if not isinstance(fired, list) or any(role not in {"attacker", "defender"} for role in fired) or len(fired) != len(set(fired)):
                 errors.append("combat.battlefield_triggered must list attacker/defender at most once each")
@@ -337,6 +341,18 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             rule_locators=["Core 338–339"],
         )
     combat = state.get("combat")
+    if combat is not None and combat.get("status") == "staged" and not state["showdown"]["active"]:
+        # 323.13 / 466.3.d.1: a staged Combat opens in this Cleanup; no
+        # discretionary action comes first.
+        return _result(
+            state,
+            valid=True,
+            procedure="open_combat_pending",
+            subject=combat["combat_id"],
+            combat_status="staged",
+            discretionary_actions_allowed=False,
+            rule_locators=["Core 323.13", "Core 460", "Core 466.3.d.1"],
+        )
     if state["showdown"]["active"] and combat is not None and combat.get("status") in COMBAT_STEP_PENDING:
         # 465–466: after the Combat Showdown closed, the Combat's own steps are
         # the next required procedure; no one plays until the chain the steps

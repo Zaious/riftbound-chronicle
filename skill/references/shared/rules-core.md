@@ -106,7 +106,9 @@ in full before another Unit, no over-assignment while another Unit remains,
 Tank first and Backline last with a per-Unit choice when a Unit has both,
 minimum lethal computed with the Unit's damage replacements previewed
 (465.2.c.5; only Prevent values are previewable, anything else is
-unsupported). The engine proceeds by itself only when exactly one
+unsupported — so this is a bounded slice of 465.2.c, not the full contract:
+damage-exemption sources (465.2.c.10) and non-Prevent assignment
+replacements are declared unsupported). The engine proceeds by itself only when exactly one
 assignment is legal. A receipt per side records raw, prevented and applied
 amounts and the replacements the Deal step will consume exactly once. A
 Non-Combat Showdown's close establishes control (348.2) and is refused as
@@ -116,15 +118,22 @@ The rest of the Combat is four refusable steps. `deal_combat_damage` Deals
 every applied amount at once from the receipts, consuming the previewed
 Prevent values now and never applying a replacement twice, with the
 opposing Units as sources (465.2.d, 417.6.c); FEPR is skipped (465.3).
-`combat_cleanup` runs one Combat Special Cleanup — lethal Cleanup with
-Combat-Damage kills attributed to the opposing Units and their controller
-(428.5.c.2), heal all Units, Recall Attackers if Defenders remain, then
-designations follow presence — and schedules the death triggers.
+`combat_cleanup` runs one Combat Special Cleanup in the order of 323 — step 2
+designations follow presence first (a Unit that arrived during the Showdown
+is a Defender before lethal damage is judged), then 3a/3b lethal Cleanup with
+each Combat-Damage kill attributed to the opposing side's Units and their
+controller (428.5.c.2), heal all Units, Recall Attackers if Defenders remain,
+and a 324.2 follow-up Cleanup that drops the recalled Units' designations —
+scheduling the designation triggers before the death triggers.
 `determine_combat_result` waits for that chain to empty (466.2) and applies
 466.3: win only when one designated player alone has Units remaining, No
 Result on a Recall, on both remaining (which stages again) or on neither.
-`close_combat` removes designations, the Combat and Showdown records and
-every 'this combat' effect of this Combat at once (466.7); where 466.5 would
+`deal_combat_damage` requires the effect state and the receipts exactly as
+they were at assignment (465.2.c.1.a leaves no window); anything else is a
+stale receipt and nothing is Dealt. `close_combat` removes designations, the
+Combat and Showdown records and every 'this combat' effect of this Combat at
+once (466.7), stages a fresh Combat when both sides remain (466.3.d.1, with
+`open_combat` the next required procedure); where 466.5 would
 establish control or make the Battlefield Uncontrolled it abstains as
 `unsupported: battlefield_control_resolution` with the handoff facts — G2 is
 not invented here — and it only clears Contested for a controller who
@@ -134,11 +143,13 @@ already holds the Battlefield.
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open
 State with no Combat staged or in progress. `combat.standard_move` is the
 player action itself: one destination for every selected ready Unit the
-actor controls, all exhausted at once as the cost (144.2–144.3.c; an
-unconfirmed cost is `decision_required`), Base→Battlefield and
-Battlefield→own Base by default, Battlefield→Battlefield only with active
-Ganking (144.4.c, 810.1.c — a permission, never an extra move), a
-Battlefield holding two other players' Units refused (144.4.a.1). The
+actor controls, each bound to its identity in the declaration, all exhausted
+at once as the cost (144.2–144.3.c; an unconfirmed cost is
+`decision_required`), Base→Battlefield and Battlefield→own Base by default,
+Battlefield→Battlefield only with active Ganking (144.4.c, 810.1.c — a
+permission, never an extra move), a Battlefield holding a teammate's Units
+(447.2.b) or two other players' Units (144.4.a.1) refused. Its decisions
+bind to the hash of timing state, effect state and declaration together. The
 relocation delegates to the Move operation so Move triggers and Cleanup stay
 one implementation; engine-check wraps it as `standard_move`.
 

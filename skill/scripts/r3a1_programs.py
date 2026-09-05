@@ -130,7 +130,7 @@ def literal_players(value: Any) -> list[str]:
 def bind(template: Any, bindings: dict[str, str]) -> Any:
     """Pure: substitute symbolic references; an unbound symbol is an error."""
     if isinstance(template, dict):
-        return {k: bind(v, bindings) for k, v in template.items()}
+        return {(bind(k, bindings) if isinstance(k, str) and "$" in k else k): bind(v, bindings) for k, v in template.items()}  # keys bind too (unit_identities)
     if isinstance(template, list):
         return [bind(v, bindings) for v in template]
     if isinstance(template, str) and "$" in template:

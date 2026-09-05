@@ -58,6 +58,8 @@
         "battlefield_triggered": {"type": "array", "uniqueItems": true, "items": {"enum": ["attacker", "defender"]}, "description": "ADR-0008 §4: which of the Battlefield's own Attack/Defend triggers fired this Combat."},
         "assignments": {"type": ["object", "null"], "description": "ADR-0008 §8–9: the attacker's and defender's Combat Damage assignment receipts (riftbound-combat-assignment-receipt.v1) once assigned; null when the damage step was skipped (465.1)."},
         "damage_step_skipped": {"type": "boolean"},
+        "assignment_snapshot": {"type": "object", "additionalProperties": false, "required": ["effect_state_hash", "receipts_hash"], "properties": {"effect_state_hash": {"type": "string"}, "receipts_hash": {"type": "string"}}, "description": "The effect state and receipts the Deal step must see unchanged (465.2.c.1.a)."},
+        "restaged_from": {"type": "string", "minLength": 1, "description": "466.3.d.1: the closed Combat this staged Combat follows."},
         "damage_dealt": {"type": "object", "description": "ADR-0008 §10: the applied amounts Dealt per side from the receipts (465.2.d)."},
         "cleanup": {"type": "object", "description": "ADR-0008 §10: what the Combat Cleanup did (killed with attribution, healed, recalled; 466.1, 428.5.c.2)."},
         "result": {"type": "object", "description": "ADR-0008 §10: the Combat result per 466.3 (win / no_result, winner, loser, reason, units_remaining, restage_required)."},

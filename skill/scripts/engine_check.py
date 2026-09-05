@@ -91,6 +91,7 @@ FEATURE_RULES = {
     "combat_cleanup": ["Core 466.1–466.1.a.2", "Core 323.2–323.5", "Core 428.5.c.2", "Core 143.3.b.2"],
     "combat_result": ["Core 466.2–466.3.d.1"],
     "combat_close": ["Core 466.5.a", "Core 466.7–466.7.c"],
+    "combat_restage": ["Core 466.3.d.1", "Core 323.13"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -142,7 +143,7 @@ KIND_CONFIG = {
     "combat_step": {
         "component": ("combat", COMBAT_STEP_VERSION),
         "coverage": "combat_step_v1",
-        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers", "combat_showdown_close", "combat_damage_assignment", "tank_backline_priority", "assignment_replacement_preview", "combat_damage_deal", "combat_cleanup", "combat_result", "combat_close"],
+        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers", "combat_showdown_close", "combat_damage_assignment", "tank_backline_priority", "assignment_replacement_preview", "combat_damage_deal", "combat_cleanup", "combat_result", "combat_close", "combat_restage"],
         "unsupported": ["start_of_combat_effects", "end_of_combat_effects", "take_damage_triggers", "player_level_attack_defend_triggers", "multi_player_combat", "damage_exemption_sources", "non_prevent_assignment_replacements", "battlefield_control_resolution", "conquer", "scoring", "complete_game", "complete_legality"],
     },
     # ADR-0008 §6: the Standard Move as a player action outside Combat.

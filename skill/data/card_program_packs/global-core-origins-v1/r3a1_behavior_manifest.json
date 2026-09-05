@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:dd694423d683b209fa30e6cf",
+  "manifest_id": "manifest:a4089b99fab8fe15483ad493",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -431,7 +431,7 @@
       "printing_ids": [
         "ogs-008-024"
       ],
-      "behavior_status": "full",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "gentlemen's duel#08866b32",
@@ -491,13 +491,15 @@
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogs-008-024:26a3859b",
           "text_hash": "sha256:26a3859b85ca26b0486415ce77b78dc81cf54fd21f2fb684eeb6916ee1edd741",
-          "status": "full",
+          "status": "partial",
           "program_id": "gentlemen's duel#26a3859b",
           "implemented_ops": [
             "modify_might",
             "mutual_damage_current_might"
           ],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "simultaneous_replacement_modes"
+          ],
           "test_ids": [
             "gentlemen's duel#26a3859b:positive",
             "gentlemen's duel#26a3859b:negative",
@@ -647,17 +649,20 @@
       "printing_ids": [
         "ogn-191-298"
       ],
-      "behavior_status": "full",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "maddened marauder#7a66c5e8",
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-191-298:7a66c5e8",
           "text_hash": "sha256:7a66c5e865b9736200ca6f4c81326c7775eaddeeb90b54d8f826c740d219c341",
-          "status": "full",
+          "status": "partial",
           "program_id": "passive:maddened marauder#7a66c5e8",
           "implemented_ops": [],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "damage_exemption_sources",
+            "assignment_replacement_modes"
+          ],
           "test_ids": [
             "maddened marauder#7a66c5e8:positive",
             "maddened marauder#7a66c5e8:negative",
@@ -1194,17 +1199,20 @@
         "ogn-137-298",
         "opp-137-298"
       ],
-      "behavior_status": "full",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "stormclaw ursine#7a66c5e8",
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-137-298:7a66c5e8",
           "text_hash": "sha256:7a66c5e865b9736200ca6f4c81326c7775eaddeeb90b54d8f826c740d219c341",
-          "status": "full",
+          "status": "partial",
           "program_id": "passive:stormclaw ursine#7a66c5e8",
           "implemented_ops": [],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "damage_exemption_sources",
+            "assignment_replacement_modes"
+          ],
           "test_ids": [
             "stormclaw ursine#7a66c5e8:positive",
             "stormclaw ursine#7a66c5e8:negative",

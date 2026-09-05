@@ -30,7 +30,10 @@ ABILITY_KINDS = {"standard", "add", None}
 CHAIN_ORIGINS = {"played_card", "activated_ability", "triggered_ability", "add_ability", None}
 # ADR-0008 §1: the Combat record's progress. Staged and open are C-26; the
 # later steps are named so the record can carry them without a schema change.
-COMBAT_STATUSES = {"staged", "open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"}
+COMBAT_STATUSES = {"staged", "open", "showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"}
+# Statuses in which the Combat's own steps are the next required procedure and
+# no discretionary play is available while the chain is empty (465–466).
+COMBAT_STEP_PENDING = {"showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined"}
 
 RULES = {
     "four_states": ["Core 308–310"],
@@ -73,6 +76,7 @@ SUPPORTED_PROCEDURES = {
     ],
     "add_pending_item": ["Core 328–330", "Core 334–337", "Core 358.4"],
     "pass_priority": ["Core 338.1.b", "Core 339"],
+    "pass_focus": ["Core 347.2–347.2.b", "Core 348–348.1", "Core 465.2"],
     "complete_resolution": [
         "Core 337.2", "Core 339.1", "Core 340", "Core 346", "Core 429.2.a",
     ],
@@ -174,6 +178,11 @@ def validate_state(state: dict[str, Any]) -> list[str]:
         errors.append("showdown.battlefield must be a battlefield id when supplied")
     if not showdown.get("active") and showdown.get("battlefield") is not None:
         errors.append("a neutral state has no showdown battlefield")
+    focus_passes = showdown.get("focus_passes", [])
+    if not isinstance(focus_passes, list) or any(p not in players for p in focus_passes) or len(focus_passes) != len(set(focus_passes)):
+        errors.append("showdown.focus_passes must list distinct players")
+    elif focus_passes and not showdown.get("active"):
+        errors.append("a neutral state has no focus passes")
     # ADR-0008 §1: one optional Combat record. Absence means no Combat is
     # staged or open; a present record must be complete and self-consistent.
     combat = state.get("combat")
@@ -209,6 +218,12 @@ def validate_state(state: dict[str, Any]) -> list[str]:
             fired = combat.get("battlefield_triggered", [])
             if not isinstance(fired, list) or any(role not in {"attacker", "defender"} for role in fired) or len(fired) != len(set(fired)):
                 errors.append("combat.battlefield_triggered must list attacker/defender at most once each")
+            assignments = combat.get("assignments")
+            if assignments is not None:
+                if not isinstance(assignments, dict) or set(assignments) != {"attacker", "defender"} or any(not isinstance(a, dict) or {"available", "entries"} - set(a) for a in assignments.values()):
+                    errors.append("combat.assignments must carry attacker and defender receipts with available and entries")
+            elif combat["status"] in {"damage_assigned"}:
+                errors.append("a damage_assigned combat carries its assignment receipts")
 
     tasks = state.get("outstanding_tasks")
     if not isinstance(tasks, list) or not all(isinstance(item, str) and item for item in tasks):
@@ -315,6 +330,20 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             subject=state["priority"],
             discretionary_actions_allowed=True,
             rule_locators=["Core 338–339"],
+        )
+    combat = state.get("combat")
+    if state["showdown"]["active"] and combat is not None and combat.get("status") in COMBAT_STEP_PENDING:
+        # 465–466: after the Combat Showdown closed, the Combat's own steps are
+        # the next required procedure; no one plays until the chain the steps
+        # raise has been resolved and the Combat closes.
+        return _result(
+            state,
+            valid=True,
+            procedure="combat_step_pending",
+            subject=combat["combat_id"],
+            combat_status=combat["status"],
+            discretionary_actions_allowed=False,
+            rule_locators=["Core 348.1", "Core 465", "Core 466"],
         )
     if state["showdown"]["active"]:
         return _result(
@@ -586,6 +615,8 @@ def add_pending_item(state: dict[str, Any], proposal: dict[str, Any]) -> dict[st
         origin = proposal.get("initiated_by") or ("activated_ability" if proposal.get("kind") == "activate_ability" else "played_card")
         probe["chain"]["initiated_by"] = origin
     probe["chain"]["consecutive_passes"] = []
+    if probe["showdown"]["active"]:
+        probe["showdown"]["focus_passes"] = []  # 347.2.a: a play breaks the sequence of passes
     if found := validate_state(probe):
         return _result(state, valid=True, applied=False, reason_code="invalid_chain_item", errors=found)
     return _result(
@@ -627,6 +658,53 @@ def pass_priority(state: dict[str, Any], actor: str) -> dict[str, Any]:
         transition=transition,
         next_procedure=next_procedure(new_state),
         rule_locators=["Core 338.1.b", "Core 339"],
+    )
+
+
+def pass_focus(state: dict[str, Any], actor: str) -> dict[str, Any]:
+    """Core 347.2 / 348: the Focus holder passes. Until every player has passed
+    once in sequence, Focus (and Priority) move to the next player (347.2.b).
+    When all have, the Showdown closes (348): a Combat Showdown proceeds to
+    the Combat Damage Step (348.1, 465.2) — the record moves to
+    showdown_closed and the state stays a Showdown State (343.1) with no
+    discretionary play; a Non-Combat Showdown's close establishes control
+    (348.2), which is G2 and is refused as unsupported here."""
+    verdict = validate_timing(state, {"actor": actor, "kind": "pass_focus", "timing": "default"})
+    if verdict.get("legal") is not True:
+        return _result(state, valid=verdict.get("valid", True), applied=False, reason_code=verdict.get("reason_code"), legality=verdict)
+    new_state = copy.deepcopy(state)
+    passes = list(new_state["showdown"].get("focus_passes", []))
+    if actor in passes:
+        return _result(state, valid=True, applied=False, reason_code="focus_already_passed_in_sequence")
+    passes.append(actor)
+    all_passed = len(passes) == len(new_state["players"])
+    if not all_passed:
+        new_state["showdown"]["focus_passes"] = passes
+        nxt = _next_player(new_state, actor)
+        new_state["showdown"]["focus"] = nxt
+        new_state["priority"] = nxt
+        transition = {"type": "focus_passed", "actor": actor, "next_focus": nxt, "showdown_closed": False}
+        locators = ["Core 347.2", "Core 347.2.b"]
+    else:
+        combat = new_state.get("combat")
+        if new_state["showdown"].get("kind") != "combat" or combat is None or combat.get("status") != "open":
+            return _result(state, valid=True, applied=False, unsupported=True, reason_code="unsupported_battlefield_control_resolution",
+                           explanation="every player passed Focus, so a Non-Combat Showdown closes and control is established (348.2) — that is the G2 milestone, not modelled here",
+                           rule_locators=["Core 348", "Core 348.2", "Core 348.2.a"])
+        combat["status"] = "showdown_closed"
+        new_state["showdown"]["focus_passes"] = []
+        new_state["priority"] = new_state["showdown"]["focus"]
+        transition = {"type": "combat_showdown_closed", "actor": actor, "combat_id": combat["combat_id"], "showdown_closed": True}
+        locators = ["Core 347.2.a", "Core 348", "Core 348.1", "Core 465.2"]
+    return _result(
+        state,
+        valid=True,
+        applied=True,
+        next_state=new_state,
+        next_state_hash=state_hash(new_state),
+        transition=transition,
+        next_procedure=next_procedure(new_state),
+        rule_locators=locators,
     )
 
 
@@ -812,6 +890,9 @@ def main() -> int:
     passed = sub.add_parser("pass-priority")
     passed.add_argument("state", type=Path)
     passed.add_argument("actor")
+    focus_pass = sub.add_parser("pass-focus")
+    focus_pass.add_argument("state", type=Path)
+    focus_pass.add_argument("actor")
     resolved = sub.add_parser("complete-resolution")
     resolved.add_argument("state", type=Path)
     resolved.add_argument("item_id")
@@ -832,6 +913,8 @@ def main() -> int:
             output = add_pending_item(state, _load(args.proposal))
         elif args.command == "pass-priority":
             output = pass_priority(state, args.actor)
+        elif args.command == "pass-focus":
+            output = pass_focus(state, args.actor)
         elif args.command == "complete-resolution":
             output = complete_resolution(state, args.item_id, effect_execution_confirmed=args.effect_executed)
         else:

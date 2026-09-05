@@ -28,7 +28,8 @@
         "active": {"type": "boolean"},
         "kind": {"type": ["string", "null"], "enum": ["combat", "non_combat", null]},
         "focus": {"type": ["string", "null"]},
-        "battlefield": {"type": ["string", "null"], "description": "ADR-0008 §2: the Battlefield the Showdown is at; required to match a staged Combat to it (323.14, 464.1)."}
+        "battlefield": {"type": ["string", "null"], "description": "ADR-0008 §2: the Battlefield the Showdown is at; required to match a staged Combat to it (323.14, 464.1)."},
+        "focus_passes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "description": "Players who passed Focus in sequence since the last play (347.2.a); every player passing closes the Showdown (348)."}
       }
     },
     "combat": {
@@ -40,7 +41,7 @@
         "combat_id": {"type": "string", "minLength": 1},
         "battlefield": {"type": "string", "minLength": 1},
         "battlefield_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
-        "status": {"enum": ["staged", "open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"]},
+        "status": {"enum": ["staged", "open", "showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"]},
         "attacker": {"type": ["string", "null"]},
         "defender": {"type": ["string", "null"]},
         "participants": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
@@ -55,6 +56,8 @@
         },
         "opened_with": {"enum": ["new_showdown", "existing_showdown"]},
         "battlefield_triggered": {"type": "array", "uniqueItems": true, "items": {"enum": ["attacker", "defender"]}, "description": "ADR-0008 §4: which of the Battlefield's own Attack/Defend triggers fired this Combat."},
+        "assignments": {"type": ["object", "null"], "description": "ADR-0008 §8–9: the attacker's and defender's Combat Damage assignment receipts (riftbound-combat-assignment-receipt.v1) once assigned; null when the damage step was skipped (465.1)."},
+        "damage_step_skipped": {"type": "boolean"},
         "sync_count": {"type": "integer", "minimum": 0}
       }
     },

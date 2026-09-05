@@ -93,6 +93,25 @@ Cleanup task of 323.2, also run by the resolution bridge after its Cleanup).
 Decisions for these procedures bind to `combined_input_hash(timing, effect)`,
 which every result reports as `input_hash`.
 
+`pass_focus` is the Showdown's own transition (347.2): until every player
+has passed Focus in sequence, Focus and Priority move to the next player;
+a play breaks the sequence. When all have passed, a Combat Showdown closes
+into the Combat Damage Step (348.1) — the record moves to `showdown_closed`,
+`next_procedure` reports `combat_step_pending` with no discretionary play,
+and `combat.assign_combat_damage` takes over: if both sides still have
+designated Units, each side's Might is summed (Stunned Units contribute
+nothing, negative Might reads 0) and, attacker first, each player's
+complete `damage_assignment` is validated against 465.2.c in full — lethal
+in full before another Unit, no over-assignment while another Unit remains,
+Tank first and Backline last with a per-Unit choice when a Unit has both,
+minimum lethal computed with the Unit's damage replacements previewed
+(465.2.c.5; only Prevent values are previewable, anything else is
+unsupported). The engine proceeds by itself only when exactly one
+assignment is legal. A receipt per side records raw, prevented and applied
+amounts and the replacements the Deal step will consume exactly once. A
+Non-Combat Showdown's close establishes control (348.2) and is refused as
+the G2 boundary.
+
 `validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open
 State with no Combat staged or in progress. `combat.standard_move` is the

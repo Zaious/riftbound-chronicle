@@ -38,7 +38,7 @@ DECISIONS_VERSION = "engine-decisions.v1"
 # "procedure": a choice a two-state procedure asks for (ADR-0008 §2: the Turn
 # Player's Combat location), bound to combat.combined_input_hash.
 STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection")
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -87,8 +87,25 @@ def validate_engine_decisions(value: Any) -> list[str]:
                 errors.append(f"{label}.selection_identities must map every selected object id exactly once")
             elif any(not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit() for identity in identities.values()):
                 errors.append(f"{label}.selection_identities values must be identity tokens")
+        elif kind == "damage_assignment":
+            # ADR-0008 §8: the complete raw assignment — every opposing Unit
+            # identity to a non-negative amount — plus, when a Unit's requirements
+            # are mutually exclusive, which one applies (465.2.c.8).
+            amounts = val.get("amounts") if isinstance(val, dict) and "amounts" in val else val
+            choices = val.get("requirement_choices", {}) if isinstance(val, dict) and "amounts" in val else {}
+            if not isinstance(amounts, dict) or not amounts or any(not isinstance(k, str) or not k or isinstance(n, bool) or not isinstance(n, int) or n < 0 for k, n in amounts.items()):
+                errors.append(f"{label}.value must map every opposing unit id to a non-negative raw amount (or carry amounts + requirement_choices)")
+            if not isinstance(choices, dict) or any(k not in (amounts or {}) or c not in {"tank", "backline"} for k, c in choices.items()):
+                errors.append(f"{label}.value.requirement_choices must map assigned units to tank or backline")
+            identities = item.get("selection_identities")
+            if not isinstance(identities, dict) or set(identities) != set(amounts if isinstance(amounts, dict) else []):
+                errors.append(f"{label}.selection_identities must bind every assigned unit id exactly once")
+            elif any(not isinstance(identity, str) or "@" not in identity for identity in identities.values()):
+                errors.append(f"{label}.selection_identities values must be identity tokens")
+            if item["stage"] != "procedure":
+                errors.append(f"{label}: damage_assignment is a procedure-stage decision")
         elif "selection_identities" in item:
-            errors.append(f"{label}.selection_identities is only valid for target_selection or card_selection")
+            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection or damage_assignment")
         if kind == "replacement_order" and (not isinstance(val, dict) or any(not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) for ids in val.values())):
             errors.append(f"{label}.value must map event ids to non-empty unique replacement-id arrays")
         if kind == "replacement_choice" and (not isinstance(val, dict) or any(not isinstance(by_event, dict) or any(not isinstance(c, bool) for c in by_event.values()) for by_event in val.values())):

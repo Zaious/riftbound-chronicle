@@ -367,6 +367,287 @@ def sync_combat_designations(timing_state: dict[str, Any], effect_state: dict[st
     return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 323.2", "Core 323.2.a", "Core 323.2.b", "Core 323.2.c", "Core 464.2.c.3.a", "Core 383.4.e.2.a", "Core 383.4.f.2.a"])
 
 
+# ------------------------------------------------------ Combat Damage assignment --
+
+ASSIGNMENT_RECEIPT_VERSION = "riftbound-combat-assignment-receipt.v1"
+PREVIEW_MODES = {"reduce_damage"}
+
+
+def combat_sides(record: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, list[str]]:
+    """The Units of each role that are at the Combat Battlefield and carry
+    this Combat's designation (the only Units that fight, 465.1–465.2)."""
+    sides: dict[str, list[str]] = {"attacker": [], "defender": []}
+    for object_id in effect_state["battlefields"][record["battlefield"]]["objects"]:
+        obj = effect_state["objects"][object_id]
+        designation = obj.get("combat_designation")
+        if obj.get("kind") == "unit" and designation is not None and designation.get("combat_id") == record["combat_id"]:
+            sides[designation["role"]].append(object_id)
+    return sides
+
+
+def available_combat_damage(effect_state: dict[str, Any], units: list[str]) -> tuple[int, list[dict[str, Any]]]:
+    """Core 465.2.a–b: the side's Might summed, each Unit's rules-facing Might
+    read as at least 0 (143.2.b); a Stunned Unit contributes nothing (423.1.b)."""
+    from effect_ir import effective_might
+    parts, total = [], 0
+    for unit in units:
+        might = effective_might(effect_state, unit)
+        stunned = bool(effect_state["objects"][unit].get("stunned"))
+        contributed = 0 if stunned else might
+        parts.append({"unit": unit, "might": might, "stunned": stunned, "contributed": contributed})
+        total += contributed
+    return total, parts
+
+
+def _preview_replacements(effect_state: dict[str, Any], unit: str, event_id: str, engine_decisions: dict[str, Any] | None):
+    """The deal_damage replacements that would apply to damage Dealt to the
+    Unit, considered at assignment instead (465.2.c.5). Only descriptors the
+    preview can evaluate (reduce_damage) are allowed; a Unit's controller
+    orders several by the existing replacement_order decision for the
+    assignment event and answers optional ones by replacement_choice.
+    Returns (ordered descriptors, problem) where problem is a result stub."""
+    from effect_ir import _applicable_replacements
+    applicable = _applicable_replacements(effect_state, {"op": "deal_damage", "object_id": unit})
+    if not applicable:
+        return [], None
+    unknown = [r["replacement_id"] for r in applicable if r["mode"] not in PREVIEW_MODES]
+    if unknown:
+        return None, {"unsupported": True, "reason_code": "assignment_replacement_not_previewable",
+                      "reason": f"replacement(s) {unknown} on {unit} would alter the damage Dealt in a way the assignment preview cannot evaluate (465.2.c.5); the assignment is not guessed", "replacement_ids": unknown}
+    controller = effect_state["objects"][unit]["controller"]
+    order_map, choice_map = _ed.replacement_maps(engine_decisions)
+    ids = [r["replacement_id"] for r in applicable]
+    if len(applicable) > 1:
+        supplied = (order_map or {}).get(event_id)
+        if supplied is None:
+            return None, {"replacement_decision_required": True, "reason": f"{controller} orders the replacements {ids} that apply to damage assigned to {unit} (465.2.c.5)",
+                          "replacement_ids": ids, "event_ids": [event_id], "decision_controller": controller}
+        if sorted(supplied) != sorted(ids):
+            return None, {"invalid": [f"replacement order for {event_id} must list exactly {sorted(ids)}"]}
+        by_id = {r["replacement_id"]: r for r in applicable}
+        applicable = [by_id[i] for i in supplied]
+    chosen = []
+    for descriptor in applicable:
+        if descriptor.get("optional"):
+            choice = ((choice_map or {}).get(descriptor["replacement_id"], {}) or {}).get(event_id)
+            if not isinstance(choice, bool):
+                return None, {"replacement_decision_required": True, "reason": f"{controller} decides whether the optional replacement {descriptor['replacement_id']} applies to damage assigned to {unit}",
+                              "replacement_ids": [descriptor["replacement_id"]], "event_ids": [event_id], "decision_controller": controller}
+            if choice is False:
+                continue
+        chosen.append(descriptor)
+    return chosen, None
+
+
+def preview_assignment(descriptors: list[dict[str, Any]], raw: int) -> tuple[int, int, list[dict[str, Any]]]:
+    """Applied damage for a raw assignment under the previewed descriptors,
+    each consumed at most once: (applied, prevented, consumed)."""
+    remaining, prevented, consumed = raw, 0, []
+    for descriptor in descriptors:
+        take = min(remaining, descriptor.get("prevent_remaining", 0))
+        if take > 0:
+            consumed.append({"replacement_id": descriptor["replacement_id"], "mode": descriptor["mode"], "prevented": take})
+            remaining -= take
+            prevented += take
+    return remaining, prevented, consumed
+
+
+def assignment_candidates(record: dict[str, Any], effect_state: dict[str, Any], role: str, engine_decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]] | None, dict[str, Any] | None]:
+    """Per opposing Unit: identity, Might, marked damage, the minimum raw
+    assignment that is lethal once replacements are previewed
+    (465.2.c.4.a, 465.2.c.5), and its assignment requirements (Tank first,
+    Backline last; both is a per-Unit choice, 465.2.c.6–c.9)."""
+    from effect_ir import effective_might, has_keyword, object_identity
+    opposing = combat_sides(record, effect_state)["defender" if role == "attacker" else "attacker"]
+    candidates = []
+    for unit in opposing:
+        obj = effect_state["objects"][unit]
+        event_id = f"assign:{record['combat_id']}:{unit}"
+        descriptors, problem = _preview_replacements(effect_state, unit, event_id, engine_decisions)
+        if problem is not None:
+            return None, {**problem, "unit": unit}
+        might, damage = effective_might(effect_state, unit), obj["damage"]
+        need = might - damage if might > damage else (0 if damage > 0 else 1)  # 143.2.a: nonzero damage at or above Might
+        raw = need
+        while need > 0 and preview_assignment(descriptors, raw)[0] < need:
+            raw += 1
+            if raw > need + 64:
+                return None, {"unsupported": True, "reason_code": "assignment_lethal_not_reachable", "reason": f"no raw assignment within 64 above the need makes {unit} take lethal damage under its replacements", "unit": unit}
+        requirements = [k for k in ("tank", "backline") if has_keyword(effect_state, unit, k)]
+        candidates.append({"unit": unit, "identity": object_identity(effect_state, unit) or f"{unit}@0", "might": might, "damage": damage,
+                           "min_lethal_applied": need, "min_lethal_raw": raw, "requirements": requirements, "event_id": event_id,
+                           "replacements": [d["replacement_id"] for d in descriptors], "_descriptors": descriptors})
+    return candidates, None
+
+
+def _tier(candidate: dict[str, Any], choices: dict[str, str]) -> int:
+    reqs = candidate["requirements"]
+    if "tank" in reqs and "backline" in reqs:
+        return {"tank": 0, "backline": 2}[choices[candidate["unit"]]]
+    return 0 if "tank" in reqs else 2 if "backline" in reqs else 1
+
+
+def validate_assignment(candidates: list[dict[str, Any]], available: int, amounts: dict[str, int], choices: dict[str, str]) -> list[str]:
+    """Core 465.2.c.3–c.9 over one complete raw assignment. Returns problems."""
+    problems = []
+    units = {c["unit"]: c for c in candidates}
+    if set(amounts) != set(units):
+        return [f"the assignment must name every opposing Unit exactly once: {sorted(units)}"]
+    if sum(amounts.values()) != available:
+        return [f"assigned {sum(amounts.values())}, but the side's Combat Damage is {available} (465.2.c)"]
+    for c in candidates:
+        if "tank" in c["requirements"] and "backline" in c["requirements"] and c["unit"] not in choices:
+            return [f"{c['unit']} has both Tank and Backline; the assigning player chooses which applies (465.2.c.8)"]
+    tiers: dict[int, list[dict[str, Any]]] = {}
+    for c in candidates:
+        tiers.setdefault(_tier(c, choices), []).append(c)
+    lethal = {c["unit"]: amounts[c["unit"]] >= c["min_lethal_raw"] for c in candidates}
+    first_open = None
+    for tier in sorted(tiers):
+        members = tiers[tier]
+        if first_open is None:
+            if all(lethal[m["unit"]] for m in members):
+                continue
+            first_open = tier
+            partial = [m for m in members if 0 < amounts[m["unit"]] < m["min_lethal_raw"]]
+            if len(partial) > 1:
+                problems.append(f"lethal damage must be assigned in full before another Unit receives any: {[m['unit'] for m in partial]} are both partial (465.2.c.3)")
+        else:
+            for m in members:
+                if amounts[m["unit"]] > 0:
+                    problems.append(f"{m['unit']} received damage while a Unit that must be assigned first still lacks lethal damage (465.2.c.6–c.7)")
+    for c in candidates:
+        others_open = any(not lethal[o["unit"]] for o in candidates if o["unit"] != c["unit"])
+        if amounts[c["unit"]] > c["min_lethal_raw"] and others_open:
+            problems.append(f"{c['unit']} was assigned {amounts[c['unit']]}, above the minimum lethal {c['min_lethal_raw']}, while another Unit still lacks lethal damage (465.2.c.4)")
+    return problems
+
+
+def _legal_assignment_count(candidates: list[dict[str, Any]], available: int, choices: dict[str, str], limit: int = 2) -> int | None:
+    """Count legal assignments up to `limit` by bounded enumeration; None when
+    the space is too large to enumerate honestly (then the player decides)."""
+    if len(candidates) > 4 or available > 12:
+        return None
+    units = [c["unit"] for c in candidates]
+    count = 0
+
+    def rec(index: int, remaining: int, partial: dict[str, int]):
+        nonlocal count
+        if count >= limit:
+            return
+        if index == len(units):
+            if remaining == 0 and not validate_assignment(candidates, available, partial, choices):
+                count += 1
+            return
+        for amount in range(remaining + 1):
+            partial[units[index]] = amount
+            rec(index + 1, remaining - amount, partial)
+        partial.pop(units[index], None)
+
+    rec(0, available, {})
+    return count
+
+
+def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """ADR-0008 §8–9 / Core 465.2: once the Combat Showdown has closed, if
+    both sides still have designated Units at the Battlefield, sum each
+    side's Might and, starting with the attacker, take each player's complete
+    damage_assignment; validate 465.2.c in full with replacements previewed
+    (465.2.c.5); record a receipt per side. Nothing is Dealt here (465.2.c.1)
+    and no replacement is consumed yet — the Deal step does that from the
+    receipt, exactly once."""
+    from effect_ir import object_identity
+    base = _base("assign_combat_damage", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    record = timing_state.get("combat")
+    if record is None or record["status"] != "showdown_closed":
+        return _refuse(base, "combat_showdown_not_closed", "Combat Damage is assigned when the Combat Showdown closes (348.1, 465.2); the Combat is not at that step", ["Core 348.1", "Core 465.2"])
+    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before damage is assigned", ["Core 465.1"])
+    sides = combat_sides(record, effect_state)
+    next_timing = copy.deepcopy(timing_state)
+    next_record = next_timing["combat"]
+    if not sides["attacker"] or not sides["defender"]:
+        next_record["status"] = "damage_dealt"
+        next_record["assignments"] = None
+        next_record["damage_step_skipped"] = True
+        return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"sides": sides, "damage_step": "skipped", "reason": "both Attacking and Defending Units must remain for the Combat Damage Step (465.1)"}, locators=["Core 465.1", "Core 466"])
+    receipts: dict[str, Any] = {}
+    trace_sides = {}
+    for role in ("attacker", "defender"):
+        player = record[role]
+        available, parts = available_combat_damage(effect_state, sides[role])
+        candidates, problem = assignment_candidates(record, effect_state, role, engine_decisions)
+        if problem is not None:
+            if problem.get("unsupported"):
+                return _unsupported(base, problem["reason_code"], problem["reason"], ["Core 465.2.c.5", "Core 465.2.c.10"], unit=problem.get("unit"), replacement_ids=problem.get("replacement_ids", []))
+            if problem.get("replacement_decision_required"):
+                return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": problem["reason"], "replacement_ids": problem["replacement_ids"],
+                        "event_ids": problem["event_ids"], "decision_controller": problem["decision_controller"], "rule_locators": ["Core 465.2.c.5"]}
+            return _invalid(base, problem.get("invalid", ["assignment preview failed"]))
+        public = [{k: v for k, v in c.items() if not k.startswith("_")} for c in candidates]
+        decision_id = f"damage_assignment:{record['combat_id']}:{role}"
+        entry = next((e for e in _ed.entries(engine_decisions, kind="damage_assignment") if e["decision_id"] == decision_id), None)
+        if entry is None:
+            auto = None
+            if available == 0:
+                auto = {c["unit"]: 0 for c in candidates}
+            elif len(candidates) == 1:
+                auto = {candidates[0]["unit"]: available}
+            elif not any(len(c["requirements"]) == 2 for c in candidates) and _legal_assignment_count(candidates, available, {}) == 1:
+                for c in candidates:
+                    pass
+                # exactly one legal assignment: find it by the same bounded enumeration
+                units = [c["unit"] for c in candidates]
+
+                def find(index: int, remaining: int, partial: dict[str, int]):
+                    if index == len(units):
+                        return dict(partial) if remaining == 0 and not validate_assignment(candidates, available, partial, {}) else None
+                    for amount in range(remaining + 1):
+                        partial[units[index]] = amount
+                        found = find(index + 1, remaining - amount, partial)
+                        if found is not None:
+                            return found
+                    partial.pop(units[index], None)
+                    return None
+                auto = find(0, available, {})
+            if auto is None:
+                return {**base, "valid": True, "committed": False, "reason_code": "damage_assignment_required",
+                        "reason": f"{player} assigns {available} Combat Damage among {[c['unit'] for c in candidates]} (465.2.c); the engine only proceeds when exactly one assignment is legal",
+                        "decision_ids": [decision_id], "decision_controller": player, "role": role, "available": available, "candidates": public,
+                        "rule_locators": ["Core 465.2.c", "Core 465.2.c.3", "Core 465.2.c.4", "Core 465.2.c.6"]}
+            amounts, choices, how = auto, {}, "sole_legal_assignment"
+        else:
+            if entry["controller"] != player:
+                return _refuse(base, "decision_controller_mismatch", f"the {role}'s assignment was supplied by {entry['controller']!r}, not {player}", ["Core 465.2.c"])
+            value = entry["value"]
+            amounts = dict(value["amounts"]) if isinstance(value, dict) and "amounts" in value else dict(value)
+            choices = dict(value.get("requirement_choices", {})) if isinstance(value, dict) and "amounts" in value else {}
+            for unit, identity in (entry.get("selection_identities") or {}).items():
+                if unit in effect_state["objects"] and identity != (object_identity(effect_state, unit) or f"{unit}@0"):
+                    return _invalid(base, [f"damage_assignment {decision_id} binds {unit} to {identity!r}; it is now {object_identity(effect_state, unit) or f'{unit}@0'!r}"])
+            if set(amounts) != {c["unit"] for c in candidates} or sum(amounts.values()) != available:
+                return _invalid(base, [f"damage_assignment {decision_id} must name every opposing Unit {sorted(c['unit'] for c in candidates)} exactly once and sum to {available} (465.2.c); got {amounts}"])
+            problems = validate_assignment(candidates, available, amounts, choices)
+            if problems:
+                return _refuse(base, "damage_assignment_illegal", "; ".join(problems), ["Core 465.2.c.3", "Core 465.2.c.4", "Core 465.2.c.6", "Core 465.2.c.7", "Core 465.2.c.8"], role=role, candidates=public)
+            how = "player_decision"
+        entries = []
+        for c in candidates:
+            applied, prevented, consumed = preview_assignment(c["_descriptors"], amounts[c["unit"]])
+            entries.append({"unit": c["unit"], "identity": c["identity"], "raw_assigned": amounts[c["unit"]], "prevented": prevented, "applied": applied,
+                            "lethal": amounts[c["unit"]] >= c["min_lethal_raw"], "min_lethal_raw": c["min_lethal_raw"], "might": c["might"], "marked_damage": c["damage"],
+                            "requirement_applied": choices.get(c["unit"]) or (c["requirements"][0] if c["requirements"] else None), "consumed_replacements": consumed, "event_id": c["event_id"]})
+        receipts[role] = {"schema_version": ASSIGNMENT_RECEIPT_VERSION, "assigning_player": player, "available": available, "contributions": parts,
+                          "sources": sides[role], "entries": entries, "selection": how, "rule_locators": ["Core 465.2.a", "Core 465.2.b", "Core 465.2.c", "Core 465.2.c.5", "Core 465.2.c.1"]}
+        trace_sides[role] = {"available": available, "selection": how, "amounts": amounts}
+    next_record["status"] = "damage_assigned"
+    next_record["assignments"] = receipts
+    return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"sides": sides, "assignments": trace_sides, "dealt": False},
+                   locators=["Core 465.1", "Core 465.2.a", "Core 465.2.b", "Core 465.2.c", "Core 465.2.c.1", "Core 465.2.c.3", "Core 465.2.c.4", "Core 465.2.c.4.a", "Core 465.2.c.5", "Core 465.2.c.6", "Core 465.2.c.7", "Core 465.2.c.8", "Core 465.2.c.9", "Core 423.1.b", "Core 143.2.b"])
+
+
 # ---------------------------------------------------------------- Standard Move --
 
 STANDARD_MOVE_VERSION = "riftbound-standard-move-result.v1"
@@ -506,7 +787,7 @@ def _load(path: Path) -> dict[str, Any]:
     return value
 
 
-STEPS = {"stage": stage_combat, "open": open_combat, "sync": sync_combat_designations}
+STEPS = {"stage": stage_combat, "open": open_combat, "sync": sync_combat_designations, "assign": assign_combat_damage}
 
 
 def main(argv: list[str] | None = None) -> int:

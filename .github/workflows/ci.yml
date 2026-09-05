@@ -238,6 +238,11 @@ jobs:
       - name: Active-Combat criteria and mutual Might damage
         run: python3 skill/scripts/check_combat_area_and_mutual.py
 
+      # ADR-0008 C-30: the official 465.2.c examples are goldens; assignment is a
+      # complete player decision; replacement previews are recorded, not applied.
+      - name: Combat Damage assignment
+        run: python3 skill/scripts/check_combat_damage_assignment.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -314,6 +319,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_combat_characteristics.py"
           python3 "$REPO/skill/scripts/check_standard_move.py"
           python3 "$REPO/skill/scripts/check_combat_area_and_mutual.py"
+          python3 "$REPO/skill/scripts/check_combat_damage_assignment.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -81,12 +81,17 @@ FEATURE_RULES = {
     # C-29 (ADR-0008 §7).
     "active_combat_criteria": ["Core 740.2.c", "Core 355.10.d", "Core 355.5.a"],
     "mutual_current_might_damage": ["Core 417.1.d", "Core 417.6.b.3–417.6.b.4", "Core 143.2.b"],
+    # C-30 (ADR-0008 §8–9).
+    "combat_showdown_close": ["Core 347.2–347.2.b", "Core 348–348.1"],
+    "combat_damage_assignment": ["Core 465.1–465.2.c.4.a", "Core 423.1.b", "Core 143.2.b"],
+    "tank_backline_priority": ["Core 465.2.c.6–465.2.c.9", "Core 815.1.b–815.1.c.2"],
+    "assignment_replacement_preview": ["Core 465.2.c.5", "Core 417.1.a", "Core 465.2.c.10"],
 }
 KIND_CONFIG = {
     "timing": {
         "component": ("rules_core", RULES_CORE_VERSION),
         "coverage": "timing_permission_v1",
-        "supported": ["four_state_timing", "priority_focus", "hot_fepr"],
+        "supported": ["four_state_timing", "priority_focus", "hot_fepr", "combat_showdown_close"],
         "unsupported": ["arbitrary_card_effects", "complete_game", "complete_legality"],
     },
     "effect": {
@@ -132,8 +137,8 @@ KIND_CONFIG = {
     "combat_step": {
         "component": ("combat", COMBAT_STEP_VERSION),
         "coverage": "combat_step_v1",
-        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers"],
-        "unsupported": ["start_of_combat_effects", "player_level_attack_defend_triggers", "multi_player_combat", "combat_damage", "combat_cleanup", "combat_result", "battlefield_control_resolution", "scoring", "complete_game", "complete_legality"],
+        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers", "combat_showdown_close", "combat_damage_assignment", "tank_backline_priority", "assignment_replacement_preview"],
+        "unsupported": ["start_of_combat_effects", "player_level_attack_defend_triggers", "multi_player_combat", "damage_exemption_sources", "non_prevent_assignment_replacements", "combat_damage_deal", "combat_cleanup", "combat_result", "battlefield_control_resolution", "scoring", "complete_game", "complete_legality"],
     },
     # ADR-0008 §6: the Standard Move as a player action outside Combat.
     "standard_move": {
@@ -161,6 +166,7 @@ DECISION_REASON_CODES = {
     "resource_allocation_required": "cost_choice",
     "location_selection_required": "location_choice",
     "cost_confirmation_required": "cost_choice",
+    "damage_assignment_required": "damage_assignment",
 }
 
 

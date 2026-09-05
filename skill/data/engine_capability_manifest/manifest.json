@@ -1,18 +1,18 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:68dc22d854e3afc325634002",
-  "capability_set_id": "sha256:68dc22d854e3afc325634002f8a50be7c0e81fe91dbbb14ed4d549d2aacd271e",
+  "manifest_id": "capability-manifest:ee593399872e9e41a0eec9ba",
+  "capability_set_id": "sha256:ee593399872e9e41a0eec9bae5ded8e64047450605af35df49c4fcbaaf924432",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:dd5b5c0995fbf3a4b7a80f3321ef374dfc92665ab5bc3c98d803b3eacac43ce1",
+    "value": "sha256:6bb71c6b9bf1fa57dbe4614a66d14c1ef9f5c909cdfe5fbf3bba465b88c32ba5",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:bab89e5f3ca3cf3a4d197af22600a856e0c5ac4ecdd19726ed525e04fb41ea3f"
+        "sha256": "sha256:1e4c589e258878e129575be2bc24b628bf45c3ef5d58449e2887c0d12e74d8a4"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:39130f68f3929beca1b40dce6f6e2d51bbc6a99bd50d09a80935be990fa830ae"
+        "sha256": "sha256:0d8607182608be4f27bd91cfe672ce211f13012d3dc5c511a5c25d24c456f29d"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,11 +20,11 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:f3ae9d6f36077485bd9a2d8c5d440a93ca4cee3d47229fc68b787ba31e84b056"
+        "sha256": "sha256:5c03b1d8c0908027b5d2afa67d3343fa3f5a707ba772964728152521a37381e0"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:65c15355ba3fff1f1203458f42482defad394897d3da556a1f4fcd8fed84f4d5"
+        "sha256": "sha256:b39c58ea7d7bbebd7e4c71f5fe74af3e3a6ecdbed04e9d67730a97603abeaa14"
       }
     ]
   },
@@ -60,13 +60,19 @@
         "combat_opening",
         "combat_designations",
         "attack_defend_triggers",
-        "battlefield_defend_triggers"
+        "battlefield_defend_triggers",
+        "combat_showdown_close",
+        "combat_damage_assignment",
+        "tank_backline_priority",
+        "assignment_replacement_preview"
       ],
       "unsupported_scope": [
         "start_of_combat_effects",
         "player_level_attack_defend_triggers",
         "multi_player_combat",
-        "combat_damage",
+        "damage_exemption_sources",
+        "non_prevent_assignment_replacements",
+        "combat_damage_deal",
         "combat_cleanup",
         "combat_result",
         "battlefield_control_resolution",
@@ -201,7 +207,8 @@
       "supported_scope": [
         "four_state_timing",
         "priority_focus",
-        "hot_fepr"
+        "hot_fepr",
+        "combat_showdown_close"
       ],
       "unsupported_scope": [
         "arbitrary_card_effects",
@@ -441,6 +448,14 @@
       ]
     },
     {
+      "id": "pass_focus",
+      "rule_locators": [
+        "Core 347.2–347.2.b",
+        "Core 348–348.1",
+        "Core 465.2"
+      ]
+    },
+    {
       "id": "pass_priority",
       "rule_locators": [
         "Core 338.1.b",
@@ -498,6 +513,14 @@
       ]
     },
     {
+      "id": "assignment_replacement_preview",
+      "rule_locators": [
+        "Core 465.2.c.5",
+        "Core 417.1.a",
+        "Core 465.2.c.10"
+      ]
+    },
+    {
       "id": "atomic_play_transaction",
       "rule_locators": [
         "Core 354–358",
@@ -535,6 +558,14 @@
       ]
     },
     {
+      "id": "combat_damage_assignment",
+      "rule_locators": [
+        "Core 465.1–465.2.c.4.a",
+        "Core 423.1.b",
+        "Core 143.2.b"
+      ]
+    },
+    {
       "id": "combat_designations",
       "rule_locators": [
         "Core 323.2–323.2.c",
@@ -556,6 +587,13 @@
         "Core 740.2.a",
         "Core 143.2.b",
         "Core 364.3"
+      ]
+    },
+    {
+      "id": "combat_showdown_close",
+      "rule_locators": [
+        "Core 347.2–347.2.b",
+        "Core 348–348.1"
       ]
     },
     {
@@ -731,6 +769,13 @@
       ]
     },
     {
+      "id": "tank_backline_priority",
+      "rule_locators": [
+        "Core 465.2.c.6–465.2.c.9",
+        "Core 815.1.b–815.1.c.2"
+      ]
+    },
+    {
       "id": "typed_cost_payment",
       "rule_locators": [
         "Core 356.1–356.7",
@@ -801,6 +846,8 @@
     "Core 347",
     "Core 347.1",
     "Core 347.2",
+    "Core 347.2–347.2.b",
+    "Core 348–348.1",
     "Core 349",
     "Core 354–358",
     "Core 355.1.a",
@@ -850,6 +897,7 @@
     "Core 415",
     "Core 416",
     "Core 417",
+    "Core 417.1.a",
     "Core 417.1.d",
     "Core 417.6.b.3",
     "Core 417.6.b.3–417.6.b.4",
@@ -861,6 +909,7 @@
     "Core 422.1.a",
     "Core 422.1–422.4",
     "Core 422.4",
+    "Core 423.1.b",
     "Core 428",
     "Core 428.1.a.1.b",
     "Core 429",
@@ -880,6 +929,11 @@
     "Core 464.2.c.1.a–464.2.c.1.b",
     "Core 464.2.c.3–464.2.c.3.a",
     "Core 464.2.e.1",
+    "Core 465.1–465.2.c.4.a",
+    "Core 465.2",
+    "Core 465.2.c.10",
+    "Core 465.2.c.5",
+    "Core 465.2.c.6–465.2.c.9",
     "Core 466.7.c",
     "Core 477",
     "Core 713–715.4",
@@ -892,7 +946,8 @@
     "Core 809.2",
     "Core 810.1–810.3",
     "Core 814.1.c–814.2",
-    "Core 814.2"
+    "Core 814.2",
+    "Core 815.1.b–815.1.c.2"
   ],
   "exclusions": [
     "add_reaction_resolution_during_payment",
@@ -903,7 +958,7 @@
     "beginning_phase",
     "combat",
     "combat_cleanup",
-    "combat_damage",
+    "combat_damage_deal",
     "combat_moves",
     "combat_result",
     "complete_action_set",
@@ -913,6 +968,7 @@
     "cost_checks",
     "cost_modification_sources",
     "counter",
+    "damage_exemption_sources",
     "effect_prerequisites",
     "engine_enumeration",
     "full_cleanup",
@@ -920,6 +976,7 @@
     "invalid_destination_catalog",
     "multi_descriptor_replacement",
     "multi_player_combat",
+    "non_prevent_assignment_replacements",
     "non_standard_costs_beyond_exhaust_kill",
     "non_standard_moves",
     "payment_stage_replacement_decisions",

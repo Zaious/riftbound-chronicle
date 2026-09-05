@@ -19,11 +19,11 @@
         "properties": {
           "decision_id": {"type": "string", "minLength": 1},
           "stage": {"enum": ["play_declaration", "trigger_finalization", "resolution", "procedure"]},
-          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection"]},
+          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment"]},
           "controller": {"type": "string", "minLength": 1},
           "value": {},
           "selection_identities": {
-            "description": "For target_selection and card_selection, the object identity bound when the choice was made. Keys exactly match value; enforced by the runtime validator.",
+            "description": "For target_selection, card_selection and damage_assignment, the object identity bound when the choice was made. Keys exactly match the chosen / assigned object ids; enforced by the runtime validator.",
             "type": "object",
             "additionalProperties": {"type": "string", "pattern": "^.+@[0-9]+$"}
           },
@@ -32,7 +32,7 @@
         },
         "allOf": [
           {
-            "if": {"properties": {"kind": {"enum": ["target_selection", "card_selection"]}}, "required": ["kind"]},
+            "if": {"properties": {"kind": {"enum": ["target_selection", "card_selection", "damage_assignment"]}}, "required": ["kind"]},
             "then": {"required": ["selection_identities"]},
             "else": {"not": {"required": ["selection_identities"]}}
           }

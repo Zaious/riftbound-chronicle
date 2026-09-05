@@ -401,6 +401,8 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.combat_designation must be {{combat_id, role: attacker|defender}}")
         elif designation is not None and obj.get("kind") != "unit":
             errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
+        if "stunned" in obj and not isinstance(obj["stunned"], bool):
+            errors.append(f"objects.{object_id}.stunned must be boolean (Core 423.1.a)")
         if "shield_value" in obj and (not isinstance(obj["shield_value"], int) or isinstance(obj["shield_value"], bool) or obj["shield_value"] < 1):
             errors.append(f"objects.{object_id}.shield_value must be a positive integer (Core 814.1.b)")
         # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1),

@@ -35,7 +35,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "supported_scope": [
             "four_state_timing",
             "priority_focus",
-            "hot_fepr"
+            "hot_fepr",
+            "combat_showdown_close"
           ],
           "unsupported_scope": [
             "arbitrary_card_effects",
@@ -96,7 +97,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "supported_scope": [
             "four_state_timing",
             "priority_focus",
-            "hot_fepr"
+            "hot_fepr",
+            "combat_showdown_close"
           ],
           "unsupported_scope": [
             "arbitrary_card_effects",

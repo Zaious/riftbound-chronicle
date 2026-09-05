@@ -94,6 +94,11 @@ frozen, fixture expansion and official-example encoding become
 - [ ] Full phase/turn state machine rather than caller-supplied phase facts.
 - [ ] Complete Outstanding Task catalog and task-specific ordering rules.
 - [ ] Complete Showdown and Combat procedure state, not only timing labels.
+  (C-26/C-30: one `combat` record on the timing state — staged, open,
+  showdown_closed, damage_assigned, damage_dealt, cleanup_done,
+  result_determined — plus `showdown.battlefield` and Focus passes that
+  close a Combat Showdown; `next_procedure` reports `combat_step_pending`;
+  a Non-Combat Showdown's close stays at the G2 boundary.)
 - [ ] Official conformance corpus covering every R1 clause and adverse ordering
   combination.
 
@@ -252,18 +257,43 @@ Dependency milestones are defined in
 - [ ] **G1 — Showdown and Combat.** Complete the supported Showdown/Combat
   procedure and its state/trace contract.
   (ADR-0008 fixes the R3-A3/G1 state, designation, assignment, Cleanup and
-  closure contracts; C-26 through C-31 remain to implement.)
+  closure contracts; C-26 through C-31 implement staging, opening,
+  designations, Attack/Defend and Battlefield triggers, the Showdown close,
+  Combat Damage assignment with previewed replacements, the simultaneous
+  Deal, the Combat Cleanup, the result and the closure that abstains at the
+  Battlefield-control boundary. Still open: start/end-of-combat effects,
+  player-level Attack/Defend triggers, take-damage triggers, damage
+  exemption sources, non-Prevent assignment replacements, Combats between
+  more than two players.)
 - [ ] **G2 — Battlefield control, Conquer, and Scoring.** Complete control,
   point, and scoring semantics.
 - [ ] **G3 — Victory and Terminal State.** Complete Victory Score, ties,
   simultaneous terminal events, Burn Out, terminal reasons, and reward adapter.
 
 - [ ] Complete normal Cleanup steps 1–10a.
+  (C-26/C-31: step 2 designation synchronization, 3a/3b lethal Cleanup with
+  Combat-Damage attribution, and steps 7–7a/10 as `stage_combat`; steps 1,
+  4–6, 8–9 remain.)
 - [ ] Special, Combat, and End-of-Turn Cleanup additions.
-- [ ] Attack declaration, attacker/defender designations, and legal defenders.
+  (C-21: the Ending Special Cleanup; C-31: the Combat Special Cleanup —
+  heal all Units, Recall Attackers if Defenders remain.)
+- [x] Attack declaration, attacker/defender designations, and legal defenders.
+  (C-26: attacker = the player who applied Contested, defender the other
+  participant, never guessed; designations on opening and by Cleanup; Core
+  464.2.c, 323.2.)
 - [ ] Combat damage assignment, Tank/Backline conflicts, and simultaneous Deal.
+  (C-30/C-31, bounded implementation slice: `damage_assignment` decisions validated for
+  465.2.c.3–c.9 with the official examples as goldens, Prevent values
+  previewed and consumed once, receipts bound to the effect-state snapshot,
+  Units as sources; damage-exemption sources (465.2.c.10) and non-Prevent
+  assignment replacements remain unsupported, so Tank clauses stay partial.)
 - [ ] Showdown staging, opening, action cycle, resolution, and closure.
+  (C-26/C-30/C-31: staging, opening with Focus, Focus passes closing a
+  Combat Showdown, result and closure for Combats; the Non-Combat Showdown's
+  closure and control establishment remain with G2.)
 - [ ] Battlefield Contested/control transitions.
+  (C-31: Contested cleared when the remaining player already controls the
+  Battlefield; control transitions remain for G2.)
   (C-19: `contested` / `contested_by` recorded on entering an uncontrolled
   Battlefield, 190.3.a.1; control transitions remain for G2.)
 - [ ] Implement the Conquer/point/control components required by G2.
@@ -309,10 +339,13 @@ collect/normalize card clauses and implement assigned cards.
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
   current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.
-  (C-18/C-25: the R3-A1 and R3-A2 batches — 26 cards, 27 clauses full,
-  6 partial, 7 unsupported, 6 stale — in `r3a1_programs.json`; Legends are
-  not engine objects, so Annie - Fiery stays partial; Draw clauses stay
-  partial until Burn Out is implemented; remaining batch R3-A3.)
+  (C-18/C-25/C-32: the R3-A1, R3-A2 and R3-A3 batches — 34 cards, 38
+  clauses full, 10 partial, 2 unsupported, 6 stale — in `r3a1_programs.json`;
+  Legends are not engine objects, so Annie - Fiery and Master Yi - Wuju
+  Bladesman stay partial; Draw clauses stay partial until Burn Out is
+  implemented; the Tank and mutual-damage clauses stay partial while damage
+  exemption and non-Prevent replacement modes are unsupported; Vision stays
+  unsupported; activation remains an ADR-0004 gate.)
 - [x] Label every selected Wave-A card and clause `unsupported` or `stale` in
   the R3-A0 draft; `full`/`partial` remain recommendations until tested programs exist.
 - [ ] Attach an official locator to every implemented clause.
@@ -622,13 +655,13 @@ push” does not isolate a commit on shared `main`.
 | C-23 — completed 2026-09-05 | Deflect as any-domain Power with resource_allocation | ADR-0007 §11 | power_any mandatory additional cost per choice; one legal allocation paid, two or more asked; Add window first |
 | C-24 — completed 2026-09-05 | Granted replacements | ADR-0007 §12 | grant_replacement / heal_all_damage; exactly one of source-backed or granted; not applicable after the target leaves and returns; expires with its turn; Highlander stays stale |
 | C-25 — completed 2026-09-05 | R3-A2 card programs and re-derived manifest | C-19..C-24 landed | 19 R3-A2 clauses with passives, probes and play_entry fixtures; symbolic bindings, mirrored runs; stale cards carry programs without program_id; manifest draft |
-| C-26 | Combat staging/opening, designations and trigger synchronization | ADR-0008 §1–3 | Two-state atomic procedure; location choice; attacker/defender attribution; once-per-identity Attack/Defend triggers |
-| C-27 | Battlefield Defend triggers and combat-relative characteristics | ADR-0008 §4–5 | Fortified Position controller semantics; Shield/alone Might; typed this-combat keyword modifiers and expiry |
-| C-28 | Atomic Standard Move and Ganking | ADR-0008 §6 | Timing/cost/destination validation; simultaneous exhaust and one destination; Ganking adds only Battlefield-to-Battlefield permission |
-| C-29 | Active-Combat criteria and mutual Might damage | ADR-0008 §7 | Combat-area affected objects are not targets; simultaneous snapshotted mutual Deal with source attribution |
-| C-30 | Combat Damage assignment and replacement preview receipts | ADR-0008 §8–9 | Complete allocation decision; lethal/overassignment/Tank/Backline/conflict rules; assignment replacements applied exactly once |
-| C-31 | Simultaneous Combat Deal, Cleanup, result and closure boundary | ADR-0008 §10 | Damage attribution; death/FEPR barrier; Recall No Result; this-combat expiry; no G2 control or scoring mutation |
-| C-32 | R3-A3 card programs and re-derived manifest | C-26..C-31 landed; ADR-0008 §11 | 13 clauses/12 cards; official-locator fixtures; symbolic mirrors; Legend clause remains partial |
+| C-26 — bounded slice completed 2026-09-05 | Combat staging/opening, designations and trigger synchronization | ADR-0008 §1–3 | combat.py stage_combat / open_combat / sync_combat_designations over the timing/effect pair; location_selection for several staged Battlefields; contested_by is the attacker or the opening is unsupported; three controllers unsupported; Unit and Battlefield Attack/Defend triggers once per identity, attacker first; Cleanup step 2 before lethal. Not in this slice: start-of-combat effects and player-level Attack/Defend triggers |
+| C-27 — completed 2026-09-05 | Battlefield Defend triggers and combat-relative characteristics | ADR-0008 §4–5 | Battlefield attack/defend triggers fire for the Battlefield's controller only; effective_might adds Shield while defending, attacking_or_defending_alone, friendly_unit_defends_alone auras, clamps negatives at 0; grant_keyword with keyword_modifiers bound to the Combat in progress |
+| C-28 — completed 2026-09-05 | Atomic Standard Move and Ganking | ADR-0008 §6 | standard_move as a player action (validate_timing kind); simultaneous exhaust cost with confirmation; one destination; Base↔Battlefield routes; Battlefield→Battlefield only with active Ganking; relocation delegated to the Move operation |
+| C-29 — completed 2026-09-05 | Active-Combat criteria and mutual Might damage | ADR-0008 §7 | affected.criteria.location active_combat under the bridge's Combat context, empty without a Combat, unsupported when the claimed Combat cannot be confirmed; mutual_damage_current_might snapshots both Mights and Deals at once with the Units as sources |
+| C-30 — bounded slice completed 2026-09-05 | Combat Damage assignment and replacement preview receipts | ADR-0008 §8–9 | pass_focus closes the Combat Showdown; assign_combat_damage validates damage_assignment decisions against 465.2.c.3–c.9 (official examples as goldens), previews Prevent values only (other modes and 465.2.c.10 exemptions unsupported), auto-advances only for the sole legal assignment, records receipts bound to the effect-state snapshot |
+| C-31 — completed 2026-09-05 | Simultaneous Combat Deal, Cleanup, result and closure boundary | ADR-0008 §10 | deal_combat_damage from snapshot-bound receipts with replacements consumed once; combat_cleanup in 323 order (designations, death triggers, kills attributed per object to the opposing side, heal, Recall, 324.2 follow-up); determine_combat_result after the chain empties; close_combat expires this-combat effects, stages the both-remain Combat again, and abstains as unsupported battlefield_control_resolution where 466.5 would change control |
+| C-32 — completed 2026-09-05 | R3-A3 card programs and re-derived manifest | C-26..C-31 landed; ADR-0008 §11; Codex review-fix | 13 clauses / 12 cards with combat-scenario fixtures staged by the real procedures; 9 full, 4 partial (the Legend clause, the two Tank clauses, the mutual-damage clause); vanilla Units probed as intrinsic unit_combat; mirrored runs |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first
@@ -642,7 +675,7 @@ real artifact migration should establish the presentation semantics first.
 | D-01 — completed 2026-09-01 | Rule Consult engine-check panel and prototype | Rule Consult artifact/schema migration — satisfied 2026-09-01 | Bilingual rendering, fixture attach/export, confidence independence, UI regression |
 | D-02 — completed 2026-09-01 | P2-A engine-check panel and verification-state UI | P2-A event/schema and verification-burden migration — satisfied 2026-09-01 | Bilingual shared viewer, five verification states, raw-result refusal, documented overrides, prototype regression |
 | D-03 — completed 2026-09-02 | Deck behavior coverage display and primer evidence | R3 behavior-coverage manifest — contract/pipeline satisfied; production pack absent | Four status explanations, five copy counts, generated fixtures, bilingual display, strategy-boundary regressions |
-| D-04 — R3-A1/A2 slices completed 2026-09-05 (C-18, C-25) | Per-card R3 effect programs | ADR-0008 accepted; C-26..C-31 must land before the R3-A3 batch | Assigned card programs, clause locators, positive/negative tests |
+| D-04 — R3-A1/A2/A3 slices completed 2026-09-05 (C-18, C-25, C-32) | Per-card R3 effect programs | Frozen pack, token registry, condition/choice contracts — the Wave-A clauses are compiled; further batches need their own contracts | Assigned card programs, clause locators, positive/negative tests |
 | D-05 | Legal-action and perspective adversarial corpus | R4 observation/legal-action schemas | Hidden-info, missing-state, illegal-window, abstention fixtures |
 | D-06 | Match Analyst schemas/runner projections | Normalized timeline and engine-binding contracts | Schema implementation, formatter, fixtures, no router activation |
 | D-07 | Fourth demo and navigation | Match Analyst gates satisfied except final activation review | Bilingual demo matching the shared visual shell |

@@ -224,6 +224,11 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                     errors.append("combat.assignments must carry attacker and defender receipts with available and entries")
             elif combat["status"] in {"damage_assigned"}:
                 errors.append("a damage_assigned combat carries its assignment receipts")
+            for field, statuses in (("damage_dealt", {"damage_dealt", "cleanup_done", "result_determined"}), ("cleanup", {"cleanup_done", "result_determined"}), ("result", {"result_determined"})):
+                if field in combat and not isinstance(combat[field], dict):
+                    errors.append(f"combat.{field} must be an object")
+                if combat["status"] in statuses and field not in combat and not (field == "damage_dealt" and combat.get("damage_step_skipped")):
+                    errors.append(f"a {combat['status']} combat carries combat.{field}")
 
     tasks = state.get("outstanding_tasks")
     if not isinstance(tasks, list) or not all(isinstance(item, str) and item for item in tasks):

@@ -648,6 +648,220 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
                    locators=["Core 465.1", "Core 465.2.a", "Core 465.2.b", "Core 465.2.c", "Core 465.2.c.1", "Core 465.2.c.3", "Core 465.2.c.4", "Core 465.2.c.4.a", "Core 465.2.c.5", "Core 465.2.c.6", "Core 465.2.c.7", "Core 465.2.c.8", "Core 465.2.c.9", "Core 423.1.b", "Core 143.2.b"])
 
 
+# ------------------------------------------------ Combat Deal, Cleanup, result, close --
+
+def deal_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
+    """Core 465.2.c.1.a / 465.2.d: when every assignment is complete, the
+    assigned damage is Dealt to every Unit at once from the receipts — the
+    applied amounts, with the previewed replacements consumed now and never
+    applied a second time (465.2.c.5). The opposing side's Units are the
+    sources (417.6.c–417.6.c.1). FEPR is skipped afterwards (465.3): nothing
+    is scheduled here."""
+    from effect_ir import object_identity
+    base = _base("deal_combat_damage", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, None):
+        return problem
+    record = timing_state.get("combat")
+    if record is None or record["status"] != "damage_assigned":
+        return _refuse(base, "combat_damage_not_assigned", "Combat Damage is Dealt once both assignments are complete (465.2.c.1.a); the Combat is not at that step", ["Core 465.2.c.1.a", "Core 465.2.d"])
+    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before Combat Damage is Dealt", ["Core 465.2"])
+    next_effect = copy.deepcopy(effect_state)
+    dealt: dict[str, list[dict[str, Any]]] = {"attacker": [], "defender": []}
+    consumed: list[dict[str, Any]] = []
+    for role in ("attacker", "defender"):
+        receipt = record["assignments"][role]
+        for entry in receipt["entries"]:
+            unit = entry["unit"]
+            obj = next_effect["objects"].get(unit)
+            present = obj is not None and zone_class(find_location(next_effect, unit)) == "board" and (object_identity(next_effect, unit) or f"{unit}@0") == entry["identity"]
+            if not present:
+                dealt[role].append({"unit": unit, "applied": 0, "skipped": "unit_no_longer_present", "assigned": entry["raw_assigned"]})
+                continue
+            before = obj["damage"]
+            if entry["applied"] > 0:
+                obj["damage"] = before + entry["applied"]
+            for used in entry["consumed_replacements"]:
+                stored = next((r for r in next_effect["replacement_effects"] if r["replacement_id"] == used["replacement_id"]), None)
+                if stored is not None and stored.get("mode") == "reduce_damage":
+                    stored["prevent_remaining"] = max(0, stored.get("prevent_remaining", 0) - used["prevented"])
+                    consumed.append({"replacement_id": used["replacement_id"], "prevented": used["prevented"], "unit": unit, "prevent_remaining_after": stored["prevent_remaining"]})
+            dealt[role].append({"unit": unit, "assigned": entry["raw_assigned"], "prevented": entry["prevented"], "applied": entry["applied"], "before": before, "after": obj["damage"],
+                                "sources": list(receipt["sources"]), "responsible_player": receipt["assigning_player"], "outcome": "applied" if entry["applied"] > 0 else "no_op"})
+    next_effect["replacement_effects"] = [r for r in next_effect["replacement_effects"] if not (r.get("mode") == "reduce_damage" and r.get("prevent_remaining", 0) <= 0)]
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["combat"]["status"] = "damage_dealt"
+    next_timing["combat"]["damage_dealt"] = {role: [{"unit": d["unit"], "applied": d["applied"]} for d in dealt[role]] for role in dealt}
+    trace = {"simultaneous": True, "dealt": dealt, "consumed_replacements": consumed, "replacements_reapplied": False, "fepr_skipped": True}
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 465.2.c.1.a", "Core 465.2.c.5", "Core 465.2.d", "Core 417.6.c", "Core 417.6.c.1", "Core 465.3"])
+
+
+def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Core 466.1: one Combat Special Cleanup — the ordinary lethal Cleanup
+    (323.4–323.5; Combat-Damage kills attributed to the opposing side's Units
+    and their controller, 428.5.c.2), then 3c heal all Units, then 3d Recall
+    Attackers present if Defenders remain, then designations follow presence
+    (323.2). Death triggers form the batch this step schedules."""
+    from effect_ir import perform_lethal_cleanup
+    base = _base("combat_cleanup", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    record = timing_state.get("combat")
+    if record is None or record["status"] != "damage_dealt":
+        return _refuse(base, "combat_damage_not_dealt", "the Combat Cleanup follows the Combat Damage Step (466.1); the Combat is not at that step", ["Core 466.1"])
+    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before the Combat Cleanup", ["Core 466.1"])
+    sides_before = combat_sides(record, effect_state)
+    order_map, choice_map = _ed.replacement_maps(engine_decisions)
+    cleanup = perform_lethal_cleanup(effect_state, attributed_sources=sides_before["attacker"] + sides_before["defender"], replacement_event_order=order_map, replacement_choices=choice_map)
+    if cleanup.get("committed") is not True:
+        if cleanup.get("replacement_decision_required"):
+            batch = cleanup.get("batch_result", {})
+            return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": cleanup.get("reason"), "replacement_ids": batch.get("replacement_ids", []),
+                    "event_ids": batch.get("event_ids", []), "decision_controller": batch.get("decision_controller"), "rule_locators": ["Core 323.5", "Core 370–373"]}
+        return {**base, "valid": cleanup.get("valid", True), "committed": False, "unsupported": cleanup.get("unsupported", False), "reason": cleanup.get("reason", "lethal cleanup failed"), "cleanup_result": cleanup}
+    working = cleanup["next_state"]
+    attribution = {}
+    for killed in cleanup.get("killed_objects", []):
+        role = "attacker" if killed in sides_before["attacker"] else "defender" if killed in sides_before["defender"] else None
+        if role is not None:
+            sources = sides_before["defender" if role == "attacker" else "attacker"]
+            attribution[killed] = {"role": role, "killed_by": sources, "responsible_player": record["defender" if role == "attacker" else "attacker"], "rule_locators": ["Core 428.5.c.2"]}
+    healed = []
+    for object_id, obj in working["objects"].items():
+        if obj.get("kind") == "unit" and obj["damage"] > 0 and zone_class(find_location(working, object_id)) == "board":
+            healed.append({"unit": object_id, "healed": obj["damage"]})
+            obj["damage"] = 0
+    sides_now = combat_sides(record, working)
+    recalled = []
+    if sides_now["defender"] and sides_now["attacker"]:
+        for unit in sides_now["attacker"]:
+            controller = working["objects"][unit]["controller"]
+            working["battlefields"][record["battlefield"]]["objects"].remove(unit)
+            working["players"][controller]["zones"]["base"].append(unit)
+            recalled.append({"unit": unit, "to": f"base:{controller}", "not_a_move": True, "rule_locators": ["Core 466.1.a.2", "Core 455", "Core 456.1"]})
+    sync_index = int(record.get("sync_count", 0))
+    working, next_record, sync_trace, sync_triggers = sync_designations(record, working, f"combat:{record['combat_id']}:cleanup", 1)
+    next_record["sync_count"] = sync_index + 1
+    next_record["status"] = "cleanup_done"
+    next_record["cleanup"] = {"killed": cleanup.get("killed_objects", []), "healed": [h["unit"] for h in healed], "recalled": [r["unit"] for r in recalled], "attribution": attribution}
+    death_triggers = [dict(t) for t in cleanup.get("pending_triggers", [])]
+    for trigger in death_triggers:
+        trigger["batch_id"] = f"combat:{record['combat_id']}:cleanup"
+        trigger["batch_sequence"] = 0
+    from resolution_bridge import _settle_trigger_orders
+    failure = _settle_trigger_orders(death_triggers + sync_triggers, engine_decisions, base)
+    if failure is not None:
+        return failure
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["combat"] = next_record
+    scheduled = schedule_triggered_items(next_timing, death_triggers + sync_triggers)
+    if scheduled.get("applied") is not True:
+        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "the Cleanup's triggers could not be scheduled", ["Core 323.4"], trigger_result=scheduled)
+    trace = {"lethal_cleanup": cleanup["trace"], "killed": cleanup.get("killed_objects", []), "attribution": attribution, "healed": healed, "recalled": recalled,
+             "designations": sync_trace, "scheduled_triggers": [t["trigger_id"] for t in death_triggers + sync_triggers], "trigger_schedule": scheduled.get("transition"),
+             "order": ["323.4 death triggers", "323.5 kills", "466.1.a.1 heal all Units", "466.1.a.2 Recall Attackers if Defenders remain", "323.2 designations"]}
+    return _commit(base, scheduled["next_state"], working, trace=trace, locators=["Core 466.1", "Core 466.1.a", "Core 466.1.a.1", "Core 466.1.a.2", "Core 323.2", "Core 323.4", "Core 323.5", "Core 428.5.c.2", "Core 143.3.b.2"])
+
+
+def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
+    """Core 466.3, after every item the damage and the Cleanup raised has
+    resolved (466.2): a player won if they hold a designation and are the
+    only one with Units remaining here; lost if the only one without; No
+    Result when Attackers were Recalled, when both or neither remain
+    (466.3.d) — with both remaining a Showdown and Combat stage again
+    (466.3.d.1)."""
+    base = _base("determine_combat_result", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, None):
+        return problem
+    record = timing_state.get("combat")
+    if record is None or record["status"] != "cleanup_done":
+        return _refuse(base, "combat_cleanup_not_done", "the result follows the Combat Cleanup (466.2–466.3); the Combat is not at that step", ["Core 466.2", "Core 466.3"])
+    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+        return _refuse(base, "combat_chain_unfinished", "items raised by the Combat Damage and the Combat Cleanup (death triggers) resolve before the result is determined (466.2)", ["Core 466.2"])
+    present = units_at(effect_state, record["battlefield"])
+    attacker_here, defender_here = bool(present.get(record["attacker"])), bool(present.get(record["defender"]))
+    recalled = bool(record.get("cleanup", {}).get("recalled"))
+    if recalled:
+        result = {"outcome": "no_result", "reason": "attackers_recalled", "winner": None, "loser": None}
+    elif attacker_here and not defender_here:
+        result = {"outcome": "win", "winner": record["attacker"], "loser": record["defender"], "reason": "only_attacker_remains"}
+    elif defender_here and not attacker_here:
+        result = {"outcome": "win", "winner": record["defender"], "loser": record["attacker"], "reason": "only_defender_remains"}
+    elif attacker_here and defender_here:
+        result = {"outcome": "no_result", "reason": "both_remain", "winner": None, "loser": None, "restage_required": True}
+    else:
+        result = {"outcome": "no_result", "reason": "neither_remains", "winner": None, "loser": None}
+    result["units_remaining"] = {record["attacker"]: present.get(record["attacker"], []), record["defender"]: present.get(record["defender"], [])}
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["combat"]["status"] = "result_determined"
+    next_timing["combat"]["result"] = result
+    return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"result": result}, locators=["Core 466.2", "Core 466.3", "Core 466.3.a", "Core 466.3.b", "Core 466.3.c", "Core 466.3.d", "Core 466.3.d.1"])
+
+
+def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
+    """Core 466.5–466.7: Combat ends — designations and the Combat and
+    Showdown records go, every 'this combat' effect of this Combat expires
+    at once (466.7.a, 466.7.c). Before that, 466.5 establishes control for the
+    one player whose Units remain: that is the G2 milestone, so when it would
+    change who controls the Battlefield the procedure abstains
+    (unsupported: battlefield_control_resolution) instead of inventing
+    control or points. Clearing Contested for a controller who already holds
+    the Battlefield (466.5.a) and the restage case (466.3.d.1) are handled."""
+    base = _base("close_combat", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, None):
+        return problem
+    record = timing_state.get("combat")
+    if record is None or record["status"] != "result_determined":
+        return _refuse(base, "combat_result_not_determined", "Combat closes after its result (466.4–466.7); the Combat is not at that step", ["Core 466.4", "Core 466.7"])
+    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+        return _refuse(base, "combat_chain_unfinished", "items raised by determining the result resolve before Combat ends (466.4, 466.6)", ["Core 466.4", "Core 466.6"])
+    result = record["result"]
+    battlefield = effect_state["battlefields"][record["battlefield"]]
+    remaining = [p for p, units in result["units_remaining"].items() if units]
+    handoff = None
+    if result.get("restage_required"):
+        control_step = "skipped_restage"
+    elif len(remaining) == 1:
+        player = remaining[0]
+        if battlefield.get("controller") != player:
+            handoff = {"boundary": "battlefield_control_resolution", "remaining_player": player, "current_controller": battlefield.get("controller"),
+                       "would_establish_control": True, "conquer_possible": True, "rule_locators": ["Core 466.5", "Core 466.5.d", "Core 469.1"]}
+            return _unsupported(base, "battlefield_control_resolution", f"{player} alone has Units remaining and would establish control of {record['battlefield']} (466.5) — Battlefield control and scoring are the G2 milestone; the Combat is left at result_determined for that handoff", ["Core 466.5", "Core 466.5.d"], handoff=handoff, result=result)
+        control_step = "contested_cleared_controller_unchanged"
+    else:
+        handoff = {"boundary": "battlefield_control_resolution", "remaining_player": None, "current_controller": battlefield.get("controller"), "would_become_uncontrolled": battlefield.get("controller") is not None}
+        if battlefield.get("controller") is not None:
+            return _unsupported(base, "battlefield_control_resolution", f"no Units remain at {record['battlefield']}; it would become Uncontrolled (466.5.b) — a control transition of the G2 milestone", ["Core 466.5.b"], handoff=handoff, result=result)
+        control_step = "contested_cleared_uncontrolled"
+    next_effect = copy.deepcopy(effect_state)
+    if control_step != "skipped_restage":
+        next_effect["battlefields"][record["battlefield"]]["contested"] = False
+        next_effect["battlefields"][record["battlefield"]]["contested_by"] = None
+    removed_designations, expired = [], []
+    for object_id, obj in next_effect["objects"].items():
+        if (obj.get("combat_designation") or {}).get("combat_id") == record["combat_id"]:
+            del obj["combat_designation"]
+            removed_designations.append(object_id)
+        kept = []
+        for modifier in obj.get("keyword_modifiers", []) or []:
+            if modifier.get("duration") == "this_combat" and modifier.get("combat_id") == record["combat_id"]:
+                expired.append({"unit": object_id, "modifier_id": modifier["modifier_id"], "keyword": modifier["keyword"]})
+            else:
+                kept.append(modifier)
+        if "keyword_modifiers" in obj:
+            obj["keyword_modifiers"] = kept
+            if not kept:
+                del obj["keyword_modifiers"]
+    next_timing = copy.deepcopy(timing_state)
+    del next_timing["combat"]
+    next_timing["showdown"] = {"active": False, "kind": None, "focus": None}
+    next_timing["priority"] = next_timing["turn_player"] if next_timing.get("phase") == "main" else None
+    trace = {"result": result, "control_step": control_step, "designations_removed": removed_designations, "expired_this_combat": expired, "restage_required": bool(result.get("restage_required")),
+             "simultaneous_expiry": True, "end_of_combat_effects": "not_modelled"}
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 466.5.a", "Core 466.7", "Core 466.7.a", "Core 466.7.c", "Core 466.3.d.1"])
+
+
 # ---------------------------------------------------------------- Standard Move --
 
 STANDARD_MOVE_VERSION = "riftbound-standard-move-result.v1"
@@ -787,7 +1001,9 @@ def _load(path: Path) -> dict[str, Any]:
     return value
 
 
-STEPS = {"stage": stage_combat, "open": open_combat, "sync": sync_combat_designations, "assign": assign_combat_damage}
+STEPS = {"stage": stage_combat, "open": open_combat, "sync": sync_combat_designations, "assign": assign_combat_damage,
+         "deal": lambda t, e, d=None: deal_combat_damage(t, e), "cleanup": combat_cleanup,
+         "result": lambda t, e, d=None: determine_combat_result(t, e), "close": lambda t, e, d=None: close_combat(t, e)}
 
 
 def main(argv: list[str] | None = None) -> int:

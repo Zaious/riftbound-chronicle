@@ -243,6 +243,12 @@ jobs:
       - name: Combat Damage assignment
         run: python3 skill/scripts/check_combat_damage_assignment.py
 
+      # ADR-0008 C-31: receipts are Dealt once, kills are attributed to the Combat
+      # Damage sources, death triggers settle before the result, Recall is No
+      # Result, and control resolution is abstained as the G2 boundary.
+      - name: Combat Deal, Cleanup, result and closure
+        run: python3 skill/scripts/check_combat_resolution.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -320,6 +326,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_standard_move.py"
           python3 "$REPO/skill/scripts/check_combat_area_and_mutual.py"
           python3 "$REPO/skill/scripts/check_combat_damage_assignment.py"
+          python3 "$REPO/skill/scripts/check_combat_resolution.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

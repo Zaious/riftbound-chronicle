@@ -112,6 +112,24 @@ amounts and the replacements the Deal step will consume exactly once. A
 Non-Combat Showdown's close establishes control (348.2) and is refused as
 the G2 boundary.
 
+The rest of the Combat is four refusable steps. `deal_combat_damage` Deals
+every applied amount at once from the receipts, consuming the previewed
+Prevent values now and never applying a replacement twice, with the
+opposing Units as sources (465.2.d, 417.6.c); FEPR is skipped (465.3).
+`combat_cleanup` runs one Combat Special Cleanup — lethal Cleanup with
+Combat-Damage kills attributed to the opposing Units and their controller
+(428.5.c.2), heal all Units, Recall Attackers if Defenders remain, then
+designations follow presence — and schedules the death triggers.
+`determine_combat_result` waits for that chain to empty (466.2) and applies
+466.3: win only when one designated player alone has Units remaining, No
+Result on a Recall, on both remaining (which stages again) or on neither.
+`close_combat` removes designations, the Combat and Showdown records and
+every 'this combat' effect of this Combat at once (466.7); where 466.5 would
+establish control or make the Battlefield Uncontrolled it abstains as
+`unsupported: battlefield_control_resolution` with the handoff facts — G2 is
+not invented here — and it only clears Contested for a controller who
+already holds the Battlefield.
+
 `validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open
 State with no Combat staged or in progress. `combat.standard_move` is the

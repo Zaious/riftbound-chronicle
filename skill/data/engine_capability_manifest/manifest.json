@@ -1,14 +1,14 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:ee593399872e9e41a0eec9ba",
-  "capability_set_id": "sha256:ee593399872e9e41a0eec9bae5ded8e64047450605af35df49c4fcbaaf924432",
+  "manifest_id": "capability-manifest:d05cf3f0fceb662b9057c0b8",
+  "capability_set_id": "sha256:d05cf3f0fceb662b9057c0b8d58ea27384bfd611097e506f92b68fa70eb5e82d",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:6bb71c6b9bf1fa57dbe4614a66d14c1ef9f5c909cdfe5fbf3bba465b88c32ba5",
+    "value": "sha256:100d87291e0fc02e8f318683625a2e95f04ffbcd298f53e0354b37369b4ccf96",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:1e4c589e258878e129575be2bc24b628bf45c3ef5d58449e2887c0d12e74d8a4"
+        "sha256": "sha256:3dd412d16f5fe4ae54c878fed0ab44f10f4e20d4d5c029cede477bb25a592acb"
       },
       {
         "path": "effect_ir.py",
@@ -20,11 +20,11 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:5c03b1d8c0908027b5d2afa67d3343fa3f5a707ba772964728152521a37381e0"
+        "sha256": "sha256:36b762717d9261340301fd122896a9af800e38f6d44901fa536cd67d16eb9387"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:b39c58ea7d7bbebd7e4c71f5fe74af3e3a6ecdbed04e9d67730a97603abeaa14"
+        "sha256": "sha256:5071dffd18d461d20cd649dcffde6d0382a4170fa7c136bfb0fd54928a301bed"
       }
     ]
   },
@@ -64,18 +64,22 @@
         "combat_showdown_close",
         "combat_damage_assignment",
         "tank_backline_priority",
-        "assignment_replacement_preview"
+        "assignment_replacement_preview",
+        "combat_damage_deal",
+        "combat_cleanup",
+        "combat_result",
+        "combat_close"
       ],
       "unsupported_scope": [
         "start_of_combat_effects",
+        "end_of_combat_effects",
+        "take_damage_triggers",
         "player_level_attack_defend_triggers",
         "multi_player_combat",
         "damage_exemption_sources",
         "non_prevent_assignment_replacements",
-        "combat_damage_deal",
-        "combat_cleanup",
-        "combat_result",
         "battlefield_control_resolution",
+        "conquer",
         "scoring",
         "complete_game",
         "complete_legality"
@@ -558,11 +562,36 @@
       ]
     },
     {
+      "id": "combat_cleanup",
+      "rule_locators": [
+        "Core 466.1–466.1.a.2",
+        "Core 323.2–323.5",
+        "Core 428.5.c.2",
+        "Core 143.3.b.2"
+      ]
+    },
+    {
+      "id": "combat_close",
+      "rule_locators": [
+        "Core 466.5.a",
+        "Core 466.7–466.7.c"
+      ]
+    },
+    {
       "id": "combat_damage_assignment",
       "rule_locators": [
         "Core 465.1–465.2.c.4.a",
         "Core 423.1.b",
         "Core 143.2.b"
+      ]
+    },
+    {
+      "id": "combat_damage_deal",
+      "rule_locators": [
+        "Core 465.2.c.1.a",
+        "Core 465.2.d",
+        "Core 417.6.c–417.6.c.1",
+        "Core 465.3"
       ]
     },
     {
@@ -587,6 +616,12 @@
         "Core 740.2.a",
         "Core 143.2.b",
         "Core 364.3"
+      ]
+    },
+    {
+      "id": "combat_result",
+      "rule_locators": [
+        "Core 466.2–466.3.d.1"
       ]
     },
     {
@@ -799,6 +834,7 @@
     "Core 135.2.b.5.a",
     "Core 135.2.e.3",
     "Core 143.2.b",
+    "Core 143.3.b.2",
     "Core 143.4",
     "Core 144.1–144.1.c",
     "Core 144.1–144.4.b",
@@ -826,6 +862,7 @@
     "Core 323.13",
     "Core 323.14",
     "Core 323.2–323.2.c",
+    "Core 323.2–323.5",
     "Core 323.9",
     "Core 324.2",
     "Core 328–330",
@@ -902,6 +939,7 @@
     "Core 417.6.b.3",
     "Core 417.6.b.3–417.6.b.4",
     "Core 417.6.b.4",
+    "Core 417.6.c–417.6.c.1",
     "Core 418",
     "Core 419.4.a",
     "Core 420",
@@ -912,6 +950,7 @@
     "Core 423.1.b",
     "Core 428",
     "Core 428.1.a.1.b",
+    "Core 428.5.c.2",
     "Core 429",
     "Core 429.2.a",
     "Core 430.1",
@@ -931,10 +970,17 @@
     "Core 464.2.e.1",
     "Core 465.1–465.2.c.4.a",
     "Core 465.2",
+    "Core 465.2.c.1.a",
     "Core 465.2.c.10",
     "Core 465.2.c.5",
     "Core 465.2.c.6–465.2.c.9",
+    "Core 465.2.d",
+    "Core 465.3",
+    "Core 466.1–466.1.a.2",
+    "Core 466.2–466.3.d.1",
+    "Core 466.5.a",
     "Core 466.7.c",
+    "Core 466.7–466.7.c",
     "Core 477",
     "Core 713–715.4",
     "Core 740.2.a",
@@ -957,19 +1003,18 @@
     "battlefield_control_transfer",
     "beginning_phase",
     "combat",
-    "combat_cleanup",
-    "combat_damage_deal",
     "combat_moves",
-    "combat_result",
     "complete_action_set",
     "complete_game",
     "complete_legality",
+    "conquer",
     "continuous_dependency",
     "cost_checks",
     "cost_modification_sources",
     "counter",
     "damage_exemption_sources",
     "effect_prerequisites",
+    "end_of_combat_effects",
     "engine_enumeration",
     "full_cleanup",
     "full_turn_transition",
@@ -983,6 +1028,7 @@
     "player_level_attack_defend_triggers",
     "scoring",
     "start_of_combat_effects",
+    "take_damage_triggers",
     "target_checks"
   ],
   "claims": {

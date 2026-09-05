@@ -145,7 +145,7 @@ def main() -> int:
         if open_combat(staged_timing, board) != opened:
             errors.append("open_combat is not deterministic")
         check = build_engine_check("combat_step", opened, input_hashes={"timing_state": state_hash(staged_timing), "effect_state": hash_value(board)})
-        if check["outcome"] != "supported" or "combat_opening" not in check["coverage"]["supported_scope"] or "battlefield_control_resolution" not in check["coverage"]["unsupported_scope"]:
+        if check["outcome"] != "supported" or "combat_opening" not in check["coverage"]["supported_scope"] or "end_of_combat_effects" not in check["coverage"]["unsupported_scope"]:
             errors.append(f"engine-check did not wrap the opening with its scope: {check['outcome']}")
     # triggers: attacker first, then defender; once per identity
     armed = contested_board()

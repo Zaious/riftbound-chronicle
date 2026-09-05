@@ -1,18 +1,18 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:54230d2296de01c3a7f011b6",
-  "capability_set_id": "sha256:54230d2296de01c3a7f011b697511aa5cee3809799d390191cca2cb7aa1c6ce0",
+  "manifest_id": "capability-manifest:1f04e2f183d216f36ab7655c",
+  "capability_set_id": "sha256:1f04e2f183d216f36ab7655cfc2aca962ff6498fcc37d436ed75c3b00b2b26a1",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:5b40a04f3e731be4b3c5e27e8bc9706e31e0118ff017d4630ed758f2a5161edf",
+    "value": "sha256:6d969e7d229578ba762aaa576f7f87527b736cbeb13ff7c79691ebdd3c0396b7",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:30d78b6ba632e39ba3a3bb5a0373bbb1fdc602459ee61d4b4c8949c5bdcf02ff"
+        "sha256": "sha256:1c18d2e0bc62f79bc07ee07f14b230172d1e4814d574cec6fa2c2e297b517d28"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:faee1a1dde87ee0470af04a4254075654e19bf04fec9dd82981368e8ce2f5588"
+        "sha256": "sha256:eb52482f452f49082aa2704d0979bf03710e9d6284b31b3a43c35692ae529032"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,11 +20,15 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:35d59527c81e3d8dcb61d74bc664ed6e5e91c055fcbd9b90762b828db9074afc"
+        "sha256": "sha256:feca444742e4b47685f082bf65fb6bf0b851d92a6b5f4596a166074605e7ef8d"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:fd1323a6c88ecd928b0966e6383d0e0a32f879e693383fba3683803851dddc7c"
+        "sha256": "sha256:3e8e47771a41d3703f3f47c30efa5120ea697efecd2958aed3f0898b7493dbab"
+      },
+      {
+        "path": "battlefield_control.py",
+        "sha256": "sha256:4d4f8089b683fa0e29026e901a2eed4d854774e259c06147038a7322ef1abdb5"
       }
     ]
   },
@@ -79,9 +83,30 @@
         "multi_player_combat",
         "damage_exemption_sources",
         "non_prevent_assignment_replacements",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "control_step",
+      "name": "battlefield_control",
+      "version": "riftbound-control-step-result.v1",
+      "coverage_id": "control_step_v1",
+      "supported_scope": [
         "battlefield_control_resolution",
-        "conquer",
-        "scoring",
+        "conquer_scoring",
+        "score_triggers",
+        "victory_facts"
+      ],
+      "unsupported_scope": [
+        "team_scoring",
+        "hidden_cards",
+        "gear_rune_recall_cleanup",
+        "non_conquer_point_sources",
+        "activate_named_triggers",
+        "beginning_phase",
+        "terminal_state",
+        "burn_out",
         "complete_game",
         "complete_legality"
       ]
@@ -540,6 +565,14 @@
       ]
     },
     {
+      "id": "battlefield_control_resolution",
+      "rule_locators": [
+        "Core 190.4",
+        "Core 466.5–466.5.e",
+        "Core 348.2.a–348.2.a.1"
+      ]
+    },
+    {
       "id": "battlefield_defend_triggers",
       "rule_locators": [
         "Core 190.6.a",
@@ -653,6 +686,14 @@
       "rule_locators": [
         "Core 364.3",
         "Core 365.1"
+      ]
+    },
+    {
+      "id": "conquer_scoring",
+      "rule_locators": [
+        "Core 469.1",
+        "Core 470",
+        "Core 471.1–471.1.b.1"
       ]
     },
     {
@@ -805,6 +846,13 @@
       ]
     },
     {
+      "id": "score_triggers",
+      "rule_locators": [
+        "Core 471.2–471.2.c",
+        "Core 383.4.c–383.4.d"
+      ]
+    },
+    {
       "id": "standard_move",
       "rule_locators": [
         "Core 144.1–144.4.b",
@@ -832,6 +880,13 @@
         "Core 355.7–355.10.d.2",
         "Core 359.3.e.1–359.3.e.10"
       ]
+    },
+    {
+      "id": "victory_facts",
+      "rule_locators": [
+        "Core 472",
+        "Core 323.1"
+      ]
     }
   ],
   "clauses": [
@@ -851,6 +906,7 @@
     "Core 170.11.c",
     "Core 184–186",
     "Core 190.3.a.1",
+    "Core 190.4",
     "Core 190.6.a",
     "Core 190.6.d",
     "Core 308.1.a",
@@ -867,6 +923,7 @@
     "Core 317.2–317.2.d",
     "Core 319.8",
     "Core 320–321",
+    "Core 323.1",
     "Core 323.13",
     "Core 323.14",
     "Core 323.2–323.2.c",
@@ -892,6 +949,7 @@
     "Core 347.1",
     "Core 347.2",
     "Core 347.2–347.2.b",
+    "Core 348.2.a–348.2.a.1",
     "Core 348–348.1",
     "Core 349",
     "Core 354–358",
@@ -933,6 +991,7 @@
     "Core 383.3",
     "Core 383.3.a–383.3.a.3",
     "Core 383.3.c–383.3.d.1",
+    "Core 383.4.c–383.4.d",
     "Core 383.4.e–383.4.f.3",
     "Core 383.4.f",
     "Core 386–388",
@@ -988,8 +1047,14 @@
     "Core 466.2–466.3.d.1",
     "Core 466.3.d.1",
     "Core 466.5.a",
+    "Core 466.5–466.5.e",
     "Core 466.7.c",
     "Core 466.7–466.7.c",
+    "Core 469.1",
+    "Core 470",
+    "Core 471.1–471.1.b.1",
+    "Core 471.2–471.2.c",
+    "Core 472",
     "Core 477",
     "Core 713–715.4",
     "Core 740.2.a",
@@ -1005,18 +1070,18 @@
     "Core 815.1.b–815.1.c.2"
   ],
   "exclusions": [
+    "activate_named_triggers",
     "add_reaction_resolution_during_payment",
     "arbitrary_card_effects",
     "arbitrary_card_text",
-    "battlefield_control_resolution",
     "battlefield_control_transfer",
     "beginning_phase",
+    "burn_out",
     "combat",
     "combat_moves",
     "complete_action_set",
     "complete_game",
     "complete_legality",
-    "conquer",
     "continuous_dependency",
     "cost_checks",
     "cost_modification_sources",
@@ -1027,9 +1092,12 @@
     "engine_enumeration",
     "full_cleanup",
     "full_turn_transition",
+    "gear_rune_recall_cleanup",
+    "hidden_cards",
     "invalid_destination_catalog",
     "multi_descriptor_replacement",
     "multi_player_combat",
+    "non_conquer_point_sources",
     "non_prevent_assignment_replacements",
     "non_standard_costs_beyond_exhaust_kill",
     "non_standard_moves",
@@ -1038,7 +1106,9 @@
     "scoring",
     "start_of_combat_effects",
     "take_damage_triggers",
-    "target_checks"
+    "target_checks",
+    "team_scoring",
+    "terminal_state"
   ],
   "claims": {
     "complete_game": false,

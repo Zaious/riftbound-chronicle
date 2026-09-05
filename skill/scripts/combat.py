@@ -38,7 +38,7 @@ COMBAT_STEP_VERSION = "riftbound-combat-step-result.v1"
 ROLES = ("attacker", "defender")
 TRIGGER_FIELDS = {"attacker": "attack_triggers", "defender": "defend_triggers"}
 # Statuses during which a Cleanup keeps designations in step with presence (323.2).
-IN_PROGRESS = {"open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined"}
+IN_PROGRESS = {"open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved"}
 LOCATION_DECISION_ID = "combat_location"
 
 
@@ -818,44 +818,35 @@ def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str
 
 
 def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
-    """Core 466.5–466.7: Combat ends — designations and the Combat and
+    """Core 466.6–466.7: Combat ends — designations and the Combat and
     Showdown records go, every 'this combat' effect of this Combat expires
-    at once (466.7.a, 466.7.c). Before that, 466.5 establishes control for the
-    one player whose Units remain: that is the G2 milestone, so when it would
-    change who controls the Battlefield the procedure abstains
-    (unsupported: battlefield_control_resolution) instead of inventing
-    control or points. Clearing Contested for a controller who already holds
-    the Battlefield (466.5.a) and the restage case (466.3.d.1) are handled."""
+    at once (466.7.a, 466.7.c). Before that, 466.5 establishes control and
+    scores: that is resolve_battlefield_control (ADR-0009), so this procedure
+    requires the control_resolved status and an empty chain (466.6), except
+    after a both-remain No Result, which stages the Combat again without any
+    control step (466.3.d.1)."""
     base = _base("close_combat", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, None):
         return problem
     record = timing_state.get("combat")
-    if record is None or record["status"] != "result_determined":
-        return _refuse(base, "combat_result_not_determined", "Combat closes after its result (466.4–466.7); the Combat is not at that step", ["Core 466.4", "Core 466.7"])
+    if record is None or record["status"] not in {"result_determined", "control_resolved"}:
+        return _refuse(base, "combat_result_not_determined", "Combat closes after its result and the control resolution (466.4–466.7); the Combat is not at that step", ["Core 466.4", "Core 466.7"])
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
-        return _refuse(base, "combat_chain_unfinished", "items raised by determining the result resolve before Combat ends (466.4, 466.6)", ["Core 466.4", "Core 466.6"])
+        return _refuse(base, "combat_chain_unfinished", "items raised by the result or by establishing control resolve before Combat ends (466.4, 466.6)", ["Core 466.4", "Core 466.6"])
     result = record["result"]
-    battlefield = effect_state["battlefields"][record["battlefield"]]
     remaining = [p for p, units in result["units_remaining"].items() if units]
-    handoff = None
+    # ADR-0009 §2: 466.5 is resolve_battlefield_control, an atomic procedure of
+    # its own; Combat closes after it, or straight after a both-remain No
+    # Result that stages the Combat again (466.3.d.1).
     if result.get("restage_required"):
+        if record["status"] != "result_determined":
+            return _refuse(base, "control_resolution_not_pending", "a both-remain No Result closes without control resolution", ["Core 466.3.d.1"])
         control_step = "skipped_restage"
-    elif len(remaining) == 1:
-        player = remaining[0]
-        if battlefield.get("controller") != player:
-            handoff = {"boundary": "battlefield_control_resolution", "remaining_player": player, "current_controller": battlefield.get("controller"),
-                       "would_establish_control": True, "conquer_possible": True, "rule_locators": ["Core 466.5", "Core 466.5.d", "Core 469.1"]}
-            return _unsupported(base, "battlefield_control_resolution", f"{player} alone has Units remaining and would establish control of {record['battlefield']} (466.5) — Battlefield control and scoring are the G2 milestone; the Combat is left at result_determined for that handoff", ["Core 466.5", "Core 466.5.d"], handoff=handoff, result=result)
-        control_step = "contested_cleared_controller_unchanged"
+    elif record["status"] != "control_resolved":
+        return _refuse(base, "control_resolution_pending", f"466.5 establishes control for {record['battlefield']} before Combat ends; run resolve_battlefield_control first", ["Core 466.5", "Core 466.6"])
     else:
-        handoff = {"boundary": "battlefield_control_resolution", "remaining_player": None, "current_controller": battlefield.get("controller"), "would_become_uncontrolled": battlefield.get("controller") is not None}
-        if battlefield.get("controller") is not None:
-            return _unsupported(base, "battlefield_control_resolution", f"no Units remain at {record['battlefield']}; it would become Uncontrolled (466.5.b) — a control transition of the G2 milestone", ["Core 466.5.b"], handoff=handoff, result=result)
-        control_step = "contested_cleared_uncontrolled"
+        control_step = record["control"]["step"]
     next_effect = copy.deepcopy(effect_state)
-    if control_step != "skipped_restage":
-        next_effect["battlefields"][record["battlefield"]]["contested"] = False
-        next_effect["battlefields"][record["battlefield"]]["contested_by"] = None
     removed_designations, expired = [], []
     for object_id, obj in next_effect["objects"].items():
         if (obj.get("combat_designation") or {}).get("combat_id") == record["combat_id"]:
@@ -885,9 +876,9 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
                     "status": "staged", "attacker": None, "defender": None, "participants": sorted(remaining),
                     "triggered_identities": {"attacker": [], "defender": []}, "restaged_from": record["combat_id"]}
         next_timing["combat"] = restaged
-    trace = {"result": result, "control_step": control_step, "designations_removed": removed_designations, "expired_this_combat": expired, "restage_required": bool(result.get("restage_required")),
+    trace = {"result": result, "control_step": control_step, "control": record.get("control"), "designations_removed": removed_designations, "expired_this_combat": expired, "restage_required": bool(result.get("restage_required")),
              "restaged_combat": restaged, "simultaneous_expiry": True, "end_of_combat_effects": "not_modelled"}
-    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 466.5.a", "Core 466.7", "Core 466.7.a", "Core 466.7.c", "Core 466.3.d.1"])
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 466.7", "Core 466.7.a", "Core 466.7.c", "Core 466.3.d.1"])
 
 
 # ---------------------------------------------------------------- Standard Move --

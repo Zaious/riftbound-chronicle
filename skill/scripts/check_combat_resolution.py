@@ -16,11 +16,9 @@ Must hold:
     (466.2); a Recall is No Result; a lone remaining designated player wins;
     both remaining is No Result that stages again; neither is No Result;
   - close_combat removes designations, clears the Combat and Showdown
-    records, expires every 'this combat' grant of this Combat at once, only
-    clears Contested when the remaining player already controls the
-    Battlefield, and abstains as unsupported battlefield_control_resolution
-    with the handoff facts whenever 466.5 would change control — no G2
-    control or scoring mutation anywhere;
+    records, expires every 'this combat' grant of this Combat at once, and
+    runs only after resolve_battlefield_control (466.5, ADR-0009) or after a
+    both-remain restage;
   - each step refuses out of order; determinism; engine-check wrapping.
 """
 
@@ -35,6 +33,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_combat_damage_assignment import add_unit, closed_combat  # noqa: E402
 from check_combat_staging import trigger  # noqa: E402
+from battlefield_control import resolve_battlefield_control  # noqa: E402
 from combat import assign_combat_damage, close_combat, combat_cleanup, deal_combat_damage, determine_combat_result, open_combat  # noqa: E402
 from effect_ir import hash_value, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
@@ -96,17 +95,16 @@ def main() -> int:
     else:
         t4, e4 = resulted["next_timing_state"], resulted["next_effect_state"]
         check = build_engine_check("combat_step", resulted, input_hashes={"timing_state": state_hash(settled), "effect_state": hash_value(e3)})
-        if check["outcome"] != "supported" or "combat_result" not in check["coverage"]["supported_scope"] or "battlefield_control_resolution" not in check["coverage"]["unsupported_scope"]:
-            errors.append("engine-check does not declare the result step and the control boundary")
-        boundary = close_combat(t4, e4)
-        if boundary.get("committed") or boundary.get("unsupported") is not True or boundary.get("reason_code") != "battlefield_control_resolution" or boundary.get("handoff", {}).get("remaining_player") != "p1":
-            errors.append(f"a decisive Combat where control would change did not abstain at the G2 boundary: {boundary.get('reason_code')} {boundary.get('handoff')}")
-        if boundary.get("unsupported") and (e4["battlefields"]["bf1"].get("controller") is not None or e4["battlefields"]["bf1"].get("contested") is not True):
-            errors.append("the boundary result touched Battlefield control")
-        owned = copy.deepcopy(e4); owned["battlefields"]["bf1"]["controller"] = "p1"
-        closed = close_combat(t4, owned)
+        if check["outcome"] != "supported" or "combat_result" not in check["coverage"]["supported_scope"]:
+            errors.append("engine-check does not declare the result step")
+        early_close = close_combat(t4, e4)
+        if early_close.get("committed") or early_close.get("reason_code") != "control_resolution_pending":
+            errors.append(f"a decisive Combat closed before 466.5 resolved control: {early_close.get('reason_code')}")
+        owned = copy.deepcopy(e4); owned["battlefields"]["bf1"]["controller"] = "p1"; owned["mode"] = {"victory_score": 8}
+        resolved_control = resolve_battlefield_control(t4, owned)
+        closed = close_combat(resolved_control["next_timing_state"], resolved_control["next_effect_state"]) if resolved_control.get("committed") else {}
         if not closed.get("committed"):
-            errors.append(f"closing a Combat whose winner already controls the Battlefield failed: {closed.get('reason_code')} {closed.get('reason') or closed.get('errors')}")
+            errors.append(f"closing a Combat whose winner already controls the Battlefield failed: {resolved_control.get('reason_code')} {closed.get('reason_code')} {closed.get('reason') or closed.get('errors')}")
         else:
             tc, ec = closed["next_timing_state"], closed["next_effect_state"]
             if "combat" in tc or tc["showdown"] != {"active": False, "kind": None, "focus": None} or tc["priority"] != "p1":
@@ -115,7 +113,7 @@ def main() -> int:
                 errors.append(f"close did not remove designations, expire the this-combat grant or clear Contested: {ec['objects']['u1']} {ec['battlefields']['bf1']}")
             if closed["trace"].get("expired_this_combat", [{}])[0].get("modifier_id") != "block" or closed["trace"].get("simultaneous_expiry") is not True:
                 errors.append("the expiry of this-combat effects is not recorded as simultaneous")
-            if close_combat(t4, owned) != closed:
+            if close_combat(resolved_control["next_timing_state"], resolved_control["next_effect_state"]) != closed:
                 errors.append("close_combat is not deterministic")
         if close_combat(t3, e3).get("reason_code") != "combat_result_not_determined":
             errors.append("close ran before the result")
@@ -136,13 +134,13 @@ def main() -> int:
         if not r.get("committed") or r["next_timing_state"]["combat"]["result"].get("outcome") != "no_result" or r["next_timing_state"]["combat"]["result"].get("reason") != "attackers_recalled":
             errors.append(f"a Recall did not give No Result (466.3.d): {r.get('reason_code')} {r.get('next_timing_state', {}).get('combat', {}).get('result')}")
         else:
-            at_boundary = close_combat(r["next_timing_state"], r["next_effect_state"])
-            if at_boundary.get("reason_code") != "battlefield_control_resolution":
-                errors.append("the defender alone remaining on an uncontrolled Battlefield did not stop at the control boundary")
-            held = copy.deepcopy(r["next_effect_state"]); held["battlefields"]["bf1"]["controller"] = "p2"
-            kept = close_combat(r["next_timing_state"], held)
-            if not kept.get("committed") or kept["trace"].get("control_step") != "contested_cleared_controller_unchanged":
-                errors.append(f"closing for a defender who already controls the Battlefield failed: {kept.get('reason_code')} {kept.get('reason')}")
+            if close_combat(r["next_timing_state"], r["next_effect_state"]).get("reason_code") != "control_resolution_pending":
+                errors.append("the Recall case closed before control resolution")
+            held = copy.deepcopy(r["next_effect_state"]); held["battlefields"]["bf1"]["controller"] = "p2"; held["mode"] = {"victory_score": 8}
+            rc = resolve_battlefield_control(r["next_timing_state"], held)
+            kept = close_combat(rc["next_timing_state"], rc["next_effect_state"]) if rc.get("committed") else {}
+            if not kept.get("committed") or kept["trace"].get("control_step") != "controller_unchanged":
+                errors.append(f"closing for a defender who already controls the Battlefield failed: {rc.get('reason_code')} {kept.get('reason_code')} {kept.get('reason')}")
 
     # --- both remain (a crafted state): No Result that stages again ------------------------------------------
     if c.get("committed"):
@@ -176,17 +174,16 @@ def main() -> int:
         if not r2.get("committed") or r2["next_timing_state"]["combat"]["result"].get("reason") != "neither_remains":
             errors.append("neither remaining did not give No Result")
         else:
-            empty_close = close_combat(r2["next_timing_state"], r2["next_effect_state"])
-            if not empty_close.get("committed") or empty_close["trace"].get("control_step") != "contested_cleared_uncontrolled":
-                errors.append(f"an Uncontrolled Battlefield emptied by Combat did not close: {empty_close.get('reason_code')}")
-            controlled = copy.deepcopy(r2["next_effect_state"]); controlled["battlefields"]["bf1"]["controller"] = "p2"
-            if close_combat(r2["next_timing_state"], controlled).get("reason_code") != "battlefield_control_resolution":
-                errors.append("a controlled Battlefield that would become Uncontrolled did not stop at the boundary (466.5.b)")
+            emptied = copy.deepcopy(r2["next_effect_state"]); emptied["mode"] = {"victory_score": 8}
+            rc2 = resolve_battlefield_control(r2["next_timing_state"], emptied)
+            empty_close = close_combat(rc2["next_timing_state"], rc2["next_effect_state"]) if rc2.get("committed") else {}
+            if not empty_close.get("committed") or empty_close["trace"].get("control_step") != "uncontrolled":
+                errors.append(f"an Uncontrolled Battlefield emptied by Combat did not close: {rc2.get('reason_code')} {empty_close.get('reason_code')}")
 
     if errors:
         print("FAILED: combat resolution checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: Combat Damage is Dealt at once from the receipts with the Units as sources and previewed Prevents consumed exactly once; the Combat Cleanup kills with attribution to the Combat Damage sources, schedules death triggers, heals and Recalls Attackers when Defenders remain; the result waits for that chain, a Recall is No Result, a lone player wins, both remaining stages again; closure clears designations, records and this-combat effects together and abstains at the Battlefield-control boundary instead of inventing G2.")
+    print("OK: Combat Damage is Dealt at once from the receipts with the Units as sources and previewed Prevents consumed exactly once; the Combat Cleanup kills with attribution to the Combat Damage sources, schedules death triggers, heals and Recalls Attackers when Defenders remain; the result waits for that chain, a Recall is No Result, a lone player wins, both remaining stages again; closure clears designations, records and this-combat effects together only after resolve_battlefield_control has established control (ADR-0009).")
     return 0
 
 

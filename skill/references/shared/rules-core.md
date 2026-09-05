@@ -133,7 +133,18 @@ they were at assignment (465.2.c.1.a leaves no window); anything else is a
 stale receipt and nothing is Dealt. `close_combat` removes designations, the
 Combat and Showdown records and every 'this combat' effect of this Combat at
 once (466.7), stages a fresh Combat when both sides remain (466.3.d.1, with
-`open_combat` the next required procedure); where 466.5 would
+`open_combat` the next required procedure). Before it, 466.5 is
+`battlefield_control.resolve_battlefield_control` (ADR-0009): the one player
+whose Units remain establishes control if they did not hold it and Conquers
+unless they already scored that Battlefield this turn (469.1, 470), Contested
+is cleared (466.5.a), no Units left makes the Battlefield Uncontrolled
+(466.5.b), and the Score triggers of the scoring player's board objects and
+of the Battlefield form the chain that must empty before the Combat closes
+(466.6). Scoring is one transaction: the Final Point rule (471.1.b) gives the
+point only when every Battlefield was scored this turn and otherwise draws
+instead, and a draw that would Burn Out refuses the whole transaction as
+unsupported. The victory condition is reported as facts (threshold_met,
+strict_leader, tied_at_threshold; 472) and never enacted. Formerly, where 466.5 would
 establish control or make the Battlefield Uncontrolled it abstains as
 `unsupported: battlefield_control_resolution` with the handoff facts — G2 is
 not invented here — and it only clears Contested for a controller who

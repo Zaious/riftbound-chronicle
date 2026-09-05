@@ -73,7 +73,7 @@ SCHEMA_VERSION = "engine-capability-manifest.v1"
 # The files whose bytes define "this implementation". lethal cleanup lives in
 # effect_ir, so four files cover all four check kinds. Order is fixed; the
 # identity hash covers the list as well as the contents.
-ENGINE_SOURCES = ("rules_core.py", "effect_ir.py", "resolution_bridge.py", "engine_check.py", "combat.py")
+ENGINE_SOURCES = ("rules_core.py", "effect_ir.py", "resolution_bridge.py", "engine_check.py", "combat.py", "battlefield_control.py")
 
 DEFAULT_OUTPUT = SKILL_DIR / "data" / "engine_capability_manifest" / "manifest.json"
 

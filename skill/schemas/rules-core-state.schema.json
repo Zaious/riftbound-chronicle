@@ -29,8 +29,14 @@
         "kind": {"type": ["string", "null"], "enum": ["combat", "non_combat", null]},
         "focus": {"type": ["string", "null"]},
         "battlefield": {"type": ["string", "null"], "description": "ADR-0008 §2: the Battlefield the Showdown is at; required to match a staged Combat to it (323.14, 464.1)."},
-        "focus_passes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "description": "Players who passed Focus in sequence since the last play (347.2.a); every player passing closes the Showdown (348)."}
+        "focus_passes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "description": "Players who passed Focus in sequence since the last play (347.2.a); every player passing closes the Showdown (348)."},
+        "closing": {"type": "boolean", "description": "ADR-0009 §4: every player passed Focus in a Non-Combat Showdown; control resolution is the next required procedure (348.2)."}
       }
+    },
+    "staged_showdowns": {
+      "type": "array",
+      "description": "ADR-0009 §3: the Non-Combat Showdowns staged by the last Cleanup (316.8.b, 323.8); the Turn Player chooses which opens (323.12).",
+      "items": {"type": "object", "additionalProperties": false, "required": ["battlefield", "battlefield_identity", "contested_by"], "properties": {"battlefield": {"type": "string", "minLength": 1}, "battlefield_identity": {"type": "string", "pattern": "^.+@[0-9]+$"}, "contested_by": {"type": "string", "minLength": 1}}}
     },
     "combat": {
       "type": "object",
@@ -41,7 +47,7 @@
         "combat_id": {"type": "string", "minLength": 1},
         "battlefield": {"type": "string", "minLength": 1},
         "battlefield_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
-        "status": {"enum": ["staged", "open", "showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"]},
+        "status": {"enum": ["staged", "open", "showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved", "closed"]},
         "attacker": {"type": ["string", "null"]},
         "defender": {"type": ["string", "null"]},
         "participants": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
@@ -63,6 +69,7 @@
         "damage_dealt": {"type": "object", "description": "ADR-0008 §10: the applied amounts Dealt per side from the receipts (465.2.d)."},
         "cleanup": {"type": "object", "description": "ADR-0008 §10: what the Combat Cleanup did (killed with attribution, healed, recalled; 466.1, 428.5.c.2)."},
         "result": {"type": "object", "description": "ADR-0008 §10: the Combat result per 466.3 (win / no_result, winner, loser, reason, units_remaining, restage_required)."},
+        "control": {"type": "object", "description": "ADR-0009 §2: what resolve_battlefield_control did (step, controller_after, scoring)."},
         "sync_count": {"type": "integer", "minimum": 0}
       }
     },

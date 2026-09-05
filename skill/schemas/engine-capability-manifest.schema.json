@@ -82,10 +82,10 @@
         "additionalProperties": false,
         "required": ["check_kind", "name", "version", "coverage_id", "supported_scope", "unsupported_scope"],
         "properties": {
-          "check_kind": { "enum": ["timing", "effect", "resolution", "cleanup", "play", "turn_step", "combat_step", "standard_move", "legal_action"] },
-          "name": { "enum": ["rules_core", "effect_ir", "resolution_bridge", "lethal_cleanup", "play_transaction", "turn_steps", "combat", "standard_move", "legal_action_service"] },
+          "check_kind": { "enum": ["timing", "effect", "resolution", "cleanup", "play", "turn_step", "combat_step", "standard_move", "control_step", "legal_action"] },
+          "name": { "enum": ["rules_core", "effect_ir", "resolution_bridge", "lethal_cleanup", "play_transaction", "turn_steps", "combat", "standard_move", "battlefield_control", "legal_action_service"] },
           "version": { "type": "string", "minLength": 1 },
-          "coverage_id": { "enum": ["timing_permission_v1", "effect_program_v1", "combined_resolution_v1", "lethal_cleanup_v1", "play_transaction_v1", "turn_step_v1", "combat_step_v1", "standard_move_v1", "legal_action_v1"] },
+          "coverage_id": { "enum": ["timing_permission_v1", "effect_program_v1", "combined_resolution_v1", "lethal_cleanup_v1", "play_transaction_v1", "turn_step_v1", "combat_step_v1", "standard_move_v1", "control_step_v1", "legal_action_v1"] },
           "supported_scope": { "$ref": "#/$defs/stringList" },
           "unsupported_scope": { "$ref": "#/$defs/stringList" }
         }

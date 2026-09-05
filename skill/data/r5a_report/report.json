@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:54230d2296de01c3a7f011b6",
-    "capability_set_id": "sha256:54230d2296de01c3a7f011b697511aa5cee3809799d390191cca2cb7aa1c6ce0",
-    "implementation_identity": "sha256:5b40a04f3e731be4b3c5e27e8bc9706e31e0118ff017d4630ed758f2a5161edf",
+    "manifest_id": "capability-manifest:1f04e2f183d216f36ab7655c",
+    "capability_set_id": "sha256:1f04e2f183d216f36ab7655cfc2aca962ff6498fcc37d436ed75c3b00b2b26a1",
+    "implementation_identity": "sha256:6d969e7d229578ba762aaa576f7f87527b736cbeb13ff7c79691ebdd3c0396b7",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 168,
+    "declared_locators": 178,
     "exactly_cited_declared_locators": 28,
-    "exact_ratio": 0.1667,
+    "exact_ratio": 0.1573,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -173,6 +173,7 @@
       "Core 170.11.c",
       "Core 184–186",
       "Core 190.3.a.1",
+      "Core 190.4",
       "Core 190.6.a",
       "Core 190.6.d",
       "Core 316.9.b",
@@ -180,6 +181,7 @@
       "Core 317.2.c",
       "Core 317.2–317.2.d",
       "Core 319.8",
+      "Core 323.1",
       "Core 323.13",
       "Core 323.14",
       "Core 323.2–323.2.c",
@@ -193,6 +195,7 @@
       "Core 345",
       "Core 347",
       "Core 347.2–347.2.b",
+      "Core 348.2.a–348.2.a.1",
       "Core 348–348.1",
       "Core 349",
       "Core 354–358",
@@ -233,6 +236,7 @@
       "Core 383.3",
       "Core 383.3.a–383.3.a.3",
       "Core 383.3.c–383.3.d.1",
+      "Core 383.4.c–383.4.d",
       "Core 383.4.e–383.4.f.3",
       "Core 383.4.f",
       "Core 386–388",
@@ -285,8 +289,14 @@
       "Core 466.2–466.3.d.1",
       "Core 466.3.d.1",
       "Core 466.5.a",
+      "Core 466.5–466.5.e",
       "Core 466.7.c",
       "Core 466.7–466.7.c",
+      "Core 469.1",
+      "Core 470",
+      "Core 471.1–471.1.b.1",
+      "Core 471.2–471.2.c",
+      "Core 472",
       "Core 477",
       "Core 713–715.4",
       "Core 740.2.a",
@@ -812,5 +822,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:474b8c5463d80ef2e74ce746415b6e71e0b7d2208ab9c224bbb4658994f61ea1"
+  "report_hash": "sha256:e2712307b69c316292836544155501e2805f9b1cec81627106584ba461b4ccb9"
 }

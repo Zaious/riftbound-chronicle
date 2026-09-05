@@ -30,10 +30,10 @@ ABILITY_KINDS = {"standard", "add", None}
 CHAIN_ORIGINS = {"played_card", "activated_ability", "triggered_ability", "add_ability", None}
 # ADR-0008 §1: the Combat record's progress. Staged and open are C-26; the
 # later steps are named so the record can carry them without a schema change.
-COMBAT_STATUSES = {"staged", "open", "showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "closed"}
+COMBAT_STATUSES = {"staged", "open", "showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved", "closed"}
 # Statuses in which the Combat's own steps are the next required procedure and
 # no discretionary play is available while the chain is empty (465–466).
-COMBAT_STEP_PENDING = {"showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined"}
+COMBAT_STEP_PENDING = {"showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved"}
 
 RULES = {
     "four_states": ["Core 308–310"],
@@ -183,6 +183,17 @@ def validate_state(state: dict[str, Any]) -> list[str]:
         errors.append("showdown.focus_passes must list distinct players")
     elif focus_passes and not showdown.get("active"):
         errors.append("a neutral state has no focus passes")
+    # ADR-0009 §4: a Non-Combat Showdown every player passed is closing; control
+    # resolution is its next required procedure.
+    if "closing" in showdown and (not isinstance(showdown["closing"], bool) or (showdown["closing"] and (not showdown.get("active") or showdown.get("kind") != "non_combat"))):
+        errors.append("showdown.closing is only true on an active Non-Combat Showdown")
+    # ADR-0009 §3: the staged Non-Combat Showdowns, a set rebuilt by stage_showdown.
+    staged = state.get("staged_showdowns", [])
+    if not isinstance(staged, list) or any(not isinstance(s, dict) or set(s) != {"battlefield", "battlefield_identity", "contested_by"} or not isinstance(s["battlefield"], str) or not s["battlefield"]
+                                           or not isinstance(s["battlefield_identity"], str) or "@" not in s["battlefield_identity"] or s["contested_by"] not in players for s in staged):
+        errors.append("staged_showdowns must list {battlefield, battlefield_identity, contested_by} entries")
+    elif len({s["battlefield"] for s in staged}) != len(staged):
+        errors.append("staged_showdowns lists each battlefield at most once")
     # ADR-0008 §1: one optional Combat record. Absence means no Combat is
     # staged or open; a present record must be complete and self-consistent.
     combat = state.get("combat")
@@ -215,6 +226,8 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append("combat.triggered_identities must map attacker and defender to unique identity tokens")
             if "sync_count" in combat and (not isinstance(combat["sync_count"], int) or combat["sync_count"] < 0):
                 errors.append("combat.sync_count must be a non-negative integer")
+            if "control" in combat and (not isinstance(combat["control"], dict) or combat.get("status") not in {"control_resolved"}):
+                errors.append("combat.control is written by control resolution on a control_resolved combat")
             if "restaged_from" in combat and (not isinstance(combat["restaged_from"], str) or not combat["restaged_from"]):
                 errors.append("combat.restaged_from must name the closed Combat")
             if "assignment_snapshot" in combat and (not isinstance(combat["assignment_snapshot"], dict) or set(combat["assignment_snapshot"]) != {"effect_state_hash", "receipts_hash"}):
@@ -228,7 +241,7 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                     errors.append("combat.assignments must carry attacker and defender receipts with available and entries")
             elif combat["status"] in {"damage_assigned"}:
                 errors.append("a damage_assigned combat carries its assignment receipts")
-            for field, statuses in (("damage_dealt", {"damage_dealt", "cleanup_done", "result_determined"}), ("cleanup", {"cleanup_done", "result_determined"}), ("result", {"result_determined"})):
+            for field, statuses in (("damage_dealt", {"damage_dealt", "cleanup_done", "result_determined", "control_resolved"}), ("cleanup", {"cleanup_done", "result_determined", "control_resolved"}), ("result", {"result_determined", "control_resolved"})):
                 if field in combat and not isinstance(combat[field], dict):
                     errors.append(f"combat.{field} must be an object")
                 if combat["status"] in statuses and field not in combat and not (field == "damage_dealt" and combat.get("damage_step_skipped")):
@@ -341,6 +354,15 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             rule_locators=["Core 338–339"],
         )
     combat = state.get("combat")
+    if state["showdown"].get("active") and state["showdown"].get("closing"):
+        return _result(
+            state,
+            valid=True,
+            procedure="control_resolution_pending",
+            subject=state["showdown"].get("battlefield"),
+            discretionary_actions_allowed=False,
+            rule_locators=["Core 348.2", "Core 348.2.a"],
+        )
     if combat is not None and combat.get("status") == "staged" and not state["showdown"]["active"]:
         # 323.13 / 466.3.d.1: a staged Combat opens in this Cleanup; no
         # discretionary action comes first.

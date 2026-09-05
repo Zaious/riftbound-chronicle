@@ -33,6 +33,13 @@
       "type": "array",
       "items": {"$ref": "#/$defs/replacementEffect"}
     },
+    "mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["victory_score"],
+      "description": "ADR-0009 §1: the Mode of Play facts scoring needs (456.3). Absent makes scoring unsupported; teams are not modelled.",
+      "properties": {"victory_score": {"type": "integer", "minimum": 1}, "teams": {"type": "boolean"}}
+    },
     "might_auras": {
       "type": "array",
       "description": "ADR-0008 §5: bounded external Might auras read by effective_might; the source is an object active on the board or a Battlefield.",
@@ -131,6 +138,8 @@
       "required": ["zones", "resources"],
       "properties": {
         "team_id": {"type": "string", "minLength": 1},
+        "points": {"type": "integer", "minimum": 0, "description": "ADR-0009 §1: points gained by scoring (468, 471.1). Absent means 0."},
+        "scored_this_turn": {"type": "object", "additionalProperties": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "description": "turn_id -> battlefields this player scored that turn (470); only the current turn's entry is read."},
         "zones": {"$ref": "#/$defs/zones"},
         "resources": {
           "type": "object",
@@ -218,6 +227,8 @@
         "combat_designation": {"type": "object", "additionalProperties": false, "required": ["combat_id", "role"], "properties": {"combat_id": {"type": "string", "minLength": 1}, "role": {"enum": ["attacker", "defender"]}}, "description": "ADR-0008 §1: the Unit's designation in the Combat in progress, synchronized by Cleanup (323.2)."},
         "attack_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I attack' (Core 383.4.e): fires once per object identity per Combat when the Unit gains the Attacker designation."},
         "defend_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I defend' (Core 383.4.f): fires once per object identity per Combat when the Unit gains the Defender designation."},
+        "conquer_triggers": {"type": "array", "items": {"$ref": "#/$defs/scoreTrigger"}, "description": "'When I conquer' / 'When you conquer' (Core 383.4.c): scope unit_here fires for the scoring player's Unit at the Battlefield scored, scope controller from any board object the scoring player controls."},
+        "hold_triggers": {"type": "array", "items": {"$ref": "#/$defs/scoreTrigger"}, "description": "'When I hold' / 'When you hold' (Core 383.4.d)."},
         "shield_value": {"type": "integer", "minimum": 1, "description": "Shield [X] (Core 814.1.b); 1 when the keyword is bare. Only meaningful with keyword shield."},
         "keyword_modifiers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "keyword", "source", "duration", "target_identity"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "keyword": {"enum": ["shield", "tank", "ganking", "backline"]}, "value": {"type": "integer", "minimum": 1}, "source": {"type": "string", "minLength": 1}, "duration": {"enum": ["this_combat", "this_turn"]}, "combat_id": {"type": "string", "minLength": 1}, "turn_id": {"type": "string", "minLength": 1}, "target_identity": {"type": "string", "pattern": "^.+@[0-9]+$"}}}, "description": "ADR-0008 §5: granted characteristics bound to the identity they were granted to and to the Combat (this_combat, expires at 466.7.c) or turn (this_turn) they last for."},
         "deflect_value": {"type": "integer", "minimum": 1, "description": "Deflect [X] (Core 809.1.b); 1 when the keyword is bare. Only meaningful with keyword deflect."},
@@ -245,7 +256,23 @@
         "contested_by": {"type": ["string", "null"]},
         "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "Bindable identity for Battlefield targets (ADR-0007 §4). Absent means generation 0."},
         "attack_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you attack here' — controlled by the Battlefield's controller when it fires (190.6.a); uncontrolled, 'you' is no one (190.6.d)."},
-        "defend_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you defend here' (Fortified Position)."}
+        "defend_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you defend here' (Fortified Position)."},
+        "conquer_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0009 §7: the Battlefield's own 'When you conquer here', controlled by its controller (190.6)."},
+        "hold_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0009 §7: the Battlefield's own 'When you hold here'."}
+      }
+    },
+    "scoreTrigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+      "properties": {
+        "trigger_id": {"type": "string", "minLength": 1},
+        "controller": {"type": "string", "minLength": 1},
+        "source_object": {"type": "string", "minLength": 1},
+        "controller_order": {"type": "integer", "minimum": 0},
+        "effect_program_id": {"type": "string", "minLength": 1},
+        "optional_at_finalize": {"type": "boolean"},
+        "scope": {"enum": ["unit_here", "controller"]}
       }
     },
     "battlefieldTrigger": {

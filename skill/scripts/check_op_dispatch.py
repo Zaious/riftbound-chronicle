@@ -26,7 +26,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from effect_ir import COMPOSITE_OPS, SUPPORTED_OPS  # noqa: E402
 
-FILES = ["effect_ir.py", "resolution_bridge.py", "play_transaction.py", "engine_check.py", "engine_decisions.py", "cost_receipt.py", "combat.py"]
+FILES = ["effect_ir.py", "resolution_bridge.py", "play_transaction.py", "engine_check.py", "engine_decisions.py", "cost_receipt.py", "combat.py", "battlefield_control.py"]
 
 
 def dispatch_branches(source: str) -> Counter:

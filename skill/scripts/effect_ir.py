@@ -239,6 +239,12 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"players.{player_id}.resources.power must map domains to non-negative integers")
         if "team_id" in player and (not isinstance(player["team_id"], str) or not player["team_id"]):
             errors.append(f"players.{player_id}.team_id must be a non-empty string when supplied")
+        # ADR-0009 §1: points and the once-per-Battlefield-per-turn ledger (470).
+        if "points" in player and (not isinstance(player["points"], int) or isinstance(player["points"], bool) or player["points"] < 0):
+            errors.append(f"players.{player_id}.points must be a non-negative integer")
+        ledger = player.get("scored_this_turn")
+        if ledger is not None and (not isinstance(ledger, dict) or any(not isinstance(k, str) or not k or not isinstance(v, list) or len(v) != len(set(v)) or any(b not in battlefields for b in v) for k, v in ledger.items())):
+            errors.append(f"players.{player_id}.scored_this_turn must map turn ids to unique known battlefield ids")
 
     for battlefield_id, battlefield in battlefields.items():
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
@@ -259,7 +265,7 @@ def validate_state(state: Any) -> list[str]:
         # ADR-0008 §4: a Battlefield's own Attack / Defend triggers (Fortified
         # Position). Their controller is the Battlefield's controller at the
         # time they trigger (190.6.a), so the descriptor names none.
-        for trigger_field in ("attack_triggers", "defend_triggers"):
+        for trigger_field in ("attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers"):
             triggers = battlefield.get(trigger_field, [])
             if not isinstance(triggers, list):
                 errors.append(f"battlefields.{battlefield_id}.{trigger_field} must be an array")
@@ -327,6 +333,10 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.turn_id must be a non-empty string")
         if effect["kind"] == "entry_state_for_played_units" and effect.get("value") not in {"ready", "exhausted"}:
             errors.append(f"{label}.value must be ready or exhausted")
+    # ADR-0009 §1: the Mode of Play; scoring never guesses a Victory Score.
+    mode = state.get("mode")
+    if mode is not None and (not isinstance(mode, dict) or set(mode) - {"victory_score", "teams"} or not isinstance(mode.get("victory_score"), int) or isinstance(mode.get("victory_score"), bool) or mode["victory_score"] < 1 or not isinstance(mode.get("teams", False), bool)):
+        errors.append("mode must be {victory_score: positive integer, teams?: boolean} (Core 456.3)")
     # ADR-0007 §5: Bonus Damage sources. A source is an object (active while on
     # the board) or a Battlefield (active while it exists) — never pruned by the
     # object rule.
@@ -407,7 +417,7 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.shield_value must be a positive integer (Core 814.1.b)")
         # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1),
         # end of turn (317.1), attack / defend (383.4.e–f).
-        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers"):
+        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers"):
             triggers = obj.get(trigger_field, [])
             if not isinstance(triggers, list):
                 errors.append(f"objects.{object_id}.{trigger_field} must be an array")
@@ -422,6 +432,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid program/optional binding")
                 elif "condition" in trigger and (not isinstance(trigger["condition"], dict) or trigger["condition"].get("kind") not in TRIGGER_CONDITION_KINDS):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
+                elif "scope" in trigger and (trigger_field not in {"conquer_triggers", "hold_triggers"} or trigger["scope"] not in {"unit_here", "controller"}):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope must be unit_here or controller on a Score trigger (Core 383.4.c.2)")
         entry_ids: set[str] = set()
         for r_index, replacement in enumerate(obj.get("entry_replacements", []) or []):
             if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value"}:

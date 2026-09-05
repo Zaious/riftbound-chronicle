@@ -24,6 +24,7 @@ from engine_decisions import DECISIONS_VERSION as ENGINE_DECISIONS_VERSION, vali
 from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card, validate_play_result
 from resolution_bridge import CLEANUP_DECISION_VERSION, TURN_STEP_VERSION, begin_ending_step, resolve_with_program, run_expiration_step, validate_cleanup_decisions
 from combat import COMBAT_STEP_VERSION, STANDARD_MOVE_VERSION, STEPS as COMBAT_STEPS, standard_move  # noqa: E402
+from battlefield_control import CONTROL_STEP_VERSION, STEPS as CONTROL_STEPS  # noqa: E402
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
     derive_permissions,
@@ -92,6 +93,11 @@ FEATURE_RULES = {
     "combat_result": ["Core 466.2–466.3.d.1"],
     "combat_close": ["Core 466.5.a", "Core 466.7–466.7.c"],
     "combat_restage": ["Core 466.3.d.1", "Core 323.13"],
+    # C-33 (ADR-0009 §1–2, §5–7).
+    "battlefield_control_resolution": ["Core 190.4", "Core 466.5–466.5.e", "Core 348.2.a–348.2.a.1"],
+    "conquer_scoring": ["Core 469.1", "Core 470", "Core 471.1–471.1.b.1"],
+    "score_triggers": ["Core 471.2–471.2.c", "Core 383.4.c–383.4.d"],
+    "victory_facts": ["Core 472", "Core 323.1"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -144,7 +150,7 @@ KIND_CONFIG = {
         "component": ("combat", COMBAT_STEP_VERSION),
         "coverage": "combat_step_v1",
         "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers", "combat_showdown_close", "combat_damage_assignment", "tank_backline_priority", "assignment_replacement_preview", "combat_damage_deal", "combat_cleanup", "combat_result", "combat_close", "combat_restage"],
-        "unsupported": ["start_of_combat_effects", "end_of_combat_effects", "take_damage_triggers", "player_level_attack_defend_triggers", "multi_player_combat", "damage_exemption_sources", "non_prevent_assignment_replacements", "battlefield_control_resolution", "conquer", "scoring", "complete_game", "complete_legality"],
+        "unsupported": ["start_of_combat_effects", "end_of_combat_effects", "take_damage_triggers", "player_level_attack_defend_triggers", "multi_player_combat", "damage_exemption_sources", "non_prevent_assignment_replacements", "complete_game", "complete_legality"],
     },
     # ADR-0008 §6: the Standard Move as a player action outside Combat.
     "standard_move": {
@@ -152,6 +158,13 @@ KIND_CONFIG = {
         "coverage": "standard_move_v1",
         "supported": ["standard_move", "ganking", "move_triggers", "bounded_cleanup"],
         "unsupported": ["non_standard_moves", "invalid_destination_catalog", "combat_moves", "complete_game", "complete_legality"],
+    },
+    # ADR-0009: control, Conquer, Hold and scoring over the timing/effect pair.
+    "control_step": {
+        "component": ("battlefield_control", CONTROL_STEP_VERSION),
+        "coverage": "control_step_v1",
+        "supported": ["battlefield_control_resolution", "conquer_scoring", "score_triggers", "victory_facts"],
+        "unsupported": ["team_scoring", "hidden_cards", "gear_rune_recall_cleanup", "non_conquer_point_sources", "activate_named_triggers", "beginning_phase", "terminal_state", "burn_out", "complete_game", "complete_legality"],
     },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
@@ -301,7 +314,7 @@ def classify_outcome(kind: str, result: dict[str, Any]) -> tuple[str, dict[str, 
         return "illegal", None
     if kind == "resolution" and result.get("committed") is not True:
         return ("invalid_input" if result.get("stage") in {"program_binding", "cleanup_decision"} else "illegal"), None
-    if kind in {"turn_step", "combat_step", "standard_move"} and result.get("committed") is not True:
+    if kind in {"turn_step", "combat_step", "standard_move", "control_step"} and result.get("committed") is not True:
         return "illegal", None
     if kind == "play" and result.get("committed") is not True:
         # A well-formed play the rules refuse: unpayable cost, card not in
@@ -568,6 +581,16 @@ def run_combat_step(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str,
     return result, hashes
 
 
+def run_control_step(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
+    timing_state, effect_state = load_object(args.timing_state), load_object(args.effect_state)
+    decisions = _engine_decisions(getattr(args, "decisions", None))
+    result = CONTROL_STEPS[args.step](timing_state, effect_state, decisions)
+    hashes = {"timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state)}
+    if decisions is not None:
+        hashes["engine_decisions"] = canonical_hash(decisions)
+    return result, hashes
+
+
 def run_standard_move(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, str]]:
     timing_state, effect_state, declaration = load_object(args.timing_state), load_object(args.effect_state), load_object(args.declaration)
     decisions = _engine_decisions(getattr(args, "decisions", None))
@@ -621,6 +644,12 @@ def build_parser() -> argparse.ArgumentParser:
     combat_step.add_argument("--step", choices=sorted(COMBAT_STEPS), required=True)
     add_common(combat_step)
 
+    control = sub.add_parser("control-step")
+    control.add_argument("timing_state", type=Path)
+    control.add_argument("effect_state", type=Path)
+    control.add_argument("--step", choices=sorted(CONTROL_STEPS), required=True)
+    add_common(control)
+
     move = sub.add_parser("standard-move")
     move.add_argument("timing_state", type=Path)
     move.add_argument("effect_state", type=Path)
@@ -648,8 +677,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise EngineCheckError("; ".join(errors))
             print("OK: valid engine-check.v1")
             return 0
-        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup, "play": run_play, "turn-step": run_turn_step, "combat-step": run_combat_step, "standard-move": run_standard_move}[args.command]
-        kind = {"turn-step": "turn_step", "combat-step": "combat_step", "standard-move": "standard_move"}.get(args.command, args.command)
+        runner = {"timing": run_timing, "effect": run_effect, "resolution": run_resolution, "cleanup": run_cleanup, "play": run_play, "turn-step": run_turn_step, "combat-step": run_combat_step, "standard-move": run_standard_move, "control-step": run_control_step}[args.command]
+        kind = {"turn-step": "turn_step", "combat-step": "combat_step", "standard-move": "standard_move", "control-step": "control_step"}.get(args.command, args.command)
         result, input_hashes = runner(args)
         check = build_engine_check(
             kind,

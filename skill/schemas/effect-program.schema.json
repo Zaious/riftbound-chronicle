@@ -50,7 +50,7 @@
         "type": "object",
         "required": ["op"],
         "properties": {
-          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive", "return_to_hand", "recall", "channel_rune", "grant_turn_effect", "discard", "grant_replacement", "heal_all_damage"]},
+          "op": {"enum": ["draw", "recycle_one", "move_board_object", "modify_might", "deal_damage", "heal_damage", "ready", "exhaust", "add_resource", "play_token", "kill", "emit_reflexive", "return_to_hand", "recall", "channel_rune", "grant_turn_effect", "discard", "grant_replacement", "heal_all_damage", "grant_keyword"]},
           "effect_id": {"type": "string", "minLength": 1},
           "predicate": {
             "type": "object",
@@ -75,6 +75,7 @@
           "decision_ref": {"type": "string", "minLength": 1, "description": "discard: the card_selection decision the discarding player supplies (Core 422.1.a); not needed when the whole hand must go."},
           "replacement": {"type": "object", "description": "grant_replacement: {replacement_id?, mode, event_op, optional?, replacement_effects?}; $granted_target inside replacement_effects binds to the object at grant time."},
           "granted_by": {"type": "string", "minLength": 1},
+          "keyword": {"enum": ["shield", "tank", "ganking", "backline"], "description": "grant_keyword: the characteristic granted; value (Shield X) and duration this_combat | this_turn ride alongside."},
           "value": {},
           "base_might": {"type": "integer", "minimum": 0},
           "destination": {

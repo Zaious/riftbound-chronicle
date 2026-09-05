@@ -71,6 +71,10 @@ FEATURE_RULES = {
     "combat_opening": ["Core 464.2.b–464.2.g", "Core 345", "Core 464.2.c.1.a–464.2.c.1.b"],
     "combat_designations": ["Core 323.2–323.2.c", "Core 464.2.c.3–464.2.c.3.a"],
     "attack_defend_triggers": ["Core 383.4.e–383.4.f.3", "Core 464.2.e.1"],
+    # C-27 (ADR-0008 §4–5).
+    "battlefield_defend_triggers": ["Core 190.6.a", "Core 190.6.d", "Core 383.4.f"],
+    "combat_relative_might": ["Core 814.1.c–814.2", "Core 740.2.a", "Core 143.2.b", "Core 364.3"],
+    "keyword_modifiers": ["Core 814.2", "Core 466.7.c", "Core 317.2.c"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -82,7 +86,7 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers"],
         "unsupported": ["arbitrary_card_text", "combat", "scoring", "complete_game", "complete_legality"],
     },
     "resolution": {
@@ -122,7 +126,7 @@ KIND_CONFIG = {
     "combat_step": {
         "component": ("combat", COMBAT_STEP_VERSION),
         "coverage": "combat_step_v1",
-        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers"],
+        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers"],
         "unsupported": ["start_of_combat_effects", "player_level_attack_defend_triggers", "multi_player_combat", "combat_damage", "combat_cleanup", "combat_result", "battlefield_control_resolution", "scoring", "complete_game", "complete_legality"],
     },
     "legal_action": {

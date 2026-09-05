@@ -264,6 +264,29 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
                 next_record["triggered_identities"][role].append(identity)
             descriptors += found
             designations.append({"object_id": object_id, "role": role, "identity": object_identity(next_effect, object_id) or f"{object_id}@0", "triggers": [d["trigger_id"] for d in found]})
+    # ADR-0008 §4 / Core 190.6: the Battlefield's own "When you attack/defend
+    # here" — "you" is the Battlefield's controller, who must be the player
+    # gaining that designation; uncontrolled, "you" refers to no one (190.6.d).
+    battlefield_triggers = []
+    next_record["battlefield_triggered"] = []
+    for role, player in (("attacker", attacker), ("defender", defender)):
+        descriptors_here = battlefield.get(TRIGGER_FIELDS[role], []) or []
+        if not descriptors_here:
+            continue
+        controller = battlefield.get("controller")
+        if controller is None:
+            battlefield_triggers.append({"role": role, "fired": False, "reason": "battlefield uncontrolled: 'you' refers to no one (190.6.d)"})
+            continue
+        if controller != player:
+            battlefield_triggers.append({"role": role, "fired": False, "reason": f"the Battlefield's controller {controller} did not gain the {role} designation (190.6.d)"})
+            continue
+        group = 0 if role == "attacker" else 2
+        for descriptor in descriptors_here:
+            descriptors.append({**descriptor, "controller": controller, "source_object": battlefield_id, "trigger_kind": "triggered",
+                                "batch_id": f"combat:{record['combat_id']}:open:{role}", "batch_sequence": group,
+                                "combat_id": record["combat_id"], "role": role, "battlefield_identity": record["battlefield_identity"], "source_identity": record["battlefield_identity"]})
+        next_record["battlefield_triggered"].append(role)
+        battlefield_triggers.append({"role": role, "fired": True, "controller": controller, "triggers": [d["trigger_id"] for d in descriptors_here]})
     from resolution_bridge import _settle_trigger_orders  # local: resolution_bridge imports this module lazily too
     failure = _settle_trigger_orders(descriptors, engine_decisions, base)
     if failure is not None:
@@ -277,10 +300,10 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "the Combat Chain could not be built", ["Core 464.2.e"], trigger_result=scheduled)
     final_timing = scheduled["next_state"]
     trace = {"attacker": attacker, "defender": defender, "opened_with": opened_with, "focus": focus,
-             "designations": designations, "combat_chain": [d["trigger_id"] for d in descriptors],
+             "designations": designations, "battlefield_triggers": battlefield_triggers, "combat_chain": [d["trigger_id"] for d in descriptors],
              "state_closed": bool(descriptors), "trigger_schedule": scheduled.get("transition")}
     return _commit(base, final_timing, next_effect, trace=trace,
-                   locators=["Core 464.2.b", "Core 464.2.c.1", "Core 464.2.c.1.a", "Core 464.2.c.1.b", "Core 464.2.c.2", "Core 464.2.c.3", "Core 464.2.d", "Core 464.2.e.1", "Core 464.2.f", "Core 345", "Core 383.4.e", "Core 383.4.f"])
+                   locators=["Core 464.2.b", "Core 464.2.c.1", "Core 464.2.c.1.a", "Core 464.2.c.1.b", "Core 464.2.c.2", "Core 464.2.c.3", "Core 464.2.d", "Core 464.2.e.1", "Core 464.2.f", "Core 345", "Core 383.4.e", "Core 383.4.f", "Core 190.6.a", "Core 190.6.d"])
 
 
 # ------------------------------------------------------------- designation sync --

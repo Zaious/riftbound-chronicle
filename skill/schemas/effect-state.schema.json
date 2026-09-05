@@ -33,6 +33,22 @@
       "type": "array",
       "items": {"$ref": "#/$defs/replacementEffect"}
     },
+    "might_auras": {
+      "type": "array",
+      "description": "ADR-0008 §5: bounded external Might auras read by effective_might; the source is an object active on the board or a Battlefield.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["modifier_id", "source_object", "controller", "amount", "condition"],
+        "properties": {
+          "modifier_id": {"type": "string", "minLength": 1},
+          "source_object": {"type": "string", "minLength": 1},
+          "controller": {"type": "string", "minLength": 1},
+          "amount": {"type": "integer"},
+          "condition": {"type": "object", "additionalProperties": false, "required": ["kind"], "properties": {"kind": {"enum": ["friendly_unit_defends_alone"]}}}
+        }
+      }
+    },
     "turn_id": {"type": "string", "minLength": 1, "description": "The turn every 'this turn' effect created now belongs to (ADR-0007 §8). Absent means turn-0."},
     "turn_effects": {
       "type": "array",
@@ -203,9 +219,10 @@
         "attack_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I attack' (Core 383.4.e): fires once per object identity per Combat when the Unit gains the Attacker designation."},
         "defend_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I defend' (Core 383.4.f): fires once per object identity per Combat when the Unit gains the Defender designation."},
         "shield_value": {"type": "integer", "minimum": 1, "description": "Shield [X] (Core 814.1.b); 1 when the keyword is bare. Only meaningful with keyword shield."},
+        "keyword_modifiers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "keyword", "source", "duration", "target_identity"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "keyword": {"enum": ["shield", "tank", "ganking", "backline"]}, "value": {"type": "integer", "minimum": 1}, "source": {"type": "string", "minLength": 1}, "duration": {"enum": ["this_combat", "this_turn"]}, "combat_id": {"type": "string", "minLength": 1}, "turn_id": {"type": "string", "minLength": 1}, "target_identity": {"type": "string", "pattern": "^.+@[0-9]+$"}}}, "description": "ADR-0008 §5: granted characteristics bound to the identity they were granted to and to the Combat (this_combat, expires at 466.7.c) or turn (this_turn) they last for."},
         "deflect_value": {"type": "integer", "minimum": 1, "description": "Deflect [X] (Core 809.1.b); 1 when the keyword is bare. Only meaningful with keyword deflect."},
         "entry_replacements": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["mode", "value"], "properties": {"replacement_id": {"type": "string", "minLength": 1}, "mode": {"const": "entry_state"}, "value": {"enum": ["ready", "exhausted"]}}}, "description": "Core 369.3: how this permanent enters, replacing the default (e.g. 'I enter ready'). Conflicting replacements require a replacement_order decision."},
-        "conditional_might": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "amount", "condition"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "amount": {"type": "integer"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["runes_at_least"]}, "count": {"type": "integer", "minimum": 0}}}}}, "description": "Conditional passives read by effective_might (Core 364.3)."},
+        "conditional_might": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "amount", "condition"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "amount": {"type": "integer"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["runes_at_least", "attacking_or_defending_alone"]}, "count": {"type": "integer", "minimum": 0}}}}}, "description": "Conditional passives read by effective_might (Core 364.3; attacking_or_defending_alone per 740.2.a)."},
         "end_of_turn_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'At the end of your turn' abilities (Core 383.1), with an optional condition that is part of the trigger condition (383.2.a.1)."},
         "is_token": {"type": "boolean"},
         "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "ADR-0005 §3 object identity: '<object_id>@<generation>'. Absent means generation 0. Changes on any transition to or from a non-board zone; survives board moves."},
@@ -225,7 +242,20 @@
         "objects": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
         "contested": {"type": "boolean", "description": "A unit whose controller does not control this Battlefield entered it (Core 190.3.a.1). No control transfer is inferred."},
         "contested_by": {"type": ["string", "null"]},
-        "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "Bindable identity for Battlefield targets (ADR-0007 §4). Absent means generation 0."}
+        "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "Bindable identity for Battlefield targets (ADR-0007 §4). Absent means generation 0."},
+        "attack_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you attack here' — controlled by the Battlefield's controller when it fires (190.6.a); uncontrolled, 'you' is no one (190.6.d)."},
+        "defend_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you defend here' (Fortified Position)."}
+      }
+    },
+    "battlefieldTrigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger_id", "controller_order", "effect_program_id", "optional_at_finalize"],
+      "properties": {
+        "trigger_id": {"type": "string", "minLength": 1},
+        "controller_order": {"type": "integer", "minimum": 0},
+        "effect_program_id": {"type": "string", "minLength": 1},
+        "optional_at_finalize": {"type": "boolean"}
       }
     },
     "replacementEffect": {

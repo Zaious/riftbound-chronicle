@@ -32,7 +32,13 @@ OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backlin
 COMBAT_ROLES = {"attacker", "defender"}
 # ADR-0007 §6–8.
 TURN_EFFECT_KINDS = {"entry_state_for_played_units"}
-CONDITION_KINDS = {"runes_at_least"}
+# ADR-0008 §5: attacking_or_defending_alone reads the Unit's own designation
+# and company (740.2.a); friendly_unit_defends_alone is the bounded external
+# aura of the Master Yi Legend clause, carried by a might_auras entry.
+CONDITION_KINDS = {"runes_at_least", "attacking_or_defending_alone"}
+AURA_CONDITION_KINDS = {"friendly_unit_defends_alone"}
+GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline"}
+KEYWORD_MODIFIER_DURATIONS = {"this_combat", "this_turn"}
 TRIGGER_CONDITION_KINDS = {"at_battlefield"}
 DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
@@ -75,6 +81,8 @@ SUPPORTED_OPS = {
     # C-24 (ADR-0007 §12): a replacement created by an effect, bound to a target's identity for this turn.
     "grant_replacement",
     "heal_all_damage",
+    # C-27 (ADR-0008 §5): a granted characteristic (Shield X, Tank, ...) for this combat or this turn.
+    "grant_keyword",
 }
 
 
@@ -161,6 +169,7 @@ OP_RULES = {
     "discard": ["Core 422.1", "Core 422.1.a", "Core 422.4", "Core 124"],
     "grant_replacement": ["Core 370", "Core 355.10.c", "Core 124", "Core 317.2.c"],
     "heal_all_damage": ["Core 418"],
+    "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
 }
 
 
@@ -241,6 +250,19 @@ def validate_state(state: Any) -> list[str]:
         identity = battlefield.get("identity")
         if identity is not None and (not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit()):
             errors.append(f"battlefields.{battlefield_id}.identity must look like '<id>@<generation>' when supplied")
+        # ADR-0008 §4: a Battlefield's own Attack / Defend triggers (Fortified
+        # Position). Their controller is the Battlefield's controller at the
+        # time they trigger (190.6.a), so the descriptor names none.
+        for trigger_field in ("attack_triggers", "defend_triggers"):
+            triggers = battlefield.get(trigger_field, [])
+            if not isinstance(triggers, list):
+                errors.append(f"battlefields.{battlefield_id}.{trigger_field} must be an array")
+                continue
+            for trigger_index, trigger in enumerate(triggers):
+                if (not isinstance(trigger, dict) or set(trigger) != {"trigger_id", "controller_order", "effect_program_id", "optional_at_finalize"}
+                        or not isinstance(trigger["trigger_id"], str) or not trigger["trigger_id"] or not isinstance(trigger["controller_order"], int) or trigger["controller_order"] < 0
+                        or not isinstance(trigger["effect_program_id"], str) or not trigger["effect_program_id"] or not isinstance(trigger["optional_at_finalize"], bool)):
+                    errors.append(f"battlefields.{battlefield_id}.{trigger_field}[{trigger_index}] must carry trigger_id, controller_order, effect_program_id, optional_at_finalize (the controller is the Battlefield's, 190.6.a)")
         ids = battlefield["objects"]
         if len(ids) != len(set(ids)):
             errors.append(f"battlefields.{battlefield_id}.objects contains duplicates")
@@ -329,6 +351,30 @@ def validate_state(state: Any) -> list[str]:
         elif scope["kind"] == "controller_sources" and set(scope) != {"kind"}:
             errors.append(f"{label}.scope.controller_sources carries no other fields")
 
+    # ADR-0008 §5: bounded external Might auras (a source on the board or a
+    # Battlefield; a named condition read by effective_might).
+    auras = state.get("might_auras", [])
+    if not isinstance(auras, list):
+        errors.append("might_auras must be an array")
+        auras = []
+    aura_ids: set[str] = set()
+    for index, aura in enumerate(auras):
+        label = f"might_auras[{index}]"
+        if not isinstance(aura, dict) or set(aura) != {"modifier_id", "source_object", "controller", "amount", "condition"}:
+            errors.append(f"{label} must carry exactly modifier_id, source_object, controller, amount, condition")
+            continue
+        if not isinstance(aura["modifier_id"], str) or not aura["modifier_id"] or aura["modifier_id"] in aura_ids:
+            errors.append(f"{label}.modifier_id is invalid or duplicated")
+        aura_ids.add(aura.get("modifier_id", ""))
+        if aura["source_object"] not in objects and aura["source_object"] not in battlefields:
+            errors.append(f"{label}.source_object is neither an object nor a battlefield")
+        if aura["controller"] not in players:
+            errors.append(f"{label}.controller is not a player")
+        if not isinstance(aura["amount"], int) or isinstance(aura["amount"], bool):
+            errors.append(f"{label}.amount must be an integer")
+        if not isinstance(aura["condition"], dict) or aura["condition"].get("kind") not in AURA_CONDITION_KINDS or set(aura["condition"]) != {"kind"}:
+            errors.append(f"{label}.condition.kind must be one of {sorted(AURA_CONDITION_KINDS)}")
+
     for object_id, obj in objects.items():
         if not isinstance(obj, dict):
             errors.append(f"objects.{object_id} must be an object")
@@ -390,6 +436,33 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"{label}.condition.kind must be one of {sorted(CONDITION_KINDS)}")
             elif condition["kind"] == "runes_at_least" and (set(condition) != {"kind", "count"} or not isinstance(condition["count"], int) or condition["count"] < 0):
                 errors.append(f"{label}.condition.runes_at_least needs a non-negative count")
+            elif condition["kind"] == "attacking_or_defending_alone" and set(condition) != {"kind"}:
+                errors.append(f"{label}.condition.attacking_or_defending_alone carries no other fields")
+        # ADR-0008 §5: granted characteristics, each bound to the object identity
+        # it was granted to and to the Combat or turn it lasts for.
+        seen_keyword_modifiers: set[str] = set()
+        for k_index, modifier in enumerate(obj.get("keyword_modifiers", []) or []):
+            label = f"objects.{object_id}.keyword_modifiers[{k_index}]"
+            if not isinstance(modifier, dict) or {"modifier_id", "keyword", "source", "duration", "target_identity"} - set(modifier) or set(modifier) - {"modifier_id", "keyword", "value", "source", "duration", "combat_id", "turn_id", "target_identity"}:
+                errors.append(f"{label} must carry modifier_id, keyword, source, duration, target_identity (and value, combat_id or turn_id)")
+                continue
+            if not isinstance(modifier["modifier_id"], str) or not modifier["modifier_id"] or modifier["modifier_id"] in seen_keyword_modifiers:
+                errors.append(f"{label}.modifier_id is invalid or duplicated")
+            seen_keyword_modifiers.add(modifier.get("modifier_id", ""))
+            if modifier["keyword"] not in GRANTABLE_KEYWORDS:
+                errors.append(f"{label}.keyword must be one of {sorted(GRANTABLE_KEYWORDS)}")
+            if "value" in modifier and (not isinstance(modifier["value"], int) or isinstance(modifier["value"], bool) or modifier["value"] < 1):
+                errors.append(f"{label}.value must be a positive integer (Core 814.1.b)")
+            if not isinstance(modifier["source"], str) or not modifier["source"]:
+                errors.append(f"{label}.source must be a non-empty string")
+            if modifier["duration"] not in KEYWORD_MODIFIER_DURATIONS:
+                errors.append(f"{label}.duration must be one of {sorted(KEYWORD_MODIFIER_DURATIONS)}")
+            elif modifier["duration"] == "this_combat" and (not isinstance(modifier.get("combat_id"), str) or not modifier.get("combat_id") or "turn_id" in modifier):
+                errors.append(f"{label}: a this_combat grant carries its combat_id (466.7.c)")
+            elif modifier["duration"] == "this_turn" and (not isinstance(modifier.get("turn_id"), str) or not modifier.get("turn_id") or "combat_id" in modifier):
+                errors.append(f"{label}: a this_turn grant carries its turn_id (317.2.c)")
+            if not isinstance(modifier["target_identity"], str) or "@" not in modifier["target_identity"]:
+                errors.append(f"{label}.target_identity must be an identity token")
         deflect_value = obj.get("deflect_value")
         if deflect_value is not None and (not isinstance(deflect_value, int) or deflect_value < 1):
             errors.append(f"objects.{object_id}.deflect_value must be a positive integer (Core 809.1.b)")
@@ -538,6 +611,15 @@ def validate_program(program: Any) -> list[str]:
             predicate = effect.get("predicate")
             if predicate is not None:
                 errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt"), seen, {e.get("effect_id", f"effect-{i}"): e for i, e in enumerate(effects[:index]) if isinstance(e, dict)}))
+            if effect.get("op") == "grant_keyword":
+                if effect.get("keyword") not in GRANTABLE_KEYWORDS:
+                    errors.append(f"effects[{index}].grant_keyword.keyword must be one of {sorted(GRANTABLE_KEYWORDS)}")
+                if effect.get("duration") not in KEYWORD_MODIFIER_DURATIONS:
+                    errors.append(f"effects[{index}].grant_keyword.duration must be one of {sorted(KEYWORD_MODIFIER_DURATIONS)}")
+                if "value" in effect and (not isinstance(effect["value"], int) or isinstance(effect["value"], bool) or effect["value"] < 1):
+                    errors.append(f"effects[{index}].grant_keyword.value must be a positive integer")
+                if not isinstance(effect.get("source"), str) or not effect.get("source"):
+                    errors.append(f"effects[{index}].grant_keyword requires a source")
             if effect.get("op") == "discard":
                 if not isinstance(effect.get("player"), str) or not isinstance(effect.get("count"), int) or effect.get("count", 0) < 1:
                     errors.append(f"effects[{index}].discard requires player and a positive count")
@@ -617,7 +699,7 @@ def validate_program(program: Any) -> list[str]:
     return errors
 
 
-MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage"}
+MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
 SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might"}
 
 
@@ -1251,6 +1333,35 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
         new_state["replacement_effects"].append(granted)
         trace.update({"object_id": object_id, "replacement_id": granted["replacement_id"], "granted": copy.deepcopy(granted["granted"])})
 
+    elif op == "grant_keyword":
+        # ADR-0008 §5 (Fortified Position: "It gains [Shield 2] this combat."):
+        # a granted characteristic bound to the object's identity now and to
+        # the Combat in progress (expires with it, 466.7.c) or to this turn.
+        object_id, keyword, duration = effect.get("object_id"), effect.get("keyword"), effect.get("duration")
+        if object_id not in new_state["objects"] or keyword not in GRANTABLE_KEYWORDS or duration not in KEYWORD_MODIFIER_DURATIONS:
+            raise ValueError("grant_keyword requires a known object, a grantable keyword and a duration")
+        if new_state["objects"][object_id].get("kind") != "unit" or zone_class(find_location(new_state, object_id)) != "board":
+            raise IllegalOperation(f"grant_keyword applies only to a Unit on the board; {object_id!r} is not one")
+        value = effect.get("value")
+        if keyword != "shield" and value is not None:
+            raise ValueError(f"{keyword} carries no value")
+        modifier = {"modifier_id": f"{keyword}:{effect.get('source')}:{object_id}:{len(new_state['objects'][object_id].get('keyword_modifiers', []) or [])}",
+                    "keyword": keyword, "source": effect.get("source"), "duration": duration,
+                    "target_identity": object_identity(new_state, object_id) or f"{object_id}@0"}
+        if keyword == "shield":
+            modifier["value"] = value if value is not None else 1
+        if duration == "this_combat":
+            combat = effect.get("combat_context")
+            if not isinstance(combat, dict) or not combat.get("combat_id"):
+                raise NotImplementedError("a 'this combat' grant needs the Combat in progress as context (466.7.c); none was supplied")
+            modifier["combat_id"] = combat["combat_id"]
+        else:
+            modifier["turn_id"] = new_state.get("turn_id", DEFAULT_TURN_ID)
+        new_state["objects"][object_id].setdefault("keyword_modifiers", []).append(modifier)
+        trace.update({"object_id": object_id, "keyword": keyword, "value": modifier.get("value"), "duration": duration,
+                      "combat_id": modifier.get("combat_id"), "turn_id": modifier.get("turn_id"), "modifier_id": modifier["modifier_id"],
+                      "shield_total": shield_total(new_state, object_id) if keyword == "shield" else None})
+
     elif op == "grant_turn_effect":
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
         if kind not in TURN_EFFECT_KINDS:
@@ -1425,9 +1536,82 @@ def runes_on_board(state: dict[str, Any], controller: str) -> int:
     return count
 
 
+def keyword_modifier_active(state: dict[str, Any], object_id: str, modifier: dict[str, Any]) -> bool:
+    """A granted characteristic applies to the identity it was granted to, for
+    the matching Combat (the Unit's own designation names it, 466.7.c) or the
+    current turn (317.2.c)."""
+    obj = state["objects"][object_id]
+    if modifier.get("target_identity") != (object_identity(state, object_id) or f"{object_id}@0"):
+        return False
+    if modifier["duration"] == "this_combat":
+        designation = obj.get("combat_designation")
+        return designation is not None and designation.get("combat_id") == modifier.get("combat_id")
+    return modifier.get("turn_id") == state.get("turn_id", DEFAULT_TURN_ID)
+
+
+def has_keyword(state: dict[str, Any], object_id: str, keyword: str) -> bool:
+    """Printed (keywords) or granted (an active keyword_modifiers entry)."""
+    obj = state["objects"][object_id]
+    if keyword in (obj.get("keywords") or []):
+        return True
+    return any(m["keyword"] == keyword and keyword_modifier_active(state, object_id, m) for m in obj.get("keyword_modifiers", []) or [])
+
+
+def shield_total(state: dict[str, Any], object_id: str) -> int:
+    """Core 814.2: every Shield value the Unit has or was granted, summed; an
+    omitted X is 1 (814.1.b.3)."""
+    obj = state["objects"][object_id]
+    total = (obj.get("shield_value") or 1) if "shield" in (obj.get("keywords") or []) else 0
+    for modifier in obj.get("keyword_modifiers", []) or []:
+        if modifier["keyword"] == "shield" and keyword_modifier_active(state, object_id, modifier):
+            total += modifier.get("value") or 1
+    return total
+
+
+def is_alone(state: dict[str, Any], object_id: str) -> bool:
+    """Core 740.2.a: no other friendly Unit (team-aware, 740.1.a) at the same location."""
+    obj = state["objects"][object_id]
+    location = find_location(state, object_id)
+    if location is None:
+        return False
+    for other_id, other in state["objects"].items():
+        if other_id == object_id or other.get("kind") != "unit":
+            continue
+        if find_location(state, other_id) == location and same_side(state, obj["controller"], other["controller"]):
+            return False
+    return True
+
+
+def combat_might_contributions(state: dict[str, Any], object_id: str) -> list[dict[str, Any]]:
+    """ADR-0008 §5: the Combat-relative parts of a Unit's rules-facing Might —
+    Shield while it is a Defender (814.1.c), 'attacking or defending alone'
+    passives (740.2.a), and external auras over lone friendly Defenders."""
+    obj = state["objects"][object_id]
+    designation = obj.get("combat_designation")
+    parts: list[dict[str, Any]] = []
+    if designation is not None and designation.get("role") == "defender":
+        shield = shield_total(state, object_id)
+        if shield:
+            parts.append({"kind": "shield", "amount": shield, "rule_locators": ["Core 814.1.c", "Core 814.2"]})
+    alone = designation is not None and is_alone(state, object_id)
+    for conditional in obj.get("conditional_might", []) or []:
+        if conditional["condition"]["kind"] == "attacking_or_defending_alone" and alone:
+            parts.append({"kind": "attacking_or_defending_alone", "modifier_id": conditional["modifier_id"], "amount": conditional["amount"], "rule_locators": ["Core 740.2.a", "Core 364.3"]})
+    for aura in state.get("might_auras", []) or []:
+        source = aura["source_object"]
+        active = (source in state["battlefields"]) or (source in state["objects"] and zone_class(find_location(state, source)) == "board")
+        if not active or not same_side(state, aura["controller"], obj["controller"]):
+            continue
+        if aura["condition"]["kind"] == "friendly_unit_defends_alone" and designation is not None and designation.get("role") == "defender" and alone:
+            parts.append({"kind": "friendly_unit_defends_alone", "modifier_id": aura["modifier_id"], "source_object": source, "amount": aura["amount"], "rule_locators": ["Core 740.2.a", "Core 365.1"]})
+    return parts
+
+
 def effective_might(state: dict[str, Any], object_id: str) -> int:
     """Context-aware Might: current_might plus every conditional passive
-    whose condition holds now (Core 364.3, 365.1). current_might keeps its
+    whose condition holds now (Core 364.3, 365.1), the Combat-relative parts
+    of ADR-0008 §5, clamped at zero when referenced by rules (143.2.b) while
+    the stored arithmetic value stays as it is. current_might keeps its
     contract; rules paths that must see passives call this."""
     obj = state["objects"][object_id]
     current_turn = state.get("turn_id", DEFAULT_TURN_ID)
@@ -1439,12 +1623,13 @@ def effective_might(state: dict[str, Any], object_id: str) -> int:
         if modifier.get("duration") != "this_turn" or modifier.get("turn_id", current_turn) == current_turn
     )
     if zone_class(find_location(state, object_id)) != "board":
-        return might
+        return max(0, might)
     for conditional in obj.get("conditional_might", []) or []:
         condition = conditional["condition"]
         if condition["kind"] == "runes_at_least" and runes_on_board(state, obj["controller"]) >= condition["count"]:
             might += conditional["amount"]
-    return might
+    might += sum(part["amount"] for part in combat_might_contributions(state, object_id))
+    return max(0, might)
 
 
 def apply_simultaneous_kill_batch(
@@ -1779,7 +1964,10 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
     return selectors, {"decision_id": entry["decision_id"]}
 
 
-def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: dict[str, Any] | None = None, _replacement_depth: int = 0) -> dict[str, Any]:
+def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: dict[str, Any] | None = None, context: dict[str, Any] | None = None, _replacement_depth: int = 0) -> dict[str, Any]:
+    """`context` carries facts only a procedure knows — today the Combat in
+    progress ({"combat": {"combat_id", "battlefield"}}) that a 'this combat'
+    grant binds to. The bridge supplies it; a bare effect run has none."""
     state_errors = validate_state(state)
     program_errors = validate_program(program)
     if decisions is not None:
@@ -1859,6 +2047,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             }
         except ValueError as exc:
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+        if effect.get("op") == "grant_keyword" and context is not None and context.get("combat") is not None:
+            effect = {**effect, "combat_context": context["combat"]}
         if effect.get("op") == "discard":
             try:
                 effect = _resolve_discard(current, effect, decisions)
@@ -1923,7 +2113,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                                "program_id": f"affected:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
                                "source_object": program.get("source_object"), "effects": [single]}
-                sub = apply_program(working, sub_program, decisions=None, _replacement_depth=_replacement_depth + 1)
+                sub = apply_program(working, sub_program, decisions=None, context=context, _replacement_depth=_replacement_depth + 1)
                 if sub.get("committed") is not True:
                     failure = sub
                     break
@@ -1980,7 +2170,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                                "program_id": f"expand:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
                                "source_object": program.get("source_object"), "effects": [single]}
-                sub = apply_program(working, sub_program, decisions=None, _replacement_depth=_replacement_depth + 1)
+                sub = apply_program(working, sub_program, decisions=None, context=context, _replacement_depth=_replacement_depth + 1)
                 if sub.get("committed") is not True:
                     expansion_failed = sub
                     break
@@ -2123,7 +2313,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "source_object": program.get("source_object"),
                     "effects": [original_effect],
                 }
-                original_result = apply_program(recursive_state, original_program, _replacement_depth=_replacement_depth + 1)
+                original_result = apply_program(recursive_state, original_program, context=context, _replacement_depth=_replacement_depth + 1)
                 if original_result.get("committed") is not True:
                     return {
                         **base, "valid": original_result.get("valid", True), "committed": False,
@@ -2146,7 +2336,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     **({"source_object": replacement["source_object"]} if "source_object" in replacement else {}),
                     "effects": augmentation_effects,
                 }
-                augmentation_result = apply_program(original_result["next_state"], augmentation_program, _replacement_depth=_replacement_depth + 1)
+                augmentation_result = apply_program(original_result["next_state"], augmentation_program, context=context, _replacement_depth=_replacement_depth + 1)
                 if augmentation_result.get("committed") is not True:
                     return {
                         **base, "valid": augmentation_result.get("valid", True), "committed": False,
@@ -2236,7 +2426,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 **({"source_object": replacement["source_object"]} if "source_object" in replacement else {}),
                 "effects": replacement_program_effects,
             }
-            recursive_result = apply_program(recursive_state, recursive_program, _replacement_depth=_replacement_depth + 1)
+            recursive_result = apply_program(recursive_state, recursive_program, context=context, _replacement_depth=_replacement_depth + 1)
             if recursive_result.get("committed") is not True:
                 return {
                     **base,

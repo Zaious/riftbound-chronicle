@@ -109,8 +109,12 @@ def resolve_with_program(
     if engine_decisions is not None and engine_decisions.get("chain_item_id") not in (None, item_id):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": ["engine_decisions.chain_item_id does not match the resolving item"], "reason": "decision envelope for another chain item"}
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
+    # ADR-0008 §5: a 'this combat' grant binds to the Combat in progress, which
+    # only the timing state knows.
+    combat_in_progress = timing_state.get("combat")
+    context = {"combat": {"combat_id": combat_in_progress["combat_id"], "battlefield": combat_in_progress["battlefield"]}} if combat_in_progress and combat_in_progress.get("status") in ("open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined") else None
     if program:
-        effect_result = apply_program(effect_state, program, decisions=engine_decisions)
+        effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:
         effect_result = {"committed": True, "next_state": copy.deepcopy(effect_state), "trace": [], "pending_triggers": []}
     if effect_result.get("committed") is not True:

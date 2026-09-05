@@ -43,6 +43,7 @@ core: `rules_core.py` determines when and what procedure occurs;
 | `discard` | the player moves `count` cards from hand to trash by a private card_selection decision; short hands discard what they have (Core 422.4); not a target | Core 422.1, 422.1.a, 422.4, 124 |
 | `grant_replacement` | create a granted replacement bound to a board object's identity, once, for this turn ($granted_target binds inside its replacement_effects) | Core 370, 355.10.c, 124, 317.2.c |
 | `heal_all_damage` | clear all marked damage on one object; already clean is a no-op | Core 418 |
+| `grant_keyword` | grant Shield X / Tank / Ganking / Backline to a Unit on the board for this combat or this turn, bound to its identity | Core 814.2, 466.7.c, 317.2.c, 124 |
 | `channel_rune` | put the top runes of a player's Rune Deck on the board in the stated entry state, as many as possible when short; new objects | Core 430.1, 430.2.a, 430.3, 124 |
 
 Return, Recall and Move are three events with three trigger classes; the
@@ -462,9 +463,28 @@ a zone change to a non-Board zone drops it with the old object (124.1).
 with the `at_battlefield` condition) that fire when the Unit gains the
 matching designation, once per object identity per Combat (383.4.e.2.a,
 383.4.f.2.a): losing and regaining the designation does not trigger again,
-leaving and returning is a new object and does. The keywords `shield`
-(with `shield_value`), `tank`, `ganking` and `backline` are printed
-characteristics; their reads arrive with the later Combat packages.
+leaving and returning is a new object and does. A Battlefield's own
+`attack_triggers` / `defend_triggers` (Fortified Position) fire when its
+controller gains that designation; uncontrolled, "you" refers to no one
+(190.6.a, 190.6.d).
+
+## Combat-relative Might and granted characteristics (ADR-0008 §5)
+
+`effective_might` stays the rules-facing read and adds, on top of the
+conditional passives: Shield while the Unit carries the Defender designation
+(814.1.c; every printed and granted Shield value summed, an omitted X being
+1, 814.2), the `attacking_or_defending_alone` condition (a designation and
+no other friendly Unit at the location, team-aware, 740.2.a), and
+`might_auras` with the bounded `friendly_unit_defends_alone` condition (an
+external source, active on the board, over each friendly lone Defender). A
+negative total is read as 0 (143.2.b) while `current_might` keeps the
+arithmetic value. The keywords `shield` (with `shield_value`), `tank`,
+`ganking` and `backline` are printed characteristics; `grant_keyword` adds
+a `keyword_modifiers` entry bound to the object's identity now and to the
+Combat in progress (`this_combat`, active only while the Unit's designation
+names that Combat, expiring together at 466.7.c) or to this turn
+(`this_turn`). A 'this combat' grant outside a Combat is unsupported: the
+context comes from the resolution bridge, never from a caller's flag.
 
 ## Execution model
 

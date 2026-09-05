@@ -1,30 +1,30 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:13cbd1b5baa45f7f74a2f343",
-  "capability_set_id": "sha256:13cbd1b5baa45f7f74a2f3437995397649dd78ebef47b58b66270a9109beb67c",
+  "manifest_id": "capability-manifest:53c0710db105a15966d37d3a",
+  "capability_set_id": "sha256:53c0710db105a15966d37d3a37a0c8051f29c43ee97a4d3fb69ede8ee15ea40d",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:7ea6688e860f69031cff3c983c62c59af49639184b90b2f86c4a0c7105955735",
+    "value": "sha256:cc6754b35499d257bf3f4e1e0d823f00d76272e799638cab56de2113d6e21a8a",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:b0387bc338a843f00670ca72a891731f60b565125458bf513b5878da02cb3392"
+        "sha256": "sha256:215eb04f1660afc1083a53c35fdece12059c2a50f090f963bdec91084e11c85c"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:69693b2739c4467dea2bc4774673c808cf5c462c0e5f3a617b3db3c641ff24d2"
+        "sha256": "sha256:86de38bdfe7fab04debef13ea14f4b02198d1929d0a78f8373298286939943d7"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:f7b5ba4cc8efd4b4a14abbaf7d37ab847615d99aa1fe63a6aee5c175853e2c0e"
+        "sha256": "sha256:696821ae0cf0ced6e65b1dabdb781cd161f064d0a03d24de09e16f3e72e7ba76"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:481083a2d5fc2368de89cdf67be9a2b21be3b1d78eb454b993295d22294bb0fc"
+        "sha256": "sha256:7a6e35c44a278e9bb2ebfb04be78340552a5f9fdae251e4d92476763ea46805b"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:3c8cfcf698e9edd7c5a6552b19a677996d25d8e6fc611109893b1dba58880ca7"
+        "sha256": "sha256:62d2c52ed6afcdc9583db0f345d37f4872781554e64d5a51e801fc6a947746b3"
       }
     ]
   },
@@ -59,7 +59,8 @@
         "combat_staging",
         "combat_opening",
         "combat_designations",
-        "attack_defend_triggers"
+        "attack_defend_triggers",
+        "battlefield_defend_triggers"
       ],
       "unsupported_scope": [
         "start_of_combat_effects",
@@ -92,7 +93,9 @@
         "instruction_conditions",
         "move_triggers",
         "private_discard",
-        "granted_replacements"
+        "granted_replacements",
+        "combat_relative_might",
+        "keyword_modifiers"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -252,6 +255,15 @@
       "id": "exhaust",
       "rule_locators": [
         "Core 414"
+      ]
+    },
+    {
+      "id": "grant_keyword",
+      "rule_locators": [
+        "Core 814.2",
+        "Core 466.7.c",
+        "Core 317.2.c",
+        "Core 124"
       ]
     },
     {
@@ -460,6 +472,14 @@
       ]
     },
     {
+      "id": "battlefield_defend_triggers",
+      "rule_locators": [
+        "Core 190.6.a",
+        "Core 190.6.d",
+        "Core 383.4.f"
+      ]
+    },
+    {
       "id": "battlefield_targets",
       "rule_locators": [
         "Core 355.10.b",
@@ -487,6 +507,15 @@
         "Core 464.2.b–464.2.g",
         "Core 345",
         "Core 464.2.c.1.a–464.2.c.1.b"
+      ]
+    },
+    {
+      "id": "combat_relative_might",
+      "rule_locators": [
+        "Core 814.1.c–814.2",
+        "Core 740.2.a",
+        "Core 143.2.b",
+        "Core 364.3"
       ]
     },
     {
@@ -576,6 +605,14 @@
       ]
     },
     {
+      "id": "keyword_modifiers",
+      "rule_locators": [
+        "Core 814.2",
+        "Core 466.7.c",
+        "Core 317.2.c"
+      ]
+    },
+    {
       "id": "move_triggers",
       "rule_locators": [
         "Core 383.1",
@@ -654,11 +691,14 @@
     "Core 124–124.1",
     "Core 135.2.b.5.a",
     "Core 135.2.e.3",
+    "Core 143.2.b",
     "Core 143.4",
     "Core 149.1",
     "Core 170.11.c",
     "Core 184–186",
     "Core 190.3.a.1",
+    "Core 190.6.a",
+    "Core 190.6.d",
     "Core 308.1.a",
     "Core 309.1.a",
     "Core 310.1.a",
@@ -737,6 +777,7 @@
     "Core 383.3.a–383.3.a.3",
     "Core 383.3.c–383.3.d.1",
     "Core 383.4.e–383.4.f.3",
+    "Core 383.4.f",
     "Core 386–388",
     "Core 402–402.1",
     "Core 413",
@@ -769,13 +810,17 @@
     "Core 464.2.c.1.a–464.2.c.1.b",
     "Core 464.2.c.3–464.2.c.3.a",
     "Core 464.2.e.1",
+    "Core 466.7.c",
     "Core 477",
     "Core 713–715.4",
+    "Core 740.2.a",
     "Core 806–807",
     "Core 807",
     "Core 809.1.c.1",
     "Core 809.1.c–809.1.d",
-    "Core 809.2"
+    "Core 809.2",
+    "Core 814.1.c–814.2",
+    "Core 814.2"
   ],
   "exclusions": [
     "add_reaction_resolution_during_payment",

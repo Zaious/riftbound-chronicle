@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:13cbd1b5baa45f7f74a2f343",
-    "capability_set_id": "sha256:13cbd1b5baa45f7f74a2f3437995397649dd78ebef47b58b66270a9109beb67c",
-    "implementation_identity": "sha256:7ea6688e860f69031cff3c983c62c59af49639184b90b2f86c4a0c7105955735",
+    "manifest_id": "capability-manifest:53c0710db105a15966d37d3a",
+    "capability_set_id": "sha256:53c0710db105a15966d37d3a37a0c8051f29c43ee97a4d3fb69ede8ee15ea40d",
+    "implementation_identity": "sha256:cc6754b35499d257bf3f4e1e0d823f00d76272e799638cab56de2113d6e21a8a",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 128,
+    "declared_locators": 136,
     "exactly_cited_declared_locators": 28,
-    "exact_ratio": 0.2188,
+    "exact_ratio": 0.2059,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -163,11 +163,14 @@
       "Core 124–124.1",
       "Core 135.2.b.5.a",
       "Core 135.2.e.3",
+      "Core 143.2.b",
       "Core 143.4",
       "Core 149.1",
       "Core 170.11.c",
       "Core 184–186",
       "Core 190.3.a.1",
+      "Core 190.6.a",
+      "Core 190.6.d",
       "Core 316.9.b",
       "Core 317.1",
       "Core 317.2.c",
@@ -224,6 +227,7 @@
       "Core 383.3.a–383.3.a.3",
       "Core 383.3.c–383.3.d.1",
       "Core 383.4.e–383.4.f.3",
+      "Core 383.4.f",
       "Core 386–388",
       "Core 402–402.1",
       "Core 414",
@@ -253,11 +257,15 @@
       "Core 464.2.c.1.a–464.2.c.1.b",
       "Core 464.2.c.3–464.2.c.3.a",
       "Core 464.2.e.1",
+      "Core 466.7.c",
       "Core 477",
       "Core 713–715.4",
+      "Core 740.2.a",
       "Core 809.1.c.1",
       "Core 809.1.c–809.1.d",
-      "Core 809.2"
+      "Core 809.2",
+      "Core 814.1.c–814.2",
+      "Core 814.2"
     ],
     "fixture_citations_outside_declared_locators": [
       "Core 142.4",
@@ -772,5 +780,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:dd7580a542d96d68bf6cb0340540a017116564caf212d527a47e9b3839a9a2b2"
+  "report_hash": "sha256:2e512a73f0afdb420c976638d1534c1cf39a9ccd6a04b95f0adaf65953b3d8be"
 }

@@ -205,6 +205,9 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append("combat.triggered_identities must map attacker and defender to unique identity tokens")
             if "sync_count" in combat and (not isinstance(combat["sync_count"], int) or combat["sync_count"] < 0):
                 errors.append("combat.sync_count must be a non-negative integer")
+            fired = combat.get("battlefield_triggered", [])
+            if not isinstance(fired, list) or any(role not in {"attacker", "defender"} for role in fired) or len(fired) != len(set(fired)):
+                errors.append("combat.battlefield_triggered must list attacker/defender at most once each")
 
     tasks = state.get("outstanding_tasks")
     if not isinstance(tasks, list) or not all(isinstance(item, str) and item for item in tasks):

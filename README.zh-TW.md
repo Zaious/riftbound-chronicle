@@ -40,7 +40,7 @@ Deck Coach 只把這個封裝當規則一致性證據消費（ADR-0006）：附�
 四個體系共用一層由 **Chronicle 自主掌控的規則核心**，而它只宣稱 conformance 套件真的跑得過的東西：
 
 - 時機與權限核心：四種回合狀態、Action／Reaction、Priority／Focus、HOT／FEPR —— 21 個可執行案例（`skill/data/rules_core_cases.json`）；
-- 有界的 typed effect IR：19 種操作，加上序列、目標、連動效果、致死清理與觸發發射；遇到沒有建模的卡牌行為**直接 fail closed**，不猜；
+- 有界的 typed effect IR：20 種操作，加上序列、目標、連動效果、致死清理與觸發發射；遇到沒有建模的卡牌行為**直接 fail closed**，不猜；
 - 兩者之間的原子橋接：時機判斷與它的 typed effect 要嘛一起提交，要嘛一起回滾。
 
 它不依賴其他玩家模擬器，也不宣稱已能結算所有卡牌效果——`unsupported` 是第一級的結果，不是錯誤路徑。架構與吸收邊界見[主權規則層](docs/architecture/SOVEREIGN_RULES_LAYER.md)；兩份審計都建議不要做規則引擎、為何仍然做了，見 [ADR-0001](docs/decisions/ADR-0001-sovereign-rules-layer.md)。

@@ -54,6 +54,7 @@
           }
         },
         "opened_with": {"enum": ["new_showdown", "existing_showdown"]},
+        "battlefield_triggered": {"type": "array", "uniqueItems": true, "items": {"enum": ["attacker", "defender"]}, "description": "ADR-0008 §4: which of the Battlefield's own Attack/Defend triggers fired this Combat."},
         "sync_count": {"type": "integer", "minimum": 0}
       }
     },

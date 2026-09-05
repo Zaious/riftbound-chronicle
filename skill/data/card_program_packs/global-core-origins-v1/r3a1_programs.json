@@ -1009,8 +1009,10 @@
         {
           "clause_id": "confront#e8c50cd4",
           "text": "Draw 1.",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "rule_locators": [
             "Core 413"
           ],
@@ -4456,8 +4458,10 @@
         {
           "clause_id": "meditation#8be0efa4",
           "text": "If you do, draw 2.",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "rule_locators": [
             "Core 356.4.f.1",
             "Core 413"
@@ -4559,8 +4563,10 @@
         {
           "clause_id": "meditation#083ddaf7",
           "text": "Otherwise, draw 1.",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "rule_locators": [
             "Core 356.2.b.1",
             "Core 413"
@@ -4791,8 +4797,10 @@
         {
           "clause_id": "mobilize#27e88ae5",
           "text": "If you can't, draw 1.",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "rule_locators": [
             "Core 430.3",
             "Core 430.5",
@@ -6643,8 +6651,10 @@
         {
           "clause_id": "traveling merchant#92d985e1",
           "text": "When I move, discard 1, then draw 1.",
-          "claim": "full",
-          "unsupported_mechanics": [],
+          "claim": "partial",
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "rule_locators": [
             "Core 383.1",
             "Core 383.2.c",

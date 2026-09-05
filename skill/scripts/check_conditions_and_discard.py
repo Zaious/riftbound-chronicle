@@ -122,6 +122,11 @@ def main() -> int:
     stale = apply_program(hand2, program("d", {"op": "discard", "player": "p1", "count": 1, "decision_ref": "pick", "effect_id": "d"}), decisions=pick(["c2"], identities={"c2": "c2@9"}))
     if stale.get("valid") is not False:
         errors.append("a stale selection identity was accepted")
+    unbound_decision = pick(["c2"])
+    del unbound_decision["decisions"][0]["selection_identities"]
+    unbound = apply_program(hand2, program("d", {"op": "discard", "player": "p1", "count": 1, "decision_ref": "pick", "effect_id": "d"}), decisions=unbound_decision)
+    if unbound.get("valid") is not False:
+        errors.append("a card_selection without selection_identities was accepted")
     forced = apply_program(hand2, program("d2", {"op": "discard", "player": "p1", "count": 2, "effect_id": "d"}))
     if not forced.get("committed") or ev(forced).get("selection", {}).get("forced") is not True or sorted(ev(forced).get("objects", [])) != ["c1", "c2"] or ev(forced).get("completion") != "full":
         errors.append(f"a whole-hand discard did not proceed without a decision: {forced.get('reason') or forced.get('errors')} {ev(forced)}")

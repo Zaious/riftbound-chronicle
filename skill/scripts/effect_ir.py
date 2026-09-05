@@ -355,9 +355,14 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid program/optional binding")
                 elif "condition" in trigger and (not isinstance(trigger["condition"], dict) or trigger["condition"].get("kind") not in TRIGGER_CONDITION_KINDS):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
+        entry_ids: set[str] = set()
         for r_index, replacement in enumerate(obj.get("entry_replacements", []) or []):
-            if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"mode", "value"}:
-                errors.append(f"objects.{object_id}.entry_replacements[{r_index}] must be {{mode: entry_state, value: ready|exhausted}}")
+            if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value"}:
+                errors.append(f"objects.{object_id}.entry_replacements[{r_index}] must be {{replacement_id?, mode: entry_state, value: ready|exhausted}}")
+            elif "replacement_id" in replacement and (not isinstance(replacement["replacement_id"], str) or not replacement["replacement_id"] or replacement["replacement_id"] in entry_ids):
+                errors.append(f"objects.{object_id}.entry_replacements[{r_index}].replacement_id is invalid or duplicated")
+            elif "replacement_id" in replacement:
+                entry_ids.add(replacement["replacement_id"])
         seen_conditional: set[str] = set()
         for c_index, conditional in enumerate(obj.get("conditional_might", []) or []):
             label = f"objects.{object_id}.conditional_might[{c_index}]"
@@ -881,6 +886,8 @@ def replacement_active(state: dict[str, Any], replacement: dict[str, Any]) -> bo
         grant = replacement["granted"]
         target = grant["target_object"]
         if replacement.get("uses_remaining") == 0:
+            return False
+        if grant.get("duration") == "this_turn" and grant.get("turn_id") != state.get("turn_id", DEFAULT_TURN_ID):
             return False
         return (target in state["objects"] and zone_class(find_location(state, target)) == "board"
                 and object_identity(state, target) == grant["target_identity"])
@@ -1409,7 +1416,14 @@ def effective_might(state: dict[str, Any], object_id: str) -> int:
     whose condition holds now (Core 364.3, 365.1). current_might keeps its
     contract; rules paths that must see passives call this."""
     obj = state["objects"][object_id]
-    might = current_might(obj)
+    current_turn = state.get("turn_id", DEFAULT_TURN_ID)
+    # current_might intentionally retains its original context-free contract.
+    # Rules-facing paths use only persistent modifiers and this turn's stamp.
+    might = obj["base_might"] + sum(
+        modifier["amount"]
+        for modifier in obj.get("might_modifiers", [])
+        if modifier.get("duration") != "this_turn" or modifier.get("turn_id", current_turn) == current_turn
+    )
     if zone_class(find_location(state, object_id)) != "board":
         return might
     for conditional in obj.get("conditional_might", []) or []:

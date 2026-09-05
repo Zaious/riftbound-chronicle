@@ -132,7 +132,17 @@ def resolve_with_program(
     chain_entry = (after_effect.get("chain_items") or {}).get(item_id)
     if chain_entry is not None and after_effect["objects"][chain_entry["card"]]["kind"] in {"unit", "gear"}:
         # ADR-0007 §1–2: the permanent entry procedure, then "When you play me".
-        after_effect, entry_trace, entry_triggers = complete_permanent_play(after_effect, item_id)
+        after_effect, entry_trace, entry_triggers = complete_permanent_play(after_effect, item_id, engine_decisions)
+        if entry_trace.get("replacement_decision_required"):
+            return {
+                **base, "valid": True, "committed": False, "stage": "permanent_entry",
+                "replacement_decision_required": True,
+                "reason": entry_trace["reason"],
+                "replacement_ids": entry_trace["replacement_ids"],
+                "event_ids": entry_trace["event_ids"],
+                "decision_controller": entry_trace["decision_controller"],
+                "effect_result": effect_result,
+            }
         if entry_trace.get("error"):
             return {**base, "valid": False, "committed": False, "stage": "permanent_entry", "errors": [entry_trace["error"]], "reason": entry_trace["error"], "effect_result": effect_result}
         chain_card_trace.append(entry_trace)
@@ -310,27 +320,54 @@ def _settle_trigger_orders(pending_triggers: list[dict[str, Any]], engine_decisi
     return None
 
 
-def entry_state_for(state: dict[str, Any], card: str, controller: str) -> tuple[str, str, list[dict[str, Any]]]:
+def entry_state_for(
+    state: dict[str, Any], card: str, controller: str, event_id: str,
+    engine_decisions: dict[str, Any] | None = None,
+) -> tuple[str, str, list[dict[str, Any]], dict[str, Any] | None]:
     """Core 143.4 / 359.2.c–d defaults, then entry replacements (369.3): the
     object's own `entry_replacements` and this turn's `turn_effects` that set
     the entry state for units the controller plays (ADR-0007 §6). Returns
     (default, final, applied replacements)."""
     obj = state["objects"][card]
     default = "exhausted" if obj["kind"] == "unit" else "ready"
+    candidates: list[dict[str, Any]] = []
+    for index, replacement in enumerate(obj.get("entry_replacements", []) or []):
+        if replacement.get("mode") == "entry_state" and replacement.get("value") in {"ready", "exhausted"}:
+            candidates.append({"replacement_id": replacement.get("replacement_id", f"entry:{card}:{index}"),
+                               "source": card, "mode": "entry_state", "value": replacement["value"], "rule_locators": ["Core 369.3"]})
+    current_turn = state.get("turn_id", DEFAULT_TURN_ID)
+    for effect in state.get("turn_effects", []) or []:
+        if (effect.get("kind") == "entry_state_for_played_units" and effect.get("controller") == controller
+                and effect.get("turn_id") == current_turn and obj["kind"] == "unit"
+                and effect.get("value") in {"ready", "exhausted"}):
+            candidates.append({"replacement_id": effect["effect_id"], "source": effect.get("source"),
+                               "mode": "entry_state_for_played_units", "value": effect["value"],
+                               "turn_id": effect.get("turn_id"), "rule_locators": ["Core 369.3"]})
+    if len({candidate["value"] for candidate in candidates}) > 1:
+        order_map, _ = _ed.replacement_maps(engine_decisions)
+        replacement_ids = [candidate["replacement_id"] for candidate in candidates]
+        supplied = (order_map or {}).get(event_id)
+        if supplied is None:
+            return default, default, [], {
+                "replacement_decision_required": True,
+                "reason": f"conflicting entry-state replacements for {card} require {controller} to choose their order",
+                "replacement_ids": replacement_ids, "event_ids": [event_id], "decision_controller": controller,
+            }
+        if len(supplied) != len(replacement_ids) or set(supplied) != set(replacement_ids):
+            return default, default, [], {"error": f"replacement order for {event_id} must list exactly {replacement_ids}, once each"}
+        by_id = {candidate["replacement_id"]: candidate for candidate in candidates}
+        candidates = [by_id[replacement_id] for replacement_id in supplied]
     final = default
     applied: list[dict[str, Any]] = []
-    for replacement in obj.get("entry_replacements", []) or []:
-        if replacement.get("mode") == "entry_state" and replacement.get("value") in {"ready", "exhausted"}:
-            final = replacement["value"]
-            applied.append({"source": card, "mode": "entry_state", "value": final, "rule_locators": ["Core 369.3"]})
-    for effect in state.get("turn_effects", []) or []:
-        if effect.get("kind") == "entry_state_for_played_units" and effect.get("controller") == controller and obj["kind"] == "unit" and effect.get("value") in {"ready", "exhausted"}:
-            final = effect["value"]
-            applied.append({"source": effect.get("source"), "mode": "entry_state_for_played_units", "value": final, "turn_id": effect.get("turn_id"), "rule_locators": ["Core 369.3"]})
-    return default, final, applied
+    for candidate in candidates:
+        final = candidate["value"]
+        applied.append(candidate)
+    return default, final, applied, None
 
 
-def complete_permanent_play(state: dict[str, Any], item_id: str) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+def complete_permanent_play(
+    state: dict[str, Any], item_id: str, engine_decisions: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     """ADR-0007 §1 (Core 359.2): the permanent leaves the chain and becomes a
     new object on the board (124); entry replacements apply; a Unit enters the
     location chosen at play, a Non-Unit Gear its controller's Base (359.2.d);
@@ -348,7 +385,10 @@ def complete_permanent_play(state: dict[str, Any], item_id: str) -> tuple[dict[s
     del working["chain_items"][item_id]
     if not working["chain_items"]:
         del working["chain_items"]
-    default, final, replacements = entry_state_for(working, card, controller)
+    event_id = f"enter_board:{item_id}"
+    default, final, replacements, entry_problem = entry_state_for(working, card, controller, event_id, engine_decisions)
+    if entry_problem is not None:
+        return state, entry_problem, []
     obj["exhausted"] = final == "exhausted"
     trace: dict[str, Any] = {"card": card, "chain_item_id": item_id, "kind": obj["kind"], "default_entry_state": default,
                              "entry_replacements": replacements, "entry_state": final, "not_a_move": True,

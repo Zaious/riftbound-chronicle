@@ -77,15 +77,15 @@ def validate_engine_decisions(value: Any) -> list[str]:
         if not isinstance(item["controller"], str) or not item["controller"]:
             errors.append(f"{label}.controller is required")
         kind, val = item["kind"], item["value"]
-        if kind == "target_selection":
-            if not isinstance(val, list) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
-                errors.append(f"{label}.value must be a unique array of object ids")
+        if kind in {"target_selection", "card_selection"}:
+            if not isinstance(val, list) or (kind == "card_selection" and not val) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
+                errors.append(f"{label}.value must be a {'non-empty ' if kind == 'card_selection' else ''}unique array of object ids")
             identities = item.get("selection_identities")
             if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, list) else []):
                 errors.append(f"{label}.selection_identities must map every selected object id exactly once")
             elif any(not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit() for identity in identities.values()):
                 errors.append(f"{label}.selection_identities values must be identity tokens")
-        elif "selection_identities" in item and kind != "card_selection":
+        elif "selection_identities" in item:
             errors.append(f"{label}.selection_identities is only valid for target_selection or card_selection")
         if kind == "replacement_order" and (not isinstance(val, dict) or any(not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) for ids in val.values())):
             errors.append(f"{label}.value must map event ids to non-empty unique replacement-id arrays")
@@ -95,8 +95,6 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must be a boolean")
         if kind == "trigger_order" and (not isinstance(val, list) or not val or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
             errors.append(f"{label}.value must be a non-empty unique array of trigger ids")
-        if kind == "card_selection" and (not isinstance(val, list) or not val or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
-            errors.append(f"{label}.value must be a non-empty unique array of hand object ids")
         if kind == "resource_allocation" and (not isinstance(val, dict) or not val or any(not isinstance(k, str) or not k or isinstance(n, bool) or not isinstance(n, int) or n < 0 for k, n in val.items())):
             errors.append(f"{label}.value must map domains to non-negative integers (the complete allocation)")
         if kind == "resource_allocation" and item["stage"] != "play_declaration":

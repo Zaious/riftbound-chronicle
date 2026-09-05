@@ -83,6 +83,10 @@ def main() -> int:
         mine = play_and_resolve(unit_in_hand(granted["next_state"]))
         if not mine.get("committed") or mine["next_effect_state"]["objects"]["c1"]["exhausted"]:
             errors.append("Confront's turn effect did not make the controller's unit enter ready")
+        later = copy.deepcopy(granted["next_state"]); later["turn_id"] = "turn-8"
+        later_entry = play_and_resolve(unit_in_hand(later))
+        if not later_entry.get("committed") or not later_entry["next_effect_state"]["objects"]["c1"]["exhausted"]:
+            errors.append("Confront's turn-7 effect still changed entry state in turn-8")
         theirs_state = unit_in_hand(granted["next_state"]); theirs_state["objects"]["c1"]["owner"] = "p2"; theirs_state["objects"]["c1"]["controller"] = "p2"
         theirs_state["players"]["p1"]["zones"]["hand"].remove("c1"); theirs_state["players"]["p2"]["zones"]["hand"].append("c1")
         theirs_state["players"]["p2"]["resources"] = {"energy": 2, "power": {}}
@@ -100,6 +104,26 @@ def main() -> int:
         else:
             errors.append(f"opponent's play in the Confront scenario failed to commit: {p2_play.get('reason')}")
 
+    # Opposing entry replacements are a controller choice, not source-order
+    # precedence hidden in the engine.
+    conflict = unit_in_hand(entry_replacements=[{"replacement_id": "self-ready", "mode": "entry_state", "value": "ready"}])
+    conflict["turn_id"] = "turn-7"
+    conflict["turn_effects"] = [{"effect_id": "forced-exhausted", "kind": "entry_state_for_played_units", "controller": "p1", "value": "exhausted", "turn_id": "turn-7", "source": "test"}]
+    conflict_decl = {"schema_version": DECLARATION_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}, "play_id": "play-conflict", "actor": "p1", "card": "c1",
+                     "chain_item": {"id": "unit-conflict", "object_kind": "unit", "timing": "default"}, "cost": {"base": {"energy": 2, "power": {}}},
+                     "payment_context": {"add_window_closed": True, "confirmed_by": "human"}, "entry_location": {"kind": "base"}}
+    conflict_play = play_card(fixture(), conflict, conflict_decl)
+    conflict_timing = fixture(priority="p2", items=[item("unit-conflict", "p1", "unit", "default", "finalized")], passes=["p1", "p2"])
+    conflict_ask = resolve_with_program(conflict_timing, "unit-conflict", conflict_play["next_effect_state"], None)
+    if conflict_ask.get("replacement_decision_required") is not True or set(conflict_ask.get("replacement_ids", [])) != {"self-ready", "forced-exhausted"}:
+        errors.append(f"conflicting entry replacements did not require an order decision: {conflict_ask.get('reason')}")
+    conflict_decision = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(conflict_play["next_effect_state"]), "chain_item_id": "unit-conflict",
+                         "decisions": [{"decision_id": "entry-order", "stage": "resolution", "kind": "replacement_order", "controller": "p1",
+                                        "value": {"enter_board:unit-conflict": ["forced-exhausted", "self-ready"]}}]}
+    conflict_done = resolve_with_program(conflict_timing, "unit-conflict", conflict_play["next_effect_state"], None, engine_decisions=conflict_decision)
+    if not conflict_done.get("committed") or conflict_done["next_effect_state"]["objects"]["c1"]["exhausted"]:
+        errors.append(f"the supplied entry-replacement order was not honored: {conflict_done.get('reason')}")
+
     # --- effective_might ------------------------------------------------------------------
     med = base_state()
     med["objects"]["u1"]["conditional_might"] = [{"modifier_id": "meditative", "amount": 4, "condition": {"kind": "runes_at_least", "count": 8}}]
@@ -110,6 +134,10 @@ def main() -> int:
         errors.append(f"conditional_might rejected: {validate_state(med)}")
     if effective_might(med, "u1") != 7 or current_might(med["objects"]["u1"]) != 3:
         errors.append(f"8 board runes did not grant +4 (or current_might changed): {effective_might(med, 'u1')} / {current_might(med['objects']['u1'])}")
+    stamped = copy.deepcopy(med); stamped["turn_id"] = "turn-7"
+    stamped["objects"]["u1"]["might_modifiers"] = [{"amount": 5, "duration": "this_turn", "source": "older", "turn_id": "turn-6"}]
+    if effective_might(stamped, "u1") != 7 or current_might(stamped["objects"]["u1"]) != 8:
+        errors.append("a this_turn Might modifier from another turn was active (or current_might's context-free contract changed)")
     seven = copy.deepcopy(med); seven["players"]["p1"]["zones"]["base"].remove("r9"); seven["players"]["p1"]["zones"]["rune_deck"].append("r9")
     if effective_might(seven, "u1") != 3:
         errors.append("a rune in the Rune Deck counted toward 'you have 8+ runes'")

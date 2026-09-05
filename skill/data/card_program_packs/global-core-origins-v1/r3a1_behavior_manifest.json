@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:9a2d989646c8de961ee37940",
+  "manifest_id": "manifest:903d557a61a8126ea5ef6cce",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -110,7 +110,7 @@
       "printing_ids": [
         "ogn-129-298"
       ],
-      "behavior_status": "full",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "confront#08866b32",
@@ -151,12 +151,14 @@
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-129-298:e8c50cd4",
           "text_hash": "sha256:e8c50cd480b55af4add0e6fafdab53301ceade71e9f5dbefd31b9d7b3b69a2e6",
-          "status": "full",
+          "status": "partial",
           "program_id": "confront#e8c50cd4",
           "implemented_ops": [
             "draw"
           ],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "test_ids": [
             "confront#e8c50cd4:positive",
             "confront#e8c50cd4:negative"
@@ -657,7 +659,7 @@
       "printing_ids": [
         "ogn-048-298"
       ],
-      "behavior_status": "full",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "meditation#e7a1971e",
@@ -698,12 +700,14 @@
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-048-298:8be0efa4",
           "text_hash": "sha256:8be0efa43f5b3a3cbfc50155a30a0cc671827db061d44a5eb967180ccb4c84d9",
-          "status": "full",
+          "status": "partial",
           "program_id": "meditation#8be0efa4",
           "implemented_ops": [
             "draw"
           ],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "test_ids": [
             "meditation#8be0efa4:positive",
             "meditation#8be0efa4:negative",
@@ -716,12 +720,14 @@
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-048-298:083ddaf7",
           "text_hash": "sha256:083ddaf75d8ba1de5b2560e364c8c239fd44b38499a49321a44b06b5dc9f59a7",
-          "status": "full",
+          "status": "partial",
           "program_id": "meditation#083ddaf7",
           "implemented_ops": [
             "draw"
           ],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "test_ids": [
             "meditation#083ddaf7:positive",
             "meditation#083ddaf7:negative",
@@ -738,7 +744,7 @@
       "printing_ids": [
         "ogn-134-298"
       ],
-      "behavior_status": "full",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "mobilize#3e791d2d",
@@ -763,13 +769,15 @@
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-134-298:27e88ae5",
           "text_hash": "sha256:27e88ae58181742ecfc8bbba8e90e64ef625f44cd615a7b371a9bcbe30373d88",
-          "status": "full",
+          "status": "partial",
           "program_id": "mobilize#27e88ae5",
           "implemented_ops": [
             "channel_rune",
             "draw"
           ],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "test_ids": [
             "mobilize#27e88ae5:positive",
             "mobilize#27e88ae5:negative"
@@ -1038,20 +1046,22 @@
       "printing_ids": [
         "ogn-185-298"
       ],
-      "behavior_status": "full",
+      "behavior_status": "partial",
       "clauses": [
         {
           "clause_id": "traveling merchant#92d985e1",
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogn-185-298:92d985e1",
           "text_hash": "sha256:92d985e197c3e79ba7d4a59d586f8d1dc11a9db596c3d96e9e7ad4e31ee4c9f2",
-          "status": "full",
+          "status": "partial",
           "program_id": "traveling merchant#92d985e1",
           "implemented_ops": [
             "discard",
             "draw"
           ],
-          "unsupported_mechanics": [],
+          "unsupported_mechanics": [
+            "burn_out"
+          ],
           "test_ids": [
             "traveling merchant#92d985e1:moves",
             "traveling merchant#92d985e1:recall_is_not_a_move",

@@ -90,8 +90,10 @@ Units default to exhausted; Master Yi Honed is a mandatory self replacement
 to ready (369.3); Confront creates a `turn_effect` making the controller's
 units played later this turn enter ready. Mutually exclusive entry
 replacements needing a controller's choice reuse the replacement
-order/choice decisions — never a fixed priority. The trace records the
-default state, the replacement applied, and the final entry state.
+order/choice decisions — never a fixed priority. Entry replacements carry
+stable ids (or receive a deterministic id at compilation) so the existing
+`replacement_order` envelope can name the complete order. The trace records
+the default state, the replacements applied, and the final entry state.
 
 ### 7. "You have N runes" and conditional passives (DP-18)
 
@@ -113,7 +115,8 @@ Cleanup — 3c heal all Units, 3d every `this turn` effect of this turn
 expires simultaneously, 3e every player's Energy and Power pool empties.
 Follow-up Cleanups are normal Cleanups (324.2), never a repeated Special
 Cleanup. Effects carry a `turn_id` so another turn's effects are never
-cleared. Wrong phase, non-empty Chain or Tasks → `illegal`; unknown
+cleared or treated as active in the current turn. Wrong phase, non-empty
+Chain or Tasks → `illegal`; unknown
 turn-effect kind → `unsupported`. The next player's Beginning Phase is not
 implemented and no complete turn transition is claimed.
 
@@ -137,7 +140,8 @@ when short (422.4). The choice is a new decision kind `card_selection`
 ids with their selection identities), confined to that player's own-private
 observation and decision artifacts. When the whole hand must go and only one
 set is legal the engine proceeds; otherwise `decision_required`. Unknown or
-stale identities are `invalid_input`; a well-formed choice outside the
+stale identities, or a choice without complete identity bindings, are
+`invalid_input`; a well-formed choice outside the
 player's hand, or another player's choice, is `illegal`. "Discard 1, then
 draw 1" is an action-performed linked gate: nothing discarded → no draw; a
 partial discard that happened → draw.
@@ -190,6 +194,11 @@ stops for a schema-major / migration decision.
 6. C-24 `grant_replacement` (Highlander stays stale).
 7. C-25 the R3-A2 card programs with symbolic bindings and mirrored runs;
    manifest re-derived.
+
+`draw` remains partial while Burn Out is outside Effect IR v1. A passing
+fail-closed empty-deck fixture proves safe abstention, not full behavioral
+coverage; every active Draw clause names `burn_out` until that procedure is
+implemented.
 
 ## Acceptance gates
 

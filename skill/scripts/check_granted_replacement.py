@@ -87,6 +87,10 @@ def main() -> int:
     other = copy.deepcopy(after)
     old_grant = copy.deepcopy(grant); old_grant["replacement_id"] = "granted:older"; old_grant["granted"]["turn_id"] = "turn-6"
     other["replacement_effects"].append(old_grant)
+    old_only = copy.deepcopy(after); old_only["replacement_effects"] = [copy.deepcopy(old_grant)]
+    old_kill = apply_program(old_only, program("kill-old", {"op": "kill", "object_id": "u1", "effect_id": "old-kill"}))
+    if not old_kill.get("committed") or "u1" not in old_kill["next_state"]["players"]["p1"]["zones"]["trash"]:
+        errors.append("a granted replacement stamped for another turn remained active")
     expired = run_expiration_step(timing, other)
     if not expired.get("committed") or [r["replacement_id"] for r in expired["next_effect_state"]["replacement_effects"]] != ["granted:older"] or expired["trace"]["expire_this_turn"].get("granted_replacements") != [grant["replacement_id"]]:
         errors.append(f"expiration did not clear exactly this turn's grant: {expired.get('reason')} {[r.get('replacement_id') for r in expired.get('next_effect_state', {}).get('replacement_effects', [])]}")

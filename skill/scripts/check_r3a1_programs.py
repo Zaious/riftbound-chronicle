@@ -164,7 +164,7 @@ def main() -> int:
     for cid in ("highlander#b9d95a9d", "void gate#3aa2e8f7", "annie - dark child (starter)#223039b2"):
         if not next((cl.get("execution") for c in programs["cards"] for cl in c["clauses"] if cl["clause_id"] == cid), None):
             errors.append(f"{cid} should carry a program in the pack even though it stays stale")
-    for cid, expected_ops in (("pouty poro#f8dcb74f", []), ("master yi - honed#0be72750", []), ("sai scout#0ede37d4", []), ("tibbers#ca766089", ["deal_damage"]), ("traveling merchant#92d985e1", ["discard", "draw"])):
+    for cid, expected_ops in (("pouty poro#f8dcb74f", []), ("master yi - honed#0be72750", []), ("sai scout#0ede37d4", []), ("tibbers#ca766089", ["deal_damage"])):
         row = manifest_rows.get(cid, {})
         if row.get("status") != "full" or row.get("implemented_ops") != expected_ops or not row.get("program_id"):
             errors.append(f"{cid} derived {row.get('status')} / {row.get('implemented_ops')} / {row.get('program_id')}, expected full with ops {expected_ops}")
@@ -173,6 +173,12 @@ def main() -> int:
     fiery = manifest_rows.get("annie - fiery#24035ea0", {})
     if fiery.get("status") != "partial" or "legend_zone_object" not in fiery.get("unsupported_mechanics", []):
         errors.append("Annie - Fiery must derive partial naming the unmodelled Legend object")
+    for card in programs["cards"]:
+        for clause in card["clauses"]:
+            execution = clause.get("execution", {})
+            has_draw = any(effect.get("op") == "draw" for effect in execution.get("program", {}).get("effects", []))
+            if has_draw and (clause.get("claim") == "full" or "burn_out" not in clause.get("unsupported_mechanics", [])):
+                errors.append(f"{clause['clause_id']} uses draw while Burn Out is unsupported, but does not derive partial with burn_out named")
     if rows.get("pouty poro#f8dcb74f:missing_information", {}).get("outcome") != "decision_required":
         errors.append("two Power domains for a Deflect cost were not left to the opponent's allocation")
     if rows.get("traveling merchant#92d985e1:recall_is_not_a_move", {}).get("outcome") != "supported":

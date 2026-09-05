@@ -93,6 +93,18 @@ Cleanup task of 323.2, also run by the resolution bridge after its Cleanup).
 Decisions for these procedures bind to `combined_input_hash(timing, effect)`,
 which every result reports as `input_hash`.
 
+`validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
+144.1): legal only for the Turn Player in their Main Phase in a Neutral Open
+State with no Combat staged or in progress. `combat.standard_move` is the
+player action itself: one destination for every selected ready Unit the
+actor controls, all exhausted at once as the cost (144.2–144.3.c; an
+unconfirmed cost is `decision_required`), Base→Battlefield and
+Battlefield→own Base by default, Battlefield→Battlefield only with active
+Ganking (144.4.c, 810.1.c — a permission, never an extra move), a
+Battlefield holding two other players' Units refused (144.4.a.1). The
+relocation delegates to the Move operation so Move triggers and Cleanup stay
+one implementation; engine-check wraps it as `standard_move`.
+
 ## Current coverage
 
 Version 1 covers the four-state permission model, the next HOT/FEPR procedure,

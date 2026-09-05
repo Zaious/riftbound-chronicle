@@ -1,14 +1,14 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:53c0710db105a15966d37d3a",
-  "capability_set_id": "sha256:53c0710db105a15966d37d3a37a0c8051f29c43ee97a4d3fb69ede8ee15ea40d",
+  "manifest_id": "capability-manifest:56e730312dcbc226c0cc8641",
+  "capability_set_id": "sha256:56e730312dcbc226c0cc86413419e3c58580e621462595c264f76f79f41e7a35",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:cc6754b35499d257bf3f4e1e0d823f00d76272e799638cab56de2113d6e21a8a",
+    "value": "sha256:34bcc543b665b8ed65487b7be28d497ae34fd9caf78b3bf5fc7ecc938c4a8a37",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:215eb04f1660afc1083a53c35fdece12059c2a50f090f963bdec91084e11c85c"
+        "sha256": "sha256:bab89e5f3ca3cf3a4d197af22600a856e0c5ac4ecdd19726ed525e04fb41ea3f"
       },
       {
         "path": "effect_ir.py",
@@ -20,11 +20,11 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:7a6e35c44a278e9bb2ebfb04be78340552a5f9fdae251e4d92476763ea46805b"
+        "sha256": "sha256:05176936d5bd8212aeb80f8b289423f21458c41b850095e9fee32b2289f0a15f"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:62d2c52ed6afcdc9583db0f345d37f4872781554e64d5a51e801fc6a947746b3"
+        "sha256": "sha256:65c15355ba3fff1f1203458f42482defad394897d3da556a1f4fcd8fed84f4d5"
       }
     ]
   },
@@ -168,6 +168,25 @@
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
+      "check_kind": "standard_move",
+      "name": "standard_move",
+      "version": "riftbound-standard-move-result.v1",
+      "coverage_id": "standard_move_v1",
+      "supported_scope": [
+        "standard_move",
+        "ganking",
+        "move_triggers",
+        "bounded_cleanup"
+      ],
+      "unsupported_scope": [
+        "non_standard_moves",
+        "invalid_destination_catalog",
+        "combat_moves",
         "complete_game",
         "complete_legality"
       ]
@@ -445,7 +464,8 @@
         "Core 347.2",
         "Core 358.4",
         "Core 806–807",
-        "Core 807"
+        "Core 807",
+        "Core 144.1–144.1.c"
       ]
     }
   ],
@@ -589,6 +609,13 @@
       ]
     },
     {
+      "id": "ganking",
+      "rule_locators": [
+        "Core 144.4.c–144.4.c.1",
+        "Core 810.1–810.3"
+      ]
+    },
+    {
       "id": "granted_replacements",
       "rule_locators": [
         "Core 370–373",
@@ -669,6 +696,13 @@
       ]
     },
     {
+      "id": "standard_move",
+      "rule_locators": [
+        "Core 144.1–144.4.b",
+        "Core 446"
+      ]
+    },
+    {
       "id": "typed_cost_payment",
       "rule_locators": [
         "Core 356.1–356.7",
@@ -693,6 +727,9 @@
     "Core 135.2.e.3",
     "Core 143.2.b",
     "Core 143.4",
+    "Core 144.1–144.1.c",
+    "Core 144.1–144.4.b",
+    "Core 144.4.c–144.4.c.1",
     "Core 149.1",
     "Core 170.11.c",
     "Core 184–186",
@@ -801,6 +838,7 @@
     "Core 430.3",
     "Core 437.1.a.1",
     "Core 445",
+    "Core 446",
     "Core 446.2",
     "Core 455",
     "Core 456.1",
@@ -819,6 +857,7 @@
     "Core 809.1.c.1",
     "Core 809.1.c–809.1.d",
     "Core 809.2",
+    "Core 810.1–810.3",
     "Core 814.1.c–814.2",
     "Core 814.2"
   ],
@@ -832,6 +871,7 @@
     "combat",
     "combat_cleanup",
     "combat_damage",
+    "combat_moves",
     "combat_result",
     "complete_action_set",
     "complete_game",
@@ -844,9 +884,11 @@
     "engine_enumeration",
     "full_cleanup",
     "full_turn_transition",
+    "invalid_destination_catalog",
     "multi_descriptor_replacement",
     "multi_player_combat",
     "non_standard_costs_beyond_exhaust_kill",
+    "non_standard_moves",
     "payment_stage_replacement_decisions",
     "player_level_attack_defend_triggers",
     "scoring",

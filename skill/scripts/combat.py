@@ -367,6 +367,136 @@ def sync_combat_designations(timing_state: dict[str, Any], effect_state: dict[st
     return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 323.2", "Core 323.2.a", "Core 323.2.b", "Core 323.2.c", "Core 464.2.c.3.a", "Core 383.4.e.2.a", "Core 383.4.f.2.a"])
 
 
+# ---------------------------------------------------------------- Standard Move --
+
+STANDARD_MOVE_VERSION = "riftbound-standard-move-result.v1"
+STANDARD_MOVE_DECLARATION_VERSION = "riftbound-standard-move-declaration.v1"
+
+
+def _declaration_errors(declaration: Any, effect_state: dict[str, Any]) -> list[str]:
+    if not isinstance(declaration, dict):
+        return ["declaration must be an object"]
+    errors = []
+    if declaration.get("schema_version") != STANDARD_MOVE_DECLARATION_VERSION:
+        errors.append(f"declaration.schema_version must be {STANDARD_MOVE_DECLARATION_VERSION}")
+    if set(declaration) - {"schema_version", "actor", "units", "unit_identities", "destination", "cost_confirmation"}:
+        errors.append("declaration carries unsupported fields")
+    if not isinstance(declaration.get("actor"), str) or declaration.get("actor") not in effect_state["players"]:
+        errors.append("declaration.actor must be a player")
+    units = declaration.get("units")
+    if not isinstance(units, list) or not units or any(not isinstance(u, str) or not u for u in units) or len(units) != len(set(units)):
+        errors.append("declaration.units must be a non-empty unique array of object ids")
+    elif any(u not in effect_state["objects"] for u in units):
+        errors.append("declaration.units names an unknown object")
+    identities = declaration.get("unit_identities")
+    if identities is not None and (not isinstance(identities, dict) or any(not isinstance(v, str) or "@" not in v for v in identities.values())):
+        errors.append("declaration.unit_identities must map object ids to identity tokens")
+    destination = declaration.get("destination")
+    if not isinstance(destination, dict) or destination.get("kind") not in {"base", "battlefield"} or set(destination) - {"kind", "battlefield"}:
+        errors.append("declaration.destination must be {kind: base} or {kind: battlefield, battlefield}")
+    elif destination["kind"] == "battlefield" and destination.get("battlefield") not in effect_state["battlefields"]:
+        errors.append("declaration.destination names an unknown battlefield")
+    elif destination["kind"] == "base" and "battlefield" in destination:
+        errors.append("declaration.destination base carries no battlefield")
+    confirmation = declaration.get("cost_confirmation")
+    if confirmation is not None and (not isinstance(confirmation, dict) or set(confirmation) != {"exhaust_confirmed"} or not isinstance(confirmation["exhaust_confirmed"], bool)):
+        errors.append("declaration.cost_confirmation must be {exhaust_confirmed: bool}")
+    return errors
+
+
+def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """ADR-0008 §6 / Core 144, 810: one game action moving one or more of the
+    actor's ready Units to one destination, exhausting them all at once as the
+    cost (144.2–144.3.c). Base→Battlefield and Battlefield→own Base are the
+    normal routes (144.4.a–b); Battlefield→Battlefield needs active Ganking,
+    which adds that permission and nothing else (144.4.c, 810.1.c). The
+    relocation itself is the existing Move operation, so Move triggers and
+    Cleanup stay one implementation."""
+    from effect_ir import apply_program, has_keyword, perform_lethal_cleanup
+    from rules_core import validate_timing
+    base = {"schema_version": STANDARD_MOVE_VERSION, "input_timing_state_hash": state_hash(timing_state), "input_effect_state_hash": hash_value(effect_state),
+            "input_hash": combined_input_hash(timing_state, effect_state)}
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    if found := _declaration_errors(declaration, effect_state):
+        return _invalid(base, found)
+    actor, units, destination = declaration["actor"], list(declaration["units"]), declaration["destination"]
+    verdict = validate_timing(timing_state, {"actor": actor, "kind": "standard_move", "timing": "default"})
+    if verdict.get("legal") is not True:
+        return _refuse(base, verdict.get("reason_code", "standard_move_timing_illegal"), verdict.get("explanation", "the timing kernel refused the Standard Move"), verdict.get("rule_locators", []), timing_verdict=verdict)
+    identities = declaration.get("unit_identities") or {}
+    for unit in units:
+        obj = effect_state["objects"][unit]
+        if obj.get("kind") != "unit" or obj.get("controller") != actor or zone_class(find_location(effect_state, unit)) != "board":
+            return _refuse(base, "unit_not_controlled_board_unit", f"{unit!r} is not a Unit {actor} controls on the board (144)", ["Core 144"])
+        if unit in identities and identities[unit] != (object_identity(effect_state, unit) or f"{unit}@0"):
+            return _invalid(base, [f"declaration.unit_identities binds {unit} to {identities[unit]!r}; it is now {object_identity(effect_state, unit) or f'{unit}@0'!r}"])
+    # destination legality per Unit (144.4)
+    routes = []
+    if destination["kind"] == "battlefield":
+        target_id = destination["battlefield"]
+        others = {effect_state["objects"][o]["controller"] for o in effect_state["battlefields"][target_id]["objects"] if effect_state["objects"][o].get("kind") == "unit"} - {actor}
+        if len(others) >= 2:
+            return _refuse(base, "destination_has_two_other_players", f"{target_id} already has Units of two other players; it is not a valid destination (144.4.a.1)", ["Core 144.4.a.1", "Core 447.2"])
+        for unit in units:
+            origin = find_location(effect_state, unit)
+            if origin[0] == "battlefield":
+                if origin[1] == target_id:
+                    return _refuse(base, "already_at_destination", f"{unit!r} is already at {target_id}", ["Core 144.4"])
+                if not has_keyword(effect_state, unit, "ganking"):
+                    return _refuse(base, "ganking_required", f"{unit!r} may move from a Battlefield to another Battlefield only with Ganking (144.4.c, 810.1.b)", ["Core 144.4.c", "Core 810.1.b"])
+                routes.append({"unit": unit, "from": f"battlefield:{origin[1]}", "to": f"battlefield:{target_id}", "permission": "ganking"})
+            else:
+                routes.append({"unit": unit, "from": f"base:{origin[1]}", "to": f"battlefield:{target_id}", "permission": "144.4.a"})
+        move_destination = {"kind": "battlefield", "battlefield": target_id}
+    else:
+        for unit in units:
+            origin = find_location(effect_state, unit)
+            if origin[0] != "battlefield":
+                return _refuse(base, "already_at_base", f"{unit!r} is already at a Base; a Standard Move goes from a Battlefield to the Unit's own Base (144.4.b)", ["Core 144.4.b"])
+            routes.append({"unit": unit, "from": f"battlefield:{origin[1]}", "to": f"base:{actor}", "permission": "144.4.b"})
+        move_destination = {"kind": "base", "player": actor}
+    # the cost: every selected Unit exhausts, simultaneously (144.2, 144.3.c)
+    exhausted = [unit for unit in units if effect_state["objects"][unit].get("exhausted")]
+    if exhausted:
+        return _refuse(base, "unit_exhausted", f"{exhausted} cannot pay the exhaust cost of a Standard Move (144.2)", ["Core 144.2"])
+    confirmation = declaration.get("cost_confirmation")
+    if not confirmation or confirmation.get("exhaust_confirmed") is not True:
+        return {**base, "valid": True, "committed": False, "reason_code": "cost_confirmation_required",
+                "reason": f"{actor} exhausts {units} as the cost of this Standard Move (144.2); the declaration must confirm the cost",
+                "decision_ids": ["standard_move:cost"], "decision_controller": actor, "rule_locators": ["Core 144.2", "Core 144.3.c"], "routes": routes}
+    working = copy.deepcopy(effect_state)
+    for unit in units:
+        working["objects"][unit]["exhausted"] = True
+    program = {"schema_version": "riftbound-effect-program.v1", "ruleset": copy.deepcopy(effect_state["ruleset"]), "program_id": f"standard-move:{actor}:{base['input_hash'][7:19]}",
+               "controller": actor, "effects": [{"op": "move_board_object", "effect_id": f"mv:{unit}", "object_id": unit, "destination": dict(move_destination)} for unit in units]}
+    moved = apply_program(working, program)
+    if moved.get("committed") is not True:
+        return _invalid(base, [moved.get("reason", "; ".join(moved.get("errors", [])) or "the Move operation failed")])
+    cleanup = perform_lethal_cleanup(moved["next_state"])
+    if cleanup.get("committed") is not True:
+        return {**base, "valid": cleanup.get("valid", True), "committed": False, "unsupported": cleanup.get("unsupported", False), "reason": cleanup.get("reason", "cleanup failed"), "cleanup_result": cleanup}
+    triggers = [dict(t) for t in moved.get("pending_triggers", [])]
+    for index, trigger in enumerate(triggers):
+        trigger.setdefault("batch_sequence", 0)
+        trigger.setdefault("batch_id", f"standard-move:{actor}")
+    cleanup_triggers = [dict(t) for t in cleanup.get("pending_triggers", [])]
+    for trigger in cleanup_triggers:
+        trigger["batch_sequence"] = trigger.get("batch_sequence", 0) + 1
+    from resolution_bridge import _settle_trigger_orders
+    failure = _settle_trigger_orders(triggers + cleanup_triggers, engine_decisions, base)
+    if failure is not None:
+        return failure
+    scheduled = schedule_triggered_items(timing_state, triggers + cleanup_triggers)
+    if scheduled.get("applied") is not True:
+        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Move triggers could not be scheduled", ["Core 383.1"], trigger_result=scheduled)
+    trace = {"actor": actor, "cost": {"exhausted": units, "simultaneous": True}, "routes": routes, "destination": move_destination,
+             "ganking_used": [r["unit"] for r in routes if r["permission"] == "ganking"], "move": moved["trace"], "cleanup": cleanup["trace"],
+             "scheduled_triggers": [t["trigger_id"] for t in triggers + cleanup_triggers], "trigger_schedule": scheduled.get("transition")}
+    return _commit(base, scheduled["next_state"], cleanup["next_state"], trace=trace,
+                   locators=["Core 144.1", "Core 144.2", "Core 144.3", "Core 144.3.a", "Core 144.3.c", "Core 144.4.a", "Core 144.4.b", "Core 144.4.c", "Core 810.1.b", "Core 810.1.c", "Core 446", "Core 383.1"] + list(dict.fromkeys(l for e in moved["trace"] for l in e.get("rule_locators", []))))
+
+
 # ------------------------------------------------------------------------ CLI --
 
 def _load(path: Path) -> dict[str, Any]:

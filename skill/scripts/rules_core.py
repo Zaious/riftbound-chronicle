@@ -66,6 +66,7 @@ SUPPORTED_PROCEDURES = {
         "Core 320–321", "Core 333–340", "Core 338.1.a", "Core 338.1.b",
         "Core 339", "Core 341–348", "Core 347.1", "Core 347.2",
         "Core 358.4", "Core 806–807", "Core 807",
+        "Core 144.1–144.1.c",
     ],
     "finalize_oldest_pending": [
         "Core 337.1–337.4", "Core 383.3.a–383.3.a.3", "Core 429.2.a",
@@ -426,8 +427,22 @@ def validate_timing(state: dict[str, Any], action: dict[str, Any]) -> dict[str, 
             explanation="The Focus holder may pass in a Showdown Open state." if legal else "Passing Focus requires both Focus and Priority in a Showdown Open state.",
             rule_locators=["Core 313", "Core 347.2"],
         )
+    if kind == "standard_move":
+        # ADR-0008 §6 / Core 144.1: the Unit's inherent action — any time in the
+        # controller's Main Phase, never in a Closed State, never during a
+        # Showdown or Combat (a staged Combat is about to open, so it blocks too).
+        combat = state.get("combat")
+        if label != "neutral_open":
+            reason, explanation = "standard_move_requires_neutral_open", "A Standard Move needs an Open State outside any Showdown or Combat (144.1.b–144.1.c)."
+        elif combat is not None and combat.get("status") != "closed":
+            reason, explanation = "standard_move_blocked_by_combat", "A Combat is staged or in progress; Standard Moves wait for it to close (144.1.c, 460)."
+        elif state.get("phase") != "main" or actor != state["turn_player"]:
+            reason, explanation = "standard_move_requires_own_main_phase", "Only the Turn Player moves, during their Main Phase (144.1.a)."
+        else:
+            reason, explanation = "ok", "The Turn Player may perform a Standard Move during their Main Phase in Neutral Open (144.1)."
+        return _result(state, valid=True, legal=reason == "ok", reason_code=reason, explanation=explanation, rule_locators=["Core 144.1", "Core 144.1.a", "Core 144.1.b", "Core 144.1.c"])
     if kind not in {"play_card", "activate_ability"}:
-        return _result(state, valid=True, legal=False, reason_code="unsupported_action_kind", explanation="This v1 kernel only validates play, activation, and pass timing.", rule_locators=[])
+        return _result(state, valid=True, legal=False, reason_code="unsupported_action_kind", explanation="This v1 kernel only validates play, activation, move, and pass timing.", rule_locators=[])
 
     if actor != priority:
         return _result(

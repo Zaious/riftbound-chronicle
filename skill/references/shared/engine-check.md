@@ -173,6 +173,14 @@ A `location_selection_required` result wraps as `decision_required` of kind
 controllers, an active Showdown of unknown location, or a `contested_by`
 outside the participants wraps as `unsupported`, never as a guessed Combat.
 
+`check_kind: standard_move` wraps `combat.standard_move`: `standard-move
+<timing> <effect> <declaration>` with a `riftbound-standard-move-declaration.v1`
+naming actor, units, destination and the exhaust-cost confirmation. A
+forbidden route (Battlefield to Battlefield without Ganking, a Unit already
+at its Base, an exhausted Unit, the wrong turn or state) is `illegal`; a
+missing cost confirmation is `decision_required` of kind `cost_choice`;
+a malformed declaration or a stale unit identity is `invalid_input`.
+
 ## Version and extension rule
 
 The schema reserves `legal_action`/`legal_action_v1`, but the current runner

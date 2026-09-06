@@ -357,8 +357,15 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.value must be ready or exhausted")
     # ADR-0009 §1: the Mode of Play; scoring never guesses a Victory Score.
     mode = state.get("mode")
-    if mode is not None and (not isinstance(mode, dict) or set(mode) - {"victory_score", "teams"} or not isinstance(mode.get("victory_score"), int) or isinstance(mode.get("victory_score"), bool) or mode["victory_score"] < 1 or not isinstance(mode.get("teams", False), bool)):
-        errors.append("mode must be {victory_score: positive integer, teams?: boolean} (Core 456.3)")
+    if mode is not None and (not isinstance(mode, dict) or set(mode) - {"victory_score", "teams", "id", "first_turn"} or not isinstance(mode.get("victory_score"), int) or isinstance(mode.get("victory_score"), bool) or mode["victory_score"] < 1 or not isinstance(mode.get("teams", False), bool)):
+        errors.append("mode must be {victory_score: positive integer, teams?: boolean, id?, first_turn?} (Core 456.3, 483)")
+    elif mode is not None:
+        # ADR-0010 §6: the sanctioned Mode of Play or explicit First Turn facts.
+        if "id" in mode and mode["id"] not in {"duel", "match", "skirmish", "war", "magma_chamber"}:
+            errors.append("mode.id must name a sanctioned Mode of Play (Core 484–489)")
+        first = mode.get("first_turn")
+        if first is not None and (not isinstance(first, dict) or set(first) - {"extra_channel", "skip_draw"} or any(not isinstance(first.get(k, []), list) or any(p not in state["players"] for p in first.get(k, [])) for k in ("extra_channel", "skip_draw"))):
+            errors.append("mode.first_turn must be {extra_channel?: [players], skip_draw?: [players]} (Core 483.7)")
     # ADR-0007 §5: Bonus Damage sources. A source is an object (active while on
     # the board) or a Battlefield (active while it exists) — never pruned by the
     # object rule.
@@ -439,7 +446,7 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.shield_value must be a positive integer (Core 814.1.b)")
         # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1),
         # end of turn (317.1), attack / defend (383.4.e–f).
-        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers"):
+        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers"):
             triggers = obj.get(trigger_field, [])
             if not isinstance(triggers, list):
                 errors.append(f"objects.{object_id}.{trigger_field} must be an array")
@@ -454,8 +461,12 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid program/optional binding")
                 elif "condition" in trigger and (not isinstance(trigger["condition"], dict) or trigger["condition"].get("kind") not in TRIGGER_CONDITION_KINDS):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
-                elif "scope" in trigger and (trigger_field not in {"conquer_triggers", "hold_triggers"} or trigger["scope"] not in {"unit_here", "controller"}):
+                elif "scope" in trigger and trigger_field in {"conquer_triggers", "hold_triggers"} and trigger["scope"] not in {"unit_here", "controller"}:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope must be unit_here or controller on a Score trigger (Core 383.4.c.2)")
+                elif "scope" in trigger and trigger_field in {"beginning_phase_triggers", "main_phase_triggers"} and trigger["scope"] not in {"your_beginning_phase", "your_main_phase"}:
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope must be your_beginning_phase or your_main_phase (ADR-0010 §8)")
+                elif "scope" in trigger and trigger_field not in {"conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers"}:
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope is not a field of this trigger kind")
         entry_ids: set[str] = set()
         for r_index, replacement in enumerate(obj.get("entry_replacements", []) or []):
             if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value"}:

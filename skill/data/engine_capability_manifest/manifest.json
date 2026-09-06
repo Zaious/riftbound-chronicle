@@ -1,18 +1,18 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:8754a7b1063763bb494e6c3c",
-  "capability_set_id": "sha256:8754a7b1063763bb494e6c3c298e57b23ed7ecd4d69c441b6328d17f73fc215d",
+  "manifest_id": "capability-manifest:37d4d94a3ee9f0254311814c",
+  "capability_set_id": "sha256:37d4d94a3ee9f0254311814c01de702dc3575717c4933bd995013d91e349c8ab",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:6d0ad8569dadb4cd5a2541b474c33bb5023e0bbe6964b8b59bc9c5faa7d16d3f",
+    "value": "sha256:4ca8505b3a54726da2fb907218e9fc76c68e7ad201fcd16588f501d2c0c03c8e",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:836517616a224e943cce492426f5448257e9def0085a11bb9c982cadc25a37c8"
+        "sha256": "sha256:388bfafc06a0f02f5cb7dd562b671b485f9e56dd79ba48f12f0f8781621a75f6"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:7579b4de4ca30cede623782f8e98a103153741a78a3f80b06d4b2225902b99a9"
+        "sha256": "sha256:8a12098dca1b305815eb29d499aaa73742d8ffa94f3163378d1adb595785e039"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:1a00cfeba82e5ca106b05d0ca78e77424a8941998daff9a8c70a96ba1b3adfd2"
+        "sha256": "sha256:228a3e53a71d4ca287de8b2aab92e73d54c2cb9b0117c00aa980d4fad8735ddd"
       },
       {
         "path": "combat.py",
@@ -28,11 +28,15 @@
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:0e6d2a2bae32a68d6a8c6e86175bdc0ecdd07a50a1141cd2e49e95bcb0b0cc31"
+        "sha256": "sha256:53732b8b5f624a21f15b648fb3e9a6f2ffd4e88e2d8901d349171690a00983cb"
       },
       {
         "path": "terminal.py",
         "sha256": "sha256:b2772f85ba7afabf3e570c7da99b6615926adfadb9368d63432cbd182e5735e3"
+      },
+      {
+        "path": "turn_cycle.py",
+        "sha256": "sha256:d166539e43aadf293e8adf45093448986d2ab55e695c3b1cd2a2de1de370e2a6"
       }
     ]
   },
@@ -272,13 +276,25 @@
         "conditional_passives",
         "terminal_state",
         "game_over_guard",
-        "declared_terminal"
+        "declared_terminal",
+        "turn_start_state_machine",
+        "turn_transition",
+        "first_turn_process",
+        "awaken_step",
+        "beginning_phase_triggers",
+        "channel_step",
+        "draw_step",
+        "main_phase_entry",
+        "burn_out_draw",
+        "terminal_event_bridge"
       ],
       "unsupported_scope": [
-        "beginning_phase",
-        "full_turn_transition",
+        "setup_procedure",
+        "match_mode",
+        "team_scoring",
+        "ready_blockers",
+        "opponent_phase_watchers",
         "continuous_dependency",
-        "burn_out",
         "multi_player_concession",
         "facedown_reveal_at_game_end",
         "complete_game",
@@ -585,6 +601,14 @@
       ]
     },
     {
+      "id": "awaken_step",
+      "rule_locators": [
+        "Core 315.1",
+        "Core 415.1.b–415.1.c",
+        "Core 415.3.a"
+      ]
+    },
+    {
       "id": "battlefield_control_resolution",
       "rule_locators": [
         "Core 190.4",
@@ -606,6 +630,13 @@
         "Core 355.10.b",
         "Core 359.3.e.2",
         "Core 359.3.e.5"
+      ]
+    },
+    {
+      "id": "beginning_phase_triggers",
+      "rule_locators": [
+        "Core 315.2.a–315.2.a.1",
+        "Core 383.1"
       ]
     },
     {
@@ -639,6 +670,15 @@
       "rule_locators": [
         "Core 471.1.b.1",
         "Core 431"
+      ]
+    },
+    {
+      "id": "channel_step",
+      "rule_locators": [
+        "Core 315.3–315.3.b.1",
+        "Core 430.2.a",
+        "Core 430.3",
+        "Core 430.4.a"
       ]
     },
     {
@@ -771,6 +811,13 @@
       ]
     },
     {
+      "id": "draw_step",
+      "rule_locators": [
+        "Core 315.4–315.4.b.2",
+        "Core 413.2.a"
+      ]
+    },
+    {
       "id": "ending_step",
       "rule_locators": [
         "Core 316.9.b",
@@ -800,6 +847,14 @@
       "rule_locators": [
         "Core 317.2–317.2.d",
         "Core 324.2"
+      ]
+    },
+    {
+      "id": "first_turn_process",
+      "rule_locators": [
+        "Core 483.7",
+        "Core 485.7",
+        "Core 487.7"
       ]
     },
     {
@@ -846,6 +901,12 @@
         "Core 814.2",
         "Core 466.7.c",
         "Core 317.2.c"
+      ]
+    },
+    {
+      "id": "main_phase_entry",
+      "rule_locators": [
+        "Core 316.1–316.4"
       ]
     },
     {
@@ -967,6 +1028,21 @@
       ]
     },
     {
+      "id": "turn_start_state_machine",
+      "rule_locators": [
+        "Core 315",
+        "Core 316.1",
+        "Core 319.2"
+      ]
+    },
+    {
+      "id": "turn_transition",
+      "rule_locators": [
+        "Core 115",
+        "Core 317.3"
+      ]
+    },
+    {
       "id": "typed_cost_payment",
       "rule_locators": [
         "Core 356.1–356.7",
@@ -991,6 +1067,7 @@
   ],
   "clauses": [
     "Core 108.6.e",
+    "Core 115",
     "Core 124",
     "Core 124.1",
     "Core 124–124.1",
@@ -1021,13 +1098,22 @@
     "Core 312.2.a",
     "Core 313",
     "Core 313.1",
+    "Core 315",
+    "Core 315.1",
+    "Core 315.2.a–315.2.a.1",
     "Core 315.2.b–315.2.b.2",
+    "Core 315.3–315.3.b.1",
+    "Core 315.4–315.4.b.2",
     "Core 316",
+    "Core 316.1",
+    "Core 316.1–316.4",
     "Core 316.8.b–316.8.b.1.a",
     "Core 316.9.b",
     "Core 317.1",
     "Core 317.2.c",
     "Core 317.2–317.2.d",
+    "Core 317.3",
+    "Core 319.2",
     "Core 319.8",
     "Core 320–321",
     "Core 323.1",
@@ -1111,9 +1197,12 @@
     "Core 386–388",
     "Core 402–402.1",
     "Core 413",
+    "Core 413.2.a",
     "Core 413.4",
     "Core 414",
     "Core 415",
+    "Core 415.1.b–415.1.c",
+    "Core 415.3.a",
     "Core 416",
     "Core 417",
     "Core 417.1.a",
@@ -1138,6 +1227,7 @@
     "Core 430.1",
     "Core 430.2.a",
     "Core 430.3",
+    "Core 430.4.a",
     "Core 431",
     "Core 431.1.a",
     "Core 431.2.b",
@@ -1181,6 +1271,9 @@
     "Core 471.2–471.2.c",
     "Core 472",
     "Core 477",
+    "Core 483.7",
+    "Core 485.7",
+    "Core 487.7",
     "Core 713–715.4",
     "Core 740.2.a",
     "Core 740.2.c",
@@ -1201,7 +1294,6 @@
     "arbitrary_card_text",
     "battlefield_control_transfer",
     "beginning_phase",
-    "burn_out",
     "burn_out_in_replacement",
     "burn_out_non_draw",
     "combat",
@@ -1219,10 +1311,10 @@
     "engine_enumeration",
     "facedown_reveal_at_game_end",
     "full_cleanup",
-    "full_turn_transition",
     "gear_rune_recall_cleanup",
     "hidden_cards",
     "invalid_destination_catalog",
+    "match_mode",
     "multi_descriptor_replacement",
     "multi_player_combat",
     "multi_player_concession",
@@ -1230,9 +1322,12 @@
     "non_prevent_assignment_replacements",
     "non_standard_costs_beyond_exhaust_kill",
     "non_standard_moves",
+    "opponent_phase_watchers",
     "payment_stage_replacement_decisions",
     "player_level_attack_defend_triggers",
+    "ready_blockers",
     "scoring",
+    "setup_procedure",
     "start_of_combat_effects",
     "take_damage_triggers",
     "target_checks",

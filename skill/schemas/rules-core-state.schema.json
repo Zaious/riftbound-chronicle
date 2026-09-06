@@ -19,7 +19,23 @@
     "players": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "turn_order": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "turn_player": {"type": "string", "minLength": 1},
-    "phase": {"type": "string", "minLength": 1},
+    "phase": {"enum": ["setup", "awaken", "beginning", "channel", "draw", "main", "ending"], "description": "ADR-0010 §1: setup is the state before the first turn; awaken, beginning, channel and draw are the Start of Turn (Core 315) and allow no discretionary action."},
+    "turn_progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ADR-0010 §1: typed Start of Turn progress — which step of the current turn completed — so the next phase is reached by its procedure, never by editing phase.",
+      "properties": {
+        "turn_id": {"type": "string", "minLength": 1},
+        "first_turn": {"type": "object", "additionalProperties": false, "required": ["extra_channel", "skip_draw", "source"], "properties": {"extra_channel": {"type": "boolean"}, "skip_draw": {"type": "boolean"}, "source": {"type": "string"}}, "description": "The First Turn Process read before turns_taken incremented (Core 483.7)."},
+        "awaken_complete": {"type": "boolean"},
+        "beginning_entered": {"type": "boolean"},
+        "scoring_complete": {"type": "boolean"},
+        "channel_complete": {"type": "boolean"},
+        "draw_complete": {"type": "boolean"},
+        "main_entered": {"type": "boolean"}
+      }
+    },
+    "turns_taken": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}, "description": "ADR-0010 §6: turns each player has started; a player's first turn is judged at 0, before the increment."},
     "showdown": {
       "type": "object",
       "additionalProperties": false,

@@ -485,6 +485,8 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
         return failure
     next_timing = copy.deepcopy(timing_state)
     next_timing["outstanding_tasks"] = [t for t in next_timing["outstanding_tasks"] if t != SCORING_TASK]
+    if "turn_progress" in next_timing:  # ADR-0010 §1: the Channel step reads this flag
+        next_timing["turn_progress"] = {**next_timing["turn_progress"], "scoring_complete": True}
     scheduled = schedule_triggered_items(next_timing, triggers)
     if scheduled.get("applied") is not True:
         return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Hold triggers could not be scheduled", ["Core 471.2.b"], trigger_result=scheduled)

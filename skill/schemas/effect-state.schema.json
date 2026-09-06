@@ -37,8 +37,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["victory_score"],
-      "description": "ADR-0009 §1: the Mode of Play facts scoring needs (456.3). Absent makes scoring unsupported; teams are not modelled.",
-      "properties": {"victory_score": {"type": "integer", "minimum": 1}, "teams": {"type": "boolean"}}
+      "description": "ADR-0009 §1 / ADR-0010 §6: the Mode of Play facts scoring and the First Turn Process need (456.3, 483). Absent makes scoring unsupported; teams are not modelled; match is unsupported as a whole.",
+      "properties": {"victory_score": {"type": "integer", "minimum": 1}, "teams": {"type": "boolean"}, "id": {"enum": ["duel", "match", "skirmish", "war", "magma_chamber"]},
+                     "first_turn": {"type": "object", "additionalProperties": false, "properties": {"extra_channel": {"type": "array", "items": {"type": "string"}}, "skip_draw": {"type": "array", "items": {"type": "string"}}}, "description": "Explicit First Turn Process facts (483.7) when mode.id does not supply them."}}
     },
     "might_auras": {
       "type": "array",
@@ -235,6 +236,8 @@
         "entry_replacements": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["mode", "value"], "properties": {"replacement_id": {"type": "string", "minLength": 1}, "mode": {"const": "entry_state"}, "value": {"enum": ["ready", "exhausted"]}}}, "description": "Core 369.3: how this permanent enters, replacing the default (e.g. 'I enter ready'). Conflicting replacements require a replacement_order decision."},
         "conditional_might": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "amount", "condition"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "amount": {"type": "integer"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["runes_at_least", "attacking_or_defending_alone"]}, "count": {"type": "integer", "minimum": 0}}}}}, "description": "Conditional passives read by effective_might (Core 364.3; attacking_or_defending_alone per 740.2.a)."},
         "end_of_turn_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'At the end of your turn' abilities (Core 383.1), with an optional condition that is part of the trigger condition (383.2.a.1)."},
+        "beginning_phase_triggers": {"type": "array", "items": {"$ref": "#/$defs/phaseTrigger"}, "description": "ADR-0010 §8: 'At the start of your Beginning Phase' (Core 315.2.a); fires for the Turn Player's active Board sources only."},
+        "main_phase_triggers": {"type": "array", "items": {"$ref": "#/$defs/phaseTrigger"}, "description": "ADR-0010 §8: 'At the start of your Main Phase' (Core 316.4)."},
         "is_token": {"type": "boolean"},
         "stunned": {"type": "boolean", "description": "Core 423.1: a Stunned Unit contributes no Might to Combat Damage (423.1.b) but still needs its full Might in lethal damage (423.1.c)."},
         "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "ADR-0005 §3 object identity: '<object_id>@<generation>'. Absent means generation 0. Changes on any transition to or from a non-board zone; survives board moves."},
@@ -259,6 +262,21 @@
         "defend_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you defend here' (Fortified Position)."},
         "conquer_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0009 §7: the Battlefield's own 'When you conquer here', controlled by its controller (190.6)."},
         "hold_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0009 §7: the Battlefield's own 'When you hold here'."}
+      }
+    },
+    "phaseTrigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+      "properties": {
+        "trigger_id": {"type": "string", "minLength": 1},
+        "controller": {"type": "string", "minLength": 1},
+        "source_object": {"type": "string", "minLength": 1},
+        "controller_order": {"type": "integer", "minimum": 0},
+        "effect_program_id": {"type": "string", "minLength": 1},
+        "optional_at_finalize": {"type": "boolean"},
+        "scope": {"enum": ["your_beginning_phase", "your_main_phase"]},
+        "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}
       }
     },
     "scoreTrigger": {

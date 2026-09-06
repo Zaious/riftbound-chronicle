@@ -187,6 +187,23 @@ mutator, two-state procedure, resolution and play refuses `game_over` at its
 shared entry. `reward_adapter.terminal_reward` is a read-only projection of
 that record for a two-player game (+1 / −1 / 0) and is not an engine check.
 
+The Start of Turn (ADR-0010 §1, §6–9) is `turn_cycle.py`: `begin_turn`
+(317.3; from `setup` the selected first player keeps the turn, from an
+expired Ending Phase the next player in Turn Order; turn_id advances, the
+per-turn ledger is pruned, `turns_taken` increments and the First Turn
+Process is read from `mode.id` — duel, skirmish — or explicit
+`mode.first_turn` facts, never guessed), `run_awaken_step` (315.1; a ready
+blocker is unsupported), `enter_beginning_phase` (315.2.a triggers, the
+Scoring Step outstanding after them), G2's `run_scoring_step`,
+`run_channel_step` (315.3 plus the first-turn extra), `run_draw_step`
+(315.4 through the Burn Out-aware Draw, skipped on a first turn the mode
+says so, an immediate Burn Out victory written here) and `enter_main_phase`
+(316.2–316.4, Priority to the Turn Player). Each accepts only the phase and
+`turn_progress` the previous step left, every phase transition makes a
+Cleanup outstanding (319.2), and `next_procedure` reports
+`turn_start_step_pending` with no discretionary action during 315. `match`
+and team modes are unsupported as a whole; Setup itself is not modelled.
+
 `validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open
 State with no Combat staged or in progress. `combat.standard_move` is the

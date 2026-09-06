@@ -26,6 +26,7 @@ from resolution_bridge import CLEANUP_DECISION_VERSION, TURN_STEP_VERSION, begin
 from combat import COMBAT_STEP_VERSION, STANDARD_MOVE_VERSION, STEPS as COMBAT_STEPS, standard_move  # noqa: E402
 from battlefield_control import CONTROL_STEP_VERSION, STEPS as CONTROL_STEPS  # noqa: E402
 from terminal import STEPS as TERMINAL_STEPS, check_terminal, declare_terminal  # noqa: E402
+from turn_cycle import STEPS as TURN_CYCLE_STEPS  # noqa: E402
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
     derive_permissions,
@@ -113,6 +114,15 @@ FEATURE_RULES = {
     "randomization_receipt": ["Core 431.2.b"],
     "terminal_event_bridge": ["Core 431.3.c.1", "Core 196"],
     "burn_out_draw_instead": ["Core 471.1.b.1", "Core 431"],
+    # C-38 (ADR-0010 §1, §6–9).
+    "turn_start_state_machine": ["Core 315", "Core 316.1", "Core 319.2"],
+    "turn_transition": ["Core 115", "Core 317.3"],
+    "first_turn_process": ["Core 483.7", "Core 485.7", "Core 487.7"],
+    "awaken_step": ["Core 315.1", "Core 415.1.b–415.1.c", "Core 415.3.a"],
+    "beginning_phase_triggers": ["Core 315.2.a–315.2.a.1", "Core 383.1"],
+    "channel_step": ["Core 315.3–315.3.b.1", "Core 430.2.a", "Core 430.3", "Core 430.4.a"],
+    "draw_step": ["Core 315.4–315.4.b.2", "Core 413.2.a"],
+    "main_phase_entry": ["Core 316.1–316.4"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -157,8 +167,9 @@ KIND_CONFIG = {
     "turn_step": {
         "component": ("turn_steps", TURN_STEP_VERSION),
         "coverage": "turn_step_v1",
-        "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives", "terminal_state", "game_over_guard", "declared_terminal"],
-        "unsupported": ["beginning_phase", "full_turn_transition", "continuous_dependency", "burn_out", "multi_player_concession", "facedown_reveal_at_game_end", "complete_game", "complete_legality"],
+        "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives", "terminal_state", "game_over_guard", "declared_terminal",
+                      "turn_start_state_machine", "turn_transition", "first_turn_process", "awaken_step", "beginning_phase_triggers", "channel_step", "draw_step", "main_phase_entry", "burn_out_draw", "terminal_event_bridge"],
+        "unsupported": ["setup_procedure", "match_mode", "team_scoring", "ready_blockers", "opponent_phase_watchers", "continuous_dependency", "multi_player_concession", "facedown_reveal_at_game_end", "complete_game", "complete_legality"],
     },
     # ADR-0008: Combat procedures over the timing/effect pair.
     "combat_step": {
@@ -586,6 +597,8 @@ def run_turn_step(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, s
     elif args.step == "declare_terminal":
         declaration = load_object(args.declaration) if getattr(args, "declaration", None) else None
         result = declare_terminal(timing_state, effect_state, decisions, declaration=declaration)
+    elif args.step in TURN_CYCLE_STEPS:
+        result = TURN_CYCLE_STEPS[args.step](timing_state, effect_state, decisions)
     else:
         result = TERMINAL_STEPS[args.step](timing_state, effect_state, decisions)
     hashes = {"timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state)}
@@ -658,7 +671,7 @@ def build_parser() -> argparse.ArgumentParser:
     turn = sub.add_parser("turn-step")
     turn.add_argument("timing_state", type=Path)
     turn.add_argument("effect_state", type=Path)
-    turn.add_argument("--step", choices=["begin_ending", "run_expiration"] + sorted(TERMINAL_STEPS), required=True)
+    turn.add_argument("--step", choices=["begin_ending", "run_expiration"] + sorted(TERMINAL_STEPS) + sorted(TURN_CYCLE_STEPS), required=True)
     turn.add_argument("--declaration", type=Path, help="declared terminal (reason concession|external) for --step declare_terminal")
     add_common(turn)
 

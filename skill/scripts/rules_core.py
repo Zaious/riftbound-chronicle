@@ -40,6 +40,12 @@ DERIVED_TERMINAL_REASONS = {"victory_score", "burn_out_victory"}
 DECLARED_TERMINAL_REASONS = {"concession", "external"}
 TERMINAL_REASONS = DERIVED_TERMINAL_REASONS | DECLARED_TERMINAL_REASONS
 TERMINAL_EVENT_KIND = "terminal_event"
+# ADR-0010 §1: the turn's phases (Core 315–317). setup is the state before the
+# first turn; the Start of Turn phases allow no discretionary action.
+PHASES = ("setup", "awaken", "beginning", "channel", "draw", "main", "ending")
+START_OF_TURN_PHASES = {"awaken", "beginning", "channel", "draw"}
+CLEANUP_TASK = "cleanup"
+TURN_PROGRESS_FLAGS = {"awaken_complete", "beginning_entered", "scoring_complete", "channel_complete", "draw_complete", "main_entered"}
 
 RULES = {
     "four_states": ["Core 308–310"],
@@ -219,6 +225,22 @@ def validate_state(state: dict[str, Any]) -> list[str]:
     priority = state.get("priority")
     if priority is not None and priority not in players:
         errors.append("priority must be null or a player id")
+    if state.get("phase") not in PHASES:
+        errors.append(f"phase must be one of {list(PHASES)}")
+    # ADR-0010 §1, §6: typed Start of Turn progress and the per-player turn count.
+    progress = state.get("turn_progress")
+    if progress is not None:
+        if not isinstance(progress, dict) or set(progress) - TURN_PROGRESS_FLAGS - {"turn_id", "first_turn"} or any(not isinstance(progress[k], bool) for k in progress if k in TURN_PROGRESS_FLAGS):
+            errors.append(f"turn_progress carries boolean flags among {sorted(TURN_PROGRESS_FLAGS)} plus turn_id and first_turn")
+        else:
+            if "turn_id" in progress and (not isinstance(progress["turn_id"], str) or not progress["turn_id"]):
+                errors.append("turn_progress.turn_id must be a non-empty string")
+            first = progress.get("first_turn")
+            if first is not None and (not isinstance(first, dict) or set(first) != {"extra_channel", "skip_draw", "source"} or not isinstance(first["extra_channel"], bool) or not isinstance(first["skip_draw"], bool) or not isinstance(first["source"], str)):
+                errors.append("turn_progress.first_turn must be {extra_channel: bool, skip_draw: bool, source: str}")
+    taken = state.get("turns_taken")
+    if taken is not None and (not isinstance(taken, dict) or set(taken) != set(players) or any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in taken.values())):
+        errors.append("turns_taken must map every player to a non-negative integer")
 
     showdown = state.get("showdown")
     if not isinstance(showdown, dict) or not isinstance(showdown.get("active"), bool):
@@ -403,6 +425,11 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             discretionary_actions_allowed=False,
             rule_locators=["Core 196"],
         )
+    # ADR-0010 §8 / Core 315.2: the Scoring Step is outstanding from the
+    # Beginning Phase's entry but follows the Beginning Step's game effects;
+    # while that chain resolves, the task waits rather than blocking it.
+    if tasks == ["scoring_step"] and items:
+        tasks = []
     if tasks:
         return _result(
             state,
@@ -441,6 +468,19 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             rule_locators=["Core 338–339"],
         )
     combat = state.get("combat")
+    if state.get("phase") in START_OF_TURN_PHASES or state.get("phase") == "setup":
+        # ADR-0010 §1: during the Start of Turn (315) the next required
+        # procedure is the phase's own step; no one plays.
+        progress = state.get("turn_progress") or {}
+        return _result(
+            state,
+            valid=True,
+            procedure="turn_start_step_pending" if state.get("phase") != "setup" else "begin_turn_pending",
+            subject=state.get("phase"),
+            turn_progress=copy.deepcopy(progress),
+            discretionary_actions_allowed=False,
+            rule_locators=["Core 315", "Core 316.1", "Core 316.5.a"],
+        )
     if state.get("staged_showdowns") and not state["showdown"]["active"]:
         # 323.12 precedes 323.13 in the same Cleanup. Once one or more
         # Non-Combat Showdowns are staged, the Turn Player must open one

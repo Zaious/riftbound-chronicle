@@ -204,6 +204,20 @@ Cleanup outstanding (319.2), and `next_procedure` reports
 `turn_start_step_pending` with no discretionary action during 315. `match`
 and team modes are unsupported as a whole; Setup itself is not modelled.
 
+`turn_cycle.run_cleanup` (ADR-0010 §5) is one Cleanup as one atomic run:
+steps 1–10a of 323 in order on a working state — the terminal check, the
+designation sync, the lethal Cleanup whose death triggers go Pending on the
+chain while nothing resolves (320), control loss, 323.7 (refused as
+unsupported whenever a non-Unit Gear or Rune is at a Battlefield), Showdown
+staging, Combat staging, Contested maintenance, Showdown opening and Combat
+opening — then the 322 follow-up Cleanups on the same working state until
+one changes nothing. A terminal at step 1 ends the run with the rest
+recorded as `skipped_after_terminal`; any `decision_required` or unsupported
+step commits nothing; the outstanding Cleanup task, when first, is consumed.
+Inside the run the staging and opening procedures accept Pending chain items
+and the task being handled (`within_cleanup`); called on their own they
+still require the quiet boundary.
+
 `validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open
 State with no Combat staged or in progress. `combat.standard_move` is the

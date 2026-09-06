@@ -292,6 +292,12 @@ jobs:
       - name: Start of Turn state machine and turn transition
         run: python3 skill/scripts/check_turn_cycle.py
 
+      # ADR-0010 C-39: one Cleanup is one atomic run of steps 1-10a with the
+      # 322 follow-ups; death triggers stay Pending and nothing resolves; a
+      # decision or an unsupported step commits nothing.
+      - name: Atomic Cleanup orchestration and 322 iterations
+        run: python3 skill/scripts/check_cleanup_orchestration.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -377,6 +383,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_terminal_state.py"
           python3 "$REPO/skill/scripts/check_burn_out.py"
           python3 "$REPO/skill/scripts/check_turn_cycle.py"
+          python3 "$REPO/skill/scripts/check_cleanup_orchestration.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

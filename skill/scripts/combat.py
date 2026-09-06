@@ -126,17 +126,19 @@ def combat_candidates(effect_state: dict[str, Any]) -> tuple[list[str], list[dic
     return candidates, considered
 
 
-def _quiet(timing_state: dict[str, Any]) -> str | None:
+def _quiet(timing_state: dict[str, Any], within_cleanup: bool = False) -> str | None:
     if timing_state.get("phase") != "main":
         return "combat_requires_main_phase"
-    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+    # ADR-0010 §5 / Core 320: inside run_cleanup the chain may hold Pending
+    # items that cannot resolve, and the Cleanup task itself is being handled.
+    if not within_cleanup and (timing_state["chain"]["items"] or timing_state["outstanding_tasks"]):
         return "combat_requires_quiet_cleanup_boundary"
     return None
 
 
 # --------------------------------------------------------------------- staging --
 
-def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
     """Core 323.9 / 323.13 / 323.14, 461–462: from a quiet Cleanup boundary,
     mark the Combat that will open. Zero candidates is a supported no-op. Two
     or more in a Neutral Open State need the Turn Player's location_selection;
@@ -144,7 +146,7 @@ def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], eng
     base = _base("stage_combat", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
-    if code := _quiet(timing_state):
+    if code := _quiet(timing_state, within_cleanup):
         return _refuse(base, code, "Combat is staged during a Cleanup with nothing on the chain and no outstanding task (460)", ["Core 460", "Core 323.13"])
     existing = timing_state.get("combat")
     if existing is not None and existing["status"] not in {"staged", "closed"}:
@@ -220,7 +222,7 @@ def _designation_triggers(effect_state: dict[str, Any], record: dict[str, Any], 
     return descriptors, identity
 
 
-def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
     """Core 464.2: open the staged Combat — attacker is the player who applied
     Contested (464.2.c.1), the defender the other participant; a new Combat
     Showdown gives the attacker Focus, an existing Showdown at that Battlefield
@@ -233,7 +235,7 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     record = timing_state.get("combat")
     if record is None or record["status"] != "staged":
         return _refuse(base, "combat_not_staged", "open_combat needs a staged Combat record from stage_combat (461, 464.1)", ["Core 461", "Core 464.1"])
-    if code := _quiet(timing_state):
+    if code := _quiet(timing_state, within_cleanup):
         return _refuse(base, code, "Combat opens during a Cleanup with nothing on the chain and no outstanding task (460)", ["Core 460", "Core 464.1"])
     battlefield_id = record["battlefield"]
     battlefield = effect_state["battlefields"].get(battlefield_id)

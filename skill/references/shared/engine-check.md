@@ -166,8 +166,8 @@ carry all three fields, and binding one never changes the check's outcome or
 
 `check_kind: combat_step` wraps `combat.py`: `combat-step <timing> <effect>
 --step stage|open|sync`. Supported scope names staging, opening, designations
-and Attack/Defend triggers; Combat Damage, the Combat Cleanup, the result, and
-G2 control or scoring stay in the unsupported scope until their packages land.
+and Attack/Defend triggers, Combat Damage, the Combat Cleanup, the result and
+the close after control resolution (ADR-0009).
 A `location_selection_required` result wraps as `decision_required` of kind
 `location_choice` naming the Turn Player; a Battlefield with three
 controllers, an active Showdown of unknown location, or a `contested_by`
@@ -206,6 +206,32 @@ two non-controllers left after Contested removal
 (`contested_reapplication_ambiguous`) wrap as `unsupported`. `victory_check`
 in every trace and the `victory_facts` step report `threshold_met`,
 `strict_leader` and `tied_at_threshold` (472) without declaring a winner.
+
+## Turn cycle, terminal state and Cleanup (ADR-0010)
+
+`check_kind: turn_step` now wraps three modules: the Ending and Expiration
+steps of `resolution_bridge`, the terminal procedures of `terminal.py`
+(`check_terminal`, `declare_terminal` with `--declaration`), and the Start of
+Turn, turn transition and Cleanup of `turn_cycle.py` (`begin_turn`,
+`awaken`, `enter_beginning`, `channel`, `draw`, `enter_main`,
+`run_cleanup`): `turn-step <timing> <effect> --step <name>`. Supported scope
+names the terminal state and its guard, the typed Start of Turn machine with
+319.2 Cleanup gating, the First Turn Process from the Mode of Play, Burn Out
+on Draw with its terminal bridge, and the atomic Cleanup with 322
+iterations. Unsupported and declared: Setup, the Match mode, teams, ready
+blockers, opponent or global phase watchers, 323.7, a multi-player
+concession, the facedown reveal at game end.
+
+The effect kind names `burn_out_draw` and `randomization_receipt` in its
+supported scope: a Draw beyond the Main Deck needs a
+`randomization-receipt.v1` in the envelope's `randomization_receipts` for
+the recycle order (missing → `decision_required` of kind `external_input`)
+and, with several opponents, a `player_selection` (missing →
+`player_choice`). The resolution and control kinds name
+`terminal_event_bridge`: a Draw that ends the game writes `timing.terminal`
+inside that transaction's own commit. Burn Out from instructions other than
+Draw stays unsupported (`burn_out_non_draw`). `reward_adapter.py` is a
+read-only consumer projection of the terminal and is not an engine check.
 
 ## Version and extension rule
 

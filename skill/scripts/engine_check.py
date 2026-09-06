@@ -123,6 +123,9 @@ FEATURE_RULES = {
     "channel_step": ["Core 315.3–315.3.b.1", "Core 430.2.a", "Core 430.3", "Core 430.4.a"],
     "draw_step": ["Core 315.4–315.4.b.2", "Core 413.2.a"],
     "main_phase_entry": ["Core 316.1–316.4"],
+    # C-39 (ADR-0010 §5).
+    "cleanup_orchestration": ["Core 318–320", "Core 323–323.14"],
+    "cleanup_iterations": ["Core 322–322.1"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -168,8 +171,8 @@ KIND_CONFIG = {
         "component": ("turn_steps", TURN_STEP_VERSION),
         "coverage": "turn_step_v1",
         "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives", "terminal_state", "game_over_guard", "declared_terminal",
-                      "turn_start_state_machine", "turn_transition", "first_turn_process", "awaken_step", "beginning_phase_triggers", "channel_step", "draw_step", "main_phase_entry", "burn_out_draw", "terminal_event_bridge"],
-        "unsupported": ["setup_procedure", "match_mode", "team_scoring", "ready_blockers", "opponent_phase_watchers", "continuous_dependency", "multi_player_concession", "facedown_reveal_at_game_end", "complete_game", "complete_legality"],
+                      "turn_start_state_machine", "turn_transition", "first_turn_process", "awaken_step", "beginning_phase_triggers", "channel_step", "draw_step", "main_phase_entry", "burn_out_draw", "terminal_event_bridge", "cleanup_orchestration", "cleanup_iterations"],
+        "unsupported": ["setup_procedure", "match_mode", "team_scoring", "ready_blockers", "opponent_phase_watchers", "gear_rune_recall_cleanup", "continuous_dependency", "multi_player_concession", "facedown_reveal_at_game_end", "complete_game", "complete_legality"],
     },
     # ADR-0008: Combat procedures over the timing/effect pair.
     "combat_step": {

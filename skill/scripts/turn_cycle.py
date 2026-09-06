@@ -25,10 +25,12 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from combat import IN_PROGRESS as COMBAT_IN_PROGRESS, _base as _combat_base, _commit, _invalid, _refuse, _unsupported, _validate_both  # noqa: E402
-from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, PlayerSelectionRequired, find_location, object_identity, perform_draw, zone_class  # noqa: E402
+from battlefield_control import open_showdown, run_board_cleanup, stage_showdown, victory_check  # noqa: E402
+from combat import IN_PROGRESS as COMBAT_IN_PROGRESS, _base as _combat_base, _commit, _invalid, _refuse, _unsupported, _validate_both, combined_input_hash, open_combat, stage_combat, sync_combat_designations  # noqa: E402
+from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, PlayerSelectionRequired, find_location, hash_value, object_identity, perform_draw, perform_lethal_cleanup, zone_class  # noqa: E402
 from resolution_bridge import TURN_STEP_VERSION, _settle_trigger_orders  # noqa: E402
-from rules_core import CLEANUP_TASK, START_OF_TURN_PHASES, apply_terminal_event, schedule_triggered_items  # noqa: E402
+from rules_core import CLEANUP_TASK, START_OF_TURN_PHASES, apply_terminal_event, is_terminal, schedule_triggered_items, state_hash, terminal_record  # noqa: E402
+import engine_decisions as _ed  # noqa: E402
 
 # Core 484–489: the sanctioned Modes of Play this slice can read. `match`
 # carries Best-of / Game Win semantics (486.6) and `magma_chamber` teams
@@ -363,7 +365,193 @@ def enter_main_phase(timing_state: dict[str, Any], effect_state: dict[str, Any],
     return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 316.1", "Core 316.2", "Core 316.3", "Core 316.4", "Core 319.2"])
 
 
-STEPS = {"begin_turn": begin_turn, "awaken": run_awaken_step, "enter_beginning": enter_beginning_phase, "channel": run_channel_step, "draw": run_draw_step, "enter_main": enter_main_phase}
+# ------------------------------------------------------------------ Cleanup --
+
+CLEANUP_ITERATION_BOUND = 8
+
+
+def _unattached_at_battlefields(effect_state: dict[str, Any]) -> list[str]:
+    """Core 323.7 applies to non-Unit Gear and Runes at Battlefields; this
+    slice has no attachment model, so any such object there is 323.7's case."""
+    found = []
+    for object_id in sorted(effect_state["objects"]):
+        obj = effect_state["objects"][object_id]
+        location = find_location(effect_state, object_id)
+        if obj.get("kind") in {"gear", "rune"} and location is not None and location[0] == "battlefield":
+            found.append(object_id)
+    return found
+
+
+def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """ADR-0010 §5 / Core 323: one Cleanup as one atomic run. Steps 1–10a in
+    order on a working state — 1 terminal, 2 designations, 3a/3b lethal
+    (death triggers go Pending on the chain and nothing resolves, 320), 4
+    control loss, 5 (323.7, refused as unsupported whenever it applies), 6
+    Showdown staging, 7 Combat staging, 8 Contested maintenance, 9 Showdown
+    opening, 10 Combat opening — then, when the run changed anything, the
+    322 follow-up Cleanups on the same working state until one changes
+    nothing. A terminal at step 1 ends the run with the rest recorded as
+    skipped_after_terminal. Any decision_required or unsupported step commits
+    nothing. The outstanding Cleanup task, if first, is consumed."""
+    base = _base("run_cleanup", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    tasks = list(timing_state["outstanding_tasks"])
+    if tasks and tasks[0] != CLEANUP_TASK and CLEANUP_TASK in tasks:
+        return _refuse(base, "task_order", f"the outstanding task {tasks[0]!r} precedes the Cleanup; tasks are handled in order", ["Core 318", "Core 319"])
+    consumed = bool(tasks) and tasks[0] == CLEANUP_TASK
+    working_t = copy.deepcopy(timing_state)
+    if consumed:
+        working_t["outstanding_tasks"] = tasks[1:]
+    working_e = copy.deepcopy(effect_state)
+    order_map, choice_map = _ed.replacement_maps(engine_decisions)
+    iterations: list[dict[str, Any]] = []
+    terminal_written = False
+
+    def bound_to(t: dict[str, Any], e: dict[str, Any]) -> dict[str, Any] | None:
+        """The envelope was bound to this run's input (checked above); each
+        sub-procedure verifies it against its own working input."""
+        if engine_decisions is None:
+            return None
+        return {**engine_decisions, "input_hash": combined_input_hash(t, e)}
+
+    def snapshot(t: dict[str, Any], e: dict[str, Any]) -> tuple[str, str]:
+        """What 322 compares: the states without bookkeeping that changes on
+        every pass (an empty staging set, the designation sync counter)."""
+        normalized = {**t, "staged_showdowns": t.get("staged_showdowns", [])}
+        if normalized.get("combat") is not None:
+            normalized["combat"] = {k: v for k, v in normalized["combat"].items() if k != "sync_count"}
+        return state_hash(normalized), hash_value(e)
+
+    def sub(result: dict[str, Any], step: str) -> dict[str, Any] | None:
+        """A sub-procedure's non-commit: decisions and unsupported end the whole run uncommitted."""
+        if result.get("committed"):
+            return None
+        if result.get("valid") is False:
+            return _invalid(base, [f"step {step}: {result.get('reason')}"])
+        if result.get("unsupported"):
+            return _unsupported(base, result.get("reason_code", "unsupported_cleanup_step"), f"step {step}: {result.get('reason')}", result.get("rule_locators", []), cleanup_step=step)
+        return {**base, "valid": True, "committed": False, "cleanup_step": step, **{k: v for k, v in result.items() if k in {"reason_code", "reason", "decision_ids", "decision_controller", "options", "batch_id", "trigger_ids", "rule_locators", "replacement_decision_required", "replacement_ids", "event_ids"}}}
+
+    for index in range(CLEANUP_ITERATION_BOUND):
+        before = snapshot(working_t, working_e)
+        record: dict[str, Any] = {"iteration": index, "steps": []}
+        iterations.append(record)
+        # 1 — Core 323.1
+        facts = victory_check(working_e)
+        if facts.get("available"):
+            if facts["strict_leader"] is not None:
+                working_t["terminal"] = terminal_record(working_e, "victory_score", facts["strict_leader"], derived=True, extra={"immediate": False, "source": "cleanup_step_1"})
+                record["steps"].append({"step": 1, "outcome": "ended", "winner": facts["strict_leader"]})
+                record["skipped_after_terminal"] = ["2", "3a", "3b", "4", "5", "6", "7", "8", "9", "10"]
+                terminal_written = True
+                break
+            record["steps"].append({"step": 1, "outcome": "continue_tied" if facts["tied_at_threshold"] else "below_threshold"})
+        elif facts.get("reason") == "mode_unknown" and not any(int(p.get("points", 0)) for p in working_e["players"].values()):
+            record["steps"].append({"step": 1, "outcome": "no_points_without_mode"})
+        else:
+            return _unsupported(base, facts.get("reason", "mode_unknown"), "Cleanup step 1 needs the Mode of Play to judge the victory condition (323.1, 456.3)", ["Core 323.1", "Core 194.3"], cleanup_step="1")
+        # 2 — Core 323.2
+        combat = working_t.get("combat")
+        if combat is not None and combat["status"] in COMBAT_IN_PROGRESS:
+            synced = sync_combat_designations(working_t, working_e, bound_to(working_t, working_e))
+            if failure := sub(synced, "2"):
+                return failure
+            working_t, working_e = synced["next_timing_state"], synced["next_effect_state"]
+            record["steps"].append({"step": 2, "outcome": "synchronized", "triggers": synced["trace"].get("scheduled_triggers", [])})
+        # 3a / 3b — Core 323.3–323.5
+        lethal = perform_lethal_cleanup(working_e, replacement_event_order=order_map, replacement_choices=choice_map)
+        if lethal.get("committed") is not True:
+            if lethal.get("replacement_decision_required"):
+                return {**base, "valid": True, "committed": False, "cleanup_step": "3a", "replacement_decision_required": True, "reason": lethal.get("reason"),
+                        "replacement_ids": lethal.get("batch_result", {}).get("replacement_ids", []), "event_ids": lethal.get("batch_result", {}).get("event_ids", []), "decision_controller": lethal.get("batch_result", {}).get("decision_controller")}
+            if lethal.get("unsupported"):
+                return _unsupported(base, "lethal_cleanup_unsupported", f"step 3: {lethal.get('reason')}", ["Core 323.4", "Core 323.5"], cleanup_step="3")
+            return _invalid(base, [f"step 3: {lethal.get('reason') or '; '.join(lethal.get('errors', []))}"])
+        working_e = lethal["next_state"]
+        death_triggers = [dict(t) for t in lethal.get("pending_triggers", [])]
+        for trigger in death_triggers:
+            trigger["batch_sequence"] = index * 100 + int(trigger.get("batch_sequence", 0))
+        if failure := _settle_trigger_orders(death_triggers, engine_decisions, base):
+            return failure
+        if death_triggers:
+            scheduled = schedule_triggered_items(working_t, death_triggers)
+            if scheduled.get("applied") is not True:
+                return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "death triggers could not be scheduled", ["Core 323.4"], cleanup_step="3a")
+            working_t = scheduled["next_state"]
+        record["steps"].append({"step": 3, "outcome": "killed" if lethal.get("killed_objects") else "nothing_lethal", "killed": lethal.get("killed_objects", []), "pending_triggers": [t["trigger_id"] for t in death_triggers]})
+        # 4 — Core 323.6
+        board4 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e), steps=("control_loss",), within_cleanup=True)
+        if failure := sub(board4, "4"):
+            return failure
+        working_e = board4["next_effect_state"]
+        record["steps"].append({"step": 4, "outcome": "applied" if board4["trace"]["steps"] else "no_change", "changes": board4["trace"]["steps"]})
+        # 5 — Core 323.7
+        unattached = _unattached_at_battlefields(working_e)
+        if unattached:
+            return _unsupported(base, "gear_rune_recall_cleanup", f"step 5: {unattached} are non-Unit Gear or Runes at a Battlefield; 323.7's Recall is not modelled, so the whole Cleanup fails closed", ["Core 323.7"], cleanup_step="5", objects=unattached)
+        record["steps"].append({"step": 5, "outcome": "nothing_to_recall"})
+        # 6 — Core 323.8
+        staged6 = stage_showdown(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+        if failure := sub(staged6, "6"):
+            return failure
+        working_t = staged6["next_timing_state"]
+        record["steps"].append({"step": 6, "outcome": staged6["trace"]["outcome"], "staged": staged6["trace"]["staged"]})
+        # 7 / 7a — Core 323.9–323.10
+        combat = working_t.get("combat")
+        if combat is not None and combat["status"] in COMBAT_IN_PROGRESS:
+            record["steps"].append({"step": 7, "outcome": "combat_in_progress", "combat_id": combat["combat_id"]})  # 460: no other Combat while one lasts
+        elif working_t.get("phase") == "main":
+            staged7 = stage_combat(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+            if failure := sub(staged7, "7"):
+                return failure
+            working_t = staged7["next_timing_state"]
+            record["steps"].append({"step": 7, "outcome": staged7["trace"]["outcome"], "combat_id": staged7["trace"].get("combat_id")})
+        else:
+            record["steps"].append({"step": 7, "outcome": "not_main_phase"})
+        # 8 / 8a — Core 323.11
+        board8 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e), steps=("contested",), within_cleanup=True)
+        if failure := sub(board8, "8"):
+            return failure
+        working_e = board8["next_effect_state"]
+        record["steps"].append({"step": 8, "outcome": "applied" if board8["trace"]["steps"] else "no_change", "changes": board8["trace"]["steps"]})
+        # 9 — Core 323.12
+        if working_t.get("staged_showdowns") and not working_t["showdown"]["active"] and (working_t.get("combat") is None or working_t["combat"]["status"] in {"staged", "closed"}):
+            opened9 = open_showdown(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+            if opened9.get("committed"):
+                working_t = opened9["next_timing_state"]
+                record["steps"].append({"step": 9, "outcome": "opened", "battlefield": opened9["trace"]["chosen"]})
+            elif opened9.get("reason_code") in {"showdown_no_longer_staged"}:
+                record["steps"].append({"step": 9, "outcome": "no_longer_staged"})
+            elif failure := sub(opened9, "9"):
+                return failure
+        else:
+            record["steps"].append({"step": 9, "outcome": "nothing_staged"})
+        # 10 / 10a — Core 323.13–323.14
+        combat = working_t.get("combat")
+        if combat is not None and combat["status"] == "staged":
+            opened10 = open_combat(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+            if opened10.get("committed"):
+                working_t, working_e = opened10["next_timing_state"], opened10["next_effect_state"]
+                record["steps"].append({"step": 10, "outcome": "opened", "combat_id": combat["combat_id"], "triggers": opened10["trace"].get("scheduled_triggers", [])})
+            elif opened10.get("reason_code") in {"showdown_elsewhere", "combat_no_longer_staged"}:
+                record["steps"].append({"step": 10, "outcome": opened10["reason_code"]})
+            elif failure := sub(opened10, "10"):
+                return failure
+        else:
+            record["steps"].append({"step": 10, "outcome": "nothing_staged"})
+        after = snapshot(working_t, working_e)
+        record["changed"] = after != before
+        if after == before:
+            break  # 322: no event of this iteration calls for another Cleanup
+    else:
+        return _unsupported(base, "cleanup_iterations_exceeded", f"{CLEANUP_ITERATION_BOUND} follow-up Cleanups (322) did not reach a stable state", ["Core 322"])
+    trace = {"task_consumed": consumed, "iterations": iterations, "terminal_written": terminal_written, "pending_items_kept": [i["id"] for i in working_t["chain"]["items"]],
+             "victory_check": victory_check(working_e), "atomic": True}
+    return _commit(base, working_t, working_e, trace=trace, locators=["Core 318", "Core 319", "Core 320", "Core 322", "Core 322.1", "Core 323", "Core 323.1", "Core 323.2", "Core 323.4", "Core 323.5", "Core 323.6", "Core 323.8", "Core 323.9", "Core 323.11", "Core 323.12", "Core 323.13", "Core 323.14"])
+
+
+STEPS = {"begin_turn": begin_turn, "awaken": run_awaken_step, "enter_beginning": enter_beginning_phase, "channel": run_channel_step, "draw": run_draw_step, "enter_main": enter_main_phase, "run_cleanup": run_cleanup}
 
 
 def _load(path: Path) -> dict[str, Any]:

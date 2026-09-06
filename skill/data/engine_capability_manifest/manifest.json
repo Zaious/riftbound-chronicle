@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:37d4d94a3ee9f0254311814c",
-  "capability_set_id": "sha256:37d4d94a3ee9f0254311814c01de702dc3575717c4933bd995013d91e349c8ab",
+  "manifest_id": "capability-manifest:98b23d01ce4ce55a03fd694b",
+  "capability_set_id": "sha256:98b23d01ce4ce55a03fd694bde7c1074fbe57ee8fb2c6628e35ee29d974b4de8",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:4ca8505b3a54726da2fb907218e9fc76c68e7ad201fcd16588f501d2c0c03c8e",
+    "value": "sha256:c968e0e77291e84f34f709391d3f2b576c98de7bc5cde4b0d3bd67ed14dbb6fe",
     "files": [
       {
         "path": "rules_core.py",
@@ -20,15 +20,15 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:228a3e53a71d4ca287de8b2aab92e73d54c2cb9b0117c00aa980d4fad8735ddd"
+        "sha256": "sha256:921e6d89e25e00cbf17999dd3977e056494ef33fe83f671f428fbb48b87b44af"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:10ee5c42a884bc855215898569a8a02768c7aea554eb1ecbb3ef22c52c773bbf"
+        "sha256": "sha256:4c2500e3e9fe50f520b0323823569e395cd9caacd69bb7bfd3a2a093d746e82a"
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:53732b8b5f624a21f15b648fb3e9a6f2ffd4e88e2d8901d349171690a00983cb"
+        "sha256": "sha256:2a0dc189251aaf721c61e8bb1c5e56457fff0f556b94ac569ceafa2089fdb1be"
       },
       {
         "path": "terminal.py",
@@ -36,7 +36,7 @@
       },
       {
         "path": "turn_cycle.py",
-        "sha256": "sha256:d166539e43aadf293e8adf45093448986d2ab55e695c3b1cd2a2de1de370e2a6"
+        "sha256": "sha256:faaf1242fa8e8b9103bddd751391b01f2c16713ddaa9befc26a9105c004215cf"
       }
     ]
   },
@@ -286,7 +286,9 @@
         "draw_step",
         "main_phase_entry",
         "burn_out_draw",
-        "terminal_event_bridge"
+        "terminal_event_bridge",
+        "cleanup_orchestration",
+        "cleanup_iterations"
       ],
       "unsupported_scope": [
         "setup_procedure",
@@ -294,6 +296,7 @@
         "team_scoring",
         "ready_blockers",
         "opponent_phase_watchers",
+        "gear_rune_recall_cleanup",
         "continuous_dependency",
         "multi_player_concession",
         "facedown_reveal_at_game_end",
@@ -679,6 +682,19 @@
         "Core 430.2.a",
         "Core 430.3",
         "Core 430.4.a"
+      ]
+    },
+    {
+      "id": "cleanup_iterations",
+      "rule_locators": [
+        "Core 322–322.1"
+      ]
+    },
+    {
+      "id": "cleanup_orchestration",
+      "rule_locators": [
+        "Core 318–320",
+        "Core 323–323.14"
       ]
     },
     {
@@ -1113,9 +1129,11 @@
     "Core 317.2.c",
     "Core 317.2–317.2.d",
     "Core 317.3",
+    "Core 318–320",
     "Core 319.2",
     "Core 319.8",
     "Core 320–321",
+    "Core 322–322.1",
     "Core 323.1",
     "Core 323.11–323.11.a",
     "Core 323.12",
@@ -1126,6 +1144,7 @@
     "Core 323.6",
     "Core 323.8–323.8.a",
     "Core 323.9",
+    "Core 323–323.14",
     "Core 324.2",
     "Core 328–330",
     "Core 333–340",

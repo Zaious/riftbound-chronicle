@@ -299,20 +299,22 @@ def showdown_candidates(timing_state: dict[str, Any], effect_state: dict[str, An
     return candidates, considered
 
 
-def _cleanup_boundary(timing_state: dict[str, Any]) -> str | None:
-    if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
+def _cleanup_boundary(timing_state: dict[str, Any], within_cleanup: bool = False) -> str | None:
+    # ADR-0010 §5 / Core 320: inside run_cleanup Pending chain items stay and
+    # the Cleanup task itself is being handled.
+    if not within_cleanup and (timing_state["chain"]["items"] or timing_state["outstanding_tasks"]):
         return "requires_quiet_cleanup_boundary"
     return None
 
 
-def stage_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+def stage_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
     """Core 323.8: at a quiet Cleanup boundary, rebuild the set of staged
     Non-Combat Showdowns from the board. Zero candidates is a supported no-op
     that also drops stale entries (323.8.a)."""
     base = _base("stage_showdown", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
-    if code := _cleanup_boundary(timing_state):
+    if code := _cleanup_boundary(timing_state, within_cleanup):
         return _refuse(base, code, "Showdowns are staged during a Cleanup with nothing on the chain and no outstanding task (323.8)", ["Core 318", "Core 323.8"])
     candidates, considered = showdown_candidates(timing_state, effect_state)
     next_timing = copy.deepcopy(timing_state)
@@ -322,7 +324,7 @@ def stage_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 316.8.b", "Core 323.8", "Core 323.8.a", "Core 344.2"])
 
 
-def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
     """Core 323.12, 345: in a Neutral Open State with staged Non-Combat
     Showdowns and no Combat staged, the Turn Player chooses one (several need
     a location_selection `showdown_location`); it opens as a non_combat
@@ -330,7 +332,7 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
     base = _base("open_showdown", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
-    if code := _cleanup_boundary(timing_state):
+    if code := _cleanup_boundary(timing_state, within_cleanup):
         return _refuse(base, code, "a Showdown opens during a Cleanup with nothing on the chain and no outstanding task (323.12)", ["Core 318", "Core 323.12"])
     if timing_state["showdown"]["active"]:
         return _refuse(base, "not_neutral_open_state", "323.12 opens a Showdown only from a Neutral Open State; one is already ongoing", ["Core 323.12", "Core 344"])
@@ -370,7 +372,7 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
 
 # ----------------------------------------------------------- board Cleanup --
 
-def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, steps: tuple[str, ...] = ("control_loss", "contested"), within_cleanup: bool = False) -> dict[str, Any]:
     """Core 323.6, 323.11, 323.11.a in an Open State: per Battlefield with no
     ongoing Showdown or Combat, a controller with no Units there loses control
     (step 4), Contested goes where its applier has no Units (step 8), and a
@@ -380,24 +382,28 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
     base = _base("run_board_cleanup", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
-    if code := _cleanup_boundary(timing_state):
+    if code := _cleanup_boundary(timing_state, within_cleanup):
         return _refuse(base, code, "the board Cleanup runs in an Open State with no outstanding task (323.6, 323.11)", ["Core 318", "Core 323.6", "Core 323.11"])
+    if set(steps) - {"control_loss", "contested"} or not steps:
+        return _invalid(base, ["steps must be a non-empty subset of control_loss, contested"])
     next_effect = copy.deepcopy(effect_state)
-    steps: list[dict[str, Any]] = []
+    done_steps: list[dict[str, Any]] = []
     exempt: list[dict[str, Any]] = []
     removed: list[str] = []
     for battlefield_id in sorted(next_effect["battlefields"]):
         if (ongoing := _ongoing_at(timing_state, battlefield_id)) is not None:
             exempt.append({"battlefield": battlefield_id, "ongoing": ongoing})
             continue
+        if "control_loss" not in steps:
+            continue
         battlefield = next_effect["battlefields"][battlefield_id]
         present = units_at(next_effect, battlefield_id)
         controller = battlefield.get("controller")
         if controller is not None and controller not in present:
             battlefield["controller"] = None
-            steps.append({"step": "control_lost", "battlefield": battlefield_id, "player": controller, "rule_locators": ["Core 323.6", "Core 190.4.c"]})
+            done_steps.append({"step": "control_lost", "battlefield": battlefield_id, "player": controller, "rule_locators": ["Core 323.6", "Core 190.4.c"]})
     for battlefield_id in sorted(next_effect["battlefields"]):
-        if _ongoing_at(timing_state, battlefield_id) is not None:
+        if _ongoing_at(timing_state, battlefield_id) is not None or "contested" not in steps:
             continue
         battlefield = next_effect["battlefields"][battlefield_id]
         present = units_at(next_effect, battlefield_id)
@@ -406,15 +412,15 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
             battlefield["contested"] = False
             battlefield["contested_by"] = None
             removed.append(battlefield_id)
-            steps.append({"step": "contested_removed", "battlefield": battlefield_id, "applier": applier, "rule_locators": ["Core 323.11"]})
+            done_steps.append({"step": "contested_removed", "battlefield": battlefield_id, "applier": applier, "rule_locators": ["Core 323.11"]})
             others = sorted(p for p in present if p != battlefield.get("controller"))
             if len(others) > 1:
                 return _unsupported(base, "contested_reapplication_ambiguous", f"Units of {others}, none of whom controls {battlefield_id}, are there after Contested was removed; 323.11.a names one applier and the engine does not choose", ["Core 323.11.a"], battlefield=battlefield_id)
             if others:
                 battlefield["contested"] = True
                 battlefield["contested_by"] = others[0]
-                steps.append({"step": "contested_reapplied", "battlefield": battlefield_id, "applier": others[0], "rule_locators": ["Core 323.11.a"]})
-    trace = {"steps": steps, "exempt": exempt, "contested_removed": removed, "victory_check": victory_check(next_effect), "gear_rune_recall": "not_modelled (323.7)"}
+                done_steps.append({"step": "contested_reapplied", "battlefield": battlefield_id, "applier": others[0], "rule_locators": ["Core 323.11.a"]})
+    trace = {"steps": done_steps, "requested_steps": list(steps), "exempt": exempt, "contested_removed": removed, "victory_check": victory_check(next_effect), "gear_rune_recall": "not_modelled (323.7)"}
     return _commit(base, copy.deepcopy(timing_state), next_effect, trace=trace, locators=["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.11", "Core 323.11.a"])
 
 

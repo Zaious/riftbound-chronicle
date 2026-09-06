@@ -134,6 +134,27 @@ def main() -> int:
     if apply_program(three, draw("p1", 3), decisions=envelope(three, receipts=[receipt(op, "p1", ["c3"])], decisions=[{**pick, "controller": "p2"}])).get("reason_code") != "decision_controller_mismatch":
         errors.append("an opponent chose the beneficiary")
 
+    # --- two opponents fed in turn: the bound admits the whole legal sequence (Codex review-fix) --------------------------
+    duel3 = copy.deepcopy(state)
+    duel3["players"]["p3"] = copy.deepcopy(duel3["players"]["p2"]); duel3["players"]["p3"]["zones"] = {z: [] for z in duel3["players"]["p3"]["zones"]}
+    for card in ("c1", "c2", "c3"):
+        del duel3["objects"][card]
+    duel3["players"]["p1"]["zones"]["main_deck"] = []; duel3["players"]["p1"]["zones"]["trash"] = []
+    duel3["mode"] = {"victory_score": 8}
+
+    def alternating(n):
+        return [{"decision_id": f"burn_out:p1:turn-0:beneficiary:{k}", "stage": "resolution", "kind": "player_selection", "controller": "p1", "value": "p2" if k % 2 else "p3"} for k in range(1, n + 1)]
+    short = apply_program(duel3, draw("p1", 1), decisions=envelope(duel3, decisions=alternating(8)))
+    if short.get("committed") or short.get("reason_code") != "player_selection_required" or short.get("decision_ids") != ["burn_out:p1:turn-0:beneficiary:9"]:
+        errors.append(f"eight alternating beneficiaries were refused instead of asking for the ninth: {short.get('reason_code')} {short.get('errors')}")
+    long = apply_program(duel3, draw("p1", 1), decisions=envelope(duel3, decisions=alternating(16)))
+    if not long.get("committed"):
+        errors.append(f"the alternating sequence was refused before its immediate victory: {long.get('reason_code')} {long.get('reason') or long.get('errors')}")
+    else:
+        ev = long["trace"][0]; pts = {p: long["next_state"]["players"][p].get("points", 0) for p in ("p1", "p2", "p3")}
+        if len(ev["burn_outs"]) != 15 or pts != {"p1": 0, "p2": 8, "p3": 7} or long.get("terminal_event", {}).get("winner") != "p2" or ev.get("loop_bound") != 17:
+            errors.append(f"the fifteenth Burn Out did not end the game for p2 at 8 over p3 at 7 within a bound of 17: {len(ev['burn_outs'])} {pts} {long.get('terminal_event')} {ev.get('loop_bound')}")
+
     # --- the empty-Trash sequence and the immediate victory --------------------------------------------------------
     empty = copy.deepcopy(state)
     for card in ("c1", "c2", "c3"):
@@ -149,7 +170,7 @@ def main() -> int:
             errors.append(f"the sequence did not win on the second Burn Out with the draw skipped: {ev.get('burn_outs')} {ev.get('completion')}")
         if not term or term.get("reason") != "burn_out_victory" or term.get("winner") != "p2" or term.get("immediate") is not True:
             errors.append(f"no immediate burn_out_victory event: {term}")
-        if looped["trace"][1].get("outcome") != "skipped_after_terminal" or ev.get("loop_bound") != 2:
+        if looped["trace"][1].get("outcome") != "skipped_after_terminal" or ev.get("loop_bound") != 3:  # (target 3 - p2's 1) + 1
             errors.append(f"the program's later effect ran after the terminal, or the bound is wrong: {looped['trace'][1].get('outcome')} {ev.get('loop_bound')}")
     no_mode = copy.deepcopy(empty); del no_mode["mode"]
     unsupported = apply_program(no_mode, draw("p1", 1))

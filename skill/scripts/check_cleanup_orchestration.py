@@ -134,6 +134,18 @@ def main() -> int:
     if not chosen.get("committed") or chosen["next_timing_state"].get("combat", {}).get("status") != "open" or chosen["next_timing_state"]["combat"]["battlefield"] != "bf1" or chosen["next_timing_state"]["showdown"].get("kind") != "combat":
         errors.append(f"with the choice the Combat did not open at step 10: {chosen.get('reason_code')} {chosen.get('reason') or chosen.get('errors')} {chosen.get('next_timing_state', {}).get('combat', {}).get('status')}")
 
+    # --- decisions are rebound to the working state, traced, and revalidated there (Codex review-fix) ----------------------
+    if not chosen.get("committed"):
+        pass
+    else:
+        rebinding = chosen["trace"].get("decision_rebinding", [])
+        used = [r for r in rebinding if r.get("step") == "7"]
+        if not used or used[0].get("derived_from_input_hash") != decision["input_hash"] or used[0].get("rebound_input_hash") == decision["input_hash"] or used[0].get("iteration") != 0 or "combat_location" not in used[0].get("decision_ids", []):
+            errors.append(f"the rebinding of the location decision was not traced with its origin, iteration and step: {used}")
+    stale_choice = decide(t, two, "bf9")
+    if run_cleanup(t, two, stale_choice).get("valid") is not False:
+        errors.append("a location that is not staged in the working state was accepted through the rebound envelope")
+
     # --- 323.7 fails the whole run closed -------------------------------------------------------------------------------
     geared = copy.deepcopy(scene)
     add_unit(geared, "g1", "p1", "bf1", might=0, kind="gear")

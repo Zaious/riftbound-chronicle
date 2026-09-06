@@ -1166,16 +1166,16 @@ def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[
 
 
 def _burn_out_bound(state: dict[str, Any], player_id: str, victory_score: int) -> int:
-    """ADR-0010 §2: a provable bound on repeated Burn Outs with an empty Trash —
-    the points that lift the beneficiary to the Victory Score and past every
-    other score. Exceeding it without an immediate winner is a contradiction."""
+    """ADR-0010 §2 (Codex review-fix): a provable bound on repeated Burn Outs
+    with an empty Trash. The Burning Out player may hand the points to any
+    opponent in any order, so the worst legal sequence lifts every opponent
+    to the target — the Victory Score or the current top score, whichever is
+    higher — before one of them takes a strict lead: the sum of every
+    opponent's gap plus one. Exceeding it without an immediate winner is a
+    contradiction."""
     points = {p: int(pl.get("points", 0)) for p, pl in state["players"].items()}
-    bound = 0
-    for opponent in points:
-        if opponent == player_id:
-            continue
-        others = max(v for p, v in points.items() if p != opponent)
-        bound = max(bound, max(victory_score, others + 1) - points[opponent])
+    target = max(victory_score, max(points.values()))
+    bound = sum(max(0, target - v) for p, v in points.items() if p != player_id) + 1
     return max(bound, 1)
 
 

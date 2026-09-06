@@ -408,12 +408,20 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     iterations: list[dict[str, Any]] = []
     terminal_written = False
 
-    def bound_to(t: dict[str, Any], e: dict[str, Any]) -> dict[str, Any] | None:
-        """The envelope was bound to this run's input (checked above); each
-        sub-procedure verifies it against its own working input."""
+    rebinding: list[dict[str, Any]] = []
+
+    def bound_to(t: dict[str, Any], e: dict[str, Any], iteration: int = 0, step: str = "") -> dict[str, Any] | None:
+        """The envelope was bound to this run's input (checked above). Each
+        sub-procedure receives it rebound to the working state it acts on and
+        revalidates every decision against that state's own candidate set
+        (a location not staged now is refused there); the rebinding is
+        traced (Codex review-fix on ADR-0010 §5)."""
         if engine_decisions is None:
             return None
-        return {**engine_decisions, "input_hash": combined_input_hash(t, e)}
+        rebound = combined_input_hash(t, e)
+        rebinding.append({"iteration": iteration, "step": step, "derived_from_input_hash": engine_decisions["input_hash"], "rebound_input_hash": rebound,
+                          "decision_ids": [d.get("decision_id") for d in engine_decisions.get("decisions", [])], "revalidated_against": "working_state_candidates"})
+        return {**engine_decisions, "input_hash": rebound}
 
     def snapshot(t: dict[str, Any], e: dict[str, Any]) -> tuple[str, str]:
         """What 322 compares: the states without bookkeeping that changes on
@@ -454,7 +462,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         # 2 — Core 323.2
         combat = working_t.get("combat")
         if combat is not None and combat["status"] in COMBAT_IN_PROGRESS:
-            synced = sync_combat_designations(working_t, working_e, bound_to(working_t, working_e))
+            synced = sync_combat_designations(working_t, working_e, bound_to(working_t, working_e, index, "2"))
             if failure := sub(synced, "2"):
                 return failure
             working_t, working_e = synced["next_timing_state"], synced["next_effect_state"]
@@ -481,7 +489,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             working_t = scheduled["next_state"]
         record["steps"].append({"step": 3, "outcome": "killed" if lethal.get("killed_objects") else "nothing_lethal", "killed": lethal.get("killed_objects", []), "pending_triggers": [t["trigger_id"] for t in death_triggers]})
         # 4 — Core 323.6
-        board4 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e), steps=("control_loss",), within_cleanup=True)
+        board4 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e, index, "4"), steps=("control_loss",), within_cleanup=True)
         if failure := sub(board4, "4"):
             return failure
         working_e = board4["next_effect_state"]
@@ -492,7 +500,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             return _unsupported(base, "gear_rune_recall_cleanup", f"step 5: {unattached} are non-Unit Gear or Runes at a Battlefield; 323.7's Recall is not modelled, so the whole Cleanup fails closed", ["Core 323.7"], cleanup_step="5", objects=unattached)
         record["steps"].append({"step": 5, "outcome": "nothing_to_recall"})
         # 6 — Core 323.8
-        staged6 = stage_showdown(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+        staged6 = stage_showdown(working_t, working_e, bound_to(working_t, working_e, index, "6"), within_cleanup=True)
         if failure := sub(staged6, "6"):
             return failure
         working_t = staged6["next_timing_state"]
@@ -502,7 +510,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         if combat is not None and combat["status"] in COMBAT_IN_PROGRESS:
             record["steps"].append({"step": 7, "outcome": "combat_in_progress", "combat_id": combat["combat_id"]})  # 460: no other Combat while one lasts
         elif working_t.get("phase") == "main":
-            staged7 = stage_combat(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+            staged7 = stage_combat(working_t, working_e, bound_to(working_t, working_e, index, "7"), within_cleanup=True)
             if failure := sub(staged7, "7"):
                 return failure
             working_t = staged7["next_timing_state"]
@@ -510,14 +518,14 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         else:
             record["steps"].append({"step": 7, "outcome": "not_main_phase"})
         # 8 / 8a — Core 323.11
-        board8 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e), steps=("contested",), within_cleanup=True)
+        board8 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e, index, "8"), steps=("contested",), within_cleanup=True)
         if failure := sub(board8, "8"):
             return failure
         working_e = board8["next_effect_state"]
         record["steps"].append({"step": 8, "outcome": "applied" if board8["trace"]["steps"] else "no_change", "changes": board8["trace"]["steps"]})
         # 9 — Core 323.12
         if working_t.get("staged_showdowns") and not working_t["showdown"]["active"] and (working_t.get("combat") is None or working_t["combat"]["status"] in {"staged", "closed"}):
-            opened9 = open_showdown(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+            opened9 = open_showdown(working_t, working_e, bound_to(working_t, working_e, index, "9"), within_cleanup=True)
             if opened9.get("committed"):
                 working_t = opened9["next_timing_state"]
                 record["steps"].append({"step": 9, "outcome": "opened", "battlefield": opened9["trace"]["chosen"]})
@@ -530,7 +538,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         # 10 / 10a — Core 323.13–323.14
         combat = working_t.get("combat")
         if combat is not None and combat["status"] == "staged":
-            opened10 = open_combat(working_t, working_e, bound_to(working_t, working_e), within_cleanup=True)
+            opened10 = open_combat(working_t, working_e, bound_to(working_t, working_e, index, "10"), within_cleanup=True)
             if opened10.get("committed"):
                 working_t, working_e = opened10["next_timing_state"], opened10["next_effect_state"]
                 record["steps"].append({"step": 10, "outcome": "opened", "combat_id": combat["combat_id"], "triggers": opened10["trace"].get("scheduled_triggers", [])})
@@ -547,7 +555,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     else:
         return _unsupported(base, "cleanup_iterations_exceeded", f"{CLEANUP_ITERATION_BOUND} follow-up Cleanups (322) did not reach a stable state", ["Core 322"])
     trace = {"task_consumed": consumed, "iterations": iterations, "terminal_written": terminal_written, "pending_items_kept": [i["id"] for i in working_t["chain"]["items"]],
-             "victory_check": victory_check(working_e), "atomic": True}
+             "decision_rebinding": rebinding, "victory_check": victory_check(working_e), "atomic": True}
     return _commit(base, working_t, working_e, trace=trace, locators=["Core 318", "Core 319", "Core 320", "Core 322", "Core 322.1", "Core 323", "Core 323.1", "Core 323.2", "Core 323.4", "Core 323.5", "Core 323.6", "Core 323.8", "Core 323.9", "Core 323.11", "Core 323.12", "Core 323.13", "Core 323.14"])
 
 

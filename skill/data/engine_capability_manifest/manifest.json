@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:7e38694a1b92be9aa8888fc8",
-  "capability_set_id": "sha256:7e38694a1b92be9aa8888fc851474da289d1dfe59a847cee60228141a6fec7d1",
+  "manifest_id": "capability-manifest:819dd355b6bef89912d9c424",
+  "capability_set_id": "sha256:819dd355b6bef89912d9c424872ba157027924265b2179fabeb33f6ffd67fdf9",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:143afa4abb292bf6348ec049255aa399550ffbac4cc438690b20e71ebe5303bf",
+    "value": "sha256:ac5545fbf50f5688e681661911fc3168bf9e26cbb6082b6a0a1eea6a589792c0",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:63d5f2fbfa52c1ef9ea68fae98f6b22a7a630e2732feb6a0ad067f53fce01fac"
+        "sha256": "sha256:5d8dde0de1da4e5962611fad14aa0d5473c28ee96339e45399395ac3a2f6e60c"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:811d72423d2338492eb626d5497ebf906959d3f456371b2f415c22c81b3ddb7f"
+        "sha256": "sha256:6c2517012f0e9daf49771372382ebc9db8ce08152db8408519e3e34617b3ab57"
       },
       {
         "path": "combat.py",
@@ -37,6 +37,10 @@
       {
         "path": "turn_cycle.py",
         "sha256": "sha256:5af51cbe832be98a1558f2a2f82344dcb58c4a27415b1516f2ecf31e27a8c65a"
+      },
+      {
+        "path": "hidden.py",
+        "sha256": "sha256:386df62430247d3c6d487d7cec03cf0a47c0cc31f64c524cf5ba7558c96fde63"
       }
     ]
   },
@@ -176,6 +180,25 @@
       ]
     },
     {
+      "check_kind": "hide_step",
+      "name": "hidden",
+      "version": "riftbound-hide-result.v1",
+      "coverage_id": "hide_step_v1",
+      "supported_scope": [
+        "facedown_zone",
+        "hide_action",
+        "hide_cost_receipt",
+        "facedown_privacy"
+      ],
+      "unsupported_scope": [
+        "hidden_removal_on_control_change",
+        "facedown_reveal_at_game_end",
+        "facedown_capacity_effects",
+        "complete_game",
+        "complete_legality"
+      ]
+    },
+    {
       "check_kind": "legal_action",
       "name": "legal_action_service",
       "version": "legal-action-result.v1",
@@ -220,7 +243,8 @@
         "typed_cost_modification_input",
         "play_sources",
         "cost_override",
-        "ambush"
+        "ambush",
+        "play_from_hidden"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
@@ -231,6 +255,7 @@
         "legend_activation",
         "battlefield_control_transfer",
         "deck_construction",
+        "hidden_legality_enumeration",
         "complete_game",
         "complete_legality"
       ]
@@ -1493,10 +1518,13 @@
     "effect_prerequisites",
     "end_of_combat_effects",
     "engine_enumeration",
+    "facedown_capacity_effects",
     "facedown_reveal_at_game_end",
     "full_cleanup",
     "gear_rune_recall_cleanup",
     "hidden_cards",
+    "hidden_legality_enumeration",
+    "hidden_removal_on_control_change",
     "invalid_destination_catalog",
     "legend_activation",
     "match_mode",

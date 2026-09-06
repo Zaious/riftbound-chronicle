@@ -415,12 +415,14 @@
           "enum": [
             "hand",
             "champion_zone",
-            "trash"
+            "trash",
+            "facedown"
           ]
         },
         "battlefield": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "facedown: the Battlefield the card was hidden at (Core 811.1)."
         }
       }
     },
@@ -463,8 +465,18 @@
       }
     },
     "timing_source": {
-      "const": "ambush",
-      "description": "ADR-0012 §2: the declared Reaction timing comes from Ambush (Core 822.1); the engine verifies the Battlefield holds a friendly Unit."
+      "enum": [
+        "ambush",
+        "hidden"
+      ],
+      "description": "Where the declared Reaction timing comes from (Core 822.1, 811.1)."
+    },
+    "hidden_targeting": {
+      "enum": [
+        "restricted",
+        "free_by_restriction"
+      ],
+      "description": "ADR-0012 §3 / Core 811.4: whether this clause's choices are restricted to the Battlefield the card was hidden at, or freed because its own restriction makes that impossible. Default restricted."
     }
   },
   "$defs": {

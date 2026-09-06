@@ -376,6 +376,40 @@ def validate_state(state: Any) -> list[str]:
                         or not isinstance(trigger["trigger_id"], str) or not trigger["trigger_id"] or not isinstance(trigger["controller_order"], int) or trigger["controller_order"] < 0
                         or not isinstance(trigger["effect_program_id"], str) or not trigger["effect_program_id"] or not isinstance(trigger["optional_at_finalize"], bool)):
                     errors.append(f"battlefields.{battlefield_id}.{trigger_field}[{trigger_index}] must carry trigger_id, controller_order, effect_program_id, optional_at_finalize (the controller is the Battlefield's, 190.6.a)")
+        # ADR-0012 §3 / Core 107.3.b: every Battlefield has one Facedown Zone
+        # with a capacity. The zone is public; the cards in it are private to
+        # the player who hid them (108.2.b, 128.4).
+        facedown = battlefield.get("facedown")
+        if facedown is not None:
+            if not isinstance(facedown, dict) or set(facedown) - {"capacity", "cards"}:
+                errors.append(f"battlefields.{battlefield_id}.facedown must be {{capacity?, cards}}")
+            else:
+                capacity = facedown.get("capacity", 1)
+                cards = facedown.get("cards", [])
+                if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 0:
+                    errors.append(f"battlefields.{battlefield_id}.facedown.capacity must be a non-negative integer")
+                if not isinstance(cards, list):
+                    errors.append(f"battlefields.{battlefield_id}.facedown.cards must be an array")
+                    cards = []
+                elif isinstance(capacity, int) and not isinstance(capacity, bool) and len(cards) > capacity:
+                    errors.append(f"battlefields.{battlefield_id}.facedown holds {len(cards)} cards over its capacity {capacity} (Core 107.3.f)")
+                seen_facedown: set[str] = set()
+                for f_index, entry in enumerate(cards):
+                    label = f"battlefields.{battlefield_id}.facedown.cards[{f_index}]"
+                    if not isinstance(entry, dict) or set(entry) != {"object_id", "controller", "hidden_on_turn"}:
+                        errors.append(f"{label} must carry object_id, controller, hidden_on_turn")
+                        continue
+                    if entry["object_id"] not in objects:
+                        errors.append(f"{label} names an unknown object")
+                    else:
+                        occupancy[entry["object_id"]].append(f"facedown:{battlefield_id}")
+                    if entry["object_id"] in seen_facedown:
+                        errors.append(f"{label}.object_id is duplicated")
+                    seen_facedown.add(entry["object_id"])
+                    if entry["controller"] not in players:
+                        errors.append(f"{label}.controller is not a player")
+                    if not isinstance(entry["hidden_on_turn"], str) or not entry["hidden_on_turn"]:
+                        errors.append(f"{label}.hidden_on_turn must be a non-empty turn id")
         ids = battlefield["objects"]
         if len(ids) != len(set(ids)):
             errors.append(f"battlefields.{battlefield_id}.objects contains duplicates")
@@ -629,6 +663,8 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         # ADR-0012 §1 / Core 825.3: Unique is a deck-construction constraint,
         # not a play restriction; the engine only records the characteristic.
+        if not isinstance(obj.get("hidden", False), bool):
+            errors.append(f"objects.{object_id}.hidden must be boolean when supplied (Core 811)")
         if not isinstance(obj.get("unique", False), bool):
             errors.append(f"objects.{object_id}.unique must be boolean when supplied (Core 825.3: a deck constraint, not a play restriction)")
         identity = obj.get("identity")
@@ -1208,6 +1244,10 @@ def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str 
     for battlefield_id, battlefield in state["battlefields"].items():
         if object_id in battlefield["objects"]:
             return ("battlefield", battlefield_id, None)
+        for entry in (battlefield.get("facedown") or {}).get("cards", []):
+            if entry["object_id"] == object_id:
+                # ADR-0012 §3: a sub-zone of the Battlefield, not the Board.
+                return ("facedown", battlefield_id, entry["controller"])
     for item_id, entry in (state.get("chain_items") or {}).items():
         if entry.get("card") == object_id:
             return ("chain", item_id, None)
@@ -1300,6 +1340,9 @@ def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
         state["players"][location[1]]["zones"][location[2]].remove(object_id)
     elif location[0] == "chain":
         del state["chain_items"][location[1]]
+    elif location[0] == "facedown":
+        zone = state["battlefields"][location[1]]["facedown"]
+        zone["cards"] = [c for c in zone["cards"] if c["object_id"] != object_id]
     else:
         state["battlefields"][location[1]]["objects"].remove(object_id)
 

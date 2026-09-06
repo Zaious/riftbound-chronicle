@@ -180,7 +180,7 @@ def main() -> int:
     if not {"play_sources", "cost_override", "ambush"} <= set(scope["supported"]) or "deck_construction" not in scope["unsupported"]:
         errors.append("the play scope does not declare the C-44 capabilities and its deck-construction boundary")
     schema = json.loads((SKILL_DIR / "schemas" / "play-declaration.schema.json").read_text(encoding="utf-8"))
-    if set(schema["properties"]["source"]["properties"]["kind"]["enum"]) != {"hand", "champion_zone", "trash"} or "cost_override" not in schema["properties"]:
+    if not {"hand", "champion_zone", "trash"} <= set(schema["properties"]["source"]["properties"]["kind"]["enum"]) or "cost_override" not in schema["properties"]:
         errors.append("the play-declaration schema does not carry the sources and the override")
     state_schema = json.loads((SKILL_DIR / "schemas" / "effect-state.schema.json").read_text(encoding="utf-8"))
     if "champion_zone" not in state_schema["$defs"]["zones"]["properties"] or "unique" not in state_schema["$defs"]["object"]["properties"]:

@@ -67,8 +67,11 @@ SELF_COSTS = {"kill_this", "recall_self", "banish_self"}
 # ADR-0012 §1: where a card is played from. The hand is the default; the
 # Champion Zone plays as normal (108.3.e); a trash source needs a granted
 # permission. Facedown arrives with C-45.
-PLAY_SOURCES = {"hand", "champion_zone", "trash"}
+PLAY_SOURCES = {"hand", "champion_zone", "trash", "facedown"}
 PERMISSION_REQUIRED_SOURCES = {"trash"}
+# ADR-0012 §3: playing a hidden card needs no separate permission — the
+# Hidden keyword itself grants it from the next turn (811.1).
+HIDDEN_TARGETING = {"restricted", "free_by_restriction"}
 # ADR-0011 §4: costs paid by the payer's card choice at play stage.
 CHOICE_COSTS = {"discard", "recycle_trash"}
 # Costs whose sources live in P4 (XP, Buff, Empower): typed, refused by name.
@@ -107,7 +110,7 @@ def validate_declaration(value: Any) -> list[str]:
         errors.append(f"schema_version must be {DECLARATION_VERSION}")
     if value.get("ruleset") != {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}:
         errors.append("ruleset must match the engine ruleset")
-    if set(value) - {"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id", "chain_item", "cost", "payment_context", "entry_location", "activation", "activation_conditions", "source", "source_permission", "cost_override", "timing_source"}:
+    if set(value) - {"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id", "chain_item", "cost", "payment_context", "entry_location", "activation", "activation_conditions", "source", "source_permission", "cost_override", "timing_source", "hidden_targeting"}:
         errors.append("declaration contains unsupported fields")
     source = value.get("source")
     if source is not None:
@@ -124,8 +127,12 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append("cost_override.for_cost needs a resource cost")
         elif override["kind"] == "ignore_base_cost" and "cost" in override:
             errors.append("cost_override.ignore_base_cost carries no cost")
-    if "timing_source" in value and value["timing_source"] != "ambush":
-        errors.append("timing_source may only name ambush (Core 822.1)")
+    if "timing_source" in value and value["timing_source"] not in {"ambush", "hidden"}:
+        errors.append("timing_source may only name ambush (Core 822.1) or hidden (Core 811.1)")
+    if isinstance(source, dict) and source.get("kind") == "facedown" and (not isinstance(source.get("battlefield"), str) or not source["battlefield"]):
+        errors.append("a facedown source names the battlefield the card was hidden at (Core 811.1)")
+    if "hidden_targeting" in value and value["hidden_targeting"] not in HIDDEN_TARGETING:
+        errors.append(f"hidden_targeting must be one of {sorted(HIDDEN_TARGETING)} (Core 811.4)")
     activation = value.get("activation")
     item_kind_early = (value.get("chain_item") or {}).get("object_kind") if isinstance(value.get("chain_item"), dict) else None
     if item_kind_early == "ability":
@@ -146,7 +153,8 @@ def validate_declaration(value: Any) -> list[str]:
     item_kind = (value.get("chain_item") or {}).get("object_kind") if isinstance(value.get("chain_item"), dict) else None
     if item_kind == "unit" and location is None:
         errors.append("a Unit's entry_location is chosen while playing (Core 355.2) and must be declared")
-    if item_kind == "gear" and location is not None and location.get("kind") != "base":
+    hidden_source = isinstance(value.get("source"), dict) and value["source"].get("kind") == "facedown"
+    if item_kind == "gear" and location is not None and location.get("kind") != "base" and not hidden_source:
         errors.append("a Non-Unit Gear enters the controller's Base (Core 359.2.d); entry_location may only be base")
     if item_kind in {"spell", "ability"} and location is not None:
         errors.append(f"a {item_kind} has no entry_location")
@@ -521,7 +529,7 @@ def _pay_resource(resources: dict[str, Any], kind: str, amount: int, use: str, d
     return events
 
 
-def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[str, Any], decisions: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[str, Any], decisions: dict[str, Any] | None = None, *, use: str | None = None) -> list[dict[str, Any]]:
     """Core 357: Energy and Power in total (357.1), then non-standard costs in
     declared order (357.2). Payment events are unique; components reference
     them with exact allocations. Mutates `working`; the caller discards it on
@@ -531,7 +539,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
     resources = working["players"][actor]["resources"]
     total = skeleton["total"]
     ctx = declaration.get("payment_context") or {}
-    use = _play_use(declaration, working)
+    use = use or _play_use(declaration, working)
     any_amount = total.get("power_any", 0)
     restricted_energy = sum(r["amount"] for r in _restricted_entries(resources, use, "energy"))
     inapplicable = [r for r in resources.get("restricted", []) if use not in r["uses"]]
@@ -856,7 +864,21 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             zone_of = find_location(effect_state, card)
             if source_kind == "hand" and zone_of != ("player", actor, "hand"):
                 raise PlayError("choices", "card_not_in_hand", f"{card!r} is not in {actor}'s hand", rule_locators=["Core 354"])
-            if source_kind != "hand":
+            if source_kind == "facedown":
+                # ADR-0012 §3 / Core 811: playable from the turn after it was
+                # hidden, at the Battlefield it was hidden at, ignoring its base
+                # cost — the declaration states the override, this checks the
+                # facts the state carries.
+                from hidden import hidden_card
+                battlefield_id = declaration["source"]["battlefield"]
+                if battlefield_id not in effect_state["battlefields"]:
+                    raise PlayError("declaration", "unknown_battlefield", f"the facedown source names battlefield {battlefield_id!r}, which is not in the state", invalid=True)
+                entry_facedown = hidden_card(effect_state, battlefield_id, card)
+                if entry_facedown is None or zone_of != ("facedown", battlefield_id, actor):
+                    raise PlayError("choices", "card_not_in_source", f"{card!r} is not hidden at {battlefield_id!r} for {actor}", rule_locators=["Core 811.1"])
+                if entry_facedown["hidden_on_turn"] == effect_state.get("turn_id", "turn-0"):
+                    raise PlayError("choices", "hidden_same_turn", f"{card!r} was hidden this turn; a hidden card may be played beginning on the next turn (811.1)", rule_locators=["Core 811.1"])
+            elif source_kind != "hand":
                 # ADR-0012 §1: the declared source must hold the card, and a
                 # source other than the ordinary ones needs a granted permission.
                 if zone_of != ("player", actor, source_kind):
@@ -872,6 +894,12 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # existing one the rules refuse is illegal (ADR-0007 §1, §3).
         location = declaration.get("entry_location")
         ambush_record = None
+        if source_kind == "facedown" and declaration["chain_item"]["object_kind"] in {"unit", "gear"}:
+            # Core 811.4: a hidden permanent is played to that Battlefield —
+            # Gear included, which overrides the Base-only restriction.
+            expected = declaration["source"]["battlefield"]
+            if location is None or location.get("kind") != "battlefield" or location.get("battlefield") != expected:
+                raise PlayError("choices", "hidden_entry_location", f"a permanent played from Hidden enters {expected!r}, the Battlefield it was hidden at (811.4)", rule_locators=["Core 811.4"])
         if location is not None and location["kind"] == "battlefield":
             battlefield = effect_state["battlefields"].get(location["battlefield"])
             if battlefield is None:
@@ -914,6 +942,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             raise PlayError("choices", "optional_cost_intent_required", f"optional cost intent not declared for {missing}", decision_ids=missing, decision_controller=actor, rule_locators=["Core 355.1.a", "Core 356.2.b.1"])
         chosen_objects: list[str] = []
         mode = None
+        hidden_battlefield = declaration["source"]["battlefield"] if source_kind == "facedown" else None
+        hidden_targeting = declaration.get("hidden_targeting", "restricted")
         # ADR-0011 §4 / Core 820: each paid Repeat is one more execution with its
         # own choices, made now like the first (820.2).
         repeat_paid = [add["cost_id"] for add in declaration["cost"].get("additional", []) or [] if add.get("repeat") and intents.get(add["cost_id"])]
@@ -932,6 +962,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                     repeat_modes.append(mode_k)
             if repeat_paid:
                 repeat_record = {"executions": 1 + len(repeat_paid), **({"modes": repeat_modes} if effect_program.get("modal") else {})}
+            if hidden_battlefield is not None and hidden_targeting == "restricted":
+                # Core 811.4: the choices of a card played from Hidden come from
+                # that Battlefield, unless the clause's own restriction makes
+                # that impossible — which the compiled clause states.
+                outside = [o for o in chosen_objects if find_location(effect_state, o) != ("battlefield", hidden_battlefield, None)]
+                if outside:
+                    raise PlayError("choices", "hidden_target_outside_battlefield",
+                                    f"a card played from Hidden chooses at {hidden_battlefield!r}; {outside} are elsewhere (811.4)",
+                                    rule_locators=["Core 811.4", "Core 811.4.a"])
         elif repeat_paid:
             repeat_record = {"executions": 1 + len(repeat_paid)}
         # ADR-0007 §11: Deflect is scanned once targets are fixed and before the
@@ -949,7 +988,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if deflect:
             cost["additional"] = list(cost.get("additional", []) or []) + deflect
         trace.append({"stage": "choices", "outcome": "applied", "optional_cost_intents": intents, "chosen_objects": chosen_objects, "deflect_costs": deflect, **({"mode_selection": mode} if mode else {}), **({"repeat": repeat_record} if repeat_record else {}),
-                      "source": source_kind, **({"source_permission": dict(declaration["source_permission"])} if declaration.get("source_permission") else {}),
+                      "source": source_kind, **({"hidden": {"battlefield": hidden_battlefield, "targeting": hidden_targeting}} if hidden_battlefield else {}), **({"source_permission": dict(declaration["source_permission"])} if declaration.get("source_permission") else {}),
                       **({"cost_override": dict(override)} if override else {}), **({"ambush": ambush_record} if ambush_record else {}),
                       "rule_locators": RULES["choices"] + (["Core 402.2"] if mode else []) + (["Core 809.1.c", "Core 809.1.d", "Core 809.2"] if deflect else [])})
         locators += RULES["choices"] + (["Core 809.1.c", "Core 809.1.d"] if deflect else [])
@@ -982,6 +1021,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # program to the timing item.
         if is_ability:
             entry = {"source_object": card, "ability_id": declaration["activation"]["ability_id"], "controller": actor}
+        elif source_kind == "facedown":
+            zone = working["battlefields"][declaration["source"]["battlefield"]]["facedown"]
+            zone["cards"] = [c for c in zone["cards"] if c["object_id"] != card]
+            entry = {"card": card, "controller": actor}
         else:
             working["players"][actor]["zones"][source_kind].remove(card)
             entry = {"card": card, "controller": actor}

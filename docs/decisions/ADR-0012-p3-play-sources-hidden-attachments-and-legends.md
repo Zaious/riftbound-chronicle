@@ -92,11 +92,12 @@ has Reaction; a permanent must enter that Battlefield — Gear included, which
 overrides the Base-only rule; and every choice the card makes at play must
 come from that Battlefield unless the clause's own restriction makes that
 impossible, which the compiled clause states as
-`hidden_targeting: restricted | free_by_restriction`. A spell with no legal
-target under the restriction cannot be played from Hidden
-(`illegal: hidden_no_legal_target`). Removing hidden cards when control of
-the Battlefield changes (323.14, 469.1) and the reveal at game end (421.4)
-stay `unsupported`.
+`hidden_targeting: restricted | free_by_restriction`. A choice outside that
+Battlefield is `illegal: hidden_target_outside_battlefield`; the engine
+refuses the choice actually made and does not pre-enumerate whether any legal
+choice exists, which stays `unsupported: hidden_legality_enumeration`.
+Removing hidden cards when control of the Battlefield changes (323.14,
+469.1) and the reveal at game end (421.4) stay `unsupported`.
 
 ### 4. Attachments: Top-Most, attach, detach and Equip (DP-66)
 

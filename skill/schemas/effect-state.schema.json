@@ -1179,6 +1179,10 @@
         "unique": {
           "type": "boolean",
           "description": "Core 825.3: a deck-construction constraint (one card of that name), recorded for deck validation. It is never a play restriction."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Core 811: the Hidden keyword, the prerequisite of the Hide action."
         }
       }
     },
@@ -1245,6 +1249,43 @@
             "$ref": "#/$defs/battlefieldTrigger"
           },
           "description": "ADR-0009 §7: the Battlefield's own 'When you hold here'."
+        },
+        "facedown": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-0012 §3 / Core 107.3.b: the Battlefield's Facedown Zone. The zone is public; the cards in it are private to the player who hid them (108.2.b). Absent means an empty zone of capacity 1.",
+          "properties": {
+            "capacity": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cards": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "object_id",
+                  "controller",
+                  "hidden_on_turn"
+                ],
+                "properties": {
+                  "object_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "controller": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "hidden_on_turn": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

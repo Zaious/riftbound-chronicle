@@ -24,6 +24,7 @@ from engine_decisions import DECISIONS_VERSION as ENGINE_DECISIONS_VERSION, vali
 from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card, validate_play_result
 from resolution_bridge import CLEANUP_DECISION_VERSION, TURN_STEP_VERSION, begin_ending_step, resolve_with_program, run_expiration_step, validate_cleanup_decisions
 from combat import COMBAT_STEP_VERSION, STANDARD_MOVE_VERSION, STEPS as COMBAT_STEPS, standard_move  # noqa: E402
+from hidden import HIDE_VERSION  # noqa: E402
 from battlefield_control import CONTROL_STEP_VERSION, STEPS as CONTROL_STEPS  # noqa: E402
 from terminal import STEPS as TERMINAL_STEPS, check_terminal, declare_terminal  # noqa: E402
 from turn_cycle import STEPS as TURN_CYCLE_STEPS  # noqa: E402
@@ -163,8 +164,8 @@ KIND_CONFIG = {
     "play": {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
-        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input", "play_sources", "cost_override", "ambush"],
-        "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "xp_buff_costs", "activation_conditions", "legend_activation", "battlefield_control_transfer", "deck_construction", "complete_game", "complete_legality"],
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input", "play_sources", "cost_override", "ambush", "play_from_hidden"],
+        "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "xp_buff_costs", "activation_conditions", "legend_activation", "battlefield_control_transfer", "deck_construction", "hidden_legality_enumeration", "complete_game", "complete_legality"],
     },
     # ADR-0007 §8: two turn-boundary procedures, not a turn transition.
     "turn_step": {
@@ -194,6 +195,13 @@ KIND_CONFIG = {
         "coverage": "control_step_v1",
         "supported": ["battlefield_control_resolution", "conquer_scoring", "score_triggers", "victory_facts", "non_combat_showdown", "board_cleanup", "hold_scoring", "burn_out_draw_instead", "terminal_event_bridge"],
         "unsupported": ["team_scoring", "hidden_cards", "gear_rune_recall_cleanup", "non_conquer_point_sources", "activate_named_triggers", "beginning_phase", "complete_game", "complete_legality"],
+    },
+    # ADR-0012 §3: Hide is a Discretionary Action, not a play (811.2).
+    "hide_step": {
+        "component": ("hidden", HIDE_VERSION),
+        "coverage": "hide_step_v1",
+        "supported": ["facedown_zone", "hide_action", "hide_cost_receipt", "facedown_privacy"],
+        "unsupported": ["hidden_removal_on_control_change", "facedown_reveal_at_game_end", "facedown_capacity_effects", "complete_game", "complete_legality"],
     },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
@@ -349,7 +357,7 @@ def classify_outcome(kind: str, result: dict[str, Any]) -> tuple[str, dict[str, 
         return "illegal", None
     if kind == "resolution" and result.get("committed") is not True:
         return ("invalid_input" if result.get("stage") in {"program_binding", "cleanup_decision"} else "illegal"), None
-    if kind in {"turn_step", "combat_step", "standard_move", "control_step"} and result.get("committed") is not True:
+    if kind in {"turn_step", "combat_step", "standard_move", "control_step", "hide_step"} and result.get("committed") is not True:
         return "illegal", None
     if kind == "play" and result.get("committed") is not True:
         # A well-formed play the rules refuse: unpayable cost, card not in

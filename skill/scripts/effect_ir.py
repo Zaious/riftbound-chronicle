@@ -961,6 +961,8 @@ def validate_program(program: Any) -> list[str]:
                     if not isinstance(result_keywords, list) or len(result_keywords) != len(set(result_keywords)) or any(keyword not in {"temporary"} for keyword in result_keywords):
                         errors.append(f"effects[{index}].event_modifiers.result_keywords is invalid")
             if effect.get("op") == "play_token":
+                if "token_id" in effect and (not isinstance(effect["token_id"], str) or not effect["token_id"]):
+                    errors.append(f"effects[{index}].play_token.token_id must be a non-empty catalogue id (ADR-0012 §6)")
                 destination = effect.get("destination")
                 if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
                     errors.append(f"effects[{index}].play_token requires object_id")
@@ -2169,6 +2171,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             "destination": destination_label,
             "event_modifiers": modifiers,
             "modifier_inheritance": copy.deepcopy(effect.get("modifier_inheritance")),
+            # ADR-0012 §6: which reviewed catalogue entry these characteristics
+            # were compiled from, so a program's provenance stays checkable.
+            **({"token_id": effect["token_id"]} if effect.get("token_id") else {}),
         })
 
     elif op == "kill":

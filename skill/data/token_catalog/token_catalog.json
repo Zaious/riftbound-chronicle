@@ -1,0 +1,9 @@
+{
+  "schema_version": "token-catalog.v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "status": "draft",
+  "entries": []
+}

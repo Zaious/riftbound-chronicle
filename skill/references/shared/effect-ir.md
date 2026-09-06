@@ -620,6 +620,57 @@ marked `counterable: false` answers `unsupported: cannot_be_countered`.
 (431.1.b), which stays `unsupported: burn_out_non_draw`: nothing changes,
 and the Draw-path receipt is never borrowed.
 
+## Play sources, Hidden, attachments, Legends and tokens (ADR-0012)
+
+A play declares **where the card comes from**: `hand` (the default), the
+Champion Zone (which plays as normal, 108.3.e), a `trash` source with a
+granted `source_permission`, or `facedown`. A `cost_override` replaces the
+base cost before Core 356 runs — Hidden's "ignoring its base cost" (811) or a
+Flow cost — and the receipt shows it as a base modification. **Unique is not
+a play restriction**: Core 825.3 makes it a deck-construction constraint, so
+the engine records the characteristic and the transaction imposes nothing.
+**Ambush** (822.1) is a play permission plus its timing: a Unit may enter a
+Battlefield where its controller has Units, and a declared Reaction sourced
+from Ambush is checked against that fact.
+
+**Hidden** lives at the Battlefield, not in a player zone: each Battlefield
+has one Facedown Zone with a capacity (107.3.b). The zone is public; the
+cards in it are private to the player who hid them (108.2.b). `hide_card`
+(engine-check kind `hide_step`) is a Discretionary Action, not a play
+(811.2): own turn, Open State, a card with Hidden in the hand or Champion
+Zone, a controlled Battlefield with a free slot, the cost paid through the
+ordinary receipt, no chain, a new object (124). A resource restricted to
+*playing* cannot pay it. From the next turn the card is played with a
+`facedown` source, ignoring its base cost; a permanent enters that
+Battlefield (Gear included, 811.4) and every choice comes from there unless
+the compiled clause states `hidden_targeting: free_by_restriction`.
+
+**Attachments** are one direction of state: an attached card names its
+Top-Most card in `attached_to` and the engine derives the rest. Attaching
+takes the Top-Most card's location (434.4, not a Move) and changes nothing
+else (434.5.a); a new host detaches the old link (434.2.a); the same host is
+a no-op (434.2.b). Every attached card's Might Bonus modulates the Top-Most
+card (159.1). Detaching derives its destination and never assumes the Base:
+the Top-Most card's location (435.4), the host's last board location when the
+host left for a non-board zone (435.4.b), and a detached Gear at a
+Battlefield records the Cleanup Recall (435.4.a) instead of moving early.
+Killing, banishing, returning, recycling and moving a host all route through
+that one derivation.
+
+**Legends** are objects in the Legend Zone, which is public and is not a
+Location (107.4.d): a legend exists only there or in Banishment, a generic
+Board selector never reaches it, and a passive whose source is a Legend in
+that zone is active although the Legend is not on the Board. A Legend's
+activated ability is the ordinary activation path with the Legend as its
+source.
+
+**Tokens** come from `token-catalog.v1`, promoted by hand with the official
+text, its hash, the source cards and a review record; `play_token` carries
+the `token_id` it was compiled from so a pack's provenance stays checkable,
+and a token that is not in the catalogue is
+`unsupported: token_not_in_catalogue`. **Copy** is a typed request that fails
+closed (`copy_characteristics`) until the P4 layer contract.
+
 ## Execution model
 
 An effect program is an ordered list. The interpreter executes it on a copied

@@ -551,6 +551,11 @@
             "type": "string",
             "minLength": 1,
             "description": "copy_object: the request the P4 layer slice will bind to."
+          },
+          "token_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "play_token: the reviewed token-catalog.v1 entry these characteristics were compiled from (ADR-0012 §6)."
           }
         }
       },

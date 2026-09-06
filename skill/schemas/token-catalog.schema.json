@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/token-catalog.schema.json",
+  "title": "Chronicle Token Catalogue v1",
+  "description": "ADR-0012 §6: the tokens a card program may play. Every entry is promoted by hand from official text — the clause inventory only produces candidates. An entry carries the text it was promoted from with its hash, the characteristics that text states, the cards that create it, and the review that approved it. Nothing enters this file automatically.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "ruleset", "status", "entries"],
+  "properties": {
+    "schema_version": {"const": "token-catalog.v1"},
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core", "faq_as_of"],
+      "properties": {"core": {"type": "string", "minLength": 1}, "faq_as_of": {"type": "string", "minLength": 1}}
+    },
+    "status": {"enum": ["draft"], "description": "The catalogue stays draft; nothing here activates a pack."},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token_id", "name", "kind", "base_might", "keywords", "text", "text_sha256", "source_cards", "review"],
+        "properties": {
+          "token_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "Stable id; never reused for different text."},
+          "name": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["unit", "gear", "battlefield"]},
+          "base_might": {"type": "integer", "minimum": 0},
+          "keywords": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "text": {"type": "string", "description": "The official text the entry was promoted from, verbatim. Empty only when the token has no rules text, which the review must state."},
+          "text_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Hash of `text`; a mismatch fails the gate, so an errata cannot slip in unreviewed."},
+          "effect_program_id": {"type": "string", "minLength": 1, "description": "The compiled program of the token's own ability, when it has one."},
+          "source_cards": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "locator"],
+              "properties": {"name": {"type": "string", "minLength": 1}, "locator": {"type": "string", "minLength": 1}}
+            }
+          },
+          "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reviewer", "date", "source"],
+            "description": "Who approved this entry, when, and against which official document. Without it the entry is not in the catalogue.",
+            "properties": {
+              "reviewer": {"type": "string", "minLength": 1},
+              "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+              "source": {"type": "string", "minLength": 1},
+              "note": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

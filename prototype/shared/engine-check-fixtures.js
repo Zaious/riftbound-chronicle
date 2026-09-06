@@ -208,6 +208,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "gear_recall_cleanup",
             "copy_characteristics",
             "champion_legend_movement",
+            "token_not_in_catalogue",
             "complete_game",
             "complete_legality"
           ]
@@ -381,6 +382,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "gear_recall_cleanup",
             "copy_characteristics",
             "champion_legend_movement",
+            "token_not_in_catalogue",
             "complete_game",
             "complete_legality"
           ]

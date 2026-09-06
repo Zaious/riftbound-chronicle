@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:9c5cc32ffb714d2971da91db",
-  "capability_set_id": "sha256:9c5cc32ffb714d2971da91db7d69fbdaad5d76aed2638dd5b04d49d4ce9586bb",
+  "manifest_id": "capability-manifest:0e6e0a7fb22fbd295a5a4e6f",
+  "capability_set_id": "sha256:0e6e0a7fb22fbd295a5a4e6fd726cbb6e9f74e79a20138d0b7451266d3199b7b",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:f272e41d0fec0468fd769b89b273e83bee09dc68a91884a0b211800140aeadbf",
+    "value": "sha256:573e92d605795d904c53ff90bb8d85ec8dd8b74788daa19c160460be304dcbb2",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:262912cb53a1d57755612f11f29e00989f019e9f3e937b22b51c7900309c1c73"
+        "sha256": "sha256:f3171182663bc0b5bf4fa90b515b67c13cd9585fd6937805dccca794296193b7"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:01ea6ea5a45bdf3d4bedab8e66859944d12d7b8579c3b9786ed1a8b4e5db4bfc"
+        "sha256": "sha256:d2aa9f480a8e06cffd3833d17e4fae469d34ac4016e57b4939b9bf25be5ab288"
       },
       {
         "path": "combat.py",
@@ -185,6 +185,7 @@
         "gear_recall_cleanup",
         "copy_characteristics",
         "champion_legend_movement",
+        "token_not_in_catalogue",
         "complete_game",
         "complete_legality"
       ]
@@ -1603,6 +1604,7 @@
     "take_damage_triggers",
     "target_checks",
     "team_scoring",
+    "token_not_in_catalogue",
     "xp_buff_costs"
   ],
   "claims": {

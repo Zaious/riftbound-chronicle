@@ -106,7 +106,7 @@ def main() -> int:
 
     # --- injected drift, each must be caught ---------------------------------
     over = copy.deepcopy(live)
-    over["operations"].append({"id": "counter", "rule_locators": ["Core 999"]})
+    over["operations"].append({"id": "double", "rule_locators": ["Core 999"]})
     over["operations"].sort(key=lambda o: o["id"])
     expect_findings("overstated operation (validate)", validate_manifest(over), "capability_set_id", errors)
 

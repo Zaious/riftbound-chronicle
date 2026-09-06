@@ -144,7 +144,10 @@
               "put_in_hand",
               "draw_it",
               "recycle",
-              "predict"
+              "predict",
+              "banish",
+              "counter",
+              "burn"
             ]
           },
           "effect_id": {
@@ -512,6 +515,22 @@
             }
           },
           "restriction_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "chain_item_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "counter: the chain item cleared from the chain (Core 425.1). The caller removes the timing item in the same commit."
+          },
+          "card_to": {
+            "enum": [
+              "trash",
+              "hand"
+            ],
+            "description": "counter: where the countered card goes — its owner's trash (Core 425.1.a), or their hand when the countering effect says so."
+          },
+          "player": {
             "type": "string",
             "minLength": 1
           }

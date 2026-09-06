@@ -96,12 +96,18 @@ SUPPORTED_OPS = {
     "draw_it",
     "recycle",
     "predict",
+    # C-43 (ADR-0011 §5): Banish, Counter and [Burn N].
+    "banish",
+    "counter",
+    "burn",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
 COMPOSITE_OPS = {"mutual_damage_current_might"}
-# ADR-0011 §1: instructions whose object comes from a typed `choice`.
+# ADR-0011 §1: instructions whose single object comes from a typed `choice`.
 CHOICE_OPS = {"recycle_one"}
+# Instructions that resolve their own choice into a set (they may need an order too).
+SELF_RESOLVING_CHOICE_OPS = {"recycle", "banish"}
 
 
 class ReplacementDecisionRequired(ValueError):
@@ -244,6 +250,9 @@ OP_RULES = {
     "draw_it": ["Core 413", "Core 428.5", "Core 124"],
     "recycle": ["Core 416.1", "Core 416.2", "Core 416.5", "Core 303.2", "Core 124"],
     "predict": ["Core 436.1", "Core 436.1.a", "Core 436.4", "Core 436.4.a", "Core 416.5"],
+    "banish": ["Core 427.1", "Core 427.2", "Core 427.2.a", "Core 427.2.b", "Core 124"],
+    "counter": ["Core 425.1", "Core 425.1.a", "Core 425.1.b", "Core 425.1.c", "Core 124"],
+    "burn": ["Core 440.1", "Core 440.2", "Core 431.1.b", "Core 124"],
 }
 
 
@@ -379,11 +388,13 @@ def validate_state(state: Any) -> list[str]:
         chain_items = {}
     for item_id, entry in chain_items.items():
         is_ability = isinstance(entry, dict) and "source_object" in entry
-        allowed = {"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat"} if is_ability else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat"}
+        allowed = {"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable"} if is_ability else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable"}
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
             continue
+        if "counterable" in entry and not isinstance(entry["counterable"], bool):
+            errors.append(f"chain_items.{item_id}.counterable must be boolean (ADR-0011 §5)")
         repeat = entry.get("repeat")
         if repeat is not None and (not isinstance(repeat, dict) or set(repeat) - {"executions", "modes"} or not isinstance(repeat.get("executions"), int) or isinstance(repeat.get("executions"), bool) or repeat["executions"] < 1
                                    or ("modes" in repeat and (not isinstance(repeat["modes"], list) or len(repeat["modes"]) != repeat["executions"] or any(not isinstance(m, dict) or set(m) != {"decision_id", "option_id"} for m in repeat["modes"])))):
@@ -833,13 +844,15 @@ def validate_program(program: Any) -> list[str]:
             if choice is not None:
                 import engine_decisions as ed
                 errors.extend(f"effects[{index}].choice {e}" for e in ed.validate_choice_spec(choice))
-                if effect.get("op") not in CHOICE_OPS:
+                if effect.get("op") not in CHOICE_OPS | SELF_RESOLVING_CHOICE_OPS:
                     errors.append(f"effects[{index}].choice is not supported for {effect.get('op')!r}")
                 elif effect.get("op") in {"recycle_one"} and not errors and (choice["selection_kind"] != "single" or choice["from"] not in {"trash", "hand"}):
                     errors.append(f"effects[{index}].{effect.get('op')} chooses a single card from trash or hand")
                 if effect.get("object_id") is not None or effect.get("target") is not None or effect.get("targets") is not None:
                     errors.append(f"effects[{index}].choice excludes object_id, target and targets")
             op_name = effect.get("op")
+            if op_name in {"banish", "counter", "burn"}:
+                errors.extend(f"effects[{index}].{op_name} {e}" for e in _zone_op_errors(effect))
             if op_name in {"look_at_top", "reveal", "put_back", "put_in_hand", "draw_it", "recycle", "predict"}:
                 errors.extend(f"effects[{index}].{op_name} {e}" for e in _reveal_op_errors(effect))
             if effect.get("op") == "discard":
@@ -996,6 +1009,34 @@ def _predicate_errors(predicate: Any, receipt: Any, earlier: set[str] | None = N
             if referenced.get("op") not in COUNT_CONTRACT_OPS and not isinstance(referenced.get("targets"), dict):
                 return [f"requested_count_not_reached may only reference an instruction with a count contract (channel_rune or bounded targets); {predicate['effect_id']!r} is {referenced.get('op')!r}"]
     return []
+
+
+def _zone_op_errors(effect: dict[str, Any]) -> list[str]:
+    """Shape of the C-43 zone instructions (ADR-0011 §5)."""
+    op = effect.get("op")
+    errors: list[str] = []
+    if op == "banish":
+        holders = [k for k in ("object_id", "objects", "target", "targets", "choice") if effect.get(k) is not None]
+        if len(holders) != 1:
+            errors.append("needs exactly one of object_id, objects, target, targets or choice")
+        if effect.get("objects") is not None and (not isinstance(effect["objects"], list) or not effect["objects"]
+                                                  or any(not isinstance(o, str) or not o for o in effect["objects"]) or len(effect["objects"]) != len(set(effect["objects"]))):
+            errors.append("objects must be a non-empty unique array")
+    elif op == "counter":
+        if not isinstance(effect.get("chain_item_id"), str) or not effect.get("chain_item_id"):
+            errors.append("needs the chain_item_id it clears (Core 425.1)")
+        if effect.get("card_to", "trash") not in {"trash", "hand"}:
+            errors.append("card_to must be trash (Core 425.1.a) or hand when the effect says so")
+        if effect.get("target") is not None or effect.get("targets") is not None or effect.get("object_id") is not None:
+            errors.append("names a chain item, not an object")
+    elif op == "burn":
+        if not isinstance(effect.get("player"), str) or not effect.get("player"):
+            errors.append("needs a player")
+        if not isinstance(effect.get("count"), int) or isinstance(effect.get("count"), bool) or effect.get("count", 0) < 1:
+            errors.append("needs a positive count")
+        if effect.get("target") is not None or effect.get("targets") is not None or effect.get("object_id") is not None:
+            errors.append("is not a targeted instruction")
+    return errors
 
 
 def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
@@ -2088,6 +2129,83 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if not looked:
             trace["outcome"] = "no_op"
 
+    elif op == "banish":
+        # Core 427: straight from any zone into Banishment, as a new object
+        # (124). Not a Kill (427.2.a), not a Discard (427.2.b).
+        ids = list(effect.get("objects") or ([effect["object_id"]] if effect.get("object_id") else []))
+        selection = effect.get("selection_meta")
+        if effect.get("choice") is not None and not ids:
+            chosen, selection = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=effect.get("player") or effect.get("_controller"))
+            ids = list(chosen)
+        identities: dict[str, str] = {}
+        destinations: dict[str, str] = {}
+        for object_id in ids:
+            if object_id not in new_state["objects"]:
+                raise ValueError(f"banish requires a known object; {object_id!r} is not in the state")
+            obj = new_state["objects"][object_id]
+            _remove_from_location(new_state, object_id)
+            if obj.get("is_token"):
+                del new_state["objects"][object_id]
+                destinations[object_id] = "ceased_to_exist"
+                continue
+            new_state["players"][obj["owner"]]["zones"]["banishment"].append(object_id)
+            destinations[object_id] = f"{obj['owner']}.banishment"
+            identities[object_id] = _bump_identity(new_state, object_id)
+        _drop_reveals(new_state, ids)
+        trace.update({"objects": ids, "destinations": destinations, "identities_after": identities, "not_kill": True, "not_discard": True,
+                      **({"selection": {k: v for k, v in selection.items() if k != "choice"}} if selection else {}),
+                      "completion": "full" if ids else "none"})
+        if not ids:
+            trace["outcome"] = "no_op"
+
+    elif op == "counter":
+        # Core 425: the item does nothing and is cleared from the chain; its
+        # card goes to the trash (425.1.a) unless the effect returns it; it
+        # was not played (425.1.b) and no cost is refunded (425.1.c). The
+        # timing chain is the caller's to update in the same commit.
+        item_id = effect.get("chain_item_id")
+        entry = (new_state.get("chain_items") or {}).get(item_id)
+        if entry is None:
+            raise IllegalOperation(f"chain item {item_id!r} is not on the chain; only a chain item can be countered (Core 425.1)")
+        if entry.get("counterable") is False:
+            raise NotImplementedError(f"chain item {item_id!r} carries 'can't be countered'; the static that grants it is a P4 contract (unsupported: cannot_be_countered)")
+        destination = effect.get("card_to", "trash")
+        del new_state["chain_items"][item_id]
+        if not new_state["chain_items"]:
+            del new_state["chain_items"]
+        card = entry.get("card")
+        trace.update({"chain_item_id": item_id, "controller": entry.get("controller"), "not_played": True, "costs_refunded": False,
+                      "countered_chain_items": [item_id]})
+        if card is None:
+            trace.update({"ability_id": entry.get("ability_id"), "source_object": entry.get("source_object"), "no_card": True, "destination": None})
+        else:
+            owner = new_state["objects"][card]["owner"]
+            zone = "trash" if destination == "trash" else "hand"
+            new_state["players"][owner]["zones"][zone].append(card)
+            trace.update({"card": card, "destination": f"{owner}.{zone}", "identity_after": _bump_identity(new_state, card)})
+            if destination != "trash":
+                trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 359.3"]))
+
+    elif op == "burn":
+        # Core 440.1: the top cards of a Main Deck go to the trash as new
+        # objects. A deck shorter than the count would Burn Out on a non-Draw
+        # path (431.1.b), which this slice does not model.
+        player_id, count = effect.get("player"), effect.get("count")
+        if player_id not in new_state["players"]:
+            raise ValueError("burn requires a known player")
+        deck = new_state["players"][player_id]["zones"]["main_deck"]
+        if len(deck) < count:
+            raise NotImplementedError(f"[Burn {count}] would move more cards than {player_id}'s Main Deck holds ({len(deck)}); Burn Out outside a Draw is not modelled (unsupported: burn_out_non_draw)")
+        burned = list(deck[:count])
+        del deck[:count]
+        identities = {}
+        for object_id in burned:
+            owner = new_state["objects"][object_id]["owner"]
+            new_state["players"][owner]["zones"]["trash"].append(object_id)
+            identities[object_id] = _bump_identity(new_state, object_id)
+        trace.update({"player": player_id, "requested_count": count, "burned_count": len(burned), "objects": burned,
+                      "identities_after": identities, "burn_out": False, "completion": "full"})
+
     elif op == "emit_reflexive":
         triggers = effect.get("triggers")
         if not isinstance(triggers, list) or not triggers:
@@ -2819,7 +2937,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
         if effect.get("op") == "grant_keyword" and context is not None and context.get("combat") is not None:
             effect = {**effect, "combat_context": context["combat"]}
-        if effect.get("op") == "discard" or effect.get("choice") is not None:
+        if effect.get("op") == "discard" or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS):
             try:
                 effect = _resolve_discard(current, effect, decisions) if effect.get("op") == "discard" else _resolve_choice_object(current, effect, program, decisions)
             except ChoiceRequired as exc:
@@ -3426,6 +3544,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         **({"mode": mode} if mode is not None else {}),
         **({"repeat": repeat_meta} if repeat_meta is not None else {}),
         **({"reveals_ended": reveals_ended} if reveals_ended else {}),
+        **({"countered_chain_items": [i for e in trace for i in e.get("countered_chain_items", [])]} if any(e.get("countered_chain_items") for e in trace) else {}),
         "next_state": current,
         "next_state_hash": hash_value(current),
         "trace": trace,

@@ -134,7 +134,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
       "note": "The effect IR has no model for this operation and fails closed rather than guessing one.",
       "check": {
         "schema_version": "engine-check.v1",
-        "check_id": "engine-check:cdfcf554535f429e03751921",
+        "check_id": "engine-check:24c4fb2e4f6e8adf5c039a66",
         "check_kind": "effect",
         "outcome": "unsupported",
         "authority": {
@@ -181,7 +181,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "predict",
             "multi_recycle",
             "restricted_resource_grant",
-            "repeat_execution"
+            "repeat_execution",
+            "banish",
+            "counter",
+            "burn"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -193,6 +196,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "each_player_choice",
             "multi_opponent_choice",
             "revealed_knowledge_persistence",
+            "cannot_be_countered",
+            "burn_triggers",
             "complete_game",
             "complete_legality"
           ]
@@ -200,10 +205,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
         "input_hashes": {
           "state": "sha256:2d7823e643e488eeec490355b85f6622c9d5bff549a445818d820d8c942041bf"
         },
-        "result_hash": "sha256:2f44621caa53d66637536e81fbcb0df4c144e0bd4ca3dea8253df08ad0584abf",
+        "result_hash": "sha256:5eef351402e1e0027d34e655dcbff0b5d4955f26e1a67dd12940ba6c47ff0378",
         "reason": {
-          "code": "unsupported effect op 'counter'",
-          "message": "unsupported effect op 'counter'"
+          "code": "unsupported effect op 'double'",
+          "message": "unsupported effect op 'double'"
         },
         "rule_locators": [],
         "trace_summary": {
@@ -339,7 +344,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "predict",
             "multi_recycle",
             "restricted_resource_grant",
-            "repeat_execution"
+            "repeat_execution",
+            "banish",
+            "counter",
+            "burn"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -351,6 +359,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "each_player_choice",
             "multi_opponent_choice",
             "revealed_knowledge_persistence",
+            "cannot_be_countered",
+            "burn_triggers",
             "complete_game",
             "complete_legality"
           ]

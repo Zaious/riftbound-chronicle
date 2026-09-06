@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, perform_lethal_cleanup, validate_state, zone_class
-from rules_core import apply_terminal_event, complete_resolution, is_terminal, schedule_triggered_items, state_hash
+from rules_core import apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
@@ -180,6 +180,21 @@ def resolve_with_program(
         after_effect["players"][owner]["zones"]["trash"].append(card)
         chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.trash",
                                  "identity_after": _bump_identity(after_effect, card), "rule_locators": ["Core 157", "Core 124"]})
+    # ADR-0011 §5 / Core 425.1: a countered item leaves the timing chain in the
+    # same commit as the effect state that cleared it.
+    countered = effect_result.get("countered_chain_items") or []
+    countered_trace = []
+    next_timing_after_counter = timing_result["next_state"]
+    for countered_id in countered:
+        removal = remove_chain_item(next_timing_after_counter, countered_id)
+        if removal.get("applied") is not True:
+            return {**base, "valid": removal.get("valid", True), "committed": False, "stage": "counter",
+                    "reason": removal.get("reason_code") or "chain_item_removal_failed", "reason_code": removal.get("reason_code"),
+                    "countered_chain_items": countered, "timing_result": removal, "effect_result": effect_result}
+        next_timing_after_counter = removal["next_state"]
+        countered_trace.append(removal["transition"])
+    if countered:
+        timing_result = {**timing_result, "next_state": next_timing_after_counter}
     # ADR-0010 §2, §4: a Draw that Burned Out to an immediate victory ends the
     # game inside this resolution. The typed event is written into the timing
     # state here, in the same commit as the effect state that produced it, and
@@ -326,6 +341,7 @@ def resolve_with_program(
         "next_effect_state": final_effect_state,
         "next_effect_state_hash": hash_value(final_effect_state),
         "trace": {
+            **({"countered": countered_trace} if countered_trace else {}),
             "effect": effect_result["trace"],
             "chain_card": chain_card_trace,
             "cleanup": cleanup_result["trace"],

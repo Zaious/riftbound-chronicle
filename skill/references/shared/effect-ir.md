@@ -517,6 +517,109 @@ descriptor, or one descriptor over both Deals is unsupported rather than
 resolved one Deal after the other; a Might that reads 0 deals nothing
 (417.1.e); it is not Combat Damage.
 
+## Choices, modes and privacy (ADR-0011 §1–2)
+
+An instruction that lets a player choose carries a typed `choice`:
+`selection_kind` (`single`, `unordered_set`, `ordered_permutation`), a
+`count` (`exactly`, `up_to`, `any_number`, `one`), a source (`hand`,
+`trash`, `main_deck_top`, `revealed`, `board` with criteria, `players`),
+the chooser in `by`, a `visibility` and whether identities must be bound.
+The engine finds the candidates, decides the decision kind
+(`card_selection`, `card_ordering`, `player_selection`, `target_selection`)
+and validates the supplied value: another player's decision is
+`decision_controller_mismatch`, a value outside the candidates is
+`illegal_operation`, a wrong count or a stale identity is `invalid_input`.
+When the rules leave nothing to choose — no candidate, or every candidate
+must be taken — the engine proceeds and records the choice as forced.
+
+A **private** source is never listed. The `decision_required` result carries
+the specification, the option count and a hash of the option identities, and
+says who may see them; the hand itself appears in no engine result and in no
+engine-check, `raw_result` included (128.4, 355.10.a). A public source lists
+its options with identities up to the enumerable cap.
+
+A **modal** program (`modal: {choose: 1, timing, decision_ref, options}`)
+keeps its instructions inside the options and its top-level `effects` empty.
+The mode is a `mode_selection` decision whose value is the stable
+`option_id`, never an index; a spell chooses it while playing (402.2) and
+the transaction records it on the chain entry, so resolution needs no second
+decision and an envelope contradicting it is `invalid_input`. Only the
+chosen option's targets are checked at play.
+
+## Look, reveal, put back and Predict (ADR-0011 §3)
+
+`look_at_top` marks the top cards readable by the program's controller;
+`reveal` marks them readable by everyone (424.1–424.2: the cards stay in
+their zone, in order). Neither Burns Out on a short deck (431.1.c); they
+record `partial`. The marks live in the state's `reveals` list only while
+the program runs and are cleared when it returns (424.3.a); what a player
+remembers afterwards is `unsupported: revealed_knowledge_persistence`.
+
+`put_back` returns the still-present cards in the order a **`card_ordering`**
+decision gives — a complete permutation of exactly those cards, identities
+bound, owned by the chooser. The order is a player choice, never a
+`card_selection` (whose value is a set), and never the external
+randomization receipt of Burn Out. The trace carries the ordering's hash and
+who may see it, never the order. `put_in_hand` and `draw_it` take a chosen
+looked-at card into the hand as a new object (124); `draw_it` is a Draw.
+`recycle` Recycles several cards as one Game Action (303.2), each to its
+owner's deck bottom; two or more to one deck need the player's
+`card_ordering` (416.5). `predict` is the 436 composite: look, Recycle any
+number, put the rest back in the chosen order, no Burn Out.
+
+## Costs, activated abilities, Repeat and restricted resources (ADR-0011 §4)
+
+Payment kinds are `energy`, `power`, `power_any`, `exhaust`, `kill`,
+`discard`, `recycle_trash`, `kill_this`, `recall_self` and `banish_self`.
+A Discard cost is the payer's private `card_selection` at play stage and a
+Recycle cost a public one; the card being played is never a candidate,
+because it moved to the Chain before costs were chosen (354). The whole
+amount must be payable (423.1.b, 416.3) or the cost is `illegal`. XP, Buff
+and Empower costs stay `unsupported: xp_buff_costs`.
+
+An **activated ability** is a chain item of `object_kind: ability` with
+`activation: {source_object, ability_id}`. Its source must be a permanent
+the actor controls on the Board (377.4); nothing leaves the hand, the chain
+entry names the source instead of a card, and resolution removes the entry
+without trashing anything. An `[Add]` ability opens an `add_ability` chain.
+An activation condition is a P4 contract and answers `unsupported`.
+
+A paid **[Repeat]** cost is an optional additional cost recorded on the chain
+entry; each one executes the instructions once more (820.1.d) with its own
+choices under a `#<n>` suffix (820.2.a).
+
+A restricted Add resource ("Spend this Energy only to play spells") lives in
+`resources.restricted` with the uses it allows. Payment spends a matching
+restricted entry before the general pool and records `restricted_from`; a
+play whose use does not match cannot touch it and is `illegal`, naming the
+entries that could not apply.
+
+Cost modifications are typed input with a `provenance`. A modification that
+carries its own `condition` or `per_each` source is
+`unsupported: cost_modification_sources` — P2 never invents a condition
+grammar.
+
+## Banish, Counter and Burn (ADR-0011 §5)
+
+`banish` moves a card or permanent from any zone straight into its owner's
+Banishment as a new object (427.1, 124); a token ceases to exist. It is not
+a Kill (427.2.a) — a banished Unit's death trigger never fires — and not a
+Discard (427.2.b).
+
+`counter` clears a chain item (425.1): the effect side removes the entry and
+sends the card to its owner's trash as a new object (425.1.a), or to the
+hand when the effect says `card_to: hand`. The item was not played (425.1.b)
+so nothing triggers on playing it, and no cost is refunded (425.1.c). The
+result reports `countered_chain_items`, and the resolution bridge removes
+the timing item through `rules_core.remove_chain_item` in the same commit;
+if the timing chain does not carry it, neither state commits. A chain entry
+marked `counterable: false` answers `unsupported: cannot_be_countered`.
+
+`burn` moves the top cards of a Main Deck to the trash as new objects
+(440.1). A deck shorter than the count would Burn Out on a non-Draw path
+(431.1.b), which stays `unsupported: burn_out_non_draw`: nothing changes,
+and the Draw-path receipt is never borrowed.
+
 ## Execution model
 
 An effect program is an ordered list. The interpreter executes it on a copied

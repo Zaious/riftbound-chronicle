@@ -115,7 +115,7 @@ def main() -> int:
     if first.get("next_state_hash") != second.get("next_state_hash") or first.get("trace") != second.get("trace"):
         failures.append("effect program is not deterministic")
 
-    unsupported = apply_program(state, program("unsupported", {"op": "counter", "chain_item_id": "x"}))
+    unsupported = apply_program(state, program("unsupported", {"op": "double", "object_id": "u1"}))
     if unsupported.get("committed") or unsupported.get("unsupported") is not True:
         failures.append("unsupported effect did not fail closed")
     if hash_value(state) != unsupported.get("input_state_hash"):

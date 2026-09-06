@@ -1,26 +1,26 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:c060071df1aa16f5ef1ec30c",
-  "capability_set_id": "sha256:c060071df1aa16f5ef1ec30c830e18677e90d6ffb79859010d2e109690f36fb7",
+  "manifest_id": "capability-manifest:1bb88621f9a1c364f970746c",
+  "capability_set_id": "sha256:1bb88621f9a1c364f970746c6153145e4b9a00fb39263165872032d0dfecc4f6",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:11ffc0e6cdca35182237a7e17754ab3ebaa984dc894e184eb2a12fba0175080e",
+    "value": "sha256:6ed91d8ed7f8f44111d2fba912094d8832716f8b43ddf1b433e5fe845012b834",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:388bfafc06a0f02f5cb7dd562b671b485f9e56dd79ba48f12f0f8781621a75f6"
+        "sha256": "sha256:c523df5a31505639703ce3f08aabaa227bdc64d5595e86b4f0ba4b82030a3d1d"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:365af33276c3d95b053d3059aba2f8a132659d3240bfb391d42ffe2bcdcf763a"
+        "sha256": "sha256:bc47bfbb9972daf4c28784f18c92556e96d76d88f9fe257fd480e98a16fdb286"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:474ce4b3d86a9ac002b43b925ed8fbfaf1118d3915b8c2f7f2df185372b8f2f0"
+        "sha256": "sha256:8e64cdf4f122d1fa4a593efc3287783b391ed9ee16e13215e1d12fd2768fb2ea"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:f20a7f54467d4ae907031ceb1f3c4760de64a690ae91bdc64e910b61762a9c8a"
+        "sha256": "sha256:1252343cbc8dbd630e0da6f2b496be78f9b899942f843250328189edb87696fb"
       },
       {
         "path": "combat.py",
@@ -154,7 +154,10 @@
         "predict",
         "multi_recycle",
         "restricted_resource_grant",
-        "repeat_execution"
+        "repeat_execution",
+        "banish",
+        "counter",
+        "burn"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -166,6 +169,8 @@
         "each_player_choice",
         "multi_opponent_choice",
         "revealed_knowledge_persistence",
+        "cannot_be_countered",
+        "burn_triggers",
         "complete_game",
         "complete_legality"
       ]
@@ -222,7 +227,6 @@
         "activation_conditions",
         "legend_activation",
         "battlefield_control_transfer",
-        "counter",
         "complete_game",
         "complete_legality"
       ]
@@ -241,7 +245,8 @@
         "permanent_entry",
         "play_triggers",
         "burn_out_draw",
-        "terminal_event_bridge"
+        "terminal_event_bridge",
+        "counter_chain_removal"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -335,11 +340,40 @@
       ]
     },
     {
+      "id": "banish",
+      "rule_locators": [
+        "Core 427.1",
+        "Core 427.2",
+        "Core 427.2.a",
+        "Core 427.2.b",
+        "Core 124"
+      ]
+    },
+    {
+      "id": "burn",
+      "rule_locators": [
+        "Core 440.1",
+        "Core 440.2",
+        "Core 431.1.b",
+        "Core 124"
+      ]
+    },
+    {
       "id": "channel_rune",
       "rule_locators": [
         "Core 430.1",
         "Core 430.2.a",
         "Core 430.3",
+        "Core 124"
+      ]
+    },
+    {
+      "id": "counter",
+      "rule_locators": [
+        "Core 425.1",
+        "Core 425.1.a",
+        "Core 425.1.b",
+        "Core 425.1.c",
         "Core 124"
       ]
     },
@@ -613,6 +647,15 @@
       "rule_locators": [
         "Core 338.1.b",
         "Core 339"
+      ]
+    },
+    {
+      "id": "remove_chain_item",
+      "rule_locators": [
+        "Core 425.1",
+        "Core 425.1.a",
+        "Core 425.1.b",
+        "Core 425.1.c"
       ]
     },
     {
@@ -1333,6 +1376,14 @@
     "Core 424.2.a",
     "Core 424.3.a",
     "Core 424.4",
+    "Core 425.1",
+    "Core 425.1.a",
+    "Core 425.1.b",
+    "Core 425.1.c",
+    "Core 427.1",
+    "Core 427.2",
+    "Core 427.2.a",
+    "Core 427.2.b",
     "Core 428",
     "Core 428.1.a.1.b",
     "Core 428.5",
@@ -1345,6 +1396,7 @@
     "Core 430.4.a",
     "Core 431",
     "Core 431.1.a",
+    "Core 431.1.b",
     "Core 431.1.c",
     "Core 431.1.c.1",
     "Core 431.2.b",
@@ -1356,6 +1408,8 @@
     "Core 436.4",
     "Core 436.4.a",
     "Core 437.1.a.1",
+    "Core 440.1",
+    "Core 440.2",
     "Core 445",
     "Core 446",
     "Core 446.2",
@@ -1418,6 +1472,8 @@
     "beginning_phase",
     "burn_out_in_replacement",
     "burn_out_non_draw",
+    "burn_triggers",
+    "cannot_be_countered",
     "combat",
     "combat_moves",
     "complete_action_set",
@@ -1426,7 +1482,6 @@
     "continuous_dependency",
     "cost_checks",
     "cost_modification_sources",
-    "counter",
     "damage_exemption_sources",
     "distinct_per_turn_choice",
     "each_player_choice",

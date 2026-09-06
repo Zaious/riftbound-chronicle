@@ -322,6 +322,10 @@
                 }
               }
             }
+          },
+          "counterable": {
+            "type": "boolean",
+            "description": "ADR-0011 §5: false marks 'can't be countered'; the static that grants it is a P4 contract, so a counter against it answers unsupported. Absent means counterable."
           }
         },
         "oneOf": [

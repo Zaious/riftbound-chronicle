@@ -101,7 +101,7 @@ def build_fixtures() -> dict:
     effect_state = effect_checks.base_state()
     unsupported = effect_ir.apply_program(
         copy.deepcopy(effect_state),
-        effect_checks.program("viewer-unsupported", {"op": "counter", "chain_item_id": "chain-1"}),
+        effect_checks.program("viewer-unsupported", {"op": "double", "object_id": "u1"}),
     )
     add(
         "unsupported",

@@ -69,7 +69,7 @@ def main() -> int:
     )
     if draw.get("outcome") != "supported" or draw.get("authority", {}).get("state_effect") != "none":
         failures.append("supported effect or authority boundary normalized incorrectly")
-    counter_program = program("engine-check-counter", {"op": "counter", "chain_item_id": "x"})
+    counter_program = program("engine-check-double", {"op": "double", "object_id": "u1"})
     counter = make_check(
         "effect", apply_program(effects, counter_program),
         {"effect_state": hash_value(effects), "effect_program": canonical_hash(counter_program)},

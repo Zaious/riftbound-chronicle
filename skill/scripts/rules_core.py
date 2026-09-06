@@ -65,7 +65,10 @@ RULES = {
 # topic such as ``showdown`` is not evidence that the complete Showdown
 # procedure is implemented. The capability manifest must only advertise
 # callable, bounded procedures and the locators those implementations use.
+RULES_COUNTER = ["Core 425.1", "Core 425.1.a", "Core 425.1.b", "Core 425.1.c"]
+
 SUPPORTED_PROCEDURES = {
+    "remove_chain_item": RULES_COUNTER,
     "next_procedure": [
         "Core 310.1.a", "Core 312.2.a", "Core 316", "Core 333–340",
         "Core 338–339", "Core 339.1", "Core 340.1–340.4", "Core 341–348",
@@ -814,6 +817,41 @@ def add_pending_item(state: dict[str, Any], proposal: dict[str, Any]) -> dict[st
         transition={"type": "pending_chain_item_added", "item_id": candidate["id"], "controller": candidate["controller"]},
         next_procedure=next_procedure(probe),
         rule_locators=["Core 328–330", "Core 334–337", "Core 358.4"],
+    )
+
+
+def remove_chain_item(state: dict[str, Any], item_id: str, *, reason: str = "countered") -> dict[str, Any]:
+    """Core 425.1: a countered card or ability is cleared from the chain. The
+    effect side moves the card (425.1.a); this removes the timing item, and the
+    caller commits both states together. It was never played (425.1.b) so no
+    play trigger follows, and no cost is refunded (425.1.c)."""
+    errors = validate_state(state)
+    if errors:
+        return _result(state, valid=False, errors=errors)
+    if is_terminal(state):
+        return _game_over(state)
+    items = state["chain"]["items"]
+    if not any(item["id"] == item_id for item in items):
+        return _result(state, valid=True, applied=False, reason_code="chain_item_not_found")
+    origin = state["chain"].get("initiated_by")
+    new_state = copy.deepcopy(state)
+    new_state["chain"]["items"] = [item for item in new_state["chain"]["items"] if item["id"] != item_id]
+    new_state["chain"]["consecutive_passes"] = []
+    if not new_state["chain"]["items"]:
+        _open_after_empty_chain(new_state, origin)
+    elif not any(item["status"] == "pending" for item in new_state["chain"]["items"]):
+        new_state["priority"] = new_state["chain"]["items"][-1]["controller"]
+    if found := validate_state(new_state):
+        return _result(state, valid=False, errors=found)
+    return _result(
+        state,
+        valid=True,
+        applied=True,
+        next_state=new_state,
+        next_state_hash=state_hash(new_state),
+        transition={"type": "chain_item_removed", "item_id": item_id, "reason": reason, "chain_empty": not new_state["chain"]["items"]},
+        next_procedure=next_procedure(new_state),
+        rule_locators=RULES_COUNTER,
     )
 
 

@@ -137,7 +137,7 @@ def _run_effects(tally: Tally) -> None:
     draw = ce.program("r5a-draw", {"op": "draw", "player": "p1", "count": 1})
     tally.add("effect:draw", build_engine_check("effect", apply_program(copy.deepcopy(state), draw),
                                                 input_hashes={"effect_state": hash_value(state), "effect_program": canonical_hash(draw)}))
-    counter = ce.program("r5a-counter", {"op": "counter", "chain_item_id": "x"})
+    counter = ce.program("r5a-double", {"op": "double", "object_id": "u1"})
     tally.add("effect:counter_unsupported", build_engine_check("effect", apply_program(copy.deepcopy(state), counter),
                                                                input_hashes={"effect_state": hash_value(state), "effect_program": canonical_hash(counter)}))
 

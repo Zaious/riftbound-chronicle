@@ -159,14 +159,16 @@ Banish is not Kill nor Discard (427.2.a–b). `recycle {objects |
 decision_ref, order_ref?}` Recycles several cards as one Game Action
 (303.2): to the owner's Main Deck or Rune Deck bottom (416.1–416.2); two
 or more cards to one deck need the player's `card_ordering` for the bottom
-order (416.5); a single card needs none. `counter {target: chain item}`
+order (416.5); a single card needs none. `counter {chain_item_id, card_to}`
 clears the chain item (425.1): its card goes to the owner's trash (425.1.a)
-unless the countering effect names `destination: hand`; it is not
-considered played (425.1.c) so no play trigger fires; no cost is refunded
-(425.2). The effect IR removes the effect-side entry and reports
+unless the countering effect names `card_to: hand`; it was not played
+(425.1.b) so no play trigger fires; no cost is refunded (425.1.c). The
+effect IR removes the effect-side entry and reports
 `countered_chain_items`; the resolution bridge removes the timing item in
-the same commit through `rules_core.remove_chain_item`. "Can't be
-countered" is `unsupported: cannot_be_countered`. `burn {player, count}`
+the same commit through `rules_core.remove_chain_item` and commits neither
+state when the timing chain does not carry it. A chain entry marked
+`counterable: false` is `unsupported: cannot_be_countered` — the static
+that grants it is a P4 contract. `burn {player, count}`
 moves the top cards of a Main Deck to the trash (440.1) as new objects; a
 deck shorter than the count is `unsupported: burn_out_non_draw` and nothing
 changes — the Draw-path receipt is not borrowed (Codex G-1).

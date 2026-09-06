@@ -172,7 +172,7 @@ def check_properties() -> list[str]:
             if first.get("committed") is True:
                 poisoned = copy.deepcopy(candidate)
                 poisoned["program_id"] = f"{label}-poisoned"
-                poisoned["effects"].append({"effect_id": "unsupported-tail", "op": "counter", "chain_item_id": "x"})
+                poisoned["effects"].append({"effect_id": "unsupported-tail", "op": "double", "object_id": "u1"})
                 spoiled = apply_program(copy.deepcopy(guard_copy), poisoned)
                 if spoiled.get("committed") is True:
                     failures.append(f"{label}: appending an unsupported effect still committed the program")

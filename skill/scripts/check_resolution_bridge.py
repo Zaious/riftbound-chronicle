@@ -41,7 +41,7 @@ def main() -> int:
         timing,
         "spell-1",
         effects,
-        program("unsupported", {"op": "counter", "chain_item_id": "other"}),
+        program("unsupported", {"op": "double", "object_id": "u1"}),
     )
     if unsupported.get("committed") or unsupported.get("stage") != "effect":
         failures.append("unsupported effect did not prevent the combined commit")

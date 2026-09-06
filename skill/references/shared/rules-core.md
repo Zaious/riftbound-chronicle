@@ -232,6 +232,16 @@ bind to the hash of timing state, effect state and declaration together. The
 relocation delegates to the Move operation so Move triggers and Cleanup stay
 one implementation; engine-check wraps it as `standard_move`.
 
+## Removing a countered chain item (ADR-0011 §5)
+
+`remove_chain_item` clears one item from the Chain when an effect Counters
+it (425.1). It is the timing half of a Counter: the effect IR moves the card
+(425.1.a) and reports `countered_chain_items`, and the resolution bridge
+calls this in the same commit. Removing the item clears the pass sequence
+and, when the Chain empties, reopens the state exactly as a completed
+resolution would. An item that is not on the Chain answers
+`chain_item_not_found` and changes nothing.
+
 ## Current coverage
 
 Version 1 covers the four-state permission model, the next HOT/FEPR procedure,

@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:c060071df1aa16f5ef1ec30c",
-    "capability_set_id": "sha256:c060071df1aa16f5ef1ec30c830e18677e90d6ffb79859010d2e109690f36fb7",
-    "implementation_identity": "sha256:11ffc0e6cdca35182237a7e17754ab3ebaa984dc894e184eb2a12fba0175080e",
+    "manifest_id": "capability-manifest:1bb88621f9a1c364f970746c",
+    "capability_set_id": "sha256:1bb88621f9a1c364f970746c6153145e4b9a00fb39263165872032d0dfecc4f6",
+    "implementation_identity": "sha256:6ed91d8ed7f8f44111d2fba912094d8832716f8b43ddf1b433e5fe845012b834",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 241,
+    "declared_locators": 252,
     "exactly_cited_declared_locators": 28,
-    "exact_ratio": 0.1162,
+    "exact_ratio": 0.1111,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -301,6 +301,14 @@
       "Core 424.2.a",
       "Core 424.3.a",
       "Core 424.4",
+      "Core 425.1",
+      "Core 425.1.a",
+      "Core 425.1.b",
+      "Core 425.1.c",
+      "Core 427.1",
+      "Core 427.2",
+      "Core 427.2.a",
+      "Core 427.2.b",
       "Core 428.1.a.1.b",
       "Core 428.5",
       "Core 428.5.c.2",
@@ -311,6 +319,7 @@
       "Core 430.4.a",
       "Core 431",
       "Core 431.1.a",
+      "Core 431.1.b",
       "Core 431.1.c",
       "Core 431.1.c.1",
       "Core 431.2.b",
@@ -322,6 +331,8 @@
       "Core 436.4",
       "Core 436.4.a",
       "Core 437.1.a.1",
+      "Core 440.1",
+      "Core 440.2",
       "Core 445",
       "Core 446",
       "Core 446.2",
@@ -557,7 +568,7 @@
       "label": "effect:counter_unsupported",
       "kind": "effect",
       "outcome": "unsupported",
-      "reason_code": "unsupported effect op 'counter'",
+      "reason_code": "unsupported effect op 'double'",
       "rule_locators": []
     },
     {
@@ -885,5 +896,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:f9484771e566debbef4b79976a86baf831fb887eabdbef88fe34fd874e7ff172"
+  "report_hash": "sha256:0b48eae3fc46677122c5d7f94cceb5c44f0ba33073c54c594e48cbb51ad9d4d3"
 }

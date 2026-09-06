@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/keyword-catalog.schema.json",
+  "title": "Chronicle Keyword Catalogue v1",
+  "description": "ADR-0013 §4: one entry per keyword the engine knows about. An entry names the official locator, the production that implements it (module and symbol, checked against the live engine), the layer it acts in, the zone it is active in, its identity and duration boundary, and the gate that exercises it. A keyword with `production: null` is not claimed because its string appears on a card; asking for it answers unsupported: keyword_not_implemented.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ruleset",
+    "status",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "keyword-catalog.v1"
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "core",
+        "faq_as_of"
+      ],
+      "properties": {
+        "core": {
+          "type": "string"
+        },
+        "faq_as_of": {
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "draft"
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyword_id",
+          "name",
+          "locators",
+          "production",
+          "active_zone",
+          "boundary",
+          "review"
+        ],
+        "properties": {
+          "keyword_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "locators": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "production": {
+            "oneOf": [
+              {
+                "type": "null",
+                "description": "No production: the engine does not implement this keyword and refuses it by name."
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "module",
+                  "symbol",
+                  "layer"
+                ],
+                "properties": {
+                  "module": {
+                    "type": "string"
+                  },
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "layer": {
+                    "enum": [
+                      "trait",
+                      "ability",
+                      "arithmetic",
+                      "timing",
+                      "cost",
+                      "procedure",
+                      "characteristic"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "active_zone": {
+            "enum": [
+              "board",
+              "hand_or_champion_zone",
+              "chain",
+              "any",
+              "deck_construction"
+            ]
+          },
+          "boundary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "identity",
+              "duration"
+            ],
+            "properties": {
+              "identity": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "string"
+              }
+            }
+          },
+          "fixture": {
+            "type": "string",
+            "description": "The gate that exercises this keyword."
+          },
+          "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reviewer",
+              "date",
+              "source"
+            ],
+            "properties": {
+              "reviewer": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "source": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

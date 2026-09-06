@@ -1,0 +1,357 @@
+{
+  "schema_version": "keyword-catalog.v1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-08-14"
+  },
+  "status": "draft",
+  "entries": [
+    {
+      "keyword_id": "ambush",
+      "name": "Ambush",
+      "locators": [
+        "Core 822.1",
+        "Core 822.3"
+      ],
+      "production": {
+        "module": "play_transaction",
+        "symbol": "play_card",
+        "layer": "timing",
+        "note": "a play permission plus Reaction while the Unit is being played to a Battlefield where its controller has Units"
+      },
+      "active_zone": "chain",
+      "boundary": {
+        "identity": "re-derived at commit",
+        "duration": "for that play only"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_play_sources.py"
+    },
+    {
+      "keyword_id": "backline",
+      "name": "Backline",
+      "locators": [
+        "Core 815.1.c",
+        "Core 465.2.c.6-465.2.c.9"
+      ],
+      "production": {
+        "module": "combat",
+        "symbol": "assignment_candidates",
+        "layer": "procedure"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the Unit's current designation",
+        "duration": "while the Combat lasts"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_combat_damage_assignment.py"
+    },
+    {
+      "keyword_id": "deflect",
+      "name": "Deflect",
+      "locators": [
+        "Core 809.1.b",
+        "Core 809.1.c",
+        "Core 809.1.d",
+        "Core 809.2"
+      ],
+      "production": {
+        "module": "play_transaction",
+        "symbol": "deflect_costs",
+        "layer": "cost",
+        "note": "each time an opposing-team spell or ability chooses the object, a mandatory any-domain Power cost"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the object chosen at play",
+        "duration": "per choice"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_deflect.py"
+    },
+    {
+      "keyword_id": "empower",
+      "name": "Empower",
+      "locators": [
+        "Core 441",
+        "Core 827.1",
+        "Core 827.2"
+      ],
+      "production": null,
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the object's Empowered state",
+        "duration": "until it is disempowered"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      }
+    },
+    {
+      "keyword_id": "equip",
+      "name": "Equip",
+      "locators": [
+        "Core 818.1",
+        "Core 819"
+      ],
+      "production": null,
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the Equipment and its host",
+        "duration": "while attached"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      }
+    },
+    {
+      "keyword_id": "ganking",
+      "name": "Ganking",
+      "locators": [
+        "Core 810.1",
+        "Core 810.1.b",
+        "Core 810.1.c",
+        "Core 144.4.c"
+      ],
+      "production": {
+        "module": "combat",
+        "symbol": "standard_move",
+        "layer": "procedure",
+        "note": "adds Battlefield-to-Battlefield to the Standard Move's valid destinations and nothing else"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "read at the moment of the Move",
+        "duration": "while the Unit has it"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_standard_move.py"
+    },
+    {
+      "keyword_id": "hidden",
+      "name": "Hidden",
+      "locators": [
+        "Core 811",
+        "Core 811.1",
+        "Core 811.2",
+        "Core 811.4"
+      ],
+      "production": {
+        "module": "hidden",
+        "symbol": "hide_card",
+        "layer": "procedure",
+        "note": "the prerequisite of the Hide Discretionary Action; playing from the Facedown Zone is a play source"
+      },
+      "active_zone": "hand_or_champion_zone",
+      "boundary": {
+        "identity": "the card becomes a new object when hidden (124)",
+        "duration": "while it stays in the Facedown Zone"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_hidden.py"
+    },
+    {
+      "keyword_id": "hunt",
+      "name": "Hunt",
+      "locators": [
+        "Core 823.1",
+        "Core 823.1.c",
+        "Core 823.2"
+      ],
+      "production": null,
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the Unit that Conquers or Holds",
+        "duration": "per Score event"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      }
+    },
+    {
+      "keyword_id": "level",
+      "name": "Level",
+      "locators": [
+        "Core 824.1",
+        "Core 824.1.b",
+        "Core 824.2"
+      ],
+      "production": null,
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the card and its controller's XP",
+        "duration": "while the XP threshold holds"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      }
+    },
+    {
+      "keyword_id": "repeat",
+      "name": "Repeat",
+      "locators": [
+        "Core 820",
+        "Core 820.1.a",
+        "Core 820.1.c",
+        "Core 820.1.d",
+        "Core 820.2.a"
+      ],
+      "production": {
+        "module": "effect_ir",
+        "symbol": "_resolve_executions",
+        "layer": "cost",
+        "note": "an optional additional cost; each paid instance executes the instructions once more with its own choices"
+      },
+      "active_zone": "chain",
+      "boundary": {
+        "identity": "recorded on the chain entry",
+        "duration": "for that resolution"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_costs_and_activation.py"
+    },
+    {
+      "keyword_id": "shield",
+      "name": "Shield",
+      "locators": [
+        "Core 814.1.b",
+        "Core 814.1.c",
+        "Core 814.2"
+      ],
+      "production": {
+        "module": "effect_ir",
+        "symbol": "shield_total",
+        "layer": "ability",
+        "note": "granted in the Ability layer and summed with the printed value; it adds to Might only while the Unit is a Defender (814.1.c)"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "bound to the object identity it was granted to (124)",
+        "duration": "printed, or this turn / this combat when granted"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_combat_characteristics.py"
+    },
+    {
+      "keyword_id": "tank",
+      "name": "Tank",
+      "locators": [
+        "Core 815.1.b",
+        "Core 465.2.c.6-465.2.c.9"
+      ],
+      "production": {
+        "module": "combat",
+        "symbol": "assignment_candidates",
+        "layer": "procedure",
+        "note": "a Combat damage-assignment tier, not a characteristic effect"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the Unit's current designation",
+        "duration": "while the Combat lasts"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      },
+      "fixture": "check_combat_damage_assignment.py"
+    },
+    {
+      "keyword_id": "temporary",
+      "name": "Temporary",
+      "locators": [
+        "Core 816.1.b",
+        "Core 816.1.c",
+        "Core 816.2"
+      ],
+      "production": null,
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the permanent that has it",
+        "duration": "until its controller's next Beginning Phase"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      }
+    },
+    {
+      "keyword_id": "unique",
+      "name": "Unique",
+      "locators": [
+        "Core 825.3",
+        "Core 825.3.a"
+      ],
+      "production": null,
+      "active_zone": "deck_construction",
+      "boundary": {
+        "identity": "the card, not the object",
+        "duration": "deck construction only; the engine records the characteristic and imposes nothing at play (Core 825.3)"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      }
+    },
+    {
+      "keyword_id": "vision",
+      "name": "Vision",
+      "locators": [
+        "Core 817.1.b",
+        "Core 817.1.c",
+        "Core 817.2.a"
+      ],
+      "production": null,
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the permanent entering the Board",
+        "duration": "one trigger per instance"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-07",
+        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+      }
+    }
+  ]
+}

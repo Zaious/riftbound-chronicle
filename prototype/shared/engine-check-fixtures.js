@@ -193,7 +193,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "continuous_effects",
             "layer_engine",
             "canonical_migration",
-            "typed_conditions"
+            "typed_conditions",
+            "keyword_catalog"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -215,6 +216,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "token_not_in_catalogue",
             "layer_dependency_unresolved",
             "condition_needs_hidden_information",
+            "keyword_not_implemented",
             "complete_game",
             "complete_legality"
           ]
@@ -373,7 +375,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "continuous_effects",
             "layer_engine",
             "canonical_migration",
-            "typed_conditions"
+            "typed_conditions",
+            "keyword_catalog"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -395,6 +398,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "token_not_in_catalogue",
             "layer_dependency_unresolved",
             "condition_needs_hidden_information",
+            "keyword_not_implemented",
             "complete_game",
             "complete_legality"
           ]

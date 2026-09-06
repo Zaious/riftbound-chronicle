@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:56fde4c86d4b22d30da5522d",
-  "capability_set_id": "sha256:56fde4c86d4b22d30da5522d84171d00000c24cfc27ca459f97f6011e2f1299f",
+  "manifest_id": "capability-manifest:41623573db98a5086fffd143",
+  "capability_set_id": "sha256:41623573db98a5086fffd143bd62cf2b792f94a9cb2c542d5d1629212ae97037",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:e63cc364bb56d614fcb7fce517fdcd2d17679834b95c537cb966f277a1fa871f",
+    "value": "sha256:1820ca975e7a44f011da0dbbb5eb578398c3e31408fb96d76294821a54769ef7",
     "files": [
       {
         "path": "rules_core.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:2f95aa8269bb212a8a30f2f567d8b4c0af6915ca65fa3babd8de7be29818bf38"
+        "sha256": "sha256:cd1259f2bb07f460f4fecd1d6ce474e0214e45fe896050d174a6bc467ff7b097"
       },
       {
         "path": "combat.py",
@@ -170,7 +170,8 @@
         "continuous_effects",
         "layer_engine",
         "canonical_migration",
-        "typed_conditions"
+        "typed_conditions",
+        "keyword_catalog"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -192,6 +193,7 @@
         "token_not_in_catalogue",
         "layer_dependency_unresolved",
         "condition_needs_hidden_information",
+        "keyword_not_implemented",
         "complete_game",
         "complete_legality"
       ]
@@ -1588,6 +1590,7 @@
     "hidden_legality_enumeration",
     "hidden_removal_on_control_change",
     "invalid_destination_catalog",
+    "keyword_not_implemented",
     "layer_dependency_unresolved",
     "legend_activation",
     "match_mode",

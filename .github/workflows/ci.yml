@@ -297,6 +297,9 @@ jobs:
       # decision or an unsupported step commits nothing.
       - name: Atomic Cleanup orchestration and 322 iterations
         run: python3 skill/scripts/check_cleanup_orchestration.py
+      # ADR-0011 §1–2: the typed choice specification, modal programs, private-option redaction.
+      - name: Choice grammar, modal abilities and card_ordering (C-40)
+        run: python3 skill/scripts/check_choice_grammar.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -384,6 +387,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_burn_out.py"
           python3 "$REPO/skill/scripts/check_turn_cycle.py"
           python3 "$REPO/skill/scripts/check_cleanup_orchestration.py"
+          python3 "$REPO/skill/scripts/check_choice_grammar.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -89,6 +89,8 @@ SUPPORTED_OPS = {
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
 COMPOSITE_OPS = {"mutual_damage_current_might"}
+# ADR-0011 §1: instructions whose object comes from a typed `choice`.
+CHOICE_OPS = {"recycle_one"}
 
 
 class ReplacementDecisionRequired(ValueError):
@@ -144,6 +146,30 @@ class PlayerSelectionRequired(ValueError):
         super().__init__(message)
         self.decision_ids = decision_ids
         self.controller = controller
+
+
+class ChoiceRequired(ValueError):
+    """ADR-0011 §1: a typed choice the chooser has not supplied. The summary
+    carries the specification and, for a public source only, the options."""
+
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None, summary: dict[str, Any]):
+        super().__init__(message)
+        self.decision_ids = decision_ids
+        self.controller = controller
+        self.summary = summary
+        self.reason_code = f"{summary['decision_kind']}_required"
+
+
+class ModeSelectionRequired(ValueError):
+    """ADR-0011 §2: a modal program whose mode has not been chosen."""
+
+    reason_code = "mode_selection_required"
+
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None, options: list[str]):
+        super().__init__(message)
+        self.decision_ids = decision_ids
+        self.controller = controller
+        self.options = options
 
 
 def object_identity(state: dict[str, Any], object_id: str) -> str | None:
@@ -313,9 +339,12 @@ def validate_state(state: Any) -> list[str]:
         errors.append("chain_items must be an object keyed by chain item id")
         chain_items = {}
     for item_id, entry in chain_items.items():
-        if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - {"card", "controller", "effect_program_id", "entry_location"} or not {"card", "controller"} <= set(entry):
+        if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - {"card", "controller", "effect_program_id", "entry_location", "mode_selection"} or not {"card", "controller"} <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller")
             continue
+        mode = entry.get("mode_selection")
+        if mode is not None and (not isinstance(mode, dict) or set(mode) != {"decision_id", "option_id"} or any(not isinstance(mode[k], str) or not mode[k] for k in mode)):
+            errors.append(f"chain_items.{item_id}.mode_selection must be {{decision_id, option_id}} (ADR-0011 §2)")
         location = entry.get("entry_location")
         if location is not None:
             if not isinstance(location, dict) or location.get("kind") not in {"base", "battlefield"} or set(location) - {"kind", "battlefield"}:
@@ -642,6 +671,37 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"conditional_triggers[{i}].condition.effect_id {cond['effect_id']!r} is not an instruction of this program")
                 if not isinstance(ct["optional_at_finalize"], bool) or not isinstance(ct["controller_order"], int) or ct["controller_order"] < 0:
                     errors.append(f"conditional_triggers[{i}] optional_at_finalize/controller_order are invalid")
+    modal = program.get("modal")
+    if modal is not None:
+        # ADR-0011 §2: the instructions live in the options; each option has a
+        # stable id the mode_selection decision names.
+        if not isinstance(modal, dict) or set(modal) != {"choose", "timing", "decision_ref", "options"}:
+            errors.append("modal must be {choose, timing, decision_ref, options}")
+        else:
+            if modal["choose"] != 1:
+                errors.append("modal.choose must be 1 (choose one)")
+            if modal["timing"] not in {"play_declaration", "trigger_finalization"}:
+                errors.append("modal.timing must be play_declaration or trigger_finalization (Core 402.2)")
+            if not isinstance(modal["decision_ref"], str) or not modal["decision_ref"]:
+                errors.append("modal.decision_ref must be non-empty")
+            options = modal["options"]
+            if not isinstance(options, list) or len(options) < 2:
+                errors.append("modal.options must list at least two options")
+            else:
+                seen_options: set[str] = set()
+                for o_index, option in enumerate(options):
+                    if not isinstance(option, dict) or set(option) != {"option_id", "effects"} or not isinstance(option["option_id"], str) or not option["option_id"]:
+                        errors.append(f"modal.options[{o_index}] must be {{option_id, effects}}")
+                        continue
+                    if option["option_id"] in seen_options:
+                        errors.append(f"modal.options[{o_index}].option_id {option['option_id']!r} is duplicated")
+                    seen_options.add(option["option_id"])
+                    synthetic = {k: v for k, v in program.items() if k not in {"modal", "effects"}}
+                    synthetic["effects"] = option["effects"]
+                    errors.extend(f"modal.options[{o_index}] {e}" for e in validate_program(synthetic))
+        if program.get("effects"):
+            errors.append("a modal program carries its instructions in modal.options, not in effects")
+        return errors
     effects = program.get("effects")
     if not isinstance(effects, list) or not effects:
         errors.append("effects must be a non-empty array")
@@ -682,6 +742,16 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].grant_keyword.value must be a positive integer")
                 if not isinstance(effect.get("source"), str) or not effect.get("source"):
                     errors.append(f"effects[{index}].grant_keyword requires a source")
+            choice = effect.get("choice")
+            if choice is not None:
+                import engine_decisions as ed
+                errors.extend(f"effects[{index}].choice {e}" for e in ed.validate_choice_spec(choice))
+                if effect.get("op") not in CHOICE_OPS:
+                    errors.append(f"effects[{index}].choice is not supported for {effect.get('op')!r}")
+                elif effect.get("op") in {"recycle_one"} and not errors and (choice["selection_kind"] != "single" or choice["from"] not in {"trash", "hand"}):
+                    errors.append(f"effects[{index}].{effect.get('op')} chooses a single card from trash or hand")
+                if effect.get("object_id") is not None or effect.get("target") is not None or effect.get("targets") is not None:
+                    errors.append(f"effects[{index}].choice excludes object_id, target and targets")
             if effect.get("op") == "discard":
                 if not isinstance(effect.get("player"), str) or not isinstance(effect.get("count"), int) or effect.get("count", 0) < 1:
                     errors.append(f"effects[{index}].discard requires player and a positive count")
@@ -1291,6 +1361,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
 
     elif op == "recycle_one":
         object_id = effect.get("object_id")
+        if object_id is None and (effect.get("selection_meta") or {}).get("empty"):
+            trace.update({"outcome": "no_op", "completion": "none", "reason": "nothing to choose from (Core 359.3.e)", "selection": effect.get("selection_meta")})
+            return new_state, trace
         if object_id not in new_state["objects"]:
             raise ValueError("recycle_one requires a known object")
         obj = new_state["objects"][object_id]
@@ -1309,6 +1382,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             if source is not None and (source[0] == "battlefield" or source_zone != destination):
                 trace["identity_after"] = _bump_identity(new_state, object_id)
                 trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
+        if effect.get("selection_meta") is not None:
+            trace["selection"] = copy.deepcopy(effect["selection_meta"])  # ADR-0011 §1: which choice picked it
 
     elif op == "move_board_object":
         object_id, destination = effect.get("object_id"), effect.get("destination")
@@ -2066,32 +2141,140 @@ def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: d
     """ADR-0007 §10 / Core 422: the discarding player chooses from their own
     hand with private information (422.1.a) — a card_selection decision, never
     a target. When the whole hand must go and only one set is legal, the
-    engine proceeds; otherwise it stops for the decision."""
-    import engine_decisions as ed
+    engine proceeds; otherwise it stops for the decision. Since ADR-0011 §1
+    the choice is the generic specification {unordered_set, exactly count,
+    from hand, by the player, private}."""
     player_id, count = effect.get("player"), effect.get("count")
     if player_id not in state["players"] or not isinstance(count, int) or count < 1:
-        raise ValueError("discard requires a known player and a positive count")
-    hand = list(state["players"][player_id]["zones"]["hand"])
-    if len(hand) <= count:
-        return {**effect, "objects": hand, "selection_meta": {"forced": True, "reason": "every card in hand must be discarded (Core 422.4)"}}
-    ref = effect.get("decision_ref")
-    entry = next((e for e in ed.entries(decisions, kind="card_selection") if e["decision_id"] == ref), None) if ref else None
+        raise ValueError("discard requires a known player and a resolved selection")
+    spec = {"selection_kind": "unordered_set", "count": {"exactly": count}, "from": "hand", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
+    chosen, meta = resolve_choice(state, spec, decision_ref=effect.get("decision_ref") or f"discard:{player_id}", decisions=decisions, controller=player_id)
+    if meta["forced"]:
+        return {**effect, "objects": chosen, "selection_meta": {"forced": True, "reason": "every card in hand must be discarded (Core 422.4)", "choice": meta["choice"]}}
+    return {**effect, "objects": chosen, "selection_meta": {"forced": False, "decision_id": meta["decision_id"], "choice": meta["choice"]}}
+
+
+def _resolve_choice_object(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, Any]:
+    """An instruction whose single object comes from a `choice` (recycle_one
+    from the trash, banish a card from hand): the chosen id becomes object_id."""
+    chosen, meta = resolve_choice(state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=program.get("controller"))
+    if not chosen:
+        return {**effect, "object_id": None, "selection_meta": {**meta, "empty": True}}
+    return {**effect, "object_id": chosen[0], "selection_meta": meta}
+
+
+def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str, session: dict[str, Any] | None = None) -> tuple[list[str], dict[str, str | None]]:
+    """The ordered candidate list of a choice source and the current identity
+    of each candidate (None for players)."""
+    source = spec["from"]
+    if source == "hand":
+        ids = list(state["players"][chooser]["zones"]["hand"])
+    elif source == "trash":
+        ids = list(state["players"][chooser]["zones"]["trash"])
+    elif source == "main_deck_top":
+        ids = list(state["players"][chooser]["zones"]["main_deck"][: spec["top"]])
+    elif source == "revealed":
+        ids = [r["object_id"] for r in (session or {}).get("reveals", []) if r.get("visible_to") == "all" or chooser in (r.get("visible_to") or [])]
+    elif source == "board":
+        criteria = spec.get("criteria") or {}
+        ids = []
+        places = [("base", pid, state["players"][pid]["zones"]["base"]) for pid in state["players"]] + [("battlefield", bid, bf["objects"]) for bid, bf in state["battlefields"].items()]
+        for where, _, objects in places:
+            if criteria.get("location") == "battlefield" and where != "battlefield":
+                continue
+            if criteria.get("location") == "base" and where != "base":
+                continue
+            for object_id in objects:
+                obj = state["objects"][object_id]
+                if "kind" in criteria and obj["kind"] != criteria["kind"]:
+                    continue
+                relation = criteria.get("controller_relation")
+                if relation == "friendly" and not same_side(state, chooser, obj.get("controller")):
+                    continue
+                if relation == "enemy" and same_side(state, chooser, obj.get("controller")):
+                    continue
+                ids.append(object_id)
+    elif source == "players":
+        ids = [p for p in state["players"] if spec.get("players", "opponents") == "any" or p != chooser]
+    else:
+        raise ValueError(f"unknown choice source {source!r}")
+    identities = {c: (object_identity(state, c) if source != "players" else None) for c in ids}
+    return ids, identities
+
+
+def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref: str | None, decisions: dict[str, Any] | None,
+                   controller: str | None, session: dict[str, Any] | None = None, chooser: str | None = None) -> tuple[list[str], dict[str, Any]]:
+    """ADR-0011 §1. Returns (chosen ids, meta). Raises ChoiceRequired when the
+    decision is absent, IllegalDecision when another player made it,
+    IllegalOperation when it names a non-candidate, ValueError when it is
+    malformed, stale or the wrong count, NotImplementedError for a chooser
+    rule this slice does not have."""
+    import engine_decisions as ed
+    problems = ed.validate_choice_spec(spec)
+    if problems:
+        raise ValueError("choice: " + "; ".join(problems))
+    by = spec.get("by", "controller")
+    if chooser is None:
+        if by == "controller":
+            chooser = controller
+        elif by == "opponent":
+            others = [p for p in state["players"] if p != controller]
+            if len(others) != 1:
+                raise NotImplementedError("a choice by 'opponent' with several opponents needs a player_selection first (unsupported: multi_opponent_choice)")
+            chooser = others[0]
+        elif by == "each_player":
+            raise NotImplementedError("each_player choices are outside this slice (unsupported: each_player_choice)")
+        else:
+            chooser = by
+    if chooser not in state["players"]:
+        raise ValueError(f"choice chooser {chooser!r} is not a player")
+    candidates, identities = choice_candidates(state, spec, chooser, session)
+    forced = ed.forced_choice(spec, candidates)
+    summary = ed.choice_summary(spec, chooser, candidates, identities)
+    if forced is not None:
+        return forced, {"forced": True, "reason": "no alternative: every candidate is taken or there is none (Core 359.3.e)", "choice": summary}
+    ref = decision_ref or f"choice:{spec['from']}:{chooser}"
+    entry = ed.decision_entry(decisions, ref)
     if entry is None:
-        raise CardSelectionRequired(f"{player_id} chooses {count} card(s) from hand to discard (Core 422.1.a)", [ref or f"discard:{player_id}"], player_id)
-    if entry["controller"] != player_id:
-        raise IllegalDecision(f"card selection {ref!r} was made by {entry['controller']!r}, not the discarding player")
-    if entry["stage"] != "resolution":
-        raise ValueError(f"card selection {ref!r} must be a resolution-stage decision")
-    chosen = list(entry["value"])
-    if len(chosen) != count:
-        raise ValueError(f"card selection {ref!r} names {len(chosen)} cards; {count} required")
-    for object_id in chosen:
-        if object_id not in hand:
-            raise IllegalOperation(f"card selection {ref!r} names {object_id!r}, which is not in {player_id}'s hand")
-        bound = (entry.get("selection_identities") or {}).get(object_id)
-        if bound is not None and bound != object_identity(state, object_id):
-            raise ValueError(f"card selection {ref!r} was bound to {bound!r}; {object_id} is now {object_identity(state, object_id)!r}")
-    return {**effect, "objects": chosen, "selection_meta": {"forced": False, "decision_id": entry["decision_id"]}}
+        raise ChoiceRequired(f"{chooser} chooses from {spec['from']} ({spec['selection_kind']})", [ref], chooser, summary)
+    chosen, failure, message = ed.check_choice_entry(spec, entry, chooser, candidates, identities)
+    if failure == "controller":
+        raise IllegalDecision(message)
+    if failure == "illegal":
+        raise IllegalOperation(message)
+    if failure == "invalid":
+        raise ValueError(message)
+    if entry["stage"] != "resolution" and entry["kind"] in {"card_selection", "card_ordering"} and not (session or {}).get("allow_play_stage"):
+        raise ValueError(f"decision {ref!r} must be a resolution-stage decision")
+    return chosen, {"forced": False, "decision_id": entry["decision_id"], "choice": {k: v for k, v in summary.items() if k != "options"}}
+
+
+def _resolve_mode(program: dict[str, Any], decisions: dict[str, Any] | None, context: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """ADR-0011 §2: a modal program runs the instructions of the option a
+    mode_selection decision names by stable id. A mode recorded at play (on
+    the chain entry) is supplied through the context; an envelope entry must
+    agree with it."""
+    import engine_decisions as ed
+    modal = program.get("modal")
+    if not modal:
+        return list(program.get("effects") or []), None
+    ref = modal["decision_ref"]
+    option_ids = [o["option_id"] for o in modal["options"]]
+    entry = ed.mode_selection(decisions, ref)
+    recorded = (context or {}).get("mode_selection")
+    if entry is not None and entry["controller"] != program.get("controller"):
+        raise IllegalDecision(f"mode {ref!r} was chosen by {entry['controller']!r}, not the program controller")
+    if entry is not None and entry["stage"] != modal["timing"]:
+        raise ValueError(f"mode {ref!r} was chosen at stage {entry['stage']!r}; this clause chooses it at {modal['timing']}")
+    chosen = entry["value"] if entry is not None else (recorded or {}).get("option_id")
+    if entry is not None and recorded is not None and recorded.get("decision_id") == ref and recorded.get("option_id") != entry["value"]:
+        raise ValueError(f"mode {ref!r} was recorded as {recorded.get('option_id')!r} when the card was played; the envelope now says {entry['value']!r}")
+    if chosen is None:
+        raise ModeSelectionRequired(f"{program.get('controller')} chooses a mode of {program.get('program_id')} (Core 402.2)", [ref], program.get("controller"), option_ids)
+    option = next((o for o in modal["options"] if o["option_id"] == chosen), None)
+    if option is None:
+        raise ValueError(f"mode {ref!r} names option {chosen!r}, which this program does not have; options are {option_ids}")
+    return list(option["effects"]), {"decision_id": ref, "option_id": chosen, "options": option_ids, "recorded_at_play": entry is None, "rule_locators": ["Core 402.2", "Core 820.2.a"]}
 
 
 def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -2168,7 +2351,16 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     trace = []
     outcomes: dict[str, str] = {}
     terminal: dict[str, Any] | None = None
-    for index, effect in enumerate(program["effects"]):
+    try:
+        effects_to_run, mode = _resolve_mode(program, decisions, context)
+    except ModeSelectionRequired as exc:
+        return {**base, "valid": True, "committed": False, "mode_selection_required": True, "reason_code": exc.reason_code, "reason": str(exc),
+                "decision_ids": exc.decision_ids, "decision_controller": exc.controller, "mode_options": exc.options, "trace": []}
+    except IllegalDecision as exc:
+        return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch", "reason": str(exc), "trace": []}
+    except ValueError as exc:
+        return {**base, "valid": False, "committed": False, "errors": [str(exc)], "trace": []}
+    for index, effect in enumerate(effects_to_run):
         before_hash = hash_value(current)
         effect_id = effect.get("effect_id", f"effect-{index}")
         if terminal is not None:
@@ -2236,16 +2428,19 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
         if effect.get("op") == "grant_keyword" and context is not None and context.get("combat") is not None:
             effect = {**effect, "combat_context": context["combat"]}
-        if effect.get("op") == "discard":
+        if effect.get("op") == "discard" or effect.get("choice") is not None:
             try:
-                effect = _resolve_discard(current, effect, decisions)
-            except CardSelectionRequired as exc:
+                effect = _resolve_discard(current, effect, decisions) if effect.get("op") == "discard" else _resolve_choice_object(current, effect, program, decisions)
+            except ChoiceRequired as exc:
+                # ADR-0011 §1: the summary lists options only for a public source.
                 return {
-                    **base, "valid": True, "committed": False, "card_selection_required": True,
-                    "reason_code": "card_selection_required", "reason": str(exc),
+                    **base, "valid": True, "committed": False, "choice_required": True, f"{exc.summary['decision_kind']}_required": True,
+                    "reason_code": exc.reason_code, "reason": str(exc), "choice": exc.summary,
                     "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
                     "failed_effect_index": index, "trace": trace,
                 }
+            except NotImplementedError as exc:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index, "reason": str(exc), "trace": trace}
             except IllegalDecision as exc:
                 return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch", "reason": str(exc), "failed_effect_index": index, "trace": trace}
             except IllegalOperation as exc:
@@ -2825,6 +3020,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         "committed": True,
         "unsupported": False,
         "conditional_triggers": copy.deepcopy(program.get("conditional_triggers", [])),
+        **({"mode": mode} if mode is not None else {}),
         "next_state": current,
         "next_state_hash": hash_value(current),
         "trace": trace,

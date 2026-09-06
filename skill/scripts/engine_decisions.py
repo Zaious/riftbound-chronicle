@@ -32,6 +32,8 @@ this form, per ADR-0002's migration policy.
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 from typing import Any
 
 DECISIONS_VERSION = "engine-decisions.v1"
@@ -39,7 +41,9 @@ DECISIONS_VERSION = "engine-decisions.v1"
 # Player's Combat location), bound to combat.combined_input_hash.
 STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
 # ADR-0010 §2: player_selection names another player (the Burn Out beneficiary).
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection")
+# ADR-0011 §2–3: mode_selection names a modal option by its stable id;
+# card_ordering is the player's complete permutation of looked-at / revealed cards.
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -95,8 +99,8 @@ def validate_engine_decisions(value: Any) -> list[str]:
         if not isinstance(item["controller"], str) or not item["controller"]:
             errors.append(f"{label}.controller is required")
         kind, val = item["kind"], item["value"]
-        if kind in {"target_selection", "card_selection"}:
-            if not isinstance(val, list) or (kind == "card_selection" and not val) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
+        if kind in {"target_selection", "card_selection", "card_ordering"}:
+            if not isinstance(val, list) or (kind in {"card_selection", "card_ordering"} and not val) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
                 errors.append(f"{label}.value must be a {'non-empty ' if kind == 'card_selection' else ''}unique array of object ids")
             identities = item.get("selection_identities")
             if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, list) else []):
@@ -121,7 +125,7 @@ def validate_engine_decisions(value: Any) -> list[str]:
             if item["stage"] != "procedure":
                 errors.append(f"{label}: damage_assignment is a procedure-stage decision")
         elif "selection_identities" in item:
-            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection or damage_assignment")
+            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering or damage_assignment")
         if kind == "replacement_order" and (not isinstance(val, dict) or any(not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) for ids in val.values())):
             errors.append(f"{label}.value must map event ids to non-empty unique replacement-id arrays")
         if kind == "replacement_choice" and (not isinstance(val, dict) or any(not isinstance(by_event, dict) or any(not isinstance(c, bool) for c in by_event.values()) for by_event in val.values())):
@@ -134,6 +138,12 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must map domains to non-negative integers (the complete allocation)")
         if kind == "resource_allocation" and item["stage"] != "play_declaration":
             errors.append(f"{label}: resource_allocation is decided while paying at play")
+        if kind == "card_ordering" and item["stage"] != "resolution":
+            errors.append(f"{label}: card_ordering is a resolution-stage decision")
+        if kind == "mode_selection" and (not isinstance(val, str) or not val):
+            errors.append(f"{label}.value must be the stable option id of the chosen mode (not an index)")
+        if kind == "mode_selection" and item["stage"] not in ("play_declaration", "trigger_finalization"):
+            errors.append(f"{label}: mode_selection is chosen while playing or at trigger finalization (Core 402.2)")
         if kind in ("replacement_order", "replacement_choice", "trigger_order", "card_selection") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
         if kind == "player_selection" and (not isinstance(val, str) or not val):
@@ -209,3 +219,181 @@ def target_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict
         if item["decision_id"] == decision_id:
             return item
     return None
+
+
+# ---------------------------------------------------------------- choice grammar (ADR-0011 §1) --
+# A choice is a typed specification the instruction carries; the engine
+# enumerates candidates, asks for the decision kind the specification maps
+# to, and validates the supplied value against the candidates. Private
+# sources are never listed in an engine result.
+SELECTION_KINDS = ("single", "unordered_set", "ordered_permutation")
+CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "players")
+CHOICE_VISIBILITY = ("public", "private_to_chooser")
+CHOICE_BY = ("controller", "opponent", "each_player")
+COUNT_FORMS = ("exactly", "up_to", "any_number", "one")
+PRIVATE_SOURCES = {"hand", "main_deck_top", "revealed"}
+DEFAULT_ENUMERABLE_CAP = 64
+CHOICE_FIELDS = {"selection_kind", "count", "from", "by", "visibility", "identity_binding", "enumerable_cap", "criteria", "players", "top"}
+
+
+def validate_choice_spec(spec: Any) -> list[str]:
+    if not isinstance(spec, dict):
+        return ["choice must be an object"]
+    errors: list[str] = []
+    if set(spec) - CHOICE_FIELDS or not {"selection_kind", "from"} <= set(spec):
+        errors.append(f"choice must carry selection_kind and from, and only {sorted(CHOICE_FIELDS)}")
+        return errors
+    if spec["selection_kind"] not in SELECTION_KINDS:
+        errors.append(f"choice.selection_kind must be one of {SELECTION_KINDS}")
+    count = spec.get("count", {"one": True} if spec["selection_kind"] == "single" else None)
+    if not isinstance(count, dict) or len(count) != 1 or next(iter(count)) not in COUNT_FORMS:
+        errors.append("choice.count must be one of {exactly: n}, {up_to: n}, {any_number: true}, {one: true}")
+    else:
+        form, value = next(iter(count.items()))
+        if form in {"exactly", "up_to"} and (not isinstance(value, int) or isinstance(value, bool) or value < 1):
+            errors.append(f"choice.count.{form} must be a positive integer")
+        if form in {"any_number", "one"} and value is not True:
+            errors.append(f"choice.count.{form} must be true")
+        if spec["selection_kind"] == "single" and form != "one":
+            errors.append("a single choice counts one")
+        if spec["selection_kind"] == "ordered_permutation" and form != "any_number":
+            errors.append("an ordered_permutation orders every candidate (count any_number)")
+    if spec["from"] not in CHOICE_SOURCES:
+        errors.append(f"choice.from must be one of {CHOICE_SOURCES}")
+    by = spec.get("by", "controller")
+    if not (by in CHOICE_BY or (isinstance(by, str) and by)):
+        errors.append("choice.by must be controller, opponent, each_player or a player id")
+    if spec.get("visibility", "public") not in CHOICE_VISIBILITY:
+        errors.append(f"choice.visibility must be one of {CHOICE_VISIBILITY}")
+    if spec["from"] in PRIVATE_SOURCES and spec.get("visibility") == "public":
+        errors.append(f"choice.from {spec['from']} is private information (Core 128.4); visibility cannot be public")
+    if not isinstance(spec.get("identity_binding", True), bool):
+        errors.append("choice.identity_binding must be boolean")
+    cap = spec.get("enumerable_cap", DEFAULT_ENUMERABLE_CAP)
+    if not isinstance(cap, int) or isinstance(cap, bool) or cap < 1:
+        errors.append("choice.enumerable_cap must be a positive integer")
+    if "criteria" in spec and spec["from"] != "board":
+        errors.append("choice.criteria only applies to a board source")
+    if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location"}):
+        errors.append("choice.from board needs criteria {kind?, controller_relation?, location?}")
+    if "players" in spec and spec["from"] != "players":
+        errors.append("choice.players only applies to a players source")
+    if spec["from"] == "players" and spec.get("players", "opponents") not in {"opponents", "any"}:
+        errors.append("choice.players must be opponents or any")
+    if spec["from"] == "players" and spec["selection_kind"] != "single":
+        errors.append("a players choice names one player")
+    if "top" in spec and spec["from"] != "main_deck_top":
+        errors.append("choice.top only applies to main_deck_top")
+    if spec["from"] == "main_deck_top" and (not isinstance(spec.get("top"), int) or isinstance(spec.get("top"), bool) or spec.get("top", 0) < 1):
+        errors.append("choice.from main_deck_top needs a positive top count")
+    return errors
+
+
+def choice_visibility(spec: dict[str, Any]) -> str:
+    return spec.get("visibility") or ("private_to_chooser" if spec["from"] in PRIVATE_SOURCES else "public")
+
+
+def choice_decision_kind(spec: dict[str, Any]) -> str:
+    if spec["from"] == "players":
+        return "player_selection"
+    if spec["selection_kind"] == "ordered_permutation":
+        return "card_ordering"
+    if spec["from"] == "board":
+        return "target_selection"
+    return "card_selection"
+
+
+def choice_count(spec: dict[str, Any]) -> tuple[str, int | None]:
+    count = spec.get("count", {"one": True} if spec["selection_kind"] == "single" else {"any_number": True})
+    form, value = next(iter(count.items()))
+    return form, (value if isinstance(value, int) and not isinstance(value, bool) else None)
+
+
+def forced_choice(spec: dict[str, Any], candidates: list[str]) -> list[str] | None:
+    """The set the rules force without asking: nothing to choose from, or
+    every candidate must be taken (359.3.e: do as much as possible)."""
+    form, n = choice_count(spec)
+    if not candidates:
+        return []
+    if spec["selection_kind"] == "single" and len(candidates) == 1:
+        return list(candidates)
+    if spec["selection_kind"] == "ordered_permutation" and len(candidates) == 1:
+        return list(candidates)
+    if form == "exactly" and len(candidates) <= (n or 0):
+        return list(candidates)
+    return None
+
+
+def choice_summary(spec: dict[str, Any], chooser: str, candidates: list[str], identities: dict[str, str | None]) -> dict[str, Any]:
+    """What an engine result may say about a pending choice. A private source
+    is described by count and hash only (Core 128.4, 355.10.a); a public one
+    lists its options up to the enumerable cap."""
+    visibility = choice_visibility(spec)
+    form, n = choice_count(spec)
+    listing = [{"object_id": c, "identity": identities.get(c)} for c in candidates]
+    digest = hashlib.sha256(json.dumps([[c, identities.get(c)] for c in candidates], sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    cap = spec.get("enumerable_cap", DEFAULT_ENUMERABLE_CAP)
+    summary = {"decision_kind": choice_decision_kind(spec), "selection_kind": spec["selection_kind"], "count": {form: n if n is not None else True},
+               "from": spec["from"], "chooser": chooser, "visibility": visibility, "identity_binding": spec.get("identity_binding", True),
+               "options_count": len(candidates), "options_hash": f"sha256:{digest}", "options_enumerated": len(candidates) <= cap}
+    if visibility == "public" and len(candidates) <= cap:
+        summary["options"] = listing
+    else:
+        summary["options_visible_to"] = [chooser]
+    return summary
+
+
+def check_choice_entry(spec: dict[str, Any], entry: dict[str, Any], chooser: str, candidates: list[str], identities: dict[str, str | None]) -> tuple[list[str], str | None, str]:
+    """Validate a supplied decision against the specification and the
+    candidates. Returns (chosen, failure, message); failure is None, or
+    'controller' (another player chose), 'invalid' (malformed, wrong count
+    or stale identity) or 'illegal' (a value that is not a candidate)."""
+    kind = choice_decision_kind(spec)
+    if entry.get("kind") != kind:
+        return [], "invalid", f"decision {entry.get('decision_id')!r} is a {entry.get('kind')}; this choice is a {kind}"
+    if entry.get("controller") != chooser:
+        return [], "controller", f"decision {entry.get('decision_id')!r} was made by {entry.get('controller')!r}, not the choosing player {chooser!r}"
+    value = entry.get("value")
+    chosen = [value] if isinstance(value, str) else list(value) if isinstance(value, list) else None
+    if chosen is None:
+        return [], "invalid", f"decision {entry.get('decision_id')!r} carries no usable value"
+    if len(chosen) != len(set(chosen)):
+        return [], "invalid", f"decision {entry.get('decision_id')!r} repeats a candidate"
+    outside = [c for c in chosen if c not in candidates]
+    if outside:
+        return [], "illegal", f"decision {entry.get('decision_id')!r} names {outside}, which cannot be chosen here"
+    form, n = choice_count(spec)
+    if spec["selection_kind"] == "ordered_permutation":
+        if set(chosen) != set(candidates):
+            return [], "invalid", f"decision {entry.get('decision_id')!r} must order every candidate exactly once ({len(candidates)} cards)"
+    elif spec["selection_kind"] == "single" or form == "one":
+        if len(chosen) != 1:
+            return [], "invalid", f"decision {entry.get('decision_id')!r} must name exactly one"
+    elif form == "exactly":
+        expected = min(n or 0, len(candidates))
+        if len(chosen) != expected:
+            return [], "invalid", f"decision {entry.get('decision_id')!r} names {len(chosen)}; {expected} required"
+    elif form == "up_to" and len(chosen) > (n or 0):
+        return [], "invalid", f"decision {entry.get('decision_id')!r} names {len(chosen)}; at most {n}"
+    if spec.get("identity_binding", True) and kind != "player_selection":
+        bound = entry.get("selection_identities") or {}
+        for c in chosen:
+            if c in bound and identities.get(c) is not None and bound[c] != identities[c]:
+                return [], "invalid", f"decision {entry.get('decision_id')!r} was bound to {bound[c]!r}; {c} is now {identities[c]!r}"
+    return chosen, None, ""
+
+
+def mode_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:
+    return next((item for item in entries(decisions, kind="mode_selection") if item["decision_id"] == decision_id), None)
+
+
+def card_ordering(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:
+    return next((item for item in entries(decisions, kind="card_ordering") if item["decision_id"] == decision_id), None)
+
+
+def card_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:
+    return next((item for item in entries(decisions, kind="card_selection") if item["decision_id"] == decision_id), None)
+
+
+def decision_entry(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:
+    return next((item for item in entries(decisions) if item["decision_id"] == decision_id), None)

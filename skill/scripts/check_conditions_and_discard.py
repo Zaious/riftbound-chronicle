@@ -102,7 +102,7 @@ def main() -> int:
     if ask.get("committed") or ask.get("reason_code") != "card_selection_required" or ask.get("decision_ids") != ["pick"] or ask.get("decision_controller") != "p1":
         errors.append(f"a two-card hand did not stop for card_selection: {ask.get('reason_code')} {ask.get('errors')}")
     dumped = json.dumps({k: v for k, v in ask.items() if k not in {"trace"}})
-    if "c1" in dumped or "c2" in dumped:
+    if '"c1"' in dumped or '"c2"' in dumped:  # ids as JSON strings; hashes may contain the letters
         errors.append("the decision_required result leaked the hand's contents")
     check = build_engine_check("effect", ask, input_hashes={"effect_state": hash_value(hand2), "effect_program": "sha256:" + "5" * 64})
     if check["outcome"] != "decision_required" or check["decision_required"]["kind"] != "card_choice" or check["decision_required"]["controller"] != "p1":

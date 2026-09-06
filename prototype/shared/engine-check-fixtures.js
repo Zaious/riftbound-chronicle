@@ -173,7 +173,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "active_combat_criteria",
             "mutual_current_might_damage",
             "burn_out_draw",
-            "randomization_receipt"
+            "randomization_receipt",
+            "choice_grammar",
+            "modal_abilities",
+            "card_ordering"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -181,6 +184,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "scoring",
             "burn_out_non_draw",
             "burn_out_in_replacement",
+            "distinct_per_turn_choice",
+            "each_player_choice",
+            "multi_opponent_choice",
             "complete_game",
             "complete_legality"
           ]
@@ -319,7 +325,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "active_combat_criteria",
             "mutual_current_might_damage",
             "burn_out_draw",
-            "randomization_receipt"
+            "randomization_receipt",
+            "choice_grammar",
+            "modal_abilities",
+            "card_ordering"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -327,6 +336,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "scoring",
             "burn_out_non_draw",
             "burn_out_in_replacement",
+            "distinct_per_turn_choice",
+            "each_player_choice",
+            "multi_opponent_choice",
             "complete_game",
             "complete_legality"
           ]

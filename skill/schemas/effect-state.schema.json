@@ -4,42 +4,103 @@
   "title": "Chronicle Effect State v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "ruleset", "players", "objects", "battlefields", "replacement_effects"],
+  "required": [
+    "schema_version",
+    "ruleset",
+    "players",
+    "objects",
+    "battlefields",
+    "replacement_effects"
+  ],
   "properties": {
-    "schema_version": {"const": "riftbound-effect-state.v1"},
+    "schema_version": {
+      "const": "riftbound-effect-state.v1"
+    },
     "ruleset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["core", "faq_as_of"],
+      "required": [
+        "core",
+        "faq_as_of"
+      ],
       "properties": {
-        "core": {"const": "2026-07-16"},
-        "faq_as_of": {"const": "2026-08-14"}
+        "core": {
+          "const": "2026-07-16"
+        },
+        "faq_as_of": {
+          "const": "2026-08-14"
+        }
       }
     },
     "players": {
       "type": "object",
       "minProperties": 2,
-      "additionalProperties": {"$ref": "#/$defs/player"}
+      "additionalProperties": {
+        "$ref": "#/$defs/player"
+      }
     },
     "objects": {
       "type": "object",
-      "additionalProperties": {"$ref": "#/$defs/object"}
+      "additionalProperties": {
+        "$ref": "#/$defs/object"
+      }
     },
     "battlefields": {
       "type": "object",
-      "additionalProperties": {"$ref": "#/$defs/battlefield"}
+      "additionalProperties": {
+        "$ref": "#/$defs/battlefield"
+      }
     },
     "replacement_effects": {
       "type": "array",
-      "items": {"$ref": "#/$defs/replacementEffect"}
+      "items": {
+        "$ref": "#/$defs/replacementEffect"
+      }
     },
     "mode": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["victory_score"],
+      "required": [
+        "victory_score"
+      ],
       "description": "ADR-0009 §1 / ADR-0010 §6: the Mode of Play facts scoring and the First Turn Process need (456.3, 483). Absent makes scoring unsupported; teams are not modelled; match is unsupported as a whole.",
-      "properties": {"victory_score": {"type": "integer", "minimum": 1}, "teams": {"type": "boolean"}, "id": {"enum": ["duel", "match", "skirmish", "war", "magma_chamber"]},
-                     "first_turn": {"type": "object", "additionalProperties": false, "properties": {"extra_channel": {"type": "array", "items": {"type": "string"}}, "skip_draw": {"type": "array", "items": {"type": "string"}}}, "description": "Explicit First Turn Process facts (483.7) when mode.id does not supply them."}}
+      "properties": {
+        "victory_score": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "teams": {
+          "type": "boolean"
+        },
+        "id": {
+          "enum": [
+            "duel",
+            "match",
+            "skirmish",
+            "war",
+            "magma_chamber"
+          ]
+        },
+        "first_turn": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "extra_channel": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "skip_draw": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "Explicit First Turn Process facts (483.7) when mode.id does not supply them."
+        }
+      }
     },
     "might_auras": {
       "type": "array",
@@ -47,30 +108,83 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["modifier_id", "source_object", "controller", "amount", "condition"],
+        "required": [
+          "modifier_id",
+          "source_object",
+          "controller",
+          "amount",
+          "condition"
+        ],
         "properties": {
-          "modifier_id": {"type": "string", "minLength": 1},
-          "source_object": {"type": "string", "minLength": 1},
-          "controller": {"type": "string", "minLength": 1},
-          "amount": {"type": "integer"},
-          "condition": {"type": "object", "additionalProperties": false, "required": ["kind"], "properties": {"kind": {"enum": ["friendly_unit_defends_alone"]}}}
+          "modifier_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_object": {
+            "type": "string",
+            "minLength": 1
+          },
+          "controller": {
+            "type": "string",
+            "minLength": 1
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "condition": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "friendly_unit_defends_alone"
+                ]
+              }
+            }
+          }
         }
       }
     },
-    "turn_id": {"type": "string", "minLength": 1, "description": "The turn every 'this turn' effect created now belongs to (ADR-0007 §8). Absent means turn-0."},
+    "turn_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The turn every 'this turn' effect created now belongs to (ADR-0007 §8). Absent means turn-0."
+    },
     "turn_effects": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["effect_id", "kind", "controller", "turn_id"],
+        "required": [
+          "effect_id",
+          "kind",
+          "controller",
+          "turn_id"
+        ],
         "properties": {
-          "effect_id": {"type": "string", "minLength": 1},
-          "kind": {"type": "string", "minLength": 1},
-          "controller": {"type": "string", "minLength": 1},
-          "turn_id": {"type": "string", "minLength": 1},
+          "effect_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "controller": {
+            "type": "string",
+            "minLength": 1
+          },
+          "turn_id": {
+            "type": "string",
+            "minLength": 1
+          },
           "value": {},
-          "source": {"type": "string"}
+          "source": {
+            "type": "string"
+          }
         }
       }
     },
@@ -80,16 +194,45 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["modifier_id", "source_object", "controller", "amount", "scope"],
+        "required": [
+          "modifier_id",
+          "source_object",
+          "controller",
+          "amount",
+          "scope"
+        ],
         "properties": {
-          "modifier_id": {"type": "string", "minLength": 1},
-          "source_object": {"type": "string", "minLength": 1},
-          "controller": {"type": "string", "minLength": 1},
-          "amount": {"type": "integer", "minimum": 1},
+          "modifier_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_object": {
+            "type": "string",
+            "minLength": 1
+          },
+          "controller": {
+            "type": "string",
+            "minLength": 1
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1
+          },
           "scope": {
             "type": "object",
-            "required": ["kind"],
-            "properties": {"kind": {"type": "string", "minLength": 1}, "battlefield": {"type": "string", "minLength": 1}}
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              },
+              "battlefield": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         }
       }
@@ -100,12 +243,45 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["card", "controller"],
+        "required": [
+          "card",
+          "controller"
+        ],
         "properties": {
-          "card": {"type": "string", "minLength": 1},
-          "controller": {"type": "string", "minLength": 1},
-          "effect_program_id": {"type": "string", "minLength": 1},
-          "entry_location": {"$ref": "#/$defs/entryLocation"}
+          "card": {
+            "type": "string",
+            "minLength": 1
+          },
+          "controller": {
+            "type": "string",
+            "minLength": 1
+          },
+          "effect_program_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "entry_location": {
+            "$ref": "#/$defs/entryLocation"
+          },
+          "mode_selection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "decision_id",
+              "option_id"
+            ],
+            "description": "ADR-0011 §2: the mode chosen while playing, by stable option id, carried to resolution.",
+            "properties": {
+              "decision_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "option_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
         }
       }
     }
@@ -114,41 +290,128 @@
     "entryLocation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "properties": {
-        "kind": {"enum": ["base", "battlefield"]},
-        "battlefield": {"type": "string", "minLength": 1}
+        "kind": {
+          "enum": [
+            "base",
+            "battlefield"
+          ]
+        },
+        "battlefield": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "zones": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["main_deck", "hand", "trash", "banishment", "base", "rune_deck"],
+      "required": [
+        "main_deck",
+        "hand",
+        "trash",
+        "banishment",
+        "base",
+        "rune_deck"
+      ],
       "properties": {
-        "main_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "hand": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "trash": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "banishment": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "base": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "rune_deck": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+        "main_deck": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "hand": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "trash": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "banishment": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "base": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "rune_deck": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "player": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["zones", "resources"],
+      "required": [
+        "zones",
+        "resources"
+      ],
       "properties": {
-        "team_id": {"type": "string", "minLength": 1},
-        "points": {"type": "integer", "minimum": 0, "description": "ADR-0009 §1: points gained by scoring (468, 471.1). Absent means 0."},
-        "scored_this_turn": {"type": "object", "additionalProperties": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}, "description": "turn_id -> battlefields this player scored that turn (470); only the current turn's entry is read."},
-        "zones": {"$ref": "#/$defs/zones"},
+        "team_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "ADR-0009 §1: points gained by scoring (468, 471.1). Absent means 0."
+        },
+        "scored_this_turn": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": "turn_id -> battlefields this player scored that turn (470); only the current turn's entry is read."
+        },
+        "zones": {
+          "$ref": "#/$defs/zones"
+        },
         "resources": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["energy", "power"],
+          "required": [
+            "energy",
+            "power"
+          ],
           "properties": {
-            "energy": {"type": "integer", "minimum": 0},
-            "power": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+            "energy": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "power": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
           }
         }
       }
@@ -157,38 +420,114 @@
       "type": "object",
       "additionalProperties": false,
       "$comment": "turn_id stamps a this_turn modifier with the turn it belongs to (ADR-0007 §8).",
-      "required": ["amount", "duration", "source"],
-      "properties": {"turn_id": {"type": "string", "minLength": 1}, 
-        "amount": {"type": "integer"},
-        "duration": {"enum": ["this_turn", "persistent"]},
-        "source": {"type": "string", "minLength": 1}
+      "required": [
+        "amount",
+        "duration",
+        "source"
+      ],
+      "properties": {
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "duration": {
+          "enum": [
+            "this_turn",
+            "persistent"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "object": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["owner", "controller", "kind", "base_might", "might_modifiers", "damage", "exhausted"],
+      "required": [
+        "owner",
+        "controller",
+        "kind",
+        "base_might",
+        "might_modifiers",
+        "damage",
+        "exhausted"
+      ],
       "properties": {
-        "owner": {"type": "string", "minLength": 1},
-        "controller": {"type": "string", "minLength": 1},
-        "kind": {"enum": ["unit", "gear", "spell", "rune"]},
-        "base_might": {"type": "integer", "minimum": 0},
-        "might_modifiers": {"type": "array", "items": {"$ref": "#/$defs/modifier"}},
-        "damage": {"type": "integer", "minimum": 0},
-        "exhausted": {"type": "boolean"},
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "unit",
+            "gear",
+            "spell",
+            "rune"
+          ]
+        },
+        "base_might": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "might_modifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/modifier"
+          }
+        },
+        "damage": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exhausted": {
+          "type": "boolean"
+        },
         "death_triggers": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+            "required": [
+              "trigger_id",
+              "controller",
+              "source_object",
+              "controller_order",
+              "effect_program_id",
+              "optional_at_finalize"
+            ],
             "properties": {
-              "trigger_id": {"type": "string", "minLength": 1},
-              "controller": {"type": "string", "minLength": 1},
-              "source_object": {"type": "string", "minLength": 1},
-              "controller_order": {"type": "integer", "minimum": 0},
-              "effect_program_id": {"type": "string", "minLength": 1},
-              "optional_at_finalize": {"type": "boolean"}
+              "trigger_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect_program_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "optional_at_finalize": {
+                "type": "boolean"
+              }
             }
           }
         },
@@ -197,14 +536,38 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+            "required": [
+              "trigger_id",
+              "controller",
+              "source_object",
+              "controller_order",
+              "effect_program_id",
+              "optional_at_finalize"
+            ],
             "properties": {
-              "trigger_id": {"type": "string", "minLength": 1},
-              "controller": {"type": "string", "minLength": 1},
-              "source_object": {"type": "string", "minLength": 1},
-              "controller_order": {"type": "integer", "minimum": 0},
-              "effect_program_id": {"type": "string", "minLength": 1},
-              "optional_at_finalize": {"type": "boolean"}
+              "trigger_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect_program_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "optional_at_finalize": {
+                "type": "boolean"
+              }
             }
           }
         },
@@ -213,127 +576,726 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+            "required": [
+              "trigger_id",
+              "controller",
+              "source_object",
+              "controller_order",
+              "effect_program_id",
+              "optional_at_finalize"
+            ],
             "properties": {
-              "trigger_id": {"type": "string", "minLength": 1},
-              "controller": {"type": "string", "minLength": 1},
-              "source_object": {"type": "string", "minLength": 1},
-              "controller_order": {"type": "integer", "minimum": 0},
-              "effect_program_id": {"type": "string", "minLength": 1},
-              "optional_at_finalize": {"type": "boolean"}
+              "trigger_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect_program_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "optional_at_finalize": {
+                "type": "boolean"
+              }
             }
           }
         },
-        "play_permissions": {"type": "array", "uniqueItems": true, "items": {"enum": ["open_battlefield"]}, "description": "Compiled permissions widening the valid play locations (Core 355.2.b)."},
-        "combat_designation": {"type": "object", "additionalProperties": false, "required": ["combat_id", "role"], "properties": {"combat_id": {"type": "string", "minLength": 1}, "role": {"enum": ["attacker", "defender"]}}, "description": "ADR-0008 §1: the Unit's designation in the Combat in progress, synchronized by Cleanup (323.2)."},
-        "attack_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I attack' (Core 383.4.e): fires once per object identity per Combat when the Unit gains the Attacker designation."},
-        "defend_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'When I defend' (Core 383.4.f): fires once per object identity per Combat when the Unit gains the Defender designation."},
-        "conquer_triggers": {"type": "array", "items": {"$ref": "#/$defs/scoreTrigger"}, "description": "'When I conquer' / 'When you conquer' (Core 383.4.c): scope unit_here fires for the scoring player's Unit at the Battlefield scored, scope controller from any board object the scoring player controls."},
-        "hold_triggers": {"type": "array", "items": {"$ref": "#/$defs/scoreTrigger"}, "description": "'When I hold' / 'When you hold' (Core 383.4.d)."},
-        "shield_value": {"type": "integer", "minimum": 1, "description": "Shield [X] (Core 814.1.b); 1 when the keyword is bare. Only meaningful with keyword shield."},
-        "keyword_modifiers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "keyword", "source", "duration", "target_identity"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "keyword": {"enum": ["shield", "tank", "ganking", "backline"]}, "value": {"type": "integer", "minimum": 1}, "source": {"type": "string", "minLength": 1}, "duration": {"enum": ["this_combat", "this_turn"]}, "combat_id": {"type": "string", "minLength": 1}, "turn_id": {"type": "string", "minLength": 1}, "target_identity": {"type": "string", "pattern": "^.+@[0-9]+$"}}}, "description": "ADR-0008 §5: granted characteristics bound to the identity they were granted to and to the Combat (this_combat, expires at 466.7.c) or turn (this_turn) they last for."},
-        "deflect_value": {"type": "integer", "minimum": 1, "description": "Deflect [X] (Core 809.1.b); 1 when the keyword is bare. Only meaningful with keyword deflect."},
-        "entry_replacements": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["mode", "value"], "properties": {"replacement_id": {"type": "string", "minLength": 1}, "mode": {"const": "entry_state"}, "value": {"enum": ["ready", "exhausted"]}}}, "description": "Core 369.3: how this permanent enters, replacing the default (e.g. 'I enter ready'). Conflicting replacements require a replacement_order decision."},
-        "conditional_might": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["modifier_id", "amount", "condition"], "properties": {"modifier_id": {"type": "string", "minLength": 1}, "amount": {"type": "integer"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["runes_at_least", "attacking_or_defending_alone"]}, "count": {"type": "integer", "minimum": 0}}}}}, "description": "Conditional passives read by effective_might (Core 364.3; attacking_or_defending_alone per 740.2.a)."},
-        "end_of_turn_triggers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"], "properties": {"trigger_id": {"type": "string", "minLength": 1}, "controller": {"type": "string", "minLength": 1}, "source_object": {"type": "string", "minLength": 1}, "controller_order": {"type": "integer", "minimum": 0}, "effect_program_id": {"type": "string", "minLength": 1}, "optional_at_finalize": {"type": "boolean"}, "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}}}, "description": "'At the end of your turn' abilities (Core 383.1), with an optional condition that is part of the trigger condition (383.2.a.1)."},
-        "beginning_phase_triggers": {"type": "array", "items": {"$ref": "#/$defs/phaseTrigger"}, "description": "ADR-0010 §8: 'At the start of your Beginning Phase' (Core 315.2.a); fires for the Turn Player's active Board sources only."},
-        "main_phase_triggers": {"type": "array", "items": {"$ref": "#/$defs/phaseTrigger"}, "description": "ADR-0010 §8: 'At the start of your Main Phase' (Core 316.4)."},
-        "is_token": {"type": "boolean"},
-        "stunned": {"type": "boolean", "description": "Core 423.1: a Stunned Unit contributes no Might to Combat Damage (423.1.b) but still needs its full Might in lethal damage (423.1.c)."},
-        "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "ADR-0005 §3 object identity: '<object_id>@<generation>'. Absent means generation 0. Changes on any transition to or from a non-board zone; survives board moves."},
+        "play_permissions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "open_battlefield"
+            ]
+          },
+          "description": "Compiled permissions widening the valid play locations (Core 355.2.b)."
+        },
+        "combat_designation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "combat_id",
+            "role"
+          ],
+          "properties": {
+            "combat_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "role": {
+              "enum": [
+                "attacker",
+                "defender"
+              ]
+            }
+          },
+          "description": "ADR-0008 §1: the Unit's designation in the Combat in progress, synchronized by Cleanup (323.2)."
+        },
+        "attack_triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "trigger_id",
+              "controller",
+              "source_object",
+              "controller_order",
+              "effect_program_id",
+              "optional_at_finalize"
+            ],
+            "properties": {
+              "trigger_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect_program_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "optional_at_finalize": {
+                "type": "boolean"
+              },
+              "condition": {
+                "type": "object",
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "at_battlefield"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "description": "'When I attack' (Core 383.4.e): fires once per object identity per Combat when the Unit gains the Attacker designation."
+        },
+        "defend_triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "trigger_id",
+              "controller",
+              "source_object",
+              "controller_order",
+              "effect_program_id",
+              "optional_at_finalize"
+            ],
+            "properties": {
+              "trigger_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect_program_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "optional_at_finalize": {
+                "type": "boolean"
+              },
+              "condition": {
+                "type": "object",
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "at_battlefield"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "description": "'When I defend' (Core 383.4.f): fires once per object identity per Combat when the Unit gains the Defender designation."
+        },
+        "conquer_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scoreTrigger"
+          },
+          "description": "'When I conquer' / 'When you conquer' (Core 383.4.c): scope unit_here fires for the scoring player's Unit at the Battlefield scored, scope controller from any board object the scoring player controls."
+        },
+        "hold_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scoreTrigger"
+          },
+          "description": "'When I hold' / 'When you hold' (Core 383.4.d)."
+        },
+        "shield_value": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Shield [X] (Core 814.1.b); 1 when the keyword is bare. Only meaningful with keyword shield."
+        },
+        "keyword_modifiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "modifier_id",
+              "keyword",
+              "source",
+              "duration",
+              "target_identity"
+            ],
+            "properties": {
+              "modifier_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "keyword": {
+                "enum": [
+                  "shield",
+                  "tank",
+                  "ganking",
+                  "backline"
+                ]
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "duration": {
+                "enum": [
+                  "this_combat",
+                  "this_turn"
+                ]
+              },
+              "combat_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "turn_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_identity": {
+                "type": "string",
+                "pattern": "^.+@[0-9]+$"
+              }
+            }
+          },
+          "description": "ADR-0008 §5: granted characteristics bound to the identity they were granted to and to the Combat (this_combat, expires at 466.7.c) or turn (this_turn) they last for."
+        },
+        "deflect_value": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Deflect [X] (Core 809.1.b); 1 when the keyword is bare. Only meaningful with keyword deflect."
+        },
+        "entry_replacements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "value"
+            ],
+            "properties": {
+              "replacement_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mode": {
+                "const": "entry_state"
+              },
+              "value": {
+                "enum": [
+                  "ready",
+                  "exhausted"
+                ]
+              }
+            }
+          },
+          "description": "Core 369.3: how this permanent enters, replacing the default (e.g. 'I enter ready'). Conflicting replacements require a replacement_order decision."
+        },
+        "conditional_might": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "modifier_id",
+              "amount",
+              "condition"
+            ],
+            "properties": {
+              "modifier_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "amount": {
+                "type": "integer"
+              },
+              "condition": {
+                "type": "object",
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "runes_at_least",
+                      "attacking_or_defending_alone"
+                    ]
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          },
+          "description": "Conditional passives read by effective_might (Core 364.3; attacking_or_defending_alone per 740.2.a)."
+        },
+        "end_of_turn_triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "trigger_id",
+              "controller",
+              "source_object",
+              "controller_order",
+              "effect_program_id",
+              "optional_at_finalize"
+            ],
+            "properties": {
+              "trigger_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "controller_order": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "effect_program_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "optional_at_finalize": {
+                "type": "boolean"
+              },
+              "condition": {
+                "type": "object",
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "at_battlefield"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "description": "'At the end of your turn' abilities (Core 383.1), with an optional condition that is part of the trigger condition (383.2.a.1)."
+        },
+        "beginning_phase_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/phaseTrigger"
+          },
+          "description": "ADR-0010 §8: 'At the start of your Beginning Phase' (Core 315.2.a); fires for the Turn Player's active Board sources only."
+        },
+        "main_phase_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/phaseTrigger"
+          },
+          "description": "ADR-0010 §8: 'At the start of your Main Phase' (Core 316.4)."
+        },
+        "is_token": {
+          "type": "boolean"
+        },
+        "stunned": {
+          "type": "boolean",
+          "description": "Core 423.1: a Stunned Unit contributes no Might to Combat Damage (423.1.b) but still needs its full Might in lethal damage (423.1.c)."
+        },
+        "identity": {
+          "type": "string",
+          "pattern": "^.+@[0-9]+$",
+          "description": "ADR-0005 §3 object identity: '<object_id>@<generation>'. Absent means generation 0. Changes on any transition to or from a non-board zone; survives board moves."
+        },
         "keywords": {
           "type": "array",
           "uniqueItems": true,
-          "items": {"enum": ["temporary", "deflect", "shield", "tank", "ganking", "backline"]}
+          "items": {
+            "enum": [
+              "temporary",
+              "deflect",
+              "shield",
+              "tank",
+              "ganking",
+              "backline"
+            ]
+          }
         }
       }
     },
     "battlefield": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["controller", "objects"],
+      "required": [
+        "controller",
+        "objects"
+      ],
       "properties": {
-        "controller": {"type": ["string", "null"]},
-        "objects": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
-        "contested": {"type": "boolean", "description": "A unit whose controller does not control this Battlefield entered it (Core 190.3.a.1). No control transfer is inferred."},
-        "contested_by": {"type": ["string", "null"]},
-        "identity": {"type": "string", "pattern": "^.+@[0-9]+$", "description": "Bindable identity for Battlefield targets (ADR-0007 §4). Absent means generation 0."},
-        "attack_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you attack here' — controlled by the Battlefield's controller when it fires (190.6.a); uncontrolled, 'you' is no one (190.6.d)."},
-        "defend_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0008 §4: 'When you defend here' (Fortified Position)."},
-        "conquer_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0009 §7: the Battlefield's own 'When you conquer here', controlled by its controller (190.6)."},
-        "hold_triggers": {"type": "array", "items": {"$ref": "#/$defs/battlefieldTrigger"}, "description": "ADR-0009 §7: the Battlefield's own 'When you hold here'."}
+        "controller": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "objects": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "contested": {
+          "type": "boolean",
+          "description": "A unit whose controller does not control this Battlefield entered it (Core 190.3.a.1). No control transfer is inferred."
+        },
+        "contested_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "identity": {
+          "type": "string",
+          "pattern": "^.+@[0-9]+$",
+          "description": "Bindable identity for Battlefield targets (ADR-0007 §4). Absent means generation 0."
+        },
+        "attack_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/battlefieldTrigger"
+          },
+          "description": "ADR-0008 §4: 'When you attack here' — controlled by the Battlefield's controller when it fires (190.6.a); uncontrolled, 'you' is no one (190.6.d)."
+        },
+        "defend_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/battlefieldTrigger"
+          },
+          "description": "ADR-0008 §4: 'When you defend here' (Fortified Position)."
+        },
+        "conquer_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/battlefieldTrigger"
+          },
+          "description": "ADR-0009 §7: the Battlefield's own 'When you conquer here', controlled by its controller (190.6)."
+        },
+        "hold_triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/battlefieldTrigger"
+          },
+          "description": "ADR-0009 §7: the Battlefield's own 'When you hold here'."
+        }
       }
     },
     "phaseTrigger": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+      "required": [
+        "trigger_id",
+        "controller",
+        "source_object",
+        "controller_order",
+        "effect_program_id",
+        "optional_at_finalize"
+      ],
       "properties": {
-        "trigger_id": {"type": "string", "minLength": 1},
-        "controller": {"type": "string", "minLength": 1},
-        "source_object": {"type": "string", "minLength": 1},
-        "controller_order": {"type": "integer", "minimum": 0},
-        "effect_program_id": {"type": "string", "minLength": 1},
-        "optional_at_finalize": {"type": "boolean"},
-        "scope": {"enum": ["your_beginning_phase", "your_main_phase"]},
-        "condition": {"type": "object", "required": ["kind"], "properties": {"kind": {"enum": ["at_battlefield"]}}}
+        "trigger_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "effect_program_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional_at_finalize": {
+          "type": "boolean"
+        },
+        "scope": {
+          "enum": [
+            "your_beginning_phase",
+            "your_main_phase"
+          ]
+        },
+        "condition": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "at_battlefield"
+              ]
+            }
+          }
+        }
       }
     },
     "scoreTrigger": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["trigger_id", "controller", "source_object", "controller_order", "effect_program_id", "optional_at_finalize"],
+      "required": [
+        "trigger_id",
+        "controller",
+        "source_object",
+        "controller_order",
+        "effect_program_id",
+        "optional_at_finalize"
+      ],
       "properties": {
-        "trigger_id": {"type": "string", "minLength": 1},
-        "controller": {"type": "string", "minLength": 1},
-        "source_object": {"type": "string", "minLength": 1},
-        "controller_order": {"type": "integer", "minimum": 0},
-        "effect_program_id": {"type": "string", "minLength": 1},
-        "optional_at_finalize": {"type": "boolean"},
-        "scope": {"enum": ["unit_here", "controller"]}
+        "trigger_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "effect_program_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional_at_finalize": {
+          "type": "boolean"
+        },
+        "scope": {
+          "enum": [
+            "unit_here",
+            "controller"
+          ]
+        }
       }
     },
     "battlefieldTrigger": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["trigger_id", "controller_order", "effect_program_id", "optional_at_finalize"],
+      "required": [
+        "trigger_id",
+        "controller_order",
+        "effect_program_id",
+        "optional_at_finalize"
+      ],
       "properties": {
-        "trigger_id": {"type": "string", "minLength": 1},
-        "controller_order": {"type": "integer", "minimum": 0},
-        "effect_program_id": {"type": "string", "minLength": 1},
-        "optional_at_finalize": {"type": "boolean"}
+        "trigger_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "effect_program_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional_at_finalize": {
+          "type": "boolean"
+        }
       }
     },
     "replacementEffect": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["replacement_id", "controller", "mode", "event_op", "optional", "uses_remaining"],
+      "required": [
+        "replacement_id",
+        "controller",
+        "mode",
+        "event_op",
+        "optional",
+        "uses_remaining"
+      ],
       "description": "Exactly one of source_object (a permanent's own ability, active while it is on the board) or granted (ADR-0007 §12: created by an effect, bound to one object's identity for this turn).",
-      "oneOf": [{"required": ["source_object"]}, {"required": ["granted"]}],
+      "oneOf": [
+        {
+          "required": [
+            "source_object"
+          ]
+        },
+        {
+          "required": [
+            "granted"
+          ]
+        }
+      ],
       "properties": {
-        "replacement_id": {"type": "string", "minLength": 1},
-        "controller": {"type": "string", "minLength": 1},
-        "source_object": {"type": "string", "minLength": 1},
+        "replacement_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_object": {
+          "type": "string",
+          "minLength": 1
+        },
         "granted": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["target_object", "target_identity", "duration", "turn_id", "granted_by"],
+          "required": [
+            "target_object",
+            "target_identity",
+            "duration",
+            "turn_id",
+            "granted_by"
+          ],
           "properties": {
-            "target_object": {"type": "string", "minLength": 1},
-            "target_identity": {"type": "string", "pattern": "^.+@[0-9]+$"},
-            "duration": {"const": "this_turn"},
-            "turn_id": {"type": "string", "minLength": 1},
-            "granted_by": {"type": "string", "minLength": 1}
+            "target_object": {
+              "type": "string",
+              "minLength": 1
+            },
+            "target_identity": {
+              "type": "string",
+              "pattern": "^.+@[0-9]+$"
+            },
+            "duration": {
+              "const": "this_turn"
+            },
+            "turn_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "granted_by": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         },
-        "mode": {"enum": ["prevent_event", "replace_with", "augment_with", "reduce_damage"]},
-        "event_op": {"type": "string", "minLength": 1},
-        "optional": {"type": "boolean"},
-        "uses_remaining": {"type": ["integer", "null"], "minimum": 0},
-        "target_object_id": {"type": "string", "minLength": 1},
-        "target_controller_relation": {"enum": ["friendly", "enemy"]},
-        "replacement_effects": {"type": "array", "minItems": 1, "items": {"type": "object"}},
-        "prevent_remaining": {"type": "integer", "minimum": 0}
+        "mode": {
+          "enum": [
+            "prevent_event",
+            "replace_with",
+            "augment_with",
+            "reduce_damage"
+          ]
+        },
+        "event_op": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "uses_remaining": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "target_object_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_controller_relation": {
+          "enum": [
+            "friendly",
+            "enemy"
+          ]
+        },
+        "replacement_effects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "prevent_remaining": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     }
   }

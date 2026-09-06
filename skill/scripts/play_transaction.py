@@ -63,7 +63,7 @@ RESULT_VERSION = "riftbound-play-result.v1"
 SUPPORTED_NON_STANDARD = {"exhaust": "exhaust", "kill": "kill"}
 PAID_OUTCOMES = {"applied", "replaced_prevented", "replaced_modified_applied", "replaced_modified_prevented", "augmented_applied", "augmented_original_replaced"}
 STAGES = ("declaration", "choices", "cost_determination", "payment", "legality", "commit")
-DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required"}
+DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required"}
 
 RULES = {
     "choices": ["Core 355.1", "Core 355.1.a", "Core 355.2", "Core 355.5", "Core 355.9"],
@@ -520,13 +520,36 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
 
 # ------------------------------------------------------------------- choices --
 
-def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[str, Any], decisions: dict[str, Any] | None) -> list[str]:
+def _play_mode(actor: str, program: dict[str, Any], decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """ADR-0011 §2 / Core 402.2: a spell's mode is chosen while playing, by
+    stable option id, and only the chosen option's targets are checked."""
+    modal = program.get("modal")
+    if not modal:
+        return list(program.get("effects", [])), None
+    if modal["timing"] != "play_declaration":
+        raise PlayError("choices", "mode_timing_mismatch", f"program {program.get('program_id')!r} chooses its mode at {modal['timing']}; a played card chooses it while playing (Core 402.2)", invalid=True)
+    ref = modal["decision_ref"]
+    entry = ed.mode_selection(decisions, ref)
+    if entry is None:
+        raise PlayError("choices", "mode_selection_required", f"mode {ref!r} is chosen while playing (Core 402.2) and was not supplied", decision_ids=[ref], decision_controller=actor,
+                        rule_locators=["Core 402.2"], mode_options=[o["option_id"] for o in modal["options"]])
+    if entry["stage"] != "play_declaration":
+        raise PlayError("choices", "decision_stage_mismatch", f"mode {ref!r} was supplied for stage {entry['stage']!r}, not play_declaration", invalid=True)
+    if entry["controller"] != actor:
+        raise PlayError("choices", "decision_controller_mismatch", f"mode {ref!r} was chosen by {entry['controller']!r}, not the card's controller", rule_locators=["Core 402.2"])
+    option = next((o for o in modal["options"] if o["option_id"] == entry["value"]), None)
+    if option is None:
+        raise PlayError("choices", "unknown_mode_option", f"mode {ref!r} names {entry['value']!r}; the options are {[o['option_id'] for o in modal['options']]}", invalid=True)
+    return list(option["effects"]), {"decision_id": ref, "option_id": option["option_id"]}
+
+
+def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[str, Any], decisions: dict[str, Any] | None, effects: list[dict[str, Any]] | None = None) -> list[str]:
     """Core 355.5 / 355.9: every selector that targets is chosen and legal at
     play — concrete selectors and decision-supplied ones alike. A supplied
     decision must be for this stage, owned by the actor, and bound to the
     objects' current identities."""
     chosen_objects: list[str] = []  # every time an object is chosen as a target (Deflect counts each, 809.1.c)
-    for index, effect in enumerate(program.get("effects", [])):
+    for index, effect in enumerate(program.get("effects", []) if effects is None else effects):
         candidates: list[tuple[dict[str, Any], str | None]] = []
         if isinstance(effect.get("target"), dict):
             candidates.append((effect["target"], effect["target"].get("decision_ref")))
@@ -682,8 +705,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if missing:
             raise PlayError("choices", "optional_cost_intent_required", f"optional cost intent not declared for {missing}", decision_ids=missing, decision_controller=actor, rule_locators=["Core 355.1.a", "Core 356.2.b.1"])
         chosen_objects: list[str] = []
+        mode = None
         if effect_program is not None:
-            chosen_objects = _check_play_targets(effect_state, actor, effect_program, engine_decisions)
+            effects, mode = _play_mode(actor, effect_program, engine_decisions)
+            chosen_objects = _check_play_targets(effect_state, actor, effect_program, engine_decisions, effects)
         # ADR-0007 §11: Deflect is scanned once targets are fixed and before the
         # cost is determined; it lands on the declared cost as mandatory
         # any-domain Power.
@@ -691,7 +716,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         cost = copy.deepcopy(declaration["cost"])
         if deflect:
             cost["additional"] = list(cost.get("additional", []) or []) + deflect
-        trace.append({"stage": "choices", "outcome": "applied", "optional_cost_intents": intents, "chosen_objects": chosen_objects, "deflect_costs": deflect, "rule_locators": RULES["choices"] + (["Core 809.1.c", "Core 809.1.d", "Core 809.2"] if deflect else [])})
+        trace.append({"stage": "choices", "outcome": "applied", "optional_cost_intents": intents, "chosen_objects": chosen_objects, "deflect_costs": deflect, **({"mode_selection": mode} if mode else {}),
+                      "rule_locators": RULES["choices"] + (["Core 402.2"] if mode else []) + (["Core 809.1.c", "Core 809.1.d", "Core 809.2"] if deflect else [])})
         locators += RULES["choices"] + (["Core 809.1.c", "Core 809.1.d"] if deflect else [])
 
         # --- 356: total cost.
@@ -719,6 +745,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             entry["effect_program_id"] = declaration["effect_program_id"]
         if declaration.get("entry_location") is not None:
             entry["entry_location"] = dict(declaration["entry_location"])
+        if mode is not None:
+            entry["mode_selection"] = dict(mode)  # ADR-0011 §2: the mode rides with the chain entry to resolution
         working.setdefault("chain_items", {})[item_id] = entry
         identity_after = _bump_identity(working, card)
         state_errors = validate_state(working)

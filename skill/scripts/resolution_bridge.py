@@ -115,6 +115,10 @@ def resolve_with_program(
     # only the timing state knows.
     combat_in_progress = timing_state.get("combat")
     context = {"combat": {"combat_id": combat_in_progress["combat_id"], "battlefield": combat_in_progress["battlefield"], "battlefield_identity": combat_in_progress["battlefield_identity"]}} if combat_in_progress and combat_in_progress.get("status") in ("open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined") else None
+    # ADR-0011 §2: a mode chosen at play rides on the chain entry.
+    recorded_mode = ((effect_state.get("chain_items") or {}).get(item_id) or {}).get("mode_selection")
+    if recorded_mode is not None:
+        context = {**(context or {}), "mode_selection": dict(recorded_mode)}
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:

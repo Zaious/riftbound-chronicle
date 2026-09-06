@@ -137,8 +137,8 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers", "active_combat_criteria", "mutual_current_might_damage", "burn_out_draw", "randomization_receipt"],
-        "unsupported": ["arbitrary_card_text", "combat", "scoring", "burn_out_non_draw", "burn_out_in_replacement", "complete_game", "complete_legality"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers", "active_combat_criteria", "mutual_current_might_damage", "burn_out_draw", "randomization_receipt", "choice_grammar", "modal_abilities", "card_ordering"],
+        "unsupported": ["arbitrary_card_text", "combat", "scoring", "burn_out_non_draw", "burn_out_in_replacement", "distinct_per_turn_choice", "each_player_choice", "multi_opponent_choice", "complete_game", "complete_legality"],
     },
     "resolution": {
         "component": ("resolution_bridge", "riftbound-resolution-bridge-result.v1"),
@@ -163,7 +163,7 @@ KIND_CONFIG = {
     "play": {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
-        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation"],
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice"],
         "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "non_standard_costs_beyond_exhaust_kill", "battlefield_control_transfer", "counter", "complete_game", "complete_legality"],
     },
     # ADR-0007 §8: two turn-boundary procedures, not a turn transition.
@@ -218,6 +218,9 @@ DECISION_REASON_CODES = {
     # ADR-0010 §2: an external randomization the transition waits for, and the Burn Out beneficiary.
     "randomization_receipt_required": "external_input",
     "player_selection_required": "player_choice",
+    # ADR-0011 §2–3: a modal option by stable id; the player's put-back order.
+    "mode_selection_required": "mode_choice",
+    "card_ordering_required": "card_ordering",
 }
 
 

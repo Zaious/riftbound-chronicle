@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:98b23d01ce4ce55a03fd694b",
-  "capability_set_id": "sha256:98b23d01ce4ce55a03fd694bde7c1074fbe57ee8fb2c6628e35ee29d974b4de8",
+  "manifest_id": "capability-manifest:8c845d023bf1f4fd17bf3e3b",
+  "capability_set_id": "sha256:8c845d023bf1f4fd17bf3e3b8bcf37e8d35913b0bb97dc8d9a7f8a7360d736d0",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:76f5aba3a5b2045ef1b75086f50e6aaaab114bbeeafc958b3488e133776aacdb",
+    "value": "sha256:067b9e46ced668f2efcec62f196775b7ffc122033ce3d8440f43a99e8d21974e",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:e5d00a3e3111fb0c3b6c9ac1e33d1da39fed8f3673f9838955f67d8974934ca8"
+        "sha256": "sha256:30deb2fe7a3c92d6e1740a2593e1a5c245b3f5a9c44e33b8ead2eda53ba64d4d"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:0b3017bca8ace81e4e954563ab03402a4ee909150703eb2e6eb97c8dca7898d2"
+        "sha256": "sha256:83917e08d8d9c33a62e43f90cb983edecb666a601f88ea28ef788cbb3f255c47"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:921e6d89e25e00cbf17999dd3977e056494ef33fe83f671f428fbb48b87b44af"
+        "sha256": "sha256:d0e12a2422fdecd19b1d746aa4a31da8e605ee7ca0da4fff06603ccdf5dc0f1b"
       },
       {
         "path": "combat.py",
@@ -146,7 +146,10 @@
         "active_combat_criteria",
         "mutual_current_might_damage",
         "burn_out_draw",
-        "randomization_receipt"
+        "randomization_receipt",
+        "choice_grammar",
+        "modal_abilities",
+        "card_ordering"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -154,6 +157,9 @@
         "scoring",
         "burn_out_non_draw",
         "burn_out_in_replacement",
+        "distinct_per_turn_choice",
+        "each_player_choice",
+        "multi_opponent_choice",
         "complete_game",
         "complete_legality"
       ]
@@ -192,7 +198,8 @@
         "engine_decisions",
         "open_battlefield_permission",
         "deflect",
-        "any_domain_power_allocation"
+        "any_domain_power_allocation",
+        "modal_play_choice"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
@@ -1325,6 +1332,8 @@
     "cost_modification_sources",
     "counter",
     "damage_exemption_sources",
+    "distinct_per_turn_choice",
+    "each_player_choice",
     "effect_prerequisites",
     "end_of_combat_effects",
     "engine_enumeration",
@@ -1335,6 +1344,7 @@
     "invalid_destination_catalog",
     "match_mode",
     "multi_descriptor_replacement",
+    "multi_opponent_choice",
     "multi_player_combat",
     "multi_player_concession",
     "non_conquer_point_sources",

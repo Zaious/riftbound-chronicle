@@ -105,6 +105,9 @@ SUPPORTED_OPS = {
     "banish",
     "counter",
     "burn",
+    # C-46 (ADR-0012 §4): attachments and their Top-Most card.
+    "attach",
+    "detach",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -258,6 +261,8 @@ OP_RULES = {
     "banish": ["Core 427.1", "Core 427.2", "Core 427.2.a", "Core 427.2.b", "Core 124"],
     "counter": ["Core 425.1", "Core 425.1.a", "Core 425.1.b", "Core 425.1.c", "Core 124"],
     "burn": ["Core 440.1", "Core 440.2", "Core 431.1.b", "Core 124"],
+    "attach": ["Core 434.1", "Core 434.2.a", "Core 434.2.b", "Core 434.4", "Core 434.5.a", "Core 136.2.c"],
+    "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
 }
 
 
@@ -659,6 +664,19 @@ def validate_state(state: Any) -> list[str]:
         permissions = obj.get("play_permissions", [])
         if not isinstance(permissions, list) or len(permissions) != len(set(permissions)) or any(p not in PLAY_PERMISSIONS for p in permissions):
             errors.append(f"objects.{object_id}.play_permissions must be a unique array drawn from {sorted(PLAY_PERMISSIONS)}")
+        # ADR-0012 §4 / Core 434: an attached card names its Top-Most card. The
+        # engine derives the other direction, so the two can never disagree.
+        host_id = obj.get("attached_to")
+        if host_id is not None:
+            if host_id == object_id or host_id not in objects:
+                errors.append(f"objects.{object_id}.attached_to must name another object in this state")
+            elif objects[host_id].get("attached_to") is not None:
+                errors.append(f"objects.{object_id}.attached_to names {host_id!r}, which is itself attached; nested attachments are outside this slice")
+        if "might_bonus" in obj and (not isinstance(obj["might_bonus"], int) or isinstance(obj["might_bonus"], bool) or obj["might_bonus"] < 0):
+            errors.append(f"objects.{object_id}.might_bonus must be a non-negative integer (Core 159.1)")
+        recall = obj.get("pending_recall")
+        if recall is not None and (not isinstance(recall, dict) or set(recall) - {"reason", "battlefield"} or recall.get("reason") != "detached_gear_at_battlefield" or recall.get("battlefield") not in battlefields):
+            errors.append(f"objects.{object_id}.pending_recall must be {{reason: detached_gear_at_battlefield, battlefield}} (Core 435.4.a)")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         # ADR-0012 §1 / Core 825.3: Unique is a deck-construction constraint,
@@ -896,6 +914,13 @@ def validate_program(program: Any) -> list[str]:
                 if effect.get("object_id") is not None or effect.get("target") is not None or effect.get("targets") is not None:
                     errors.append(f"effects[{index}].choice excludes object_id, target and targets")
             op_name = effect.get("op")
+            if op_name in {"attach", "detach"}:
+                if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
+                    errors.append(f"effects[{index}].{op_name} needs the object it links or unlinks")
+                if op_name == "attach" and (not isinstance(effect.get("to"), str) or not effect.get("to")):
+                    errors.append(f"effects[{index}].attach needs the Top-Most card in `to` (Core 434.1.b)")
+                if op_name == "detach" and "to" in effect:
+                    errors.append(f"effects[{index}].detach carries no `to`")
             if op_name in {"banish", "counter", "burn"}:
                 errors.extend(f"effects[{index}].{op_name} {e}" for e in _zone_op_errors(effect))
             if op_name in {"look_at_top", "reveal", "put_back", "put_in_hand", "draw_it", "recycle", "predict"}:
@@ -1588,6 +1613,56 @@ def perform_draw(state: dict[str, Any], player_id: str, count: int, *, decisions
     return new_state, event
 
 
+def attachments(state: dict[str, Any], object_id: str) -> list[str]:
+    """The cards attached to `object_id`, which is their Top-Most card (434.1.b)."""
+    return sorted(other for other, obj in state["objects"].items() if obj.get("attached_to") == object_id)
+
+
+def _last_board_location(location: tuple[str, str, str | None] | None) -> dict[str, Any] | None:
+    if location is None:
+        return None
+    if location[0] == "battlefield":
+        return {"kind": "battlefield", "battlefield": location[1]}
+    if location[0] == "player" and location[2] == "base":
+        return {"kind": "base", "player": location[1]}
+    return None
+
+
+def _place_on_board(state: dict[str, Any], object_id: str, destination: dict[str, Any]) -> str:
+    if destination["kind"] == "battlefield":
+        state["battlefields"][destination["battlefield"]]["objects"].append(object_id)
+        return f"battlefield:{destination['battlefield']}"
+    state["players"][destination["player"]]["zones"]["base"].append(object_id)
+    return f"base:{destination['player']}"
+
+
+def detach_records(state: dict[str, Any], host_id: str, host_location: dict[str, Any] | None, *, host_left_board: bool) -> list[dict[str, Any]]:
+    """Core 435.4: a detached card's location is its Top-Most card's. When the
+    host left the board for a non-board zone, that is the last board location
+    the host occupied (435.4.b). A detached Gear that would then sit at a
+    Battlefield is Recalled by the next Cleanup (435.4.a) — recorded, not moved
+    early, because that Cleanup step is not modelled yet."""
+    records: list[dict[str, Any]] = []
+    for attached_id in attachments(state, host_id):
+        obj = state["objects"][attached_id]
+        record = {"object_id": attached_id, "detached_from": host_id, "host_left_board": host_left_board}
+        del obj["attached_to"]
+        if host_location is None:
+            # A host that was never on the board leaves nothing to derive from.
+            record.update({"destination": None, "unsupported": "detach_destination_unknown"})
+            records.append(record)
+            continue
+        _remove_from_location(state, attached_id)
+        record["destination"] = _place_on_board(state, attached_id, host_location)
+        record["rule_locators"] = ["Core 435.4"] + (["Core 435.4.b"] if host_left_board else [])
+        if obj.get("kind") == "gear" and host_location["kind"] == "battlefield":
+            obj["pending_recall"] = {"reason": "detached_gear_at_battlefield", "battlefield": host_location["battlefield"]}
+            record["pending_recall"] = dict(obj["pending_recall"])
+            record["rule_locators"] = record["rule_locators"] + ["Core 435.4.a"]
+        records.append(record)
+    return records
+
+
 def _ids_hash(state: dict[str, Any], ids: list[str]) -> str:
     return "sha256:" + hashlib.sha256(json.dumps([[i, object_identity(state, i)] for i in ids], separators=(",", ":")).encode("utf-8")).hexdigest()
 
@@ -1647,9 +1722,11 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
             ordered_ids = [c for c in ordered_ids if c not in set(group)] + list(order)
     identities: dict[str, str] = {}
     destinations: dict[str, str] = {}
+    detached_all: list[dict[str, Any]] = []
     for object_id in ordered_ids:
         obj = state["objects"][object_id]
         source = find_location(state, object_id)
+        detached_all.extend(detach_records(state, object_id, _last_board_location(source), host_left_board=True))
         _remove_from_location(state, object_id)
         if obj.get("is_token"):
             del state["objects"][object_id]
@@ -1662,6 +1739,7 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
             identities[object_id] = _bump_identity(state, object_id)
     _drop_reveals(state, ordered_ids)
     return state, {"objects_count": len(ids), "objects_hash": _ids_hash(state, [i for i in ordered_ids if i in state["objects"]]), "destinations": destinations,
+                   **({"detached": detached_all} if detached_all else {}),
                    "identities_after": identities, "simultaneous": True, "order_decision": order_used,
                    "completion": "full" if ids else "none"}
 
@@ -1686,6 +1764,10 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("recycle_one requires a known object")
         obj = new_state["objects"][object_id]
         source = find_location(new_state, object_id)
+        detached = detach_records(new_state, object_id, _last_board_location(source), host_left_board=True)
+        if detached:
+            trace["detached"] = detached
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 435.4", "Core 435.4.b"]))
         _remove_from_location(new_state, object_id)
         if obj.get("is_token"):
             del new_state["objects"][object_id]
@@ -1725,7 +1807,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             target = f"battlefield:{destination['battlefield']}"
         else:
             raise ValueError("unknown board destination")
-        trace.update({"object_id": object_id, "from": source, "to": target})
+        carried = []
+        for attached_id in attachments(new_state, object_id):
+            # Core 434.4: an attached card's location is its Top-Most card's, so
+            # it travels with it; the Move itself is the host's (383.1).
+            _remove_from_location(new_state, attached_id)
+            _place_on_board(new_state, attached_id, {"kind": "battlefield", "battlefield": destination["battlefield"]} if destination.get("kind") == "battlefield" else {"kind": "base", "player": destination["player"]})
+            carried.append(attached_id)
+        trace.update({"object_id": object_id, "from": source, "to": target, **({"carried_attachments": carried} if carried else {})})
         # ADR-0007 §10: only a completed Move raises "When I move" (383.1, 319.8);
         # Recall, return to hand and board entry are not Moves.
         moved = new_state["objects"][object_id]
@@ -1748,6 +1837,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         obj = new_state["objects"][object_id]
         source = find_location(new_state, object_id)
         on_board = source is not None and (source[0] == "battlefield" or source[2] == "base")
+        detached = detach_records(new_state, object_id, _last_board_location(source), host_left_board=True) if on_board else []
         in_owner_trash = source == ("player", obj["owner"], "trash")
         if not (on_board or in_owner_trash):
             raise IllegalOperation(f"return_to_hand applies only to a board object or a card in its owner's trash; {object_id!r} is at {source}")
@@ -1767,6 +1857,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                           "identity_after": _bump_identity(new_state, object_id), "not_a_move": True})
         if on_board:
             trace["disabled_replacements"] = _prune_inactive_replacements(new_state)
+        if detached:
+            trace["detached"] = detached  # Core 435.4.b: to the host's last board location
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 435.4", "Core 435.4.b"]))
 
     elif op == "recall":
         # DP-06 / Q2: relocation to the current controller's Base (455); not a
@@ -2060,6 +2153,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if obj.get("kind") not in {"unit", "gear"}:
             raise ValueError("effect IR v1 only kills supported Unit/Gear permanents")
         pending_triggers = copy.deepcopy(obj.get("death_triggers", []))
+        detached = detach_records(new_state, object_id, _last_board_location(location), host_left_board=True)
         _remove_from_location(new_state, object_id)
         if obj.get("is_token"):
             del new_state["objects"][object_id]
@@ -2072,6 +2166,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             trace["identity_after"] = _bump_identity(new_state, object_id)
             trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
         disabled_replacements = _prune_inactive_replacements(new_state)
+        if detached:
+            trace["detached"] = detached
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 435.4", "Core 435.4.b"]))
         trace.update({
             "object_id": object_id,
             "kill_mode": effect.get("kill_mode", "active"),
@@ -2191,10 +2288,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             ids = list(chosen)
         identities: dict[str, str] = {}
         destinations: dict[str, str] = {}
+        detached_all: list[dict[str, Any]] = []
         for object_id in ids:
             if object_id not in new_state["objects"]:
                 raise ValueError(f"banish requires a known object; {object_id!r} is not in the state")
             obj = new_state["objects"][object_id]
+            detached_all.extend(detach_records(new_state, object_id, _last_board_location(find_location(new_state, object_id)), host_left_board=True))
             _remove_from_location(new_state, object_id)
             if obj.get("is_token"):
                 del new_state["objects"][object_id]
@@ -2205,6 +2304,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             identities[object_id] = _bump_identity(new_state, object_id)
         _drop_reveals(new_state, ids)
         trace.update({"objects": ids, "destinations": destinations, "identities_after": identities, "not_kill": True, "not_discard": True,
+                      **({"detached": detached_all} if detached_all else {}),
                       **({"selection": {k: v for k, v in selection.items() if k != "choice"}} if selection else {}),
                       "completion": "full" if ids else "none"})
         if not ids:
@@ -2257,6 +2357,57 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             identities[object_id] = _bump_identity(new_state, object_id)
         trace.update({"player": player_id, "requested_count": count, "burned_count": len(burned), "objects": burned,
                       "identities_after": identities, "burn_out": False, "completion": "full"})
+
+    elif op == "attach":
+        # Core 434: linking two board cards. The attached card takes the
+        # Top-Most card's location (434.4, not a Move) and nothing else about
+        # either card changes (434.5.a) — an exhausted Equipment stays exhausted.
+        object_id, host_id = effect.get("object_id"), effect.get("to")
+        if object_id not in new_state["objects"] or host_id not in new_state["objects"]:
+            raise ValueError("attach requires two known objects")
+        if object_id == host_id:
+            raise IllegalOperation("a card cannot be attached to itself (434.1.d)")
+        obj, host = new_state["objects"][object_id], new_state["objects"][host_id]
+        host_location = _last_board_location(find_location(new_state, host_id))
+        if host_location is None:
+            raise IllegalOperation(f"{host_id!r} is not on the board; attaching links two cards on the board (434.1.a)")
+        if host.get("attached_to") is not None:
+            raise NotImplementedError(f"{host_id!r} is itself attached; nested attachments are outside this slice (unsupported: nested_attachments)")
+        if obj.get("attached_to") == host_id:
+            trace.update({"object_id": object_id, "to": host_id, "outcome": "no_op", "completion": "none",
+                          "reason": "already attached to that Top-Most card (434.2.b)"})
+            return new_state, trace
+        previous = obj.get("attached_to")
+        if previous is not None:
+            del obj["attached_to"]  # 434.2.a: attaching to a new host detaches from the old one
+        _remove_from_location(new_state, object_id)
+        destination = _place_on_board(new_state, object_id, host_location)
+        obj["attached_to"] = host_id
+        trace.update({"object_id": object_id, "to": host_id, "detached_from": previous, "destination": destination,
+                      "not_a_move": True, "state_unchanged": {"exhausted": obj.get("exhausted", False), "damage": obj.get("damage", 0)},
+                      "might_bonus": obj.get("might_bonus", 0), "top_most": host_id})
+
+    elif op == "detach":
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("detach requires a known object")
+        obj = new_state["objects"][object_id]
+        host_id = obj.get("attached_to")
+        if host_id is None:
+            # Core 435.1.a: detaching a card that is not attached does nothing.
+            trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none", "reason": "the card is not attached (435.1.a)"})
+            return new_state, trace
+        host_location = _last_board_location(find_location(new_state, host_id))
+        records = detach_records(new_state, host_id, host_location, host_left_board=False)
+        record = next(r for r in records if r["object_id"] == object_id)
+        for other in records:
+            if other["object_id"] != object_id:
+                # Only the named card detaches; put the others back.
+                new_state["objects"][other["object_id"]]["attached_to"] = host_id
+                new_state["objects"][other["object_id"]].pop("pending_recall", None)
+        trace.update({"object_id": object_id, "detached_from": host_id, "destination": record.get("destination"),
+                      **({"pending_recall": record["pending_recall"]} if record.get("pending_recall") else {}),
+                      "top_most_remaining": [a for a in attachments(new_state, host_id)]})
 
     elif op == "emit_reflexive":
         triggers = effect.get("triggers")
@@ -2386,6 +2537,9 @@ def effective_might(state: dict[str, Any], object_id: str) -> int:
         if condition["kind"] == "runes_at_least" and runes_on_board(state, obj["controller"]) >= condition["count"]:
             might += conditional["amount"]
     might += sum(part["amount"] for part in combat_might_contributions(state, object_id))
+    # Core 159.1 / ADR-0012 §4: every attached card modulates its Top-Most
+    # card's Might while it stays attached.
+    might += sum(state["objects"][attached].get("might_bonus", 0) for attached in attachments(state, object_id))
     return max(0, might)
 
 

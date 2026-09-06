@@ -147,7 +147,9 @@
               "predict",
               "banish",
               "counter",
-              "burn"
+              "burn",
+              "attach",
+              "detach"
             ]
           },
           "effect_id": {
@@ -533,6 +535,11 @@
           "player": {
             "type": "string",
             "minLength": 1
+          },
+          "to": {
+            "type": "string",
+            "minLength": 1,
+            "description": "attach: the Top-Most card (Core 434.1.b)."
           }
         }
       },

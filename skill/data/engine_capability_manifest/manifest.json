@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:819dd355b6bef89912d9c424",
-  "capability_set_id": "sha256:819dd355b6bef89912d9c424872ba157027924265b2179fabeb33f6ffd67fdf9",
+  "manifest_id": "capability-manifest:038b82cc9cdf297d69e7d913",
+  "capability_set_id": "sha256:038b82cc9cdf297d69e7d9134d0813eebf9fc5809721cb18dc52f184cc4f991e",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:ac5545fbf50f5688e681661911fc3168bf9e26cbb6082b6a0a1eea6a589792c0",
+    "value": "sha256:988416f4c627c7abb2f6f4357797bf446b93dc0724c3c7dcd2eda40fefbf3a28",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:5d8dde0de1da4e5962611fad14aa0d5473c28ee96339e45399395ac3a2f6e60c"
+        "sha256": "sha256:0a7d33af3cd1ff4fd3f5d952b0af48a192767e1dec7920c4ff8af1cb67bc33cb"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:6c2517012f0e9daf49771372382ebc9db8ce08152db8408519e3e34617b3ab57"
+        "sha256": "sha256:010e3479b47fcc1255b495611309bb3f6d07d84b5be95baa243ac3dfb3ba29ff"
       },
       {
         "path": "combat.py",
@@ -161,7 +161,10 @@
         "repeat_execution",
         "banish",
         "counter",
-        "burn"
+        "burn",
+        "attachments",
+        "top_most_might_bonus",
+        "derived_detach_destination"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -175,6 +178,9 @@
         "revealed_knowledge_persistence",
         "cannot_be_countered",
         "burn_triggers",
+        "nested_attachments",
+        "effect_text_append",
+        "gear_recall_cleanup",
         "complete_game",
         "complete_legality"
       ]
@@ -369,6 +375,17 @@
       ]
     },
     {
+      "id": "attach",
+      "rule_locators": [
+        "Core 434.1",
+        "Core 434.2.a",
+        "Core 434.2.b",
+        "Core 434.4",
+        "Core 434.5.a",
+        "Core 136.2.c"
+      ]
+    },
+    {
       "id": "banish",
       "rule_locators": [
         "Core 427.1",
@@ -410,6 +427,16 @@
       "id": "deal_damage",
       "rule_locators": [
         "Core 417"
+      ]
+    },
+    {
+      "id": "detach",
+      "rule_locators": [
+        "Core 435.1",
+        "Core 435.4",
+        "Core 435.4.a",
+        "Core 435.4.b",
+        "Core 136.2.c"
       ]
     },
     {
@@ -1247,6 +1274,7 @@
     "Core 128.4",
     "Core 135.2.b.5.a",
     "Core 135.2.e.3",
+    "Core 136.2.c",
     "Core 143.2.b",
     "Core 143.3.b.2",
     "Core 143.4",
@@ -1432,6 +1460,15 @@
     "Core 431.2–431.2.d",
     "Core 431.3.c.1",
     "Core 431.3–431.3.c.1",
+    "Core 434.1",
+    "Core 434.2.a",
+    "Core 434.2.b",
+    "Core 434.4",
+    "Core 434.5.a",
+    "Core 435.1",
+    "Core 435.4",
+    "Core 435.4.a",
+    "Core 435.4.b",
     "Core 436.1",
     "Core 436.1.a",
     "Core 436.4",
@@ -1516,11 +1553,13 @@
     "distinct_per_turn_choice",
     "each_player_choice",
     "effect_prerequisites",
+    "effect_text_append",
     "end_of_combat_effects",
     "engine_enumeration",
     "facedown_capacity_effects",
     "facedown_reveal_at_game_end",
     "full_cleanup",
+    "gear_recall_cleanup",
     "gear_rune_recall_cleanup",
     "hidden_cards",
     "hidden_legality_enumeration",
@@ -1532,6 +1571,7 @@
     "multi_opponent_choice",
     "multi_player_combat",
     "multi_player_concession",
+    "nested_attachments",
     "non_conquer_point_sources",
     "non_prevent_assignment_replacements",
     "non_standard_moves",

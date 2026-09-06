@@ -184,7 +184,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "repeat_execution",
             "banish",
             "counter",
-            "burn"
+            "burn",
+            "attachments",
+            "top_most_might_bonus",
+            "derived_detach_destination"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -198,6 +201,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "revealed_knowledge_persistence",
             "cannot_be_countered",
             "burn_triggers",
+            "nested_attachments",
+            "effect_text_append",
+            "gear_recall_cleanup",
             "complete_game",
             "complete_legality"
           ]
@@ -347,7 +353,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "repeat_execution",
             "banish",
             "counter",
-            "burn"
+            "burn",
+            "attachments",
+            "top_most_might_bonus",
+            "derived_detach_destination"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -361,6 +370,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "revealed_knowledge_persistence",
             "cannot_be_countered",
             "burn_triggers",
+            "nested_attachments",
+            "effect_text_append",
+            "gear_recall_cleanup",
             "complete_game",
             "complete_legality"
           ]

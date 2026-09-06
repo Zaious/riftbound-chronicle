@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:819dd355b6bef89912d9c424",
-    "capability_set_id": "sha256:819dd355b6bef89912d9c424872ba157027924265b2179fabeb33f6ffd67fdf9",
-    "implementation_identity": "sha256:ac5545fbf50f5688e681661911fc3168bf9e26cbb6082b6a0a1eea6a589792c0",
+    "manifest_id": "capability-manifest:038b82cc9cdf297d69e7d913",
+    "capability_set_id": "sha256:038b82cc9cdf297d69e7d9134d0813eebf9fc5809721cb18dc52f184cc4f991e",
+    "implementation_identity": "sha256:988416f4c627c7abb2f6f4357797bf446b93dc0724c3c7dcd2eda40fefbf3a28",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 252,
+    "declared_locators": 262,
     "exactly_cited_declared_locators": 28,
-    "exact_ratio": 0.1111,
+    "exact_ratio": 0.1069,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -166,6 +166,7 @@
       "Core 128.4",
       "Core 135.2.b.5.a",
       "Core 135.2.e.3",
+      "Core 136.2.c",
       "Core 143.2.b",
       "Core 143.3.b.2",
       "Core 143.4",
@@ -326,6 +327,15 @@
       "Core 431.2–431.2.d",
       "Core 431.3.c.1",
       "Core 431.3–431.3.c.1",
+      "Core 434.1",
+      "Core 434.2.a",
+      "Core 434.2.b",
+      "Core 434.4",
+      "Core 434.5.a",
+      "Core 435.1",
+      "Core 435.4",
+      "Core 435.4.a",
+      "Core 435.4.b",
       "Core 436.1",
       "Core 436.1.a",
       "Core 436.4",
@@ -896,5 +906,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:78aa311b2d065756c6b812c5d7f98a37a9316c5c7e58e3cbe623251704f60c67"
+  "report_hash": "sha256:93aefc8aad519efa0de0262762004d61e5aecb472ea8cd0b90e30a091b915255"
 }

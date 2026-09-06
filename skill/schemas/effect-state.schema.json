@@ -1183,6 +1183,34 @@
         "hidden": {
           "type": "boolean",
           "description": "Core 811: the Hidden keyword, the prerequisite of the Hide action."
+        },
+        "attached_to": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ADR-0012 §4 / Core 434.1.b: the Top-Most card this card is attached to. The other direction is derived, never stored."
+        },
+        "might_bonus": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Core 159.1: the Might this card adds to its Top-Most card while attached."
+        },
+        "pending_recall": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reason",
+            "battlefield"
+          ],
+          "description": "Core 435.4.a: a detached Gear now at a Battlefield is Recalled by the next Cleanup; recorded here because that Cleanup step is not modelled yet.",
+          "properties": {
+            "reason": {
+              "const": "detached_gear_at_battlefield"
+            },
+            "battlefield": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         }
       }
     },

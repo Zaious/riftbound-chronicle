@@ -179,7 +179,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "card_ordering",
             "look_reveal_put_back",
             "predict",
-            "multi_recycle"
+            "multi_recycle",
+            "restricted_resource_grant",
+            "repeat_execution"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -335,7 +337,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "card_ordering",
             "look_reveal_put_back",
             "predict",
-            "multi_recycle"
+            "multi_recycle",
+            "restricted_resource_grant",
+            "repeat_execution"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",

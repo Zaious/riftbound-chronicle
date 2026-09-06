@@ -244,10 +244,14 @@ def main() -> int:
         errors.append(f"a valid card_ordering was refused: {ed.validate_engine_decisions(ordering)}")
     no_ids = copy.deepcopy(ordering); del no_ids["decisions"][0]["selection_identities"]
     dup_ids = envelope(state, card_decision("card_ordering", "order", ["c1", "c1"], state))
-    play_stage = envelope(state, card_decision("card_ordering", "order", ["c1"], state, stage="play_declaration"))
-    for label, env in (("without identities", no_ids), ("with a repeated card", dup_ids), ("at play stage", play_stage)):
+    for label, env in (("without identities", no_ids), ("with a repeated card", dup_ids)):
         if not ed.validate_engine_decisions(env):
             errors.append(f"a card_ordering {label} was accepted")
+    # A card choice may carry the play_declaration stage only while a cost is
+    # being paid (Core 357.2); a resolution-time instruction refuses it.
+    at_play = apply_program(trash2, rec, decisions=envelope(trash2, card_decision("card_selection", "which", ["c2"], trash2, stage="play_declaration")))
+    if at_play.get("valid") is not False or not any("resolution-stage" in e for e in at_play.get("errors", [])):
+        errors.append(f"a resolution instruction accepted a play-stage card choice: {at_play.get('reason_code')} {at_play.get('errors')}")
     int_mode = envelope(state, {"decision_id": "m", "stage": "play_declaration", "kind": "mode_selection", "controller": "p1", "value": 0})
     res_mode = envelope(state, {"decision_id": "m", "stage": "resolution", "kind": "mode_selection", "controller": "p1", "value": "a"})
     for label, env in (("with an integer value", int_mode), ("at resolution stage", res_mode)):

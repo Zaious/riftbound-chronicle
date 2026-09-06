@@ -140,13 +140,15 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must map domains to non-negative integers (the complete allocation)")
         if kind == "resource_allocation" and item["stage"] != "play_declaration":
             errors.append(f"{label}: resource_allocation is decided while paying at play")
-        if kind == "card_ordering" and item["stage"] != "resolution":
-            errors.append(f"{label}: card_ordering is a resolution-stage decision")
+        if kind == "card_ordering" and item["stage"] not in ("resolution", "play_declaration"):
+            errors.append(f"{label}: card_ordering is decided at resolution, or while paying a cost at play (Core 357.2)")
         if kind == "mode_selection" and (not isinstance(val, str) or not val):
             errors.append(f"{label}.value must be the stable option id of the chosen mode (not an index)")
         if kind == "mode_selection" and item["stage"] not in ("play_declaration", "trigger_finalization"):
             errors.append(f"{label}: mode_selection is chosen while playing or at trigger finalization (Core 402.2)")
-        if kind in ("replacement_order", "replacement_choice", "trigger_order", "card_selection") and item["stage"] != "resolution":
+        if kind == "card_selection" and item["stage"] not in ("resolution", "play_declaration"):
+            errors.append(f"{label}: card_selection is decided at resolution, or while paying a cost at play (Core 357.2)")
+        if kind in ("replacement_order", "replacement_choice", "trigger_order") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
         if kind == "player_selection" and (not isinstance(val, str) or not val):
             errors.append(f"{label}.value must be a player id")

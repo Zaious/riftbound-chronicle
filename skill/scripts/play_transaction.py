@@ -51,7 +51,7 @@ import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bump_identity, apply_program, derive_targeted, evaluate_target,
-    entity_identity, find_location, hash_value, object_identity, validate_program, validate_state, zone_class,
+    entity_identity, find_location, hash_value, object_identity, suffix_decision_refs, validate_program, validate_state, zone_class,
 )
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
 
@@ -60,10 +60,17 @@ RESULT_VERSION = "riftbound-play-result.v1"
 
 # Non-standard costs the engine can pay by reusing a primitive operation
 # (356.7, 357.2). Anything else is `unsupported` by name.
-SUPPORTED_NON_STANDARD = {"exhaust": "exhaust", "kill": "kill"}
+SUPPORTED_NON_STANDARD = {"exhaust": "exhaust", "kill": "kill", "kill_this": "kill", "recall_self": "recall"}
+# ADR-0011 §4: costs paid by the chain item's own source (204.2); the object
+# is the activation's source_object unless the declaration names one.
+SELF_COSTS = {"kill_this", "recall_self", "banish_self"}
+# ADR-0011 §4: costs paid by the payer's card choice at play stage.
+CHOICE_COSTS = {"discard", "recycle_trash"}
+# Costs whose sources live in P4 (XP, Buff, Empower): typed, refused by name.
+DEFERRED_COST_KINDS = {"spend_xp", "spend_buff", "disempower_self"}
 PAID_OUTCOMES = {"applied", "replaced_prevented", "replaced_modified_applied", "replaced_modified_prevented", "augmented_applied", "augmented_original_replaced"}
 STAGES = ("declaration", "choices", "cost_determination", "payment", "legality", "commit")
-DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required"}
+DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required", "card_selection_required", "card_ordering_required"}
 
 RULES = {
     "choices": ["Core 355.1", "Core 355.1.a", "Core 355.2", "Core 355.5", "Core 355.9"],
@@ -95,8 +102,21 @@ def validate_declaration(value: Any) -> list[str]:
         errors.append(f"schema_version must be {DECLARATION_VERSION}")
     if value.get("ruleset") != {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}:
         errors.append("ruleset must match the engine ruleset")
-    if set(value) - {"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id", "chain_item", "cost", "payment_context", "entry_location"}:
+    if set(value) - {"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id", "chain_item", "cost", "payment_context", "entry_location", "activation", "activation_conditions"}:
         errors.append("declaration contains unsupported fields")
+    activation = value.get("activation")
+    item_kind_early = (value.get("chain_item") or {}).get("object_kind") if isinstance(value.get("chain_item"), dict) else None
+    if item_kind_early == "ability":
+        # ADR-0011 §4 / Core 377, 402: an activated ability is declared with its
+        # source and ability id; `card` names the source (nothing leaves the hand).
+        if not isinstance(activation, dict) or set(activation) - {"source_object", "ability_id"} or not {"source_object", "ability_id"} <= set(activation) or any(not isinstance(activation[k], str) or not activation[k] for k in activation):
+            errors.append("an ability declaration needs activation {source_object, ability_id}")
+        elif value.get("card") != activation["source_object"]:
+            errors.append("an ability declaration's card must be its activation.source_object")
+    elif activation is not None:
+        errors.append("activation only applies to an ability chain item")
+    if "activation_conditions" in value and (not isinstance(value["activation_conditions"], list) or any(not isinstance(c, dict) for c in value["activation_conditions"])):
+        errors.append("activation_conditions must be an array of typed conditions")
     location = value.get("entry_location")
     if location is not None and (not isinstance(location, dict) or location.get("kind") not in {"base", "battlefield"} or set(location) - {"kind", "battlefield"}
                                  or (location.get("kind") == "battlefield" and (not isinstance(location.get("battlefield"), str) or not location.get("battlefield")))):
@@ -106,8 +126,8 @@ def validate_declaration(value: Any) -> list[str]:
         errors.append("a Unit's entry_location is chosen while playing (Core 355.2) and must be declared")
     if item_kind == "gear" and location is not None and location.get("kind") != "base":
         errors.append("a Non-Unit Gear enters the controller's Base (Core 359.2.d); entry_location may only be base")
-    if item_kind == "spell" and location is not None:
-        errors.append("a spell has no entry_location")
+    if item_kind in {"spell", "ability"} and location is not None:
+        errors.append(f"a {item_kind} has no entry_location")
     for key in ("play_id", "actor", "card"):
         if not isinstance(value.get(key), str) or not value.get(key):
             errors.append(f"{key} must be a non-empty string")
@@ -122,7 +142,7 @@ def validate_declaration(value: Any) -> list[str]:
     else:
         if not isinstance(item.get("id"), str) or not item.get("id"):
             errors.append("chain_item.id must be a non-empty string")
-        if item.get("object_kind") not in {"spell", "unit", "gear"}:
+        if item.get("object_kind") not in {"spell", "unit", "gear", "ability"}:
             errors.append("chain_item.object_kind is invalid")
         if item.get("timing") not in {"default", "action", "reaction"}:
             errors.append("chain_item.timing is invalid")
@@ -140,9 +160,11 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append(f"cost.base_modifications[{i}].cost is required for for_cost")
     seen: set[str] = set()
     for i, add in enumerate(cost.get("additional", []) or []):
-        if not isinstance(add, dict) or not {"cost_id", "mandatory", "payment"} <= set(add) or set(add) - {"cost_id", "mandatory", "payment", "source"}:
+        if not isinstance(add, dict) or not {"cost_id", "mandatory", "payment"} <= set(add) or set(add) - {"cost_id", "mandatory", "payment", "source", "repeat"}:
             errors.append(f"cost.additional[{i}] is invalid")
             continue
+        if "repeat" in add and (not isinstance(add["repeat"], bool) or (add["repeat"] and add.get("mandatory") is True)):
+            errors.append(f"cost.additional[{i}].repeat must be boolean and a Repeat cost is optional (Core 820.1.a)")
         if not isinstance(add["cost_id"], str) or not add["cost_id"] or add["cost_id"] in seen or add["cost_id"].startswith("base:"):
             errors.append(f"cost.additional[{i}].cost_id is invalid or duplicated")
         seen.add(add.get("cost_id", ""))
@@ -158,14 +180,23 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append(f"cost.additional[{i}].payment needs domain and amount for power")
         if pay["kind"] == "power_any" and (not isinstance(pay.get("amount"), int) or pay["amount"] < 0):
             errors.append(f"cost.additional[{i}].payment.amount is required for power_any")
-        if pay["kind"] in SUPPORTED_NON_STANDARD and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
+        if pay["kind"] in {"exhaust", "kill"} and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
             errors.append(f"cost.additional[{i}].payment.object_id is required for {pay['kind']}")
+        if pay["kind"] in SELF_COSTS and "object_id" in pay and (not isinstance(pay["object_id"], str) or not pay["object_id"]):
+            errors.append(f"cost.additional[{i}].payment.object_id must be a non-empty string when supplied")
+        if pay["kind"] in SELF_COSTS and "object_id" not in pay and item_kind_early != "ability":
+            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs the activation's source or an object_id (Core 204.2)")
+        if pay["kind"] in CHOICE_COSTS and (not isinstance(pay.get("amount"), int) or isinstance(pay.get("amount"), bool) or pay["amount"] < 1 or set(pay) - {"kind", "amount", "decision_ref", "order_ref"}
+                                            or any(not isinstance(pay.get(k), str) or not pay.get(k) for k in ("decision_ref", "order_ref") if k in pay)):
+            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs a positive amount (and optional decision_ref / order_ref)")
     for i, inc in enumerate(cost.get("increases", []) or []):
-        if not isinstance(inc, dict) or not {"id", "component", "amount"} <= set(inc) or set(inc) - {"id", "component", "amount", "source"} or not isinstance(inc["amount"], int) or inc["amount"] < 1 or not (inc["component"] == "energy" or str(inc["component"]).startswith("power:")):
+        errors.extend(f"cost.increases[{i}] {e}" for e in _provenance_errors(inc))
+        if not isinstance(inc, dict) or not {"id", "component", "amount"} <= set(inc) or set(inc) - {"id", "component", "amount", "source", "provenance", "condition", "per_each"} or not isinstance(inc["amount"], int) or inc["amount"] < 1 or not (inc["component"] == "energy" or str(inc["component"]).startswith("power:")):
             errors.append(f"cost.increases[{i}] is invalid")
     ids: set[str] = set()
     for i, disc in enumerate(cost.get("discounts", []) or []):
-        if not isinstance(disc, dict) or not {"id", "applies_to", "amount"} <= set(disc) or set(disc) - {"id", "applies_to", "amount", "minimum", "resource", "source"} or not isinstance(disc["amount"], int) or disc["amount"] < 1:
+        errors.extend(f"cost.discounts[{i}] {e}" for e in _provenance_errors(disc))
+        if not isinstance(disc, dict) or not {"id", "applies_to", "amount"} <= set(disc) or set(disc) - {"id", "applies_to", "amount", "minimum", "resource", "source", "provenance", "condition", "per_each"} or not isinstance(disc["amount"], int) or disc["amount"] < 1:
             errors.append(f"cost.discounts[{i}] is invalid")
             continue
         if not isinstance(disc["id"], str) or not disc["id"] or disc["id"] in ids:
@@ -184,6 +215,23 @@ def validate_declaration(value: Any) -> list[str]:
         if not isinstance(mod, dict) or mod.get("kind") != "ignore_any_and_all" or set(mod) - {"kind", "source"}:
             errors.append(f"cost.total_modifications[{i}] is invalid")
     return errors
+
+
+def _provenance_errors(mod: Any) -> list[str]:
+    """ADR-0011 §4: a cost modification is typed input; its provenance says
+    who evaluated it. A condition or per-each source is carried only so the
+    engine can refuse it by name (P4)."""
+    if not isinstance(mod, dict) or "provenance" not in mod:
+        return []
+    prov = mod["provenance"]
+    if not isinstance(prov, dict) or set(prov) - {"evaluated_by", "source"} or prov.get("evaluated_by") not in {"declaration", "p4_condition_layer"} or ("source" in prov and (not isinstance(prov["source"], str) or not prov["source"])):
+        return ["provenance must be {evaluated_by: declaration | p4_condition_layer, source?}"]
+    return []
+
+
+def unsupported_modification_sources(cost: dict[str, Any]) -> list[str]:
+    """The ids of modifications whose source the engine would have to evaluate (P4)."""
+    return [m["id"] for key in ("increases", "discounts") for m in (cost.get(key, []) or []) if isinstance(m, dict) and ("condition" in m or "per_each" in m)]
 
 
 def validate_play_result(value: Any) -> list[str]:
@@ -225,7 +273,7 @@ def validate_play_result(value: Any) -> list[str]:
         elif not value["cost_receipt"]["paid"] or value["cost_receipt"]["play_id"] != value["play_id"]:
             errors.append("committed result must carry a paid receipt for this play")
         entry = (value["next_effect_state"].get("chain_items") or {}).get(value["chain_item_id"])
-        if not isinstance(entry, dict) or entry.get("card") != value["cost_receipt"].get("card") if not receipt_errors else False:
+        if not isinstance(entry, dict) or entry.get("card", entry.get("source_object")) != value["cost_receipt"].get("card") if not receipt_errors else False:
             errors.append("committed result must leave the played card on the shared chain under chain_item_id")
         if any(item.get("id") == value["chain_item_id"] for item in value["next_timing_state"].get("chain", {}).get("items", [])) is False:
             errors.append("committed result must insert chain_item_id into the timing chain")
@@ -295,8 +343,8 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
         intent = None if add["mandatory"] else bool(intents.get(add["cost_id"], False))
         requested = pay.get("amount") if pay["kind"] in {"energy", "power", "power_any"} else {k: v for k, v in pay.items() if k != "kind"}
         components.append(component(add["cost_id"], pay["kind"], add["mandatory"], intent, requested,
-                                    ["Core 356.2.a"] if add["mandatory"] else ["Core 356.2.b", "Core 356.4.f.1"],
-                                    domain=pay.get("domain"), object_id=pay.get("object_id")))
+                                    (["Core 356.2.a"] if add["mandatory"] else ["Core 356.2.b", "Core 356.4.f.1"]) + (["Core 820.1.a", "Core 820.1.c"] if add.get("repeat") else []),
+                                    domain=pay.get("domain"), object_id=pay.get("object_id"), **({"repeat": True} if add.get("repeat") else {})))
     by_id = {c["cost_id"]: c for c in components}
 
     def chosen(c):
@@ -397,19 +445,77 @@ def _allocations(remaining: dict[str, int], amount: int) -> list[dict[str, int]]
     return out
 
 
+def _play_use(declaration: dict[str, Any], state: dict[str, Any]) -> str:
+    """What this transaction spends resources on, for restricted pools (ADR-0011 §4)."""
+    kind = declaration["chain_item"]["object_kind"]
+    if kind == "ability":
+        source_kind = state["objects"].get(declaration["activation"]["source_object"], {}).get("kind")
+        return f"activate_{source_kind}_ability"
+    return f"play_{kind}"
+
+
+def _restricted_entries(resources: dict[str, Any], use: str, kind: str, domain: str | None = None) -> list[dict[str, Any]]:
+    return [r for r in resources.get("restricted", []) if r["kind"] == kind and (kind == "energy" or r.get("domain") == domain) and use in r["uses"]]
+
+
+def _allocate(events: list[dict[str, Any]], components: list[dict[str, Any]]) -> None:
+    """Reference each payment event from the components it settles, in order, with exact amounts."""
+    for event in events:
+        remaining = event["amount"]
+        for comp in components:
+            if remaining <= 0:
+                break
+            already = sum(r.get("amount", 0) for r in comp["payment_refs"])
+            share = min(comp["final"] - already, remaining)
+            if share > 0:
+                comp["payment_refs"].append({"event_id": event["event_id"], "amount": share})
+                remaining -= share
+
+
+def _pay_resource(resources: dict[str, Any], kind: str, amount: int, use: str, domain: str | None = None) -> list[dict[str, Any]]:
+    """Core 357.1: pay `amount` of a resource — a matching restricted pool first
+    (ADR-0011 §4), then the general pool. Unique events with before / after."""
+    events: list[dict[str, Any]] = []
+    due = amount
+    for entry in _restricted_entries(resources, use, kind, domain):
+        take = min(entry["amount"], due)
+        if take <= 0:
+            continue
+        before = entry["amount"]
+        entry["amount"] -= take
+        due -= take
+        events.append({"event_id": f"pay:{kind}{':' + domain if domain else ''}:restricted:{entry['restriction_id']}", "kind": f"pay_{kind}", **({"domain": domain} if domain else {}),
+                       "amount": take, "before": before, "after": entry["amount"], "restricted_from": entry["restriction_id"], "use": use, "rule_locators": ["Core 357.1", "Core 446.3", "Core 447.2"]})
+    resources["restricted"] = [r for r in resources.get("restricted", []) if r["amount"] > 0]
+    if not resources["restricted"]:
+        del resources["restricted"]
+    if due > 0:
+        pool = resources["power"] if kind == "power" else resources
+        key = domain if kind == "power" else "energy"
+        before = pool[key]
+        pool[key] -= due
+        events.append({"event_id": f"pay:{kind}{':' + domain if domain else ''}", "kind": f"pay_{kind}", **({"domain": domain} if domain else {}),
+                       "amount": due, "before": before, "after": pool[key], "rule_locators": ["Core 357.1"]})
+    return events
+
+
 def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[str, Any], decisions: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Core 357: Energy and Power in total (357.1), then non-standard costs in
     declared order (357.2). Payment events are unique; components reference
     them with exact allocations. Mutates `working`; the caller discards it on
     any failure (358.5)."""
+    from effect_ir import ChoiceRequired, IllegalDecision, IllegalOperation, _recycle_batch, resolve_choice
     actor = declaration["actor"]
     resources = working["players"][actor]["resources"]
     total = skeleton["total"]
     ctx = declaration.get("payment_context") or {}
+    use = _play_use(declaration, working)
     any_amount = total.get("power_any", 0)
-    specific = sum(total["power"].values())
-    short = (resources["energy"] < total["energy"] or any(resources["power"].get(d, 0) < a for d, a in total["power"].items())
-             or sum(resources["power"].values()) - specific < any_amount)
+    restricted_energy = sum(r["amount"] for r in _restricted_entries(resources, use, "energy"))
+    inapplicable = [r for r in resources.get("restricted", []) if use not in r["uses"]]
+    general_specific = {d: max(0, a - sum(r["amount"] for r in _restricted_entries(resources, use, "power", d))) for d, a in total["power"].items()}
+    short = (resources["energy"] + restricted_energy < total["energy"] or any(resources["power"].get(d, 0) < a for d, a in general_specific.items())
+             or sum(resources["power"].values()) - sum(general_specific.values()) < any_amount)
     nonzero = total["energy"] > 0 or any(a > 0 for a in total["power"].values()) or any_amount > 0
     # Core 429.3 (Codex Round B, point A): whenever a resource cost is paid, the
     # controller may use Add reactions first. The engine never assumes they
@@ -421,37 +527,29 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                         f"a resource cost is due and the Add window (Core 429.3) has not been confirmed closed for {actor}",
                         decision_ids=[f"add_window:{declaration['play_id']}"], decision_controller=actor, rule_locators=["Core 429.3", "Core 357.1.a"])
     if short:
-        raise PlayError("payment", "cost_unpayable", f"{actor} cannot pay {total} from {resources} with the Add window closed", rule_locators=["Core 357.1"])
+        note = f"; {sum(r['amount'] for r in inapplicable)} restricted resource(s) cannot be spent on {use} ({sorted({u for r in inapplicable for u in r['uses']})})" if inapplicable else ""
+        raise PlayError("payment", "cost_unpayable", f"{actor} cannot pay {total} from {resources} with the Add window closed{note}", rule_locators=["Core 357.1"] + (["Core 446.3"] if inapplicable else []),
+                        **({"restricted_not_applicable": [r["restriction_id"] for r in inapplicable]} if inapplicable else {}))
 
     events: list[dict[str, Any]] = []
+
+    def chosen(c):
+        return c["mandatory"] or c["intent"] is True
+
     if total["energy"]:
-        before = resources["energy"]; resources["energy"] -= total["energy"]
-        events.append({"event_id": "pay:energy", "kind": "pay_energy", "amount": total["energy"], "before": before, "after": resources["energy"], "rule_locators": ["Core 357.1"]})
-        remaining = total["energy"]
-        for comp in skeleton["components"]:
-            if comp["kind"] == "energy" and (comp["mandatory"] or comp["intent"] is True):
-                share = min(comp["final"], remaining)
-                if share:
-                    comp["payment_refs"].append({"event_id": "pay:energy", "amount": share})
-                remaining -= share
+        energy_events = _pay_resource(resources, "energy", total["energy"], use)
+        events.extend(energy_events)
+        _allocate(energy_events, [c for c in skeleton["components"] if c["kind"] == "energy" and chosen(c)])
     for domain, amount in sorted(total["power"].items()):
         if not amount:
             continue
-        before = resources["power"][domain]; resources["power"][domain] -= amount
-        event_id = f"pay:power:{domain}"
-        events.append({"event_id": event_id, "kind": "pay_power", "domain": domain, "amount": amount, "before": before, "after": resources["power"][domain], "rule_locators": ["Core 357.1"]})
-        remaining = amount
-        for comp in skeleton["components"]:
-            if comp["kind"] == "power" and comp.get("domain") == domain and (comp["mandatory"] or comp["intent"] is True):
-                share = min(comp["final"], remaining)
-                if share:
-                    comp["payment_refs"].append({"event_id": event_id, "amount": share})
-                remaining -= share
+        power_events = _pay_resource(resources, "power", amount, use, domain)
+        events.extend(power_events)
+        _allocate(power_events, [c for c in skeleton["components"] if c["kind"] == "power" and c.get("domain") == domain and chosen(c)])
     if any_amount:
         # Core 809.1.c.1: any-domain Power. The allocation is the player's; the
         # engine spends nothing in an arbitrary order (ADR-0007 §11). One legal
         # allocation proceeds; several need a resource_allocation decision.
-        import engine_decisions as ed
         remaining = {d: n for d, n in resources["power"].items()}
         options = _allocations(remaining, any_amount)
         decision_id = f"power_any:{declaration['play_id']}"
@@ -475,25 +573,77 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                            "allocation_of": "power_any", "decided_by": entry["decision_id"] if entry else "sole_legal_allocation", "rule_locators": ["Core 809.1.c.1", "Core 357.1"]})
             remaining_share = amount
             for comp in skeleton["components"]:
-                if comp["kind"] == "power_any" and (comp["mandatory"] or comp["intent"] is True) and remaining_share:
+                if comp["kind"] == "power_any" and chosen(comp) and remaining_share:
                     already = sum(r.get("amount", 0) for r in comp["payment_refs"])
                     share = min(comp["final"] - already, remaining_share)
                     if share > 0:
                         comp["payment_refs"].append({"event_id": event_id, "amount": share})
                         remaining_share -= share
     for comp in skeleton["components"]:
-        if comp["kind"] in {"energy", "power", "power_any"} and (comp["mandatory"] or comp["intent"] is True):
+        if comp["kind"] in {"energy", "power", "power_any"} and chosen(comp):
             comp["paid"] = True
 
+    play_stage = {"allow_play_stage": True}
     for comp in skeleton["components"]:
-        if comp["kind"] in {"energy", "power", "power_any"} or not (comp["mandatory"] or comp["intent"] is True):
+        if comp["kind"] in {"energy", "power", "power_any"} or not chosen(comp):
+            continue
+        event_id = f"pay:{comp['cost_id']}"
+        if comp["kind"] in CHOICE_COSTS:
+            # ADR-0011 §4: Discard N (422.1.a, private) / Recycle N from the
+            # trash (416.3, public) — the payer's card_selection at play stage;
+            # the whole amount must be payable (423.1.b, 416.3).
+            amount = comp["requested"]["amount"]
+            zone = "hand" if comp["kind"] == "discard" else "trash"
+            # Core 354: the card being played moved to the Chain before costs
+            # were chosen, so it can never pay its own cost from that zone.
+            pool = [c for c in working["players"][actor]["zones"][zone] if c != declaration["card"]]
+            if len(pool) < amount:
+                raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} needs {amount} card(s) in {actor}'s {zone}; there are {len(pool)} (the action must be completable to pay it)",
+                                rule_locators=(["Core 423.1.b"] if zone == "hand" else ["Core 416.3"]) + ["Core 354"])
+            spec = {"selection_kind": "single" if amount == 1 else "unordered_set", **({"count": {"exactly": amount}} if amount != 1 else {}), "from": zone, "by": actor,
+                    "visibility": "private_to_chooser" if zone == "hand" else "public", "identity_binding": True}
+            ref = comp["requested"].get("decision_ref") or f"cost:{declaration['play_id']}:{comp['cost_id']}"
+            try:
+                picked, meta = resolve_choice(working, spec, decision_ref=ref, decisions=decisions, controller=actor, session=play_stage, candidates=pool)
+                if not meta["forced"]:
+                    supplied = ed.decision_entry(decisions, ref)
+                    if supplied is not None and supplied["stage"] != "play_declaration":
+                        raise PlayError("payment", "decision_stage_mismatch", f"cost choice {ref!r} was supplied for stage {supplied['stage']!r}, not play_declaration", invalid=True)
+                if comp["kind"] == "discard":
+                    identities = {}
+                    for object_id in picked:
+                        working["players"][actor]["zones"]["hand"].remove(object_id)
+                        owner = working["objects"][object_id]["owner"]
+                        working["players"][owner]["zones"]["trash"].append(object_id)
+                        identities[object_id] = _bump_identity(working, object_id)
+                    events.append({"event_id": event_id, "kind": "pay_discard", "cost_id": comp["cost_id"], "objects": list(picked), "identities_after": identities,
+                                   "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 422.1", "Core 422.1.a", "Core 423.1.b", "Core 124"]})
+                else:
+                    order_ref = comp["requested"].get("order_ref") or f"{ref}:order"
+                    working_after, sub = _recycle_batch(working, picked, actor, decisions, order_ref, f"cost:{comp['cost_id']}", choice_session=play_stage)
+                    if working_after is not working:  # the batch mutates in place; a copy would strand the payment
+                        working.clear(); working.update(working_after)
+                    events.append({"event_id": event_id, "kind": "pay_recycle_trash", "cost_id": comp["cost_id"], "objects": list(picked), "identities_after": sub["identities_after"],
+                                   "order_decision": sub["order_decision"], "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 416.3", "Core 416.5", "Core 124"]})
+            except ChoiceRequired as exc:
+                raise PlayError("payment", exc.reason_code, f"cost {comp['cost_id']!r}: {exc}", decision_ids=exc.decision_ids, decision_controller=actor, choice=exc.summary,
+                                rule_locators=["Core 357.2", "Core 422.1.a"] if zone == "hand" else ["Core 357.2", "Core 416.3"])
+            except IllegalDecision as exc:
+                raise PlayError("payment", "decision_controller_mismatch", str(exc), rule_locators=["Core 422.1.a"])
+            except IllegalOperation as exc:
+                raise PlayError("payment", "cost_choice_illegal", f"cost {comp['cost_id']!r}: {exc}", rule_locators=["Core 422.1.a"] if zone == "hand" else ["Core 416.3"])
+            except ValueError as exc:
+                raise PlayError("payment", "invalid_cost_choice", f"cost {comp['cost_id']!r}: {exc}", invalid=True)
+            comp["payment_refs"].append({"event_id": event_id})
+            comp["paid"] = True
             continue
         op = SUPPORTED_NON_STANDARD[comp["kind"]]
-        selector = {"object_id": comp["object_id"], "chosen_zone_class": "board", "controller_relation": "friendly",
-                    "bound_identity": object_identity(working, comp["object_id"]) or f"{comp['object_id']}@0"}
+        object_id = comp["object_id"]
+        selector = {"object_id": object_id, "chosen_zone_class": "board", "controller_relation": "friendly",
+                    "bound_identity": object_identity(working, object_id) or f"{object_id}@0"}
         program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                    "program_id": f"cost:{declaration['play_id']}:{comp['cost_id']}", "controller": actor,
-                   "effects": [{"op": op, "effect_id": comp["cost_id"], "object_id": comp["object_id"], "target": selector}]}
+                   "effects": [{"op": op, "effect_id": comp["cost_id"], "object_id": object_id, "target": selector}]}
         # No envelope here: it is keyed to the pre-play hash and the pool is
         # already debited. A replacement that needs a choice mid-payment is a
         # contract the engine does not have yet.
@@ -508,9 +658,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         if outcome not in PAID_OUTCOMES:
             raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} ({comp['kind']}) did not happen: {outcome}", rule_locators=["Core 357.2", "Core 203.3"])
         working.clear(); working.update(result["next_state"])
-        event_id = f"pay:{comp['cost_id']}"
-        events.append({"event_id": event_id, "kind": f"pay_{comp['kind']}", "cost_id": comp["cost_id"], "object_id": comp["object_id"], "outcome": outcome,
-                       "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else [])})
+        events.append({"event_id": event_id, "kind": f"pay_{comp['kind']}", "cost_id": comp["cost_id"], "object_id": object_id, "outcome": outcome,
+                       "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + (["Core 204.2"] if comp["kind"] in SELF_COSTS else [])})
         comp["payment_refs"].append({"event_id": event_id})
         comp["paid"] = True
         if outcome != "applied":
@@ -665,10 +814,26 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             raise PlayError("declaration", "unknown_actor", f"{actor!r} is not a player in the effect state", invalid=True)
         if item_id in (effect_state.get("chain_items") or {}) or any(i.get("id") == item_id for i in timing_state.get("chain", {}).get("items", [])):
             raise PlayError("declaration", "chain_item_id_collision", f"chain item {item_id!r} already exists", invalid=True)
-        if find_location(effect_state, card) != ("player", actor, "hand"):
-            raise PlayError("choices", "card_not_in_hand", f"{card!r} is not in {actor}'s hand", rule_locators=["Core 354"])
-        if effect_state["objects"][card]["kind"] != declaration["chain_item"]["object_kind"]:
-            raise PlayError("choices", "object_kind_mismatch", f"{card!r} is a {effect_state['objects'][card]['kind']}; the chain item says {declaration['chain_item']['object_kind']}", invalid=True)
+        is_ability = declaration["chain_item"]["object_kind"] == "ability"
+        if is_ability:
+            # ADR-0011 §4 / Core 377: the source is a permanent the actor
+            # controls on the Board; a Legend's ability is a P3 source.
+            source = effect_state["objects"].get(card)
+            if source is None:
+                raise PlayError("declaration", "unknown_activation_source", f"activation source {card!r} is not in the state", invalid=True)
+            where = find_location(effect_state, card)
+            on_board = where is not None and (where[0] == "battlefield" or (where[0] == "player" and where[2] == "base"))
+            if not on_board:
+                raise PlayError("choices", "activation_source_not_on_board", f"{card!r} is at {where}; activated abilities are activated from the Board (Core 377.4)", rule_locators=["Core 377.4", "Core 377"])
+            if source.get("controller") != actor:
+                raise PlayError("choices", "activation_source_not_controlled", f"{card!r} is controlled by {source.get('controller')!r}, not {actor}", rule_locators=["Core 377.3", "Core 377.4"])
+            if declaration.get("activation_conditions"):
+                raise PlayError("choices", "activation_conditions_unsupported", f"activation conditions {[c.get('kind') for c in declaration['activation_conditions']]} are a P4 condition grammar (Core 377.2.b)", unsupported=True, rule_locators=["Core 377.2.b"])
+        else:
+            if find_location(effect_state, card) != ("player", actor, "hand"):
+                raise PlayError("choices", "card_not_in_hand", f"{card!r} is not in {actor}'s hand", rule_locators=["Core 354"])
+            if effect_state["objects"][card]["kind"] != declaration["chain_item"]["object_kind"]:
+                raise PlayError("choices", "object_kind_mismatch", f"{card!r} is a {effect_state['objects'][card]['kind']}; the chain item says {declaration['chain_item']['object_kind']}", invalid=True)
 
         # --- 355.2: the Unit's location is chosen now. Own Base, a Battlefield
         # the controller controls, or — with the compiled permission — an open
@@ -706,9 +871,26 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             raise PlayError("choices", "optional_cost_intent_required", f"optional cost intent not declared for {missing}", decision_ids=missing, decision_controller=actor, rule_locators=["Core 355.1.a", "Core 356.2.b.1"])
         chosen_objects: list[str] = []
         mode = None
+        # ADR-0011 §4 / Core 820: each paid Repeat is one more execution with its
+        # own choices, made now like the first (820.2).
+        repeat_paid = [add["cost_id"] for add in declaration["cost"].get("additional", []) or [] if add.get("repeat") and intents.get(add["cost_id"])]
+        repeat_record = None
         if effect_program is not None:
             effects, mode = _play_mode(actor, effect_program, engine_decisions)
             chosen_objects = _check_play_targets(effect_state, actor, effect_program, engine_decisions, effects)
+            repeat_modes = [mode] if mode else []
+            for k, _ in enumerate(repeat_paid, start=1):
+                program_k = effect_program
+                if effect_program.get("modal"):
+                    program_k = {**effect_program, "modal": {**effect_program["modal"], "decision_ref": effect_program["modal"]["decision_ref"] + f"#{k}"}}
+                effects_k, mode_k = _play_mode(actor, program_k, engine_decisions)
+                chosen_objects += _check_play_targets(effect_state, actor, effect_program, engine_decisions, suffix_decision_refs(effects_k, f"#{k}"))
+                if mode_k:
+                    repeat_modes.append(mode_k)
+            if repeat_paid:
+                repeat_record = {"executions": 1 + len(repeat_paid), **({"modes": repeat_modes} if effect_program.get("modal") else {})}
+        elif repeat_paid:
+            repeat_record = {"executions": 1 + len(repeat_paid)}
         # ADR-0007 §11: Deflect is scanned once targets are fixed and before the
         # cost is determined; it lands on the declared cost as mandatory
         # any-domain Power.
@@ -716,15 +898,22 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         cost = copy.deepcopy(declaration["cost"])
         if deflect:
             cost["additional"] = list(cost.get("additional", []) or []) + deflect
-        trace.append({"stage": "choices", "outcome": "applied", "optional_cost_intents": intents, "chosen_objects": chosen_objects, "deflect_costs": deflect, **({"mode_selection": mode} if mode else {}),
+        trace.append({"stage": "choices", "outcome": "applied", "optional_cost_intents": intents, "chosen_objects": chosen_objects, "deflect_costs": deflect, **({"mode_selection": mode} if mode else {}), **({"repeat": repeat_record} if repeat_record else {}),
                       "rule_locators": RULES["choices"] + (["Core 402.2"] if mode else []) + (["Core 809.1.c", "Core 809.1.d", "Core 809.2"] if deflect else [])})
         locators += RULES["choices"] + (["Core 809.1.c", "Core 809.1.d"] if deflect else [])
 
         # --- 356: total cost.
         for add in cost.get("additional", []) or []:
             kind = add["payment"]["kind"]
-            if kind not in {"energy", "power", "power_any"} and kind not in SUPPORTED_NON_STANDARD and (add["mandatory"] or intents.get(add["cost_id"])):
-                raise PlayError("cost_determination", "unsupported_cost_kind", f"cost {add['cost_id']!r} uses {kind!r}, which the engine does not type", unsupported=True, rule_locators=["Core 356.7"])
+            if kind not in {"energy", "power", "power_any"} and kind not in SUPPORTED_NON_STANDARD and kind not in CHOICE_COSTS and (add["mandatory"] or intents.get(add["cost_id"])):
+                note = " (XP / Buff / Empower costs wait for the P4 catalogue: xp_buff_costs)" if kind in DEFERRED_COST_KINDS else ""
+                raise PlayError("cost_determination", "unsupported_cost_kind", f"cost {add['cost_id']!r} uses {kind!r}, which the engine does not type{note}", unsupported=True, rule_locators=["Core 356.7"])
+            if kind in SELF_COSTS and "object_id" not in add["payment"]:
+                add["payment"] = {**add["payment"], "object_id": declaration["activation"]["source_object"]}
+        sourced = unsupported_modification_sources(cost)
+        if sourced:
+            raise PlayError("cost_determination", "cost_modification_sources_unsupported", f"modifications {sourced} carry a condition or per-each source the engine would have to evaluate; P2 accepts only evaluated typed input (P4: cost_modification_sources)",
+                            unsupported=True, rule_locators=["Core 356.3", "Core 356.4"])
         skeleton = determine_total_cost(cost, intents, actor=actor)
         trace.append({"stage": "cost_determination", "outcome": "applied", "total": copy.deepcopy(skeleton["total"]), "rule_locators": RULES["cost"]})
         locators += RULES["cost"]
@@ -739,16 +928,21 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # The card leaves the hand for the shared chain: a zone change, so a
         # new object (Core 124). The chain entry binds card, controller, and
         # program to the timing item.
-        working["players"][actor]["zones"]["hand"].remove(card)
-        entry = {"card": card, "controller": actor}
+        if is_ability:
+            entry = {"source_object": card, "ability_id": declaration["activation"]["ability_id"], "controller": actor}
+        else:
+            working["players"][actor]["zones"]["hand"].remove(card)
+            entry = {"card": card, "controller": actor}
         if declaration.get("effect_program_id"):
             entry["effect_program_id"] = declaration["effect_program_id"]
         if declaration.get("entry_location") is not None:
             entry["entry_location"] = dict(declaration["entry_location"])
         if mode is not None:
             entry["mode_selection"] = dict(mode)  # ADR-0011 §2: the mode rides with the chain entry to resolution
+        if repeat_record is not None:
+            entry["repeat"] = copy.deepcopy(repeat_record)  # ADR-0011 §4: paid Repeats ride to resolution
         working.setdefault("chain_items", {})[item_id] = entry
-        identity_after = _bump_identity(working, card)
+        identity_after = _bump_identity(working, card) if not is_ability else object_identity(working, card)
         state_errors = validate_state(working)
         if state_errors:
             raise PlayError("payment", "invalid_working_state", "; ".join(state_errors), invalid=True)
@@ -757,13 +951,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         item = {**declaration["chain_item"], "ability_kind": declaration["chain_item"].get("ability_kind")}
         if declaration.get("effect_program_id"):
             item["effect_program_id"] = declaration["effect_program_id"]
-        insertion = add_pending_item(timing_state, {"actor": actor, "kind": "play_card", "item": item, "initiated_by": "played_card"})
+        insertion = add_pending_item(timing_state, {"actor": actor, "kind": "activate_ability" if is_ability else "play_card", "item": item,
+                                                    "initiated_by": ("add_ability" if item.get("ability_kind") == "add" else "activated_ability") if is_ability else "played_card"})
         if insertion.get("valid") is False:
             raise PlayError("legality", "invalid_timing_state", "; ".join(insertion.get("errors", [])), invalid=True)
         if insertion.get("applied") is not True:
             raise PlayError("legality", insertion.get("reason_code") or "play_illegal", f"the timing kernel refused the play: {insertion.get('reason_code')}", legality=insertion.get("legality"), rule_locators=RULES["legality"])
-        trace.append({"stage": "legality", "outcome": "applied", "chain_item_id": item_id, "card_identity_after": identity_after, "rule_locators": RULES["legality"] + RULES["identity"]})
-        locators += RULES["legality"] + RULES["identity"]
+        trace.append({"stage": "legality", "outcome": "applied", "chain_item_id": item_id, "card_identity_after": identity_after, **({"activation": dict(declaration["activation"])} if is_ability else {}),
+                      "rule_locators": RULES["legality"] + (["Core 377", "Core 402"] if is_ability else RULES["identity"])})
+        locators += RULES["legality"] + (["Core 377", "Core 402"] if is_ability else RULES["identity"])
     except PlayError as exc:
         extra = dict(exc.extra)
         rule_locators = extra.pop("rule_locators", [])

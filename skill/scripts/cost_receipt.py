@@ -19,11 +19,13 @@ from typing import Any
 
 RECEIPT_VERSION = "riftbound-cost-receipt.v1"
 RESOURCE_KINDS = {"energy", "power", "power_any"}
+# ADR-0011 §4: every payment kind the transaction can settle (357.2).
+PAYMENT_EVENT_KINDS = {"pay_energy", "pay_power", "pay_exhaust", "pay_kill", "pay_discard", "pay_recycle_trash", "pay_kill_this", "pay_recall_self", "pay_banish_self"}
 
 _TOP = {"schema_version", "play_id", "actor", "card", "base", "after_base_modifications", "components", "aggregate",
         "discount_order", "order_provenance", "payment_events", "total", "paid", "rule_locators"}
 _COMPONENT = {"cost_id", "kind", "mandatory", "intent", "requested", "increases", "reductions", "final",
-              "payment_refs", "paid", "rule_locators", "domain", "object_id"}
+              "payment_refs", "paid", "rule_locators", "domain", "object_id", "repeat"}
 
 
 def _is_resource(value: Any) -> bool:
@@ -57,7 +59,7 @@ def validate_cost_receipt(value: Any) -> list[str]:
         events = []
     event_amount: dict[str, int | None] = {}
     for i, ev in enumerate(events):
-        if not isinstance(ev, dict) or not isinstance(ev.get("event_id"), str) or not ev["event_id"] or ev.get("kind") not in {"pay_energy", "pay_power", "pay_exhaust", "pay_kill"}:
+        if not isinstance(ev, dict) or not isinstance(ev.get("event_id"), str) or not ev["event_id"] or ev.get("kind") not in PAYMENT_EVENT_KINDS:
             errors.append(f"payment_events[{i}] must carry event_id and a known kind")
             continue
         if ev["event_id"] in event_amount:
@@ -90,6 +92,8 @@ def validate_cost_receipt(value: Any) -> list[str]:
             continue
         if comp["mandatory"] and comp["intent"] is not None:
             errors.append(f"{label} mandatory costs carry no intent")
+        if "repeat" in comp and (not isinstance(comp["repeat"], bool) or (comp["repeat"] and comp["mandatory"])):
+            errors.append(f"{label} repeat must be boolean and a Repeat cost is optional (Core 820.1.a)")
         if not comp["mandatory"] and comp["intent"] is None:
             errors.append(f"{label} optional costs must record intent")
         chosen = comp["mandatory"] or comp["intent"] is True

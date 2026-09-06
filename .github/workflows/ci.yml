@@ -303,6 +303,9 @@ jobs:
       # ADR-0011 §3: look-at / reveal marks, the player's card_ordering put-back, Recycle as one action, Predict.
       - name: Look, reveal, put back, recycle and predict (C-41)
         run: python3 skill/scripts/check_look_reveal.py
+      # ADR-0011 §4: the payment catalogue, activated abilities, [Repeat], restricted Add resources.
+      - name: Cost catalogue, activated abilities and restricted resources (C-42)
+        run: python3 skill/scripts/check_costs_and_activation.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -392,6 +395,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_cleanup_orchestration.py"
           python3 "$REPO/skill/scripts/check_choice_grammar.py"
           python3 "$REPO/skill/scripts/check_look_reveal.py"
+          python3 "$REPO/skill/scripts/check_costs_and_activation.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

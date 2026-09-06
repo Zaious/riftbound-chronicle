@@ -486,6 +486,34 @@
               "minLength": 1
             },
             "description": "recycle: the cards named by the instruction (else a choice)."
+          },
+          "restriction": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "uses"
+            ],
+            "description": "add_resource: the resource may only be spent on these uses (ADR-0011 §4).",
+            "properties": {
+              "uses": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "play_spell",
+                    "play_unit",
+                    "play_gear",
+                    "activate_unit_ability",
+                    "activate_gear_ability"
+                  ]
+                }
+              }
+            }
+          },
+          "restriction_id": {
+            "type": "string",
+            "minLength": 1
           }
         }
       },

@@ -5,37 +5,160 @@
   "description": "ADR-0005 §4: the outcome of one atomic play transaction. Either every step committed and both next states are present, or nothing did and the input hashes are the next hashes (Core 358.5). The cost receipt is the only evidence a later 'If you do' may test (Core 356.4.f.1).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "ruleset", "play_id", "input_timing_state_hash", "input_effect_state_hash", "valid", "committed", "unsupported", "rolled_back", "stage", "reason_code", "trace", "rule_locators"],
+  "required": [
+    "schema_version",
+    "ruleset",
+    "play_id",
+    "input_timing_state_hash",
+    "input_effect_state_hash",
+    "valid",
+    "committed",
+    "unsupported",
+    "rolled_back",
+    "stage",
+    "reason_code",
+    "trace",
+    "rule_locators"
+  ],
   "properties": {
-    "schema_version": {"const": "riftbound-play-result.v1"},
+    "schema_version": {
+      "const": "riftbound-play-result.v1"
+    },
     "ruleset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["core", "faq_as_of"],
-      "properties": {"core": {"const": "2026-07-16"}, "faq_as_of": {"const": "2026-08-14"}}
+      "required": [
+        "core",
+        "faq_as_of"
+      ],
+      "properties": {
+        "core": {
+          "const": "2026-07-16"
+        },
+        "faq_as_of": {
+          "const": "2026-08-14"
+        }
+      }
     },
-    "play_id": {"type": ["string", "null"]},
-    "input_timing_state_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "input_effect_state_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "valid": {"type": "boolean"},
-    "committed": {"type": "boolean"},
-    "unsupported": {"type": "boolean"},
-    "rolled_back": {"type": "boolean"},
-    "stage": {"enum": ["declaration", "choices", "cost_determination", "payment", "legality", "commit"]},
-    "reason_code": {"type": "string", "minLength": 1},
-    "reason": {"type": "string"},
-    "errors": {"type": "array", "items": {"type": "string"}},
-    "replacement_ids": {"type": "array", "items": {"type": "string"}},
-    "decision_ids": {"type": "array", "items": {"type": "string"}},
-    "decision_controller": {"type": ["string", "null"]},
-    "legality": {"type": "object"},
-    "chain_item_id": {"type": "string"},
-    "cost_receipt": {"$ref": "cost-receipt.schema.json"},
-    "next_timing_state": {"type": "object"},
-    "next_timing_state_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "next_effect_state": {"type": "object"},
-    "next_effect_state_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
-    "trace": {"type": "array", "items": {"type": "object"}},
-    "rule_locators": {"type": "array", "items": {"type": "string"}}
+    "play_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "input_timing_state_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "input_effect_state_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "committed": {
+      "type": "boolean"
+    },
+    "unsupported": {
+      "type": "boolean"
+    },
+    "rolled_back": {
+      "type": "boolean"
+    },
+    "stage": {
+      "enum": [
+        "declaration",
+        "choices",
+        "cost_determination",
+        "payment",
+        "legality",
+        "commit"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "replacement_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decision_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decision_controller": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "legality": {
+      "type": "object"
+    },
+    "chain_item_id": {
+      "type": "string"
+    },
+    "cost_receipt": {
+      "$ref": "cost-receipt.schema.json"
+    },
+    "next_timing_state": {
+      "type": "object"
+    },
+    "next_timing_state_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "next_effect_state": {
+      "type": "object"
+    },
+    "next_effect_state_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "trace": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "rule_locators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mode_options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "mode_selection_required: the stable option ids to choose from (ADR-0011 §2)."
+    },
+    "choice": {
+      "type": "object",
+      "description": "card_selection_required / card_ordering_required at payment: the choice summary (options only for a public source)."
+    },
+    "restricted_not_applicable": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "cost_unpayable: restricted pool entries that could not be spent on this use."
+    }
   }
 }

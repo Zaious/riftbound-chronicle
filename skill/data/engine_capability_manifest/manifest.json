@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:056751746a52865e67f04ec8",
-  "capability_set_id": "sha256:056751746a52865e67f04ec85d3c5e0f3ee029729f5da48221c3d4febc815f3d",
+  "manifest_id": "capability-manifest:c060071df1aa16f5ef1ec30c",
+  "capability_set_id": "sha256:c060071df1aa16f5ef1ec30c830e18677e90d6ffb79859010d2e109690f36fb7",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:e221e01ac58b167d1ff55cf9b1611b8889b06e38c02934daabb6f0bf12809683",
+    "value": "sha256:11ffc0e6cdca35182237a7e17754ab3ebaa984dc894e184eb2a12fba0175080e",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:51daa885192b19510a94cc6ef3c4d7bdbb8d9d4de8c23b651c537e670ac6f4e2"
+        "sha256": "sha256:365af33276c3d95b053d3059aba2f8a132659d3240bfb391d42ffe2bcdcf763a"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:83917e08d8d9c33a62e43f90cb983edecb666a601f88ea28ef788cbb3f255c47"
+        "sha256": "sha256:474ce4b3d86a9ac002b43b925ed8fbfaf1118d3915b8c2f7f2df185372b8f2f0"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:f54e123fbca2ddc508ff18ba7b9684a920d23573a27fe7c868234991a0c1cd2c"
+        "sha256": "sha256:f20a7f54467d4ae907031ceb1f3c4760de64a690ae91bdc64e910b61762a9c8a"
       },
       {
         "path": "combat.py",
@@ -152,7 +152,9 @@
         "card_ordering",
         "look_reveal_put_back",
         "predict",
-        "multi_recycle"
+        "multi_recycle",
+        "restricted_resource_grant",
+        "repeat_execution"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -203,13 +205,22 @@
         "open_battlefield_permission",
         "deflect",
         "any_domain_power_allocation",
-        "modal_play_choice"
+        "modal_play_choice",
+        "activated_abilities",
+        "add_abilities",
+        "repeat_costs",
+        "discard_recycle_costs",
+        "self_costs",
+        "restricted_resources",
+        "typed_cost_modification_input"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
         "payment_stage_replacement_decisions",
         "cost_modification_sources",
-        "non_standard_costs_beyond_exhaust_kill",
+        "xp_buff_costs",
+        "activation_conditions",
+        "legend_activation",
         "battlefield_control_transfer",
         "counter",
         "complete_game",
@@ -1399,6 +1410,7 @@
   ],
   "exclusions": [
     "activate_named_triggers",
+    "activation_conditions",
     "add_reaction_resolution_during_payment",
     "arbitrary_card_effects",
     "arbitrary_card_text",
@@ -1426,6 +1438,7 @@
     "gear_rune_recall_cleanup",
     "hidden_cards",
     "invalid_destination_catalog",
+    "legend_activation",
     "match_mode",
     "multi_descriptor_replacement",
     "multi_opponent_choice",
@@ -1433,7 +1446,6 @@
     "multi_player_concession",
     "non_conquer_point_sources",
     "non_prevent_assignment_replacements",
-    "non_standard_costs_beyond_exhaust_kill",
     "non_standard_moves",
     "opponent_phase_watchers",
     "payment_stage_replacement_decisions",
@@ -1445,7 +1457,8 @@
     "start_of_combat_effects",
     "take_damage_triggers",
     "target_checks",
-    "team_scoring"
+    "team_scoring",
+    "xp_buff_costs"
   ],
   "claims": {
     "complete_game": false,

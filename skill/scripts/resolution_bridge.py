@@ -116,9 +116,12 @@ def resolve_with_program(
     combat_in_progress = timing_state.get("combat")
     context = {"combat": {"combat_id": combat_in_progress["combat_id"], "battlefield": combat_in_progress["battlefield"], "battlefield_identity": combat_in_progress["battlefield_identity"]}} if combat_in_progress and combat_in_progress.get("status") in ("open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined") else None
     # ADR-0011 §2: a mode chosen at play rides on the chain entry.
-    recorded_mode = ((effect_state.get("chain_items") or {}).get(item_id) or {}).get("mode_selection")
+    entry_before = (effect_state.get("chain_items") or {}).get(item_id) or {}
+    recorded_mode = entry_before.get("mode_selection")
     if recorded_mode is not None:
         context = {**(context or {}), "mode_selection": dict(recorded_mode)}
+    if entry_before.get("repeat") is not None:
+        context = {**(context or {}), "repeat": copy.deepcopy(entry_before["repeat"])}  # ADR-0011 §4: paid Repeats
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:
@@ -140,6 +143,16 @@ def resolve_with_program(
     chain_card_trace = []
     entry_triggers: list[dict[str, Any]] = []
     chain_entry = (after_effect.get("chain_items") or {}).get(item_id)
+    if chain_entry is not None and "card" not in chain_entry:
+        # ADR-0011 §4 / Core 402: an activated ability has no card; it just
+        # leaves the chain. Its source stays wherever the cost left it.
+        after_effect = copy.deepcopy(after_effect)
+        del after_effect["chain_items"][item_id]
+        if not after_effect["chain_items"]:
+            del after_effect["chain_items"]
+        chain_card_trace.append({"ability_id": chain_entry["ability_id"], "source_object": chain_entry["source_object"], "chain_item_id": item_id, "no_card": True,
+                                 "rule_locators": ["Core 377", "Core 402"]})
+        chain_entry = None
     if chain_entry is not None and after_effect["objects"][chain_entry["card"]]["kind"] in {"unit", "gear"}:
         # ADR-0007 §1–2: the permanent entry procedure, then "When you play me".
         after_effect, entry_trace, entry_triggers = complete_permanent_play(after_effect, item_id, engine_decisions)

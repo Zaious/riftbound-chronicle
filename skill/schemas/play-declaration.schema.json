@@ -5,63 +5,162 @@
   "description": "ADR-0005 §4: what a player declares when playing a card — the card, the chain item it becomes, and the typed cost context (Core 355–357). Optional-cost intent is not declared here; it arrives as an engine-decisions.v1 optional_choice at play_declaration stage, so the receipt can prove who chose it.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "ruleset", "play_id", "actor", "card", "chain_item", "cost"],
+  "required": [
+    "schema_version",
+    "ruleset",
+    "play_id",
+    "actor",
+    "card",
+    "chain_item",
+    "cost"
+  ],
   "properties": {
-    "schema_version": {"const": "riftbound-play-declaration.v1"},
+    "schema_version": {
+      "const": "riftbound-play-declaration.v1"
+    },
     "ruleset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["core", "faq_as_of"],
-      "properties": {"core": {"const": "2026-07-16"}, "faq_as_of": {"const": "2026-08-14"}}
+      "required": [
+        "core",
+        "faq_as_of"
+      ],
+      "properties": {
+        "core": {
+          "const": "2026-07-16"
+        },
+        "faq_as_of": {
+          "const": "2026-08-14"
+        }
+      }
     },
-    "play_id": {"type": "string", "minLength": 1},
-    "actor": {"type": "string", "minLength": 1},
-    "card": {"type": "string", "minLength": 1, "description": "object id of the card in the actor's hand"},
-    "effect_program_id": {"type": "string", "minLength": 1, "description": "Must equal the supplied effect program's program_id; carried onto the chain item."},
+    "play_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "card": {
+      "type": "string",
+      "minLength": 1,
+      "description": "object id of the card in the actor's hand"
+    },
+    "effect_program_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Must equal the supplied effect program's program_id; carried onto the chain item."
+    },
     "entry_location": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "description": "Core 355.2: where a Unit will enter, chosen while playing — own Base, a controlled Battlefield, or an open Battlefield with the card's permission. Required for Units; Gear may only name base.",
-      "properties": {"kind": {"enum": ["base", "battlefield"]}, "battlefield": {"type": "string", "minLength": 1}}
+      "properties": {
+        "kind": {
+          "enum": [
+            "base",
+            "battlefield"
+          ]
+        },
+        "battlefield": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     },
     "payment_context": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["add_window_closed", "confirmed_by"],
+      "required": [
+        "add_window_closed",
+        "confirmed_by"
+      ],
       "description": "Core 429.3: the controller may use Add reactions while paying. When the pool is short, the engine will not assume they decline; a human must confirm the window is closed before the play is illegal.",
       "properties": {
-        "add_window_closed": {"type": "boolean"},
-        "confirmed_by": {"type": "string", "minLength": 1}
+        "add_window_closed": {
+          "type": "boolean"
+        },
+        "confirmed_by": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "chain_item": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "object_kind", "timing"],
+      "required": [
+        "id",
+        "object_kind",
+        "timing"
+      ],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "object_kind": {"enum": ["spell", "unit", "gear"]},
-        "timing": {"enum": ["default", "action", "reaction"]},
-        "ability_kind": {"enum": ["standard", "add", null]}
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_kind": {
+          "enum": [
+            "spell",
+            "unit",
+            "gear",
+            "ability"
+          ]
+        },
+        "timing": {
+          "enum": [
+            "default",
+            "action",
+            "reaction"
+          ]
+        },
+        "ability_kind": {
+          "enum": [
+            "standard",
+            "add",
+            null
+          ]
+        }
       }
     },
     "cost": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["base"],
+      "required": [
+        "base"
+      ],
       "properties": {
-        "base": {"$ref": "#/$defs/resourceCost"},
+        "base": {
+          "$ref": "#/$defs/resourceCost"
+        },
         "base_modifications": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["kind"],
+            "required": [
+              "kind"
+            ],
             "properties": {
-              "kind": {"enum": ["for_cost", "ignore_energy", "ignore_power", "ignore_all"]},
-              "cost": {"$ref": "#/$defs/resourceCost"},
-              "source": {"type": "string", "minLength": 1}
+              "kind": {
+                "enum": [
+                  "for_cost",
+                  "ignore_energy",
+                  "ignore_power",
+                  "ignore_all"
+                ]
+              },
+              "cost": {
+                "$ref": "#/$defs/resourceCost"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         },
@@ -70,21 +169,62 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["cost_id", "mandatory", "payment"],
+            "required": [
+              "cost_id",
+              "mandatory",
+              "payment"
+            ],
             "properties": {
-              "cost_id": {"type": "string", "minLength": 1},
-              "mandatory": {"type": "boolean"},
+              "cost_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mandatory": {
+                "type": "boolean"
+              },
               "payment": {
                 "type": "object",
-                "required": ["kind"],
+                "required": [
+                  "kind"
+                ],
                 "properties": {
-                  "kind": {"type": "string", "minLength": 1},
-                  "amount": {"type": "integer", "minimum": 0},
-                  "domain": {"type": "string", "minLength": 1},
-                  "object_id": {"type": "string", "minLength": 1}
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "energy | power | power_any | exhaust | kill | discard | recycle_trash | kill_this | recall_self | banish_self; spend_xp, spend_buff and disempower_self are typed and refused (P4)."
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "domain": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "object_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "decision_ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "discard / recycle_trash: the payer's card_selection at play_declaration stage."
+                  },
+                  "order_ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "recycle_trash: the card_ordering for two or more recycled cards (Core 416.5)."
+                  }
                 }
               },
-              "source": {"type": "string", "minLength": 1}
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "repeat": {
+                "type": "boolean",
+                "description": "[Repeat] cost (Core 820): optional; each paid instance executes the instructions once more (820.1.d)."
+              }
             }
           }
         },
@@ -93,12 +233,56 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "component", "amount"],
+            "required": [
+              "id",
+              "component",
+              "amount"
+            ],
             "properties": {
-              "id": {"type": "string", "minLength": 1},
-              "component": {"type": "string", "pattern": "^(energy|power:.+)$"},
-              "amount": {"type": "integer", "minimum": 1},
-              "source": {"type": "string", "minLength": 1}
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^(energy|power:.+)$"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provenance": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "evaluated_by"
+                ],
+                "properties": {
+                  "evaluated_by": {
+                    "enum": [
+                      "declaration",
+                      "p4_condition_layer"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "description": "ADR-0011 §4: who evaluated this typed modification."
+              },
+              "condition": {
+                "type": "object",
+                "description": "A source the engine would have to evaluate ('costs less if'); carried so it can be refused by name (unsupported: cost_modification_sources)."
+              },
+              "per_each": {
+                "type": "object",
+                "description": "A per-each source ('for each'); refused by name until P4."
+              }
             }
           }
         },
@@ -108,14 +292,65 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "applies_to", "amount"],
+            "required": [
+              "id",
+              "applies_to",
+              "amount"
+            ],
             "properties": {
-              "id": {"type": "string", "minLength": 1},
-              "applies_to": {"type": "string", "pattern": "^(energy|power:.+|total|optional_additional)$", "description": "total: the aggregate Energy after component discounts, including chosen additional Energy costs (356.4.d). optional_additional: every chosen optional cost of the named resource (356.4.c)."},
-              "resource": {"type": "string", "pattern": "^(energy|power:.+)$"},
-              "amount": {"type": "integer", "minimum": 1},
-              "minimum": {"type": "integer", "minimum": 0},
-              "source": {"type": "string", "minLength": 1}
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "applies_to": {
+                "type": "string",
+                "pattern": "^(energy|power:.+|total|optional_additional)$",
+                "description": "total: the aggregate Energy after component discounts, including chosen additional Energy costs (356.4.d). optional_additional: every chosen optional cost of the named resource (356.4.c)."
+              },
+              "resource": {
+                "type": "string",
+                "pattern": "^(energy|power:.+)$"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "minimum": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provenance": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "evaluated_by"
+                ],
+                "properties": {
+                  "evaluated_by": {
+                    "enum": [
+                      "declaration",
+                      "p4_condition_layer"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "description": "ADR-0011 §4: who evaluated this typed modification."
+              },
+              "condition": {
+                "type": "object",
+                "description": "A source the engine would have to evaluate ('costs less if'); carried so it can be refused by name (unsupported: cost_modification_sources)."
+              },
+              "per_each": {
+                "type": "object",
+                "description": "A per-each source ('for each'); refused by name until P4."
+              }
             }
           }
         },
@@ -124,24 +359,71 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["kind"],
+            "required": [
+              "kind"
+            ],
             "properties": {
-              "kind": {"enum": ["ignore_any_and_all"]},
-              "source": {"type": "string", "minLength": 1}
+              "kind": {
+                "enum": [
+                  "ignore_any_and_all"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         }
       }
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_object",
+        "ability_id"
+      ],
+      "description": "ADR-0011 §4: an activated ability (chain_item.object_kind ability) names its source permanent and ability; card equals source_object and nothing leaves the hand (Core 377, 402).",
+      "properties": {
+        "source_object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ability_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "activation_conditions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "A 'use only while / if' condition on the activation (Core 377.2.b): typed here, refused as unsupported until the P4 condition grammar."
     }
   },
   "$defs": {
     "resourceCost": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["energy", "power"],
+      "required": [
+        "energy",
+        "power"
+      ],
       "properties": {
-        "energy": {"type": "integer", "minimum": 0},
-        "power": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+        "energy": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "power": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
       }
     }
   }

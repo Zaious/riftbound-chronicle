@@ -24,6 +24,8 @@ FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
 # ADR-0007 §3: compiled permissions that widen the valid play locations (355.2.b).
 PLAY_PERMISSIONS = {"open_battlefield"}
+# ADR-0011 §4: what a restricted Add resource may be spent on ("Spend this Energy only to play spells").
+RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability", "activate_gear_ability")
 # Keywords the state may carry on an object. `deflect` (Core 809) imposes a
 # mandatory any-domain Power cost on opponents' spells that choose the object.
 # ADR-0008 §5: Shield, Tank, Ganking (and Backline, required by the Tank
@@ -303,6 +305,25 @@ def validate_state(state: Any) -> list[str]:
         power = resources.get("power") if isinstance(resources, dict) else None
         if not isinstance(power, dict) or any(not isinstance(v, int) or v < 0 for v in power.values()):
             errors.append(f"players.{player_id}.resources.power must map domains to non-negative integers")
+        restricted = resources.get("restricted", []) if isinstance(resources, dict) else []
+        if not isinstance(restricted, list):
+            errors.append(f"players.{player_id}.resources.restricted must be an array")
+        else:
+            seen_restrictions: set[str] = set()
+            for r_index, entry in enumerate(restricted):
+                label = f"players.{player_id}.resources.restricted[{r_index}]"
+                if not isinstance(entry, dict) or set(entry) - {"restriction_id", "kind", "domain", "amount", "uses", "source"} or not {"restriction_id", "kind", "amount", "uses"} <= set(entry):
+                    errors.append(f"{label} must carry restriction_id, kind, amount, uses (and domain / source)")
+                    continue
+                if not isinstance(entry["restriction_id"], str) or not entry["restriction_id"] or entry["restriction_id"] in seen_restrictions:
+                    errors.append(f"{label}.restriction_id is invalid or duplicated")
+                seen_restrictions.add(entry.get("restriction_id", ""))
+                if entry["kind"] not in {"energy", "power"} or (entry["kind"] == "power" and (not isinstance(entry.get("domain"), str) or not entry.get("domain"))) or (entry["kind"] == "energy" and "domain" in entry):
+                    errors.append(f"{label}.kind must be energy, or power with a domain")
+                if not isinstance(entry["amount"], int) or isinstance(entry["amount"], bool) or entry["amount"] < 1:
+                    errors.append(f"{label}.amount must be a positive integer")
+                if not isinstance(entry["uses"], list) or not entry["uses"] or any(u not in RESOURCE_USES for u in entry["uses"]) or len(entry["uses"]) != len(set(entry["uses"])):
+                    errors.append(f"{label}.uses must be a non-empty unique subset of {RESOURCE_USES}")
         if "team_id" in player and (not isinstance(player["team_id"], str) or not player["team_id"]):
             errors.append(f"players.{player_id}.team_id must be a non-empty string when supplied")
         # ADR-0009 §1: points and the once-per-Battlefield-per-turn ledger (470).
@@ -357,8 +378,27 @@ def validate_state(state: Any) -> list[str]:
         errors.append("chain_items must be an object keyed by chain item id")
         chain_items = {}
     for item_id, entry in chain_items.items():
-        if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - {"card", "controller", "effect_program_id", "entry_location", "mode_selection"} or not {"card", "controller"} <= set(entry):
-            errors.append(f"chain_items.{item_id} must carry card and controller")
+        is_ability = isinstance(entry, dict) and "source_object" in entry
+        allowed = {"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat"} if is_ability else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat"}
+        needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
+        if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
+            errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
+            continue
+        repeat = entry.get("repeat")
+        if repeat is not None and (not isinstance(repeat, dict) or set(repeat) - {"executions", "modes"} or not isinstance(repeat.get("executions"), int) or isinstance(repeat.get("executions"), bool) or repeat["executions"] < 1
+                                   or ("modes" in repeat and (not isinstance(repeat["modes"], list) or len(repeat["modes"]) != repeat["executions"] or any(not isinstance(m, dict) or set(m) != {"decision_id", "option_id"} for m in repeat["modes"])))):
+            errors.append(f"chain_items.{item_id}.repeat must be {{executions >= 1, modes?: one per extra execution}} (Core 820.1.d)")
+        if is_ability:
+            # ADR-0011 §4 / Core 402: an ability on the chain has no card; its
+            # source stays where it is (it may even have left the board as a cost).
+            if entry["source_object"] not in objects:
+                errors.append(f"chain_items.{item_id}.source_object is unknown")
+            if not isinstance(entry["ability_id"], str) or not entry["ability_id"]:
+                errors.append(f"chain_items.{item_id}.ability_id must be a non-empty string")
+            if entry["controller"] not in players:
+                errors.append(f"chain_items.{item_id}.controller is not a player")
+            if "effect_program_id" in entry and (not isinstance(entry["effect_program_id"], str) or not entry["effect_program_id"]):
+                errors.append(f"chain_items.{item_id}.effect_program_id must be a non-empty string when supplied")
             continue
         mode = entry.get("mode_selection")
         if mode is not None and (not isinstance(mode, dict) or set(mode) != {"decision_id", "option_id"} or any(not isinstance(mode[k], str) or not mode[k] for k in mode)):
@@ -783,6 +823,12 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].grant_keyword.value must be a positive integer")
                 if not isinstance(effect.get("source"), str) or not effect.get("source"):
                     errors.append(f"effects[{index}].grant_keyword requires a source")
+            if effect.get("op") == "add_resource" and effect.get("restriction") is not None:
+                restriction = effect["restriction"]
+                if not isinstance(restriction, dict) or set(restriction) != {"uses"} or not isinstance(restriction["uses"], list) or not restriction["uses"] or any(u not in RESOURCE_USES for u in restriction["uses"]) or len(restriction["uses"]) != len(set(restriction["uses"])):
+                    errors.append(f"effects[{index}].add_resource.restriction must be {{uses: non-empty unique subset of {RESOURCE_USES}}}")
+                if effect.get("resource") not in {"energy", "power"}:
+                    errors.append(f"effects[{index}].add_resource.restriction applies to energy or power")
             choice = effect.get("choice")
             if choice is not None:
                 import engine_decisions as ed
@@ -1488,7 +1534,7 @@ def _reorder_deck(state: dict[str, Any], player_id: str, order: list[str], posit
     state["players"][player_id]["zones"]["main_deck"] = (list(order) + rest) if position == "top" else (rest + list(order))
 
 
-def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None, decisions: dict[str, Any] | None, order_ref: str, session: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None, decisions: dict[str, Any] | None, order_ref: str, session: str, choice_session: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Core 416: Recycle several cards as one Game Action (303.2) — each to its
     owner's Main Deck or Rune Deck bottom (416.1–416.2); two or more to the
     same deck take the player's card_ordering (416.5); tokens cease to exist."""
@@ -1503,7 +1549,7 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
         if len(group) >= 2:
             chooser = player_id or owner
             spec = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": chooser, "visibility": "private_to_chooser", "identity_binding": True}
-            order, meta = resolve_choice(state, spec, decision_ref=order_ref, decisions=decisions, controller=chooser, candidates=group)
+            order, meta = resolve_choice(state, spec, decision_ref=order_ref, decisions=decisions, controller=chooser, candidates=group, session=choice_session)
             order_used = {"decision_id": meta.get("decision_id"), "forced": meta["forced"], "deck": f"{owner}.{deck}"}
             ordered_ids = [c for c in ordered_ids if c not in set(group)] + list(order)
     identities: dict[str, str] = {}
@@ -1834,7 +1880,21 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if player_id not in new_state["players"] or not isinstance(amount, int) or amount < 1:
             raise ValueError("add_resource requires a known player and positive amount")
         resources = new_state["players"][player_id]["resources"]
-        if resource == "energy":
+        restriction = effect.get("restriction")
+        if restriction is not None:
+            # ADR-0011 §4: "Spend this Energy only to play spells" — the resource
+            # sits in a restricted pool the payment consumes only for a matching use.
+            if resource == "power" and not (isinstance(effect.get("domain"), str) and effect["domain"]):
+                raise ValueError("power addition requires a domain")
+            entry = {"restriction_id": effect.get("restriction_id") or f"{effect.get('effect_id', 'add')}:{player_id}", "kind": resource, "amount": amount, "uses": list(restriction["uses"])}
+            if resource == "power":
+                entry["domain"] = effect["domain"]
+            if effect.get("source") or effect.get("_source"):
+                entry["source"] = effect.get("source") or effect.get("_source")
+            resources.setdefault("restricted", []).append(entry)
+            trace.update({"player": player_id, "resource": resource, "amount": amount, "restricted": {k: v for k, v in entry.items()}, **({"domain": effect["domain"]} if resource == "power" else {})})
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 446.3", "Core 447.2"]))
+        elif resource == "energy":
             resources["energy"] += amount
             trace.update({"player": player_id, "resource": resource, "amount": amount})
         elif resource == "power" and isinstance(effect.get("domain"), str) and effect["domain"]:
@@ -2531,6 +2591,55 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
     return chosen, {"forced": False, "decision_id": entry["decision_id"], "choice": {k: v for k, v in summary.items() if k != "options"}}
 
 
+def suffix_decision_refs(effects: list[dict[str, Any]], suffix: str) -> list[dict[str, Any]]:
+    """ADR-0011 §4 / Core 820.2.a: an additional Repeat execution makes its own
+    choices — every decision reference and effect id of the copy carries the
+    execution suffix, and internal references follow."""
+    out: list[dict[str, Any]] = []
+    for index, effect in enumerate(effects):
+        copied = copy.deepcopy(effect)
+        copied["effect_id"] = copied.get("effect_id", f"effect-{index}") + suffix
+        for key in ("depends_on",):
+            if isinstance(copied.get(key), str):
+                copied[key] = copied[key] + suffix
+        if isinstance(copied.get("predicate"), dict) and isinstance(copied["predicate"].get("effect_id"), str):
+            copied["predicate"]["effect_id"] += suffix
+        for key in ("decision_ref", "recycle_ref", "order_ref", "put_back_ref"):
+            if isinstance(copied.get(key), str):
+                copied[key] += suffix
+        for holder in ("target", "targets"):
+            if isinstance(copied.get(holder), dict) and isinstance(copied[holder].get("decision_ref"), str):
+                copied[holder]["decision_ref"] += suffix
+        if isinstance(copied.get("units"), list):
+            for unit in copied["units"]:
+                if isinstance(unit, dict) and isinstance(unit.get("decision_ref"), str):
+                    unit["decision_ref"] += suffix
+        out.append(copied)
+    return out
+
+
+def _resolve_executions(program: dict[str, Any], decisions: dict[str, Any] | None, context: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any] | None, dict[str, Any] | None]:
+    """One execution, plus one more per paid Repeat recorded on the chain
+    entry (820.1.d); each has its own mode and suffixed choices (820.2.a)."""
+    repeat = (context or {}).get("repeat") or {}
+    executions = int(repeat.get("executions", 1)) if repeat else 1
+    effects_to_run: list[dict[str, Any]] = []
+    modes: list[dict[str, Any] | None] = []
+    for k in range(executions):
+        suffix = "" if k == 0 else f"#{k}"
+        program_k = program
+        if suffix and program.get("modal"):
+            program_k = {**program, "modal": {**program["modal"], "decision_ref": program["modal"]["decision_ref"] + suffix}}
+        context_k = context
+        if suffix and repeat.get("modes"):
+            context_k = {**(context or {}), "mode_selection": repeat["modes"][k]}
+        effects, mode = _resolve_mode(program_k, decisions, context_k)
+        effects_to_run.extend(suffix_decision_refs(effects, suffix) if suffix else list(effects))
+        modes.append(mode)
+    repeat_meta = {"executions": executions, "modes": modes, "rule_locators": ["Core 820.1.d", "Core 820.2.a"]} if executions > 1 else None
+    return effects_to_run, modes[0], repeat_meta
+
+
 def _resolve_mode(program: dict[str, Any], decisions: dict[str, Any] | None, context: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     """ADR-0011 §2: a modal program runs the instructions of the option a
     mode_selection decision names by stable id. A mode recorded at play (on
@@ -2634,7 +2743,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     outcomes: dict[str, str] = {}
     terminal: dict[str, Any] | None = None
     try:
-        effects_to_run, mode = _resolve_mode(program, decisions, context)
+        effects_to_run, mode, repeat_meta = _resolve_executions(program, decisions, context)
     except ModeSelectionRequired as exc:
         return {**base, "valid": True, "committed": False, "mode_selection_required": True, "reason_code": exc.reason_code, "reason": str(exc),
                 "decision_ids": exc.decision_ids, "decision_controller": exc.controller, "mode_options": exc.options, "trace": []}
@@ -3315,6 +3424,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         "unsupported": False,
         "conditional_triggers": copy.deepcopy(program.get("conditional_triggers", [])),
         **({"mode": mode} if mode is not None else {}),
+        **({"repeat": repeat_meta} if repeat_meta is not None else {}),
         **({"reveals_ended": reveals_ended} if reveals_ended else {}),
         "next_state": current,
         "next_state_hash": hash_value(current),

@@ -91,8 +91,17 @@ frozen, fixture expansion and official-example encoding become
 - [x] Effect-program binding for triggered items.
 - [x] Deterministic state hashes, transition traces, and official locators.
 - [x] Canonical fixtures and executable conformance cases.
-- [ ] Full phase/turn state machine rather than caller-supplied phase facts.
+- [x] Full phase/turn state machine rather than caller-supplied phase facts.
+  (C-38: setup → awaken → beginning → channel → draw → main → ending →
+  the next player's turn as `turn_cycle.py` procedures with typed
+  `turn_progress`, a Cleanup outstanding at every transition (319.2) and
+  no discretionary action during 315; the First Turn Process read from the
+  Mode of Play or explicit facts. Setup itself and the Match mode stay
+  unsupported.)
 - [ ] Complete Outstanding Task catalog and task-specific ordering rules.
+  (C-38/C-39: `cleanup` and `scoring_step` tasks, the Scoring task waiting
+  for the Beginning Step's chain, `run_cleanup` consuming the first
+  Cleanup task; a general catalog remains.)
 - [ ] Complete Showdown and Combat procedure state, not only timing labels.
   (C-26/C-30: one `combat` record on the timing state — staged, open,
   showdown_closed, damage_assigned, damage_dealt, cleanup_done,
@@ -199,6 +208,11 @@ Claude may implement one bounded operation plus tests at a time.
   sources, "activate" of named triggers, the Beginning Phase machine, the
   terminal state and Burn Out.)
 - [ ] Burn Out and its complete loss/continuation semantics.
+  (C-37: the Draw path — recycle by an external randomization receipt, the
+  beneficiary's point, the empty-Trash sequence with the immediate victory
+  from the second Burn Out and a score-derived bound, the terminal written
+  by every Draw entry's two-state commit; Burn Out from non-Draw
+  instructions (431.1.b) and the Predict / look / reveal exceptions remain.)
 
 ### Conditions, targets, and instruction grammar still required
 
@@ -286,12 +300,23 @@ Dependency milestones are defined in
   383.4.g "activate", the Beginning Phase state machine.)
 - [ ] **G3 — Victory and Terminal State.** Complete Victory Score, ties,
   simultaneous terminal events, Burn Out, terminal reasons, and reward adapter.
+  (ADR-0010 fixes the contracts; C-36 through C-39 implement the bounded
+  slice: the guarded `terminal` state with derived and declared reasons,
+  ties that continue, Burn Out on Draw with randomization receipts and the
+  terminal bridge, the Start of Turn state machine and turn transition, the
+  atomic Cleanup with 322 iterations, and the read-only reward projection.
+  Still open: non-Draw Burn Out, Setup, Match / Best-of and team modes,
+  ready blockers, 323.7, the facedown reveal at game end, multi-player
+  concession.)
 
 - [ ] Complete normal Cleanup steps 1–10a.
   (C-26/C-31: step 2 designation synchronization, 3a/3b lethal Cleanup with
   Combat-Damage attribution, and steps 7–7a/10 as `stage_combat`; C-34:
   steps 4, 6, 8–8a and 9 as `run_board_cleanup`, `stage_showdown` and
-  `open_showdown`; steps 1 and 5 (323.7) remain.)
+  `open_showdown`; C-36/C-39: step 1 as `check_terminal` and the whole
+  sequence 1–10a with the 322 follow-ups as one atomic `run_cleanup` that
+  never pauses on the chain; step 5 (323.7) remains and fails the run
+  closed whenever it applies.)
 - [ ] Special, Combat, and End-of-Turn Cleanup additions.
   (C-21: the Ending Special Cleanup; C-31: the Combat Special Cleanup —
   heal all Units, Recall Attackers if Defenders remain.)
@@ -320,9 +345,13 @@ Dependency milestones are defined in
   (C-33/C-35: `points`, `scored_this_turn`, `mode`, `score_battlefield`,
   Conquer and Hold, Score triggers, `victory_check` facts; bounded per
   ADR-0009's coverage boundary.)
-- [ ] Implement terminal detection, ties, Burn Out, and reward adapter required
+- [x] Implement terminal detection, ties, Burn Out, and reward adapter required
   by G3.
-- [ ] Complete turn start/main/ending phase transitions.
+  (C-36/C-37, bounded: `check_terminal` / `declare_terminal`, the shared
+  game-over guard, Burn Out on the Draw path with the terminal bridge,
+  `reward_adapter.py` for two-player non-team games; non-Draw Burn Out and
+  team / Match formats remain unsupported.)
+- [x] Complete turn start/main/ending phase transitions.
   (C-21: `begin_ending_step` and `run_expiration_step` as two procedures,
   317; the Beginning and Main phases remain caller-supplied facts.)
 - [ ] Multi-player edge cases and Turn Order changes.
@@ -365,8 +394,8 @@ collect/normalize card clauses and implement assigned cards.
   (C-18/C-25/C-32: the R3-A1, R3-A2 and R3-A3 batches — 34 cards, 38
   clauses full, 10 partial, 2 unsupported, 6 stale — in `r3a1_programs.json`;
   Legends are not engine objects, so Annie - Fiery and Master Yi - Wuju
-  Bladesman stay partial; Draw clauses stay partial until Burn Out is
-  implemented; the Tank and mutual-damage clauses stay partial while damage
+  Bladesman stay partial; the Draw clauses derive full since C-37 modelled
+  Burn Out on Draw (43 full, 5 partial); the Tank and mutual-damage clauses stay partial while damage
   exemption and non-Prevent replacement modes are unsupported; Vision stays
   unsupported; activation remains an ADR-0004 gate.)
 - [x] Label every selected Wave-A card and clause `unsupported` or `stale` in
@@ -688,6 +717,10 @@ push” does not isolate a commit on shared `main`.
 | C-33 — completed 2026-09-06 | Battlefield control resolution, Conquer scoring and Score triggers | ADR-0009 §1–2, §5–7, §11 | battlefield_control.resolve_battlefield_control atomic after a decided Combat (466.5, control_resolved); score_battlefield once per Battlefield per turn with the Final Point rule, draw-instead and unsupported burn_out rollback; Score triggers unit_here / controller / Battlefield; close_combat after control resolution; engine-check kind control_step |
 | C-34 — completed 2026-09-06 | Non-Combat Showdowns and board Cleanup | ADR-0009 §3–4, §9 | stage_showdown rebuilds staged_showdowns; open_showdown with showdown_location and Focus to the applier before 323.13; pass_focus marks a Non-Combat Showdown closing; sole occupant hands over to control resolution, empty defers to 323.6, both present unsupported; run_board_cleanup for 323.6 / 323.11 / 323.11.a with an ongoing-only exemption |
 | C-35 — completed 2026-09-06 | Scoring Step (Hold), victory facts, control_step scope and docs | ADR-0009 §8, §10, §12 | run_scoring_step Holds every controlled Battlefield not yet scored with no Final Point restriction, one trigger batch; victory_facts step reports threshold_met / strict_leader / tied_at_threshold without a winner; engine-check.md, rules-core.md, effect-ir.md |
+| C-36 — completed 2026-09-06 | Terminal state, shared game-over guard and reward projection | ADR-0010 §3–4, §10 | terminal.check_terminal as Cleanup step 1 (strict leader ends, tie continues); declare_terminal records concession / external; one guard in the timing kernel and the two-state validators; frozen snapshot; reward_adapter.py read-only +1 / −1 / 0 |
+| C-37 — completed 2026-09-06 | Burn Out on Draw, randomization receipts and the terminal bridge | ADR-0010 §2 | effect_ir.perform_draw with randomization-receipt.v1 and player_selection; the empty-Trash sequence wins immediately from the second Burn Out; every Draw entry (bridge, control transaction, scoring step, draw step) writes the terminal in its own commit; Draw clauses derive full |
+| C-38 — completed 2026-09-06 | Start of Turn state machine, Mode of Play and turn transition | ADR-0010 §1, §6–9 | turn_cycle.py begin_turn / awaken / enter_beginning / channel / draw / enter_main with typed turn_progress and 319.2 Cleanup gating; First Turn Process from mode.id (duel, skirmish) or mode.first_turn; match and team modes unsupported |
+| C-39 — completed 2026-09-06 | Atomic Cleanup orchestration with 322 iterations and G3 docs | ADR-0010 §5, §11 | run_cleanup runs 323 steps 1–10a on one working state, death triggers stay Pending, follow-up Cleanups iterate to a stable state, any decision or unsupported step commits nothing, 323.7 fails closed |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first

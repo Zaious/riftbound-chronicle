@@ -137,7 +137,14 @@
               "grant_replacement",
               "heal_all_damage",
               "grant_keyword",
-              "mutual_damage_current_might"
+              "mutual_damage_current_might",
+              "look_at_top",
+              "reveal",
+              "put_back",
+              "put_in_hand",
+              "draw_it",
+              "recycle",
+              "predict"
             ]
           },
           "effect_id": {
@@ -440,6 +447,45 @@
           },
           "choice": {
             "$ref": "#/$defs/choice"
+          },
+          "from": {
+            "enum": [
+              "main_deck_top",
+              "hand"
+            ],
+            "description": "reveal: the zone revealed (Core 424.2); a hand reveal shows every card."
+          },
+          "position": {
+            "enum": [
+              "top",
+              "bottom"
+            ],
+            "description": "put_back: where the looked-at cards return, in the card_ordering the player supplies."
+          },
+          "recycle_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "predict: the card_selection (any number of the looked cards) to Recycle."
+          },
+          "order_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "recycle / predict: the card_ordering for two or more cards Recycled to one deck (Core 416.5)."
+          },
+          "put_back_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "predict: the card_ordering of the cards put back on top (Core 436.1.a)."
+          },
+          "objects": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "recycle: the cards named by the instruction (else a choice)."
           }
         }
       },

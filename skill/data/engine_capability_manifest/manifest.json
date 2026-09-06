@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:8c845d023bf1f4fd17bf3e3b",
-  "capability_set_id": "sha256:8c845d023bf1f4fd17bf3e3b8bcf37e8d35913b0bb97dc8d9a7f8a7360d736d0",
+  "manifest_id": "capability-manifest:056751746a52865e67f04ec8",
+  "capability_set_id": "sha256:056751746a52865e67f04ec85d3c5e0f3ee029729f5da48221c3d4febc815f3d",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:067b9e46ced668f2efcec62f196775b7ffc122033ce3d8440f43a99e8d21974e",
+    "value": "sha256:e221e01ac58b167d1ff55cf9b1611b8889b06e38c02934daabb6f0bf12809683",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:30deb2fe7a3c92d6e1740a2593e1a5c245b3f5a9c44e33b8ead2eda53ba64d4d"
+        "sha256": "sha256:51daa885192b19510a94cc6ef3c4d7bdbb8d9d4de8c23b651c537e670ac6f4e2"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:d0e12a2422fdecd19b1d746aa4a31da8e605ee7ca0da4fff06603ccdf5dc0f1b"
+        "sha256": "sha256:f54e123fbca2ddc508ff18ba7b9684a920d23573a27fe7c868234991a0c1cd2c"
       },
       {
         "path": "combat.py",
@@ -149,7 +149,10 @@
         "randomization_receipt",
         "choice_grammar",
         "modal_abilities",
-        "card_ordering"
+        "card_ordering",
+        "look_reveal_put_back",
+        "predict",
+        "multi_recycle"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -160,6 +163,7 @@
         "distinct_per_turn_choice",
         "each_player_choice",
         "multi_opponent_choice",
+        "revealed_knowledge_persistence",
         "complete_game",
         "complete_legality"
       ]
@@ -350,6 +354,14 @@
       ]
     },
     {
+      "id": "draw_it",
+      "rule_locators": [
+        "Core 413",
+        "Core 428.5",
+        "Core 124"
+      ]
+    },
+    {
       "id": "emit_reflexive",
       "rule_locators": [
         "Core 386–388"
@@ -405,6 +417,14 @@
       ]
     },
     {
+      "id": "look_at_top",
+      "rule_locators": [
+        "Core 128.4",
+        "Core 431.1.c",
+        "Core 431.1.c.1"
+      ]
+    },
+    {
       "id": "modify_might",
       "rule_locators": [
         "Core 135.2.e.3",
@@ -439,6 +459,32 @@
       ]
     },
     {
+      "id": "predict",
+      "rule_locators": [
+        "Core 436.1",
+        "Core 436.1.a",
+        "Core 436.4",
+        "Core 436.4.a",
+        "Core 416.5"
+      ]
+    },
+    {
+      "id": "put_back",
+      "rule_locators": [
+        "Core 424.2",
+        "Core 436.1.a",
+        "Core 355.10.a"
+      ]
+    },
+    {
+      "id": "put_in_hand",
+      "rule_locators": [
+        "Core 424.4",
+        "Core 128.2.a",
+        "Core 124"
+      ]
+    },
+    {
       "id": "ready",
       "rule_locators": [
         "Core 415"
@@ -453,6 +499,16 @@
       ]
     },
     {
+      "id": "recycle",
+      "rule_locators": [
+        "Core 416.1",
+        "Core 416.2",
+        "Core 416.5",
+        "Core 303.2",
+        "Core 124"
+      ]
+    },
+    {
       "id": "recycle_one",
       "rule_locators": [
         "Core 416"
@@ -464,6 +520,16 @@
         "Core 124",
         "Core 124.1",
         "Core 446.2"
+      ]
+    },
+    {
+      "id": "reveal",
+      "rule_locators": [
+        "Core 424.1",
+        "Core 424.2",
+        "Core 424.2.a",
+        "Core 424.3.a",
+        "Core 431.1.c"
       ]
     }
   ],
@@ -1094,6 +1160,8 @@
     "Core 124",
     "Core 124.1",
     "Core 124–124.1",
+    "Core 128.2.a",
+    "Core 128.4",
     "Core 135.2.b.5.a",
     "Core 135.2.e.3",
     "Core 143.2.b",
@@ -1114,6 +1182,7 @@
     "Core 194.1.d",
     "Core 194.2–194.2.b",
     "Core 196",
+    "Core 303.2",
     "Core 308.1.a",
     "Core 309.1.a",
     "Core 310.1.a",
@@ -1230,6 +1299,9 @@
     "Core 415.1.b–415.1.c",
     "Core 415.3.a",
     "Core 416",
+    "Core 416.1",
+    "Core 416.2",
+    "Core 416.5",
     "Core 417",
     "Core 417.1.a",
     "Core 417.1.d",
@@ -1245,8 +1317,14 @@
     "Core 422.1–422.4",
     "Core 422.4",
     "Core 423.1.b",
+    "Core 424.1",
+    "Core 424.2",
+    "Core 424.2.a",
+    "Core 424.3.a",
+    "Core 424.4",
     "Core 428",
     "Core 428.1.a.1.b",
+    "Core 428.5",
     "Core 428.5.c.2",
     "Core 429",
     "Core 429.2.a",
@@ -1256,10 +1334,16 @@
     "Core 430.4.a",
     "Core 431",
     "Core 431.1.a",
+    "Core 431.1.c",
+    "Core 431.1.c.1",
     "Core 431.2.b",
     "Core 431.2–431.2.d",
     "Core 431.3.c.1",
     "Core 431.3–431.3.c.1",
+    "Core 436.1",
+    "Core 436.1.a",
+    "Core 436.4",
+    "Core 436.4.a",
     "Core 437.1.a.1",
     "Core 445",
     "Core 446",
@@ -1355,6 +1439,7 @@
     "payment_stage_replacement_decisions",
     "player_level_attack_defend_triggers",
     "ready_blockers",
+    "revealed_knowledge_persistence",
     "scoring",
     "setup_procedure",
     "start_of_combat_effects",

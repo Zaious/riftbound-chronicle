@@ -85,6 +85,15 @@ SUPPORTED_OPS = {
     "grant_keyword",
     # C-29 (ADR-0008 §7): two chosen Units deal their current Might to each other, simultaneously.
     "mutual_damage_current_might",
+    # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
+    # taking a looked-at card, Recycle as one action, Predict.
+    "look_at_top",
+    "reveal",
+    "put_back",
+    "put_in_hand",
+    "draw_it",
+    "recycle",
+    "predict",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -200,6 +209,8 @@ def _bump_identity(state: dict[str, Any], object_id: str) -> str:
     base, _, generation = current.rpartition("@")
     nxt = f"{base or object_id}@{int(generation) + 1 if generation.isdigit() else 1}"
     state["objects"][object_id]["identity"] = nxt
+    if state.get("reveals"):
+        _drop_reveals(state, [object_id])  # a new object carries no reveal mark (424.2, 128.2.a)
     return nxt
 
 OP_RULES = {
@@ -224,6 +235,13 @@ OP_RULES = {
     "heal_all_damage": ["Core 418"],
     "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
     "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
+    "look_at_top": ["Core 128.4", "Core 431.1.c", "Core 431.1.c.1"],
+    "reveal": ["Core 424.1", "Core 424.2", "Core 424.2.a", "Core 424.3.a", "Core 431.1.c"],
+    "put_back": ["Core 424.2", "Core 436.1.a", "Core 355.10.a"],
+    "put_in_hand": ["Core 424.4", "Core 128.2.a", "Core 124"],
+    "draw_it": ["Core 413", "Core 428.5", "Core 124"],
+    "recycle": ["Core 416.1", "Core 416.2", "Core 416.5", "Core 303.2", "Core 124"],
+    "predict": ["Core 436.1", "Core 436.1.a", "Core 436.4", "Core 436.4.a", "Core 416.5"],
 }
 
 
@@ -568,6 +586,29 @@ def validate_state(state: Any) -> list[str]:
         places = occupancy.get(object_id, [])
         if len(places) != 1:
             errors.append(f"object {object_id!r} must occupy exactly one zone/location, got {places}")
+    # ADR-0011 §3: reveal / look marks last while a program runs (424.3.a);
+    # each is bound to the object's current identity and its zone.
+    reveals = state.get("reveals", [])
+    if not isinstance(reveals, list):
+        errors.append("reveals must be an array")
+        reveals = []
+    for index, mark in enumerate(reveals):
+        label = f"reveals[{index}]"
+        if not isinstance(mark, dict) or set(mark) != {"object_id", "identity", "zone", "visible_to", "session", "kind"}:
+            errors.append(f"{label} must carry object_id, identity, zone, visible_to, session, kind")
+            continue
+        obj = objects.get(mark["object_id"])
+        if obj is None:
+            errors.append(f"{label} names an unknown object")
+            continue
+        if mark["identity"] != (obj.get("identity") or f"{mark['object_id']}@0"):
+            errors.append(f"{label} is bound to a stale identity")
+        if mark["zone"] not in {"main_deck", "hand"} or mark["object_id"] not in players.get(obj.get("owner"), {}).get("zones", {}).get(mark["zone"], []):
+            errors.append(f"{label} names a zone the object is not in")
+        if not (mark["visible_to"] == "all" or (isinstance(mark["visible_to"], list) and mark["visible_to"] and all(p in players for p in mark["visible_to"]))):
+            errors.append(f"{label}.visible_to must be 'all' or a non-empty player list")
+        if mark["kind"] not in {"look", "reveal"} or not isinstance(mark["session"], str) or not mark["session"]:
+            errors.append(f"{label}.kind must be look or reveal with a session")
     replacement_ids: set[str] = set()
     for index, replacement in enumerate(replacements):
         label = f"replacement_effects[{index}]"
@@ -752,6 +793,9 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].{effect.get('op')} chooses a single card from trash or hand")
                 if effect.get("object_id") is not None or effect.get("target") is not None or effect.get("targets") is not None:
                     errors.append(f"effects[{index}].choice excludes object_id, target and targets")
+            op_name = effect.get("op")
+            if op_name in {"look_at_top", "reveal", "put_back", "put_in_hand", "draw_it", "recycle", "predict"}:
+                errors.extend(f"effects[{index}].{op_name} {e}" for e in _reveal_op_errors(effect))
             if effect.get("op") == "discard":
                 if not isinstance(effect.get("player"), str) or not isinstance(effect.get("count"), int) or effect.get("count", 0) < 1:
                     errors.append(f"effects[{index}].discard requires player and a positive count")
@@ -906,6 +950,63 @@ def _predicate_errors(predicate: Any, receipt: Any, earlier: set[str] | None = N
             if referenced.get("op") not in COUNT_CONTRACT_OPS and not isinstance(referenced.get("targets"), dict):
                 return [f"requested_count_not_reached may only reference an instruction with a count contract (channel_rune or bounded targets); {predicate['effect_id']!r} is {referenced.get('op')!r}"]
     return []
+
+
+def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
+    """Shape of the C-41 instructions (ADR-0011 §3)."""
+    op = effect.get("op")
+    errors: list[str] = []
+
+    def positive(field: str, required: bool = True) -> None:
+        value = effect.get(field)
+        if value is None and not required:
+            return
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            errors.append(f"needs a positive {field}")
+
+    def ref(field: str, required: bool = False) -> None:
+        value = effect.get(field)
+        if value is None and not required:
+            return
+        if not isinstance(value, str) or not value:
+            errors.append(f"{field} must be a non-empty string")
+
+    if not isinstance(effect.get("player"), str) or not effect.get("player"):
+        errors.append("needs a player")
+    if op == "look_at_top":
+        positive("count")
+    elif op == "reveal":
+        if effect.get("from") not in {"main_deck_top", "hand"}:
+            errors.append("from must be main_deck_top or hand")
+        if effect.get("from") == "main_deck_top":
+            positive("count")
+        elif "count" in effect:
+            errors.append("a hand reveal shows every card (Core 424.2.b); count does not apply")
+    elif op == "put_back":
+        if effect.get("position", "top") not in {"top", "bottom"}:
+            errors.append("position must be top or bottom")
+        ref("decision_ref")
+    elif op == "put_in_hand":
+        positive("count", required=False)
+        ref("decision_ref")
+    elif op == "draw_it":
+        ref("decision_ref")
+    elif op == "recycle":
+        objects = effect.get("objects")
+        if (objects is None) == (effect.get("choice") is None):
+            errors.append("needs exactly one of objects or choice")
+        if objects is not None and (not isinstance(objects, list) or not objects or any(not isinstance(o, str) or not o for o in objects) or len(objects) != len(set(objects))):
+            errors.append("objects must be a non-empty unique array")
+        ref("order_ref")
+        ref("decision_ref")
+    elif op == "predict":
+        positive("count", required=False)
+        ref("recycle_ref")
+        ref("order_ref")
+        ref("put_back_ref")
+    if effect.get("target") is not None or effect.get("targets") is not None or effect.get("object_id") is not None:
+        errors.append("is not a targeted instruction (Core 355.10.a)")
+    return errors
 
 
 def action_performed(event: dict[str, Any]) -> bool:
@@ -1348,6 +1449,84 @@ def perform_draw(state: dict[str, Any], player_id: str, count: int, *, decisions
     return new_state, event
 
 
+def _ids_hash(state: dict[str, Any], ids: list[str]) -> str:
+    return "sha256:" + hashlib.sha256(json.dumps([[i, object_identity(state, i)] for i in ids], separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def _mark_reveals(state: dict[str, Any], player_id: str, zone: str, ids: list[str], visible_to: Any, session: str, kind: str) -> list[str]:
+    """Mark cards as looked at / revealed for this program (424.3.a). Cards
+    stay where they are, in order (424.2)."""
+    marks = state.setdefault("reveals", [])
+    for object_id in ids:
+        existing = next((m for m in marks if m["object_id"] == object_id), None)
+        if existing is not None:
+            if visible_to == "all":
+                existing["visible_to"] = "all"
+            elif existing["visible_to"] != "all":
+                existing["visible_to"] = list(dict.fromkeys(existing["visible_to"] + list(visible_to)))
+            continue
+        marks.append({"object_id": object_id, "identity": object_identity(state, object_id) or f"{object_id}@0", "zone": zone, "visible_to": visible_to if visible_to == "all" else list(visible_to), "session": session, "kind": kind})
+    return list(ids)
+
+
+def _session_cards(state: dict[str, Any], player_id: str, zone: str) -> list[str]:
+    """The marked cards of this player's zone, in the zone's order."""
+    marked = {m["object_id"] for m in state.get("reveals", []) if m["zone"] == zone}
+    return [c for c in state["players"][player_id]["zones"][zone] if c in marked]
+
+
+def _drop_reveals(state: dict[str, Any], ids: list[str]) -> None:
+    if state.get("reveals"):
+        state["reveals"] = [m for m in state["reveals"] if m["object_id"] not in set(ids)]
+        if not state["reveals"]:
+            del state["reveals"]
+
+
+def _reorder_deck(state: dict[str, Any], player_id: str, order: list[str], position: str) -> None:
+    deck = state["players"][player_id]["zones"]["main_deck"]
+    rest = [c for c in deck if c not in set(order)]
+    state["players"][player_id]["zones"]["main_deck"] = (list(order) + rest) if position == "top" else (rest + list(order))
+
+
+def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None, decisions: dict[str, Any] | None, order_ref: str, session: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Core 416: Recycle several cards as one Game Action (303.2) — each to its
+    owner's Main Deck or Rune Deck bottom (416.1–416.2); two or more to the
+    same deck take the player's card_ordering (416.5); tokens cease to exist."""
+    order_used = None
+    per_deck: dict[tuple[str, str], list[str]] = {}
+    for object_id in ids:
+        obj = state["objects"][object_id]
+        if not obj.get("is_token"):
+            per_deck.setdefault((obj["owner"], "rune_deck" if obj["kind"] == "rune" else "main_deck"), []).append(object_id)
+    ordered_ids = list(ids)
+    for (owner, deck), group in per_deck.items():
+        if len(group) >= 2:
+            chooser = player_id or owner
+            spec = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": chooser, "visibility": "private_to_chooser", "identity_binding": True}
+            order, meta = resolve_choice(state, spec, decision_ref=order_ref, decisions=decisions, controller=chooser, candidates=group)
+            order_used = {"decision_id": meta.get("decision_id"), "forced": meta["forced"], "deck": f"{owner}.{deck}"}
+            ordered_ids = [c for c in ordered_ids if c not in set(group)] + list(order)
+    identities: dict[str, str] = {}
+    destinations: dict[str, str] = {}
+    for object_id in ordered_ids:
+        obj = state["objects"][object_id]
+        source = find_location(state, object_id)
+        _remove_from_location(state, object_id)
+        if obj.get("is_token"):
+            del state["objects"][object_id]
+            destinations[object_id] = "ceased_to_exist"
+            continue
+        deck = "rune_deck" if obj["kind"] == "rune" else "main_deck"
+        state["players"][obj["owner"]]["zones"][deck].append(object_id)
+        destinations[object_id] = f"{obj['owner']}.{deck}.bottom"
+        if source is not None and (source[0] == "battlefield" or (source[0] == "player" and source[2] != deck)):
+            identities[object_id] = _bump_identity(state, object_id)
+    _drop_reveals(state, ordered_ids)
+    return state, {"objects_count": len(ids), "objects_hash": _ids_hash(state, [i for i in ordered_ids if i in state["objects"]]), "destinations": destinations,
+                   "identities_after": identities, "simultaneous": True, "order_decision": order_used,
+                   "completion": "full" if ids else "none"}
+
+
 def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     op = effect.get("op")
     if op not in SUPPORTED_OPS:
@@ -1748,6 +1927,106 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             "pending_triggers": pending_triggers,
             "disabled_replacements": disabled_replacements,
         })
+
+    elif op == "look_at_top":
+        player_id, count = effect.get("player"), effect.get("count")
+        if player_id not in new_state["players"]:
+            raise ValueError("look_at_top requires a known player")
+        controller = effect.get("_controller") or new_state["objects"].get(effect.get("_source") or "", {}).get("controller") or player_id
+        looked = _mark_reveals(new_state, player_id, "main_deck", new_state["players"][player_id]["zones"]["main_deck"][:count], [controller], effect.get("effect_id", "look"), "look")
+        trace.update({"player": player_id, "requested_count": count, "looked_count": len(looked), "objects_visible_to": [controller],
+                      "objects_hash": _ids_hash(new_state, looked), "deck_order_unchanged": True, "burn_out": False,
+                      "completion": "full" if len(looked) == count else ("partial" if looked else "none")})
+        if not looked:
+            trace["outcome"] = "no_op"
+
+    elif op == "reveal":
+        player_id = effect.get("player")
+        if player_id not in new_state["players"]:
+            raise ValueError("reveal requires a known player")
+        zone = "main_deck" if effect.get("from") == "main_deck_top" else "hand"
+        ids = new_state["players"][player_id]["zones"][zone]
+        wanted = ids[: effect["count"]] if zone == "main_deck" else list(ids)
+        revealed = _mark_reveals(new_state, player_id, zone, wanted, "all", effect.get("effect_id", "reveal"), "reveal")
+        trace.update({"player": player_id, "from": effect.get("from"), "revealed": [{"object_id": o, "identity": object_identity(new_state, o)} for o in revealed],
+                      "visible_to": "all", "zone_unchanged": True, "burn_out": False,
+                      **({"requested_count": effect["count"]} if zone == "main_deck" else {}),
+                      "completion": "full" if (zone == "hand" or len(revealed) == effect["count"]) else ("partial" if revealed else "none")})
+        if not revealed:
+            trace["outcome"] = "no_op"
+
+    elif op == "put_back":
+        player_id = effect.get("player")
+        if player_id not in new_state["players"]:
+            raise ValueError("put_back requires a known player")
+        candidates = _session_cards(new_state, player_id, "main_deck")
+        spec = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
+        order, meta = resolve_choice(new_state, spec, decision_ref=effect.get("decision_ref") or f"{effect.get('effect_id', 'put_back')}:order", decisions=decisions, controller=player_id, candidates=candidates)
+        position = effect.get("position", "top")
+        _reorder_deck(new_state, player_id, order, position)
+        _drop_reveals(new_state, order)
+        trace.update({"player": player_id, "count": len(order), "position": position, "ordering_hash": _ids_hash(new_state, order), "order_visible_to": [player_id],
+                      "identities_unchanged": True, "selection": {k: v for k, v in meta.items() if k != "choice"} | {"choice": {k: v for k, v in meta["choice"].items() if k != "options"}},
+                      "completion": "full" if order else "none"})
+        if not order:
+            trace["outcome"] = "no_op"
+
+    elif op in {"put_in_hand", "draw_it"}:
+        player_id = effect.get("player")
+        if player_id not in new_state["players"]:
+            raise ValueError(f"{op} requires a known player")
+        candidates = _session_cards(new_state, player_id, "main_deck")
+        count = 1 if op == "draw_it" else effect.get("count", 1)
+        spec = {"selection_kind": "single" if count == 1 else "unordered_set", **({"count": {"exactly": count}} if count != 1 else {}), "from": "revealed", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
+        chosen, meta = resolve_choice(new_state, spec, decision_ref=effect.get("decision_ref") or f"{effect.get('effect_id', op)}:pick", decisions=decisions, controller=player_id, candidates=candidates)
+        identities = {}
+        for object_id in chosen:
+            new_state["players"][player_id]["zones"]["main_deck"].remove(object_id)
+            new_state["players"][player_id]["zones"]["hand"].append(object_id)
+            identities[object_id] = _bump_identity(new_state, object_id)
+        trace.update({"player": player_id, "requested_count": count, "applied_count": len(chosen), "objects_hash": _ids_hash(new_state, chosen), "objects_visible_to": [player_id],
+                      "identities_after_visible_to": [player_id], "draw_event": op == "draw_it", "drawn": len(chosen) if op == "draw_it" else 0,
+                      "selection": {k: v for k, v in meta.items() if k != "choice"}, "completion": "full" if len(chosen) == count else ("partial" if chosen else "none")})
+        if not chosen:
+            trace["outcome"] = "no_op"
+
+    elif op == "recycle":
+        if effect.get("objects") is not None:
+            chosen, meta = list(effect["objects"]), {"forced": True, "reason": "the instruction names the cards"}
+            for object_id in chosen:
+                if object_id not in new_state["objects"]:
+                    raise ValueError(f"recycle names unknown object {object_id!r}")
+        else:
+            chosen, meta = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=effect.get("player"))
+        new_state, sub = _recycle_batch(new_state, chosen, effect.get("player"), decisions, effect.get("order_ref") or f"{effect.get('effect_id', 'recycle')}:order", effect.get("effect_id", "recycle"))
+        trace.update(sub)
+        trace["selection"] = {k: v for k, v in meta.items() if k != "choice"}
+        if not chosen:
+            trace["outcome"] = "no_op"
+
+    elif op == "predict":
+        # Core 436: look at X, Recycle any number, put the rest back in any
+        # order; a short deck Predicts as many as possible without a Burn Out.
+        player_id, count = effect.get("player"), effect.get("count", 1)
+        if player_id not in new_state["players"]:
+            raise ValueError("predict requires a known player")
+        session = effect.get("effect_id", "predict")
+        looked = _mark_reveals(new_state, player_id, "main_deck", new_state["players"][player_id]["zones"]["main_deck"][:count], [player_id], session, "look")
+        spec = {"selection_kind": "unordered_set", "count": {"any_number": True}, "from": "revealed", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
+        recycled, r_meta = resolve_choice(new_state, spec, decision_ref=effect.get("recycle_ref") or f"{session}:recycle", decisions=decisions, controller=player_id, candidates=looked)
+        new_state, sub = _recycle_batch(new_state, recycled, player_id, decisions, effect.get("order_ref") or f"{session}:order", session)
+        rest = [c for c in looked if c not in recycled]
+        order_spec = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
+        order, o_meta = resolve_choice(new_state, order_spec, decision_ref=effect.get("put_back_ref") or f"{session}:put_back", decisions=decisions, controller=player_id, candidates=rest)
+        _reorder_deck(new_state, player_id, order, "top")
+        _drop_reveals(new_state, order)
+        trace.update({"player": player_id, "requested_count": count, "looked_count": len(looked), "looked_hash": _ids_hash(new_state, looked), "burn_out": False,
+                      "recycled_count": len(recycled), "recycled_hash": sub.get("objects_hash"), "recycle_order_decision": sub.get("order_decision"),
+                      "put_back_count": len(order), "put_back_ordering_hash": _ids_hash(new_state, order), "visible_to": [player_id],
+                      "selection": {"recycle": {k: v for k, v in r_meta.items() if k != "choice"}, "put_back": {k: v for k, v in o_meta.items() if k != "choice"}},
+                      "completion": "full" if len(looked) == count else ("partial" if looked else "none")})
+        if not looked:
+            trace["outcome"] = "no_op"
 
     elif op == "emit_reflexive":
         triggers = effect.get("triggers")
@@ -2174,7 +2453,7 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
     elif source == "main_deck_top":
         ids = list(state["players"][chooser]["zones"]["main_deck"][: spec["top"]])
     elif source == "revealed":
-        ids = [r["object_id"] for r in (session or {}).get("reveals", []) if r.get("visible_to") == "all" or chooser in (r.get("visible_to") or [])]
+        ids = [r["object_id"] for r in (session or state).get("reveals", []) if r.get("visible_to") == "all" or chooser in (r.get("visible_to") or [])]
     elif source == "board":
         criteria = spec.get("criteria") or {}
         ids = []
@@ -2203,7 +2482,7 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
 
 
 def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref: str | None, decisions: dict[str, Any] | None,
-                   controller: str | None, session: dict[str, Any] | None = None, chooser: str | None = None) -> tuple[list[str], dict[str, Any]]:
+                   controller: str | None, session: dict[str, Any] | None = None, chooser: str | None = None, candidates: list[str] | None = None) -> tuple[list[str], dict[str, Any]]:
     """ADR-0011 §1. Returns (chosen ids, meta). Raises ChoiceRequired when the
     decision is absent, IllegalDecision when another player made it,
     IllegalOperation when it names a non-candidate, ValueError when it is
@@ -2228,7 +2507,10 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
             chooser = by
     if chooser not in state["players"]:
         raise ValueError(f"choice chooser {chooser!r} is not a player")
-    candidates, identities = choice_candidates(state, spec, chooser, session)
+    if candidates is None:
+        candidates, identities = choice_candidates(state, spec, chooser, session)
+    else:
+        identities = {c: object_identity(state, c) for c in candidates}
     forced = ed.forced_choice(spec, candidates)
     summary = ed.choice_summary(spec, chooser, candidates, identities)
     if forced is not None:
@@ -2985,6 +3267,13 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
                 "failed_effect_index": index, "trace": trace,
             }
+        except ChoiceRequired as exc:
+            return {
+                **base, "valid": True, "committed": False, "choice_required": True, f"{exc.summary['decision_kind']}_required": True,
+                "reason_code": exc.reason_code, "reason": str(exc), "choice": exc.summary,
+                "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                "failed_effect_index": index, "trace": trace,
+            }
         except IllegalDecision as exc:
             return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch", "reason": str(exc), "failed_effect_index": index, "trace": trace}
         except IllegalOperation as exc:
@@ -3014,6 +3303,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trigger.setdefault("trigger_kind", "self_death")
         trace.append(event)
         outcomes[effect_id] = event["outcome"]
+    reveals_ended = 0
+    if _replacement_depth == 0 and current.get("reveals"):
+        # Core 424.3.a: a reveal / look lasts until this resolution finishes.
+        reveals_ended = len(current["reveals"])
+        del current["reveals"]
     return {
         **base,
         "valid": True,
@@ -3021,6 +3315,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         "unsupported": False,
         "conditional_triggers": copy.deepcopy(program.get("conditional_triggers", [])),
         **({"mode": mode} if mode is not None else {}),
+        **({"reveals_ended": reveals_ended} if reveals_ended else {}),
         "next_state": current,
         "next_state_hash": hash_value(current),
         "trace": trace,

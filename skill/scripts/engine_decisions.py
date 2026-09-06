@@ -100,8 +100,10 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.controller is required")
         kind, val = item["kind"], item["value"]
         if kind in {"target_selection", "card_selection", "card_ordering"}:
-            if not isinstance(val, list) or (kind in {"card_selection", "card_ordering"} and not val) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
-                errors.append(f"{label}.value must be a {'non-empty ' if kind == 'card_selection' else ''}unique array of object ids")
+            # ADR-0011 §1: an empty card_selection is the "none" answer of an
+            # any_number / up_to choice; instructions that need a count refuse it.
+            if not isinstance(val, list) or (kind == "card_ordering" and not val) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
+                errors.append(f"{label}.value must be a {'non-empty ' if kind == 'card_ordering' else ''}unique array of object ids")
             identities = item.get("selection_identities")
             if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, list) else []):
                 errors.append(f"{label}.selection_identities must map every selected object id exactly once")

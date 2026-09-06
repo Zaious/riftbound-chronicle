@@ -176,7 +176,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "randomization_receipt",
             "choice_grammar",
             "modal_abilities",
-            "card_ordering"
+            "card_ordering",
+            "look_reveal_put_back",
+            "predict",
+            "multi_recycle"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -187,6 +190,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "distinct_per_turn_choice",
             "each_player_choice",
             "multi_opponent_choice",
+            "revealed_knowledge_persistence",
             "complete_game",
             "complete_legality"
           ]
@@ -328,7 +332,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "randomization_receipt",
             "choice_grammar",
             "modal_abilities",
-            "card_ordering"
+            "card_ordering",
+            "look_reveal_put_back",
+            "predict",
+            "multi_recycle"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -339,6 +346,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "distinct_per_turn_choice",
             "each_player_choice",
             "multi_opponent_choice",
+            "revealed_knowledge_persistence",
             "complete_game",
             "complete_legality"
           ]

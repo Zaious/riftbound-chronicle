@@ -284,6 +284,63 @@
           }
         }
       }
+    },
+    "reveals": {
+      "type": "array",
+      "description": "ADR-0011 §3: look-at / reveal marks that last while a program runs (Core 424.3.a); the resolver clears them when it returns, so a committed state carries none unless a caller left them. Each is bound to the object's current identity and zone.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "object_id",
+          "identity",
+          "zone",
+          "visible_to",
+          "session",
+          "kind"
+        ],
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "identity": {
+            "type": "string",
+            "pattern": "^.+@[0-9]+$"
+          },
+          "zone": {
+            "enum": [
+              "main_deck",
+              "hand"
+            ]
+          },
+          "visible_to": {
+            "oneOf": [
+              {
+                "const": "all"
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          },
+          "session": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "look",
+              "reveal"
+            ]
+          }
+        }
+      }
     }
   },
   "$defs": {

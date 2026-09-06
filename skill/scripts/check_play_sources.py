@@ -164,6 +164,7 @@ def main() -> int:
 
     # --- optional zones -----------------------------------------------------------------------------------
     legend = with_zone(base, "legend_zone", "c2")
+    legend["objects"]["c2"]["kind"] = "legend"  # Core 107.4.d: only a legend lives there
     if validate_state(legend):
         errors.append(f"a state with a Legend Zone is invalid: {validate_state(legend)}")
     unknown_zone = copy.deepcopy(base)

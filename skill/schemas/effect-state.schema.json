@@ -656,7 +656,8 @@
             "unit",
             "gear",
             "spell",
-            "rune"
+            "rune",
+            "legend"
           ]
         },
         "base_might": {
@@ -1211,6 +1212,10 @@
               "minLength": 1
             }
           }
+        },
+        "champion_legend": {
+          "type": "boolean",
+          "description": "Core 107.4.d: the player's Champion Legend, which can never leave the Legend Zone."
         }
       }
     },

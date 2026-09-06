@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:d51cbb2a2f661522e21f888b",
+  "manifest_id": "manifest:762e7c964179920326c38d21",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -49,19 +49,17 @@
         "ogs-001-024",
         "opp-001-024"
       ],
-      "behavior_status": "partial",
+      "behavior_status": "full",
       "clauses": [
         {
           "clause_id": "annie - fiery#24035ea0",
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogs-001-024:24035ea0",
           "text_hash": "sha256:24035ea03c00f129097805ca72336fa592705524a909c77f8e5452531a15e28c",
-          "status": "partial",
+          "status": "full",
           "program_id": "passive:annie - fiery#24035ea0",
           "implemented_ops": [],
-          "unsupported_mechanics": [
-            "legend_zone_object"
-          ],
+          "unsupported_mechanics": [],
           "test_ids": [
             "annie - fiery#24035ea0:positive",
             "annie - fiery#24035ea0:negative",
@@ -774,19 +772,17 @@
       "printing_ids": [
         "ogs-019-024"
       ],
-      "behavior_status": "partial",
+      "behavior_status": "full",
       "clauses": [
         {
           "clause_id": "master yi - wuju bladesman (starter)#96ecd8e6",
           "source_id": "riftcodex-cards-raw-snapshot",
           "locator": "ogs-019-024:96ecd8e6",
           "text_hash": "sha256:96ecd8e61bf3f1b2ab53be18cb638aa01522869250250c030da36ee752be96e9",
-          "status": "partial",
+          "status": "full",
           "program_id": "passive:master yi - wuju bladesman (starter)#96ecd8e6",
           "implemented_ops": [],
-          "unsupported_mechanics": [
-            "legend_zone_object"
-          ],
+          "unsupported_mechanics": [],
           "test_ids": [
             "master yi - wuju bladesman (starter)#96ecd8e6:positive",
             "master yi - wuju bladesman (starter)#96ecd8e6:negative",

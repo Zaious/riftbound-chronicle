@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:038b82cc9cdf297d69e7d913",
-  "capability_set_id": "sha256:038b82cc9cdf297d69e7d9134d0813eebf9fc5809721cb18dc52f184cc4f991e",
+  "manifest_id": "capability-manifest:9c5cc32ffb714d2971da91db",
+  "capability_set_id": "sha256:9c5cc32ffb714d2971da91db7d69fbdaad5d76aed2638dd5b04d49d4ce9586bb",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:988416f4c627c7abb2f6f4357797bf446b93dc0724c3c7dcd2eda40fefbf3a28",
+    "value": "sha256:f272e41d0fec0468fd769b89b273e83bee09dc68a91884a0b211800140aeadbf",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:0a7d33af3cd1ff4fd3f5d952b0af48a192767e1dec7920c4ff8af1cb67bc33cb"
+        "sha256": "sha256:262912cb53a1d57755612f11f29e00989f019e9f3e937b22b51c7900309c1c73"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:010e3479b47fcc1255b495611309bb3f6d07d84b5be95baa243ac3dfb3ba29ff"
+        "sha256": "sha256:01ea6ea5a45bdf3d4bedab8e66859944d12d7b8579c3b9786ed1a8b4e5db4bfc"
       },
       {
         "path": "combat.py",
@@ -164,7 +164,9 @@
         "burn",
         "attachments",
         "top_most_might_bonus",
-        "derived_detach_destination"
+        "derived_detach_destination",
+        "legend_objects",
+        "legend_zone_passives"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -181,6 +183,8 @@
         "nested_attachments",
         "effect_text_append",
         "gear_recall_cleanup",
+        "copy_characteristics",
+        "champion_legend_movement",
         "complete_game",
         "complete_legality"
       ]
@@ -411,6 +415,14 @@
         "Core 430.2.a",
         "Core 430.3",
         "Core 124"
+      ]
+    },
+    {
+      "id": "copy_object",
+      "rule_locators": [
+        "Core 135.2.b",
+        "Core 185.3.a",
+        "Core 187.1"
       ]
     },
     {
@@ -1272,6 +1284,7 @@
     "Core 124–124.1",
     "Core 128.2.a",
     "Core 128.4",
+    "Core 135.2.b",
     "Core 135.2.b.5.a",
     "Core 135.2.e.3",
     "Core 136.2.c",
@@ -1284,6 +1297,8 @@
     "Core 149.1",
     "Core 170.11.c",
     "Core 184–186",
+    "Core 185.3.a",
+    "Core 187.1",
     "Core 190.3.a.1",
     "Core 190.4",
     "Core 190.4.a",
@@ -1540,12 +1555,14 @@
     "burn_out_non_draw",
     "burn_triggers",
     "cannot_be_countered",
+    "champion_legend_movement",
     "combat",
     "combat_moves",
     "complete_action_set",
     "complete_game",
     "complete_legality",
     "continuous_dependency",
+    "copy_characteristics",
     "cost_checks",
     "cost_modification_sources",
     "damage_exemption_sources",

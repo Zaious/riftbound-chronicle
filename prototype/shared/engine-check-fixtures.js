@@ -187,7 +187,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "burn",
             "attachments",
             "top_most_might_bonus",
-            "derived_detach_destination"
+            "derived_detach_destination",
+            "legend_objects",
+            "legend_zone_passives"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -204,6 +206,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "nested_attachments",
             "effect_text_append",
             "gear_recall_cleanup",
+            "copy_characteristics",
+            "champion_legend_movement",
             "complete_game",
             "complete_legality"
           ]
@@ -356,7 +360,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "burn",
             "attachments",
             "top_most_might_bonus",
-            "derived_detach_destination"
+            "derived_detach_destination",
+            "legend_objects",
+            "legend_zone_passives"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -373,6 +379,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "nested_attachments",
             "effect_text_append",
             "gear_recall_cleanup",
+            "copy_characteristics",
+            "champion_legend_movement",
             "complete_game",
             "complete_legality"
           ]

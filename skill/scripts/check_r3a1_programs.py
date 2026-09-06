@@ -174,9 +174,15 @@ def main() -> int:
             errors.append(f"{cid} derived {row.get('status')} / {row.get('implemented_ops')} / {row.get('program_id')}, expected full with ops {expected_ops}")
         if not expected_ops and not row.get("program_id", "").startswith("passive:"):
             errors.append(f"{cid} passive-only clause should derive a passive program id")
+    # ADR-0012 §5 (C-47): the Legend is a Game Object in the Legend Zone now,
+    # so the two clauses whose only gap was that object derive full — and their
+    # fixtures must anchor the passive to the Legend, not to a stand-in gear.
     fiery = manifest_rows.get("annie - fiery#24035ea0", {})
-    if fiery.get("status") != "partial" or "legend_zone_object" not in fiery.get("unsupported_mechanics", []):
-        errors.append("Annie - Fiery must derive partial naming the unmodelled Legend object")
+    if fiery.get("status") != "full" or fiery.get("unsupported_mechanics"):
+        errors.append(f"Annie - Fiery must derive full now that the Legend is a Game Object: {fiery.get('status')} {fiery.get('unsupported_mechanics')}")
+    fiery_clause = next(c for card in programs["cards"] for c in card["clauses"] if c["clause_id"] == "annie - fiery#24035ea0")
+    if any(f.get("bindings", {}).get("source_object") != "l1" for f in fiery_clause["fixtures"] if f.get("kind") != "not_applicable"):
+        errors.append("Annie - Fiery's fixtures must bind the passive to the Legend object")
     for card in programs["cards"]:
         for clause in card["clauses"]:
             execution = clause.get("execution", {})
@@ -220,8 +226,12 @@ def main() -> int:
                 if fx.get("run") in rp.COMBAT_RUNS and not (fx.get("combat") or fx.get("run") == "standard_move"):
                     errors.append(f"{fx['fixture_id']} runs a combat path without a combat block")
     wuju = manifest_rows.get("master yi - wuju bladesman (starter)#96ecd8e6", {})
-    if wuju.get("status") != "partial" or "legend_zone_object" not in wuju.get("unsupported_mechanics", []):
-        errors.append("Master Yi - Wuju Bladesman must derive partial naming the unmodelled Legend object")
+    if wuju.get("status") != "full" or wuju.get("unsupported_mechanics"):
+        errors.append(f"Master Yi - Wuju Bladesman must derive full now that the Legend is a Game Object: {wuju.get('status')} {wuju.get('unsupported_mechanics')}")
+    wuju_clause = next(c for card in programs["cards"] for c in card["clauses"] if c["clause_id"] == "master yi - wuju bladesman (starter)#96ecd8e6")
+    absent = next(f for f in wuju_clause["fixtures"] if f["fixture_id"].endswith(":source_absent"))
+    if not any(edit.get("to", "").startswith("banishment") for edit in absent["setup"]):
+        errors.append("Master Yi's source_absent fixture must put the Legend in Banishment, the one place it can be inactive (107.4.d)")
     for cid in ("mountain drake#a95a0531", "playful phantom#a95a0531"):
         row = manifest_rows.get(cid, {})
         if row.get("status") != "full" or not row.get("program_id", "").startswith("intrinsic:unit_combat:") or row.get("implemented_ops"):

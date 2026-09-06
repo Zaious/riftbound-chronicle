@@ -63,7 +63,8 @@ PERFORMED_OUTCOMES = {"applied", "replaced_modified_applied", "augmented_applied
 # referenced by requested_count_not_reached (Codex Round B, point 4).
 COUNT_CONTRACT_OPS = {"channel_rune"}
 CONDITIONAL_TRIGGER_KINDS = {"caused_kill"}
-OBJECT_KINDS = {"unit", "gear", "spell", "rune"}
+# ADR-0012 §5: a Legend lives in the Legend Zone, which is not a Location.
+OBJECT_KINDS = {"unit", "gear", "spell", "rune", "legend"}
 SUPPORTED_OPS = {
     "draw",
     "recycle_one",
@@ -108,6 +109,8 @@ SUPPORTED_OPS = {
     # C-46 (ADR-0012 §4): attachments and their Top-Most card.
     "attach",
     "detach",
+    # C-47 (ADR-0012 §7): a typed copy request that fails closed until P4.
+    "copy_object",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -261,6 +264,7 @@ OP_RULES = {
     "banish": ["Core 427.1", "Core 427.2", "Core 427.2.a", "Core 427.2.b", "Core 124"],
     "counter": ["Core 425.1", "Core 425.1.a", "Core 425.1.b", "Core 425.1.c", "Core 124"],
     "burn": ["Core 440.1", "Core 440.2", "Core 431.1.b", "Core 124"],
+    "copy_object": ["Core 135.2.b", "Core 185.3.a", "Core 187.1"],
     "attach": ["Core 434.1", "Core 434.2.a", "Core 434.2.b", "Core 434.4", "Core 434.5.a", "Core 136.2.c"],
     "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
 }
@@ -318,6 +322,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"unknown object {object_id!r} in {player_id}.{zone}")
                 else:
                     occupancy[object_id].append(f"player:{player_id}:{zone}")
+                    if zone == "legend_zone" and objects[object_id].get("kind") != "legend":
+                        errors.append(f"players.{player_id}.zones.legend_zone holds {object_id!r}, which is not a legend (Core 107.4.d)")
         resources = player.get("resources")
         if not isinstance(resources, dict) or not isinstance(resources.get("energy"), int) or resources.get("energy", -1) < 0:
             errors.append(f"players.{player_id}.resources.energy must be a non-negative integer")
@@ -570,6 +576,13 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id} has unknown owner/controller")
         if obj.get("kind") not in OBJECT_KINDS:
             errors.append(f"objects.{object_id}.kind is invalid")
+        elif obj["kind"] == "legend":
+            # Core 107.4.d: a legend exists only in the Legend Zone or Banishment.
+            where = occupancy.get(object_id, [])
+            if where and not all(place.endswith(":legend_zone") or place.endswith(":banishment") for place in where):
+                errors.append(f"objects.{object_id} is a legend; a legend exists only in a Legend Zone or Banishment (Core 107.4.d), not {where}")
+        if "champion_legend" in obj and not isinstance(obj["champion_legend"], bool):
+            errors.append(f"objects.{object_id}.champion_legend must be boolean when supplied (Core 107.4.d)")
         for field in ("base_might", "damage"):
             if not isinstance(obj.get(field), int) or obj.get(field, -1) < 0:
                 errors.append(f"objects.{object_id}.{field} must be a non-negative integer")
@@ -914,6 +927,11 @@ def validate_program(program: Any) -> list[str]:
                 if effect.get("object_id") is not None or effect.get("target") is not None or effect.get("targets") is not None:
                     errors.append(f"effects[{index}].choice excludes object_id, target and targets")
             op_name = effect.get("op")
+            if op_name == "copy_object":
+                if not isinstance(effect.get("source_object"), str) or not effect.get("source_object"):
+                    errors.append(f"effects[{index}].copy_object needs the object it copies")
+                if not isinstance(effect.get("request_id"), str) or not effect.get("request_id"):
+                    errors.append(f"effects[{index}].copy_object needs a request_id so the P4 slice can bind to it")
             if op_name in {"attach", "detach"}:
                 if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
                     errors.append(f"effects[{index}].{op_name} needs the object it links or unlinks")
@@ -1223,6 +1241,18 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
 BONUS_SCOPES = {"controller_sources", "location"}
 
 
+def source_active(state: dict[str, Any], source_id: str) -> bool:
+    """ADR-0012 §5: a passive's source is active while it is a Battlefield, a
+    board object, or a Legend in the Legend Zone — which is not a Location but
+    holds a continuously active Game Object (Core 107.4.d, 365.1)."""
+    if source_id in state["battlefields"]:
+        return True
+    location = find_location(state, source_id)
+    if zone_class(location) == "board":
+        return True
+    return location is not None and location[0] == "player" and location[2] == "legend_zone"
+
+
 def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str | None) -> tuple[int, list[dict[str, Any]]]:
     """Core 713–715: every active Bonus Damage that applies to this Deal,
     summed once (714). `controller_sources` follows the spell's or ability's
@@ -1234,8 +1264,7 @@ def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str |
     location = find_location(state, object_id) if object_id is not None else None
     for modifier in state.get("damage_modifiers", []) or []:
         source = modifier["source_object"]
-        active = (source in state["battlefields"]) or zone_class(find_location(state, source)) == "board"
-        if not active:
+        if not source_active(state, source):
             continue
         kind = modifier["scope"]["kind"]
         if kind not in BONUS_SCOPES:
@@ -1319,7 +1348,7 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
         return False, "target_location_requirement_failed"
     if required_location == "non_board" and current_class != "non_board":
         return False, "target_location_requirement_failed"
-    if required_location in PLAYER_ZONES - {"base"} and (location is None or location[0] != "player" or location[2] != required_location):
+    if required_location in (PLAYER_ZONES | OPTIONAL_PLAYER_ZONES) - {"base"} and (location is None or location[0] != "player" or location[2] != required_location):
         return False, "target_location_requirement_failed"
     def friendly_players(left: str | None, right: str | None) -> bool:
         if left is None or right is None:
@@ -2358,6 +2387,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         trace.update({"player": player_id, "requested_count": count, "burned_count": len(burned), "objects": burned,
                       "identities_after": identities, "burn_out": False, "completion": "full"})
 
+    elif op == "copy_object":
+        # ADR-0012 §7: the characteristics and layers of a copy are P4. The
+        # request is typed and recorded; the engine changes nothing.
+        source_object, request_id = effect.get("source_object"), effect.get("request_id")
+        raise NotImplementedError(
+            f"copy of {source_object!r} (request {request_id!r}) needs the characteristic and layer contract; "
+            "the engine refuses rather than copying half of it (unsupported: copy_characteristics)")
+
     elif op == "attach":
         # Core 434: linking two board cards. The attached card takes the
         # Top-Most card's location (434.4, not a Move) and nothing else about
@@ -2507,8 +2544,7 @@ def combat_might_contributions(state: dict[str, Any], object_id: str) -> list[di
             parts.append({"kind": "attacking_or_defending_alone", "modifier_id": conditional["modifier_id"], "amount": conditional["amount"], "rule_locators": ["Core 740.2.a", "Core 364.3"]})
     for aura in state.get("might_auras", []) or []:
         source = aura["source_object"]
-        active = (source in state["battlefields"]) or (source in state["objects"] and zone_class(find_location(state, source)) == "board")
-        if not active or not same_side(state, aura["controller"], obj["controller"]):
+        if not source_active(state, source) or not same_side(state, aura["controller"], obj["controller"]):
             continue
         if aura["condition"]["kind"] == "friendly_unit_defends_alone" and designation is not None and designation.get("role") == "defender" and alone:
             parts.append({"kind": "friendly_unit_defends_alone", "modifier_id": aura["modifier_id"], "source_object": source, "amount": aura["amount"], "rule_locators": ["Core 740.2.a", "Core 365.1"]})

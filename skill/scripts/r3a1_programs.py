@@ -209,7 +209,9 @@ def _place(state: dict[str, Any], object_id: str, dest: str) -> None:
     """dest: base:<player> | <battlefield id> | hand:<player> | trash:<player> | rune_deck:<player> | main_deck:<player>."""
     if ":" in dest:
         zone, player = dest.split(":", 1)
-        state["players"][player]["zones"][zone].append(object_id)
+        # ADR-0012 §5: the Legend and Champion zones are optional; a fixture
+        # that uses one creates it.
+        state["players"][player]["zones"].setdefault(zone, []).append(object_id)
     else:
         state["battlefields"][dest]["objects"].append(object_id)
 

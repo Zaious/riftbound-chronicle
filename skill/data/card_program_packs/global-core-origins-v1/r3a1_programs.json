@@ -135,10 +135,8 @@
         {
           "clause_id": "annie - fiery#24035ea0",
           "text": "Your spells and abilities deal 1 Bonus Damage.",
-          "claim": "partial",
-          "unsupported_mechanics": [
-            "legend_zone_object"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 713",
             "Core 714",
@@ -182,10 +180,10 @@
               "kind": "positive",
               "setup": [
                 {
-                  "add": "g1",
+                  "add": "l1",
                   "owner": "p1",
-                  "kind": "gear",
-                  "to": "base:p1"
+                  "kind": "legend",
+                  "to": "legend_zone:p1"
                 }
               ],
               "expected": {
@@ -211,7 +209,7 @@
                 "opponent": "p2",
                 "card": "c1",
                 "chain_item": "spell-1",
-                "source_object": "g1"
+                "source_object": "l1"
               }
             },
             {
@@ -219,10 +217,10 @@
               "kind": "negative",
               "setup": [
                 {
-                  "add": "g1",
+                  "add": "l1",
                   "owner": "p1",
-                  "kind": "gear",
-                  "to": "base:p1"
+                  "kind": "legend",
+                  "to": "legend_zone:p1"
                 }
               ],
               "probe": {
@@ -261,7 +259,7 @@
                 "opponent": "p2",
                 "card": "c1",
                 "chain_item": "spell-1",
-                "source_object": "g1"
+                "source_object": "l1"
               }
             },
             {
@@ -269,10 +267,10 @@
               "kind": "negative",
               "setup": [
                 {
-                  "add": "g1",
+                  "add": "l1",
                   "owner": "p1",
-                  "kind": "gear",
-                  "to": "trash:p1"
+                  "kind": "legend",
+                  "to": "banishment:p1"
                 }
               ],
               "expected": {
@@ -297,7 +295,7 @@
                 "opponent": "p2",
                 "card": "c1",
                 "chain_item": "spell-1",
-                "source_object": "g1"
+                "source_object": "l1"
               }
             },
             {
@@ -6424,10 +6422,8 @@
         {
           "clause_id": "master yi - wuju bladesman (starter)#96ecd8e6",
           "text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
-          "claim": "partial",
-          "unsupported_mechanics": [
-            "legend_zone_object"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 740.2.a",
             "Core 740.1.a",
@@ -6478,10 +6474,10 @@
                   "to": "bf1"
                 },
                 {
-                  "add": "g1",
+                  "add": "l1",
                   "owner": "p1",
-                  "kind": "gear",
-                  "to": "base:p1"
+                  "kind": "legend",
+                  "to": "legend_zone:p1"
                 }
               ],
               "combat": {
@@ -6501,13 +6497,13 @@
                   "Core 365.1"
                 ]
               },
-              "why": "a friendly Unit that is the lone defender gets +2 from the aura. The Legend is not modelled as a Game Object (no Legend Zone), so the aura is anchored to a gear at the controller's Base; that limit is the named unsupported mechanic.",
+              "why": "a friendly Unit that is the lone defender gets +2 from the aura. The source is the Legend in its owner's Legend Zone, which is continuously active though it is not on the Board (107.4.d).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
                 "card": "c1",
                 "chain_item": "spell-1",
-                "source_object": "g1"
+                "source_object": "l1"
               }
             },
             {
@@ -6523,10 +6519,10 @@
                   "to": "bf1"
                 },
                 {
-                  "add": "g1",
+                  "add": "l1",
                   "owner": "p1",
-                  "kind": "gear",
-                  "to": "base:p1"
+                  "kind": "legend",
+                  "to": "legend_zone:p1"
                 }
               ],
               "combat": {
@@ -6551,7 +6547,7 @@
                 "opponent": "p2",
                 "card": "c1",
                 "chain_item": "spell-1",
-                "source_object": "g1"
+                "source_object": "l1"
               }
             },
             {
@@ -6567,17 +6563,17 @@
                   "to": "bf1"
                 },
                 {
-                  "add": "g1",
-                  "owner": "p1",
-                  "kind": "gear",
-                  "to": "base:p1"
-                },
-                {
                   "add": "u3",
                   "owner": "p1",
                   "kind": "unit",
                   "might": 2,
                   "to": "bf1"
+                },
+                {
+                  "add": "l1",
+                  "owner": "p1",
+                  "kind": "legend",
+                  "to": "legend_zone:p1"
                 }
               ],
               "combat": {
@@ -6602,7 +6598,7 @@
                 "opponent": "p2",
                 "card": "c1",
                 "chain_item": "spell-1",
-                "source_object": "g1"
+                "source_object": "l1"
               }
             },
             {
@@ -6618,10 +6614,10 @@
                   "to": "bf1"
                 },
                 {
-                  "add": "g1",
+                  "add": "l1",
                   "owner": "p1",
-                  "kind": "gear",
-                  "to": "trash:p1"
+                  "kind": "legend",
+                  "to": "banishment:p1"
                 }
               ],
               "combat": {
@@ -6640,13 +6636,13 @@
                   "Core 365.1"
                 ]
               },
-              "why": "365.1: an aura whose source is not on the board contributes nothing.",
+              "why": "365.1 / 107.4.d: an aura whose source is in Banishment - neither on the Board nor in the Legend Zone - contributes nothing.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
                 "card": "c1",
                 "chain_item": "spell-1",
-                "source_object": "g1"
+                "source_object": "l1"
               }
             },
             {

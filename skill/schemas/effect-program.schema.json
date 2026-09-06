@@ -149,7 +149,8 @@
               "counter",
               "burn",
               "attach",
-              "detach"
+              "detach",
+              "copy_object"
             ]
           },
           "effect_id": {
@@ -540,6 +541,16 @@
             "type": "string",
             "minLength": 1,
             "description": "attach: the Top-Most card (Core 434.1.b)."
+          },
+          "source_object": {
+            "type": "string",
+            "minLength": 1,
+            "description": "copy_object: the object the request copies."
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "copy_object: the request the P4 layer slice will bind to."
           }
         }
       },
@@ -629,7 +640,8 @@
             "gear",
             "spell",
             "rune",
-            "battlefield"
+            "battlefield",
+            "legend"
           ]
         },
         "location": {
@@ -642,7 +654,9 @@
             "hand",
             "trash",
             "banishment",
-            "rune_deck"
+            "rune_deck",
+            "legend_zone",
+            "champion_zone"
           ]
         },
         "controller_relation": {

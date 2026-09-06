@@ -318,6 +318,9 @@ jobs:
       # ADR-0012 §4: attachments, the Top-Most card and the derived detach destination.
       - name: Attachments, Top-Most and detach destinations (C-46)
         run: python3 skill/scripts/check_attachments.py
+      # ADR-0012 §5, §7: Legends and the Champion Zone as objects; the copy request fails closed.
+      - name: Legends, the Champion Zone and the copy request (C-47)
+        run: python3 skill/scripts/check_legends.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -412,6 +415,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_play_sources.py"
           python3 "$REPO/skill/scripts/check_hidden.py"
           python3 "$REPO/skill/scripts/check_attachments.py"
+          python3 "$REPO/skill/scripts/check_legends.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

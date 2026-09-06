@@ -8,7 +8,7 @@ Must hold:
     applied, the applier's Units are present, no opposing Units are, and
     nothing is ongoing; it rebuilds the set (stale entries drop) and refuses
     off a quiet Cleanup boundary;
-  - open_showdown needs a Neutral Open State with no Combat staged, opens the
+  - open_showdown needs a Neutral Open State, opens the
     sole candidate as a non_combat Showdown with Focus and Priority on the
     player who applied Contested, asks the Turn Player (showdown_location)
     among several, refuses a wrong controller and a Showdown no longer
@@ -81,6 +81,8 @@ def main() -> int:
     entries = staged.get("next_timing_state", {}).get("staged_showdowns") if staged.get("committed") else None
     if entries != [{"battlefield": "bf1", "battlefield_identity": "bf1@0", "contested_by": "p1"}] or staged["next_effect_state"] != board:
         errors.append(f"a lone Unit at a Contested Battlefield did not stage a Showdown: {staged.get('reason')} {entries}")
+    if next_procedure(staged["next_timing_state"]).get("procedure") != "open_showdown_pending" or legality(staged["next_timing_state"], {"actor": "p1", "kind": "play_card", "timing": "default"}).get("legal") is not False:
+        errors.append("a staged Non-Combat Showdown did not become the next required procedure and block discretionary play")
     if quiet != snap_t or board != snap_e or stage_showdown(quiet, board) != staged:
         errors.append("stage_showdown mutated its inputs or is not deterministic")
     absent = lone_board(applier="p2")
@@ -120,8 +122,9 @@ def main() -> int:
     if open_showdown(t1, moved_away).get("reason_code") != "showdown_no_longer_staged":
         errors.append("a Showdown whose applier left opened anyway (323.8.a)")
     with_combat = copy.deepcopy(t1); with_combat["combat"] = {"combat_id": "combat:bf2:x", "battlefield": "bf2", "battlefield_identity": "bf2@0", "status": "staged", "attacker": None, "defender": None, "participants": ["p1", "p2"], "triggered_identities": {"attacker": [], "defender": []}}
-    if open_showdown(with_combat, board).get("reason_code") != "combat_staged":
-        errors.append("a Non-Combat Showdown opened after a Combat was staged (323.12 before 323.13)")
+    opened_before_combat = open_showdown(with_combat, board)
+    if not opened_before_combat.get("committed") or opened_before_combat["next_timing_state"].get("combat", {}).get("status") != "staged":
+        errors.append("323.12 did not open the staged Non-Combat Showdown before the separately staged Combat of 323.13")
     two = lone_board()
     two["battlefields"]["bf2"] = {"controller": None, "objects": [], "contested": True, "contested_by": "p2"}
     add_unit(two, "u3", "p2", "bf2")
@@ -253,7 +256,7 @@ def main() -> int:
     if errors:
         print("FAILED: showdown and board cleanup checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: Non-Combat Showdowns are staged as the set of Contested Battlefields held only by their applier, opened from a Neutral Open State by the Turn Player's choice with Focus to the applier before any Combat stages, closed by every player passing into a control resolution that hands a sole occupant control and a Conquer, defers an empty Battlefield to 323.6 and refuses both present; the board Cleanup drops absent controllers, exempts only what is ongoing, removes and re-applies Contested per 323.11 and refuses an ambiguous re-application.")
+    print("OK: Non-Combat Showdowns are staged as the set of Contested Battlefields held only by their applier, opened from a Neutral Open State by the Turn Player's choice with Focus to the applier before a separately staged Combat may open, closed by every player passing into a control resolution that hands a sole occupant control and a Conquer, defers an empty Battlefield to 323.6 and refuses both present; the board Cleanup drops absent controllers, exempts only what is ongoing, removes and re-applies Contested per 323.11 and refuses an ambiguous re-application.")
     return 0
 
 

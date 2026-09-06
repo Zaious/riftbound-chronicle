@@ -162,8 +162,10 @@ is refused as unsupported. `run_board_cleanup` applies, per Battlefield with
 no ongoing Showdown or Combat (a merely staged one exempts nothing), 323.6
 control loss, 323.11 Contested removal and 323.11.a re-application by the
 one non-controller present (two different ones are unsupported), and reports
-the victory facts; a Cleanup boundary runs it before `stage_showdown` /
-`open_showdown`, which run before `stage_combat` / `open_combat`.
+the victory facts. A Cleanup boundary runs it before `stage_showdown`, then
+`stage_combat`; if an eligible Non-Combat Showdown exists, `open_showdown` is
+the next required procedure (323.12), otherwise the staged Combat opens
+(323.13). No discretionary action occurs between staging and that choice.
 `run_scoring_step` is the Scoring Step (315.2.b, ADR-0009 §8): with the
 caller-supplied phase `beginning`, an empty chain and no Showdown or Combat,
 the Turn Player Holds every Battlefield they control and have not scored this

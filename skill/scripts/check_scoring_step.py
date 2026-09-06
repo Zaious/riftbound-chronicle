@@ -92,6 +92,22 @@ def main() -> int:
     if facts.get("threshold_met") != [] or facts.get("strict_leader") is not None or facts.get("tied_at_threshold") is not False:
         errors.append(f"victory facts after the Hold are wrong: {facts}")
 
+    # One controller-scoped ability triggers once per Battlefield Held. The
+    # instances share one batch but have distinct ids and need an explicit
+    # controller order when their compiled orders collide.
+    repeated = holdings()
+    add_unit(repeated, "g1", "p1", "base:p1", might=0, kind="gear", hold_triggers=[{**trigger("g1-you-hold", "p1", "g1", order=0), "scope": "controller"}])
+    repeated_ask = run_scoring_step(t, repeated)
+    repeated_ids = ["g1-you-hold@bf1", "g1-you-hold@bf2", "u3-hold"]
+    if repeated_ask.get("reason_code") != "trigger_order_required" or sorted(repeated_ask.get("trigger_ids", [])) != sorted(repeated_ids):
+        errors.append(f"one player-scoped Hold ability did not create one trigger instance per scored Battlefield: {repeated_ask.get('reason_code')} {repeated_ask.get('trigger_ids')}")
+    repeated_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value({"timing_state": t, "effect_state": repeated}), "decisions": [
+        {"decision_id": "trigger_order:score:hold:turn-0:p1:p1", "stage": "resolution", "kind": "trigger_order", "controller": "p1", "value": repeated_ids}
+    ]}
+    repeated_done = run_scoring_step(t, repeated, repeated_decisions)
+    if not repeated_done.get("committed") or sorted(i["id"] for i in repeated_done["next_timing_state"]["chain"]["items"]) != sorted(repeated_ids):
+        errors.append(f"the ordered per-Battlefield Hold trigger instances did not commit: {repeated_done.get('reason') or repeated_done.get('errors')}")
+
     # --- already scored, one batch across Battlefields, controller-scope and Battlefield sources -----------
     e2 = holdings()
     e2["players"]["p1"]["scored_this_turn"] = {"turn-0": ["bf1"]}
@@ -136,6 +152,10 @@ def main() -> int:
     in_showdown = beginning(showdown=True, focus="p1"); in_showdown["priority"] = "p1"
     if run_scoring_step(in_showdown, e).get("reason_code") != "showdown_or_combat_ongoing":
         errors.append("the Scoring Step ran during a Showdown")
+    staged_showdown = copy.deepcopy(t)
+    staged_showdown["staged_showdowns"] = [{"battlefield": "bf1", "battlefield_identity": "bf1@0", "contested_by": "p1"}]
+    if run_scoring_step(staged_showdown, e).get("reason_code") != "showdown_open_pending":
+        errors.append("the Scoring Step ran before a staged Showdown opened")
     nothing = run_scoring_step(t, base_state() | {"mode": {"victory_score": 8}})
     if not nothing.get("committed") or nothing["trace"]["held"] != [] or nothing["next_effect_state"]["players"]["p1"].get("points", 0) != 0:
         errors.append("a Turn Player controlling nothing did not Hold nothing")

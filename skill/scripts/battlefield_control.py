@@ -307,8 +307,8 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
     if timing_state["showdown"]["active"]:
         return _refuse(base, "not_neutral_open_state", "323.12 opens a Showdown only from a Neutral Open State; one is already ongoing", ["Core 323.12", "Core 344"])
     combat = timing_state.get("combat")
-    if combat is not None and combat["status"] != "closed":
-        return _refuse(base, "combat_staged", f"a Combat ({combat['combat_id']}) is staged or in progress; 323.12 opens Non-Combat Showdowns before 323.13 stages Combat (ADR-0009 §3)", ["Core 323.12", "Core 323.13"])
+    if combat is not None and combat["status"] not in {"staged", "closed"}:
+        return _refuse(base, "combat_in_progress", f"a Combat ({combat['combat_id']}) is already in progress; another Showdown cannot open", ["Core 323.12", "Core 460"])
     staged = timing_state.get("staged_showdowns", [])
     if not staged:
         return _refuse(base, "no_staged_showdown", "no Non-Combat Showdown is staged; run stage_showdown at the Cleanup boundary first (323.8)", ["Core 323.8", "Core 323.12"])
@@ -412,6 +412,8 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
         return _refuse(base, "requires_quiet_cleanup_boundary", "the Scoring Step runs with nothing on the chain and no other outstanding task (315.2.b.1)", ["Core 315.2.b.1"])
     if timing_state["showdown"]["active"] or (timing_state.get("combat") is not None and timing_state["combat"]["status"] != "closed"):
         return _refuse(base, "showdown_or_combat_ongoing", "no Showdown or Combat is ongoing in the Beginning Phase", ["Core 315.2", "Core 344"])
+    if timing_state.get("staged_showdowns"):
+        return _refuse(base, "showdown_open_pending", "a staged Showdown must open before the Beginning Scoring Step can run", ["Core 323.12", "Core 315.2.b"])
     player = timing_state["turn_player"]
     turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
     controlled = sorted(b for b, bf in effect_state["battlefields"].items() if bf.get("controller") == player)
@@ -431,6 +433,18 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
         _, problem = mode_of_play(effect_state)
         if problem is not None:
             return _unsupported(base, problem.code, problem.reason, problem.locators, would_hold=[])
+    # One controller-scoped "When you hold" ability can trigger once for each
+    # Battlefield successfully Held. Those are distinct trigger instances in
+    # the same 315.2.b.2 batch, so duplicate ability ids are qualified by the
+    # Score event's Battlefield before the controller orders the batch.
+    trigger_counts: dict[str, int] = {}
+    for descriptor in triggers:
+        trigger_counts[descriptor["trigger_id"]] = trigger_counts.get(descriptor["trigger_id"], 0) + 1
+    for descriptor in triggers:
+        if trigger_counts[descriptor["trigger_id"]] > 1:
+            ability_id = descriptor["trigger_id"]
+            descriptor["trigger_id"] = f"{ability_id}@{descriptor['scored_battlefield']}"
+            descriptor["source_trigger_id"] = ability_id
     batch_id = f"score:hold:{turn_id}:{player}"
     for descriptor in triggers:  # 315.2.b.2: one Task holds all Battlefields at once, so their triggers are one batch
         descriptor["batch_id"] = batch_id

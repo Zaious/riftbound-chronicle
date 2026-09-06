@@ -354,6 +354,18 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             rule_locators=["Core 338–339"],
         )
     combat = state.get("combat")
+    if state.get("staged_showdowns") and not state["showdown"]["active"]:
+        # 323.12 precedes 323.13 in the same Cleanup. Once one or more
+        # Non-Combat Showdowns are staged, the Turn Player must open one
+        # before any discretionary action or staged Combat can proceed.
+        return _result(
+            state,
+            valid=True,
+            procedure="open_showdown_pending",
+            subject=[entry["battlefield"] for entry in state["staged_showdowns"]],
+            discretionary_actions_allowed=False,
+            rule_locators=["Core 323.12", "Core 323.13"],
+        )
     if state["showdown"].get("active") and state["showdown"].get("closing"):
         return _result(
             state,

@@ -102,10 +102,13 @@ this turn, in Battlefield-id order, scheduling the Hold triggers as one batch.
 no ongoing Showdown or Combat (a merely staged one does not exempt), 323.6
 control loss, 323.11 Contested removal, then 323.11.a re-application by the
 present non-controller (two different non-controllers present is unsupported,
-not guessed). It is not chained into the resolution bridge; a caller runs the
-Cleanup boundary as `run_board_cleanup` → `stage_showdown` / `open_showdown`
-→ `stage_combat` / `open_combat` (323.6, 323.11, 323.12, 323.13). 323.7 is not
-modelled.
+not guessed). It is not chained into the resolution bridge. At the Cleanup
+boundary a caller preserves the numbered order: `run_board_cleanup` →
+`stage_showdown` → `stage_combat` → `open_showdown` when an eligible
+Non-Combat Showdown exists, otherwise `open_combat` (323.6, 323.8–323.9,
+323.11–323.13). A staged Showdown is the next required procedure and blocks
+discretionary play; 323.12 is evaluated before the staged Combat of 323.13.
+323.7 is not modelled.
 
 ### 10. The victory condition is reported, never enacted (DP-45)
 

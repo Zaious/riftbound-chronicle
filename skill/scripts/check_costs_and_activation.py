@@ -203,9 +203,17 @@ def main() -> int:
     theirs = play_card(timing, plain, ability_declaration(card="u2", activation={"source_object": "u2", "ability_id": "u2:a1"}))
     if theirs.get("reason_code") != "activation_source_not_controlled":
         errors.append(f"an opponent's ability was activated: {theirs.get('reason_code')}")
-    conditioned = play_card(timing, plain, ability_declaration(activation_conditions=[{"kind": "at_battlefield"}]))
-    if conditioned.get("unsupported") is not True or conditioned.get("reason_code") != "activation_conditions_unsupported":
-        errors.append(f"an activation condition was not unsupported: {conditioned.get('reason_code')}")
+    # C-50 (ADR-0013 §3): an activation condition is evaluated now. A malformed
+    # one is invalid_input, one that does not hold is illegal.
+    malformed = play_card(timing, plain, ability_declaration(activation_conditions=[{"kind": "at_battlefield"}]))
+    if malformed.get("reason_code") != "invalid_input":
+        errors.append(f"a malformed activation condition was not invalid_input: {malformed.get('reason_code')}")
+    unmet = play_card(timing, plain, ability_declaration(activation_conditions=[{"kind": "controls_units", "count": 9}]))
+    if unmet.get("reason_code") != "activation_condition_not_met" or unmet.get("committed"):
+        errors.append(f"an activation condition that does not hold was not illegal: {unmet.get('reason_code')}")
+    met = play_card(timing, plain, ability_declaration(activation_conditions=[{"kind": "controls_units", "count": 1}]))
+    if not met.get("committed"):
+        errors.append(f"negative mutation failed: the same activation with a condition that holds did not commit: {met.get('reason_code')} {met.get('reason')}")
 
     # kill_this pays with the source; the bridge then removes the ability with no card
     kill_cost = {"base": {"energy": 0, "power": {}}, "additional": [{"cost_id": "self", "mandatory": True, "payment": {"kind": "kill_this"}}]}
@@ -295,14 +303,16 @@ def main() -> int:
                           declaration(cost={"base": {"energy": 2, "power": {}}, "discounts": [{"id": "d1", "applies_to": "energy", "amount": 1, "provenance": {"evaluated_by": "p4_condition_layer", "source": "x"}}]}))
     if not evaluated.get("committed") or evaluated["cost_receipt"]["total"]["energy"] != 1:
         errors.append(f"an evaluated typed discount did not apply: {evaluated.get('reason_code')} {evaluated.get('reason')}")
+    # C-50: a modification carrying a typed condition is evaluated by the P4
+    # layer; a malformed one is invalid_input.
     sourced = play_card(timing, hand_state("c1"),
                         declaration(cost={"base": {"energy": 2, "power": {}}, "discounts": [{"id": "d1", "applies_to": "energy", "amount": 1, "condition": {"kind": "if_you_control_a_unit"}}]}))
-    if sourced.get("unsupported") is not True or sourced.get("reason_code") != "cost_modification_sources_unsupported":
-        errors.append(f"a discount carrying its own condition was not unsupported: {sourced.get('reason_code')}")
+    if sourced.get("reason_code") != "invalid_input":
+        errors.append(f"a malformed cost condition was not invalid_input: {sourced.get('reason_code')}")
     per_each = play_card(timing, hand_state("c1", energy=3),
-                         declaration(cost={"base": {"energy": 2, "power": {}}, "increases": [{"id": "i1", "component": "energy", "amount": 1, "per_each": {"kind": "enemy_unit"}}]}))
-    if per_each.get("unsupported") is not True:
-        errors.append(f"a per-each increase was not unsupported: {per_each.get('reason_code')}")
+                         declaration(cost={"base": {"energy": 2, "power": {}}, "increases": [{"id": "i1", "component": "energy", "amount": 1, "per_each": {"kind": "might_at_least", "count": 1}}]}))
+    if per_each.get("unsupported") is not True or "per_each" not in str(per_each.get("reason")):
+        errors.append(f"a per-each over an uncounted leaf was not unsupported: {per_each.get('reason_code')} {per_each.get('reason')}")
 
     # --- schemas and scope ----------------------------------------------------------------------------------------
     pd = json.loads((SKILL_DIR / "schemas" / "play-declaration.schema.json").read_text(encoding="utf-8"))
@@ -315,7 +325,7 @@ def main() -> int:
     if "restricted" not in es["$defs"]["player"]["properties"]["resources"]["properties"] or "source_object" not in es["properties"]["chain_items"]["additionalProperties"]["properties"]:
         errors.append("effect-state schema lacks restricted pools or ability chain entries")
     scope = KIND_CONFIG["play"]
-    if not {"activated_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources"} <= set(scope["supported"]) or "cost_modification_sources" not in scope["unsupported"]:
+    if not {"activated_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources"} <= set(scope["supported"]) or "xp_buff_costs" not in scope["unsupported"]:
         errors.append("the play scope does not declare the C-42 capabilities and their boundary")
 
     snapshot = copy.deepcopy(three)

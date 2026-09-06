@@ -51,8 +51,10 @@ import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bump_identity, apply_program, derive_targeted, evaluate_target,
-    entity_identity, find_location, hash_value, object_identity, suffix_decision_refs, validate_program, validate_state, zone_class,
+    entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
+    suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
+from effect_ir import ConditionUnsupported  # noqa: E402
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
 
 DECLARATION_VERSION = "riftbound-play-declaration.v1"
@@ -858,8 +860,19 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 raise PlayError("choices", "activation_source_not_on_board", f"{card!r} is at {where}; activated abilities are activated from the Board (Core 377.4)", rule_locators=["Core 377.4", "Core 377"])
             if source.get("controller") != actor:
                 raise PlayError("choices", "activation_source_not_controlled", f"{card!r} is controlled by {source.get('controller')!r}, not {actor}", rule_locators=["Core 377.3", "Core 377.4"])
-            if declaration.get("activation_conditions"):
-                raise PlayError("choices", "activation_conditions_unsupported", f"activation conditions {[c.get('kind') for c in declaration['activation_conditions']]} are a P4 condition grammar (Core 377.2.b)", unsupported=True, rule_locators=["Core 377.2.b"])
+            # ADR-0013 §3 / Core 377.2.b: the activation's own condition is a
+            # typed condition.v1 the engine evaluates against this state.
+            for index, condition in enumerate(declaration.get("activation_conditions") or []):
+                problems = validate_condition(condition, f"activation_conditions[{index}]")
+                if problems:
+                    raise PlayError("choices", "invalid_activation_condition", "; ".join(problems), invalid=True)
+                try:
+                    holds = evaluate_condition(effect_state, condition, controller=actor, object_id=card)
+                except ConditionUnsupported as exc:
+                    raise PlayError("choices", "activation_condition_unsupported", str(exc), unsupported=True, rule_locators=["Core 377.2.b"])
+                if not holds:
+                    raise PlayError("choices", "activation_condition_not_met",
+                                    f"{card!r} may be activated only while {condition['kind']} holds (377.2.b)", rule_locators=["Core 377.2.b", "Core 404"])
         else:
             zone_of = find_location(effect_state, card)
             if source_kind == "hand" and zone_of != ("player", actor, "hand"):
@@ -1001,10 +1014,30 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 raise PlayError("cost_determination", "unsupported_cost_kind", f"cost {add['cost_id']!r} uses {kind!r}, which the engine does not type{note}", unsupported=True, rule_locators=["Core 356.7"])
             if kind in SELF_COSTS and "object_id" not in add["payment"]:
                 add["payment"] = {**add["payment"], "object_id": declaration["activation"]["source_object"]}
-        sourced = unsupported_modification_sources(cost)
-        if sourced:
-            raise PlayError("cost_determination", "cost_modification_sources_unsupported", f"modifications {sourced} carry a condition or per-each source the engine would have to evaluate; P2 accepts only evaluated typed input (P4: cost_modification_sources)",
-                            unsupported=True, rule_locators=["Core 356.3", "Core 356.4"])
+        # ADR-0013 §6: P4 evaluates a modification's condition and per-each
+        # count here; P2 consumes the evaluated result and never a source.
+        evaluated: list[dict[str, Any]] = []
+        for key in ("increases", "discounts"):
+            kept = []
+            for modification in cost.get(key, []) or []:
+                if "condition" not in modification and "per_each" not in modification:
+                    kept.append(modification)
+                    continue
+                try:
+                    outcome = evaluate_cost_modification(effect_state, modification, actor)
+                except ConditionUnsupported as exc:
+                    raise PlayError("cost_determination", "cost_modification_sources_unsupported", str(exc), unsupported=True, rule_locators=["Core 356.3", "Core 356.4"])
+                except ValueError as exc:
+                    raise PlayError("cost_determination", "invalid_cost_modification", str(exc), invalid=True)
+                evaluated.append({**outcome, "applies_to": key})
+                if outcome["applies"] and outcome["amount"] > 0:
+                    kept.append({k: v for k, v in modification.items() if k not in {"condition", "per_each"}}
+                                | {"amount": outcome["amount"], "provenance": {"evaluated_by": "p4_condition_layer", **({"source": modification.get("source")} if modification.get("source") else {})}})
+            if kept or (cost.get(key) is not None):
+                cost[key] = kept
+        if evaluated:
+            trace.append({"stage": "cost_determination", "outcome": "applied", "evaluated_cost_modifications": evaluated,
+                          "rule_locators": ["Core 356.3", "Core 356.4"]})
         skeleton = determine_total_cost(cost, intents, actor=actor)
         trace.append({"stage": "cost_determination", "outcome": "applied", "total": copy.deepcopy(skeleton["total"]), "rule_locators": RULES["cost"]})
         locators += RULES["cost"]

@@ -277,11 +277,135 @@
               },
               "condition": {
                 "type": "object",
-                "description": "A source the engine would have to evaluate ('costs less if'); carried so it can be refused by name (unsupported: cost_modification_sources)."
+                "required": [
+                  "kind"
+                ],
+                "description": "ADR-0013 §6: evaluated by the P4 condition layer; the play consumes the result.",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "and",
+                      "or",
+                      "not",
+                      "runes_at_least",
+                      "attacking_or_defending_alone",
+                      "friendly_unit_defends_alone",
+                      "controls_units",
+                      "might_at_least",
+                      "has_keyword",
+                      "is_empowered",
+                      "xp_at_least",
+                      "battlefield_controlled",
+                      "zone_count_at_least"
+                    ]
+                  },
+                  "of": {
+                    "description": "and / or: at least two conditions; not: one."
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "object": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "player": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "keyword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "zone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "battlefield": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "location": {
+                    "enum": [
+                      "board",
+                      "battlefield",
+                      "base"
+                    ]
+                  },
+                  "controller_relation": {
+                    "enum": [
+                      "friendly",
+                      "enemy"
+                    ]
+                  }
+                }
               },
               "per_each": {
                 "type": "object",
-                "description": "A per-each source ('for each'); refused by name until P4."
+                "required": [
+                  "kind"
+                ],
+                "description": "ADR-0013 §6: 'for each' — the P4 layer counts how many times the leaf holds and multiplies the amount.",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "and",
+                      "or",
+                      "not",
+                      "runes_at_least",
+                      "attacking_or_defending_alone",
+                      "friendly_unit_defends_alone",
+                      "controls_units",
+                      "might_at_least",
+                      "has_keyword",
+                      "is_empowered",
+                      "xp_at_least",
+                      "battlefield_controlled",
+                      "zone_count_at_least"
+                    ]
+                  },
+                  "of": {
+                    "description": "and / or: at least two conditions; not: one."
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "object": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "player": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "keyword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "zone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "battlefield": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "location": {
+                    "enum": [
+                      "board",
+                      "battlefield",
+                      "base"
+                    ]
+                  },
+                  "controller_relation": {
+                    "enum": [
+                      "friendly",
+                      "enemy"
+                    ]
+                  }
+                }
               }
             }
           }
@@ -345,11 +469,135 @@
               },
               "condition": {
                 "type": "object",
-                "description": "A source the engine would have to evaluate ('costs less if'); carried so it can be refused by name (unsupported: cost_modification_sources)."
+                "required": [
+                  "kind"
+                ],
+                "description": "ADR-0013 §6: evaluated by the P4 condition layer; the play consumes the result.",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "and",
+                      "or",
+                      "not",
+                      "runes_at_least",
+                      "attacking_or_defending_alone",
+                      "friendly_unit_defends_alone",
+                      "controls_units",
+                      "might_at_least",
+                      "has_keyword",
+                      "is_empowered",
+                      "xp_at_least",
+                      "battlefield_controlled",
+                      "zone_count_at_least"
+                    ]
+                  },
+                  "of": {
+                    "description": "and / or: at least two conditions; not: one."
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "object": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "player": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "keyword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "zone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "battlefield": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "location": {
+                    "enum": [
+                      "board",
+                      "battlefield",
+                      "base"
+                    ]
+                  },
+                  "controller_relation": {
+                    "enum": [
+                      "friendly",
+                      "enemy"
+                    ]
+                  }
+                }
               },
               "per_each": {
                 "type": "object",
-                "description": "A per-each source ('for each'); refused by name until P4."
+                "required": [
+                  "kind"
+                ],
+                "description": "ADR-0013 §6: 'for each' — the P4 layer counts how many times the leaf holds and multiplies the amount.",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "and",
+                      "or",
+                      "not",
+                      "runes_at_least",
+                      "attacking_or_defending_alone",
+                      "friendly_unit_defends_alone",
+                      "controls_units",
+                      "might_at_least",
+                      "has_keyword",
+                      "is_empowered",
+                      "xp_at_least",
+                      "battlefield_controlled",
+                      "zone_count_at_least"
+                    ]
+                  },
+                  "of": {
+                    "description": "and / or: at least two conditions; not: one."
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "object": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "player": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "keyword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "zone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "battlefield": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "location": {
+                    "enum": [
+                      "board",
+                      "battlefield",
+                      "base"
+                    ]
+                  },
+                  "controller_relation": {
+                    "enum": [
+                      "friendly",
+                      "enemy"
+                    ]
+                  }
+                }
               }
             }
           }
@@ -399,9 +647,72 @@
     "activation_conditions": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "description": "ADR-0013 §3 (condition.v1): a restricted typed AST — and / or / not over leaves that each name explicit state and the visibility they need. Free text and embedded programs are not accepted.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "and",
+              "or",
+              "not",
+              "runes_at_least",
+              "attacking_or_defending_alone",
+              "friendly_unit_defends_alone",
+              "controls_units",
+              "might_at_least",
+              "has_keyword",
+              "is_empowered",
+              "xp_at_least",
+              "battlefield_controlled",
+              "zone_count_at_least"
+            ]
+          },
+          "of": {
+            "description": "and / or: at least two conditions; not: one."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "object": {
+            "type": "string",
+            "minLength": 1
+          },
+          "player": {
+            "type": "string",
+            "minLength": 1
+          },
+          "keyword": {
+            "type": "string",
+            "minLength": 1
+          },
+          "zone": {
+            "type": "string",
+            "minLength": 1
+          },
+          "battlefield": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "enum": [
+              "board",
+              "battlefield",
+              "base"
+            ]
+          },
+          "controller_relation": {
+            "enum": [
+              "friendly",
+              "enemy"
+            ]
+          }
+        }
       },
-      "description": "A 'use only while / if' condition on the activation (Core 377.2.b): typed here, refused as unsupported until the P4 condition grammar."
+      "description": "ADR-0013 §3 / Core 377.2.b: the activation's own conditions, as condition.v1. The engine evaluates them; one that does not hold is illegal, one it cannot evaluate is unsupported."
     },
     "source": {
       "type": "object",

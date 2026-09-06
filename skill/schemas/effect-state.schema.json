@@ -500,7 +500,7 @@
             "type": "object"
           },
           "condition": {
-            "type": "object"
+            "$ref": "#/$defs/condition"
           },
           "duration": {
             "type": "object",
@@ -1694,6 +1694,72 @@
         "prevent_remaining": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "description": "ADR-0013 §3 (condition.v1): a restricted typed AST — and / or / not over leaves that each name explicit state and the visibility they need. Free text and embedded programs are not accepted.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "and",
+            "or",
+            "not",
+            "runes_at_least",
+            "attacking_or_defending_alone",
+            "friendly_unit_defends_alone",
+            "controls_units",
+            "might_at_least",
+            "has_keyword",
+            "is_empowered",
+            "xp_at_least",
+            "battlefield_controlled",
+            "zone_count_at_least"
+          ]
+        },
+        "of": {
+          "description": "and / or: at least two conditions; not: one."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "player": {
+          "type": "string",
+          "minLength": 1
+        },
+        "keyword": {
+          "type": "string",
+          "minLength": 1
+        },
+        "zone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "battlefield": {
+          "type": "string",
+          "minLength": 1
+        },
+        "location": {
+          "enum": [
+            "board",
+            "battlefield",
+            "base"
+          ]
+        },
+        "controller_relation": {
+          "enum": [
+            "friendly",
+            "enemy"
+          ]
         }
       }
     }

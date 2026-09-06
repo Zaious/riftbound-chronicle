@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:1ee1db0edd9d58276064a841",
-  "capability_set_id": "sha256:1ee1db0edd9d58276064a841b0c23e213cb537e5d63d1046e97824baeaa04d4f",
+  "manifest_id": "capability-manifest:56fde4c86d4b22d30da5522d",
+  "capability_set_id": "sha256:56fde4c86d4b22d30da5522d84171d00000c24cfc27ca459f97f6011e2f1299f",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:59b885e125eeeb205451e8bfce995b006962e1084b57fbf11c714b76c1d69355",
+    "value": "sha256:e63cc364bb56d614fcb7fce517fdcd2d17679834b95c537cb966f277a1fa871f",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:4bf241530bab9893f69612a9b2cb8375a1a642387d463973e0eacd11c0e826d7"
+        "sha256": "sha256:1283254353a44fac6b41e703faf9e422245d4283692c1ba1bcb44644486c5572"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:1f8653e3214a8135fafc2e3b3e19a5f7f85865c3d12e432b58864a858337c5ee"
+        "sha256": "sha256:2f95aa8269bb212a8a30f2f567d8b4c0af6915ca65fa3babd8de7be29818bf38"
       },
       {
         "path": "combat.py",
@@ -169,7 +169,8 @@
         "legend_zone_passives",
         "continuous_effects",
         "layer_engine",
-        "canonical_migration"
+        "canonical_migration",
+        "typed_conditions"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -190,6 +191,7 @@
         "champion_legend_movement",
         "token_not_in_catalogue",
         "layer_dependency_unresolved",
+        "condition_needs_hidden_information",
         "complete_game",
         "complete_legality"
       ]
@@ -259,14 +261,14 @@
         "play_sources",
         "cost_override",
         "ambush",
-        "play_from_hidden"
+        "play_from_hidden",
+        "evaluated_cost_modifications",
+        "activation_conditions"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
         "payment_stage_replacement_decisions",
-        "cost_modification_sources",
         "xp_buff_costs",
-        "activation_conditions",
         "legend_activation",
         "battlefield_control_transfer",
         "deck_construction",
@@ -1550,7 +1552,6 @@
   ],
   "exclusions": [
     "activate_named_triggers",
-    "activation_conditions",
     "add_reaction_resolution_during_payment",
     "arbitrary_card_effects",
     "arbitrary_card_text",
@@ -1566,10 +1567,10 @@
     "complete_action_set",
     "complete_game",
     "complete_legality",
+    "condition_needs_hidden_information",
     "continuous_dependency",
     "copy_characteristics",
     "cost_checks",
-    "cost_modification_sources",
     "damage_exemption_sources",
     "deck_construction",
     "distinct_per_turn_choice",

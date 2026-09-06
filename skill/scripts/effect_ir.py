@@ -625,8 +625,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"{label}.value must be {{amount: positive integer}} (Core 714.1)")
             if "passive" in effect and not isinstance(effect["passive"], bool):
                 errors.append(f"{label}.passive must be boolean")
-            if effect.get("condition") is not None and (not isinstance(effect["condition"], dict) or not isinstance(effect["condition"].get("kind"), str)):
-                errors.append(f"{label}.condition must be a typed condition with a kind")
+            if effect.get("condition") is not None:
+                errors.extend(f"{label}.{e}" for e in validate_condition(effect["condition"]))
     # ADR-0008 §5: bounded external Might auras (a source on the board or a
     # Battlefield; a named condition read by effective_might).
     auras = state.get("might_auras", [])
@@ -2741,16 +2741,7 @@ def _condition_holds(state: dict[str, Any], effect: dict[str, Any], object_id: s
     condition = effect.get("condition")
     if condition is None:
         return True
-    kind = condition["kind"]
-    obj = state["objects"][object_id]
-    designation = obj.get("combat_designation")
-    if kind == "runes_at_least":
-        return runes_on_board(state, obj["controller"]) >= condition["count"]
-    if kind == "attacking_or_defending_alone":
-        return designation is not None and is_alone(state, object_id)
-    if kind == "friendly_unit_defends_alone":
-        return designation is not None and designation.get("role") == "defender" and is_alone(state, object_id)
-    raise NotImplementedError(f"condition kind {kind!r} is not modelled (unsupported: condition_kind_unknown)")
+    return evaluate_condition(state, condition, controller=state["objects"][object_id]["controller"], object_id=object_id)
 
 
 def _applied_amount(effect: dict[str, Any], current: int) -> int:
@@ -2765,6 +2756,157 @@ def _applied_amount(effect: dict[str, Any], current: int) -> int:
     if "maximum" in value and current + amount > value["maximum"]:
         amount = value["maximum"] - current
     return amount
+
+
+# ------------------------------------------------------------------ condition.v1 --
+# ADR-0013 §3: a restricted typed AST. Every leaf names explicit state and the
+# visibility it needs; free text and embedded programs are not accepted, and a
+# leaf that would read a zone the asking perspective cannot see is refused.
+CONDITION_NODES = {"and", "or", "not"}
+CONDITION_LEAVES = {
+    "runes_at_least": {"count"},
+    "attacking_or_defending_alone": set(),
+    "friendly_unit_defends_alone": set(),
+    "controls_units": {"count", "location", "controller_relation"},
+    "might_at_least": {"count", "object"},
+    "has_keyword": {"keyword", "object"},
+    "is_empowered": {"object"},
+    "xp_at_least": {"count", "player"},
+    "battlefield_controlled": {"battlefield", "controller_relation"},
+    "zone_count_at_least": {"zone", "count", "player"},
+}
+CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
+                      "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
+                      "zone_count_at_least": {"zone", "count"}}
+PRIVATE_ZONES = {"hand", "main_deck", "rune_deck"}
+
+
+class ConditionUnsupported(NotImplementedError):
+    """A condition the engine will not evaluate: an unknown leaf, or one that
+    needs information the asking perspective cannot see."""
+
+
+def validate_condition(condition: Any, path: str = "condition") -> list[str]:
+    if not isinstance(condition, dict) or not isinstance(condition.get("kind"), str):
+        return [f"{path} must be an object with a kind"]
+    kind = condition["kind"]
+    if kind in CONDITION_NODES:
+        if kind == "not":
+            if set(condition) != {"kind", "of"}:
+                return [f"{path}.not must carry exactly of"]
+            return validate_condition(condition["of"], f"{path}.of")
+        if set(condition) != {"kind", "of"} or not isinstance(condition["of"], list) or len(condition["of"]) < 2:
+            return [f"{path}.{kind} must carry an `of` array of at least two conditions"]
+        return [e for index, child in enumerate(condition["of"]) for e in validate_condition(child, f"{path}.of[{index}]")]
+    if kind not in CONDITION_LEAVES:
+        return [f"{path}.kind {kind!r} is not a condition.v1 leaf"]
+    allowed = CONDITION_LEAVES[kind] | {"kind"}
+    if set(condition) - allowed or not CONDITION_REQUIRED.get(kind, set()) <= set(condition):
+        return [f"{path}.{kind} must carry {sorted(CONDITION_REQUIRED.get(kind, set()))} and only {sorted(allowed - {'kind'})}"]
+    for field in ("count",):
+        if field in condition and (not isinstance(condition[field], int) or isinstance(condition[field], bool) or condition[field] < 0):
+            return [f"{path}.{field} must be a non-negative integer"]
+    if "controller_relation" in condition and condition["controller_relation"] not in {"friendly", "enemy"}:
+        return [f"{path}.controller_relation must be friendly or enemy"]
+    if "location" in condition and condition["location"] not in {"board", "battlefield", "base"}:
+        return [f"{path}.location must be board, battlefield or base"]
+    if "zone" in condition and condition["zone"] not in PLAYER_ZONES:
+        return [f"{path}.zone must be one of {sorted(PLAYER_ZONES)}"]
+    return []
+
+
+def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, controller: str | None = None,
+                       object_id: str | None = None, perspective: str | None = None) -> bool:
+    """ADR-0013 §3. `controller` is the effect's controller, `object_id` the
+    object it is about, `perspective` the player asking — a leaf that needs a
+    private zone of anyone else is refused rather than answered."""
+    problems = validate_condition(condition)
+    if problems:
+        raise ValueError("; ".join(problems))
+    kind = condition["kind"]
+    if kind == "not":
+        return not evaluate_condition(state, condition["of"], controller=controller, object_id=object_id, perspective=perspective)
+    if kind in {"and", "or"}:
+        results = [evaluate_condition(state, child, controller=controller, object_id=object_id, perspective=perspective) for child in condition["of"]]
+        return all(results) if kind == "and" else any(results)
+    subject = condition.get("object", object_id)
+    if kind == "runes_at_least":
+        owner = controller or (state["objects"][subject]["controller"] if subject else None)
+        return runes_on_board(state, owner) >= condition["count"]
+    if kind == "attacking_or_defending_alone":
+        designation = state["objects"][subject].get("combat_designation") if subject else None
+        return designation is not None and is_alone(state, subject)
+    if kind == "friendly_unit_defends_alone":
+        designation = state["objects"][subject].get("combat_designation") if subject else None
+        return designation is not None and designation.get("role") == "defender" and is_alone(state, subject)
+    if kind == "might_at_least":
+        return subject is not None and effective_might(state, subject) >= condition["count"]
+    if kind == "has_keyword":
+        return subject is not None and has_keyword(state, subject, condition["keyword"])
+    if kind == "is_empowered":
+        return bool(state["objects"].get(subject, {}).get("empowered")) if subject else False
+    if kind == "xp_at_least":
+        player = condition.get("player", controller)
+        return int(state["players"].get(player, {}).get("xp", 0)) >= condition["count"]
+    if kind == "battlefield_controlled":
+        holder = state["battlefields"].get(condition["battlefield"], {}).get("controller")
+        relation = condition.get("controller_relation", "friendly")
+        return same_side(state, controller, holder) if relation == "friendly" else (holder is not None and not same_side(state, controller, holder))
+    if kind == "controls_units":
+        location = condition.get("location", "board")
+        relation = condition.get("controller_relation", "friendly")
+        count = 0
+        for object_id_, obj in state["objects"].items():
+            if obj.get("kind") != "unit":
+                continue
+            where = find_location(state, object_id_)
+            if zone_class(where) != "board":
+                continue
+            if location == "battlefield" and where[0] != "battlefield":
+                continue
+            if location == "base" and where[0] != "player":
+                continue
+            friendly = same_side(state, controller, obj.get("controller"))
+            if (relation == "friendly") != friendly:
+                continue
+            count += 1
+        return count >= condition["count"]
+    if kind == "zone_count_at_least":
+        player = condition.get("player", controller)
+        zone = condition["zone"]
+        if zone in PRIVATE_ZONES and perspective is not None and perspective != player:
+            raise ConditionUnsupported(
+                f"counting {player}'s {zone} needs private information that {perspective} cannot see (Core 128.4) "
+                "(unsupported: condition_needs_hidden_information)")
+        return len(state["players"].get(player, {}).get("zones", {}).get(zone, [])) >= condition["count"]
+    raise ConditionUnsupported(f"condition leaf {kind!r} is recognised but not evaluated (unsupported: condition_kind_unknown)")
+
+
+def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, Any], actor: str) -> dict[str, Any]:
+    """ADR-0013 §6 / cost_modification.v1: P4 evaluates the condition and the
+    per-each count; P2 consumes the result and never evaluates a source."""
+    result = {"modification_id": modification.get("id"), "applies": True, "amount": modification.get("amount", 0),
+              "provenance": {"evaluated_by": "p4_condition_layer"}}
+    condition = modification.get("condition")
+    if condition is not None:
+        result["applies"] = evaluate_condition(state, condition, controller=actor)
+        result["condition_result"] = result["applies"]
+    per_each = modification.get("per_each")
+    if per_each is not None:
+        problems = validate_condition({**per_each, "count": 0} if "count" not in per_each else per_each)
+        if problems:
+            raise ValueError("; ".join(problems))
+        if per_each.get("kind") != "controls_units":
+            raise ConditionUnsupported(f"per-each over {per_each.get('kind')!r} is not counted by this slice (unsupported: cost_modification_per_each_scope)")
+        count = 0
+        while evaluate_condition(state, {**per_each, "count": count + 1}, controller=actor):
+            count += 1
+            if count > 64:
+                raise ConditionUnsupported("a per-each count exceeded the bounded search (unsupported: cost_modification_per_each_bound)")
+        result["per_each_count"] = count
+        result["amount"] = modification.get("amount", 0) * count
+        result["applies"] = count > 0
+    return result
 
 
 def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:

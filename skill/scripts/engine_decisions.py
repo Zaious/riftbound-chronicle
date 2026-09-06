@@ -42,7 +42,8 @@ DECISIONS_VERSION = "engine-decisions.v1"
 STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
 # ADR-0010 §2: player_selection names another player (the Burn Out beneficiary).
 # ADR-0011 §2–3: mode_selection names a modal option by its stable id;
-# card_ordering is the player's complete permutation of looked-at / revealed cards.
+# card_ordering is the player's permutation of the looked-at / revealed cards
+# that remain: complete whenever any card is left, empty when none is.
 KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
@@ -102,8 +103,12 @@ def validate_engine_decisions(value: Any) -> list[str]:
         if kind in {"target_selection", "card_selection", "card_ordering"}:
             # ADR-0011 §1: an empty card_selection is the "none" answer of an
             # any_number / up_to choice; instructions that need a count refuse it.
-            if not isinstance(val, list) or (kind == "card_ordering" and not val) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
-                errors.append(f"{label}.value must be a {'non-empty ' if kind == 'card_ordering' else ''}unique array of object ids")
+            # Codex G-1 §11.7: an empty ordering is the answer when nothing is
+            # left to put back (Predict that Recycles everything). Completeness
+            # is checked against the candidates in `check_choice_entry`, where
+            # the candidate set is known — not here, where it is not.
+            if not isinstance(val, list) or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val)):
+                errors.append(f"{label}.value must be a unique array of object ids")
             identities = item.get("selection_identities")
             if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, list) else []):
                 errors.append(f"{label}.selection_identities must map every selected object id exactly once")

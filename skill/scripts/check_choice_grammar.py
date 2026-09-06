@@ -247,6 +247,17 @@ def main() -> int:
     for label, env in (("without identities", no_ids), ("with a repeated card", dup_ids)):
         if not ed.validate_engine_decisions(env):
             errors.append(f"a card_ordering {label} was accepted")
+    # Codex G-1 §11.7: an empty ordering is the answer when nothing is left to
+    # put back; completeness is judged against the candidates, not at the envelope.
+    empty_order = envelope(state, {"decision_id": "order", "stage": "resolution", "kind": "card_ordering", "controller": "p1", "value": [], "selection_identities": {}})
+    if ed.validate_engine_decisions(empty_order):
+        errors.append(f"an empty card_ordering was refused by the envelope: {ed.validate_engine_decisions(empty_order)}")
+    permutation = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": "p1"}
+    entry = empty_order["decisions"][0]
+    if ed.check_choice_entry(permutation, entry, "p1", [], {})[1] is not None:
+        errors.append("an empty ordering was refused although nothing was left to order")
+    if ed.check_choice_entry(permutation, entry, "p1", ["c1", "c2"], {"c1": "c1@0", "c2": "c2@0"})[1] != "invalid":
+        errors.append("negative mutation failed: the same empty ordering passed against two candidates, so completeness is not checked")
     # A card choice may carry the play_declaration stage only while a cost is
     # being paid (Core 357.2); a resolution-time instruction refuses it.
     at_play = apply_program(trash2, rec, decisions=envelope(trash2, card_decision("card_selection", "which", ["c2"], trash2, stage="play_declaration")))

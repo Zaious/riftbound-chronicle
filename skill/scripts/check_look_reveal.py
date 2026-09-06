@@ -183,6 +183,11 @@ def main() -> int:
     both_done = apply_program(state, pred, decisions=envelope(state, ordering("rc", ["c1", "c2"], state, kind="card_selection"), ordering("ro", ["c1", "c2"], state)))
     if not both_done.get("committed") or both_done["next_state"]["players"]["p1"]["zones"]["main_deck"] != ["c3", "c1", "c2"] or ev(both_done).get("recycled_count") != 2 or ev(both_done).get("put_back_count") != 0 or object_identity(both_done["next_state"], "c1") != "c1@0":
         errors.append(f"predict recycling both did not bottom them in order (same deck, same identity): {both_done.get('reason') or both_done.get('errors')} {ev(both_done)}")
+    supplied_empty = apply_program(state, pred, decisions=envelope(
+        state, ordering("rc", ["c1", "c2"], state, kind="card_selection"), ordering("ro", ["c1", "c2"], state),
+        {"decision_id": "pb", "stage": "resolution", "kind": "card_ordering", "controller": "p1", "value": [], "selection_identities": {}}))
+    if not supplied_empty.get("committed") or supplied_empty["next_state"]["players"]["p1"]["zones"]["main_deck"] != ["c3", "c1", "c2"]:
+        errors.append(f"a supplied empty put-back ordering poisoned the envelope (Codex G-1 §11.7): {supplied_empty.get('reason_code')} {supplied_empty.get('errors')}")
     one_of_two = apply_program(state, pred, decisions=envelope(state, ordering("rc", ["c1"], state, kind="card_selection")))
     if not one_of_two.get("committed") or one_of_two["next_state"]["players"]["p1"]["zones"]["main_deck"] != ["c2", "c3", "c1"]:
         errors.append(f"predict recycling one of two needed a decision it should not: {one_of_two.get('reason_code')} {one_of_two.get('errors')}")

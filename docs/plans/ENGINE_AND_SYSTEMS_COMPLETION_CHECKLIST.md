@@ -174,31 +174,73 @@ frozen, fixture expansion and official-example encoding become
 Default ownership: `[JOINT]`. Codex specifies the semantic/state contract and
 Claude may implement one bounded operation plus tests at a time.
 
-- [ ] Generic choices: zero/one/up-to/exactly-N, divide, order, reveal
+- [x] Generic choices: zero/one/up-to/exactly-N, divide, order, reveal
   selection, and affected-player decisions.
-- [ ] Typed costs: Energy, Power, exhaust, sacrifice/kill, discard, banish,
+  (C-40, ADR-0011 §1–2: one typed `choice` specification — selection_kind,
+  count, source, chooser, visibility, identity binding, enumerable cap — over
+  the decision envelope, with `mode_selection` by stable option id and
+  `card_ordering` for permutations; a private source is never listed in an
+  engine result or check. Divide-among-targets and per-player simultaneous
+  choices stay open: `each_player_choice` and `distinct_per_turn_choice` are
+  declared unsupported.)
+- [x] Typed costs: Energy, Power, exhaust, sacrifice/kill, discard, banish,
   return, and alternative/additional costs.
   (C-15: Energy, Power, exhaust, kill and mandatory/optional additional costs
   inside an atomic play transaction with receipts; C-23: any-domain Power
-  (`power_any`) for Deflect; discard, banish, return, alternative costs remain.)
-- [ ] Full card-play lifecycle for Units, Gear, Spells, Runes, Hidden, and
+  (`power_any`) for Deflect; C-42, ADR-0011 §4: discard, recycle-from-trash,
+  kill_this, recall_self and banish_self, [Repeat] as an optional additional
+  cost, restricted Add resources, and cost modification as typed input with
+  provenance; C-44, ADR-0012 §1: `cost_override` for "ignoring its base cost"
+  and Flow-style replacements. XP, Buff and Empower costs are typed and
+  refused as `xp_buff_costs`; the *sources* of cost modifications stay P4.)
+- [x] Full card-play lifecycle for Units, Gear, Spells, Runes, Hidden, and
   abilities; `play_token` is not a substitute.
   (C-19: Units and Gear resolve by the permanent entry procedure with the
   location chosen at play and the open-Battlefield permission, 355.2; play
   triggers fire on play completion, 419.4.a; Spells since C-15, Runes via
-  channel since C-16. Hidden and activated abilities remain.)
-- [ ] Look, reveal, search, shuffle, randomize, discard, and banish operations.
-  (C-22: discard as the player's private selection, 422; the rest remain.)
+  channel since C-16; C-42: activated abilities are chain items of kind
+  `ability` with their source, [Add] included; C-44/C-45: typed play sources
+  — hand, Champion Zone, trash with a granted permission, and facedown — with
+  Ambush and the Hidden path. 421.4 and the Cleanup removal of hidden cards
+  remain unsupported.)
+- [x] Look, reveal, search, shuffle, randomize, discard, and banish operations.
+  (C-22: discard as the player's private selection, 422; C-41: `look_at_top`,
+  `reveal`, `put_back` by the player's `card_ordering`, `put_in_hand`,
+  `draw_it`, multi-card `recycle` as one Game Action and `predict`, none of
+  which Burn Out on a short deck, 431.1.c; C-43: `banish` and `burn`.
+  Searching a deck and shuffling as a player action remain; randomization
+  itself stays an external receipt, ADR-0010 §2.)
 - [x] Recall as its own non-Move action and correct destination semantics.
   (C-16: `recall` to the current controller's Base, damage/exhaustion/modifiers
   retained, no Move trigger; Core 455–458.1.)
-- [ ] Countering Chain Items and counter-prevention interactions.
-- [ ] Attach, detach, Equip, Equipment, Gear Unit, Top-Most, and host changes.
+- [x] Countering Chain Items and counter-prevention interactions.
+  (C-43, ADR-0011 §5: `counter` clears the effect-side entry and sends the
+  card to its owner's trash — or hand — as a new object, records that it was
+  not played and that no cost is refunded, and the resolution bridge removes
+  the timing item in the same commit through `rules_core.remove_chain_item`;
+  neither state commits when the timing chain does not carry it. "Can't be
+  countered" is a P4 static and is refused by name.)
+- [x] Attach, detach, Equip, Equipment, Gear Unit, Top-Most, and host changes.
+  (C-46, ADR-0012 §4: `attached_to` names the Top-Most card and the other
+  direction is derived; attaching takes the host's location and changes
+  nothing else, 434.4–434.5.a; every attached card's Might Bonus modulates the
+  host, 159.1; detaching derives its destination — the host's location, the
+  host's last board location when it left for a non-board zone, and a
+  Cleanup Recall record for a Gear left at a Battlefield, 435.4–435.4.b.
+  Equip runs through the activation path. Nested attachments and Effect Text
+  appending are declared unsupported.)
 - [ ] Buff/debuff objects and spend/remove/copy behavior beyond raw Might.
 - [x] Channel and Rune-specific entry, ready/exhaust, and zone behavior.
   (C-16: `channel_rune` with entry state, partial completion per 430.3, new
   identity per 124.)
 - [ ] Create/copy predefined tokens from a versioned token catalog.
+  (C-48, ADR-0012 §6: `token-catalog.v1` with its schema, the promotion tool
+  and its gate are in place, and `play_token` records the `token_id` it was
+  compiled from; the catalogue ships **empty** because Codex's G-1 ruling on
+  DP-67 makes every entry a manual promotion with an official text hash, the
+  source cards and a reviewer/date record. The item stays open until tokens
+  are actually reviewed. Copy is a typed request that fails closed,
+  `copy_characteristics`, until the P4 layer contract.)
 - [ ] Score, conquer, hold, battlefield control, and Victory Score operations.
   (C-33..C-35, bounded slice per ADR-0009: control established after a
   Combat or a Non-Combat Showdown and lost in Cleanup; Conquer and Hold once
@@ -721,6 +763,15 @@ push” does not isolate a commit on shared `main`.
 | C-37 — completed 2026-09-06 | Burn Out on Draw, randomization receipts and the terminal bridge | ADR-0010 §2 | effect_ir.perform_draw with randomization-receipt.v1 and player_selection; the empty-Trash sequence wins immediately from the second Burn Out; every Draw entry (bridge, control transaction, scoring step, draw step) writes the terminal in its own commit; Draw clauses derive full |
 | C-38 — completed 2026-09-06 | Start of Turn state machine, Mode of Play and turn transition | ADR-0010 §1, §6–9 | turn_cycle.py begin_turn / awaken / enter_beginning / channel / draw / enter_main with typed turn_progress and 319.2 Cleanup gating; First Turn Process from mode.id (duel, skirmish) or mode.first_turn; match and team modes unsupported |
 | C-39 — completed 2026-09-06 | Atomic Cleanup orchestration with 322 iterations and G3 docs | ADR-0010 §5, §11 | run_cleanup runs 323 steps 1–10a on one working state, death triggers stay Pending, follow-up Cleanups iterate to a stable state, any decision or unsupported step commits nothing, 323.7 fails closed |
+| C-40 — completed 2026-09-06 | Choice grammar, modal abilities and the new decision kinds | ADR-0011 §1–2, §6 | One typed `choice` specification over engine-decisions.v1; `mode_selection` by stable option id recorded on the chain entry; `card_ordering` for permutations; private options never listed in a result or an engine-check |
+| C-41 — completed 2026-09-06 | Look, reveal, put back, recycle and Predict | ADR-0011 §3 | look_at_top / reveal marks that live only while a program runs (424.3.a), put_back by the player's card_ordering, put_in_hand / draw_it, multi-card recycle as one Game Action with the 416.5 order, Predict without Burn Out |
+| C-42 — completed 2026-09-06 | Payment catalogue, activated abilities, Repeat and restricted resources | ADR-0011 §4 | discard / recycle_trash / kill_this / recall_self payments with receipt events; activated abilities as chain items of kind `ability`; [Repeat] executions with suffixed choices; restricted Add resources spent only on their named uses; cost modifications accepted only as evaluated typed input |
+| C-43 — completed 2026-09-06 | Banish, Counter and [Burn N] | ADR-0011 §5 | banish (not a Kill, not a Discard); counter clearing the chain item on both sides in one commit via rules_core.remove_chain_item; burn, with a short deck refused as burn_out_non_draw rather than borrowing the Draw receipt |
+| C-44 — completed 2026-09-06 | Play sources, cost overrides, Ambush and Unique | ADR-0012 §1–2 | Typed `source` (hand, Champion Zone, trash with a granted permission), `cost_override`, Ambush as a play permission with its timing; Unique recorded as the deck-construction constraint Core 825.3 makes it, never a play restriction |
+| C-45 — completed 2026-09-06 | Facedown Zones, the Hide action and playing from Hidden | ADR-0012 §3 | Each Battlefield's Facedown Zone with its capacity; hide_card as a Discretionary Action with its own receipt use, so play-restricted resources cannot pay it; playing from Hidden the next turn with the base cost ignored and the 811.4 targeting restriction |
+| C-46 — completed 2026-09-06 | Attachments, Top-Most and derived detach destinations | ADR-0012 §4 | attached_to with derived attachments, the Might Bonus on the Top-Most card, and one derivation for every host departure — killed, banished, returned, recycled or moved |
+| C-47 — completed 2026-09-06 | Legends, the Champion Zone and the fail-closed copy request | ADR-0012 §5, §7 | `legend` objects that exist only in a Legend Zone or Banishment, passives that stay active from the Legend Zone, Board selectors that never reach a Legend; copy_object refuses rather than half-copying. Annie - Fiery and Master Yi - Wuju Bladesman derive full |
+| C-48 — completed 2026-09-06 | The hand-promoted token catalogue | ADR-0012 §6 | token-catalog.v1 with its schema, promotion tool and gate; play_token records its token_id; the catalogue ships empty because nothing has been reviewed yet |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first

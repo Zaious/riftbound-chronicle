@@ -97,8 +97,10 @@ frozen, fixture expansion and official-example encoding become
   (C-26/C-30: one `combat` record on the timing state — staged, open,
   showdown_closed, damage_assigned, damage_dealt, cleanup_done,
   result_determined — plus `showdown.battlefield` and Focus passes that
-  close a Combat Showdown; `next_procedure` reports `combat_step_pending`;
-  a Non-Combat Showdown's close stays at the G2 boundary.)
+  close a Combat Showdown; `next_procedure` reports `combat_step_pending`.
+  C-33/C-34: `control_resolved`, `showdown.closing`, `staged_showdowns`;
+  a Non-Combat Showdown every player passed reports
+  `control_resolution_pending`.)
 - [ ] Official conformance corpus covering every R1 clause and adverse ordering
   combination.
 
@@ -189,6 +191,13 @@ Claude may implement one bounded operation plus tests at a time.
   identity per 124.)
 - [ ] Create/copy predefined tokens from a versioned token catalog.
 - [ ] Score, conquer, hold, battlefield control, and Victory Score operations.
+  (C-33..C-35, bounded slice per ADR-0009: control established after a
+  Combat or a Non-Combat Showdown and lost in Cleanup; Conquer and Hold once
+  per Battlefield per turn with the Final Point rule; Score triggers from
+  modelled board sources; the victory condition reported as facts only.
+  Still open: team scoring, Hidden (466.5.c), non-Conquer/Hold point
+  sources, "activate" of named triggers, the Beginning Phase machine, the
+  terminal state and Burn Out.)
 - [ ] Burn Out and its complete loss/continuation semantics.
 
 ### Conditions, targets, and instruction grammar still required
@@ -260,20 +269,29 @@ Dependency milestones are defined in
   closure contracts; C-26 through C-31 implement staging, opening,
   designations, Attack/Defend and Battlefield triggers, the Showdown close,
   Combat Damage assignment with previewed replacements, the simultaneous
-  Deal, the Combat Cleanup, the result and the closure that abstains at the
-  Battlefield-control boundary. Still open: start/end-of-combat effects,
+  Deal, the Combat Cleanup, the result and the closure after control
+  resolution (ADR-0009). Still open: start/end-of-combat effects,
   player-level Attack/Defend triggers, take-damage triggers, damage
   exemption sources, non-Prevent assignment replacements, Combats between
   more than two players.)
 - [ ] **G2 — Battlefield control, Conquer, and Scoring.** Complete control,
   point, and scoring semantics.
+  (ADR-0009 fixes the state, procedure and scoring contracts; C-33 through
+  C-35 implement `battlefield_control.py`: atomic control resolution after
+  a Combat or a Non-Combat Showdown, Conquer with the Final Point rule and
+  its Burn Out rollback, typed Score triggers, staged Non-Combat Showdowns
+  opened by the Turn Player's choice, the board Cleanup steps 323.6 /
+  323.11 / 323.11.a, Hold as the Scoring Step, and `victory_check` facts.
+  Still open: team scoring, Hidden, 323.7, non-Conquer/Hold point sources,
+  383.4.g "activate", the Beginning Phase state machine.)
 - [ ] **G3 — Victory and Terminal State.** Complete Victory Score, ties,
   simultaneous terminal events, Burn Out, terminal reasons, and reward adapter.
 
 - [ ] Complete normal Cleanup steps 1–10a.
   (C-26/C-31: step 2 designation synchronization, 3a/3b lethal Cleanup with
-  Combat-Damage attribution, and steps 7–7a/10 as `stage_combat`; steps 1,
-  4–6, 8–9 remain.)
+  Combat-Damage attribution, and steps 7–7a/10 as `stage_combat`; C-34:
+  steps 4, 6, 8–8a and 9 as `run_board_cleanup`, `stage_showdown` and
+  `open_showdown`; steps 1 and 5 (323.7) remain.)
 - [ ] Special, Combat, and End-of-Turn Cleanup additions.
   (C-21: the Ending Special Cleanup; C-31: the Combat Special Cleanup —
   heal all Units, Recall Attackers if Defenders remain.)
@@ -287,16 +305,21 @@ Dependency milestones are defined in
   previewed and consumed once, receipts bound to the effect-state snapshot,
   Units as sources; damage-exemption sources (465.2.c.10) and non-Prevent
   assignment replacements remain unsupported, so Tank clauses stay partial.)
-- [ ] Showdown staging, opening, action cycle, resolution, and closure.
+- [x] Showdown staging, opening, action cycle, resolution, and closure.
   (C-26/C-30/C-31: staging, opening with Focus, Focus passes closing a
-  Combat Showdown, result and closure for Combats; the Non-Combat Showdown's
-  closure and control establishment remain with G2.)
-- [ ] Battlefield Contested/control transitions.
-  (C-31: Contested cleared when the remaining player already controls the
-  Battlefield; control transitions remain for G2.)
+  Combat Showdown, result and closure for Combats; C-34: Non-Combat
+  Showdowns staged as a set, opened by the Turn Player's choice with Focus
+  to the player who applied Contested, closed into control resolution.)
+- [x] Battlefield Contested/control transitions.
   (C-19: `contested` / `contested_by` recorded on entering an uncontrolled
-  Battlefield, 190.3.a.1; control transitions remain for G2.)
-- [ ] Implement the Conquer/point/control components required by G2.
+  Battlefield, 190.3.a.1; C-33/C-34: control established after a Combat
+  or a Non-Combat Showdown, Uncontrolled after an emptied Combat, lost in
+  the board Cleanup, Contested cleared / removed / re-applied per 466.5.a,
+  323.11, 323.11.a; 466.5.c Hidden unsupported.)
+- [x] Implement the Conquer/point/control components required by G2.
+  (C-33/C-35: `points`, `scored_this_turn`, `mode`, `score_battlefield`,
+  Conquer and Hold, Score triggers, `victory_check` facts; bounded per
+  ADR-0009's coverage boundary.)
 - [ ] Implement terminal detection, ties, Burn Out, and reward adapter required
   by G3.
 - [ ] Complete turn start/main/ending phase transitions.
@@ -662,6 +685,9 @@ push” does not isolate a commit on shared `main`.
 | C-30 — bounded slice completed 2026-09-05 | Combat Damage assignment and replacement preview receipts | ADR-0008 §8–9 | pass_focus closes the Combat Showdown; assign_combat_damage validates damage_assignment decisions against 465.2.c.3–c.9 (official examples as goldens), previews Prevent values only (other modes and 465.2.c.10 exemptions unsupported), auto-advances only for the sole legal assignment, records receipts bound to the effect-state snapshot |
 | C-31 — completed 2026-09-05 | Simultaneous Combat Deal, Cleanup, result and closure boundary | ADR-0008 §10 | deal_combat_damage from snapshot-bound receipts with replacements consumed once; combat_cleanup in 323 order (designations, death triggers, kills attributed per object to the opposing side, heal, Recall, 324.2 follow-up); determine_combat_result after the chain empties; close_combat expires this-combat effects, stages the both-remain Combat again, and abstains as unsupported battlefield_control_resolution where 466.5 would change control |
 | C-32 — completed 2026-09-05 | R3-A3 card programs and re-derived manifest | C-26..C-31 landed; ADR-0008 §11; Codex review-fix | 13 clauses / 12 cards with combat-scenario fixtures staged by the real procedures; 9 full, 4 partial (the Legend clause, the two Tank clauses, the mutual-damage clause); vanilla Units probed as intrinsic unit_combat; mirrored runs |
+| C-33 — completed 2026-09-06 | Battlefield control resolution, Conquer scoring and Score triggers | ADR-0009 §1–2, §5–7, §11 | battlefield_control.resolve_battlefield_control atomic after a decided Combat (466.5, control_resolved); score_battlefield once per Battlefield per turn with the Final Point rule, draw-instead and unsupported burn_out rollback; Score triggers unit_here / controller / Battlefield; close_combat after control resolution; engine-check kind control_step |
+| C-34 — completed 2026-09-06 | Non-Combat Showdowns and board Cleanup | ADR-0009 §3–4, §9 | stage_showdown rebuilds staged_showdowns; open_showdown with showdown_location and Focus to the applier before 323.13; pass_focus marks a Non-Combat Showdown closing; sole occupant hands over to control resolution, empty defers to 323.6, both present unsupported; run_board_cleanup for 323.6 / 323.11 / 323.11.a with an ongoing-only exemption |
+| C-35 — completed 2026-09-06 | Scoring Step (Hold), victory facts, control_step scope and docs | ADR-0009 §8, §10, §12 | run_scoring_step Holds every controlled Battlefield not yet scored with no Final Point restriction, one trigger batch; victory_facts step reports threshold_met / strict_leader / tied_at_threshold without a winner; engine-check.md, rules-core.md, effect-ir.md |
 
 Former C-03 is intentionally moved to D-00. A schema-only viewer would be a
 fixture harness, not evidence that any demo is connected; Rule Consult's first

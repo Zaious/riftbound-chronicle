@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:1bb88621f9a1c364f970746c",
-  "capability_set_id": "sha256:1bb88621f9a1c364f970746c6153145e4b9a00fb39263165872032d0dfecc4f6",
+  "manifest_id": "capability-manifest:7e38694a1b92be9aa8888fc8",
+  "capability_set_id": "sha256:7e38694a1b92be9aa8888fc851474da289d1dfe59a847cee60228141a6fec7d1",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:6ed91d8ed7f8f44111d2fba912094d8832716f8b43ddf1b433e5fe845012b834",
+    "value": "sha256:143afa4abb292bf6348ec049255aa399550ffbac4cc438690b20e71ebe5303bf",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:bc47bfbb9972daf4c28784f18c92556e96d76d88f9fe257fd480e98a16fdb286"
+        "sha256": "sha256:63d5f2fbfa52c1ef9ea68fae98f6b22a7a630e2732feb6a0ad067f53fce01fac"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:1252343cbc8dbd630e0da6f2b496be78f9b899942f843250328189edb87696fb"
+        "sha256": "sha256:811d72423d2338492eb626d5497ebf906959d3f456371b2f415c22c81b3ddb7f"
       },
       {
         "path": "combat.py",
@@ -217,7 +217,10 @@
         "discard_recycle_costs",
         "self_costs",
         "restricted_resources",
-        "typed_cost_modification_input"
+        "typed_cost_modification_input",
+        "play_sources",
+        "cost_override",
+        "ambush"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
@@ -227,6 +230,7 @@
         "activation_conditions",
         "legend_activation",
         "battlefield_control_transfer",
+        "deck_construction",
         "complete_game",
         "complete_legality"
       ]
@@ -1483,6 +1487,7 @@
     "cost_checks",
     "cost_modification_sources",
     "damage_exemption_sources",
+    "deck_construction",
     "distinct_per_turn_choice",
     "each_player_choice",
     "effect_prerequisites",

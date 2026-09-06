@@ -163,8 +163,8 @@ KIND_CONFIG = {
     "play": {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
-        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input"],
-        "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "xp_buff_costs", "activation_conditions", "legend_activation", "battlefield_control_transfer", "complete_game", "complete_legality"],
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input", "play_sources", "cost_override", "ambush"],
+        "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "cost_modification_sources", "xp_buff_costs", "activation_conditions", "legend_activation", "battlefield_control_transfer", "deck_construction", "complete_game", "complete_legality"],
     },
     # ADR-0007 §8: two turn-boundary procedures, not a turn transition.
     "turn_step": {

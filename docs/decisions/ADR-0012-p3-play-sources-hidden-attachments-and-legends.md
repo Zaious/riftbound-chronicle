@@ -32,10 +32,12 @@ for a Legend, so clauses on Annie - Fiery and Master Yi stay `partial` for
 ### 1. A play declares its source; the cost override is typed (DP-69)
 
 The declaration gains `source: {kind, battlefield?}` with `kind` in `hand`
-(the default), `trash`, `champion_zone`, `legend_zone` and `facedown`. The
-transaction checks the card is in that zone and that the zone permits play:
-the Champion Zone plays as normal (108.3.e), a trash or facedown source needs
-a permission the card or an effect granted, recorded as
+(the default), `champion_zone`, `trash` and `facedown`. A Legend is never a
+play source: the Champion Legend cannot leave the Legend Zone and other
+legends may only move between it and Banishment (107.4.d). The transaction
+checks the card is in that zone and that the zone permits play: the Champion
+Zone plays as normal (108.3.e), while a trash or facedown source needs a
+permission the card or an effect granted, recorded as
 `source_permission: {granted_by}`. A source the declaration does not justify
 is `illegal: play_source_not_permitted`; a card that is not in the named zone
 is `illegal: card_not_in_source`.

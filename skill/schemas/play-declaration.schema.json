@@ -402,6 +402,69 @@
         "type": "object"
       },
       "description": "A 'use only while / if' condition on the activation (Core 377.2.b): typed here, refused as unsupported until the P4 condition grammar."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "description": "ADR-0012 §1: where the card is played from. The hand is the default; the Champion Zone plays as normal (Core 108.3.e); a trash source needs source_permission.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "hand",
+            "champion_zone",
+            "trash"
+          ]
+        },
+        "battlefield": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "source_permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "granted_by"
+      ],
+      "properties": {
+        "granted_by": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "What granted the permission to play from that source; the engine records it, the P4 condition layer evaluates its source."
+    },
+    "cost_override": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source"
+      ],
+      "description": "ADR-0012 §1: replaces the base cost before Core 356 runs — Hidden's 'ignoring its base cost' (811) or a Flow cost.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "ignore_base_cost",
+            "for_cost"
+          ]
+        },
+        "cost": {
+          "$ref": "#/$defs/resourceCost"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "timing_source": {
+      "const": "ambush",
+      "description": "ADR-0012 §2: the declared Reaction timing comes from Ambush (Core 822.1); the engine verifies the Battlefield holds a friendly Unit."
     }
   },
   "$defs": {

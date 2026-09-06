@@ -474,6 +474,24 @@
           "items": {
             "type": "string"
           }
+        },
+        "legend_zone": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "ADR-0012 §5: a public zone that is not a Location (Core 107.4.d, 108.3). Optional; absent means the state does not model it."
+        },
+        "champion_zone": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "ADR-0012 §5: a public zone that is not a Location (Core 107.4.d, 108.3). Optional; absent means the state does not model it."
         }
       }
     },
@@ -783,7 +801,8 @@
           "uniqueItems": true,
           "items": {
             "enum": [
-              "open_battlefield"
+              "open_battlefield",
+              "ambush"
             ]
           },
           "description": "Compiled permissions widening the valid play locations (Core 355.2.b)."
@@ -1156,6 +1175,10 @@
               "backline"
             ]
           }
+        },
+        "unique": {
+          "type": "boolean",
+          "description": "Core 825.3: a deck-construction constraint (one card of that name), recorded for deck validation. It is never a play restriction."
         }
       }
     },

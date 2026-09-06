@@ -22,8 +22,13 @@ PROGRAM_VERSION = "riftbound-effect-program.v1"
 CORE_RULESET = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
+# ADR-0012 §5: the Legend and Champion zones are public, are not Locations,
+# and only appear in states that use them (Core 107.4.d, 108.3).
+OPTIONAL_PLAYER_ZONES = {"legend_zone", "champion_zone"}
 # ADR-0007 §3: compiled permissions that widen the valid play locations (355.2.b).
-PLAY_PERMISSIONS = {"open_battlefield"}
+# ADR-0012 §2: Ambush (822.1) lets a Unit be played to a Battlefield where
+# its controller has Units, with Reaction while it is being played there.
+PLAY_PERMISSIONS = {"open_battlefield", "ambush"}
 # ADR-0011 §4: what a restricted Add resource may be spent on ("Spend this Energy only to play spells").
 RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability", "activate_gear_ability")
 # Keywords the state may carry on an object. `deflect` (Core 809) imposes a
@@ -296,8 +301,8 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"players.{player_id} must be an object")
             continue
         zones = player.get("zones")
-        if not isinstance(zones, dict) or set(zones) != PLAYER_ZONES:
-            errors.append(f"players.{player_id}.zones must contain exactly {sorted(PLAYER_ZONES)}")
+        if not isinstance(zones, dict) or not PLAYER_ZONES <= set(zones) or set(zones) - PLAYER_ZONES - OPTIONAL_PLAYER_ZONES:
+            errors.append(f"players.{player_id}.zones must contain {sorted(PLAYER_ZONES)} and may add {sorted(OPTIONAL_PLAYER_ZONES)}")
             continue
         for zone, ids in zones.items():
             if not isinstance(ids, list) or len(ids) != len(set(ids)):
@@ -622,6 +627,10 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.play_permissions must be a unique array drawn from {sorted(PLAY_PERMISSIONS)}")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
+        # ADR-0012 §1 / Core 825.3: Unique is a deck-construction constraint,
+        # not a play restriction; the engine only records the characteristic.
+        if not isinstance(obj.get("unique", False), bool):
+            errors.append(f"objects.{object_id}.unique must be boolean when supplied (Core 825.3: a deck constraint, not a play restriction)")
         identity = obj.get("identity")
         if identity is not None and (not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit()):
             errors.append(f"objects.{object_id}.identity must look like '<id>@<generation>' when supplied")

@@ -399,6 +399,141 @@
           }
         }
       }
+    },
+    "continuous_effects": {
+      "type": "array",
+      "description": "ADR-0013 §1: the canonical continuous effects. Every modification of a characteristic lives here with its source identity, layer, timestamp, condition and duration; the legacy per-object and per-state families are translated at the input boundary and never read at runtime. Core 476-480.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effect_id",
+          "kind",
+          "source",
+          "affects",
+          "layer",
+          "timestamp",
+          "value",
+          "duration"
+        ],
+        "properties": {
+          "effect_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "might_set",
+              "might_arithmetic",
+              "keyword_grant",
+              "keyword_remove",
+              "bonus_damage"
+            ]
+          },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "object"
+            ],
+            "properties": {
+              "object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "identity": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "affects": {
+            "type": "object",
+            "required": [
+              "scope"
+            ],
+            "properties": {
+              "scope": {
+                "enum": [
+                  "object",
+                  "criteria"
+                ]
+              },
+              "object": {
+                "type": "string",
+                "minLength": 1
+              },
+              "identity": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "criteria": {
+                "type": "object"
+              }
+            }
+          },
+          "layer": {
+            "enum": [
+              "trait",
+              "ability",
+              "arithmetic"
+            ],
+            "description": "Core 477.1-477.3."
+          },
+          "sublayer": {
+            "enum": [
+              "increase",
+              "decrease"
+            ],
+            "description": "Core 477.3.a: increases apply before decreases."
+          },
+          "timestamp": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Core 480: a relative comparison only; no rules text reads it."
+          },
+          "value": {
+            "type": "object"
+          },
+          "condition": {
+            "type": "object"
+          },
+          "duration": {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "permanent",
+                  "this_turn",
+                  "this_combat",
+                  "while_source_active",
+                  "until_detached"
+                ]
+              },
+              "turn_id": {
+                "type": "string"
+              },
+              "combat_id": {
+                "type": "string"
+              }
+            }
+          },
+          "snapshot": {
+            "type": "object"
+          },
+          "passive": {
+            "type": "boolean",
+            "description": "Core 477.3.b: a passive ability never snapshots its limit."
+          }
+        }
+      }
     }
   },
   "$defs": {

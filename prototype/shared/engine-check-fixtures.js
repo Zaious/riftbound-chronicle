@@ -189,7 +189,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "top_most_might_bonus",
             "derived_detach_destination",
             "legend_objects",
-            "legend_zone_passives"
+            "legend_zone_passives",
+            "continuous_effects",
+            "layer_engine",
+            "canonical_migration"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -209,6 +212,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "copy_characteristics",
             "champion_legend_movement",
             "token_not_in_catalogue",
+            "layer_dependency_unresolved",
             "complete_game",
             "complete_legality"
           ]
@@ -363,7 +367,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "top_most_might_bonus",
             "derived_detach_destination",
             "legend_objects",
-            "legend_zone_passives"
+            "legend_zone_passives",
+            "continuous_effects",
+            "layer_engine",
+            "canonical_migration"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -383,6 +390,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "copy_characteristics",
             "champion_legend_movement",
             "token_not_in_catalogue",
+            "layer_dependency_unresolved",
             "complete_game",
             "complete_legality"
           ]

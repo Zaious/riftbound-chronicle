@@ -109,9 +109,9 @@ def main() -> int:
             tc, ec = closed["next_timing_state"], closed["next_effect_state"]
             if "combat" in tc or tc["showdown"] != {"active": False, "kind": None, "focus": None} or tc["priority"] != "p1":
                 errors.append(f"close did not clear the Combat and Showdown records: {tc.get('combat')} {tc['showdown']} {tc['priority']}")
-            if "combat_designation" in ec["objects"]["u1"] or ec["objects"]["u1"].get("keyword_modifiers") or ec["battlefields"]["bf1"].get("contested") is not False or ec["battlefields"]["bf1"]["controller"] != "p1":
+            if "combat_designation" in ec["objects"]["u1"] or [e for e in ec.get("continuous_effects", []) if e["duration"]["kind"] == "this_combat"] or ec["battlefields"]["bf1"].get("contested") is not False or ec["battlefields"]["bf1"]["controller"] != "p1":
                 errors.append(f"close did not remove designations, expire the this-combat grant or clear Contested: {ec['objects']['u1']} {ec['battlefields']['bf1']}")
-            if closed["trace"].get("expired_this_combat", [{}])[0].get("modifier_id") != "block" or closed["trace"].get("simultaneous_expiry") is not True:
+            if not str(closed["trace"].get("expired_this_combat", [{}])[0].get("modifier_id", "")).endswith("block") or closed["trace"].get("simultaneous_expiry") is not True:
                 errors.append("the expiry of this-combat effects is not recorded as simultaneous")
             if close_combat(resolved_control["next_timing_state"], resolved_control["next_effect_state"]) != closed:
                 errors.append("close_combat is not deterministic")

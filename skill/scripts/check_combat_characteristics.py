@@ -41,6 +41,7 @@ from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
 from combat import open_combat, stage_combat  # noqa: E402
 from effect_ir import apply_program, current_might, effective_might, hash_value, perform_lethal_cleanup, validate_state  # noqa: E402
+from effect_ir import characteristics, effects_for  # noqa: E402
 from resolution_bridge import resolve_with_program  # noqa: E402
 
 
@@ -74,13 +75,15 @@ def main() -> int:
     if not granted.get("committed") or effective_might(granted["next_state"], "u2") != 8 or granted["trace"][0].get("shield_total") != 4:
         errors.append(f"printed Shield and granted Shield 3 did not sum to Shield 4 (814.2): {granted.get('reason') or granted.get('errors')} {granted.get('trace')}")
     else:
-        modifier = granted["next_state"]["objects"]["u2"]["keyword_modifiers"][0]
-        if modifier.get("combat_id") != combat_id or modifier.get("target_identity") != "u2@0" or modifier.get("duration") != "this_combat":
+        # ADR-0013 §1: the grant is a canonical Ability-layer effect bound to the
+        # Combat and to the identity it was granted to.
+        modifier = effects_for(granted["next_state"], "u2", "keyword_grant")[0]
+        if modifier["duration"].get("combat_id") != combat_id or modifier["affects"].get("identity") != "u2@0" or modifier["duration"]["kind"] != "this_combat":
             errors.append(f"the granted Shield is not bound to the Combat and the identity: {modifier}")
-        foreign = copy.deepcopy(granted["next_state"]); foreign["objects"]["u2"]["keyword_modifiers"][0]["combat_id"] = "combat:other"
+        foreign = copy.deepcopy(granted["next_state"]); foreign["continuous_effects"][0]["duration"]["combat_id"] = "combat:other"
         if effective_might(foreign, "u2") != 5:
             errors.append("a Shield granted for another Combat was read in this one")
-        stale = copy.deepcopy(granted["next_state"]); stale["objects"]["u2"]["keyword_modifiers"][0].update({"duration": "this_turn", "turn_id": "turn-9"}); del stale["objects"]["u2"]["keyword_modifiers"][0]["combat_id"]
+        stale = copy.deepcopy(granted["next_state"]); stale["continuous_effects"][0]["duration"] = {"kind": "this_turn", "turn_id": "turn-9"}
         if validate_state(stale) or effective_might(stale, "u2") != 5:
             errors.append(f"a Shield granted for another turn was read now: {validate_state(stale)}")
         if validate_state(granted["next_state"]):
@@ -89,7 +92,7 @@ def main() -> int:
     if bare.get("committed") or bare.get("unsupported") is not True:
         errors.append("a 'this combat' grant with no Combat context was applied")
     turn_grant = apply_program(state, program("turn", {"op": "grant_keyword", "object_id": "u1", "keyword": "tank", "duration": "this_turn", "source": "spell", "effect_id": "g"}))
-    if not turn_grant.get("committed") or turn_grant["next_state"]["objects"]["u1"]["keyword_modifiers"][0].get("turn_id") != "turn-0":
+    if not turn_grant.get("committed") or effects_for(turn_grant["next_state"], "u1", "keyword_grant")[0]["duration"].get("turn_id") != "turn-0":
         errors.append(f"a this-turn Tank grant did not record the turn: {turn_grant.get('reason') or turn_grant.get('errors')}")
     snap = copy.deepcopy(state)
     if state != snap or apply_program(state, program("block", {"op": "grant_keyword", "object_id": "u2", "keyword": "shield", "value": 3, "duration": "this_combat", "source": "block", "effect_id": "g"}), context={"combat": {"combat_id": combat_id, "battlefield": "bf1"}}) != granted:
@@ -140,8 +143,10 @@ def main() -> int:
     # --- clamp -------------------------------------------------------------------------------------
     weak = base_state()
     weak["objects"]["u1"]["might_modifiers"] = [{"amount": -5, "duration": "persistent", "source": "curse"}]
-    if effective_might(weak, "u1") != 0 or current_might(weak["objects"]["u1"]) != -2:
-        errors.append(f"negative Might was not read as 0 while keeping its arithmetic value (143.2.b): {effective_might(weak, 'u1')} {current_might(weak['objects']['u1'])}")
+    # ADR-0013 §2: the layer engine keeps the arithmetic value; the rules-facing
+    # read clamps it (143.2.b).
+    if effective_might(weak, "u1") != 0 or characteristics(weak, "u1")["might"] != -2:
+        errors.append(f"negative Might was not read as 0 while keeping its arithmetic value (143.2.b): {effective_might(weak, 'u1')} {characteristics(weak, 'u1')['might']}")
     cleanup = perform_lethal_cleanup(weak)  # u1 carries 1 damage
     if not cleanup.get("committed") or "u1" not in cleanup["next_state"]["players"]["p1"]["zones"]["trash"]:
         errors.append("lethal Cleanup did not read the clamped Might (1 damage on Might 0)")
@@ -178,22 +183,22 @@ def main() -> int:
     if not resolved.get("committed"):
         errors.append(f"the Fortified Position trigger did not resolve: {resolved.get('stage')} {resolved.get('reason') or resolved.get('errors')}")
     else:
-        u3 = resolved["next_effect_state"]["objects"]["u3"]
-        mods = u3.get("keyword_modifiers", [])
-        if len(mods) != 1 or mods[0].get("combat_id") != fp_timing["combat"]["combat_id"] or mods[0].get("value") != 2 or mods[0].get("target_identity") != "u3@0":
+        mods = effects_for(resolved["next_effect_state"], "u3", "keyword_grant")
+        if (len(mods) != 1 or mods[0]["duration"].get("combat_id") != fp_timing["combat"]["combat_id"]
+                or mods[0]["value"].get("value") != 2 or mods[0]["affects"].get("identity") != "u3@0"):
             errors.append(f"the granted Shield is not bound to the Combat in progress and the chosen identity: {mods}")
         if effective_might(resolved["next_effect_state"], "u3") != 1:
             errors.append("a granted Shield added Might to a Unit that is not a Defender")
-        if resolved["next_effect_state"]["objects"]["u2"].get("keyword_modifiers"):
+        if effects_for(resolved["next_effect_state"], "u2", "keyword_grant"):
             errors.append("the grant reached a Unit other than the chosen one")
     bad_shape = copy.deepcopy(fortified); bad_shape["battlefields"]["bf1"]["defend_triggers"] = [{"trigger_id": "x", "controller": "p2", "controller_order": 0, "effect_program_id": "y", "optional_at_finalize": False}]
     if not validate_state(bad_shape):
         errors.append("a Battlefield trigger naming a fixed controller was accepted (190.6.a)")
     no_combat_id = copy.deepcopy(granted["next_state"]) if granted.get("committed") else None
     if no_combat_id:
-        del no_combat_id["objects"]["u2"]["keyword_modifiers"][0]["combat_id"]
+        del no_combat_id["continuous_effects"][0]["duration"]["combat_id"]
         if not validate_state(no_combat_id):
-            errors.append("a this_combat modifier without combat_id was accepted")
+            errors.append("a this_combat effect without combat_id was accepted")
 
     if errors:
         print("FAILED: combat characteristic checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))

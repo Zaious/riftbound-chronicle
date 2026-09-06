@@ -36,7 +36,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
-from effect_ir import apply_program, hash_value, object_identity, validate_program  # noqa: E402
+from effect_ir import apply_program, effects_for, hash_value, object_identity, validate_program  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 from resolution_bridge import resolve_with_program  # noqa: E402
 
@@ -54,7 +54,7 @@ def main() -> int:
     buff = {"op": "modify_might", "object_id": "u1", "amount": 1, "duration": "this_turn", "source": "en-garde", "effect_id": "first", "target": {"object_id": "u1", "chosen_zone_class": "board", "controller_relation": "friendly"}}
     more = {"op": "modify_might", "object_id": "u1", "amount": 1, "duration": "this_turn", "source": "en-garde", "effect_id": "second", "predicate": {"kind": "sole_controlled_unit_at_referent_location", "effect_id": "first"}}
     alone = apply_program(state, program("en-garde", buff, more))
-    if ev(alone, 1).get("outcome") != "applied" or len(alone.get("next_state", {}).get("objects", {}).get("u1", {}).get("might_modifiers", [])) != 2:
+    if not alone.get("committed") or ev(alone, 1).get("outcome") != "applied" or len(effects_for(alone["next_state"], "u1", "might_arithmetic")) != 2:
         errors.append(f"the sole unit at its base did not get the additional +1: {ev(alone, 1).get('outcome')} {alone.get('reason') or alone.get('errors')}")
     company = copy.deepcopy(state)
     company["objects"]["u3"] = {"owner": "p1", "controller": "p1", "kind": "unit", "base_might": 1, "might_modifiers": [], "damage": 0, "exhausted": False}

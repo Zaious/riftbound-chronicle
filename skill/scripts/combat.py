@@ -852,22 +852,23 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
         return _refuse(base, "control_resolution_pending", f"466.5 establishes control for {record['battlefield']} before Combat ends; run resolve_battlefield_control first", ["Core 466.5", "Core 466.6"])
     else:
         control_step = record["control"]["step"]
-    next_effect = copy.deepcopy(effect_state)
+    from effect_ir import migrate_legacy_effects
+    next_effect = migrate_legacy_effects(copy.deepcopy(effect_state))
     removed_designations, expired = [], []
+    # ADR-0013 §1 / Core 466.7.c: the Combat's grants expire with it.
+    kept_effects = []
+    for effect in next_effect.get("continuous_effects", []):
+        if effect["duration"]["kind"] == "this_combat" and effect["duration"].get("combat_id") == record["combat_id"]:
+            expired.append({"unit": effect["affects"].get("object"), "modifier_id": effect["effect_id"],
+                            "keyword": effect["value"].get("keyword"), "removal": {"reason": "combat_ended", "combat_id": record["combat_id"]}})
+        else:
+            kept_effects.append(effect)
+    next_effect["continuous_effects"] = kept_effects
     for object_id, obj in next_effect["objects"].items():
         if (obj.get("combat_designation") or {}).get("combat_id") == record["combat_id"]:
             del obj["combat_designation"]
             removed_designations.append(object_id)
-        kept = []
-        for modifier in obj.get("keyword_modifiers", []) or []:
-            if modifier.get("duration") == "this_combat" and modifier.get("combat_id") == record["combat_id"]:
-                expired.append({"unit": object_id, "modifier_id": modifier["modifier_id"], "keyword": modifier["keyword"]})
-            else:
-                kept.append(modifier)
-        if "keyword_modifiers" in obj:
-            obj["keyword_modifiers"] = kept
-            if not kept:
-                del obj["keyword_modifiers"]
+
     next_timing = copy.deepcopy(timing_state)
     del next_timing["combat"]
     next_timing["showdown"] = {"active": False, "kind": None, "focus": None}

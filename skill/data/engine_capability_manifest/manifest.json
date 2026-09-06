@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:0e6e0a7fb22fbd295a5a4e6f",
-  "capability_set_id": "sha256:0e6e0a7fb22fbd295a5a4e6fd726cbb6e9f74e79a20138d0b7451266d3199b7b",
+  "manifest_id": "capability-manifest:1ee1db0edd9d58276064a841",
+  "capability_set_id": "sha256:1ee1db0edd9d58276064a841b0c23e213cb537e5d63d1046e97824baeaa04d4f",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:573e92d605795d904c53ff90bb8d85ec8dd8b74788daa19c160460be304dcbb2",
+    "value": "sha256:59b885e125eeeb205451e8bfce995b006962e1084b57fbf11c714b76c1d69355",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,19 +12,19 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:f3171182663bc0b5bf4fa90b515b67c13cd9585fd6937805dccca794296193b7"
+        "sha256": "sha256:4bf241530bab9893f69612a9b2cb8375a1a642387d463973e0eacd11c0e826d7"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:8e64cdf4f122d1fa4a593efc3287783b391ed9ee16e13215e1d12fd2768fb2ea"
+        "sha256": "sha256:92ab89f4face685acfe133ae22efae6dc845e501dab02b20c6fd68662694030c"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:d2aa9f480a8e06cffd3833d17e4fae469d34ac4016e57b4939b9bf25be5ab288"
+        "sha256": "sha256:1f8653e3214a8135fafc2e3b3e19a5f7f85865c3d12e432b58864a858337c5ee"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:4c2500e3e9fe50f520b0323823569e395cd9caacd69bb7bfd3a2a093d746e82a"
+        "sha256": "sha256:6be5a445f4220c318298399e9c167e1874b9f5fa7a871ade8eaf1cc88d41eab1"
       },
       {
         "path": "battlefield_control.py",
@@ -166,7 +166,10 @@
         "top_most_might_bonus",
         "derived_detach_destination",
         "legend_objects",
-        "legend_zone_passives"
+        "legend_zone_passives",
+        "continuous_effects",
+        "layer_engine",
+        "canonical_migration"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -186,6 +189,7 @@
         "copy_characteristics",
         "champion_legend_movement",
         "token_not_in_catalogue",
+        "layer_dependency_unresolved",
         "complete_game",
         "complete_legality"
       ]
@@ -1583,6 +1587,7 @@
     "hidden_legality_enumeration",
     "hidden_removal_on_control_change",
     "invalid_destination_catalog",
+    "layer_dependency_unresolved",
     "legend_activation",
     "match_mode",
     "multi_descriptor_replacement",

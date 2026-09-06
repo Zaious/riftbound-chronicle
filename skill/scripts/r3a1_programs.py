@@ -79,6 +79,7 @@ from check_effect_ir import base_state  # noqa: E402
 from combat import STEPS as COMBAT_STEPS, combined_input_hash, open_combat, stage_combat, standard_move  # noqa: E402
 from check_rules_core import fixture as timing_fixture, item as timing_item  # noqa: E402
 from effect_ir import CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, current_might, effective_might, entity_identity, hash_value, object_identity  # noqa: E402
+from effect_ir import characteristics  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
 from resolution_bridge import resolve_with_program  # noqa: E402
@@ -615,10 +616,18 @@ def _compare(fixture: dict[str, Any], run: dict[str, Any]) -> list[str]:
                 present = item["object"] in (next_state or {}).get("players", {}).get(player, {}).get("zones", {}).get(name, [])
             if not present:
                 problems.append(f"{item['object']} not in {zone}")
-        elif "might" in item:
-            obj = (next_state or {}).get("objects", {}).get(item["might"])
+        elif "printed_might" in item:
+            # ADR-0013 §1: the Might on the card, before any continuous effect.
+            obj = (next_state or {}).get("objects", {}).get(item["printed_might"])
             if obj is None or current_might(obj) != item["equals"]:
-                problems.append(f"might of {item['might']} is {current_might(obj) if obj else None}, expected {item['equals']}")
+                problems.append(f"printed might of {item['printed_might']} is {current_might(obj) if obj else None}, expected {item['equals']}")
+        elif "might" in item:
+            # ADR-0013 §2: the arithmetic value the layers produce, before the
+            # rules-facing clamp that `effective_might` applies (143.2.b).
+            obj = (next_state or {}).get("objects", {}).get(item["might"])
+            value = characteristics(next_state, item["might"])["might"] if obj is not None else None
+            if value != item["equals"]:
+                problems.append(f"might of {item['might']} is {value}, expected {item['equals']}")
         elif "hand_size" in item:
             size = len((next_state or {}).get("players", {}).get(item["hand_size"], {}).get("zones", {}).get("hand", []))
             if size != item["equals"]:

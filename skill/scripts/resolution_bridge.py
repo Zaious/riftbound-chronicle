@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, perform_lethal_cleanup, validate_state, zone_class
+from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, migrate_legacy_effects, perform_lethal_cleanup, validate_state, zone_class
 from rules_core import apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
@@ -589,15 +589,18 @@ def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, An
         if obj.get("kind") == "unit" and obj.get("damage", 0) > 0 and zone_class(find_location(working, object_id)) == "board":
             healed.append({"object_id": object_id, "damage": obj["damage"]})
             obj["damage"] = 0
+    # ADR-0013 §1 / Core 317.2.c: this turn's continuous effects expire, with
+    # the reason recorded; the canonical list is the only place they live.
+    working = migrate_legacy_effects(working)
     expired_modifiers = []
-    for object_id, obj in working["objects"].items():
-        kept = []
-        for modifier in obj.get("might_modifiers", []):
-            if modifier.get("duration") == "this_turn" and modifier.get("turn_id", turn_id) == turn_id:
-                expired_modifiers.append({"object_id": object_id, **modifier})
-            else:
-                kept.append(modifier)
-        obj["might_modifiers"] = kept
+    kept_effects = []
+    for effect in working.get("continuous_effects", []):
+        if effect["duration"]["kind"] == "this_turn" and effect["duration"].get("turn_id") == turn_id:
+            expired_modifiers.append({"effect_id": effect["effect_id"], "kind": effect["kind"],
+                                      "object_id": effect["affects"].get("object"), "removal": {"reason": "expired_this_turn", "turn_id": turn_id}})
+        else:
+            kept_effects.append(effect)
+    working["continuous_effects"] = kept_effects
     expired_granted = [r["replacement_id"] for r in working["replacement_effects"] if "granted" in r and r["granted"].get("turn_id") == turn_id]
     working["replacement_effects"] = [r for r in working["replacement_effects"] if not ("granted" in r and r["granted"].get("turn_id") == turn_id)]
     expired_effects = [e for e in working.get("turn_effects", []) if e.get("turn_id") == turn_id]

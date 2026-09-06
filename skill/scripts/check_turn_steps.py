@@ -39,6 +39,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
 from effect_ir import apply_program, current_might, effective_might, evaluate_target, hash_value, perform_lethal_cleanup, validate_state  # noqa: E402
+from effect_ir import effects_for  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
 from resolution_bridge import begin_ending_step, resolve_with_program, run_expiration_step  # noqa: E402
@@ -136,8 +137,10 @@ def main() -> int:
         errors.append(f"8 board runes did not grant +4 (or current_might changed): {effective_might(med, 'u1')} / {current_might(med['objects']['u1'])}")
     stamped = copy.deepcopy(med); stamped["turn_id"] = "turn-7"
     stamped["objects"]["u1"]["might_modifiers"] = [{"amount": 5, "duration": "this_turn", "source": "older", "turn_id": "turn-6"}]
-    if effective_might(stamped, "u1") != 7 or current_might(stamped["objects"]["u1"]) != 8:
-        errors.append("a this_turn Might modifier from another turn was active (or current_might's context-free contract changed)")
+    # ADR-0013 §1: current_might is the printed Might now; every modification is
+    # a continuous effect that effective_might runs through the layers.
+    if effective_might(stamped, "u1") != 7 or current_might(stamped["objects"]["u1"]) != 3:
+        errors.append(f"a this_turn Might modifier from another turn was active, or current_might is not the printed Might: {effective_might(stamped, 'u1')} / {current_might(stamped['objects']['u1'])}")
     seven = copy.deepcopy(med); seven["players"]["p1"]["zones"]["base"].remove("r9"); seven["players"]["p1"]["zones"]["rune_deck"].append("r9")
     if effective_might(seven, "u1") != 3:
         errors.append("a rune in the Rune Deck counted toward 'you have 8+ runes'")
@@ -212,8 +215,9 @@ def main() -> int:
         nxt = expired["next_effect_state"]
         if nxt["objects"]["u1"]["damage"] != 0 or nxt["objects"]["u2"]["damage"] != 0:
             errors.append("expiration did not heal all units (317.2.b)")
-        if [m["source"] for m in nxt["objects"]["u1"]["might_modifiers"]] != ["older", "gear"]:
-            errors.append(f"expiration removed the wrong modifiers: {nxt['objects']['u1']['might_modifiers']}")
+        survivors = [e["source"].get("name") for e in effects_for(nxt, "u1", "might_arithmetic")]
+        if survivors != ["older", "gear"]:
+            errors.append(f"expiration removed the wrong modifiers: {survivors}")
         if [e["effect_id"] for e in nxt.get("turn_effects", [])] != ["confront-6"]:
             errors.append(f"expiration cleared another turn's effect or kept this turn's: {nxt.get('turn_effects')}")
         if any(p["resources"] != {"energy": 0, "power": {}} for p in nxt["players"].values()):

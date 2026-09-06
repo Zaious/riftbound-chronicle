@@ -36,6 +36,17 @@ RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability"
 # ADR-0008 §5: Shield, Tank, Ganking (and Backline, required by the Tank
 # contract) are characteristics printed on the object.
 OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline"}
+# ADR-0013 §1-2: one canonical representation for every continuous effect, and
+# the Core 476-480 layer engine over it. The six legacy families are translated
+# by `migrate_legacy_effects` at the input boundary; nothing at runtime reads
+# them, so nothing is counted twice.
+CONTINUOUS_KINDS = {"might_set", "might_arithmetic", "keyword_grant", "keyword_remove", "bonus_damage"}
+CONTINUOUS_LAYERS = ("trait", "ability", "arithmetic")  # Core 477.1, 477.2, 477.3
+KIND_LAYER = {"might_set": "trait", "keyword_grant": "ability", "keyword_remove": "ability",
+              "might_arithmetic": "arithmetic", "bonus_damage": "arithmetic"}
+CONTINUOUS_DURATIONS = {"permanent", "this_turn", "this_combat", "while_source_active", "until_detached"}
+MIGHT_MODES = {"delta", "increase_to"}
+LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers")
 COMBAT_ROLES = {"attacker", "defender"}
 # ADR-0007 §6–8.
 TURN_EFFECT_KINDS = {"entry_state_for_played_units"}
@@ -544,6 +555,78 @@ def validate_state(state: Any) -> list[str]:
         elif scope["kind"] == "controller_sources" and set(scope) != {"kind"}:
             errors.append(f"{label}.scope.controller_sources carries no other fields")
 
+    # ADR-0013 §1: the canonical continuous effects. A state may arrive with the
+    # legacy families instead (they are translated at the boundary), but never
+    # with both — that is the shape that would be read twice.
+    continuous = state.get("continuous_effects")
+    if continuous is not None:
+        legacy_present = [f for f in LEGACY_EFFECT_FIELDS if state.get(f)] + [
+            f"objects.{oid}.{f}" for oid, obj in objects.items() if isinstance(obj, dict) for f in LEGACY_EFFECT_FIELDS if obj.get(f)]
+        if legacy_present:
+            errors.append(f"continuous_effects is the canonical representation; a state carrying it may not also carry {sorted(legacy_present)[:4]} (ADR-0013 §1)")
+        if not isinstance(continuous, list):
+            errors.append("continuous_effects must be an array")
+            continuous = []
+        seen_effects: set[str] = set()
+        for index, effect in enumerate(continuous):
+            label = f"continuous_effects[{index}]"
+            required = {"effect_id", "kind", "source", "affects", "layer", "timestamp", "value", "duration"}
+            optional = {"sublayer", "condition", "snapshot", "passive"}
+            if not isinstance(effect, dict) or not required <= set(effect) or set(effect) - required - optional:
+                errors.append(f"{label} must carry exactly {sorted(required)} (and optionally {sorted(optional)})")
+                continue
+            if not isinstance(effect["effect_id"], str) or not effect["effect_id"] or effect["effect_id"] in seen_effects:
+                errors.append(f"{label}.effect_id is invalid or duplicated")
+            seen_effects.add(effect.get("effect_id", ""))
+            if effect["kind"] not in CONTINUOUS_KINDS:
+                errors.append(f"{label}.kind must be one of {sorted(CONTINUOUS_KINDS)}")
+            elif effect["layer"] != KIND_LAYER[effect["kind"]]:
+                errors.append(f"{label}.layer must be {KIND_LAYER[effect['kind']]} for {effect['kind']} (Core 477)")
+            source = effect["source"]
+            if not isinstance(source, dict) or set(source) - {"object", "identity", "name"} or "object" not in source:
+                errors.append(f"{label}.source must be {{object, identity?, name?}}")
+            elif source["object"] not in objects and source["object"] not in battlefields:
+                errors.append(f"{label}.source.object is neither an object nor a battlefield")
+            affects = effect["affects"]
+            if not isinstance(affects, dict) or affects.get("scope") not in {"object", "criteria"}:
+                errors.append(f"{label}.affects.scope must be object or criteria")
+            elif affects["scope"] == "object":
+                if set(affects) - {"scope", "object", "identity"} or "object" not in affects:
+                    errors.append(f"{label}.affects must be {{scope: object, object, identity?}}")
+                elif affects["object"] not in objects:
+                    errors.append(f"{label}.affects.object is unknown")
+            elif set(affects) - {"scope", "criteria"} or not isinstance(affects.get("criteria"), dict):
+                errors.append(f"{label}.affects.criteria must be an object")
+            if not isinstance(effect["timestamp"], int) or isinstance(effect["timestamp"], bool) or effect["timestamp"] < 0:
+                errors.append(f"{label}.timestamp must be a non-negative integer (Core 480)")
+            duration = effect["duration"]
+            if not isinstance(duration, dict) or duration.get("kind") not in CONTINUOUS_DURATIONS or set(duration) - {"kind", "turn_id", "combat_id"}:
+                errors.append(f"{label}.duration.kind must be one of {sorted(CONTINUOUS_DURATIONS)}")
+            elif duration["kind"] == "this_turn" and not duration.get("turn_id"):
+                errors.append(f"{label}.duration this_turn carries its turn_id (317.2.c)")
+            elif duration["kind"] == "this_combat" and not duration.get("combat_id"):
+                errors.append(f"{label}.duration this_combat carries its combat_id (466.7.c)")
+            value = effect["value"]
+            kind = effect["kind"]
+            if kind in {"might_set", "might_arithmetic"}:
+                if not isinstance(value, dict) or set(value) - {"amount", "mode", "minimum", "maximum"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool):
+                    errors.append(f"{label}.value must be {{amount, mode?, minimum?, maximum?}}")
+                elif value.get("mode", "delta") not in MIGHT_MODES:
+                    errors.append(f"{label}.value.mode must be one of {sorted(MIGHT_MODES)}")
+                elif kind == "might_arithmetic" and effect.get("sublayer") not in {"increase", "decrease"}:
+                    errors.append(f"{label}.sublayer must be increase or decrease (Core 477.3.a)")
+            elif kind in {"keyword_grant", "keyword_remove"}:
+                if not isinstance(value, dict) or set(value) - {"keyword", "value"} or not isinstance(value.get("keyword"), str) or not value["keyword"]:
+                    errors.append(f"{label}.value must be {{keyword, value?}}")
+                elif "value" in value and (not isinstance(value["value"], int) or isinstance(value["value"], bool) or value["value"] < 1):
+                    errors.append(f"{label}.value.value must be a positive integer")
+            elif kind == "bonus_damage":
+                if not isinstance(value, dict) or set(value) != {"amount"} or not isinstance(value["amount"], int) or value["amount"] < 1:
+                    errors.append(f"{label}.value must be {{amount: positive integer}} (Core 714.1)")
+            if "passive" in effect and not isinstance(effect["passive"], bool):
+                errors.append(f"{label}.passive must be boolean")
+            if effect.get("condition") is not None and (not isinstance(effect["condition"], dict) or not isinstance(effect["condition"].get("kind"), str)):
+                errors.append(f"{label}.condition must be a typed condition with a kind")
     # ADR-0008 §5: bounded external Might auras (a source on the board or a
     # Battlefield; a named condition read by effective_might).
     auras = state.get("might_auras", [])
@@ -1256,7 +1339,7 @@ def source_active(state: dict[str, Any], source_id: str) -> bool:
 
 
 def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str | None) -> tuple[int, list[dict[str, Any]]]:
-    """Core 713–715: every active Bonus Damage that applies to this Deal,
+    """Core 713-715: every active Bonus Damage that applies to this Deal,
     summed once (714). `controller_sources` follows the spell's or ability's
     controller; `location` follows the affected unit's current Battlefield.
     An inactive source contributes nothing; an unknown scope is a mechanic
@@ -1264,19 +1347,24 @@ def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str |
     total = 0
     sources: list[dict[str, Any]] = []
     location = find_location(state, object_id) if object_id is not None else None
-    for modifier in state.get("damage_modifiers", []) or []:
-        source = modifier["source_object"]
-        if not source_active(state, source):
+    for effect in canonical_effects(state):
+        if effect["kind"] != "bonus_damage":
             continue
-        kind = modifier["scope"]["kind"]
+        active, _ = _effect_active(state, effect)
+        if not active:
+            continue
+        criteria = effect["affects"]["criteria"]
+        scope = criteria["bonus_scope"]
+        kind = scope["kind"]
         if kind not in BONUS_SCOPES:
             raise NotImplementedError(f"Bonus Damage scope {kind!r} is not modelled")
-        if kind == "controller_sources" and modifier["controller"] != controller:
+        if kind == "controller_sources" and criteria["controller"] != controller:
             continue
-        if kind == "location" and not (location is not None and location[0] == "battlefield" and location[1] == modifier["scope"]["battlefield"]):
+        if kind == "location" and not (location is not None and location[0] == "battlefield" and location[1] == scope["battlefield"]):
             continue
-        total += modifier["amount"]
-        sources.append({"modifier_id": modifier["modifier_id"], "source_object": source, "amount": modifier["amount"], "scope": dict(modifier["scope"])})
+        total += effect["value"]["amount"]
+        sources.append({"modifier_id": effect["effect_id"], "source_object": effect["source"]["object"],
+                        "amount": effect["value"]["amount"], "scope": dict(scope)})
     return total, sources
 
 
@@ -1945,11 +2033,20 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("modify_might requires a known object and integer amount")
         if duration not in {"this_turn", "persistent"} or not isinstance(source, str) or not source:
             raise ValueError("modify_might requires duration and source")
-        modifier = {"amount": amount, "duration": duration, "source": source}
-        if duration == "this_turn":
-            modifier["turn_id"] = new_state.get("turn_id", DEFAULT_TURN_ID)
-        new_state["objects"][object_id]["might_modifiers"].append(modifier)
-        trace.update({"object_id": object_id, "amount": amount, "duration": duration, "turn_id": modifier.get("turn_id")})
+        # ADR-0013 §1: one canonical continuous effect in the Arithmetic layer.
+        turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+        entry = {
+            "effect_id": f"might:{source}:{object_id}:{len(canonical_effects(new_state))}", "kind": "might_arithmetic",
+            "source": {"object": source if source in new_state["objects"] or source in new_state["battlefields"] else object_id, "identity": None, "name": source},
+            "affects": {"scope": "object", "object": object_id, "identity": object_identity(new_state, object_id) or f"{object_id}@0"},
+            "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
+            "timestamp": _next_timestamp(new_state), "value": {"amount": amount, "mode": "delta"},
+            "duration": {"kind": "this_turn", "turn_id": turn_id} if duration == "this_turn" else {"kind": "permanent"},
+            "passive": False,
+        }
+        new_state.setdefault("continuous_effects", []).append(entry)
+        trace.update({"object_id": object_id, "amount": amount, "duration": duration, "turn_id": turn_id if duration == "this_turn" else None,
+                      "effect_id": entry["effect_id"], "layer": "arithmetic", "timestamp": entry["timestamp"]})
 
     elif op == "discard":
         player_id, objects = effect.get("player"), effect.get("objects")
@@ -2027,21 +2124,27 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         value = effect.get("value")
         if keyword != "shield" and value is not None:
             raise ValueError(f"{keyword} carries no value")
-        modifier = {"modifier_id": f"{keyword}:{effect.get('source')}:{object_id}:{len(new_state['objects'][object_id].get('keyword_modifiers', []) or [])}",
-                    "keyword": keyword, "source": effect.get("source"), "duration": duration,
-                    "target_identity": object_identity(new_state, object_id) or f"{object_id}@0"}
-        if keyword == "shield":
-            modifier["value"] = value if value is not None else 1
+        # ADR-0013 §1: a granted characteristic is an Ability-layer effect
+        # bound to the identity it was granted to (Core 477.2, 124).
+        effect_id = f"{keyword}:{effect.get('source')}:{object_id}:{len(canonical_effects(new_state))}"
         if duration == "this_combat":
             combat = effect.get("combat_context")
             if not isinstance(combat, dict) or not combat.get("combat_id"):
                 raise NotImplementedError("a 'this combat' grant needs the Combat in progress as context (466.7.c); none was supplied")
-            modifier["combat_id"] = combat["combat_id"]
+            effect_duration = {"kind": "this_combat", "combat_id": combat["combat_id"]}
         else:
-            modifier["turn_id"] = new_state.get("turn_id", DEFAULT_TURN_ID)
-        new_state["objects"][object_id].setdefault("keyword_modifiers", []).append(modifier)
-        trace.update({"object_id": object_id, "keyword": keyword, "value": modifier.get("value"), "duration": duration,
-                      "combat_id": modifier.get("combat_id"), "turn_id": modifier.get("turn_id"), "modifier_id": modifier["modifier_id"],
+            effect_duration = {"kind": "this_turn", "turn_id": new_state.get("turn_id", DEFAULT_TURN_ID)}
+        entry = {
+            "effect_id": effect_id, "kind": "keyword_grant",
+            "source": {"object": effect.get("source") if effect.get("source") in new_state["objects"] else object_id, "identity": None, "name": effect.get("source")},
+            "affects": {"scope": "object", "object": object_id, "identity": object_identity(new_state, object_id) or f"{object_id}@0"},
+            "layer": "ability", "timestamp": _next_timestamp(new_state),
+            "value": {"keyword": keyword, **({"value": value if value is not None else 1} if keyword == "shield" else {})},
+            "duration": effect_duration, "passive": False,
+        }
+        new_state.setdefault("continuous_effects", []).append(entry)
+        trace.update({"object_id": object_id, "keyword": keyword, "value": entry["value"].get("value"), "duration": duration,
+                      "combat_id": effect_duration.get("combat_id"), "turn_id": effect_duration.get("turn_id"), "modifier_id": effect_id,
                       "shield_total": shield_total(new_state, object_id) if keyword == "shield" else None})
 
     elif op == "grant_turn_effect":
@@ -2469,8 +2572,303 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
     return new_state, trace
 
 
+# ---------------------------------------------------------- continuous effects --
+
+def _legacy_timestamp(family_index: int, position: int) -> int:
+    """A stable relative order for translated effects: families in the order
+    they were added to the engine, positions within a family in list order.
+    Timestamps are relative comparisons only (Core 480.1.a)."""
+    return family_index * 1000 + position
+
+
+def migrate_legacy_effects(state: dict[str, Any]) -> dict[str, Any]:
+    """ADR-0013 §1: translate the legacy families into the canonical list, once,
+    at the input boundary. Idempotent: a state that already carries
+    `continuous_effects` is returned unchanged."""
+    if state.get("continuous_effects") is not None:
+        return state
+    effects: list[dict[str, Any]] = []
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    for object_id in sorted(state["objects"]):
+        obj = state["objects"][object_id]
+        identity = obj.get("identity") or f"{object_id}@0"
+        for position, modifier in enumerate(obj.get("might_modifiers", []) or []):
+            amount = modifier["amount"]
+            duration = ({"kind": "this_turn", "turn_id": modifier.get("turn_id", turn_id)}
+                        if modifier.get("duration") == "this_turn" else {"kind": "permanent"})
+            effects.append({
+                "effect_id": f"legacy:might:{object_id}:{position}", "kind": "might_arithmetic",
+                "source": {"object": modifier.get("source") if modifier.get("source") in state["objects"] or modifier.get("source") in state["battlefields"] else object_id,
+                           "identity": None, "name": modifier.get("source")},
+                "affects": {"scope": "object", "object": object_id, "identity": identity},
+                "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
+                "timestamp": _legacy_timestamp(0, position), "value": {"amount": amount, "mode": "delta"},
+                "duration": duration, "passive": False,
+            })
+        for position, conditional in enumerate(obj.get("conditional_might", []) or []):
+            amount = conditional["amount"]
+            effects.append({
+                "effect_id": f"legacy:conditional:{object_id}:{conditional['modifier_id']}", "kind": "might_arithmetic",
+                "source": {"object": object_id, "identity": identity},
+                "affects": {"scope": "object", "object": object_id, "identity": identity},
+                "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
+                "timestamp": _legacy_timestamp(1, position), "value": {"amount": amount, "mode": "delta"},
+                "condition": copy.deepcopy(conditional["condition"]), "duration": {"kind": "while_source_active"}, "passive": True,
+            })
+        for position, modifier in enumerate(obj.get("keyword_modifiers", []) or []):
+            duration = ({"kind": "this_combat", "combat_id": modifier["combat_id"]}
+                        if modifier["duration"] == "this_combat" else {"kind": "this_turn", "turn_id": modifier.get("turn_id", turn_id)})
+            value = {"keyword": modifier["keyword"]}
+            if "value" in modifier:
+                value["value"] = modifier["value"]
+            effects.append({
+                "effect_id": f"legacy:keyword:{object_id}:{modifier['modifier_id']}", "kind": "keyword_grant",
+                "source": {"object": modifier.get("source") if modifier.get("source") in state["objects"] else object_id, "identity": None, "name": modifier.get("source")},
+                "affects": {"scope": "object", "object": object_id, "identity": modifier["target_identity"]},
+                "layer": "ability", "timestamp": _legacy_timestamp(2, position), "value": value,
+                "duration": duration, "passive": False,
+            })
+    for position, aura in enumerate(state.get("might_auras", []) or []):
+        effects.append({
+            "effect_id": f"legacy:aura:{aura['modifier_id']}", "kind": "might_arithmetic",
+            "source": {"object": aura["source_object"], "identity": None},
+            "affects": {"scope": "criteria", "criteria": {"aura_controller": aura["controller"], "relation": "same_side"}},
+            "layer": "arithmetic", "sublayer": "increase" if aura["amount"] >= 0 else "decrease",
+            "timestamp": _legacy_timestamp(3, position), "value": {"amount": aura["amount"], "mode": "delta"},
+            "condition": copy.deepcopy(aura["condition"]), "duration": {"kind": "while_source_active"}, "passive": True,
+        })
+    for position, modifier in enumerate(state.get("damage_modifiers", []) or []):
+        effects.append({
+            "effect_id": f"legacy:bonus:{modifier['modifier_id']}", "kind": "bonus_damage",
+            "source": {"object": modifier["source_object"], "identity": None},
+            "affects": {"scope": "criteria", "criteria": {"bonus_scope": copy.deepcopy(modifier["scope"]), "controller": modifier["controller"]}},
+            "layer": "arithmetic", "sublayer": "increase",
+            "timestamp": _legacy_timestamp(4, position), "value": {"amount": modifier["amount"]},
+            "duration": {"kind": "while_source_active"}, "passive": True,
+        })
+    if not effects:
+        # Nothing to translate: the state is already canonical in the only sense
+        # that matters, and a no-op transition must not rewrite it.
+        return state
+    migrated = copy.deepcopy(state)
+    for object_id in migrated["objects"]:
+        for field in ("conditional_might", "keyword_modifiers"):
+            migrated["objects"][object_id].pop(field, None)
+        migrated["objects"][object_id]["might_modifiers"] = []  # the schema still requires the list; it stays empty
+    for field in ("might_auras", "damage_modifiers"):
+        migrated.pop(field, None)
+    migrated["continuous_effects"] = effects
+    return migrated
+
+
+def _next_timestamp(state: dict[str, Any]) -> int:
+    """Core 480: a relative comparison, so one past every effect that already applies."""
+    return max((e["timestamp"] for e in canonical_effects(state)), default=-1) + 1
+
+
+def prune_dead_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
+    """Core 124.1 / 476.3: an effect bound to an identity that has changed can
+    never apply again, so it is removed with its reason. A source that is
+    merely inactive is left alone — it can become active again (365.1)."""
+    removed: list[dict[str, Any]] = []
+    kept: list[dict[str, Any]] = []
+    for effect in state.get("continuous_effects", []) or []:
+        active, reason = _effect_active(state, effect)
+        if not active and reason in {"identity_changed", "source_identity_changed"}:
+            removed.append({"effect_id": effect["effect_id"], "kind": effect["kind"], "removal": {"reason": reason}})
+        else:
+            kept.append(effect)
+    if removed:
+        state["continuous_effects"] = kept
+    return removed
+
+
+def effects_for(state: dict[str, Any], object_id: str, kind: str | None = None, *, active_only: bool = False) -> list[dict[str, Any]]:
+    """Every canonical continuous effect that names this object, optionally of
+    one kind and optionally only those still applying. The read side callers
+    and gates use instead of reaching into the state."""
+    found = [e for e in canonical_effects(state)
+             if (kind is None or e["kind"] == kind) and _effect_applies_to(state, e, object_id)]
+    return [e for e in found if _effect_active(state, e)[0]] if active_only else found
+
+
+def canonical_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
+    """The state's continuous effects, translating a legacy state on the way.
+    Every runtime reader goes through here, so nothing is read twice."""
+    if state.get("continuous_effects") is not None:
+        return state["continuous_effects"]
+    return migrate_legacy_effects(state).get("continuous_effects", [])
+
+
+def _effect_active(state: dict[str, Any], effect: dict[str, Any]) -> tuple[bool, str]:
+    """Duration and source activity (Core 317.2.c, 466.7.c, 365.1)."""
+    duration = effect["duration"]
+    if duration["kind"] == "this_turn" and duration.get("turn_id") != state.get("turn_id", DEFAULT_TURN_ID):
+        return False, "expired_turn"
+    if duration["kind"] == "while_source_active" and not source_active(state, effect["source"]["object"]):
+        return False, "source_inactive"
+    if duration["kind"] == "this_combat":
+        target = effect["affects"].get("object")
+        designation = state["objects"].get(target, {}).get("combat_designation") if target else None
+        if designation is None or designation.get("combat_id") != duration.get("combat_id"):
+            return False, "other_combat"
+    identity = effect["affects"].get("identity")
+    if identity is not None and effect["affects"].get("scope") == "object":
+        current = object_identity(state, effect["affects"]["object"]) or f"{effect['affects']['object']}@0"
+        if current != identity:
+            return False, "identity_changed"
+    source_identity = effect["source"].get("identity")
+    if source_identity is not None:
+        current = object_identity(state, effect["source"]["object"])
+        if current is not None and current != source_identity:
+            return False, "source_identity_changed"
+    return True, "active"
+
+
+def _effect_applies_to(state: dict[str, Any], effect: dict[str, Any], object_id: str) -> bool:
+    affects = effect["affects"]
+    if affects["scope"] == "object":
+        return affects["object"] == object_id
+    criteria = affects.get("criteria") or {}
+    if "aura_controller" in criteria:
+        return same_side(state, criteria["aura_controller"], state["objects"][object_id].get("controller"))
+    return False
+
+
+def _condition_holds(state: dict[str, Any], effect: dict[str, Any], object_id: str) -> bool:
+    """The two conditions the legacy families carry; C-50 replaces this with the
+    typed condition.v1 AST."""
+    condition = effect.get("condition")
+    if condition is None:
+        return True
+    kind = condition["kind"]
+    obj = state["objects"][object_id]
+    designation = obj.get("combat_designation")
+    if kind == "runes_at_least":
+        return runes_on_board(state, obj["controller"]) >= condition["count"]
+    if kind == "attacking_or_defending_alone":
+        return designation is not None and is_alone(state, object_id)
+    if kind == "friendly_unit_defends_alone":
+        return designation is not None and designation.get("role") == "defender" and is_alone(state, object_id)
+    raise NotImplementedError(f"condition kind {kind!r} is not modelled (unsupported: condition_kind_unknown)")
+
+
+def _applied_amount(effect: dict[str, Any], current: int) -> int:
+    """Core 477.3: a delta, or an 'increased to N' that computes what it adds
+    now; a player never increases by a negative amount (477.3.c)."""
+    value = effect["value"]
+    if value.get("mode", "delta") == "increase_to":
+        return max(0, value["amount"] - current)
+    amount = value["amount"]
+    if "minimum" in value and current + amount < value["minimum"]:
+        amount = value["minimum"] - current
+    if "maximum" in value and current + amount > value["maximum"]:
+        amount = value["maximum"] - current
+    return amount
+
+
+def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
+    """Core 476-480: apply the three layers in order, each effect once across
+    every pass, repeating until a pass changes nothing. Within a layer the
+    engine derives dependencies (478) and falls back to timestamp order (480);
+    an order it cannot justify is refused rather than guessed."""
+    obj = state["objects"][object_id]
+    effects = [e for e in canonical_effects(state) if _effect_applies_to(state, e, object_id) and _effect_active(state, e)[0]]
+    result = {"might": obj["base_might"], "keywords": {k: (obj.get("shield_value") or 1) if k == "shield" else None for k in (obj.get("keywords") or [])},
+              "applied": [], "passes": 0}
+    pending = {e["effect_id"]: e for e in effects}
+    applied: set[str] = set()
+    for _ in range(len(effects) + 1):
+        result["passes"] += 1
+        changed = False
+        for layer in CONTINUOUS_LAYERS:
+            ready = [e for e in pending.values() if e["effect_id"] not in applied and e["layer"] == layer and _condition_holds(state, e, object_id)]
+            for effect in _layer_order(state, ready, object_id, result):
+                if effect["kind"] == "might_set":
+                    result["might"] = effect["value"]["amount"]
+                elif effect["kind"] == "might_arithmetic":
+                    amount = _applied_amount(effect, result["might"])
+                    result["might"] += amount
+                    result["applied"].append({"effect_id": effect["effect_id"], "layer": layer, "amount": amount,
+                                              **({"snapshot": amount} if not effect.get("passive", False) and {"minimum", "maximum"} & set(effect["value"]) else {})})
+                    applied.add(effect["effect_id"])
+                    changed = True
+                    continue
+                elif effect["kind"] == "keyword_grant":
+                    keyword = effect["value"]["keyword"]
+                    if keyword == "shield":
+                        result["keywords"]["shield"] = (result["keywords"].get("shield") or 0) + (effect["value"].get("value") or 1)
+                    else:
+                        result["keywords"].setdefault(keyword, None)
+                elif effect["kind"] == "keyword_remove":
+                    result["keywords"].pop(effect["value"]["keyword"], None)
+                elif effect["kind"] == "bonus_damage":
+                    applied.add(effect["effect_id"])
+                    continue
+                result["applied"].append({"effect_id": effect["effect_id"], "layer": layer})
+                applied.add(effect["effect_id"])
+                changed = True
+        if not changed:
+            break
+    # Core 143.2.b: the arithmetic value stays as it is; the rules-facing read
+    # clamps at zero, which `effective_might` does.
+    return result
+
+
+def _layer_order(state: dict[str, Any], effects: list[dict[str, Any]], object_id: str, result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Core 478-480: increases before decreases (477.3.a), then dependency,
+    then timestamp. A dependency the engine cannot order is refused."""
+    ordered = sorted(effects, key=lambda e: (0 if e.get("sublayer", "increase") == "increase" else 1, e["timestamp"], e["effect_id"]))
+    limited = [e for e in ordered if e["kind"] == "might_arithmetic" and (e["value"].get("mode") == "increase_to" or {"minimum", "maximum"} & set(e["value"]))]
+    if len(limited) < 2 and not (limited and len(ordered) > 1):
+        return ordered
+    # 478: A depends on B when applying B changes what A applies.
+    def altered_by(a: dict[str, Any], b: dict[str, Any]) -> bool:
+        base = result["might"]
+        return _applied_amount(a, base) != _applied_amount(a, base + _applied_amount(b, base))
+
+    depends: dict[str, set[str]] = {e["effect_id"]: set() for e in ordered}
+    for a in ordered:
+        for b in ordered:
+            if a is b or a.get("sublayer") != b.get("sublayer"):
+                continue
+            if altered_by(a, b) and not altered_by(b, a):
+                depends[a["effect_id"]].add(b["effect_id"])
+    resolved: list[dict[str, Any]] = []
+    remaining = list(ordered)
+    guard = len(remaining) + 1
+    while remaining and guard:
+        guard -= 1
+        free = [e for e in remaining if not (depends[e["effect_id"]] - {r["effect_id"] for r in resolved})]
+        if not free:
+            raise NotImplementedError(
+                "two continuous effects in the same layer depend on each other in a way this engine cannot order "
+                f"({[e['effect_id'] for e in remaining]}); Core 478-479 (unsupported: layer_dependency_unresolved)")
+        resolved.append(free[0])
+        remaining.remove(free[0])
+    return resolved
+
+
 def current_might(obj: dict[str, Any]) -> int:
-    return obj["base_might"] + sum(modifier["amount"] for modifier in obj.get("might_modifiers", []))
+    """The object's printed Might. Since ADR-0013 §1 every modification is a
+    continuous effect, so a rules-facing value comes from `effective_might`,
+    which runs the layers."""
+    return obj["base_might"]
+
+
+def keyword_values(state: dict[str, Any], object_id: str) -> dict[str, Any]:
+    return characteristics(state, object_id)["keywords"]
+
+
+def has_keyword(state: dict[str, Any], object_id: str, keyword: str) -> bool:
+    """Printed or granted, after the ability layer has run (Core 477.2)."""
+    return keyword in characteristics(state, object_id)["keywords"]
+
+
+def shield_total(state: dict[str, Any], object_id: str) -> int:
+    """Core 814.2: every Shield value the Unit has or was granted, summed; an
+    omitted X is 1 (814.1.b.3)."""
+    return characteristics(state, object_id)["keywords"].get("shield") or 0
 
 
 def runes_on_board(state: dict[str, Any], controller: str) -> int:
@@ -2487,35 +2885,13 @@ def runes_on_board(state: dict[str, Any], controller: str) -> int:
 
 
 def keyword_modifier_active(state: dict[str, Any], object_id: str, modifier: dict[str, Any]) -> bool:
-    """A granted characteristic applies to the identity it was granted to, for
-    the matching Combat (the Unit's own designation names it, 466.7.c) or the
-    current turn (317.2.c)."""
-    obj = state["objects"][object_id]
-    if modifier.get("target_identity") != (object_identity(state, object_id) or f"{object_id}@0"):
-        return False
-    if modifier["duration"] == "this_combat":
-        designation = obj.get("combat_designation")
-        return designation is not None and designation.get("combat_id") == modifier.get("combat_id")
-    return modifier.get("turn_id") == state.get("turn_id", DEFAULT_TURN_ID)
-
-
-def has_keyword(state: dict[str, Any], object_id: str, keyword: str) -> bool:
-    """Printed (keywords) or granted (an active keyword_modifiers entry)."""
-    obj = state["objects"][object_id]
-    if keyword in (obj.get("keywords") or []):
-        return True
-    return any(m["keyword"] == keyword and keyword_modifier_active(state, object_id, m) for m in obj.get("keyword_modifiers", []) or [])
-
-
-def shield_total(state: dict[str, Any], object_id: str) -> int:
-    """Core 814.2: every Shield value the Unit has or was granted, summed; an
-    omitted X is 1 (814.1.b.3)."""
-    obj = state["objects"][object_id]
-    total = (obj.get("shield_value") or 1) if "shield" in (obj.get("keywords") or []) else 0
-    for modifier in obj.get("keyword_modifiers", []) or []:
-        if modifier["keyword"] == "shield" and keyword_modifier_active(state, object_id, modifier):
-            total += modifier.get("value") or 1
-    return total
+    """Legacy read-side helper: whether a translated grant still applies. The
+    runtime asks `characteristics`; this stays for callers holding a legacy
+    modifier dict."""
+    effect = next((e for e in canonical_effects(state)
+                   if e["kind"] == "keyword_grant" and e["affects"].get("object") == object_id
+                   and e["value"]["keyword"] == modifier.get("keyword")), None)
+    return effect is not None and _effect_active(state, effect)[0]
 
 
 def is_alone(state: dict[str, Any], object_id: str) -> bool:
@@ -2533,9 +2909,9 @@ def is_alone(state: dict[str, Any], object_id: str) -> bool:
 
 
 def combat_might_contributions(state: dict[str, Any], object_id: str) -> list[dict[str, Any]]:
-    """ADR-0008 §5: the Combat-relative parts of a Unit's rules-facing Might —
-    Shield while it is a Defender (814.1.c), 'attacking or defending alone'
-    passives (740.2.a), and external auras over lone friendly Defenders."""
+    """ADR-0008 §5, now read off the layer engine: Shield while the Unit is a
+    Defender (814.1.c), and every continuous effect whose condition is a
+    Combat one (740.2.a, 365.1)."""
     obj = state["objects"][object_id]
     designation = obj.get("combat_designation")
     parts: list[dict[str, Any]] = []
@@ -2543,43 +2919,31 @@ def combat_might_contributions(state: dict[str, Any], object_id: str) -> list[di
         shield = shield_total(state, object_id)
         if shield:
             parts.append({"kind": "shield", "amount": shield, "rule_locators": ["Core 814.1.c", "Core 814.2"]})
-    alone = designation is not None and is_alone(state, object_id)
-    for conditional in obj.get("conditional_might", []) or []:
-        if conditional["condition"]["kind"] == "attacking_or_defending_alone" and alone:
-            parts.append({"kind": "attacking_or_defending_alone", "modifier_id": conditional["modifier_id"], "amount": conditional["amount"], "rule_locators": ["Core 740.2.a", "Core 364.3"]})
-    for aura in state.get("might_auras", []) or []:
-        source = aura["source_object"]
-        if not source_active(state, source) or not same_side(state, aura["controller"], obj["controller"]):
-            continue
-        if aura["condition"]["kind"] == "friendly_unit_defends_alone" and designation is not None and designation.get("role") == "defender" and alone:
-            parts.append({"kind": "friendly_unit_defends_alone", "modifier_id": aura["modifier_id"], "source_object": source, "amount": aura["amount"], "rule_locators": ["Core 740.2.a", "Core 365.1"]})
+    computed = characteristics(state, object_id)
+    by_id = {e["effect_id"]: e for e in canonical_effects(state)}
+    for record in computed["applied"]:
+        effect = by_id.get(record["effect_id"])
+        condition = (effect or {}).get("condition") or {}
+        if condition.get("kind") == "attacking_or_defending_alone":
+            parts.append({"kind": "attacking_or_defending_alone", "modifier_id": effect["effect_id"], "amount": record.get("amount", 0),
+                          "rule_locators": ["Core 740.2.a", "Core 364.3"]})
+        elif condition.get("kind") == "friendly_unit_defends_alone":
+            parts.append({"kind": "friendly_unit_defends_alone", "modifier_id": effect["effect_id"], "source_object": effect["source"]["object"],
+                          "amount": record.get("amount", 0), "rule_locators": ["Core 740.2.a", "Core 365.1"]})
     return parts
 
 
 def effective_might(state: dict[str, Any], object_id: str) -> int:
-    """Context-aware Might: current_might plus every conditional passive
-    whose condition holds now (Core 364.3, 365.1), the Combat-relative parts
-    of ADR-0008 §5, clamped at zero when referenced by rules (143.2.b) while
-    the stored arithmetic value stays as it is. current_might keeps its
-    contract; rules paths that must see passives call this."""
-    obj = state["objects"][object_id]
-    current_turn = state.get("turn_id", DEFAULT_TURN_ID)
-    # current_might intentionally retains its original context-free contract.
-    # Rules-facing paths use only persistent modifiers and this turn's stamp.
-    might = obj["base_might"] + sum(
-        modifier["amount"]
-        for modifier in obj.get("might_modifiers", [])
-        if modifier.get("duration") != "this_turn" or modifier.get("turn_id", current_turn) == current_turn
-    )
+    """Core 476-480 through `characteristics`, plus the two intrinsic
+    contributions that are rules, not stored effects: a Defender's Shield
+    (814.1.c) and the Might Bonus of attached cards (159.1, applied in the
+    Arithmetic layer). Clamped at zero when the rules read it (143.2.b)."""
+    might = characteristics(state, object_id)["might"]
     if zone_class(find_location(state, object_id)) != "board":
         return max(0, might)
-    for conditional in obj.get("conditional_might", []) or []:
-        condition = conditional["condition"]
-        if condition["kind"] == "runes_at_least" and runes_on_board(state, obj["controller"]) >= condition["count"]:
-            might += conditional["amount"]
-    might += sum(part["amount"] for part in combat_might_contributions(state, object_id))
-    # Core 159.1 / ADR-0012 §4: every attached card modulates its Top-Most
-    # card's Might while it stays attached.
+    designation = state["objects"][object_id].get("combat_designation")
+    if designation is not None and designation.get("role") == "defender":
+        might += shield_total(state, object_id)
     might += sum(state["objects"][attached].get("might_bonus", 0) for attached in attachments(state, object_id))
     return max(0, might)
 
@@ -3103,7 +3467,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         return {**base, "valid": False, "committed": False, "errors": state_errors + program_errors, "trace": []}
     if _replacement_depth > 8:
         return {**base, "valid": True, "committed": False, "unsupported": True, "reason": "replacement recursion depth exceeded", "trace": []}
-    current = copy.deepcopy(state)
+    # ADR-0013 §1: the legacy families are translated once, here, and the
+    # working state is canonical from this point on. The input hash above was
+    # taken over the caller's state, so envelopes still bind.
+    current = migrate_legacy_effects(copy.deepcopy(state))
     trace = []
     outcomes: dict[str, str] = {}
     terminal: dict[str, Any] | None = None
@@ -3775,6 +4142,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trigger.setdefault("batch_sequence", index)
             trigger.setdefault("batch_id", f"{program['program_id']}:{effect_id}")
             trigger.setdefault("trigger_kind", "self_death")
+        # ADR-0013 §1 / Core 124.1: an effect whose binding died with this
+        # instruction is removed here, with its reason on the event.
+        dead = prune_dead_effects(current)
+        if dead:
+            event["removed_continuous_effects"] = dead
         trace.append(event)
         outcomes[effect_id] = event["outcome"]
     reveals_ended = 0

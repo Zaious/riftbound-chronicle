@@ -34,7 +34,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from capability_manifest import build_manifest  # noqa: E402
 from check_effect_ir import base_state, program  # noqa: E402
-from effect_ir import OP_RULES, SUPPORTED_OPS, apply_program, hash_value, object_identity, validate_state  # noqa: E402
+from effect_ir import OP_RULES, SUPPORTED_OPS, apply_program, effects_for, hash_value, migrate_legacy_effects, object_identity, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 
 RUNNER = SCRIPT_DIR / "engine_check.py"
@@ -57,7 +57,7 @@ def main() -> int:
         errors.append(f"return_to_hand did not move the unit to its owner's hand: {back.get('reason') or back.get('errors')}")
     else:
         obj = back["next_state"]["objects"]["u1"]
-        if object_identity(back["next_state"], "u1") != "u1@1" or obj["damage"] != 0 or obj["might_modifiers"] or obj["exhausted"]:
+        if object_identity(back["next_state"], "u1") != "u1@1" or obj["damage"] != 0 or effects_for(back["next_state"], "u1", active_only=True) or obj["exhausted"]:
             errors.append(f"returned object kept something of the old object: {obj}")
         if e.get("not_a_move") is not True or e.get("pending_triggers") or "Core 446.2" not in e.get("rule_locators", []):
             errors.append(f"return_to_hand recorded as a move or with triggers: {e}")
@@ -112,7 +112,7 @@ def main() -> int:
         errors.append(f"recall did not relocate to the controller's base: {recalled.get('reason') or recalled.get('errors')}")
     else:
         obj = recalled["next_state"]["objects"]["u1"]
-        if object_identity(recalled["next_state"], "u1") != "u1@0" or obj["damage"] != 1 or len(obj["might_modifiers"]) != 1 or not obj["exhausted"]:
+        if object_identity(recalled["next_state"], "u1") != "u1@0" or obj["damage"] != 1 or len(effects_for(recalled["next_state"], "u1", active_only=True)) != 1 or not obj["exhausted"]:
             errors.append(f"recall changed identity or dropped state: {obj}")
         if e.get("not_a_move") is not True or e.get("pending_triggers") or e.get("completion") != "full" or "Core 456.1" not in e.get("rule_locators", []):
             errors.append(f"recall recorded as a move or incomplete: {e}")
@@ -123,7 +123,7 @@ def main() -> int:
         errors.append("recall of an opponent-controlled unit did not go to the controller's base")
     already = apply_program(state, program("rc3", {"op": "recall", "object_id": "u1"}))
     e = ev(already)
-    if not already.get("committed") or e.get("outcome") != "no_op" or e.get("completion") != "none" or already["next_state"] != state:
+    if not already.get("committed") or e.get("outcome") != "no_op" or e.get("completion") != "none" or already["next_state"] != migrate_legacy_effects(state):
         errors.append(f"recall of a unit already at its base was not a no-op with completion none: {e.get('outcome')} {e.get('completion')}")
     off_board = apply_program(state, program("rc4", {"op": "recall", "object_id": "c3"}))
     if off_board.get("applied") is not False or off_board.get("reason_code") != "illegal_operation":

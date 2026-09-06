@@ -1883,10 +1883,9 @@
                   },
                   {
                     "field": [
-                      "objects",
-                      "u1",
-                      "might_modifiers",
+                      "continuous_effects",
                       1,
+                      "duration",
                       "turn_id"
                     ],
                     "equals": "turn-7"
@@ -3017,41 +3016,37 @@
                 "assert": [
                   {
                     "field": [
-                      "objects",
-                      "u3",
-                      "keyword_modifiers",
+                      "continuous_effects",
                       0,
+                      "value",
                       "keyword"
                     ],
                     "equals": "shield"
                   },
                   {
                     "field": [
-                      "objects",
-                      "u3",
-                      "keyword_modifiers",
+                      "continuous_effects",
                       0,
+                      "value",
                       "value"
                     ],
                     "equals": 2
                   },
                   {
                     "field": [
-                      "objects",
-                      "u3",
-                      "keyword_modifiers",
+                      "continuous_effects",
                       0,
+                      "duration",
                       "combat_id"
                     ],
                     "equals": "$combat_id"
                   },
                   {
                     "field": [
-                      "objects",
-                      "u3",
-                      "keyword_modifiers",
+                      "continuous_effects",
                       0,
-                      "target_identity"
+                      "affects",
+                      "identity"
                     ],
                     "equals": "u3@0"
                   }
@@ -6318,8 +6313,8 @@
                     "equals": 7
                   },
                   {
-                    "might": "u1",
-                    "equals": 3
+                    "equals": 3,
+                    "printed_might": "u1"
                   }
                 ],
                 "rule_locators": [

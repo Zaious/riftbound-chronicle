@@ -93,7 +93,7 @@ def main() -> int:
     if resolve_battlefield_control(tr, er).get("reason_code") != "control_resolution_not_pending":
         errors.append("control was resolved twice")
     check = build_engine_check("control_step", resolved, input_hashes={"timing_state": state_hash(t), "effect_state": hash_value(e)})
-    if check["outcome"] != "supported" or "conquer_scoring" not in check["coverage"]["supported_scope"] or "terminal_state" not in check["coverage"]["unsupported_scope"]:
+    if check["outcome"] != "supported" or "conquer_scoring" not in check["coverage"]["supported_scope"] or "team_scoring" not in check["coverage"]["unsupported_scope"]:
         errors.append(f"engine-check did not wrap control resolution with its scope: {check['outcome']}")
     facts = resolved["trace"]["victory_check"]
     if facts.get("threshold_met") != [] or facts.get("strict_leader") is not None or facts.get("tied_at_threshold") is not False:

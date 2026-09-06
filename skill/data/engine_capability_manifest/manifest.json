@@ -1,14 +1,14 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:17d8319a9faefd4a5271b4de",
-  "capability_set_id": "sha256:17d8319a9faefd4a5271b4dea601fed0244ce9256e197b7008cc3e1459997924",
+  "manifest_id": "capability-manifest:4db486cd753de8dd3f0e9018",
+  "capability_set_id": "sha256:4db486cd753de8dd3f0e90186b748c24242af8b7fb804d4b29fe90b9220fb9d7",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:0034512d4f7698e80bac5526cf806ab5b2413bbb12d3743378ce6e9d9e88e89b",
+    "value": "sha256:69f3663cacea6904fc3dae9d2d3a47ebc4618267ff2336dc907cf6dc48a88607",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:d79f63758377c50ce5f99ab05af14c3b2c7d5116360a2e26aa753bc4e66eba83"
+        "sha256": "sha256:d091ab1ab9af211705c5f2f30d9a75a2626bde7870390b83ae7f0634c7c898cd"
       },
       {
         "path": "effect_ir.py",
@@ -16,19 +16,23 @@
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:19ffa0ab2d1a8f3fbc5edd1bc847b500d21a19a88eebc95dd065b86c965435ca"
+        "sha256": "sha256:95f2839f4aa163f1a08a272621221f26b8d9b7e4aef09ef00261515a62c8bd36"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:3b541823738f66289d12bd4916c243d0141e4624c85afe4ba21b8b0cb01fcce4"
+        "sha256": "sha256:156c51ce489234492fd2f84e94965644d56eb2519ef21f2d1b21cbd841aca88a"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:3e8e47771a41d3703f3f47c30efa5120ea697efecd2958aed3f0898b7493dbab"
+        "sha256": "sha256:10ee5c42a884bc855215898569a8a02768c7aea554eb1ecbb3ef22c52c773bbf"
       },
       {
         "path": "battlefield_control.py",
         "sha256": "sha256:aa181e718db9200505b5f547adf3de5c425ee43d5f0e0d157326916dcccc668f"
+      },
+      {
+        "path": "terminal.py",
+        "sha256": "sha256:b0cea4bbf76639f1ea5032a374f94660e6587e690258068f680a2c5882ca42bf"
       }
     ]
   },
@@ -108,7 +112,6 @@
         "non_conquer_point_sources",
         "activate_named_triggers",
         "beginning_phase",
-        "terminal_state",
         "burn_out",
         "complete_game",
         "complete_legality"
@@ -258,12 +261,18 @@
         "ending_step",
         "expiration_step",
         "entry_replacements",
-        "conditional_passives"
+        "conditional_passives",
+        "terminal_state",
+        "game_over_guard",
+        "declared_terminal"
       ],
       "unsupported_scope": [
         "beginning_phase",
         "full_turn_transition",
         "continuous_dependency",
+        "burn_out",
+        "multi_player_concession",
+        "facedown_reveal_at_game_end",
         "complete_game",
         "complete_legality"
       ]
@@ -723,6 +732,12 @@
       ]
     },
     {
+      "id": "declared_terminal",
+      "rule_locators": [
+        "Core 196"
+      ]
+    },
+    {
       "id": "deflect",
       "rule_locators": [
         "Core 809.1.c–809.1.d",
@@ -760,6 +775,12 @@
       "rule_locators": [
         "Core 317.2–317.2.d",
         "Core 324.2"
+      ]
+    },
+    {
+      "id": "game_over_guard",
+      "rule_locators": [
+        "Core 196"
       ]
     },
     {
@@ -899,6 +920,15 @@
       ]
     },
     {
+      "id": "terminal_state",
+      "rule_locators": [
+        "Core 194.2–194.2.b",
+        "Core 196",
+        "Core 323.1",
+        "Core 472"
+      ]
+    },
+    {
       "id": "typed_cost_payment",
       "rule_locators": [
         "Core 356.1–356.7",
@@ -943,6 +973,8 @@
     "Core 190.4.c",
     "Core 190.6.a",
     "Core 190.6.d",
+    "Core 194.2–194.2.b",
+    "Core 196",
     "Core 308.1.a",
     "Core 309.1.a",
     "Core 310.1.a",
@@ -1136,6 +1168,7 @@
     "effect_prerequisites",
     "end_of_combat_effects",
     "engine_enumeration",
+    "facedown_reveal_at_game_end",
     "full_cleanup",
     "full_turn_transition",
     "gear_rune_recall_cleanup",
@@ -1143,6 +1176,7 @@
     "invalid_destination_catalog",
     "multi_descriptor_replacement",
     "multi_player_combat",
+    "multi_player_concession",
     "non_conquer_point_sources",
     "non_prevent_assignment_replacements",
     "non_standard_costs_beyond_exhaust_kill",
@@ -1153,8 +1187,7 @@
     "start_of_combat_effects",
     "take_damage_triggers",
     "target_checks",
-    "team_scoring",
-    "terminal_state"
+    "team_scoring"
   ],
   "claims": {
     "complete_game": false,

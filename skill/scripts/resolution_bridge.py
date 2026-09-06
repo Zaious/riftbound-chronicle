@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, perform_lethal_cleanup, validate_state, zone_class
-from rules_core import complete_resolution, schedule_triggered_items, state_hash
+from rules_core import complete_resolution, is_terminal, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
@@ -57,6 +57,8 @@ def resolve_with_program(
         "input_timing_state_hash": state_hash(timing_state),
         "input_effect_state_hash": hash_value(effect_state),
     }
+    if is_terminal(timing_state):
+        return {**base, "valid": True, "committed": False, "stage": "terminal", "reason": "game_over", "reason_code": "game_over", "rule_locators": ["Core 196"]}
     chain_item = next((item for item in timing_state.get("chain", {}).get("items", []) if item.get("id") == item_id), None)
     if chain_item is None:
         return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "chain_item_not_found"}
@@ -462,6 +464,8 @@ def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any]
     errors = [f"timing: {e}" for e in validate_timing_state(timing_state)] + [f"effect: {e}" for e in validate_state(effect_state)]
     if errors:
         return {**base, "valid": False, "committed": False, "errors": errors, "reason": "; ".join(errors)}
+    if is_terminal(timing_state):
+        return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "game_over", "reason": "the game ended; the snapshot is frozen (196)", "rule_locators": ["Core 196"]}
     if timing_state.get("phase") != "main":
         return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "ending_step_requires_main_phase", "reason": f"the Ending Step follows the Main Phase (316.9.b); phase is {timing_state.get('phase')!r}", "rule_locators": ["Core 316.9.b", "Core 317.1"]}
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"] or timing_state["showdown"]["active"]:
@@ -516,6 +520,8 @@ def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, An
     errors = [f"timing: {e}" for e in validate_timing_state(timing_state)] + [f"effect: {e}" for e in validate_state(effect_state)]
     if errors:
         return {**base, "valid": False, "committed": False, "errors": errors, "reason": "; ".join(errors)}
+    if is_terminal(timing_state):
+        return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "game_over", "reason": "the game ended; the snapshot is frozen (196)", "rule_locators": ["Core 196"]}
     ending = timing_state.get("ending_step") or {}
     if timing_state.get("phase") != "ending" or ending.get("status") != "triggers_scheduled":
         return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "expiration_requires_ending_step", "reason": "the Expiration Step follows the Ending Step (317.2); begin_ending_step has not run for this turn", "rule_locators": ["Core 317.1", "Core 317.2"]}

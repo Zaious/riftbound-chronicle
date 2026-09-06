@@ -32,7 +32,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import engine_decisions as _ed  # noqa: E402
 from effect_ir import battlefield_identity, find_location, hash_value, object_identity, same_side, validate_state, zone_class  # noqa: E402
-from rules_core import COMBAT_STATUSES, schedule_triggered_items, state_hash, validate_state as validate_timing_state  # noqa: E402
+from rules_core import COMBAT_STATUSES, is_terminal, schedule_triggered_items, state_hash, validate_state as validate_timing_state  # noqa: E402
 
 COMBAT_STEP_VERSION = "riftbound-combat-step-result.v1"
 ROLES = ("attacker", "defender")
@@ -71,7 +71,11 @@ def _validate_both(base: dict[str, Any], timing_state: dict[str, Any], effect_st
         errors += _ed.validate_engine_decisions(engine_decisions)
         if not errors and engine_decisions.get("input_hash") != base["input_hash"]:
             errors.append("engine_decisions.input_hash does not match the combined timing/effect input of this procedure")
-    return _invalid(base, errors) if errors else None
+    if errors:
+        return _invalid(base, errors)
+    if is_terminal(timing_state):  # ADR-0010 §3: one guard for every two-state procedure
+        return _refuse(base, "game_over", f"the game ended ({timing_state['terminal']['reason']}); the snapshot is frozen (196)", ["Core 196"], terminal=copy.deepcopy(timing_state["terminal"]))
+    return None
 
 
 def _commit(base: dict[str, Any], next_timing: dict[str, Any], next_effect: dict[str, Any], *, trace: dict[str, Any], locators: list[str], **extra: Any) -> dict[str, Any]:

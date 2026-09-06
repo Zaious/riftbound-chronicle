@@ -25,6 +25,7 @@ from play_transaction import RESULT_VERSION as PLAY_RESULT_VERSION, play_card, v
 from resolution_bridge import CLEANUP_DECISION_VERSION, TURN_STEP_VERSION, begin_ending_step, resolve_with_program, run_expiration_step, validate_cleanup_decisions
 from combat import COMBAT_STEP_VERSION, STANDARD_MOVE_VERSION, STEPS as COMBAT_STEPS, standard_move  # noqa: E402
 from battlefield_control import CONTROL_STEP_VERSION, STEPS as CONTROL_STEPS  # noqa: E402
+from terminal import STEPS as TERMINAL_STEPS, check_terminal, declare_terminal  # noqa: E402
 from rules_core import (
     SCHEMA_VERSION as RULES_CORE_VERSION,
     derive_permissions,
@@ -103,6 +104,10 @@ FEATURE_RULES = {
     "board_cleanup": ["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.11–323.11.a"],
     # C-35 (ADR-0009 §8, §10).
     "hold_scoring": ["Core 315.2.b–315.2.b.2", "Core 469.2", "Core 471.1.a.1", "Core 471.2.b"],
+    # C-36 (ADR-0010 §3–4, §10).
+    "terminal_state": ["Core 194.2–194.2.b", "Core 196", "Core 323.1", "Core 472"],
+    "game_over_guard": ["Core 196"],
+    "declared_terminal": ["Core 196"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -147,8 +152,8 @@ KIND_CONFIG = {
     "turn_step": {
         "component": ("turn_steps", TURN_STEP_VERSION),
         "coverage": "turn_step_v1",
-        "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives"],
-        "unsupported": ["beginning_phase", "full_turn_transition", "continuous_dependency", "complete_game", "complete_legality"],
+        "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives", "terminal_state", "game_over_guard", "declared_terminal"],
+        "unsupported": ["beginning_phase", "full_turn_transition", "continuous_dependency", "burn_out", "multi_player_concession", "facedown_reveal_at_game_end", "complete_game", "complete_legality"],
     },
     # ADR-0008: Combat procedures over the timing/effect pair.
     "combat_step": {
@@ -169,7 +174,7 @@ KIND_CONFIG = {
         "component": ("battlefield_control", CONTROL_STEP_VERSION),
         "coverage": "control_step_v1",
         "supported": ["battlefield_control_resolution", "conquer_scoring", "score_triggers", "victory_facts", "non_combat_showdown", "board_cleanup", "hold_scoring"],
-        "unsupported": ["team_scoring", "hidden_cards", "gear_rune_recall_cleanup", "non_conquer_point_sources", "activate_named_triggers", "beginning_phase", "terminal_state", "burn_out", "complete_game", "complete_legality"],
+        "unsupported": ["team_scoring", "hidden_cards", "gear_rune_recall_cleanup", "non_conquer_point_sources", "activate_named_triggers", "beginning_phase", "burn_out", "complete_game", "complete_legality"],
     },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
@@ -568,8 +573,13 @@ def run_turn_step(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, s
     decisions = _engine_decisions(getattr(args, "decisions", None))
     if args.step == "begin_ending":
         result = begin_ending_step(timing_state, effect_state, decisions)
-    else:
+    elif args.step == "run_expiration":
         result = run_expiration_step(timing_state, effect_state)
+    elif args.step == "declare_terminal":
+        declaration = load_object(args.declaration) if getattr(args, "declaration", None) else None
+        result = declare_terminal(timing_state, effect_state, decisions, declaration=declaration)
+    else:
+        result = TERMINAL_STEPS[args.step](timing_state, effect_state, decisions)
     hashes = {"timing_state": state_hash(timing_state), "effect_state": hash_value(effect_state)}
     if decisions is not None:
         hashes["engine_decisions"] = canonical_hash(decisions)
@@ -640,7 +650,8 @@ def build_parser() -> argparse.ArgumentParser:
     turn = sub.add_parser("turn-step")
     turn.add_argument("timing_state", type=Path)
     turn.add_argument("effect_state", type=Path)
-    turn.add_argument("--step", choices=["begin_ending", "run_expiration"], required=True)
+    turn.add_argument("--step", choices=["begin_ending", "run_expiration"] + sorted(TERMINAL_STEPS), required=True)
+    turn.add_argument("--declaration", type=Path, help="declared terminal (reason concession|external) for --step declare_terminal")
     add_common(turn)
 
     combat_step = sub.add_parser("combat-step")

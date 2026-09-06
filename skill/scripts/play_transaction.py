@@ -53,7 +53,7 @@ from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bump_identity, apply_program, derive_targeted, evaluate_target,
     entity_identity, find_location, hash_value, object_identity, validate_program, validate_state, zone_class,
 )
-from rules_core import add_pending_item, state_hash  # noqa: E402
+from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
 
 DECLARATION_VERSION = "riftbound-play-declaration.v1"
 RESULT_VERSION = "riftbound-play-result.v1"
@@ -629,6 +629,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 errors.append("effect program controller is not the declaring actor")
     if errors:
         return invalid(errors)
+    if isinstance(timing_state, dict) and is_terminal(timing_state):  # ADR-0010 §3
+        return {**base, "valid": True, "committed": False, "unsupported": False, "rolled_back": False, "stage": "legality",
+                "reason_code": "game_over", "reason": "the game ended; the snapshot is frozen (196)", "errors": [], "trace": [], "rule_locators": ["Core 196"]}
 
     trace: list[dict[str, Any]] = []
     locators: list[str] = []

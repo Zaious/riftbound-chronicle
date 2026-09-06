@@ -75,6 +75,25 @@
     },
     "priority": {"type": ["string", "null"]},
     "outstanding_tasks": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "winner", "final_points", "turn_id", "derived", "rule_locators"],
+      "description": "ADR-0010 §3: the game ended and the snapshot is frozen (Core 196). victory_score and burn_out_victory are derived by the engine; concession and external are declared by the caller.",
+      "properties": {
+        "status": {"const": "ended"},
+        "reason": {"enum": ["victory_score", "burn_out_victory", "concession", "external"]},
+        "winner": {"type": ["string", "null"]},
+        "final_points": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "turn_id": {"type": "string", "minLength": 1},
+        "derived": {"type": "boolean"},
+        "rule_locators": {"type": "array", "items": {"type": "string"}},
+        "immediate": {"type": "boolean"},
+        "source": {"type": "string"},
+        "declared_by": {"type": "string"},
+        "note": {"type": "string"}
+      }
+    },
     "ending_step": {
       "type": "object",
       "additionalProperties": false,

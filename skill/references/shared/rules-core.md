@@ -174,6 +174,19 @@ turn (469.2, 470), gaining a point each with no Final Point restriction
 (315.2.b.2, 471.2.b). Every scoring trace and the `victory_facts` step report
 472 as facts only.
 
+The terminal state (ADR-0010 §3–4) is `terminal.check_terminal`, Cleanup
+step 1 (323.1, 194.2): the one player at or above the Victory Score with more
+points than every other player wins and the game ends (196); a tie at the
+threshold continues (194.2.b, `continue_tied`); the record names the reason
+(`victory_score` and `burn_out_victory` are derived by the engine only;
+`concession` and `external` are recorded from the caller by
+`declare_terminal`), the winner, the final points and the turn. After it the
+snapshot is frozen, chain items included: `next_procedure` reports
+`game_over`, `validate_timing` answers `legal: false`, and every kernel
+mutator, two-state procedure, resolution and play refuses `game_over` at its
+shared entry. `reward_adapter.terminal_reward` is a read-only projection of
+that record for a two-player game (+1 / −1 / 0) and is not an engine check.
+
 `validate_timing` also answers `kind: standard_move` (ADR-0008 §6, Core
 144.1): legal only for the Turn Player in their Main Phase in a Neutral Open
 State with no Combat staged or in progress. `combat.standard_move` is the

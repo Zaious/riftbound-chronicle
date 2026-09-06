@@ -34,6 +34,12 @@ COMBAT_STATUSES = {"staged", "open", "showdown_closed", "damage_assigned", "dama
 # Statuses in which the Combat's own steps are the next required procedure and
 # no discretionary play is available while the chain is empty (465–466).
 COMBAT_STEP_PENDING = {"showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved"}
+# ADR-0010 §3: the game's end. Derived reasons are written by the engine only;
+# declared reasons are recorded from the caller and never derived.
+DERIVED_TERMINAL_REASONS = {"victory_score", "burn_out_victory"}
+DECLARED_TERMINAL_REASONS = {"concession", "external"}
+TERMINAL_REASONS = DERIVED_TERMINAL_REASONS | DECLARED_TERMINAL_REASONS
+TERMINAL_EVENT_KIND = "terminal_event"
 
 RULES = {
     "four_states": ["Core 308–310"],
@@ -124,6 +130,19 @@ def summarize_result(result: dict[str, Any]) -> dict[str, Any]:
         "rule_locators": result.get("rule_locators", []),
         "result_hash": f"sha256:{digest}",
     }
+
+
+def is_terminal(state: dict[str, Any]) -> bool:
+    terminal = state.get("terminal") if isinstance(state, dict) else None
+    return isinstance(terminal, dict) and terminal.get("status") == "ended"
+
+
+def _game_over(state: dict[str, Any]) -> dict[str, Any]:
+    """The shared refusal after the game ended (Core 196): the snapshot is frozen."""
+    terminal = state["terminal"]
+    return _result(state, valid=True, applied=False, legal=False, reason_code="game_over",
+                   explanation=f"the game ended ({terminal['reason']}); no procedure runs on a frozen snapshot",
+                   terminal=copy.deepcopy(terminal), rule_locators=["Core 196"])
 
 
 def _next_player(state: dict[str, Any], player: str) -> str:
@@ -251,6 +270,28 @@ def validate_state(state: dict[str, Any]) -> list[str]:
     if not isinstance(tasks, list) or not all(isinstance(item, str) and item for item in tasks):
         errors.append("outstanding_tasks must be a list of non-empty strings")
 
+    # ADR-0010 §3: the terminal record. A frozen snapshot keeps everything
+    # else as it was, so nothing below is relaxed by it.
+    terminal = state.get("terminal")
+    if terminal is not None:
+        required = {"status", "reason", "winner", "final_points", "turn_id", "derived", "rule_locators"}
+        if not isinstance(terminal, dict) or required - set(terminal) or set(terminal) - required - {"immediate", "source", "declared_by", "note"}:
+            errors.append("terminal must carry status, reason, winner, final_points, turn_id, derived, rule_locators")
+        else:
+            if terminal["status"] != "ended" or terminal["reason"] not in TERMINAL_REASONS:
+                errors.append(f"terminal.status must be ended with a reason in {sorted(TERMINAL_REASONS)}")
+            elif terminal["derived"] is not (terminal["reason"] in DERIVED_TERMINAL_REASONS):
+                errors.append("terminal.derived is true exactly for the engine-derived reasons")
+            if terminal["winner"] is None:
+                if terminal["reason"] != "external":
+                    errors.append("only an external ending has no winner")
+            elif terminal["winner"] not in players:
+                errors.append("terminal.winner must be a player id")
+            if not isinstance(terminal["final_points"], dict) or set(terminal["final_points"]) != set(players) or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 for v in terminal["final_points"].values()):
+                errors.append("terminal.final_points must map every player to a non-negative integer")
+            if not isinstance(terminal["turn_id"], str) or not terminal["turn_id"] or not isinstance(terminal["rule_locators"], list):
+                errors.append("terminal.turn_id must be a string and rule_locators a list")
+
     chain = state.get("chain")
     if not isinstance(chain, dict) or not isinstance(chain.get("items"), list):
         errors.append("chain.items must be a list")
@@ -316,6 +357,16 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
     tasks = state["outstanding_tasks"]
     items = state["chain"]["items"]
     pending = [item for item in items if item["status"] == "pending"]
+    if is_terminal(state):
+        return _result(
+            state,
+            valid=True,
+            procedure="game_over",
+            subject=state["terminal"]["winner"],
+            terminal_reason=state["terminal"]["reason"],
+            discretionary_actions_allowed=False,
+            rule_locators=["Core 196"],
+        )
     if tasks:
         return _result(
             state,
@@ -476,6 +527,8 @@ def validate_timing(state: dict[str, Any], action: dict[str, Any]) -> dict[str, 
         return _result(state, valid=True, legal=False, reason_code="unknown_actor", explanation="Actor is not a player in this state.", rule_locators=[])
     if timing not in TIMINGS:
         return _result(state, valid=True, legal=False, reason_code="unknown_timing", explanation="Timing must be default, action, or reaction.", rule_locators=[])
+    if is_terminal(state):
+        return _game_over(state)
 
     procedure = next_procedure(state)
     if not procedure.get("discretionary_actions_allowed"):
@@ -581,6 +634,8 @@ def finalize_oldest_pending(state: dict[str, Any], *, perform_optional_trigger: 
     errors = validate_state(state)
     if errors:
         return _result(state, valid=False, errors=errors)
+    if is_terminal(state):
+        return _game_over(state)
     next_step = next_procedure(state)
     if next_step.get("procedure") != "finalize_oldest_pending":
         return _result(state, valid=True, applied=False, reason_code="finalize_not_next", next_procedure=next_step)
@@ -775,6 +830,8 @@ def complete_resolution(state: dict[str, Any], item_id: str, *, effect_execution
     errors = validate_state(state)
     if errors:
         return _result(state, valid=False, errors=errors)
+    if is_terminal(state):
+        return _game_over(state)
     items = state["chain"]["items"]
     match = next((item for item in items if item["id"] == item_id), None)
     if match is None or match["status"] != "finalized":
@@ -828,6 +885,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
     errors = validate_state(state)
     if errors:
         return _result(state, valid=False, applied=False, errors=errors)
+    if is_terminal(state):
+        return _game_over(state)
     if not descriptors:
         return _result(state, valid=True, applied=True, next_state=copy.deepcopy(state), next_state_hash=state_hash(state), transition={"type": "no_triggers"})
     seen: set[str] = set()

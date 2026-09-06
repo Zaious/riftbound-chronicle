@@ -1284,10 +1284,8 @@
         {
           "clause_id": "confront#e8c50cd4",
           "text": "Draw 1.",
-          "claim": "partial",
-          "unsupported_mechanics": [
-            "burn_out"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 413"
           ],
@@ -1360,10 +1358,12 @@
               "expected": {
                 "outcome": "unsupported",
                 "rule_locators": [
-                  "Core 413"
+                  "Core 413.4",
+                  "Core 431.3",
+                  "Core 431.3.c"
                 ]
               },
-              "why": "drawing from an empty Main Deck is Burn Out, which effect IR v1 does not model: the engine declines the whole resolution (fail closed, no next state) instead of inventing an outcome.",
+              "why": "drawing from an empty Main Deck Burns Out (413.4, 431); with an empty Trash the Burn Out repeats (431.3) and the repeated one needs the Mode of Play's Victory Score to judge the immediate win (431.3.c), which this state does not carry, so the engine declines the whole resolution instead of guessing.",
               "bindings": {
                 "controller": "p2",
                 "opponent": "p1",
@@ -6986,10 +6986,8 @@
         {
           "clause_id": "meditation#8be0efa4",
           "text": "If you do, draw 2.",
-          "claim": "partial",
-          "unsupported_mechanics": [
-            "burn_out"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 356.4.f.1",
             "Core 413"
@@ -7091,10 +7089,8 @@
         {
           "clause_id": "meditation#083ddaf7",
           "text": "Otherwise, draw 1.",
-          "claim": "partial",
-          "unsupported_mechanics": [
-            "burn_out"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 356.2.b.1",
             "Core 413"
@@ -7325,10 +7321,8 @@
         {
           "clause_id": "mobilize#27e88ae5",
           "text": "If you can't, draw 1.",
-          "claim": "partial",
-          "unsupported_mechanics": [
-            "burn_out"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 430.3",
             "Core 430.5",
@@ -10478,10 +10472,8 @@
         {
           "clause_id": "traveling merchant#92d985e1",
           "text": "When I move, discard 1, then draw 1.",
-          "claim": "partial",
-          "unsupported_mechanics": [
-            "burn_out"
-          ],
+          "claim": "full",
+          "unsupported_mechanics": [],
           "rule_locators": [
             "Core 383.1",
             "Core 383.2.c",

@@ -10,6 +10,11 @@
     "schema_version": {"const": "engine-decisions.v1"},
     "input_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "The hash of the input the decisions were made against: the effect state for effect/resolution/play decisions; for a two-state procedure (ADR-0008) the combined timing/effect hash the procedure's result reports as input_hash."},
     "chain_item_id": {"type": "string", "minLength": 1},
+    "randomization_receipts": {
+      "type": "array",
+      "description": "ADR-0010 §2: external randomizations the transition consumes (randomization-receipt.v1), bound to the same input hash; not decisions — nobody chose them.",
+      "items": {"$ref": "randomization-receipt.schema.json"}
+    },
     "decisions": {
       "type": "array",
       "items": {
@@ -19,7 +24,7 @@
         "properties": {
           "decision_id": {"type": "string", "minLength": 1},
           "stage": {"enum": ["play_declaration", "trigger_finalization", "resolution", "procedure"]},
-          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment"]},
+          "kind": {"enum": ["target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection"]},
           "controller": {"type": "string", "minLength": 1},
           "value": {},
           "selection_identities": {

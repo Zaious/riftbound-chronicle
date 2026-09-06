@@ -11,7 +11,7 @@ core: `rules_core.py` determines when and what procedure occurs;
 - A card definition may only compose typed operations.
 - Every operation produces a rule-grounded before/after trace.
 - State and program versions must match the executable rules baseline.
-- Unknown operations, Burn Out, malformed locations, or unsupported mechanics
+- Unknown operations, Burn Out outside a Draw, malformed locations, or unsupported mechanics
   fail closed with `committed: false`.
 - The interpreter never falls back to model prose or partial guessed behavior.
 - Official rules remain normative; a mismatch is a conformance failure.
@@ -49,7 +49,7 @@ core: `rules_core.py` determines when and what procedure occurs;
 
 Return, Recall and Move are three events with three trigger classes; the
 engine never derives one from another (DP-06). This version deliberately
-excludes Burn Out, simultaneous multi-card recycle, the full Cleanup procedure, open-ended target choice and target
+excludes Burn Out from instructions other than Draw (431.1.b), simultaneous multi-card recycle, the full Cleanup procedure, open-ended target choice and target
 groups, countering, attachments, unrestricted replacement modification inheritance,
 layers, cross-object triggers,
 scoring, and open-ended token construction. Those require additional state and ordering

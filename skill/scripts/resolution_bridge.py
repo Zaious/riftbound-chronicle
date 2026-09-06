@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, perform_lethal_cleanup, validate_state, zone_class
-from rules_core import complete_resolution, is_terminal, schedule_triggered_items, state_hash
+from rules_core import apply_terminal_event, complete_resolution, is_terminal, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
@@ -163,6 +163,23 @@ def resolve_with_program(
         after_effect["players"][owner]["zones"]["trash"].append(card)
         chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.trash",
                                  "identity_after": _bump_identity(after_effect, card), "rule_locators": ["Core 157", "Core 124"]})
+    # ADR-0010 §2, §4: a Draw that Burned Out to an immediate victory ends the
+    # game inside this resolution. The typed event is written into the timing
+    # state here, in the same commit as the effect state that produced it, and
+    # the Cleanup and trigger scheduling that would follow are skipped.
+    terminal_event = effect_result.get("terminal_event")
+    if terminal_event is not None:
+        final_timing_state = apply_terminal_event(timing_result["next_state"], after_effect, terminal_event)
+        return {
+            **base, "valid": True, "committed": True,
+            "next_timing_state": final_timing_state, "next_timing_state_hash": state_hash(final_timing_state),
+            "next_effect_state": after_effect, "next_effect_state_hash": hash_value(after_effect),
+            "trace": {"effect": effect_result["trace"], "chain_card": chain_card_trace, "terminal": terminal_event,
+                      "skipped_after_terminal": {"combat_designations": True, "lethal_cleanup": True, "trigger_schedule": True,
+                                                 "pending_triggers": [t.get("trigger_id") for t in effect_result.get("pending_triggers", [])] + [t.get("trigger_id") for t in entry_triggers]},
+                      "timing": timing_result["transition"]},
+            "rule_locators": list(dict.fromkeys([locator for event in effect_result["trace"] for locator in event.get("rule_locators", [])] + ["Core 431.3.c.1", "Core 196"])),
+        }
     # ADR-0008 §3 / Core 323.2: the Cleanup's step 2 comes before 3a/3b — while
     # a Combat is in progress, designations follow presence first, so a Unit
     # that just arrived is a Defender (Shield, alone) before lethal damage is

@@ -124,6 +124,28 @@ class IllegalDecision(ValueError):
     """A well-formed supplied decision is owned by another controller."""
 
 
+class ExternalInputRequired(ValueError):
+    """ADR-0010 §2: an external randomization receipt the transition needs is absent."""
+
+    reason_code = "randomization_receipt_required"
+
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None):
+        super().__init__(message)
+        self.decision_ids = decision_ids
+        self.controller = controller
+
+
+class PlayerSelectionRequired(ValueError):
+    """A choice of another player (the Burn Out beneficiary, 431.2.c) the deciding player has not made."""
+
+    reason_code = "player_selection_required"
+
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None):
+        super().__init__(message)
+        self.decision_ids = decision_ids
+        self.controller = controller
+
+
 def object_identity(state: dict[str, Any], object_id: str) -> str | None:
     """ADR-0005 §3: identity survives board moves and changes on any transition
     to or from a non-board zone. States written before this field existed carry
@@ -1132,7 +1154,120 @@ def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[
     return None
 
 
-def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def _burn_out_bound(state: dict[str, Any], player_id: str, victory_score: int) -> int:
+    """ADR-0010 §2: a provable bound on repeated Burn Outs with an empty Trash —
+    the points that lift the beneficiary to the Victory Score and past every
+    other score. Exceeding it without an immediate winner is a contradiction."""
+    points = {p: int(pl.get("points", 0)) for p, pl in state["players"].items()}
+    bound = 0
+    for opponent in points:
+        if opponent == player_id:
+            continue
+        others = max(v for p, v in points.items() if p != opponent)
+        bound = max(bound, max(victory_score, others + 1) - points[opponent])
+    return max(bound, 1)
+
+
+def perform_draw(state: dict[str, Any], player_id: str, count: int, *, decisions: dict[str, Any] | None = None, operation_prefix: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Core 413.4 / 431: draw as many as possible; when the Main Deck runs out,
+    Burn Out — Recycle the Trash in the order of an external randomization
+    receipt (431.2.b; missing → ExternalInputRequired), one opponent gains a
+    point (431.2.c; automatic with exactly one opponent, else a
+    player_selection), then draw the remainder (431.2.d). With an empty Trash
+    each further attempt Burns Out again (431.3); from the second Burn Out of
+    the sequence a beneficiary at or above the Victory Score with a strict
+    lead wins at once (431.3.c–431.3.c.1) and the event carries a
+    terminal_event for the caller's two-state commit. Returns (state, event)."""
+    import engine_decisions as ed
+    if player_id not in state["players"] or not isinstance(count, int) or isinstance(count, bool) or count < 1:
+        raise ValueError("draw requires a known player and positive count")
+    new_state = copy.deepcopy(state)
+    player = new_state["players"][player_id]
+    deck, trash, hand = player["zones"]["main_deck"], player["zones"]["trash"], player["zones"]["hand"]
+    turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+    prefix = operation_prefix or f"burn_out:{player_id}:{turn_id}"
+    mode = new_state.get("mode") if isinstance(new_state.get("mode"), dict) else {}
+    victory_score = mode.get("victory_score") if isinstance(mode.get("victory_score"), int) else None
+    opponents = sorted(p for p in new_state["players"] if p != player_id)
+    drawn: list[str] = []
+    burn_outs: list[dict[str, Any]] = []
+    terminal: dict[str, Any] | None = None
+    bound: int | None = None
+    remaining = count
+    while remaining > 0:
+        if deck:
+            card = deck.pop(0)
+            hand.append(card)
+            _bump_identity(new_state, card)
+            drawn.append(card)
+            remaining -= 1
+            continue
+        # 431.1.a: the deck is short — Burn Out, then complete the draw.
+        sequence = len(burn_outs) + 1
+        operation_id = f"{prefix}:{sequence}"
+        if mode.get("teams") or any(isinstance(pl, dict) and pl.get("team_id") for pl in new_state["players"].values()):
+            raise NotImplementedError("a Burn Out with teammates (431.2.c, 489.8.d) is not modelled")
+        recycled: list[str] = []
+        receipt_id = None
+        provenance = None
+        if trash:
+            receipt = ed.randomization_receipt(decisions, operation_id)
+            if receipt is None:
+                raise ExternalInputRequired(f"{player_id} Burns Out: the Trash is recycled into the Main Deck in a randomized order (431.2.b) that must arrive as a randomization receipt for {operation_id}", [operation_id], None)
+            from randomization_receipt import permutation_matches
+            problem = permutation_matches(receipt, trash)
+            if problem is not None or receipt.get("player") != player_id:
+                raise ValueError(problem or f"receipt {receipt['receipt_id']} names {receipt.get('player')!r}, not the Burning Out player {player_id!r}")
+            recycled = list(receipt["permutation"])
+            deck[:] = recycled
+            trash.clear()
+            for card in recycled:
+                _bump_identity(new_state, card)  # 124: a new object on the way back to the deck
+            receipt_id, provenance = receipt["receipt_id"], dict(receipt["provenance"])
+        if len(opponents) == 1:
+            beneficiary, chosen_by = opponents[0], "sole_opponent"
+        else:
+            decision_id = f"{prefix}:beneficiary:{sequence}"
+            entry = ed.player_selection(decisions, decision_id)
+            if entry is None:
+                raise PlayerSelectionRequired(f"{player_id} Burns Out and chooses an opponent to gain 1 point (431.2.c): decision {decision_id}", [decision_id], player_id)
+            if entry["controller"] != player_id:
+                raise IllegalDecision(f"player selection {decision_id!r} was made by {entry['controller']!r}, not the Burning Out player")
+            if entry["value"] not in opponents:
+                raise ValueError(f"player selection {decision_id!r} names {entry['value']!r}, who is not an opponent of {player_id}")
+            beneficiary, chosen_by = entry["value"], "player_selection"
+        new_state["players"][beneficiary]["points"] = int(new_state["players"][beneficiary].get("points", 0)) + 1
+        record = {"operation_id": operation_id, "sequence": sequence, "recycled": recycled, "receipt_id": receipt_id, "provenance": provenance,
+                  "beneficiary": beneficiary, "chosen_by": chosen_by, "points_after": new_state["players"][beneficiary]["points"], "immediate_victory": False,
+                  "rule_locators": ["Core 431.1.a", "Core 431.2", "Core 431.2.a", "Core 431.2.b", "Core 431.2.c", "Core 431.2.d", "Core 194.1.d"]}
+        if not deck and victory_score is not None and bound is None:
+            bound = _burn_out_bound(state, player_id, victory_score)
+        if sequence >= 2:
+            # 431.3.c: from the second Burn Out of one sequence, reaching the
+            # Victory Score with a strict lead wins immediately (431.3.c.1).
+            if victory_score is None:
+                raise NotImplementedError("a repeated Burn Out (431.3) needs the Mode of Play's Victory Score to judge the immediate win (431.3.c); none is in the state")
+            points = {p: int(pl.get("points", 0)) for p, pl in new_state["players"].items()}
+            if points[beneficiary] >= victory_score and all(points[beneficiary] > v for p, v in points.items() if p != beneficiary):
+                record["immediate_victory"] = True
+                record["rule_locators"] += ["Core 431.3", "Core 431.3.a", "Core 431.3.b", "Core 431.3.c", "Core 431.3.c.1"]
+                terminal = {"kind": "terminal_event", "reason": "burn_out_victory", "winner": beneficiary, "immediate": True, "source": operation_id,
+                            "rule_locators": ["Core 431.3.c", "Core 431.3.c.1", "Core 196"]}
+            elif not deck:
+                if sequence > bound:
+                    raise ValueError(f"{sequence} Burn Outs without an immediate winner exceed the provable bound {bound}; the state is contradictory")
+        burn_outs.append(record)
+        if terminal is not None:
+            break
+    event: dict[str, Any] = {"op": "draw", "outcome": "applied", "objects": drawn, "identities_after": {c: object_identity(new_state, c) for c in drawn},
+                             "requested": count, "drawn": len(drawn), "burn_outs": burn_outs, "terminal_event": terminal, "loop_bound": bound,
+                             "skipped_after_terminal": remaining if terminal is not None else 0,
+                             "completion": "full" if remaining == 0 else ("partial" if drawn else "none"),
+                             "rule_locators": list(dict.fromkeys(OP_RULES["draw"] + ["Core 124"] + [loc for b in burn_outs for loc in b["rule_locators"]]))}
+    return new_state, event
+
+
+def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     op = effect.get("op")
     if op not in SUPPORTED_OPS:
         raise NotImplementedError(f"unsupported effect op {op!r}")
@@ -1140,20 +1275,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str,
     trace: dict[str, Any] = {"op": op, "outcome": "applied", "rule_locators": OP_RULES[op]}
 
     if op == "draw":
-        player_id, count = effect.get("player"), effect.get("count")
-        if player_id not in new_state["players"] or not isinstance(count, int) or count < 1:
-            raise ValueError("draw requires a known player and positive count")
-        deck = new_state["players"][player_id]["zones"]["main_deck"]
-        if len(deck) < count:
-            raise NotImplementedError("draw would require Burn Out, which is outside effect IR v1")
-        drawn = deck[:count]
-        del deck[:count]
-        new_state["players"][player_id]["zones"]["hand"].extend(drawn)
-        for object_id in drawn:
-            _bump_identity(new_state, object_id)
-        trace["objects"] = drawn
-        trace["identities_after"] = {object_id: object_identity(new_state, object_id) for object_id in drawn}
-        trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 124"]))
+        new_state, event = perform_draw(new_state, effect.get("player"), effect.get("count"), decisions=decisions, operation_prefix=effect.get("burn_out_operation_prefix"))
+        trace.update(event)
 
     elif op == "recycle_one":
         object_id = effect.get("object_id")
@@ -2033,9 +2156,17 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     current = copy.deepcopy(state)
     trace = []
     outcomes: dict[str, str] = {}
+    terminal: dict[str, Any] | None = None
     for index, effect in enumerate(program["effects"]):
         before_hash = hash_value(current)
         effect_id = effect.get("effect_id", f"effect-{index}")
+        if terminal is not None:
+            # ADR-0010 §4: the game ended inside this program; nothing after runs.
+            event = {"index": index, "effect_id": effect_id, "op": effect.get("op"), "outcome": "skipped_after_terminal", "completion": "none",
+                     "rule_locators": ["Core 196"], "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         predicate = effect.get("predicate")
         if predicate is not None:
             try:
@@ -2630,7 +2761,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             outcomes[effect_id] = "applied" if event["outcome"] == "replaced_modified_applied" else event["outcome"]
             continue
         try:
-            current, event = _apply_one(current, effect)
+            current, event = _apply_one(current, effect, decisions=decisions)
         except NotImplementedError as exc:
             return {
                 **base,
@@ -2641,6 +2772,15 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "reason": str(exc),
                 "trace": trace,
             }
+        except (ExternalInputRequired, PlayerSelectionRequired) as exc:
+            return {
+                **base, "valid": True, "committed": False, "external_input_required": isinstance(exc, ExternalInputRequired),
+                "reason_code": exc.reason_code, "reason": str(exc),
+                "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                "failed_effect_index": index, "trace": trace,
+            }
+        except IllegalDecision as exc:
+            return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch", "reason": str(exc), "failed_effect_index": index, "trace": trace}
         except IllegalOperation as exc:
             return {
                 **base, "valid": True, "committed": False, "applied": False,
@@ -2656,6 +2796,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "errors": [str(exc)],
                 "trace": trace,
             }
+        if event.get("terminal_event") is not None:
+            terminal = event["terminal_event"]
         event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
         event.setdefault("completion", "full" if event.get("outcome") == "applied" else "none")
         if effect.get("target") is not None:
@@ -2676,6 +2818,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         "next_state_hash": hash_value(current),
         "trace": trace,
         "pending_triggers": [trigger for event in trace for trigger in event.get("pending_triggers", [])],
+        "terminal_event": terminal,
     }
 
 

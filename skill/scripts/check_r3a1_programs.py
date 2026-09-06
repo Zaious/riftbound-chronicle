@@ -40,6 +40,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import r3a1_programs as rp  # noqa: E402
+from engine_check import KIND_CONFIG  # noqa: E402
 from card_behavior_coverage import validate_manifest  # noqa: E402
 
 
@@ -180,8 +181,15 @@ def main() -> int:
         for clause in card["clauses"]:
             execution = clause.get("execution", {})
             has_draw = any(effect.get("op") == "draw" for effect in execution.get("program", {}).get("effects", []))
-            if has_draw and (clause.get("claim") == "full" or "burn_out" not in clause.get("unsupported_mechanics", [])):
+            # ADR-0010 §2: while the effect IR could not Burn Out, a Draw clause
+            # had to stay partial naming burn_out; once every Draw entry is
+            # bridged (the effect scope names burn_out_draw) the same clause
+            # must not keep claiming that gap.
+            burn_out_modelled = "burn_out_draw" in KIND_CONFIG["effect"]["supported"]
+            if has_draw and not burn_out_modelled and (clause.get("claim") == "full" or "burn_out" not in clause.get("unsupported_mechanics", [])):
                 errors.append(f"{clause['clause_id']} uses draw while Burn Out is unsupported, but does not derive partial with burn_out named")
+            if has_draw and burn_out_modelled and "burn_out" in clause.get("unsupported_mechanics", []):
+                errors.append(f"{clause['clause_id']} still names burn_out as unsupported although the effect IR models Burn Out on Draw")
     if rows.get("pouty poro#f8dcb74f:missing_information", {}).get("outcome") != "decision_required":
         errors.append("two Power domains for a Deflect cost were not left to the opponent's allocation")
     if rows.get("traveling merchant#92d985e1:recall_is_not_a_move", {}).get("outcome") != "supported":

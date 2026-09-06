@@ -170,8 +170,8 @@ def main() -> int:
         s["players"]["p1"]["zones"]["main_deck"].clear()
     t, e = decided_combat(victory_score=3, points=2, extra=empty_deck)
     burned = resolve_battlefield_control(t, e)
-    if burned.get("committed") or burned.get("unsupported") is not True or burned.get("reason_code") != "burn_out":
-        errors.append(f"a draw-instead from an empty deck was not refused whole as burn_out: {burned.get('reason_code')}")
+    if burned.get("committed") or burned.get("reason_code") != "randomization_receipt_required" or burned.get("decision_ids") != ["burn_out:p1:turn-0:score:bf1:1"]:
+        errors.append(f"a draw-instead from an empty deck did not wait whole for the Burn Out's randomization receipt (ADR-0010): {burned.get('reason_code')}")
     tie = copy.deepcopy(e); tie["players"]["p2"]["points"] = 3; tie["players"]["p1"]["points"] = 3
     facts = victory_check(tie)
     if facts.get("threshold_met") != ["p1", "p2"] or facts.get("strict_leader") is not None or facts.get("tied_at_threshold") is not True:

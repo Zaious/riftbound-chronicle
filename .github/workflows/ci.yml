@@ -278,6 +278,13 @@ jobs:
       - name: Terminal state, game-over guard and reward projection
         run: python3 skill/scripts/check_terminal_state.py
 
+      # ADR-0010 C-37: a Draw Burns Out with an external randomization receipt
+      # and a beneficiary, repeats to an immediate victory only from the
+      # second Burn Out, and every Draw entry writes the typed terminal event
+      # inside its own two-state commit.
+      - name: Burn Out on Draw, randomization receipts and the terminal bridge
+        run: python3 skill/scripts/check_burn_out.py
+
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
       # the authority triple or grown a control that makes a decision.
@@ -361,6 +368,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_showdown_and_board_cleanup.py"
           python3 "$REPO/skill/scripts/check_scoring_step.py"
           python3 "$REPO/skill/scripts/check_terminal_state.py"
+          python3 "$REPO/skill/scripts/check_burn_out.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

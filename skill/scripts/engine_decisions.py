@@ -38,7 +38,8 @@ DECISIONS_VERSION = "engine-decisions.v1"
 # "procedure": a choice a two-state procedure asks for (ADR-0008 §2: the Turn
 # Player's Combat location), bound to combat.combined_input_hash.
 STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment")
+# ADR-0010 §2: player_selection names another player (the Burn Out beneficiary).
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -54,8 +55,23 @@ def validate_engine_decisions(value: Any) -> list[str]:
     errors: list[str] = []
     if value.get("schema_version") != DECISIONS_VERSION:
         errors.append(f"engine_decisions.schema_version must be {DECISIONS_VERSION}")
-    if set(value) - {"schema_version", "input_hash", "chain_item_id", "decisions"}:
+    if set(value) - {"schema_version", "input_hash", "chain_item_id", "decisions", "randomization_receipts"}:
         errors.append("engine_decisions contains unsupported fields")
+    # ADR-0010 §2: external randomization rides in the same envelope, bound to
+    # the same input hash, but it is not a decision — nobody chose it.
+    receipts = value.get("randomization_receipts", [])
+    if not isinstance(receipts, list):
+        errors.append("engine_decisions.randomization_receipts must be a list")
+    else:
+        from randomization_receipt import validate_randomization_receipt
+        seen_ops: set[str] = set()
+        for index, receipt in enumerate(receipts):
+            for problem in validate_randomization_receipt(receipt):
+                errors.append(f"randomization_receipts[{index}]: {problem}")
+            if isinstance(receipt, dict) and isinstance(receipt.get("operation_id"), str):
+                if receipt["operation_id"] in seen_ops:
+                    errors.append(f"randomization_receipts[{index}]: operation_id {receipt['operation_id']!r} appears twice")
+                seen_ops.add(receipt["operation_id"])
     if not _is_hash(value.get("input_hash")):
         errors.append("engine_decisions.input_hash must be a sha256 hash")
     if "chain_item_id" in value and (not isinstance(value["chain_item_id"], str) or not value["chain_item_id"]):
@@ -120,6 +136,10 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}: resource_allocation is decided while paying at play")
         if kind in ("replacement_order", "replacement_choice", "trigger_order", "card_selection") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
+        if kind == "player_selection" and (not isinstance(val, str) or not val):
+            errors.append(f"{label}.value must be a player id")
+        if kind == "player_selection" and item["stage"] not in ("resolution", "procedure"):
+            errors.append(f"{label}: player_selection is a resolution- or procedure-stage decision")
         if kind == "location_selection" and (not isinstance(val, str) or not val):
             errors.append(f"{label}.value must be a battlefield id")
         if kind == "location_selection" and item["stage"] != "procedure":
@@ -164,6 +184,16 @@ def replacement_maps(decisions: dict[str, Any] | None) -> tuple[dict[str, list[s
         for replacement_id, by_event in item["value"].items():
             choices.setdefault(replacement_id, {}).update(by_event)
     return (order or None), (choices or None)
+
+
+def randomization_receipt(decisions: dict[str, Any] | None, operation_id: str) -> dict[str, Any] | None:
+    if not decisions:
+        return None
+    return next((r for r in decisions.get("randomization_receipts", []) if isinstance(r, dict) and r.get("operation_id") == operation_id), None)
+
+
+def player_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:
+    return next((item for item in entries(decisions, kind="player_selection") if item["decision_id"] == decision_id), None)
 
 
 def trigger_order(decisions: dict[str, Any] | None, batch_id: str, controller: str) -> dict[str, Any] | None:

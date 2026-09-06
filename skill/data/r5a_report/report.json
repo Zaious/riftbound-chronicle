@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:4db486cd753de8dd3f0e9018",
-    "capability_set_id": "sha256:4db486cd753de8dd3f0e90186b748c24242af8b7fb804d4b29fe90b9220fb9d7",
-    "implementation_identity": "sha256:69f3663cacea6904fc3dae9d2d3a47ebc4618267ff2336dc907cf6dc48a88607",
+    "manifest_id": "capability-manifest:8754a7b1063763bb494e6c3c",
+    "capability_set_id": "sha256:8754a7b1063763bb494e6c3c298e57b23ed7ecd4d69c441b6328d17f73fc215d",
+    "implementation_identity": "sha256:6d0ad8569dadb4cd5a2541b474c33bb5023e0bbe6964b8b59bc9c5faa7d16d3f",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 194,
+    "declared_locators": 203,
     "exactly_cited_declared_locators": 28,
-    "exact_ratio": 0.1443,
+    "exact_ratio": 0.1379,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -178,6 +178,7 @@
       "Core 190.4.c",
       "Core 190.6.a",
       "Core 190.6.d",
+      "Core 194.1.d",
       "Core 194.2–194.2.b",
       "Core 196",
       "Core 315.2.b–315.2.b.2",
@@ -254,6 +255,7 @@
       "Core 383.4.f",
       "Core 386–388",
       "Core 402–402.1",
+      "Core 413.4",
       "Core 414",
       "Core 415",
       "Core 416",
@@ -278,6 +280,12 @@
       "Core 430.1",
       "Core 430.2.a",
       "Core 430.3",
+      "Core 431",
+      "Core 431.1.a",
+      "Core 431.2.b",
+      "Core 431.2–431.2.d",
+      "Core 431.3.c.1",
+      "Core 431.3–431.3.c.1",
       "Core 437.1.a.1",
       "Core 445",
       "Core 446",
@@ -309,6 +317,7 @@
       "Core 469.2",
       "Core 470",
       "Core 471.1.a.1",
+      "Core 471.1.b.1",
       "Core 471.1–471.1.b.1",
       "Core 471.2.b",
       "Core 471.2–471.2.c",
@@ -838,5 +847,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:905544c5ba21557c854c5ec56284fb126aa6fcd121cde5d9198d5fe6bb3d25f4"
+  "report_hash": "sha256:9ed317c7cca337610d0c6c82e7215576711fe1221f81fec5f8be0cb35ed65764"
 }

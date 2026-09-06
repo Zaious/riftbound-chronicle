@@ -108,6 +108,11 @@ FEATURE_RULES = {
     "terminal_state": ["Core 194.2–194.2.b", "Core 196", "Core 323.1", "Core 472"],
     "game_over_guard": ["Core 196"],
     "declared_terminal": ["Core 196"],
+    # C-37 (ADR-0010 §2).
+    "burn_out_draw": ["Core 413.4", "Core 431.1.a", "Core 431.2–431.2.d", "Core 431.3–431.3.c.1", "Core 194.1.d"],
+    "randomization_receipt": ["Core 431.2.b"],
+    "terminal_event_bridge": ["Core 431.3.c.1", "Core 196"],
+    "burn_out_draw_instead": ["Core 471.1.b.1", "Core 431"],
 }
 KIND_CONFIG = {
     "timing": {
@@ -119,14 +124,14 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers", "active_combat_criteria", "mutual_current_might_damage"],
-        "unsupported": ["arbitrary_card_text", "combat", "scoring", "complete_game", "complete_legality"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers", "active_combat_criteria", "mutual_current_might_damage", "burn_out_draw", "randomization_receipt"],
+        "unsupported": ["arbitrary_card_text", "combat", "scoring", "burn_out_non_draw", "burn_out_in_replacement", "complete_game", "complete_legality"],
     },
     "resolution": {
         "component": ("resolution_bridge", "riftbound-resolution-bridge-result.v1"),
         "coverage": "combined_resolution_v1",
-        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions", "permanent_entry", "play_triggers"],
-        "unsupported": ["arbitrary_card_text", "complete_game", "complete_legality"],
+        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions", "permanent_entry", "play_triggers", "burn_out_draw", "terminal_event_bridge"],
+        "unsupported": ["arbitrary_card_text", "burn_out_non_draw", "complete_game", "complete_legality"],
     },
     "cleanup": {
         "component": ("lethal_cleanup", "riftbound-lethal-cleanup-result.v1"),
@@ -173,8 +178,8 @@ KIND_CONFIG = {
     "control_step": {
         "component": ("battlefield_control", CONTROL_STEP_VERSION),
         "coverage": "control_step_v1",
-        "supported": ["battlefield_control_resolution", "conquer_scoring", "score_triggers", "victory_facts", "non_combat_showdown", "board_cleanup", "hold_scoring"],
-        "unsupported": ["team_scoring", "hidden_cards", "gear_rune_recall_cleanup", "non_conquer_point_sources", "activate_named_triggers", "beginning_phase", "burn_out", "complete_game", "complete_legality"],
+        "supported": ["battlefield_control_resolution", "conquer_scoring", "score_triggers", "victory_facts", "non_combat_showdown", "board_cleanup", "hold_scoring", "burn_out_draw_instead", "terminal_event_bridge"],
+        "unsupported": ["team_scoring", "hidden_cards", "gear_rune_recall_cleanup", "non_conquer_point_sources", "activate_named_triggers", "beginning_phase", "complete_game", "complete_legality"],
     },
     "legal_action": {
         "component": ("legal_action_service", "legal-action-result.v1"),
@@ -196,6 +201,9 @@ DECISION_REASON_CODES = {
     "location_selection_required": "location_choice",
     "cost_confirmation_required": "cost_choice",
     "damage_assignment_required": "damage_assignment",
+    # ADR-0010 §2: an external randomization the transition waits for, and the Burn Out beneficiary.
+    "randomization_receipt_required": "external_input",
+    "player_selection_required": "player_choice",
 }
 
 

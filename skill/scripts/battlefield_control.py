@@ -25,8 +25,8 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import engine_decisions as _ed  # noqa: E402
 from combat import IN_PROGRESS as COMBAT_IN_PROGRESS, _base as _combat_base, _commit, _invalid, _refuse, _unsupported, _validate_both, combined_input_hash, units_at  # noqa: E402
-from effect_ir import DEFAULT_TURN_ID, _bump_identity, battlefield_identity, find_location, hash_value, object_identity, same_side, zone_class  # noqa: E402
-from rules_core import schedule_triggered_items, state_hash  # noqa: E402
+from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, PlayerSelectionRequired, _bump_identity, battlefield_identity, find_location, hash_value, object_identity, perform_draw, same_side, zone_class  # noqa: E402
+from rules_core import apply_terminal_event, schedule_triggered_items, state_hash  # noqa: E402
 
 CONTROL_STEP_VERSION = "riftbound-control-step-result.v1"
 SCORE_TRIGGER_FIELDS = {"conquer": "conquer_triggers", "hold": "hold_triggers"}
@@ -37,6 +37,14 @@ class ScoringUnsupported(Exception):
     def __init__(self, code: str, reason: str, locators: list[str]):
         super().__init__(reason)
         self.code, self.reason, self.locators = code, reason, locators
+
+
+class ScoringDecisionRequired(Exception):
+    """ADR-0010 §2: the draw-instead Burns Out and needs an external receipt or a beneficiary choice; nothing commits."""
+
+    def __init__(self, code: str, reason: str, decision_ids: list[str], controller: str | None):
+        super().__init__(reason)
+        self.code, self.reason, self.decision_ids, self.controller = code, reason, decision_ids, controller
 
 
 def _base(step: str, timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
@@ -112,7 +120,7 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
     return descriptors
 
 
-def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str, decisions: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     """Core 469–471 on a copy of the effect state: once per Battlefield per
     turn (470); up to one point (471.1); a Conquer that would reach the
     Victory Score gains the Final Point only if every Battlefield was scored
@@ -135,12 +143,20 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
             working["players"][player]["points"] = record["points_before"] + 1
             record.update({"scored": True, "gain": "final_point", "rule_locators": ["Core 469.1", "Core 471.1.b", "Core 471.1.b.1"]})
         else:
-            deck = working["players"][player]["zones"]["main_deck"]
-            if not deck:
-                raise ScoringUnsupported("burn_out", f"{player} would draw a card instead of the Final Point (471.1.b.1) from an empty Main Deck: Burn Out is not modelled (G3), so the whole control/score transaction is refused", ["Core 471.1.b.1", "Core 431"])
-            drawn = deck.pop(0)
-            working["players"][player]["zones"]["hand"].append(drawn)
-            record.update({"scored": True, "gain": "draw_instead", "drew": drawn, "identity_after": _bump_identity(working, drawn), "rule_locators": ["Core 469.1", "Core 471.1.b", "Core 471.1.b.1", "Core 124"]})
+            # ADR-0010 §2: the draw-instead is a real Draw — it can Burn Out
+            # (431), which needs the receipt and beneficiary inputs before
+            # anything commits, and can end the game (431.3.c).
+            try:
+                working, draw_event = perform_draw(working, player, 1, decisions=decisions, operation_prefix=f"burn_out:{player}:{turn_id}:score:{battlefield_id}")
+            except (ExternalInputRequired, PlayerSelectionRequired) as exc:
+                raise ScoringDecisionRequired(exc.reason_code, str(exc), exc.decision_ids, exc.controller)
+            except IllegalDecision as exc:
+                raise ScoringDecisionRequired("decision_controller_mismatch", str(exc), [], None)
+            except NotImplementedError as exc:
+                raise ScoringUnsupported("burn_out_unsupported", str(exc), ["Core 431"])
+            record.update({"scored": True, "gain": "draw_instead", "drew": draw_event["objects"], "identities_after": draw_event["identities_after"],
+                           "burn_outs": draw_event["burn_outs"], "terminal_event": draw_event.get("terminal_event"),
+                           "rule_locators": ["Core 469.1", "Core 471.1.b", "Core 471.1.b.1", "Core 124"] + (["Core 431"] if draw_event["burn_outs"] else [])})
     else:
         working["players"][player]["points"] = record["points_before"] + 1
         record.update({"scored": True, "gain": "point", "rule_locators": ["Core 469.1" if how == "conquer" else "Core 469.2", "Core 471.1"] + (["Core 471.1.a.1"] if how == "hold" else [])})
@@ -191,9 +207,12 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
         else:
             next_effect["battlefields"][battlefield_id]["controller"] = player
             try:
-                next_effect, scoring, triggers = score_battlefield(next_effect, player, battlefield_id, "conquer", turn_id)
+                next_effect, scoring, triggers = score_battlefield(next_effect, player, battlefield_id, "conquer", turn_id, engine_decisions)
             except ScoringUnsupported as exc:
                 return _unsupported(base, exc.code, exc.reason, exc.locators, source=source, would_establish_control=player)
+            except ScoringDecisionRequired as exc:
+                return {**base, "valid": True, "committed": False, "reason_code": exc.code, "reason": exc.reason, "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                        "rule_locators": ["Core 471.1.b.1", "Core 431.2"], "source": source, "would_establish_control": player}
             control_step = "control_established"
         next_effect["battlefields"][battlefield_id]["contested"] = False
         next_effect["battlefields"][battlefield_id]["contested_by"] = None
@@ -208,8 +227,9 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
     else:
         return _unsupported(base, "showdown_participants_inconsistent" if source != "combat" else "combat_participants_inconsistent",
                             f"Units of {remaining} are at {battlefield_id}; a decided Combat or a Non-Combat Showdown cannot end with both present (348.2, 466.3)", ["Core 348.2", "Core 466.3"])
+    terminal = (scoring or {}).get("terminal_event")
     from resolution_bridge import _settle_trigger_orders
-    failure = _settle_trigger_orders(triggers, engine_decisions, base)
+    failure = _settle_trigger_orders(triggers, engine_decisions, base) if terminal is None else None
     if failure is not None:
         return failure
     next_timing = copy.deepcopy(timing_state)
@@ -220,6 +240,14 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
         next_timing["showdown"] = {"active": False, "kind": None, "focus": None}
         next_timing["priority"] = next_timing["turn_player"] if next_timing.get("phase") == "main" else None
         next_timing["staged_showdowns"] = [s for s in next_timing.get("staged_showdowns", []) if s["battlefield"] != battlefield_id]
+    if terminal is not None:
+        # ADR-0010 §2, §4: the draw-instead ended the game inside this
+        # transaction; the terminal is written here and nothing else runs.
+        final_timing = apply_terminal_event(next_timing, next_effect, terminal)
+        trace = {"source": source, "battlefield": battlefield_id, "remaining": remaining, "control_step": control_step, "controller_before": battlefield.get("controller"),
+                 "controller_after": next_effect["battlefields"][battlefield_id].get("controller"), "scoring": scoring, "terminal": terminal,
+                 "skipped_after_terminal": {"score_triggers": [t["trigger_id"] for t in triggers]}, "victory_check": victory_check(next_effect), "atomic": True}
+        return _commit(base, final_timing, next_effect, trace=trace, locators=["Core 466.5", "Core 348.2.a", "Core 471.1.b.1", "Core 431.3.c", "Core 431.3.c.1", "Core 196"])
     scheduled = schedule_triggered_items(next_timing, triggers)
     if scheduled.get("applied") is not True:
         return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Score triggers could not be scheduled", ["Core 471.2"], trigger_result=scheduled)
@@ -424,11 +452,13 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
     triggers: list[dict[str, Any]] = []
     try:
         for battlefield_id in to_hold:
-            next_effect, record, found = score_battlefield(next_effect, player, battlefield_id, "hold", turn_id)
+            next_effect, record, found = score_battlefield(next_effect, player, battlefield_id, "hold", turn_id, engine_decisions)
             records.append(record)
             triggers += found
     except ScoringUnsupported as exc:
         return _unsupported(base, exc.code, exc.reason, exc.locators, would_hold=to_hold)
+    except ScoringDecisionRequired as exc:
+        return {**base, "valid": True, "committed": False, "reason_code": exc.code, "reason": exc.reason, "decision_ids": exc.decision_ids, "decision_controller": exc.controller, "rule_locators": ["Core 431.2"]}
     if not to_hold:
         _, problem = mode_of_play(effect_state)
         if problem is not None:

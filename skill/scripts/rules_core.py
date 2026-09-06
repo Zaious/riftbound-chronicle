@@ -132,6 +132,42 @@ def summarize_result(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+TERMINAL_LOCATORS = {"victory_score": ["Core 194.2", "Core 194.2.a", "Core 196", "Core 323.1", "Core 472"],
+                     "burn_out_victory": ["Core 431.3.c", "Core 431.3.c.1", "Core 196"],
+                     "concession": ["Core 196"], "external": ["Core 196"]}
+
+
+def terminal_record(effect_state: dict[str, Any], reason: str, winner: str | None, *, derived: bool, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """ADR-0010 §3: the frozen record — who won, why, with what points, on which turn."""
+    record = {"status": "ended", "reason": reason, "winner": winner,
+              "final_points": {p: int(player.get("points", 0)) for p, player in effect_state["players"].items()},
+              "turn_id": effect_state.get("turn_id", "turn-0"), "derived": derived, "rule_locators": list(TERMINAL_LOCATORS[reason])}
+    if extra:
+        record.update(extra)
+    return record
+
+
+def terminal_event(reason: str, winner: str, *, immediate: bool, source: str) -> dict[str, Any]:
+    """ADR-0010 §2: the typed event a Draw emits when 431.3.c ends the game; the
+    effect IR never writes the timing state itself."""
+    if reason not in DERIVED_TERMINAL_REASONS:
+        raise ValueError(f"a terminal_event carries a derived reason, not {reason!r}")
+    return {"kind": TERMINAL_EVENT_KIND, "reason": reason, "winner": winner, "immediate": immediate, "source": source, "rule_locators": list(TERMINAL_LOCATORS[reason])}
+
+
+def apply_terminal_event(timing_state: dict[str, Any], effect_state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
+    """Write one terminal_event into a copy of the timing state. Callers commit
+    it together with the effect state that produced the event."""
+    if not isinstance(event, dict) or event.get("kind") != TERMINAL_EVENT_KIND or event.get("reason") not in DERIVED_TERMINAL_REASONS or event.get("winner") not in timing_state["players"]:
+        raise ValueError("terminal_event must carry a derived reason and a winning player")
+    if is_terminal(timing_state):
+        raise ValueError("the game already ended")
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["terminal"] = terminal_record(effect_state, event["reason"], event["winner"], derived=True,
+                                              extra={"immediate": bool(event.get("immediate")), "source": event.get("source")})
+    return next_timing
+
+
 def is_terminal(state: dict[str, Any]) -> bool:
     terminal = state.get("terminal") if isinstance(state, dict) else None
     return isinstance(terminal, dict) and terminal.get("status") == "ended"

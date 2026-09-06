@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/randomization-receipt.schema.json",
+  "title": "Chronicle Randomization Receipt v1",
+  "description": "ADR-0010 §2: the record of an external randomization the engine consumes — today the order in which a Burn Out recycles the Trash into the Main Deck (Core 431.2.b). Never a player's choice and never the engine's: it names the operation it serves, the complete permutation, and who produced it how.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "operation", "operation_id", "player", "permutation", "provenance"],
+  "properties": {
+    "schema_version": {"const": "randomization-receipt.v1"},
+    "receipt_id": {"type": "string", "minLength": 1},
+    "operation": {"enum": ["recycle_trash"]},
+    "operation_id": {"type": "string", "minLength": 1, "description": "The Burn Out this receipt serves, e.g. burn_out:<player>:<turn_id>:<n>; the consuming procedure names it in its decision_ids when the receipt is missing."},
+    "player": {"type": "string", "minLength": 1},
+    "permutation": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "description": "Every object id of the Trash at the moment of the Recycle, in the new Main Deck order (top first)."},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "method"],
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "method": {"type": "string", "minLength": 1},
+        "seed": {"type": "string"},
+        "recorded_at": {"type": "string"}
+      }
+    }
+  }
+}

@@ -171,12 +171,16 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "combat_relative_might",
             "keyword_modifiers",
             "active_combat_criteria",
-            "mutual_current_might_damage"
+            "mutual_current_might_damage",
+            "burn_out_draw",
+            "randomization_receipt"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
             "combat",
             "scoring",
+            "burn_out_non_draw",
+            "burn_out_in_replacement",
             "complete_game",
             "complete_legality"
           ]
@@ -313,12 +317,16 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "combat_relative_might",
             "keyword_modifiers",
             "active_combat_criteria",
-            "mutual_current_might_damage"
+            "mutual_current_might_damage",
+            "burn_out_draw",
+            "randomization_receipt"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
             "combat",
             "scoring",
+            "burn_out_non_draw",
+            "burn_out_in_replacement",
             "complete_game",
             "complete_legality"
           ]

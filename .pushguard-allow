@@ -1,0 +1,11 @@
+# push-guard 檔名豁免(範圍限本 repo)。
+# 領域用語:Riftbound 的 token 是卡牌衍生物(Sand Soldier、Reflection、Gold gear…),
+# 由 Core 184-187 定義,不是憑證。ADR-0012 §6 的 token-catalog.v1 是人工複核過的
+# 目錄資料與工具,內容是官方卡面文字與其雜湊。
+#
+# 每行都綁完整路徑或目錄前綴,不寫裸的 token 一詞:本 repo 其他地方若出現
+# 帶 token 的檔名,照樣受私密檔名規則檢查。豁免只免檔名規則,gitleaks 照掃。
+^skill/data/token_catalog/
+^skill/schemas/token-catalog\.schema\.json$
+^skill/scripts/token_catalog\.py$
+^skill/scripts/check_token_catalog\.py$

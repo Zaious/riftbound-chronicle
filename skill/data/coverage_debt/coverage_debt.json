@@ -1,7 +1,7 @@
 {
   "schema_version": "coverage-debt.v1",
   "grammar_version": "2026-09-08.1",
-  "normalization_version": "split_clauses:d2d047cfff23c68d",
+  "normalization_version": "split_clauses:6d017083475686bc",
   "ranking": [
     "deck_slots",
     "deck_count",
@@ -595,14 +595,12 @@
     }
   ],
   "delta": {
-    "baseline": "2026-09-07.1",
+    "baseline": "2026-09-08.1",
     "normalization_baseline": "split_clauses:d2d047cfff23c68d",
     "reclassified": [],
-    "added": [
-      "mystic poro#f4a07c4d",
-      "sai scout#f4a07c4d"
-    ],
+    "added": [],
     "repaid": [],
-    "normalization_reclassification": []
+    "normalization_reclassification": [],
+    "note": "the clause splitter changed, so every id-level difference is a normalisation reclassification, not a repayment; compare against a build on this splitter for the next real delta"
   }
 }

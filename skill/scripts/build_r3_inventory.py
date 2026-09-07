@@ -153,6 +153,8 @@ SENTENCE_BREAK = re.compile(r"(?<=[.!?])(?=\s|[A-Z\[])")
 # a new sentence and bullets otherwise, and neither belongs to any clause.
 OPTION_BREAK = re.compile(r"\s*(?:[—–]|\[>\])\s*(?=[A-Z])")
 LEADING_MARKER = re.compile(r"^(?:\[>\]|[—–\-•])\s*")
+# The binder itself, when it follows a keyword block.
+BINDER = re.compile(r"^\[>\]\s*")
 BULLET_PREFIX = "\u2014\u2013-\u2022 "
 
 
@@ -181,6 +183,18 @@ def split_clauses(text: str) -> list[dict[str, str]]:
     spans: list[tuple[int, int]] = []
     offset = 0
     while (m := KEYWORD_BLOCK.match(body[offset:])):
+        # Core 135.2.e.7 / 808.1.d: `[>]` binds the keyword before it to the
+        # ability after it — "[Deathknell][>] [Effect]" is one triggered
+        # ability, not a keyword and an orphaned sentence. The binding is part
+        # of the clause, so the grammar can still see it.
+        if BINDER.match(body[offset + m.end():]):
+            rest = body[offset + m.end():]
+            binder = BINDER.match(rest)
+            sentence = SENTENCE_BREAK.split(rest[binder.end():], 1)[0]
+            clauses.append({"text": f"[{m.group('kw')}][>] {sentence.strip()}".strip(), "reminder": ""})
+            spans.append((offset, offset + m.end() + binder.end() + len(sentence)))
+            offset += m.end() + binder.end() + len(sentence)
+            continue
         clauses.append({"text": f"[{m.group('kw')}]", "reminder": ""})
         spans.append((offset, offset + m.end()))
         offset += m.end()

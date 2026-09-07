@@ -3,8 +3,8 @@
 
 Printed card text is not tidy prose. A sentence ends and the next begins with
 no space between them; reminder text sits in brackets in the middle of a card,
-not only at the end; an em dash introduces a modal option; `[>]` separates a
-printed label from what it does; and the snapshot still carries a few HTML
+not only at the end; an em dash introduces a modal option; `[>]` binds a
+keyword to the ability after it; and the snapshot still carries a few HTML
 entities. Splitting on whitespace alone produced clauses that were neither the
 printed sentence nor anything a grammar could read, and those clauses then sat
 in the coverage debt looking like grammar gaps.
@@ -19,8 +19,11 @@ Must hold:
   - reminder text is lifted out wherever it sits, so a break never lands
     inside it, and it is attached to the clause it followed — not the one that
     starts where it ends;
-  - an em dash or `[>]` before a capital separates clauses, and either one
-    leading a clause is a bullet the clause does not keep;
+  - an em dash before a capital separates clauses, and a leading dash or
+    binder is a bullet the clause does not keep;
+  - but `[>]` after a keyword **binds** rather than separates: Core 135.2.e.7
+    and 808.1.d make "[Deathknell][>] [Effect]" one triggered ability, so the
+    keyword and the ability it modifies stay in one clause;
   - HTML entities are decoded before anything is split;
   - keyword blocks still come off the front, in order, with their reminders;
   - a card with no rules text still yields the one empty clause the inventory
@@ -104,17 +107,27 @@ def main() -> int:
     check("an em dash before a cost is not a break",
           "[Empower] — Discard 1",
           ["[Empower]", "Discard 1"])
-    check("the printed label marker is absorbed",
-          "[Level 3][>] I have a widget.",
-          ["[Level 3]", "I have a widget."])
+    # Core 135.2.e.7 / 808.1.d: `[>]` binds, it does not merely separate.
+    check("the binder keeps the keyword with the ability it modifies",
+          "[Widget 3][>] I have a widget.",
+          ["[Widget 3][>] I have a widget."])
+    check("the binder takes one sentence, not the rest of the card",
+          "[Widget][>] Draw 1.Draw 2.",
+          ["[Widget][>] Draw 1.", "Draw 2."])
+    check("a bare keyword before a bound one stays bare",
+          "[Alpha] (A note.)[Beta 3][>] I have a widget.",
+          ["[Alpha]", "[Beta 3][>] I have a widget."],
+          {"[Alpha]": "A note."})
     check("a leading label marker is absorbed too",
           "[>] draw 1",
           ["draw 1"])
 
     # --- entities, keywords, emptiness -----------------------------------------------------
+    # The binder only binds if the entity was decoded first, so this asserts
+    # both at once.
     check("entities are decoded before splitting",
           "[Widget][&gt;] Draw 1.",
-          ["[Widget]", "Draw 1."])
+          ["[Widget][>] Draw 1."])
     check("keyword blocks come off the front in order",
           "[Alpha][Beta 2] Draw 1.",
           ["[Alpha]", "[Beta 2]", "Draw 1."])

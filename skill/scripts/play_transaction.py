@@ -77,7 +77,9 @@ HIDDEN_TARGETING = {"restricted", "free_by_restriction"}
 # ADR-0011 §4: costs paid by the payer's card choice at play stage.
 CHOICE_COSTS = {"discard", "recycle_trash"}
 # Costs whose sources live in P4 (XP, Buff, Empower): typed, refused by name.
-DEFERRED_COST_KINDS = {"spend_xp", "spend_buff", "disempower_self"}
+# C-52 (ADR-0013 §5): the three costs that spend the P4 states.
+SPEND_COSTS = {"spend_xp": "Core 730.2", "spend_buff": "Core 702.2.b", "disempower_self": "Core 443.1.b"}
+DEFERRED_COST_KINDS: set[str] = set()
 PAID_OUTCOMES = {"applied", "replaced_prevented", "replaced_modified_applied", "replaced_modified_prevented", "augmented_applied", "augmented_original_replaced"}
 STAGES = ("declaration", "choices", "cost_determination", "payment", "legality", "commit")
 DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required", "card_selection_required", "card_ordering_required"}
@@ -218,6 +220,10 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append(f"cost.additional[{i}].payment.object_id must be a non-empty string when supplied")
         if pay["kind"] in SELF_COSTS and "object_id" not in pay and item_kind_early != "ability":
             errors.append(f"cost.additional[{i}].payment {pay['kind']} needs the activation's source or an object_id (Core 204.2)")
+        if pay["kind"] == "spend_xp" and (not isinstance(pay.get("amount"), int) or isinstance(pay.get("amount"), bool) or pay["amount"] < 1):
+            errors.append(f"cost.additional[{i}].payment spend_xp needs a positive amount (Core 730.2)")
+        if pay["kind"] == "spend_buff" and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
+            errors.append(f"cost.additional[{i}].payment spend_buff names the Unit whose Buff is spent (Core 702.2.b)")
         if pay["kind"] in CHOICE_COSTS and (not isinstance(pay.get("amount"), int) or isinstance(pay.get("amount"), bool) or pay["amount"] < 1 or set(pay) - {"kind", "amount", "decision_ref", "order_ref"}
                                             or any(not isinstance(pay.get(k), str) or not pay.get(k) for k in ("decision_ref", "order_ref") if k in pay)):
             errors.append(f"cost.additional[{i}].payment {pay['kind']} needs a positive amount (and optional decision_ref / order_ref)")
@@ -669,6 +675,38 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             comp["payment_refs"].append({"event_id": event_id})
             comp["paid"] = True
             continue
+        if comp["kind"] in SPEND_COSTS:
+            # ADR-0013 §5: XP, a Buff counter, or the source's own Empowered
+            # state. Each must be there to be spent (204.3).
+            event_id = f"pay:{comp['cost_id']}"
+            if comp["kind"] == "spend_xp":
+                amount = comp["requested"]["amount"]
+                before = int(working["players"][actor].get("xp", 0))
+                if before < amount:
+                    raise PlayError("payment", "cost_unpayable", f"{actor} has {before} XP and the cost spends {amount} (730.2)", rule_locators=["Core 730.2", "Core 204.3"])
+                working["players"][actor]["xp"] = before - amount
+                events.append({"event_id": event_id, "kind": "pay_spend_xp", "cost_id": comp["cost_id"], "amount": amount,
+                               "before": before, "after": before - amount, "rule_locators": ["Core 357.2", "Core 730.2"]})
+            elif comp["kind"] == "spend_buff":
+                object_id = comp["object_id"]
+                unit = working["objects"].get(object_id, {})
+                if not unit.get("buffed"):
+                    raise PlayError("payment", "cost_unpayable", f"{object_id!r} has no Buff counter to spend (702.2.b)", rule_locators=["Core 702.2.b", "Core 204.3"])
+                if unit.get("controller") != actor:
+                    raise PlayError("payment", "cost_unpayable", f"{actor} does not control {object_id!r}; a spender must control the object the counter is on (702.2)", rule_locators=["Core 702.2"])
+                del working["objects"][object_id]["buffed"]
+                events.append({"event_id": event_id, "kind": "pay_spend_buff", "cost_id": comp["cost_id"], "object_id": object_id,
+                               "rule_locators": ["Core 357.2", "Core 702.2.b"]})
+            else:
+                object_id = comp["object_id"]
+                if not working["objects"].get(object_id, {}).get("empowered"):
+                    raise PlayError("payment", "cost_unpayable", f"{object_id!r} is not Empowered, so it cannot be Disempowered as a cost (443.2.a)", rule_locators=["Core 443.2.a", "Core 204.3"])
+                del working["objects"][object_id]["empowered"]
+                events.append({"event_id": event_id, "kind": "pay_disempower_self", "cost_id": comp["cost_id"], "object_id": object_id,
+                               "rule_locators": ["Core 357.2", "Core 443.1.b"]})
+            comp["payment_refs"].append({"event_id": event_id})
+            comp["paid"] = True
+            continue
         op = SUPPORTED_NON_STANDARD[comp["kind"]]
         object_id = comp["object_id"]
         selector = {"object_id": object_id, "chosen_zone_class": "board", "controller_relation": "friendly",
@@ -1009,9 +1047,11 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # --- 356: total cost.
         for add in cost.get("additional", []) or []:
             kind = add["payment"]["kind"]
-            if kind not in {"energy", "power", "power_any"} and kind not in SUPPORTED_NON_STANDARD and kind not in CHOICE_COSTS and (add["mandatory"] or intents.get(add["cost_id"])):
+            if kind not in {"energy", "power", "power_any"} and kind not in SUPPORTED_NON_STANDARD and kind not in CHOICE_COSTS and kind not in SPEND_COSTS and (add["mandatory"] or intents.get(add["cost_id"])):
                 note = " (XP / Buff / Empower costs wait for the P4 catalogue: xp_buff_costs)" if kind in DEFERRED_COST_KINDS else ""
                 raise PlayError("cost_determination", "unsupported_cost_kind", f"cost {add['cost_id']!r} uses {kind!r}, which the engine does not type{note}", unsupported=True, rule_locators=["Core 356.7"])
+            if kind == "disempower_self" and "object_id" not in add["payment"]:
+                add["payment"] = {**add["payment"], "object_id": declaration["activation"]["source_object"] if declaration.get("activation") else declaration["card"]}
             if kind in SELF_COSTS and "object_id" not in add["payment"]:
                 add["payment"] = {**add["payment"], "object_id": declaration["activation"]["source_object"]}
         # ADR-0013 §6: P4 evaluates a modification's condition and per-each

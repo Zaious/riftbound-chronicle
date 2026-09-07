@@ -90,7 +90,12 @@
         "Core 827.1",
         "Core 827.2"
       ],
-      "production": null,
+      "production": {
+        "module": "effect_ir",
+        "symbol": "_apply_one",
+        "layer": "procedure",
+        "note": "the Empower action sets the binary state and refuses a second application (441.1.b, 441.1.c.1); P5 emits the become_empowered event (442.2)"
+      },
       "active_zone": "board",
       "boundary": {
         "identity": "the object's Empowered state",
@@ -100,7 +105,8 @@
         "reviewer": "claude",
         "date": "2026-09-07",
         "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
-      }
+      },
+      "fixture": "check_empower_xp.py"
     },
     {
       "keyword_id": "equip",

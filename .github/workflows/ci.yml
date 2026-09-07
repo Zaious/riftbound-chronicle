@@ -333,6 +333,9 @@ jobs:
       # ADR-0013 §4: no keyword is claimed without a production the engine really has.
       - name: Keyword catalogue derived from the engine (C-51)
         run: python3 skill/scripts/check_keyword_catalog.py
+      # ADR-0013 §5: Empower, Buff and XP as state, with the three costs that spend them.
+      - name: Empower, Buff and XP primitives (C-52)
+        run: python3 skill/scripts/check_empower_xp.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -432,6 +435,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_continuous_effects.py"
           python3 "$REPO/skill/scripts/check_conditions.py"
           python3 "$REPO/skill/scripts/check_keyword_catalog.py"
+          python3 "$REPO/skill/scripts/check_empower_xp.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

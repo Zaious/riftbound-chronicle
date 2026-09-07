@@ -194,7 +194,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "layer_engine",
             "canonical_migration",
             "typed_conditions",
-            "keyword_catalog"
+            "keyword_catalog",
+            "empower_state",
+            "buff_counters",
+            "xp"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -376,7 +379,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "layer_engine",
             "canonical_migration",
             "typed_conditions",
-            "keyword_catalog"
+            "keyword_catalog",
+            "empower_state",
+            "buff_counters",
+            "xp"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",

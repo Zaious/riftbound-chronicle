@@ -325,7 +325,7 @@ def main() -> int:
     if "restricted" not in es["$defs"]["player"]["properties"]["resources"]["properties"] or "source_object" not in es["properties"]["chain_items"]["additionalProperties"]["properties"]:
         errors.append("effect-state schema lacks restricted pools or ability chain entries")
     scope = KIND_CONFIG["play"]
-    if not {"activated_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources"} <= set(scope["supported"]) or "xp_buff_costs" not in scope["unsupported"]:
+    if not {"activated_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources"} <= set(scope["supported"]) or "legend_activation" not in scope["unsupported"]:
         errors.append("the play scope does not declare the C-42 capabilities and their boundary")
 
     snapshot = copy.deepcopy(three)

@@ -225,7 +225,10 @@
               "pay_recycle_trash",
               "pay_kill_this",
               "pay_recall_self",
-              "pay_banish_self"
+              "pay_banish_self",
+              "pay_spend_xp",
+              "pay_spend_buff",
+              "pay_disempower_self"
             ]
           },
           "amount": {

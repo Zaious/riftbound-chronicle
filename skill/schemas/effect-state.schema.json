@@ -733,6 +733,11 @@
               }
             }
           }
+        },
+        "xp": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Core 730.1: the XP marked on the player."
         }
       }
     },
@@ -1351,6 +1356,14 @@
         "champion_legend": {
           "type": "boolean",
           "description": "Core 107.4.d: the player's Champion Legend, which can never leave the Legend Zone."
+        },
+        "empowered": {
+          "type": "boolean",
+          "description": "Core 442.1: a binary state for an object on the board; an Empowered object cannot be Empowered again (441.1.b)."
+        },
+        "buffed": {
+          "type": "boolean",
+          "description": "Core 426.1.b / 702: the Unit carries a Buff counter. A Unit never carries two."
         }
       }
     },

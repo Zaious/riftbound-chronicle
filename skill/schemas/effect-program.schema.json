@@ -150,7 +150,11 @@
               "burn",
               "attach",
               "detach",
-              "copy_object"
+              "copy_object",
+              "empower",
+              "disempower",
+              "buff",
+              "gain_xp"
             ]
           },
           "effect_id": {

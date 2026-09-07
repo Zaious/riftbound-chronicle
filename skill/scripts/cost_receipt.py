@@ -20,7 +20,8 @@ from typing import Any
 RECEIPT_VERSION = "riftbound-cost-receipt.v1"
 RESOURCE_KINDS = {"energy", "power", "power_any"}
 # ADR-0011 §4: every payment kind the transaction can settle (357.2).
-PAYMENT_EVENT_KINDS = {"pay_energy", "pay_power", "pay_exhaust", "pay_kill", "pay_discard", "pay_recycle_trash", "pay_kill_this", "pay_recall_self", "pay_banish_self"}
+PAYMENT_EVENT_KINDS = {"pay_energy", "pay_power", "pay_exhaust", "pay_kill", "pay_discard", "pay_recycle_trash", "pay_kill_this", "pay_recall_self", "pay_banish_self",
+                       "pay_spend_xp", "pay_spend_buff", "pay_disempower_self"}
 
 _TOP = {"schema_version", "play_id", "actor", "card", "base", "after_base_modifications", "components", "aggregate",
         "discount_order", "order_provenance", "payment_events", "total", "paid", "rule_locators"}

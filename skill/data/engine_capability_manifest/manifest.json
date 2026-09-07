@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:41623573db98a5086fffd143",
-  "capability_set_id": "sha256:41623573db98a5086fffd143bd62cf2b792f94a9cb2c542d5d1629212ae97037",
+  "manifest_id": "capability-manifest:9453c0b6f860a0672c13a764",
+  "capability_set_id": "sha256:9453c0b6f860a0672c13a7647625470e7e488223ba4109550856518cc78a2ef3",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:1820ca975e7a44f011da0dbbb5eb578398c3e31408fb96d76294821a54769ef7",
+    "value": "sha256:034fd9e7e3b867ee98b673868b9367580e12d93fa72c6bb22b6f942e9d322aaa",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:1283254353a44fac6b41e703faf9e422245d4283692c1ba1bcb44644486c5572"
+        "sha256": "sha256:4f03f092b7717a2c40c5a296249f45fa4f762545137e036a49996c5679a1c7d2"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:cd1259f2bb07f460f4fecd1d6ce474e0214e45fe896050d174a6bc467ff7b097"
+        "sha256": "sha256:502b43ca85f93ee81bc36d5f6b65b21bf58bf5f24fb10073fd7ab8bb216ab0fd"
       },
       {
         "path": "combat.py",
@@ -171,7 +171,10 @@
         "layer_engine",
         "canonical_migration",
         "typed_conditions",
-        "keyword_catalog"
+        "keyword_catalog",
+        "empower_state",
+        "buff_counters",
+        "xp"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -265,12 +268,12 @@
         "ambush",
         "play_from_hidden",
         "evaluated_cost_modifications",
-        "activation_conditions"
+        "activation_conditions",
+        "spend_costs"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",
         "payment_stage_replacement_decisions",
-        "xp_buff_costs",
         "legend_activation",
         "battlefield_control_transfer",
         "deck_construction",
@@ -409,6 +412,15 @@
       ]
     },
     {
+      "id": "buff",
+      "rule_locators": [
+        "Core 426.1",
+        "Core 426.1.b",
+        "Core 426.1.c",
+        "Core 702"
+      ]
+    },
+    {
       "id": "burn",
       "rule_locators": [
         "Core 440.1",
@@ -470,6 +482,14 @@
       ]
     },
     {
+      "id": "disempower",
+      "rule_locators": [
+        "Core 443.1.b",
+        "Core 443.2",
+        "Core 443.2.a"
+      ]
+    },
+    {
       "id": "draw",
       "rule_locators": [
         "Core 413"
@@ -490,9 +510,27 @@
       ]
     },
     {
+      "id": "empower",
+      "rule_locators": [
+        "Core 441.1",
+        "Core 441.1.b",
+        "Core 441.1.c.1",
+        "Core 442.1",
+        "Core 442.2",
+        "Core 443.1"
+      ]
+    },
+    {
       "id": "exhaust",
       "rule_locators": [
         "Core 414"
+      ]
+    },
+    {
+      "id": "gain_xp",
+      "rule_locators": [
+        "Core 730.1",
+        "Core 730.2"
       ]
     },
     {
@@ -1461,6 +1499,9 @@
     "Core 425.1.a",
     "Core 425.1.b",
     "Core 425.1.c",
+    "Core 426.1",
+    "Core 426.1.b",
+    "Core 426.1.c",
     "Core 427.1",
     "Core 427.2",
     "Core 427.2.a",
@@ -1500,6 +1541,15 @@
     "Core 437.1.a.1",
     "Core 440.1",
     "Core 440.2",
+    "Core 441.1",
+    "Core 441.1.b",
+    "Core 441.1.c.1",
+    "Core 442.1",
+    "Core 442.2",
+    "Core 443.1",
+    "Core 443.1.b",
+    "Core 443.2",
+    "Core 443.2.a",
     "Core 445",
     "Core 446",
     "Core 446.2",
@@ -1539,7 +1589,10 @@
     "Core 483.7",
     "Core 485.7",
     "Core 487.7",
+    "Core 702",
     "Core 713–715.4",
+    "Core 730.1",
+    "Core 730.2",
     "Core 740.2.a",
     "Core 740.2.c",
     "Core 806–807",
@@ -1613,8 +1666,7 @@
     "take_damage_triggers",
     "target_checks",
     "team_scoring",
-    "token_not_in_catalogue",
-    "xp_buff_costs"
+    "token_not_in_catalogue"
   ],
   "claims": {
     "complete_game": false,

@@ -122,6 +122,11 @@ SUPPORTED_OPS = {
     "detach",
     # C-47 (ADR-0012 §7): a typed copy request that fails closed until P4.
     "copy_object",
+    # C-52 (ADR-0013 §5): Empowered and Buffed as binary states, and XP.
+    "empower",
+    "disempower",
+    "buff",
+    "gain_xp",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -276,6 +281,10 @@ OP_RULES = {
     "counter": ["Core 425.1", "Core 425.1.a", "Core 425.1.b", "Core 425.1.c", "Core 124"],
     "burn": ["Core 440.1", "Core 440.2", "Core 431.1.b", "Core 124"],
     "copy_object": ["Core 135.2.b", "Core 185.3.a", "Core 187.1"],
+    "empower": ["Core 441.1", "Core 441.1.b", "Core 441.1.c.1", "Core 442.1", "Core 442.2", "Core 443.1"],
+    "disempower": ["Core 443.1.b", "Core 443.2", "Core 443.2.a"],
+    "buff": ["Core 426.1", "Core 426.1.b", "Core 426.1.c", "Core 702"],
+    "gain_xp": ["Core 730.1", "Core 730.2"],
     "attach": ["Core 434.1", "Core 434.2.a", "Core 434.2.b", "Core 434.4", "Core 434.5.a", "Core 136.2.c"],
     "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
 }
@@ -362,6 +371,9 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"{label}.uses must be a non-empty unique subset of {RESOURCE_USES}")
         if "team_id" in player and (not isinstance(player["team_id"], str) or not player["team_id"]):
             errors.append(f"players.{player_id}.team_id must be a non-empty string when supplied")
+        # ADR-0013 §5 / Core 730: XP is a value marked on the player.
+        if "xp" in player and (not isinstance(player["xp"], int) or isinstance(player["xp"], bool) or player["xp"] < 0):
+            errors.append(f"players.{player_id}.xp must be a non-negative integer (Core 730.1)")
         # ADR-0009 §1: points and the once-per-Battlefield-per-turn ledger (470).
         if "points" in player and (not isinstance(player["points"], int) or isinstance(player["points"], bool) or player["points"] < 0):
             errors.append(f"players.{player_id}.points must be a non-negative integer")
@@ -777,6 +789,11 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         # ADR-0012 §1 / Core 825.3: Unique is a deck-construction constraint,
         # not a play restriction; the engine only records the characteristic.
+        for flag in ("empowered", "buffed"):
+            if flag in obj and not isinstance(obj[flag], bool):
+                errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 442.1, 426.1.b)")
+        if obj.get("buffed") and obj.get("kind") != "unit":
+            errors.append(f"objects.{object_id}.buffed applies to Units only (Core 702)")
         if not isinstance(obj.get("hidden", False), bool):
             errors.append(f"objects.{object_id}.hidden must be boolean when supplied (Core 811)")
         if not isinstance(obj.get("unique", False), bool):
@@ -1015,6 +1032,14 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].copy_object needs the object it copies")
                 if not isinstance(effect.get("request_id"), str) or not effect.get("request_id"):
                     errors.append(f"effects[{index}].copy_object needs a request_id so the P4 slice can bind to it")
+            if op_name in {"empower", "disempower", "buff"}:
+                if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
+                    errors.append(f"effects[{index}].{op_name} needs the object it acts on")
+            if op_name == "gain_xp":
+                if not isinstance(effect.get("player"), str) or not effect.get("player"):
+                    errors.append(f"effects[{index}].gain_xp needs a player")
+                if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1:
+                    errors.append(f"effects[{index}].gain_xp needs a positive amount")
             if op_name in {"attach", "detach"}:
                 if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
                     errors.append(f"effects[{index}].{op_name} needs the object it links or unlinks")
@@ -2494,6 +2519,60 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             identities[object_id] = _bump_identity(new_state, object_id)
         trace.update({"player": player_id, "requested_count": count, "burned_count": len(burned), "objects": burned,
                       "identities_after": identities, "burn_out": False, "completion": "full"})
+
+    elif op == "empower":
+        # Core 441: a binary state for a Game Object on the board (442.1). An
+        # object that is already Empowered cannot be Empowered again — nothing
+        # additional happens (441.1.b, 441.1.c.1), so no second event either.
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("empower requires a known object")
+        obj = new_state["objects"][object_id]
+        if zone_class(find_location(new_state, object_id)) != "board":
+            raise IllegalOperation(f"Empowered is a state for objects on the board; {object_id!r} is not on it (442.1)")
+        if obj.get("empowered"):
+            trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none", "already_empowered": True,
+                          "became_empowered": False, "reason": "an Empowered object cannot be Empowered again (441.1.b, 441.1.c.1)"})
+            return new_state, trace
+        obj["empowered"] = True
+        trace.update({"object_id": object_id, "became_empowered": True, "already_empowered": False,
+                      "event_hook": {"kind": "become_empowered", "object_id": object_id, "note": "P5 emits the event (442.2)"}})
+
+    elif op == "disempower":
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("disempower requires a known object")
+        obj = new_state["objects"][object_id]
+        if not obj.get("empowered"):
+            trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none",
+                          "reason": "disempowering a card that is not Empowered does nothing (443.2.a)"})
+            return new_state, trace
+        del obj["empowered"]
+        trace.update({"object_id": object_id, "disempowered": True})
+
+    elif op == "buff":
+        # Core 426.1.b: a Unit either has a Buff counter or it does not; a Unit
+        # that already has one is still chosen, but is not Buffed (426.1.c).
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("buff requires a known object")
+        obj = new_state["objects"][object_id]
+        if obj.get("kind") != "unit" or zone_class(find_location(new_state, object_id)) != "board":
+            raise IllegalOperation(f"Buffs are counters on Units on the board; {object_id!r} is not one (702)")
+        if obj.get("buffed"):
+            trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none", "already_buffed": True,
+                          "was_buffed": False, "reason": "the Unit already has a Buff counter (426.1.b)"})
+            return new_state, trace
+        obj["buffed"] = True
+        trace.update({"object_id": object_id, "was_buffed": True, "already_buffed": False})
+
+    elif op == "gain_xp":
+        player_id, amount = effect.get("player"), effect.get("amount")
+        if player_id not in new_state["players"] or not isinstance(amount, int) or isinstance(amount, bool) or amount < 1:
+            raise ValueError("gain_xp requires a known player and a positive amount")
+        before = int(new_state["players"][player_id].get("xp", 0))
+        new_state["players"][player_id]["xp"] = before + amount
+        trace.update({"player": player_id, "amount": amount, "before": before, "after": before + amount})
 
     elif op == "copy_object":
         # ADR-0012 §7: the characteristics and layers of a copy are P4. The

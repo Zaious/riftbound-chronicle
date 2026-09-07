@@ -286,12 +286,13 @@ def main() -> int:
     if play_card(timing, effect_state(energy=2, power={}), declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "tap", "mandatory": True, "payment": {"kind": "exhaust", "object_id": "u2"}}]})).get("reason_code") != "cost_unpayable":
         errors.append("exhausting an enemy unit was accepted as a cost")
 
-    # --- unknown cost mechanic → unsupported (C-42: discard and recycle_trash
-    # are typed now; XP / Buff costs wait for the P4 catalogue) --------------------------
-    xp = play_card(timing, state, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": True, "payment": {"kind": "spend_xp", "amount": 1}}]}))
-    if xp.get("unsupported") is not True or xp.get("reason_code") != "unsupported_cost_kind" or validate_play_result(xp):
-        errors.append(f"spend_xp cost was not unsupported: {xp.get('reason_code')}")
-    if not play_card(timing, state, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": False, "payment": {"kind": "spend_xp", "amount": 1}}]}), engine_decisions=decisions(state, intent("d", False))).get("committed"):
+    # --- unknown cost mechanic → unsupported (C-42 typed discard and
+    # recycle_trash, C-52 the XP / Buff / Empower spends; a generic counter
+    # spend, Core 745-752, is still not modelled) --------------------------------------
+    counter_cost = play_card(timing, state, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": True, "payment": {"kind": "spend_counter", "amount": 1}}]}))
+    if counter_cost.get("unsupported") is not True or counter_cost.get("reason_code") != "unsupported_cost_kind" or validate_play_result(counter_cost):
+        errors.append(f"a generic counter-spend cost was not unsupported: {counter_cost.get('reason_code')}")
+    if not play_card(timing, state, declaration(cost={"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": False, "payment": {"kind": "spend_counter", "amount": 1}}]}), engine_decisions=decisions(state, intent("d", False))).get("committed"):
         errors.append("declining an optional cost of an unknown kind must not block the play")
 
     # --- targets at play (355.5 / 355.9): decision-supplied and concrete ---------------------
@@ -368,7 +369,7 @@ def main() -> int:
 
     # --- engine-check wrapping, manifest scope, result validator -----------------------------
     hashes = {"timing_state": state_hash(timing), "effect_state": hash_value(state), "play_declaration": "sha256:" + "0" * 64}
-    for outcome, result in {"supported": ok, "illegal": bad, "unsupported": xp, "decision_required": missing, "invalid_input": malformed}.items():
+    for outcome, result in {"supported": ok, "illegal": bad, "unsupported": counter_cost, "decision_required": missing, "invalid_input": malformed}.items():
         check = build_engine_check("play", result, input_hashes=hashes)
         if validate_engine_check(check) or check["outcome"] != outcome or check["component"]["version"] != RESULT_VERSION:
             errors.append(f"engine-check for {outcome} came out as {check['outcome']}")

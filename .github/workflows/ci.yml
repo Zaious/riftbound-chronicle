@@ -343,6 +343,10 @@ jobs:
       # the two visibility levels and no generic per-operation event.
       - name: Semantic event catalogue (C-54)
         run: python3 skill/scripts/check_game_events.py
+      # ADR-0014 §2: cross-object watchers, delayed triggers bound to identity,
+      # per-turn counters and trigger multipliers.
+      - name: Watchers, delayed triggers and counters (C-55)
+        run: python3 skill/scripts/check_watchers.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -445,6 +449,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_empower_xp.py"
           python3 "$REPO/skill/scripts/check_effect_text_and_copy.py"
           python3 "$REPO/skill/scripts/check_game_events.py"
+          python3 "$REPO/skill/scripts/check_watchers.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

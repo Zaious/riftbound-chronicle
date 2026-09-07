@@ -542,6 +542,15 @@ def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any]
             descriptors.append(copied)
             record["scheduled"] = True
             evaluated.append(record)
+    # ADR-0014 §2: delayed triggers waiting for the end of this turn fire here,
+    # alongside the printed ones; one whose bound identity is gone is dropped
+    # with its reason rather than fired on a stranger (Core 124).
+    import watchers
+    delayed, dropped = watchers.delayed_matches(effect_state, [], turn_id=turn_id, moment="end_of_turn")
+    for entry in delayed:
+        entry.update({"batch_sequence": 0, "batch_id": f"ending:{turn_id}", "ending_step": turn_id})
+    descriptors.extend(delayed)
+    ending_effect_state = watchers.settle_delayed(effect_state, delayed, dropped)
     failure = _settle_trigger_orders(descriptors, engine_decisions, base)
     if failure is not None:
         return failure
@@ -555,9 +564,10 @@ def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any]
     final_timing = scheduled["next_state"]
     return {**base, "valid": True, "committed": True, "applied": True, "reason_code": "ok",
             "next_timing_state": final_timing, "next_timing_state_hash": state_hash(final_timing),
-            "next_effect_state": copy.deepcopy(effect_state), "next_effect_state_hash": hash_value(effect_state),
-            "turn_id": turn_id, "trace": {"ending_triggers": evaluated, "trigger_schedule": scheduled.get("transition")},
-            "rule_locators": ["Core 316.9.b", "Core 317.1", "Core 317.1.a", "Core 383.1", "Core 383.2.a.1"]}
+            "next_effect_state": copy.deepcopy(ending_effect_state), "next_effect_state_hash": hash_value(ending_effect_state),
+            "turn_id": turn_id, "trace": {"ending_triggers": evaluated, "trigger_schedule": scheduled.get("transition"),
+                                          "delayed_triggers": [d["delayed_id"] for d in delayed], "delayed_dropped": dropped},
+            "rule_locators": ["Core 316.9.b", "Core 317.1", "Core 317.1.a", "Core 383.1", "Core 383.2.a.1", "Core 124"]}
 
 
 def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:

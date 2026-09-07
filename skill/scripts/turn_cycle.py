@@ -160,6 +160,10 @@ def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engin
     next_timing["showdown"] = {"active": False, "kind": None, "focus": None}
     next_effect = copy.deepcopy(effect_state)
     next_effect["turn_id"] = next_turn_id
+    # ADR-0014 §2 / Core 383.3.e: the per-turn trigger counters are part of the
+    # per-turn ledger this step prunes.
+    import watchers
+    next_effect = watchers.reset_turn_uses(next_effect, next_turn_id)
     for pl in next_effect["players"].values():
         if "scored_this_turn" in pl:
             pl["scored_this_turn"] = {next_turn_id: pl["scored_this_turn"].get(next_turn_id, [])}

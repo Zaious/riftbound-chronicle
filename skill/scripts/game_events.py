@@ -86,6 +86,7 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "cards_put_back": {"about": "player", "rules": ["Core 424.3"]},
     "predicted": {"about": "player", "rules": ["Core 432"]},
     "turn_effect_granted": {"about": "player", "rules": ["Core 317.2"]},
+    "delayed_trigger_created": {"about": "player", "rules": ["Core 383.1", "Core 124"]},
     # --- chain -----------------------------------------------------------
     "countered": {"about": "chain", "rules": ["Core 359.3", "Core 361"]},
     "burned": {"about": "chain", "rules": ["Core 362"]},
@@ -134,6 +135,7 @@ OP_PRIMARY: dict[str, str] = {
     "buff": "buffed",
     "gain_xp": "xp_gained",
     "hide_card": "hidden_away",
+    "create_delayed_trigger": "delayed_trigger_created",
 }
 
 # Actions performed outside an effect program, so their op is not in
@@ -416,6 +418,7 @@ class EventLog:
             "cards_put_back": ("player", "count", "position"),
             "looked_at": ("player", "looked_count"),
             "replacement_granted": ("replacement_id",),
+            "delayed_trigger_created": ("delayed_id", "waits_for", "target_object", "target_identity"),
         }.get(kind, ())
         return {field: entry[field] for field in carried if field in entry}
 

@@ -135,6 +135,8 @@ SUPPORTED_OPS = {
     "disempower",
     "buff",
     "gain_xp",
+    # C-55 (ADR-0014 §2): a resolving effect creates a trigger that waits.
+    "create_delayed_trigger",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -295,6 +297,7 @@ OP_RULES = {
     "gain_xp": ["Core 730.1", "Core 730.2"],
     "attach": ["Core 434.1", "Core 434.2.a", "Core 434.2.b", "Core 434.4", "Core 434.5.a", "Core 136.2.c"],
     "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
+    "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
 }
 
 
@@ -927,6 +930,9 @@ def validate_state(state: Any) -> list[str]:
             source_places = occupancy.get(replacement.get("source_object"), [])
             if source_places and not any(place.startswith("battlefield:") or place.endswith(":base") for place in source_places):
                 errors.append(f"{label}.source_object must be active on the board")
+    # ADR-0014 §2: watchers, delayed triggers, per-turn counters, multipliers.
+    import watchers
+    errors.extend(watchers.validate_watch_state(state))
     return errors
 
 
@@ -1034,6 +1040,19 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].grant_keyword.value must be a positive integer")
                 if not isinstance(effect.get("source"), str) or not effect.get("source"):
                     errors.append(f"effects[{index}].grant_keyword requires a source")
+            if effect.get("op") == "create_delayed_trigger":
+                import watchers
+                spec = effect.get("delayed")
+                if not isinstance(spec, dict):
+                    errors.append(f"effects[{index}].create_delayed_trigger needs a `delayed` descriptor")
+                else:
+                    supplied = set(spec)
+                    required = {"delayed_id", "controller", "source_object", "waits_for", "effect_program_id",
+                                "optional_at_finalize", "controller_order"}
+                    if not required <= supplied or supplied - (watchers.DELAYED_FIELDS - {"source_identity", "created_turn"}):
+                        errors.append(f"effects[{index}].delayed must carry {sorted(required)} and may add "
+                                      "target_object, target_identity and snapshot; the identities and the turn are "
+                                      "bound by the engine")
             if effect.get("op") == "add_resource" and effect.get("restriction") is not None:
                 restriction = effect["restriction"]
                 if not isinstance(restriction, dict) or set(restriction) != {"uses"} or not isinstance(restriction["uses"], list) or not restriction["uses"] or any(u not in RESOURCE_USES for u in restriction["uses"]) or len(restriction["uses"]) != len(set(restriction["uses"])):
@@ -2607,6 +2626,25 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         before = int(new_state["players"][player_id].get("xp", 0))
         new_state["players"][player_id]["xp"] = before + amount
         trace.update({"player": player_id, "amount": amount, "before": before, "after": before + amount})
+
+    elif op == "create_delayed_trigger":
+        # ADR-0014 §2 / Core 124: the delayed trigger is bound to the identities
+        # it was created with, so a target that becomes a new object no longer
+        # matches it and the trigger is dropped instead of firing on a stranger.
+        spec = dict(effect["delayed"])
+        if spec["controller"] not in new_state["players"]:
+            raise ValueError("create_delayed_trigger requires a known controller")
+        if any(entry["delayed_id"] == spec["delayed_id"] for entry in new_state.get("delayed_triggers", [])):
+            raise ValueError(f"delayed trigger {spec['delayed_id']!r} already exists")
+        spec["source_identity"] = object_identity(new_state, spec["source_object"]) or spec["source_object"]
+        if spec.get("target_object") is not None:
+            spec["target_identity"] = object_identity(new_state, spec["target_object"])
+        spec["created_turn"] = new_state.get("turn_id", DEFAULT_TURN_ID)
+        new_state.setdefault("delayed_triggers", []).append(spec)
+        trace.update({"player": spec["controller"], "delayed_id": spec["delayed_id"],
+                      "source_object": spec["source_object"], "source_identity": spec["source_identity"],
+                      "target_object": spec.get("target_object"), "target_identity": spec.get("target_identity"),
+                      "waits_for": copy.deepcopy(spec["waits_for"]), "created_turn": spec["created_turn"]})
 
     elif op == "copy_object":
         # ADR-0013 §6 / Core 477.1: a Trait-layer effect over the copyable

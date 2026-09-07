@@ -362,6 +362,13 @@ jobs:
       # ADR-0015 §3: Skirmish and War, and the Removal of a Player.
       - name: Free-for-all and the Removal of a Player (C-59)
         run: python3 skill/scripts/check_free_for_all.py
+      # ADR-0016 §1–§2: the clause grammar, its two fixtures per production,
+      # and the corpus round trip under canonical equality.
+      - name: Clause grammar and dual compilation (C-60, C-61)
+        run: python3 skill/scripts/check_clause_grammar.py
+      # ADR-0016 §3: what the grammar does not parse, ranked and reported.
+      - name: Coverage debt ledger (C-62)
+        run: python3 skill/scripts/check_coverage_debt.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -469,6 +476,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_cleanup_recall.py"
           python3 "$REPO/skill/scripts/check_legal_enumeration.py"
           python3 "$REPO/skill/scripts/check_free_for_all.py"
+          python3 "$REPO/skill/scripts/check_clause_grammar.py"
+          python3 "$REPO/skill/scripts/check_coverage_debt.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

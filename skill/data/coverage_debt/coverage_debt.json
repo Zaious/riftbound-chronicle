@@ -1,0 +1,582 @@
+{
+  "schema_version": "coverage-debt.v1",
+  "grammar_version": "2026-09-07.1",
+  "ranking": [
+    "deck_slots",
+    "deck_count",
+    "risk",
+    "missing_capability",
+    "clause_id"
+  ],
+  "quota": null,
+  "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
+  "counts": {
+    "clauses_parsed": 31,
+    "clauses_in_debt": 25,
+    "by_rule_family": {
+      "attacking_defending_alone": 2,
+      "bonus_damage": 2,
+      "combat_state": 4,
+      "conditional_effects": 3,
+      "conditional_might": 2,
+      "continuous_effects": 2,
+      "discard": 1,
+      "duration_expiry": 2,
+      "end_of_turn_trigger": 1,
+      "enter_ready": 1,
+      "if_cannot_fallback": 1,
+      "linked_instruction": 1,
+      "mutual_damage_equal_might": 1,
+      "next_death_replacement": 1,
+      "open_battlefield_play": 2,
+      "optional_additional_cost": 1,
+      "play_and_move_triggers": 4,
+      "play_lifecycle": 4,
+      "recall": 1,
+      "return_board_to_hand": 1,
+      "return_trash_to_hand": 1,
+      "shield": 1,
+      "target_choice": 9,
+      "unclassified": 2
+    },
+    "by_risk": {
+      "always_in_play": 5,
+      "main_deck": 20,
+      "unknown": 0
+    }
+  },
+  "entries": [
+    {
+      "clause_id": "annie - dark child (starter)#223039b2",
+      "card_key": "annie - dark child (starter)",
+      "card": "Annie - Dark Child (Starter)",
+      "text": "At the end of your turn, ready up to 2 runes.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "always_in_play",
+      "rule_family": [
+        "end_of_turn_trigger"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "stale",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "void gate#3aa2e8f7",
+      "card_key": "void gate",
+      "card": "Void Gate",
+      "text": "Spells and abilities deal 1 Bonus Damage to units here.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "always_in_play",
+      "rule_family": [
+        "bonus_damage"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "stale",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "fortified position#9b46c0cf",
+      "card_key": "fortified position",
+      "card": "Fortified Position",
+      "text": "It gains [Shield 2] this combat.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "always_in_play",
+      "rule_family": [
+        "combat_state",
+        "duration_expiry",
+        "shield"
+      ],
+      "missing_capability": "R3-A3-combat",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "fortified position#d0ee5f77",
+      "card_key": "fortified position",
+      "card": "Fortified Position",
+      "text": "When you defend here, choose a unit.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "always_in_play",
+      "rule_family": [
+        "combat_state",
+        "play_and_move_triggers",
+        "target_choice"
+      ],
+      "missing_capability": "R3-A3-combat",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "master yi - wuju bladesman (starter)#96ecd8e6",
+      "card_key": "master yi - wuju bladesman (starter)",
+      "card": "Master Yi - Wuju Bladesman (Starter)",
+      "text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "always_in_play",
+      "rule_family": [
+        "attacking_defending_alone",
+        "combat_state",
+        "conditional_might",
+        "continuous_effects"
+      ],
+      "missing_capability": "R3-A3-combat",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "meditation#083ddaf7",
+      "card_key": "meditation",
+      "card": "Meditation",
+      "text": "Otherwise, draw 1.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "unclassified"
+      ],
+      "missing_capability": "E0",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "meditation#8be0efa4",
+      "card_key": "meditation",
+      "card": "Meditation",
+      "text": "If you do, draw 2.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "unclassified"
+      ],
+      "missing_capability": "E0",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "flash#7a92a690",
+      "card_key": "flash",
+      "card": "Flash",
+      "text": "Move up to 2 friendly units to base.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "target_choice"
+      ],
+      "missing_capability": "R3-A1-choices-costs-zones",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "gentlemen's duel#fd48e5d0",
+      "card_key": "gentlemen's duel",
+      "card": "Gentlemen's Duel",
+      "text": "Then choose an enemy unit.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "target_choice"
+      ],
+      "missing_capability": "R3-A1-choices-costs-zones",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "gust#e661650e",
+      "card_key": "gust",
+      "card": "Gust",
+      "text": "Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "return_board_to_hand",
+        "target_choice"
+      ],
+      "missing_capability": "R3-A1-choices-costs-zones",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "highlander#d659b2ba",
+      "card_key": "highlander",
+      "card": "Highlander",
+      "text": "Choose a friendly unit.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "target_choice"
+      ],
+      "missing_capability": "R3-A1-choices-costs-zones",
+      "claim_in_pack": "stale",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "meditation#6ce549b5",
+      "card_key": "meditation",
+      "card": "Meditation",
+      "text": "As an additional cost to play this, you may exhaust a friendly unit.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "optional_additional_cost"
+      ],
+      "missing_capability": "R3-A1-choices-costs-zones",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "annie - fiery#24035ea0",
+      "card_key": "annie - fiery",
+      "card": "Annie - Fiery",
+      "text": "Your spells and abilities deal 1 Bonus Damage.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "bonus_damage"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "annie - stubborn#5086e61a",
+      "card_key": "annie - stubborn",
+      "card": "Annie - Stubborn",
+      "text": "When you play me, return a spell from your trash to your hand.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "play_and_move_triggers",
+        "play_lifecycle",
+        "return_trash_to_hand",
+        "target_choice"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "disintegrate#033ec095",
+      "card_key": "disintegrate",
+      "card": "Disintegrate",
+      "text": "If this kills it, do this: draw 1.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "conditional_effects",
+        "linked_instruction"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "stale",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "en garde#6dd9b599",
+      "card_key": "en garde",
+      "card": "En Garde",
+      "text": "Give a friendly unit +1 :rb_might: this turn, then an additional +1 :rb_might: this turn if it is the only unit you control there.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "conditional_effects",
+        "duration_expiry",
+        "target_choice"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "highlander#b9d95a9d",
+      "card_key": "highlander",
+      "card": "Highlander",
+      "text": "The next time it would die this turn, heal it, exhaust it, and recall it instead.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "next_death_replacement",
+        "recall"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "stale",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "maddened marauder#8815ca64",
+      "card_key": "maddened marauder",
+      "card": "Maddened Marauder",
+      "text": "When you play me, move a unit from a battlefield to its base.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "play_and_move_triggers",
+        "play_lifecycle",
+        "target_choice"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "master yi - honed#0be72750",
+      "card_key": "master yi - honed",
+      "card": "Master Yi - Honed",
+      "text": "I enter ready.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "enter_ready"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "mobilize#27e88ae5",
+      "card_key": "mobilize",
+      "card": "Mobilize",
+      "text": "If you can't, draw 1.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "conditional_effects",
+        "if_cannot_fallback"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "sai scout#0ede37d4",
+      "card_key": "sai scout",
+      "card": "Sai Scout",
+      "text": "You may play me to an open battlefield.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "open_battlefield_play",
+        "play_lifecycle"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "sneaky deckhand#0ede37d4",
+      "card_key": "sneaky deckhand",
+      "card": "Sneaky Deckhand",
+      "text": "You may play me to an open battlefield.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "open_battlefield_play",
+        "play_lifecycle"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "traveling merchant#92d985e1",
+      "card_key": "traveling merchant",
+      "card": "Traveling Merchant",
+      "text": "When I move, discard 1, then draw 1.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "discard",
+        "play_and_move_triggers"
+      ],
+      "missing_capability": "R3-A2-play-conditions-continuous",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "gentlemen's duel#26a3859b",
+      "card_key": "gentlemen's duel",
+      "card": "Gentlemen's Duel",
+      "text": "They deal damage equal to their Mights to each other.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "mutual_damage_equal_might",
+        "target_choice"
+      ],
+      "missing_capability": "R3-A3-combat",
+      "claim_in_pack": "partial",
+      "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "wielder of water#d2dd9c3e",
+      "card_key": "wielder of water",
+      "card": "Wielder of Water",
+      "text": "While I'm attacking or defending alone, I have +2 :rb_might:.",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-master-yi"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "attacking_defending_alone",
+        "combat_state",
+        "conditional_might",
+        "continuous_effects"
+      ],
+      "missing_capability": "R3-A3-combat",
+      "claim_in_pack": "full",
+      "reason_code": "clause_unparsed"
+    }
+  ],
+  "delta": {
+    "baseline": null,
+    "added": [
+      "annie - dark child (starter)#223039b2",
+      "void gate#3aa2e8f7",
+      "fortified position#9b46c0cf",
+      "fortified position#d0ee5f77",
+      "master yi - wuju bladesman (starter)#96ecd8e6",
+      "meditation#083ddaf7",
+      "meditation#8be0efa4",
+      "flash#7a92a690",
+      "gentlemen's duel#fd48e5d0",
+      "gust#e661650e",
+      "highlander#d659b2ba",
+      "meditation#6ce549b5",
+      "annie - fiery#24035ea0",
+      "annie - stubborn#5086e61a",
+      "disintegrate#033ec095",
+      "en garde#6dd9b599",
+      "highlander#b9d95a9d",
+      "maddened marauder#8815ca64",
+      "master yi - honed#0be72750",
+      "mobilize#27e88ae5",
+      "sai scout#0ede37d4",
+      "sneaky deckhand#0ede37d4",
+      "traveling merchant#92d985e1",
+      "gentlemen's duel#26a3859b",
+      "wielder of water#d2dd9c3e"
+    ],
+    "repaid": [],
+    "reclassified": []
+  }
+}

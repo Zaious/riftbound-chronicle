@@ -1,0 +1,382 @@
+{
+  "schema_version": "clause-grammar.v1",
+  "version": "2026-09-07.1",
+  "ruleset": {
+    "core": "2026-07-16",
+    "faq_as_of": "2026-07-16"
+  },
+  "complete_grammar": false,
+  "note": "Every production carries a stable id, the locators it implements, this grammar's own normalization rule, the AST node it produces, the engine capability it needs, its boundary, and the two fixtures it is promoted on: a golden clause it must compile and a near-miss it must not match.",
+  "productions": [
+    {
+      "production_id": "play_timing_keyword",
+      "form": "[Action] / [Reaction]",
+      "pattern": "\\[(?P<timing>action|reaction)\\]",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 806",
+        "Core 807",
+        "Core 309.1.a"
+      ],
+      "ast_node": "play_timing",
+      "required_capability": [
+        "timing_permission_v1"
+      ],
+      "boundary": "Only the two printed timing keywords. A timing granted by an effect is not this production.",
+      "golden": [
+        "[Action]",
+        "[Reaction]"
+      ],
+      "negative": [
+        "[Action] this turn",
+        "action"
+      ]
+    },
+    {
+      "production_id": "object_keyword",
+      "form": "[Tank] / [Shield] / [Shield N] / [Ganking] / [Deflect] / [Vision]",
+      "pattern": "\\[(?P<keyword>tank|shield|ganking|deflect|vision|temporary|accelerate|assault|legion)( (?P<value>\\d+))?\\]",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 813",
+        "Core 814",
+        "Core 815"
+      ],
+      "ast_node": "keyword",
+      "required_capability": [
+        "keyword_catalogue_v1"
+      ],
+      "boundary": "A bare printed keyword on the object. Granting a keyword to something else is a different production.",
+      "golden": [
+        "[Tank]",
+        "[Shield]",
+        "[Ganking]",
+        "[Deflect]"
+      ],
+      "negative": [
+        "gains [shield 2] this combat",
+        "[unknown]"
+      ]
+    },
+    {
+      "production_id": "draw_n",
+      "form": "Draw N.",
+      "pattern": "draw (?P<count>\\d+)",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 413",
+        "Core 431"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "draw"
+      ],
+      "boundary": "The controller draws. 'Each player draws' and 'draw until' are not this production.",
+      "golden": [
+        "Draw 1.",
+        "Draw 2."
+      ],
+      "negative": [
+        "each player draws 1",
+        "draw 1, then discard 1"
+      ]
+    },
+    {
+      "production_id": "deal_n_to_a_unit_at_a_battlefield",
+      "form": "Deal N to a unit at a battlefield.",
+      "pattern": "deal (?P<amount>\\d+) to a unit at (?:a )?battlefield",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 437",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "targeting"
+      ],
+      "boundary": "One chosen Unit at a Battlefield. A Might restriction on the target is a different production.",
+      "golden": [
+        "Deal 2 to a unit at a battlefield.",
+        "Deal 3 to a unit at battlefield."
+      ],
+      "negative": [
+        "deal 2 to a unit at a battlefield with 3 [m] or less",
+        "deal 2 to all units at a battlefield"
+      ]
+    },
+    {
+      "production_id": "deal_n_to_all_enemy_units_at_a_battlefield",
+      "form": "Deal N to all enemy units at a battlefield.",
+      "pattern": "deal (?P<amount>\\d+) to all enemy units at a battlefield",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 437",
+        "Core 355.10.b",
+        "Core 715.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "criteria_expansion"
+      ],
+      "boundary": "One chosen Battlefield, then every enemy Unit there. 'All units' without the relation is a different production.",
+      "golden": [
+        "Deal 3 to all enemy units at a battlefield."
+      ],
+      "negative": [
+        "deal 3 to all units at a battlefield",
+        "deal 3 to all enemy units in combat"
+      ]
+    },
+    {
+      "production_id": "deal_n_to_all_enemy_units_in_combat",
+      "form": "Deal N to all enemy units in combat.",
+      "pattern": "deal (?P<amount>\\d+) to all enemy units in combat",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 437",
+        "Core 715.2",
+        "Core 460"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "criteria_expansion",
+        "combat_state"
+      ],
+      "boundary": "The Combat in progress. Outside one the instruction finds nothing; it does not fall back to a Battlefield.",
+      "golden": [
+        "Deal 2 to all enemy units in combat."
+      ],
+      "negative": [
+        "deal 2 to all enemy units at a battlefield",
+        "deal 2 to all units in combat"
+      ]
+    },
+    {
+      "production_id": "deal_n_to_all_units_at_battlefields",
+      "form": "Deal N to all units at battlefields.",
+      "pattern": "deal (?P<amount>\\d+) to all units at battlefields",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 437",
+        "Core 355.10.b"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "criteria_expansion"
+      ],
+      "boundary": "Every Unit at every Battlefield, friend and enemy alike, and none in a Base.",
+      "golden": [
+        "Deal 3 to all units at battlefields."
+      ],
+      "negative": [
+        "deal 3 to all enemy units at a battlefield",
+        "deal 3 to all units at a battlefield"
+      ]
+    },
+    {
+      "production_id": "channel_n_rune_exhausted",
+      "form": "Channel N rune(s) exhausted.",
+      "pattern": "channel (?P<count>\\d+) runes? exhausted",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 430",
+        "Core 430.3"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "channel_rune"
+      ],
+      "boundary": "Entering exhausted. A Channel with no entry state, or one that names a Rune, is a different production.",
+      "golden": [
+        "Channel 1 rune exhausted."
+      ],
+      "negative": [
+        "channel 1 rune",
+        "channel 1 rune ready"
+      ]
+    },
+    {
+      "production_id": "return_a_unit_from_your_trash_to_your_hand",
+      "form": "Return a unit from your trash to your hand.",
+      "pattern": "return a unit from your trash to your hand",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 415",
+        "Core 124"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "return_to_hand",
+        "targeting"
+      ],
+      "boundary": "A Unit, from the controller's own Trash. A spell, or an opponent's Trash, is a different production.",
+      "golden": [
+        "Return a unit from your trash to your hand."
+      ],
+      "negative": [
+        "return a spell from your trash to your hand",
+        "return a unit at a battlefield to its owner's hand"
+      ]
+    },
+    {
+      "production_id": "give_a_friendly_unit_might_this_turn",
+      "form": "Give a friendly unit +N [M] this turn.",
+      "pattern": "give a friendly unit \\+(?P<amount>\\d+) \\[m\\] this turn",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 476",
+        "Core 479",
+        "Core 317.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "modify_might",
+        "targeting"
+      ],
+      "boundary": "One chosen friendly Unit, for this turn. A second linked grant is a different production.",
+      "golden": [
+        "Give a friendly unit +3 :rb_might: this turn."
+      ],
+      "negative": [
+        "give a friendly unit +1 [m] this turn, then an additional +1 [m] this turn if it is the only unit you control there",
+        "give an enemy unit +3 [m] this turn"
+      ]
+    },
+    {
+      "production_id": "while_you_have_n_runes_i_have_might",
+      "form": "While you have N+ runes, I have +M [M].",
+      "pattern": "while you have (?P<runes>\\d+)\\+ runes, i have \\+(?P<amount>\\d+) \\[m\\]",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 364.3",
+        "Core 476",
+        "Core 479"
+      ],
+      "ast_node": "conditional_might",
+      "required_capability": [
+        "continuous_effects",
+        "condition_v1"
+      ],
+      "boundary": "A condition on the controller's own Runes on the board. Any other condition is a different production.",
+      "golden": [
+        "While you have 8+ runes, I have +4 :rb_might:."
+      ],
+      "negative": [
+        "while i'm attacking or defending alone, i have +2 [m]",
+        "while you have 8+ runes, i have [tank]"
+      ]
+    },
+    {
+      "production_id": "units_you_play_this_turn_enter_ready",
+      "form": "Units you play this turn enter ready.",
+      "pattern": "units you play this turn enter ready",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 317.2",
+        "Core 419.4"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_turn_effect"
+      ],
+      "boundary": "Entry state for this turn's own plays. Another entry state, or another duration, is a different production.",
+      "golden": [
+        "Units you play this turn enter ready."
+      ],
+      "negative": [
+        "units you play this turn enter exhausted",
+        "i enter ready"
+      ]
+    },
+    {
+      "production_id": "no_rules_text",
+      "form": "(no rules text)",
+      "pattern": "\\(no rules text\\)",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 185"
+      ],
+      "ast_node": "empty",
+      "required_capability": [],
+      "boundary": "A card with nothing to compile. It is a parsed clause, not an unparsed one.",
+      "golden": [
+        "(no rules text)"
+      ],
+      "negative": [
+        "no rules text",
+        "(vanilla)"
+      ]
+    },
+    {
+      "production_id": "when_you_play_me",
+      "form": "When you play me, <instruction>.",
+      "pattern": "when you play me, (?P<inner>.+)",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "play_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has. An unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play me, channel 1 rune exhausted.",
+        "When you play me, deal 3 to all units at battlefields."
+      ],
+      "negative": [
+        "when you play a unit, draw 1",
+        "when i move, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_i_move",
+      "form": "When I move, <instruction>.",
+      "pattern": "when i move, (?P<inner>.+)",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 428"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "move_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has.",
+      "golden": [
+        "When I move, draw 1."
+      ],
+      "negative": [
+        "when a unit moves, draw 1",
+        "when you play me, draw 1"
+      ]
+    },
+    {
+      "production_id": "at_the_end_of_your_turn",
+      "form": "At the end of your turn, <instruction>.",
+      "pattern": "at the end of your turn, (?P<inner>.+)",
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 317.1",
+        "Core 383.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "end_of_turn_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has. 'At the end of each turn' is a different production.",
+      "golden": [
+        "At the end of your turn, draw 1."
+      ],
+      "negative": [
+        "at the end of each turn, draw 1",
+        "at the beginning of your turn, draw 1"
+      ]
+    }
+  ]
+}

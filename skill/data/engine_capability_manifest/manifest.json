@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:9453c0b6f860a0672c13a764",
-  "capability_set_id": "sha256:9453c0b6f860a0672c13a7647625470e7e488223ba4109550856518cc78a2ef3",
+  "manifest_id": "capability-manifest:5261f62611f44d6adf3d36ae",
+  "capability_set_id": "sha256:5261f62611f44d6adf3d36aec8516e6ec42c5bf8fa4f8270d989cd5e8e50c02c",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:034fd9e7e3b867ee98b673868b9367580e12d93fa72c6bb22b6f942e9d322aaa",
+    "value": "sha256:e065103a2a3695df6b89f957d31b37468d4cb23df81d0afe9ad79cca556f6465",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:4f03f092b7717a2c40c5a296249f45fa4f762545137e036a49996c5679a1c7d2"
+        "sha256": "sha256:f90525bbe7c9e8886d2cd5422b93198f5425b0125b9060b3e252d079a3ac2457"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:92ab89f4face685acfe133ae22efae6dc845e501dab02b20c6fd68662694030c"
+        "sha256": "sha256:bc2b0f72203a66999acce12436561dfd08ad5f330c7b598d134f7e90a27da1d4"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:502b43ca85f93ee81bc36d5f6b65b21bf58bf5f24fb10073fd7ab8bb216ab0fd"
+        "sha256": "sha256:32f0c0480273bf5c23e5f71e558f1b081e1e9417c1c018b751f55eb4d19d51bb"
       },
       {
         "path": "combat.py",
@@ -174,7 +174,9 @@
         "keyword_catalog",
         "empower_state",
         "buff_counters",
-        "xp"
+        "xp",
+        "effect_text_append",
+        "copy_modelled_traits"
       ],
       "unsupported_scope": [
         "arbitrary_card_text",
@@ -189,9 +191,8 @@
         "cannot_be_countered",
         "burn_triggers",
         "nested_attachments",
-        "effect_text_append",
         "gear_recall_cleanup",
-        "copy_characteristics",
+        "copy_unmodelled_traits",
         "champion_legend_movement",
         "token_not_in_catalogue",
         "layer_dependency_unresolved",
@@ -1624,14 +1625,13 @@
     "complete_legality",
     "condition_needs_hidden_information",
     "continuous_dependency",
-    "copy_characteristics",
+    "copy_unmodelled_traits",
     "cost_checks",
     "damage_exemption_sources",
     "deck_construction",
     "distinct_per_turn_choice",
     "each_player_choice",
     "effect_prerequisites",
-    "effect_text_append",
     "end_of_combat_effects",
     "engine_enumeration",
     "facedown_capacity_effects",

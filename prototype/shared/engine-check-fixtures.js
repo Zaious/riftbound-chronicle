@@ -197,7 +197,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "keyword_catalog",
             "empower_state",
             "buff_counters",
-            "xp"
+            "xp",
+            "effect_text_append",
+            "copy_modelled_traits"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -212,9 +214,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "cannot_be_countered",
             "burn_triggers",
             "nested_attachments",
-            "effect_text_append",
             "gear_recall_cleanup",
-            "copy_characteristics",
+            "copy_unmodelled_traits",
             "champion_legend_movement",
             "token_not_in_catalogue",
             "layer_dependency_unresolved",
@@ -382,7 +383,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "keyword_catalog",
             "empower_state",
             "buff_counters",
-            "xp"
+            "xp",
+            "effect_text_append",
+            "copy_modelled_traits"
           ],
           "unsupported_scope": [
             "arbitrary_card_text",
@@ -397,9 +400,8 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
             "cannot_be_countered",
             "burn_triggers",
             "nested_attachments",
-            "effect_text_append",
             "gear_recall_cleanup",
-            "copy_characteristics",
+            "copy_unmodelled_traits",
             "champion_legend_movement",
             "token_not_in_catalogue",
             "layer_dependency_unresolved",

@@ -560,6 +560,17 @@
             "type": "string",
             "minLength": 1,
             "description": "play_token: the reviewed token-catalog.v1 entry these characteristics were compiled from (ADR-0012 §6)."
+          },
+          "traits": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "type",
+                "rules_text"
+              ]
+            },
+            "description": "copy_object: the copyable traits to apply (Core 477.1). A trait the model does not carry is refused as copy_unmodelled_traits."
           }
         }
       },

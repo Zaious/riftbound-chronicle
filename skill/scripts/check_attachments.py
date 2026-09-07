@@ -162,7 +162,9 @@ def main() -> int:
     if not validate_state(cycle):
         errors.append("a nested / cyclic attachment was accepted by the validator")
     scope = KIND_CONFIG["effect"]
-    if not {"attachments", "top_most_might_bonus", "derived_detach_destination"} <= set(scope["supported"]) or "nested_attachments" not in scope["unsupported"] or "effect_text_append" not in scope["unsupported"]:
+    # C-53 moved the Effect Text append into the Ability layer; nested
+    # attachments stay outside this slice.
+    if not {"attachments", "top_most_might_bonus", "derived_detach_destination", "effect_text_append"} <= set(scope["supported"]) or "nested_attachments" not in scope["unsupported"]:
         errors.append("the effect scope does not declare attachments and their boundary")
     cited = {o["id"]: o["rule_locators"] for o in build_manifest()["operations"]}
     for op in ("attach", "detach"):

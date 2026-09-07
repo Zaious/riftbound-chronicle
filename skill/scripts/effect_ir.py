@@ -40,10 +40,18 @@ OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backlin
 # the Core 476-480 layer engine over it. The six legacy families are translated
 # by `migrate_legacy_effects` at the input boundary; nothing at runtime reads
 # them, so nothing is counted twice.
-CONTINUOUS_KINDS = {"might_set", "might_arithmetic", "keyword_grant", "keyword_remove", "bonus_damage"}
+CONTINUOUS_KINDS = {"might_set", "might_arithmetic", "keyword_grant", "keyword_remove", "bonus_damage", "ability_append", "copy_traits"}
 CONTINUOUS_LAYERS = ("trait", "ability", "arithmetic")  # Core 477.1, 477.2, 477.3
 KIND_LAYER = {"might_set": "trait", "keyword_grant": "ability", "keyword_remove": "ability",
-              "might_arithmetic": "arithmetic", "bonus_damage": "arithmetic"}
+              "might_arithmetic": "arithmetic", "bonus_damage": "arithmetic",
+              "ability_append": "ability", "copy_traits": "trait"}
+# ADR-0013 §6 / Core 477.2: the typed abilities an Effect Text or a copy can
+# append to another object. These are exactly the printed trigger lists.
+APPENDABLE_TRIGGER_FIELDS = ("death_triggers", "play_triggers", "move_triggers", "attack_triggers", "defend_triggers",
+                             "conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers",
+                             "end_of_turn_triggers")
+COPYABLE_TRAITS = {"type", "rules_text"}
+
 CONTINUOUS_DURATIONS = {"permanent", "this_turn", "this_combat", "while_source_active", "until_detached"}
 MIGHT_MODES = {"delta", "increase_to"}
 LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers")
@@ -635,6 +643,18 @@ def validate_state(state: Any) -> list[str]:
             elif kind == "bonus_damage":
                 if not isinstance(value, dict) or set(value) != {"amount"} or not isinstance(value["amount"], int) or value["amount"] < 1:
                     errors.append(f"{label}.value must be {{amount: positive integer}} (Core 714.1)")
+            elif kind == "ability_append":
+                triggers = value.get("triggers") if isinstance(value, dict) else None
+                if not isinstance(value, dict) or set(value) != {"triggers"} or not isinstance(triggers, dict) or not triggers:
+                    errors.append(f"{label}.value must be {{triggers: {{field: [descriptor]}}}} (Core 477.2)")
+                elif any(field not in APPENDABLE_TRIGGER_FIELDS or not isinstance(rows, list) or not rows for field, rows in triggers.items()):
+                    errors.append(f"{label}.value.triggers names a field that is not an appendable ability list")
+            elif kind == "copy_traits":
+                if (not isinstance(value, dict) or set(value) - {"source_object", "traits", "request_id"} or not {"source_object", "traits"} <= set(value)
+                        or value["source_object"] not in objects or not isinstance(value["traits"], list) or not value["traits"]):
+                    errors.append(f"{label}.value must be {{source_object, traits, request_id?}} (Core 477.1)")
+                elif set(value["traits"]) - COPYABLE_TRAITS:
+                    errors.append(f"{label}.value.traits {sorted(set(value['traits']) - COPYABLE_TRAITS)} are not modelled (unsupported: copy_unmodelled_traits)")
             if "passive" in effect and not isinstance(effect["passive"], bool):
                 errors.append(f"{label}.passive must be boolean")
             if effect.get("condition") is not None:
@@ -789,6 +809,10 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         # ADR-0012 §1 / Core 825.3: Unique is a deck-construction constraint,
         # not a play restriction; the engine only records the characteristic.
+        effect_text = obj.get("effect_text")
+        if effect_text is not None and (not isinstance(effect_text, dict) or not effect_text
+                                        or any(field not in APPENDABLE_TRIGGER_FIELDS or not isinstance(rows, list) or not rows for field, rows in effect_text.items())):
+            errors.append(f"objects.{object_id}.effect_text must map appendable ability lists to non-empty descriptor arrays (Core 477.2)")
         for flag in ("empowered", "buffed"):
             if flag in obj and not isinstance(obj[flag], bool):
                 errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 442.1, 426.1.b)")
@@ -1031,7 +1055,12 @@ def validate_program(program: Any) -> list[str]:
                 if not isinstance(effect.get("source_object"), str) or not effect.get("source_object"):
                     errors.append(f"effects[{index}].copy_object needs the object it copies")
                 if not isinstance(effect.get("request_id"), str) or not effect.get("request_id"):
-                    errors.append(f"effects[{index}].copy_object needs a request_id so the P4 slice can bind to it")
+                    errors.append(f"effects[{index}].copy_object needs a request_id so the copy can be traced")
+                if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
+                    errors.append(f"effects[{index}].copy_object needs the object that becomes the copy")
+                traits = effect.get("traits")
+                if traits is not None and (not isinstance(traits, list) or not traits or any(not isinstance(t, str) for t in traits)):
+                    errors.append(f"effects[{index}].copy_object.traits must be a non-empty array of trait names")
             if op_name in {"empower", "disempower", "buff"}:
                 if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
                     errors.append(f"effects[{index}].{op_name} needs the object it acts on")
@@ -1791,6 +1820,11 @@ def detach_records(state: dict[str, Any], host_id: str, host_location: dict[str,
         obj = state["objects"][attached_id]
         record = {"object_id": attached_id, "detached_from": host_id, "host_left_board": host_left_board}
         del obj["attached_to"]
+        # Core 477.2 / 435.4: the appended Effect Text goes with the link.
+        appended_id = f"effect_text:{attached_id}:{host_id}"
+        if any(e["effect_id"] == appended_id for e in state.get("continuous_effects", []) or []):
+            state["continuous_effects"] = [e for e in state["continuous_effects"] if e["effect_id"] != appended_id]
+            record["removed_effect_text"] = appended_id
         if host_location is None:
             # A host that was never on the board leaves nothing to derive from.
             record.update({"destination": None, "unsupported": "detach_destination_unknown"})
@@ -1963,7 +1997,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # Recall, return to hand and board entry are not Moves.
         moved = new_state["objects"][object_id]
         move_triggers = []
-        for descriptor in moved.get("move_triggers", []) or []:
+        for descriptor in object_triggers(new_state, object_id, "move_triggers"):
             copied = copy.deepcopy(descriptor)
             copied.setdefault("trigger_kind", "triggered")
             copied["move"] = {"from": source, "to": target}
@@ -2314,7 +2348,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("Kill applies only to a permanent on the board")
         if obj.get("kind") not in {"unit", "gear"}:
             raise ValueError("effect IR v1 only kills supported Unit/Gear permanents")
-        pending_triggers = copy.deepcopy(obj.get("death_triggers", []))
+        pending_triggers = copy.deepcopy(object_triggers(new_state, object_id, "death_triggers"))
         detached = detach_records(new_state, object_id, _last_board_location(location), host_left_board=True)
         _remove_from_location(new_state, object_id)
         if obj.get("is_token"):
@@ -2575,12 +2609,30 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         trace.update({"player": player_id, "amount": amount, "before": before, "after": before + amount})
 
     elif op == "copy_object":
-        # ADR-0012 §7: the characteristics and layers of a copy are P4. The
-        # request is typed and recorded; the engine changes nothing.
+        # ADR-0013 §6 / Core 477.1: a Trait-layer effect over the copyable
+        # traits the engine models. A clause that needs one it does not model —
+        # name, tags, printed cost, domain — is refused rather than half-copied.
         source_object, request_id = effect.get("source_object"), effect.get("request_id")
-        raise NotImplementedError(
-            f"copy of {source_object!r} (request {request_id!r}) needs the characteristic and layer contract; "
-            "the engine refuses rather than copying half of it (unsupported: copy_characteristics)")
+        traits = set(effect.get("traits") or ["type", "rules_text"])
+        if source_object not in new_state["objects"] or effect.get("object_id") not in new_state["objects"]:
+            raise ValueError("copy_object requires a known source and target object")
+        unmodelled = sorted(traits - COPYABLE_TRAITS)
+        if unmodelled:
+            raise NotImplementedError(
+                f"copying {unmodelled} needs traits this model does not carry (Core 477.1); the engine refuses rather "
+                "than copying half of it (unsupported: copy_unmodelled_traits)")
+        target = effect["object_id"]
+        entry = {
+            "effect_id": f"copy:{request_id}", "kind": "copy_traits",
+            "source": {"object": source_object, "identity": object_identity(new_state, source_object), "name": request_id},
+            "affects": {"scope": "object", "object": target, "identity": object_identity(new_state, target) or f"{target}@0"},
+            "layer": "trait", "timestamp": _next_timestamp(new_state),
+            "value": {"source_object": source_object, "traits": sorted(traits), "request_id": request_id},
+            "duration": {"kind": "permanent"}, "passive": False,
+        }
+        new_state.setdefault("continuous_effects", []).append(entry)
+        trace.update({"object_id": target, "source_object": source_object, "request_id": request_id,
+                      "traits": sorted(traits), "effect_id": entry["effect_id"], "layer": "trait"})
 
     elif op == "attach":
         # Core 434: linking two board cards. The attached card takes the
@@ -2607,9 +2659,25 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         _remove_from_location(new_state, object_id)
         destination = _place_on_board(new_state, object_id, host_location)
         obj["attached_to"] = host_id
+        # ADR-0013 §6 / Core 477.2: the attached card's Effect Text is appended
+        # to its Top-Most card while it stays attached.
+        appended = None
+        effect_text = {field: obj[field] for field in APPENDABLE_TRIGGER_FIELDS if obj.get(field) and (obj.get("effect_text_fields") is None or field in obj["effect_text_fields"])}
+        if obj.get("effect_text"):
+            effect_text = copy.deepcopy(obj["effect_text"])
+        if effect_text:
+            appended = {
+                "effect_id": f"effect_text:{object_id}:{host_id}", "kind": "ability_append",
+                "source": {"object": object_id, "identity": object_identity(new_state, object_id), "name": "effect_text"},
+                "affects": {"scope": "object", "object": host_id, "identity": object_identity(new_state, host_id) or f"{host_id}@0"},
+                "layer": "ability", "timestamp": _next_timestamp(new_state),
+                "value": {"triggers": effect_text}, "duration": {"kind": "until_detached"}, "passive": True,
+            }
+            new_state.setdefault("continuous_effects", []).append(appended)
         trace.update({"object_id": object_id, "to": host_id, "detached_from": previous, "destination": destination,
                       "not_a_move": True, "state_unchanged": {"exhausted": obj.get("exhausted", False), "damage": obj.get("damage", 0)},
-                      "might_bonus": obj.get("might_bonus", 0), "top_most": host_id})
+                      "might_bonus": obj.get("might_bonus", 0), "top_most": host_id,
+                      **({"appended_effect_text": appended["effect_id"]} if appended else {})})
 
     elif op == "detach":
         object_id = effect.get("object_id")
@@ -2743,6 +2811,15 @@ def migrate_legacy_effects(state: dict[str, Any]) -> dict[str, Any]:
 def _next_timestamp(state: dict[str, Any]) -> int:
     """Core 480: a relative comparison, so one past every effect that already applies."""
     return max((e["timestamp"] for e in canonical_effects(state)), default=-1) + 1
+
+
+def object_triggers(state: dict[str, Any], object_id: str, field: str) -> list[dict[str, Any]]:
+    """The object's printed abilities of that kind plus everything the Ability
+    layer appended — the Effect Text of attached cards (Core 477.2) and a copy's
+    rules text (477.1). Every scheduler reads through here."""
+    printed = list(state["objects"].get(object_id, {}).get(field, []) or [])
+    appended = characteristics(state, object_id)["triggers"].get(field, [])
+    return printed + [copy.deepcopy(descriptor) for descriptor in appended]
 
 
 def prune_dead_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
@@ -2996,7 +3073,7 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     obj = state["objects"][object_id]
     effects = [e for e in canonical_effects(state) if _effect_applies_to(state, e, object_id) and _effect_active(state, e)[0]]
     result = {"might": obj["base_might"], "keywords": {k: (obj.get("shield_value") or 1) if k == "shield" else None for k in (obj.get("keywords") or [])},
-              "applied": [], "passes": 0}
+              "kind": obj.get("kind"), "triggers": {}, "applied": [], "passes": 0}
     pending = {e["effect_id"]: e for e in effects}
     applied: set[str] = set()
     for _ in range(len(effects) + 1):
@@ -3015,6 +3092,21 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
                     applied.add(effect["effect_id"])
                     changed = True
                     continue
+                elif effect["kind"] == "ability_append":
+                    # Core 477.2: the Effect Text of an attached card, and a
+                    # copy's rules text, are appended in the Ability layer.
+                    for field, descriptors in (effect["value"].get("triggers") or {}).items():
+                        result["triggers"].setdefault(field, []).extend(copy.deepcopy(descriptors))
+                elif effect["kind"] == "copy_traits":
+                    # Core 477.1: the copyable traits the engine models.
+                    source = state["objects"].get(effect["value"]["source_object"], {})
+                    if "type" in effect["value"]["traits"]:
+                        result["kind"] = source.get("kind")
+                    if "rules_text" in effect["value"]["traits"]:
+                        for field in APPENDABLE_TRIGGER_FIELDS:
+                            descriptors = source.get(field) or []
+                            if descriptors:
+                                result["triggers"].setdefault(field, []).extend(copy.deepcopy(descriptors))
                 elif effect["kind"] == "keyword_grant":
                     keyword = effect["value"]["keyword"]
                     if keyword == "shield":

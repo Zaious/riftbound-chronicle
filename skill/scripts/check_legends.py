@@ -115,30 +115,34 @@ def main() -> int:
     if evaluate_target(banished, elsewhere, "p1")[0]:
         errors.append("a Legend Zone selector matched a banished Legend")
 
-    # --- the copy request fails closed ---------------------------------------------------------------------
-    copy_program = program("cp", {"op": "copy_object", "effect_id": "c", "source_object": "u2", "request_id": "reflection-1"})
+    # --- copy: the modelled traits apply, the rest is refused (C-53) ---------------------------------------
+    copy_program = program("cp", {"op": "copy_object", "effect_id": "c", "object_id": "u1", "source_object": "u2", "request_id": "reflection-1"})
     if validate_program(copy_program):
         errors.append(f"a typed copy request was refused by the validator: {validate_program(copy_program)}")
     for missing in ({"op": "copy_object", "effect_id": "c", "request_id": "r"}, {"op": "copy_object", "effect_id": "c", "source_object": "u2"}):
         if not validate_program(program("bad", missing)):
             errors.append(f"an incomplete copy request was accepted: {missing}")
-    refused = apply_program(state, copy_program)
-    if refused.get("unsupported") is not True or "copy_characteristics" not in str(refused.get("reason")) or refused.get("committed"):
-        errors.append(f"the copy request did not fail closed: {refused.get('reason_code')} {refused.get('reason')}")
+    copied = apply_program(state, copy_program)
+    if not copied.get("committed"):
+        errors.append(f"copying the modelled traits was refused: {copied.get('reason_code')} {copied.get('reason')}")
+    refused = apply_program(state, program("cp2", {"op": "copy_object", "effect_id": "c", "object_id": "u1", "source_object": "u2",
+                                                   "request_id": "reflection-2", "traits": ["type", "cost"]}))
+    if refused.get("unsupported") is not True or "copy_unmodelled_traits" not in str(refused.get("reason")) or refused.get("committed"):
+        errors.append(f"a copy needing an unmodelled trait did not fail closed: {refused.get('reason_code')} {refused.get('reason')}")
     else:
         check = build_engine_check("effect", refused, input_hashes={"effect_state": hash_value(state), "effect_program": "sha256:" + "8" * 64})
         if check["outcome"] != "unsupported":
-            errors.append(f"the copy request wrapped as {check['outcome']}")
+            errors.append(f"the refused copy wrapped as {check['outcome']}")
 
     # --- scope, manifest, determinism -------------------------------------------------------------------------
     scope = KIND_CONFIG["effect"]
-    if not {"legend_objects", "legend_zone_passives"} <= set(scope["supported"]) or "copy_characteristics" not in scope["unsupported"]:
+    if not {"legend_objects", "legend_zone_passives"} <= set(scope["supported"]) or "copy_unmodelled_traits" not in scope["unsupported"]:
         errors.append("the effect scope does not declare Legend objects or the copy boundary")
     cited = {o["id"]: o["rule_locators"] for o in build_manifest()["operations"]}
     if cited.get("copy_object") != OP_RULES["copy_object"]:
         errors.append("the manifest does not cite copy_object")
     snapshot = copy.deepcopy(state)
-    if apply_program(state, copy_program) != refused or state != snapshot:
+    if apply_program(state, copy_program) != copied or state != snapshot:
         errors.append("the copy request is not deterministic or mutated its input")
 
     if errors:

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, migrate_legacy_effects, perform_lethal_cleanup, validate_state, zone_class
+from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
 from rules_core import apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
@@ -487,7 +487,7 @@ def complete_permanent_play(
         trace["rule_locators"].append("Core 359.2.c" if obj["kind"] == "unit" else "Core 359.2.d")
     trace["identity_after"] = _bump_identity(working, card)
     triggers = []
-    for descriptor in obj.get("play_triggers", []) or []:
+    for descriptor in object_triggers(working, card, "play_triggers"):
         copied = copy.deepcopy(descriptor)
         copied.setdefault("trigger_kind", "triggered")
         copied["play_completion"] = item_id
@@ -526,7 +526,7 @@ def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any]
     evaluated: list[dict[str, Any]] = []
     for object_id in sorted(effect_state["objects"]):
         obj = effect_state["objects"][object_id]
-        for descriptor in obj.get("end_of_turn_triggers", []) or []:
+        for descriptor in object_triggers(effect_state, object_id, "end_of_turn_triggers"):
             record = {"trigger_id": descriptor["trigger_id"], "source_object": object_id, "controller": descriptor["controller"], "scheduled": False}
             if obj.get("controller") != turn_player or zone_class(find_location(effect_state, object_id)) != "board":
                 record["reason"] = "not the turn player's board object"

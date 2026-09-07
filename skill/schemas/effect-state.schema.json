@@ -427,7 +427,9 @@
               "might_arithmetic",
               "keyword_grant",
               "keyword_remove",
-              "bonus_damage"
+              "bonus_damage",
+              "ability_append",
+              "copy_traits"
             ]
           },
           "source": {
@@ -1364,6 +1366,17 @@
         "buffed": {
           "type": "boolean",
           "description": "Core 426.1.b / 702: the Unit carries a Buff counter. A Unit never carries two."
+        },
+        "effect_text": {
+          "type": "object",
+          "description": "ADR-0013 §6 / Core 477.2: the abilities this card appends to its Top-Most card while attached. Maps an appendable trigger list to its descriptors; absent means the card appends nothing.",
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            }
+          }
         }
       }
     },

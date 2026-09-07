@@ -70,7 +70,7 @@ def main() -> int:
     if t != snap_t or board != snap_e or run_cleanup(t, board) != still:
         errors.append("run_cleanup mutated its inputs or is not deterministic")
     check = build_engine_check("turn_step", still, input_hashes={"timing_state": state_hash(t), "effect_state": hash_value(board)})
-    if check["outcome"] != "supported" or "cleanup_orchestration" not in check["coverage"]["supported_scope"] or "gear_rune_recall_cleanup" not in check["coverage"]["unsupported_scope"]:
+    if check["outcome"] != "supported" or "cleanup_orchestration" not in check["coverage"]["supported_scope"] or "gear_rune_recall_cleanup" in check["coverage"]["unsupported_scope"]:
         errors.append(f"engine-check did not wrap run_cleanup with its scope: {check['outcome']}")
     ordered = copy.deepcopy(t); ordered["outstanding_tasks"] = ["scoring_step", "cleanup"]; ordered["phase"] = "beginning"; ordered["priority"] = None
     if run_cleanup(ordered, board).get("reason_code") != "task_order":
@@ -146,12 +146,19 @@ def main() -> int:
     if run_cleanup(t, two, stale_choice).get("valid") is not False:
         errors.append("a location that is not staged in the working state was accepted through the rebound envelope")
 
-    # --- 323.7 fails the whole run closed -------------------------------------------------------------------------------
+    # --- 323.7 runs inside the same Cleanup (C-58, ADR-0015 §2) ---------------------------------------------------------
+    # This used to fail the whole run closed; step 5 now Recalls the Gear on
+    # the working state the other steps act on.
     geared = copy.deepcopy(scene)
     add_unit(geared, "g1", "p1", "bf1", might=0, kind="gear")
-    closed = run_cleanup(t, geared)
-    if closed.get("committed") or closed.get("unsupported") is not True or closed.get("reason_code") != "gear_rune_recall_cleanup":
-        errors.append(f"a Gear at a Battlefield did not fail the Cleanup closed (323.7): {closed.get('reason_code')}")
+    recalled = run_cleanup(t, geared)
+    step5 = next((s for s in recalled.get("trace", {}).get("iterations", [{}])[0].get("steps", []) if s.get("step") == 5), None)
+    if not recalled.get("committed") or step5 is None or step5.get("recalled") != ["g1"]:
+        errors.append(f"step 5 did not Recall an unattached Gear at a Battlefield: {recalled.get('reason_code')} {step5}")
+    elif "g1" not in recalled["next_effect_state"]["players"]["p1"]["zones"]["base"]:
+        errors.append("the Recalled Gear did not arrive in its controller's Base (429)")
+    elif recalled["next_effect_state"]["battlefields"]["bf1"]["objects"].count("g1"):
+        errors.append("the Recalled Gear was left at the Battlefield")
 
     with tempfile.TemporaryDirectory(prefix="cleanup-") as temp_name:
         temp = Path(temp_name)

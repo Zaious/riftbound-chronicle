@@ -137,6 +137,9 @@ SUPPORTED_OPS = {
     "gain_xp",
     # C-55 (ADR-0014 §2): a resolving effect creates a trigger that waits.
     "create_delayed_trigger",
+    # C-58 (ADR-0015 §2): the Cleanup's step 5 removal of a Hidden card whose
+    # Battlefield its controller no longer controls.
+    "remove_hidden",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -298,6 +301,7 @@ OP_RULES = {
     "attach": ["Core 434.1", "Core 434.2.a", "Core 434.2.b", "Core 434.4", "Core 434.5.a", "Core 136.2.c"],
     "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
     "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
+    "remove_hidden": ["Core 323.7", "Core 811", "Core 124"],
 }
 
 
@@ -2685,6 +2689,23 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         before = int(new_state["players"][player_id].get("xp", 0))
         new_state["players"][player_id]["xp"] = before + amount
         trace.update({"player": player_id, "amount": amount, "before": before, "after": before + amount})
+
+    elif op == "remove_hidden":
+        # Core 323 step 5: "Remove all Hidden cards from all Battlefields that
+        # are not controlled by the same player and place them in their owner's
+        # Trash." It leaves a hidden zone for a public one, so the card becomes
+        # known here and the event says so.
+        object_id = effect.get("object_id")
+        location = find_location(new_state, object_id) if object_id in new_state["objects"] else None
+        if location is None or location[0] != "facedown":
+            raise ValueError("remove_hidden applies to a card in a Battlefield's Facedown Zone")
+        obj = new_state["objects"][object_id]
+        hidden_controller = location[2]
+        _remove_from_location(new_state, object_id)
+        new_state["players"][obj["owner"]]["zones"]["trash"].append(object_id)
+        trace.update({"object_id": object_id, "from": f"facedown:{location[1]}", "battlefield": location[1],
+                      "hidden_controller": hidden_controller, "destination": f"{obj['owner']}.trash",
+                      "identity_after": _bump_identity(new_state, object_id)})
 
     elif op == "create_delayed_trigger":
         # ADR-0014 §2 / Core 124: the delayed trigger is bound to the identities

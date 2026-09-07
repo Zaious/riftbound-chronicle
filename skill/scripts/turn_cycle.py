@@ -390,7 +390,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     """ADR-0010 §5 / Core 323: one Cleanup as one atomic run. Steps 1–10a in
     order on a working state — 1 terminal, 2 designations, 3a/3b lethal
     (death triggers go Pending on the chain and nothing resolves, 320), 4
-    control loss, 5 (323.7, refused as unsupported whenever it applies), 6
+    control loss, 5 (323.7 Recall and Hidden removal, C-58), 6
     Showdown staging, 7 Combat staging, 8 Contested maintenance, 9 Showdown
     opening, 10 Combat opening — then, when the run changed anything, the
     322 follow-up Cleanups on the same working state until one changes
@@ -498,11 +498,16 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             return failure
         working_e = board4["next_effect_state"]
         record["steps"].append({"step": 4, "outcome": "applied" if board4["trace"]["steps"] else "no_change", "changes": board4["trace"]["steps"]})
-        # 5 — Core 323.7
-        unattached = _unattached_at_battlefields(working_e)
-        if unattached:
-            return _unsupported(base, "gear_rune_recall_cleanup", f"step 5: {unattached} are non-Unit Gear or Runes at a Battlefield; 323.7's Recall is not modelled, so the whole Cleanup fails closed", ["Core 323.7"], cleanup_step="5", objects=unattached)
-        record["steps"].append({"step": 5, "outcome": "nothing_to_recall"})
+        # 5 — Core 323.7, on the same working state (ADR-0015 §2)
+        board5 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e, index, "5"), steps=("recall_remove",), within_cleanup=True)
+        if failure := sub(board5, "5"):
+            return failure
+        working_e = board5["next_effect_state"]
+        five = board5["trace"]["step_five"]
+        record["steps"].append({"step": 5, "outcome": "applied" if five["transitions"] else "nothing_to_recall",
+                                "recalled": [item["object_id"] for item in five["recalled"]],
+                                "removed_hidden": [item["object_id"] for item in five["removed_hidden"]],
+                                "still_hidden": five["still_hidden"], "transitions": five["transitions"]})
         # 6 — Core 323.8
         staged6 = stage_showdown(working_t, working_e, bound_to(working_t, working_e, index, "6"), within_cleanup=True)
         if failure := sub(staged6, "6"):

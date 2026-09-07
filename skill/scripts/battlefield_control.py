@@ -372,20 +372,66 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
 
 # ----------------------------------------------------------- board Cleanup --
 
+def _step_five(effect_state: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], int]:
+    """Core 323 step 5, read off the P3 topology rather than guessed.
+
+    Returns (recalls, removals, still_hidden): the unattached non-Unit Gear and
+    non-Unit Runes at Battlefields and the Permanents and Runes sitting in a
+    Base that is not their controller's, then the Hidden cards whose
+    Battlefield their controller does not control — and a count of the Hidden
+    cards that stay facedown, which the public trace may know the size of but
+    never the identity of.
+    """
+    from effect_ir import attachments, find_location
+
+    recalls: list[dict[str, Any]] = []
+    removals: list[dict[str, Any]] = []
+    still_hidden = 0
+    for object_id in sorted(effect_state["objects"]):
+        obj = effect_state["objects"][object_id]
+        location = find_location(effect_state, object_id)
+        if location is None:
+            continue
+        if location[0] == "battlefield" and obj.get("kind") in {"gear", "rune"}:
+            # 434.4: an attached card's location is its Top-Most card's, so it
+            # is not "at" the Battlefield unattached and step 5 passes it by.
+            if obj.get("attached_to") is None and not attachments(effect_state, object_id):
+                recalls.append({"object_id": object_id, "from": f"battlefield:{location[1]}", "kind": obj.get("kind"),
+                                "reason": "unattached_non_unit_at_battlefield"})
+            continue
+        if location[0] == "player" and location[2] == "base" and location[1] != obj.get("controller"):
+            recalls.append({"object_id": object_id, "from": f"{location[1]}.base", "kind": obj.get("kind"),
+                            "reason": "in_a_base_other_than_its_controllers"})
+    for battlefield_id in sorted(effect_state["battlefields"]):
+        battlefield = effect_state["battlefields"][battlefield_id]
+        for entry in (battlefield.get("facedown") or {}).get("cards", []) or []:
+            if entry.get("controller") != battlefield.get("controller"):
+                removals.append({"object_id": entry["object_id"], "battlefield": battlefield_id,
+                                 "hidden_controller": entry.get("controller"),
+                                 "battlefield_controller": battlefield.get("controller")})
+            else:
+                still_hidden += 1
+    return recalls, removals, still_hidden
+
+
 def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, steps: tuple[str, ...] = ("control_loss", "contested"), within_cleanup: bool = False) -> dict[str, Any]:
     """Core 323.6, 323.11, 323.11.a in an Open State: per Battlefield with no
     ongoing Showdown or Combat, a controller with no Units there loses control
     (step 4), Contested goes where its applier has no Units (step 8), and a
     removal that leaves Units of one non-controller re-applies Contested by
     that player (323.11.a); two different non-controllers is unsupported. The
-    victory facts are reported. 323.7 (Recall of Gear/Runes) is not modelled."""
+    victory facts are reported. Step 5 (`recall_remove`, C-58) Recalls the
+    unattached non-Unit Gear and Runes at Battlefields and everything sitting
+    in someone else's Base, and sends a Hidden card whose Battlefield its
+    controller does not control to its owner's Trash — all on this same
+    working state."""
     base = _base("run_board_cleanup", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
     if code := _cleanup_boundary(timing_state, within_cleanup):
         return _refuse(base, code, "the board Cleanup runs in an Open State with no outstanding task (323.6, 323.11)", ["Core 318", "Core 323.6", "Core 323.11"])
-    if set(steps) - {"control_loss", "contested"} or not steps:
-        return _invalid(base, ["steps must be a non-empty subset of control_loss, contested"])
+    if set(steps) - {"control_loss", "contested", "recall_remove"} or not steps:
+        return _invalid(base, ["steps must be a non-empty subset of control_loss, recall_remove, contested"])
     next_effect = copy.deepcopy(effect_state)
     done_steps: list[dict[str, Any]] = []
     exempt: list[dict[str, Any]] = []
@@ -402,6 +448,40 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
         if controller is not None and controller not in present:
             battlefield["controller"] = None
             done_steps.append({"step": "control_lost", "battlefield": battlefield_id, "player": controller, "rule_locators": ["Core 323.6", "Core 190.4.c"]})
+    step_five: dict[str, Any] | None = None
+    if "recall_remove" in steps:
+        # ADR-0015 §2: one program on this working state, so the Recalls and
+        # the Hidden removals commit with the rest of the Cleanup or not at all.
+        recalls, removals, still_hidden = _step_five(next_effect)
+        step_five = {"recalled": recalls, "removed_hidden": removals, "still_hidden": still_hidden, "transitions": []}
+        if recalls or removals:
+            from effect_ir import CORE_RULESET as _CORE, FAQ_AS_OF as _FAQ, apply_program
+            program = {
+                "schema_version": "riftbound-effect-program.v1",
+                "ruleset": {"core": _CORE, "faq_as_of": _FAQ},
+                "program_id": "cleanup-step-5",
+                "controller": timing_state.get("turn_player"),
+                "effects": [{"op": "recall", "effect_id": f"recall:{item['object_id']}", "object_id": item["object_id"]}
+                            for item in recalls]
+                           + [{"op": "remove_hidden", "effect_id": f"hidden:{item['object_id']}", "object_id": item["object_id"]}
+                              for item in removals],
+            }
+            result = apply_program(next_effect, program)
+            if result.get("committed") is not True:
+                return _unsupported(base, result.get("reason_code", "cleanup_step_five_failed"),
+                                    result.get("reason", "; ".join(result.get("errors", [])) or "Cleanup step 5 failed"),
+                                    ["Core 323.7", "Core 429", "Core 811"], step_five=step_five)
+            next_effect = result["next_state"]
+            step_five["transitions"] = [
+                {"object_id": entry.get("object_id"), "op": entry.get("op"), "outcome": entry.get("outcome"),
+                 "from": entry.get("from"), "to": entry.get("to") or entry.get("destination"),
+                 "identity_after": entry.get("identity_after"),
+                 "rule_locators": entry.get("rule_locators", [])}
+                for entry in result["trace"]
+            ]
+            done_steps.extend({"step": "recalled" if entry["op"] == "recall" else "hidden_removed",
+                               "object_id": entry["object_id"], "to": entry["to"],
+                               "rule_locators": ["Core 323.7"]} for entry in step_five["transitions"])
     for battlefield_id in sorted(next_effect["battlefields"]):
         if _ongoing_at(timing_state, battlefield_id) is not None or "contested" not in steps:
             continue
@@ -420,8 +500,11 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
                 battlefield["contested"] = True
                 battlefield["contested_by"] = others[0]
                 done_steps.append({"step": "contested_reapplied", "battlefield": battlefield_id, "applier": others[0], "rule_locators": ["Core 323.11.a"]})
-    trace = {"steps": done_steps, "requested_steps": list(steps), "exempt": exempt, "contested_removed": removed, "victory_check": victory_check(next_effect), "gear_rune_recall": "not_modelled (323.7)"}
-    return _commit(base, copy.deepcopy(timing_state), next_effect, trace=trace, locators=["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.11", "Core 323.11.a"])
+    trace = {"steps": done_steps, "requested_steps": list(steps), "exempt": exempt, "contested_removed": removed,
+             "victory_check": victory_check(next_effect),
+             **({"step_five": step_five} if step_five is not None else {})}
+    return _commit(base, copy.deepcopy(timing_state), next_effect, trace=trace,
+                   locators=["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.7", "Core 323.11", "Core 323.11.a"])
 
 
 # ------------------------------------------------------------ Scoring Step --

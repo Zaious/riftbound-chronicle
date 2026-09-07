@@ -63,6 +63,7 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "rune_channeled": {"about": "object", "rules": ["Core 430"]},
     "put_in_hand": {"about": "object", "rules": ["Core 424.4"]},
     "hidden_away": {"about": "object", "rules": ["Core 811.1", "Core 107.3.f"]},
+    "hidden_removed": {"about": "object", "rules": ["Core 323.7", "Core 811"]},
     # --- object state ----------------------------------------------------
     "damaged": {"about": "object", "rules": ["Core 437"]},
     "healed": {"about": "object", "rules": ["Core 438"]},
@@ -136,6 +137,7 @@ OP_PRIMARY: dict[str, str] = {
     "gain_xp": "xp_gained",
     "hide_card": "hidden_away",
     "create_delayed_trigger": "delayed_trigger_created",
+    "remove_hidden": "hidden_removed",
 }
 
 # Actions performed outside an effect program, so their op is not in

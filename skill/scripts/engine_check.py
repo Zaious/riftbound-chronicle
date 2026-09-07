@@ -173,7 +173,7 @@ KIND_CONFIG = {
         "coverage": "turn_step_v1",
         "supported": ["ending_step", "expiration_step", "entry_replacements", "conditional_passives", "terminal_state", "game_over_guard", "declared_terminal",
                       "turn_start_state_machine", "turn_transition", "first_turn_process", "awaken_step", "beginning_phase_triggers", "channel_step", "draw_step", "main_phase_entry", "burn_out_draw", "terminal_event_bridge", "cleanup_orchestration", "cleanup_iterations"],
-        "unsupported": ["setup_procedure", "match_mode", "team_scoring", "ready_blockers", "opponent_phase_watchers", "gear_rune_recall_cleanup", "continuous_dependency", "multi_player_concession", "facedown_reveal_at_game_end", "complete_game", "complete_legality"],
+        "unsupported": ["setup_procedure", "match_mode", "team_scoring", "ready_blockers", "opponent_phase_watchers", "continuous_dependency", "multi_player_concession", "facedown_reveal_at_game_end", "complete_game", "complete_legality"],
     },
     # ADR-0008: Combat procedures over the timing/effect pair.
     "combat_step": {

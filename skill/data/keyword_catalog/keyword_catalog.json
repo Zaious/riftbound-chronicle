@@ -7,6 +7,32 @@
   "status": "draft",
   "entries": [
     {
+      "keyword_id": "accelerate",
+      "name": "Accelerate",
+      "locators": [
+        "Core 805.2",
+        "Core 805.4",
+        "Core 806.1"
+      ],
+      "production": {
+        "module": "play_transaction",
+        "symbol": "accelerate_offer",
+        "layer": "cost",
+        "note": "805.2.b is short for \"As you play me, you may pay [1][C] as an additional cost. If you do, I enter ready\"; the offer joins the declared optional costs before the intent loop, so it needs the same explicit choice, and paying writes the 806.1.b delayed replacement bound to this card and this play"
+      },
+      "active_zone": "chain",
+      "boundary": {
+        "identity": "bound to the card that paid and the play that paid it, so losing the keyword afterwards does not take the ready entry back (806.1.b)",
+        "duration": "for that play only; Accelerate has no function while on the board (806.1.a)"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-08",
+        "source": "Core Rules 2026-07-16 rules 805 and 806, quoted in the gate; the production was verified against the live play transaction and the enumeration, which read the same offer"
+      },
+      "fixture": "check_accelerate.py"
+    },
+    {
       "keyword_id": "ambush",
       "name": "Ambush",
       "locators": [

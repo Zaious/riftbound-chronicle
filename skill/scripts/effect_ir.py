@@ -38,7 +38,9 @@ RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability"
 # Core 808 (last paragraph): Deathknell "is a characteristic of the permanent
 # and may be checked or referenced by other Game Effects", so it is carried
 # like any other keyword; its behaviour is the object's death triggers.
-OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell"}
+# Core 805 (last lines) does the same for Accelerate: it is a characteristic
+# that may be checked, even though it only has a function while playing.
+OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell", "accelerate"}
 # ADR-0013 §1-2: one canonical representation for every continuous effect, and
 # the Core 476-480 layer engine over it. The six legacy families are translated
 # by `migrate_legacy_effects` at the input boundary; nothing at runtime reads
@@ -722,6 +724,15 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
         if "stunned" in obj and not isinstance(obj["stunned"], bool):
             errors.append(f"objects.{object_id}.stunned must be boolean (Core 423.1.a)")
+        # Round H / Core 805: a card's printed Domains. Absent means the data
+        # does not say, which is not the same as "no Domain" - an empty list
+        # says that, and only an empty list lets Accelerate take any Power.
+        domains = obj.get("domains")
+        if domains is not None and (not isinstance(domains, list)
+                                    or any(not isinstance(d, str) or not d for d in domains)
+                                    or len(domains) != len(set(domains))):
+            errors.append(f"objects.{object_id}.domains must be a list of distinct non-empty domain names")
+
         # Round H: a fixed Energy reduction the card's own text declares, gated
         # by a condition.v1 leaf. Deliberately narrow: no X, no value read off
         # the board, no Power or Domain, and no source but this card.
@@ -772,8 +783,13 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope is not a field of this trigger kind")
         entry_ids: set[str] = set()
         for r_index, replacement in enumerate(obj.get("entry_replacements", []) or []):
-            if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value"}:
-                errors.append(f"objects.{object_id}.entry_replacements[{r_index}] must be {{replacement_id?, mode: entry_state, value: ready|exhausted}}")
+            if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value", "source", "chain_item", "card"}:
+                errors.append(f"objects.{object_id}.entry_replacements[{r_index}] must be {{replacement_id?, mode: entry_state, value: ready|exhausted, source?, chain_item?, card?}}")
+            elif replacement.get("card") is not None and replacement["card"] != object_id:
+                # Core 806.1.b: the delayed replacement a paid Accelerate makes
+                # belongs to the card that paid it. One bound to another card
+                # is a mis-binding, not a rule.
+                errors.append(f"objects.{object_id}.entry_replacements[{r_index}].card names {replacement['card']!r}, not this object")
             elif "replacement_id" in replacement and (not isinstance(replacement["replacement_id"], str) or not replacement["replacement_id"] or replacement["replacement_id"] in entry_ids):
                 errors.append(f"objects.{object_id}.entry_replacements[{r_index}].replacement_id is invalid or duplicated")
             elif "replacement_id" in replacement:

@@ -496,6 +496,63 @@ def _restricted_entries(resources: dict[str, Any], use: str, kind: str, domain: 
     return [r for r in resources.get("restricted", []) if r["kind"] == kind and (kind == "energy" or r.get("domain") == domain) and use in r["uses"]]
 
 
+
+
+# --------------------------------------------------------------------------
+# Accelerate (Core 805, 806) — Round H
+# --------------------------------------------------------------------------
+
+# 805.2.b: "As you play me, you may pay [1][C] as an additional cost. If you
+# do, I enter ready."
+ACCELERATE_ENERGY = 1
+ACCELERATE_POWER = 1
+ACCELERATE_COST_ID = "accelerate"
+
+
+def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple[dict[str, Any] | None, str | None]:
+    """The optional additional cost a card's Accelerate offers, or why not.
+
+    Returns (cost entry, reason). Both are None when the card simply does not
+    have the keyword. A reason without an entry is an abstention, never a
+    silent "no": Core 805 makes the Power component payable only with a Power
+    matching one of the unit's Domains, so a card whose data does not say what
+    its Domains are cannot be offered a payable Accelerate at all.
+
+    806.1.a keeps this to the play: nothing here reads a card on the board.
+    """
+    from effect_ir import has_keyword
+
+    obj = (effect_state.get("objects") or {}).get(card_id) if card_id else None
+    if not isinstance(obj, dict) or not has_keyword(effect_state, card_id, "accelerate"):
+        return None, None
+    if obj.get("kind") != "unit":
+        return None, "accelerate_is_a_unit_ability"          # 805.2.a
+    domains = obj.get("domains")
+    if domains is None:
+        return None, "accelerate_domain_not_observed"        # the data does not say
+    if len(domains) > 1:
+        return None, "accelerate_multi_domain_choice"        # whose Power is the player's call
+    payment = ({"kind": "power_any", "amount": ACCELERATE_POWER} if not domains
+               else {"kind": "power", "domain": domains[0], "amount": ACCELERATE_POWER})
+    return {
+        "cost_id": ACCELERATE_COST_ID,
+        "mandatory": False,
+        "payment": payment,
+        "energy": ACCELERATE_ENERGY,
+        "source": {"kind": "keyword", "keyword": "accelerate", "object": card_id},
+        "rule_locators": ["Core 805.2.b", "Core 805.4", "Core 806.1.a"],
+    }, None
+
+
+def accelerate_entry_replacement(card_id: str, item_id: str) -> dict[str, Any]:
+    """Core 806.1.b: paying generates a delayed Replacement Effect. It is bound
+    to the card that paid and to the play that paid it, so a later loss of the
+    keyword cannot take it back and another card's payment cannot borrow it."""
+    return {"replacement_id": f"accelerate:{item_id}", "mode": "entry_state", "value": "ready",
+            "source": "accelerate", "chain_item": item_id, "card": card_id}
+
+
+
 SELF_REDUCTION_CAPABILITY = "self_card_conditional_fixed_energy_reduction.v1"
 
 
@@ -1021,9 +1078,18 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                                 rule_locators=["Core 355.2.a", "Core 355.2.b", "Core 170.11.c"])
             ambush_record = {"battlefield": location["battlefield"], "friendly_units": friendly_units} if ambush else None
         # --- 355: choices.
+        # Core 805: Accelerate is an optional additional cost the card itself
+        # offers. It joins the declared costs *before* the intent loop, so it
+        # goes through the same explicit-choice rule as any other optional
+        # cost - a full pool never pays it by itself (356.2.b.1).
+        accelerate_entry, accelerate_reason = accelerate_offer(effect_state, declaration.get("card"))
+        declared_additional = list(declaration["cost"].get("additional", []) or [])
+        if accelerate_entry is not None:
+            declared_additional = declared_additional + [
+                {k: v for k, v in accelerate_entry.items() if k not in {"energy", "rule_locators"}}]
         intents: dict[str, bool] = {}
         missing: list[str] = []
-        for add in declaration["cost"].get("additional", []) or []:
+        for add in declared_additional:
             if add["mandatory"]:
                 continue
             entry = next((e for e in ed.entries(engine_decisions, kind="optional_choice") if e["decision_id"] == add["cost_id"]), None)
@@ -1084,7 +1150,19 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             cost["base_modifications"] = [modification] + list(cost.get("base_modifications", []) or [])
         if deflect:
             cost["additional"] = list(cost.get("additional", []) or []) + deflect
-        trace.append({"stage": "choices", "outcome": "applied", "optional_cost_intents": intents, "chosen_objects": chosen_objects, "deflect_costs": deflect, **({"mode_selection": mode} if mode else {}), **({"repeat": repeat_record} if repeat_record else {}),
+        if accelerate_entry is not None:
+            # The Energy half rides as its own component so the receipt shows
+            # both halves of [1][C] separately (805.2.b).
+            cost["additional"] = list(cost.get("additional", []) or []) + [
+                {"cost_id": f"{ACCELERATE_COST_ID}:energy", "mandatory": False,
+                 "payment": {"kind": "energy", "amount": accelerate_entry["energy"]}},
+                {k: v for k, v in accelerate_entry.items() if k not in {"energy", "rule_locators"}}]
+            intents[f"{ACCELERATE_COST_ID}:energy"] = intents.get(ACCELERATE_COST_ID, False)
+        trace.append({"stage": "choices", "outcome": "applied",
+                      **({"accelerate": {"offered": accelerate_entry is not None, "reason": accelerate_reason,
+                                         "paid": bool(intents.get(ACCELERATE_COST_ID))}}
+                         if (accelerate_entry is not None or accelerate_reason) else {}),
+                      "optional_cost_intents": intents, "chosen_objects": chosen_objects, "deflect_costs": deflect, **({"mode_selection": mode} if mode else {}), **({"repeat": repeat_record} if repeat_record else {}),
                       "source": source_kind, **({"hidden": {"battlefield": hidden_battlefield, "targeting": hidden_targeting}} if hidden_battlefield else {}), **({"source_permission": dict(declaration["source_permission"])} if declaration.get("source_permission") else {}),
                       **({"cost_override": dict(override)} if override else {}), **({"ambush": ambush_record} if ambush_record else {}),
                       "rule_locators": RULES["choices"] + (["Core 402.2"] if mode else []) + (["Core 809.1.c", "Core 809.1.d", "Core 809.2"] if deflect else [])})
@@ -1165,6 +1243,11 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             entry["mode_selection"] = dict(mode)  # ADR-0011 §2: the mode rides with the chain entry to resolution
         if repeat_record is not None:
             entry["repeat"] = copy.deepcopy(repeat_record)  # ADR-0011 §4: paid Repeats ride to resolution
+        if accelerate_entry is not None and intents.get(ACCELERATE_COST_ID):
+            # 806.1.b: paid, so the card enters ready even if it loses the
+            # keyword during finalization. Bound to this card and this play.
+            working["objects"][card].setdefault("entry_replacements", []).append(
+                accelerate_entry_replacement(card, item_id))
         working.setdefault("chain_items", {})[item_id] = entry
         identity_after = _bump_identity(working, card) if not is_ability else object_identity(working, card)
         state_errors = validate_state(working)

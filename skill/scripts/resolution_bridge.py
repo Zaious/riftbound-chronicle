@@ -400,7 +400,7 @@ def _settle_trigger_orders(pending_triggers: list[dict[str, Any]], engine_decisi
 
 def entry_state_for(
     state: dict[str, Any], card: str, controller: str, event_id: str,
-    engine_decisions: dict[str, Any] | None = None,
+    engine_decisions: dict[str, Any] | None = None, chain_item: str | None = None,
 ) -> tuple[str, str, list[dict[str, Any]], dict[str, Any] | None]:
     """Core 143.4 / 359.2.c–d defaults, then entry replacements (369.3): the
     object's own `entry_replacements` and this turn's `turn_effects` that set
@@ -410,6 +410,13 @@ def entry_state_for(
     default = "exhausted" if obj["kind"] == "unit" else "ready"
     candidates: list[dict[str, Any]] = []
     for index, replacement in enumerate(obj.get("entry_replacements", []) or []):
+        # Core 806.1.b: a replacement bound to one play belongs to that play.
+        # An unbound one (a printed entry replacement) applies as it always did.
+        bound = replacement.get("chain_item")
+        if bound is not None and bound != chain_item:
+            continue
+        if replacement.get("card") is not None and replacement["card"] != card:
+            continue
         if replacement.get("mode") == "entry_state" and replacement.get("value") in {"ready", "exhausted"}:
             candidates.append({"replacement_id": replacement.get("replacement_id", f"entry:{card}:{index}"),
                                "source": card, "mode": "entry_state", "value": replacement["value"], "rule_locators": ["Core 369.3"]})
@@ -464,7 +471,7 @@ def complete_permanent_play(
     if not working["chain_items"]:
         del working["chain_items"]
     event_id = f"enter_board:{item_id}"
-    default, final, replacements, entry_problem = entry_state_for(working, card, controller, event_id, engine_decisions)
+    default, final, replacements, entry_problem = entry_state_for(working, card, controller, event_id, engine_decisions, chain_item=item_id)
     if entry_problem is not None:
         return state, entry_problem, []
     obj["exhausted"] = final == "exhausted"

@@ -496,6 +496,39 @@ def _restricted_entries(resources: dict[str, Any], use: str, kind: str, domain: 
     return [r for r in resources.get("restricted", []) if r["kind"] == kind and (kind == "energy" or r.get("domain") == domain) and use in r["uses"]]
 
 
+SELF_REDUCTION_CAPABILITY = "self_card_conditional_fixed_energy_reduction.v1"
+
+
+def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> list[dict[str, Any]]:
+    """The fixed Energy reductions a card's own text declares (Round H).
+
+    Narrow on purpose: only the card being played, only a fixed Energy amount,
+    only a condition.v1 leaf. Anything else — X, a value read off the board,
+    Power or a Domain, another card's text — is not this capability and is not
+    read here. The entries come back unevaluated; the caller runs them through
+    the same P4 condition layer every other cost modification uses, so there is
+    one implementation of "does this discount apply".
+    """
+    obj = (effect_state.get("objects") or {}).get(card_id) if card_id else None
+    if not isinstance(obj, dict):
+        return []
+    reductions = []
+    for modification in obj.get("printed_cost_modifications", []) or []:
+        if modification.get("kind") != "energy_reduction":
+            continue
+        entry = {
+            "id": f"self:{modification['modification_id']}",
+            "applies_to": "energy",
+            "amount": modification["amount"],
+            "source": {"kind": "self_card_text", "object": card_id, "capability": SELF_REDUCTION_CAPABILITY},
+            "self_card": True,
+        }
+        if "condition" in modification:
+            entry["condition"] = copy.deepcopy(modification["condition"])
+        reductions.append(entry)
+    return reductions
+
+
 def affordability(resources: dict[str, Any], total: dict[str, Any], use: str) -> dict[str, Any]:
     """Core 357.1: can this pool pay this total for this use? The one place
     the question is answered — the payment path and the C-57 enumeration both
@@ -1069,6 +1102,12 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 add["payment"] = {**add["payment"], "object_id": declaration["activation"]["source_object"]}
         # ADR-0013 §6: P4 evaluates a modification's condition and per-each
         # count here; P2 consumes the evaluated result and never a source.
+        # Round H: the card's own printed reductions join the declared ones and
+        # go through the same evaluation, so the enumeration and the payment
+        # path cannot disagree about what a card costs.
+        own = self_cost_reductions(effect_state, declaration.get("card"))
+        if own:
+            cost["discounts"] = list(cost.get("discounts", []) or []) + own
         evaluated: list[dict[str, Any]] = []
         for key in ("increases", "discounts"):
             kept = []
@@ -1079,12 +1118,16 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 try:
                     outcome = evaluate_cost_modification(effect_state, modification, actor)
                 except ConditionUnsupported as exc:
-                    raise PlayError("cost_determination", "cost_modification_sources_unsupported", str(exc), unsupported=True, rule_locators=["Core 356.3", "Core 356.4"])
+                    # A self-card reduction whose condition needs a fact the
+                    # state does not carry is named for what it is, so a caller
+                    # can tell "we do not model this" from "we cannot see it".
+                    code = "cost_condition_not_observed" if modification.get("self_card") else "cost_modification_sources_unsupported"
+                    raise PlayError("cost_determination", code, str(exc), unsupported=True, rule_locators=["Core 356.3", "Core 356.4"])
                 except ValueError as exc:
                     raise PlayError("cost_determination", "invalid_cost_modification", str(exc), invalid=True)
                 evaluated.append({**outcome, "applies_to": key})
                 if outcome["applies"] and outcome["amount"] > 0:
-                    kept.append({k: v for k, v in modification.items() if k not in {"condition", "per_each"}}
+                    kept.append({k: v for k, v in modification.items() if k not in {"condition", "per_each", "self_card"}}
                                 | {"amount": outcome["amount"], "provenance": {"evaluated_by": "p4_condition_layer", **({"source": modification.get("source")} if modification.get("source") else {})}})
             if kept or (cost.get(key) is not None):
                 cost[key] = kept

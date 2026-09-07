@@ -722,6 +722,22 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
         if "stunned" in obj and not isinstance(obj["stunned"], bool):
             errors.append(f"objects.{object_id}.stunned must be boolean (Core 423.1.a)")
+        # Round H: a fixed Energy reduction the card's own text declares, gated
+        # by a condition.v1 leaf. Deliberately narrow: no X, no value read off
+        # the board, no Power or Domain, and no source but this card.
+        for m_index, modification in enumerate(obj.get("printed_cost_modifications", []) or []):
+            label = f"objects.{object_id}.printed_cost_modifications[{m_index}]"
+            if not isinstance(modification, dict) or set(modification) - {"modification_id", "kind", "amount", "condition"} \
+                    or not {"modification_id", "kind", "amount"} <= set(modification):
+                errors.append(f"{label} must be {{modification_id, kind, amount, condition?}}")
+                continue
+            if modification["kind"] != "energy_reduction":
+                errors.append(f"{label}.kind must be energy_reduction; nothing else is modelled (Round H)")
+            if not isinstance(modification["amount"], int) or isinstance(modification["amount"], bool) or modification["amount"] < 1:
+                errors.append(f"{label}.amount must be a positive fixed number of Energy")
+            if "condition" in modification:
+                errors.extend(f"{label}.condition {e}" for e in validate_condition(modification["condition"], "condition"))
+
         # C-57 (ADR-0015 §1): the printed cost, when the observation carries
         # it. Optional, so every state written before this stays valid; the
         # enumeration abstains on a card that does not have one.
@@ -3070,11 +3086,15 @@ CONDITION_LEAVES = {
     # "another *unit* you control": the type as the layers compute it (477.1),
     # so a card copying a Unit counts as one.
     "object_kind": {"object", "value"},
+    # Round H: the first leaf of the narrow self-card cost reduction. Every
+    # fact it needs is on the state the play is being judged against.
+    "score_within_of_victory": {"count", "who"},
 }
 CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
                       "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
                       "zone_count_at_least": {"zone", "count"}, "same_location_as": {"as"},
-                      "might_less_than": {"than"}, "object_kind": {"value"}}
+                      "might_less_than": {"than"}, "object_kind": {"value"},
+                      "score_within_of_victory": {"count"}}
 PRIVATE_ZONES = {"hand", "main_deck", "rune_deck"}
 
 
@@ -3136,6 +3156,27 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
     if kind == "friendly_unit_defends_alone":
         designation = state["objects"][subject].get("combat_designation") if subject else None
         return designation is not None and designation.get("role") == "defender" and is_alone(state, subject)
+    if kind == "score_within_of_victory":
+        # "if an opponent's score is within N points of the Victory Score".
+        # Every part of that is on the state, or the condition abstains: the
+        # Mode of Play carries the Victory Score, and teams and several
+        # opponents are cases this leaf deliberately does not decide.
+        mode = state.get("mode") if isinstance(state.get("mode"), dict) else {}
+        victory = mode.get("victory_score")
+        if not isinstance(victory, int) or isinstance(victory, bool):
+            raise ConditionUnsupported("the Mode of Play does not say the Victory Score (cost_condition_not_observed)")
+        if mode.get("teams") or any(isinstance(p, dict) and p.get("team_id") for p in state["players"].values()):
+            raise ConditionUnsupported("team scoring is not modelled, so 'an opponent's score' has no single answer")
+        who = condition.get("who", "opponent")
+        if who != "opponent":
+            raise ConditionUnsupported(f"score_within_of_victory does not model {who!r}")
+        if controller is None:
+            raise ConditionUnsupported("score_within_of_victory needs to know whose opponents to read")
+        opponents = [p for p in sorted(state["players"]) if p != controller]
+        if len(opponents) != 1:
+            raise ConditionUnsupported(f"{len(opponents)} opponents; which one's score counts is not decided here")
+        points = int(state["players"][opponents[0]].get("points", 0))
+        return victory - points <= condition["count"]
     if kind == "object_kind":
         return subject is not None and characteristics(state, subject).get("kind") == condition["value"]
     if kind == "same_location_as":

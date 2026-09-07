@@ -459,11 +459,14 @@ def _timing_verdict(timing_state: dict[str, Any], action: dict[str, Any]) -> dic
     return rules_core.validate_timing(timing_state, action)
 
 
-def _cost_total(cost: Any) -> tuple[dict[str, Any] | None, str | None]:
+def _cost_total(cost: Any, *, effect_state: dict[str, Any] | None = None, card_id: str | None = None,
+                actor: str | None = None) -> tuple[dict[str, Any] | None, str | None]:
     """The total of a printed cost the state carries, or why the enumeration
     will not compute one. A cost with modifications, additional components or
     intents is a decision the player makes, not one an enumeration makes for
-    them."""
+    them — but a fixed Energy reduction the card's own text declares is not a
+    decision, so the enumeration reads it through the same function the
+    payment path uses (Round H)."""
     if not isinstance(cost, dict):
         return None, "printed_cost_not_observed"
     if set(cost) - {"base"}:
@@ -471,6 +474,25 @@ def _cost_total(cost: Any) -> tuple[dict[str, Any] | None, str | None]:
     base = cost.get("base")
     if not isinstance(base, dict) or not isinstance(base.get("energy"), int) or not isinstance(base.get("power"), dict):
         return None, "printed_cost_not_observed"
+    cost = copy.deepcopy(cost)
+    if effect_state is not None:
+        own = play_transaction.self_cost_reductions(effect_state, card_id)
+        kept = []
+        for modification in own:
+            if "condition" not in modification:
+                kept.append({k: v for k, v in modification.items() if k != "self_card"})
+                continue
+            try:
+                outcome = effect_ir.evaluate_cost_modification(effect_state, modification, actor)
+            except effect_ir.ConditionUnsupported:
+                return None, "cost_condition_not_observed"
+            except ValueError:
+                return None, "cost_modelling_beyond_enumeration"
+            if outcome["applies"] and outcome["amount"] > 0:
+                kept.append({k: v for k, v in modification.items() if k not in {"condition", "self_card"}}
+                            | {"amount": outcome["amount"]})
+        if kept:
+            cost["discounts"] = kept
     try:
         skeleton = play_transaction.determine_total_cost(cost, {})
     except Exception:  # a shape the transaction itself will not read
@@ -500,7 +522,8 @@ def _enumerate_play_card(observation, timing_state, effect_state, actor):
                              "check": "timing"})
             continue
         printed = obj.get("printed_cost")
-        total, problem = _cost_total({"base": printed} if isinstance(printed, dict) else printed)
+        total, problem = _cost_total({"base": printed} if isinstance(printed, dict) else printed,
+                                     effect_state=effect_state, card_id=object_id, actor=actor)
         if total is None:
             excluded.append({"object_id": object_id, "reason_code": problem, "check": "cost"})
             continue

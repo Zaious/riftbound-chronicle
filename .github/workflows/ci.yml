@@ -385,6 +385,11 @@ jobs:
       # its identity - not a label parsed onto an object.
       - name: Deathknell
         run: python3 skill/scripts/check_deathknell.py
+      # Round H: the narrow self-card conditional fixed Energy reduction - one
+      # number for the payment path and the enumeration, floored, abstaining
+      # by name when a fact is missing.
+      - name: Self-card cost reduction
+        run: python3 skill/scripts/check_self_cost_reduction.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -498,6 +503,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_evidence_pack.py"
           python3 "$REPO/skill/scripts/check_clause_splitting.py"
           python3 "$REPO/skill/scripts/check_deathknell.py"
+          python3 "$REPO/skill/scripts/check_self_cost_reduction.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -373,6 +373,10 @@ jobs:
       # adds packs by naming directories, and a bad path is refused, not skipped.
       - name: Pack search path
         run: python3 skill/scripts/check_pack_locator.py
+      # evidence-pack.v1: an answer's receipts, re-run by the public verifier;
+      # three forgeries must each be caught on their own field.
+      - name: Evidence pack build/verify
+        run: python3 skill/scripts/check_evidence_pack.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -483,6 +487,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_clause_grammar.py"
           python3 "$REPO/skill/scripts/check_coverage_debt.py"
           python3 "$REPO/skill/scripts/check_pack_locator.py"
+          python3 "$REPO/skill/scripts/check_evidence_pack.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

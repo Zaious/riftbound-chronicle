@@ -1,6 +1,6 @@
 {
   "schema_version": "coverage-debt.v1",
-  "grammar_version": "2026-09-07.1",
+  "grammar_version": "2026-09-08.1",
   "normalization_version": "split_clauses:d2d047cfff23c68d",
   "ranking": [
     "deck_slots",
@@ -12,8 +12,8 @@
   "quota": null,
   "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
   "counts": {
-    "clauses_parsed": 31,
-    "clauses_in_debt": 25,
+    "clauses_parsed": 29,
+    "clauses_in_debt": 27,
     "promotion": {
       "grammar_reproduced": 28,
       "hand_written": 20,
@@ -32,11 +32,12 @@
       "enter_ready": 1,
       "if_cannot_fallback": 1,
       "linked_instruction": 1,
+      "look": 2,
       "mutual_damage_equal_might": 1,
       "next_death_replacement": 1,
       "open_battlefield_play": 2,
       "optional_additional_cost": 1,
-      "play_and_move_triggers": 4,
+      "play_and_move_triggers": 6,
       "play_lifecycle": 4,
       "recall": 1,
       "return_board_to_hand": 1,
@@ -47,7 +48,7 @@
     },
     "by_risk": {
       "always_in_play": 5,
-      "main_deck": 20,
+      "main_deck": 22,
       "unknown": 0
     }
   },
@@ -287,6 +288,46 @@
       "missing_capability": "R3-A1-choices-costs-zones",
       "claim_in_pack": "full",
       "reason_code": "clause_unparsed"
+    },
+    {
+      "clause_id": "mystic poro#f4a07c4d",
+      "card_key": "mystic poro",
+      "card": "Mystic Poro",
+      "text": "[Vision]",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "missing_capability": "R3-A1-choices-costs-zones",
+      "claim_in_pack": "unsupported",
+      "reason_code": "keyword_not_implemented"
+    },
+    {
+      "clause_id": "sai scout#f4a07c4d",
+      "card_key": "sai scout",
+      "card": "Sai Scout",
+      "text": "[Vision]",
+      "pack": "global-core-origins-v1",
+      "deck_slots": 0,
+      "deck_count": 1,
+      "decks": [
+        "proving-grounds-annie"
+      ],
+      "risk": "main_deck",
+      "rule_family": [
+        "look",
+        "play_and_move_triggers"
+      ],
+      "missing_capability": "R3-A1-choices-costs-zones",
+      "claim_in_pack": "unsupported",
+      "reason_code": "keyword_not_implemented"
     },
     {
       "clause_id": "annie - fiery#24035ea0",
@@ -555,11 +596,13 @@
   ],
   "delta": {
     "baseline": "2026-09-07.1",
-    "normalization_baseline": null,
+    "normalization_baseline": "split_clauses:d2d047cfff23c68d",
     "reclassified": [],
-    "added": [],
+    "added": [
+      "mystic poro#f4a07c4d",
+      "sai scout#f4a07c4d"
+    ],
     "repaid": [],
-    "normalization_reclassification": [],
-    "note": "the clause splitter changed, so every id-level difference is a normalisation reclassification, not a repayment; compare against a build on this splitter for the next real delta"
+    "normalization_reclassification": []
   }
 }

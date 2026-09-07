@@ -89,6 +89,53 @@ def _trigger(field: str, trigger_id: str) -> dict[str, Any]:
                                        "effect_program_id": "$clause_id", "optional_at_finalize": False}]}}
 
 
+
+
+# --------------------------------------------------------------------------
+# sub-grammars (DP-84)
+# --------------------------------------------------------------------------
+
+
+def slot_alternatives(grammar: dict[str, Any], production: dict[str, Any], slot: str) -> list[str]:
+    """The alternatives of `slot` this production admits — all of the
+    sub-grammar's, unless the production names a subset."""
+    declared = (production.get("slots") or {}).get(slot)
+    available = list(grammar["sub_grammars"][slot]["alternatives"])
+    if declared is None:
+        return available
+    unknown = [name for name in declared if name not in available]
+    if unknown:
+        raise KeyError(f"{production['production_id']} names alternatives {unknown} that {slot} does not have")
+    return list(declared)
+
+
+def build_pattern(grammar: dict[str, Any], production: dict[str, Any]) -> str:
+    """The production's template with each `{slot}` replaced by an alternation
+    over the alternatives it admits, each tagged so the match says which one
+    it was. A template with no slots is its own pattern."""
+    pattern = production["template"]
+    for slot in (production.get("slots") or {}):
+        alternatives = grammar["sub_grammars"][slot]["alternatives"]
+        branches = [f"(?P<{slot}__{name}>{alternatives[name]['pattern']})"
+                    for name in slot_alternatives(grammar, production, slot)]
+        pattern = pattern.replace("{" + slot + "}", "(?:" + "|".join(branches) + ")")
+    return pattern
+
+
+def resolve_slots(grammar: dict[str, Any], production: dict[str, Any], match: re.Match) -> dict[str, Any]:
+    """Which alternative each slot matched, and the value the sub-grammar
+    gives it."""
+    resolved: dict[str, Any] = {}
+    for slot in (production.get("slots") or {}):
+        for name in slot_alternatives(grammar, production, slot):
+            if match.groupdict().get(f"{slot}__{name}") is not None:
+                alternative = grammar["sub_grammars"][slot]["alternatives"][name]
+                resolved[slot] = {"alternative": name, **copy.deepcopy(alternative["value"])}
+                break
+    return resolved
+
+
+
 # -- lowerings: AST -> what the pack calls `execution` ----------------------
 # Each returns {"program_effects": [...]} and/or {"passive": {...}} /
 # {"play_timing": ...}. The card's own declaration is not a clause's business.
@@ -97,10 +144,65 @@ def _lower_play_timing(params):
     return {"play_timing": params["timing"], "ast": {"node": "play_timing", "timing": params["timing"]}}
 
 
-def _lower_keyword(params):
-    keyword = params["keyword"]
-    ast = {"node": "keyword", "keyword": keyword, "value": params.get("value")}
-    return {"passive": {"object_fields": {"keywords": [keyword]}}, "ast": ast}
+
+
+def _lower_give_might(params, slots):
+    selector, delta = slots["selector"], slots["might_delta"]
+    amount = int(params.get(f"{delta['alternative']}_amount"))
+    signed = amount if delta["direction"] == "increase" else -amount
+    effect: dict[str, Any] = {"op": "modify_might", "effect_id": "buff", "amount": signed,
+                              "duration": slots["duration"]["duration"], "source": "$chain_item"}
+    if params.get("floor") is not None:
+        effect["minimum"] = int(params["floor"])
+    effect.update(_selector_fields(selector))
+    return {"program_effects": [effect],
+            "ast": {"node": "instruction", "op": "modify_might",
+                    "params": {"amount": signed, "duration": slots["duration"]["duration"],
+                               "selector": selector["alternative"],
+                               **({"minimum": int(params["floor"])} if params.get("floor") is not None else {})}}}
+
+
+def _lower_grant_keyword(params, slots):
+    selector, keyword = slots["selector"], slots["grantable_keyword"]
+    value = params.get(f"{keyword['keyword']}_grant_value")
+    effect: dict[str, Any] = {"op": "grant_keyword", "effect_id": "kw", "keyword": keyword["keyword"],
+                              "duration": slots["duration"]["duration"], "source": "$chain_item"}
+    if value is not None:
+        effect["value"] = int(value)
+    effect.update(_selector_fields(selector))
+    return {"program_effects": [effect],
+            "ast": {"node": "instruction", "op": "grant_keyword",
+                    "params": {"keyword": keyword["keyword"], "duration": slots["duration"]["duration"],
+                               "selector": selector["alternative"],
+                               **({"value": int(value)} if value is not None else {})}}}
+
+
+def _selector_fields(selector: dict[str, Any]) -> dict[str, Any]:
+    """How the engine names the thing a selector picks: a chosen target, a
+    criteria expansion, or the source object itself."""
+    if selector["scope"] == "source":
+        return {"object_id": "$source_object"}
+    criteria = {k: v for k, v in selector.items() if k in {"kind", "controller_relation"}}
+    if selector["scope"] == "affected":
+        return {"affected": {"criteria": {**criteria, "location": "board"}}}
+    return {"target": {"decision_ref": "t", "chosen_zone_class": "board", **criteria}}
+
+
+def _lower_object_keyword(params, slots):
+    keyword = slots["keyword"]
+    value = params.get(f"{keyword['keyword']}_value")
+    ast = {"node": "keyword", "keyword": keyword["keyword"],
+           "value": int(value) if value is not None else None,
+           "implemented": keyword["implemented"]}
+    if not keyword["implemented"]:
+        # DP-85: the catalogue names it, the engine does not implement it.
+        # That is a known boundary, not a parse - it never becomes a program.
+        return {"ast": ast, "known_unsupported": "keyword_not_implemented"}
+    fields: dict[str, Any] = {"keywords": [keyword["keyword"]]}
+    if value is not None:
+        fields["shield_value"] = int(value)
+    return {"passive": {"object_fields": fields}, "ast": ast}
+
 
 
 def _lower_draw(params):
@@ -164,17 +266,6 @@ def _lower_return_from_trash(params):
                     "params": {"target": {"kind": "unit", "location": "trash", "zone_owner_relation": "own"}}}}
 
 
-def _lower_give_might_this_turn(params):
-    amount = int(params["amount"])
-    return {"program_effects": [{"op": "modify_might", "effect_id": "buff", "amount": amount, "duration": "this_turn",
-                                 "source": "$chain_item",
-                                 "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
-                                            "controller_relation": "friendly"}}],
-            "ast": {"node": "instruction", "op": "modify_might",
-                    "params": {"amount": amount, "duration": "this_turn",
-                               "target": {"kind": "unit", "controller_relation": "friendly"}}}}
-
-
 def _lower_while_runes_might(params):
     runes, amount = int(params["runes"]), int(params["amount"])
     return {"passive": {"object_fields": {"conditional_might": [
@@ -196,9 +287,15 @@ def _lower_empty(params):
     return {"ast": {"node": "empty"}}
 
 
+# Composable productions receive the resolved slots as well as the raw groups.
+COMPOSABLE = {
+    "give_might_for_duration": _lower_give_might,
+    "grant_keyword_for_duration": _lower_grant_keyword,
+    "object_keyword": _lower_object_keyword,
+}
+
 LOWERINGS = {
     "play_timing_keyword": _lower_play_timing,
-    "object_keyword": _lower_keyword,
     "draw_n": _lower_draw,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
@@ -206,7 +303,6 @@ LOWERINGS = {
     "deal_n_to_all_units_at_battlefields": _lower_deal_all_units_at_battlefields,
     "channel_n_rune_exhausted": _lower_channel_exhausted,
     "return_a_unit_from_your_trash_to_your_hand": _lower_return_from_trash,
-    "give_a_friendly_unit_might_this_turn": _lower_give_might_this_turn,
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
     "no_rules_text": _lower_empty,
@@ -231,10 +327,11 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None) -> dict[str
     grammar = grammar or load_grammar()
     normalized = normalize(text)
     for production in grammar["productions"]:
-        match = re.fullmatch(production["pattern"], normalized)
+        match = re.fullmatch(build_pattern(grammar, production), normalized)
         if match is None:
             continue
-        params = {k: v for k, v in match.groupdict().items() if v is not None}
+        slots = resolve_slots(grammar, production, match)
+        params = {k: v for k, v in match.groupdict().items() if v is not None and "__" not in k}
         production_id = production["production_id"]
         if production_id in TRIGGER_WRAPPERS:
             field, trigger_id = TRIGGER_WRAPPERS[production_id]
@@ -251,10 +348,18 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None) -> dict[str
                 "program_effects": inner.get("program_effects", []),
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
             }
-        lowered = LOWERINGS[production_id](params)
+        lowered = COMPOSABLE[production_id](params, slots) if production_id in COMPOSABLE else LOWERINGS[production_id](params)
+        known = lowered.pop("known_unsupported", None)
+        if known is not None:
+            # Named by the catalogue, not implemented by the engine (DP-85).
+            # It is a boundary the grammar knows, not a clause it read.
+            return {"production_id": production_id, "unsupported": True, "reason_code": known,
+                    "text": text, "normalized": normalized, "slots": slots, "ast": lowered.get("ast"),
+                    "rule_locators": list(production["rule_locators"]),
+                    "reason": f"{production_id} recognised the clause, but the engine does not implement it"}
         return {
             "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
-            "params": params, "rule_locators": list(production["rule_locators"]),
+            "params": params, "slots": slots, "rule_locators": list(production["rule_locators"]),
             "required_capability": list(production["required_capability"]),
             **lowered,
         }
@@ -397,7 +502,32 @@ def validate_grammar(grammar: Any) -> list[str]:
     productions = grammar.get("productions")
     if not isinstance(productions, list) or not productions:
         return errors + ["productions must be a non-empty array"]
-    required = {"production_id", "form", "pattern", "normalization", "rule_locators", "ast_node",
+    sub_grammars = grammar.get("sub_grammars")
+    if not isinstance(sub_grammars, dict) or not sub_grammars:
+        errors.append("sub_grammars must be an object; a production is a template over them (DP-84)")
+        sub_grammars = {}
+    for name, sub in sub_grammars.items():
+        if not isinstance(sub, dict) or set(sub) != {"note", "alternatives"} or not sub["alternatives"]:
+            errors.append(f"sub_grammars.{name} must be {{note, alternatives}} with at least one alternative")
+            continue
+        for alt_name, alternative in sub["alternatives"].items():
+            if not isinstance(alternative, dict) or set(alternative) != {"pattern", "value"}:
+                errors.append(f"sub_grammars.{name}.{alt_name} must be {{pattern, value}}")
+                continue
+            try:
+                re.compile(alternative["pattern"])
+            except re.error as exc:
+                errors.append(f"sub_grammars.{name}.{alt_name}.pattern is not a regular expression: {exc}")
+    joint = grammar.get("jointly_meaningful")
+    if not isinstance(joint, list) or any(not isinstance(pair, list) or len(pair) != 2 for pair in joint):
+        errors.append("jointly_meaningful must be a list of slot pairs whose alternatives interact (DP-84)")
+        joint = []
+    for pair in joint:
+        unknown = [slot for slot in pair if slot not in sub_grammars]
+        if unknown:
+            errors.append(f"jointly_meaningful names slots that are not sub-grammars: {unknown}")
+
+    required = {"production_id", "form", "template", "slots", "normalization", "rule_locators", "ast_node",
                 "required_capability", "boundary", "golden", "negative"}
     seen: set[str] = set()
     for index, production in enumerate(productions):
@@ -409,7 +539,7 @@ def validate_grammar(grammar: Any) -> list[str]:
         if production_id in seen:
             errors.append(f"{path}.production_id {production_id!r} is duplicated")
         seen.add(production_id)
-        if production_id not in LOWERINGS and production_id not in TRIGGER_WRAPPERS:
+        if production_id not in LOWERINGS and production_id not in COMPOSABLE and production_id not in TRIGGER_WRAPPERS:
             errors.append(f"{path} has no lowering; a production that cannot be compiled is not promoted")
         if not production["rule_locators"] or not isinstance(production["required_capability"], list):
             errors.append(f"{path} must name its locators and list the capability it needs")
@@ -419,11 +549,23 @@ def validate_grammar(grammar: Any) -> list[str]:
             errors.append(f"{path} has no negative fixture; it is not promoted (ADR-0016 §1)")
         if production["normalization"] != "clause-grammar.v1/normalize":
             errors.append(f"{path}.normalization must name this grammar's own rule")
+        slots = production["slots"]
+        if not isinstance(slots, dict):
+            errors.append(f"{path}.slots must be an object mapping a slot to the alternatives it admits")
+            continue
+        for slot in slots:
+            if slot not in sub_grammars:
+                errors.append(f"{path}.slots names {slot!r}, which is not a sub-grammar")
+            elif "{" + slot + "}" not in production["template"]:
+                errors.append(f"{path}.slots names {slot!r}, which its template never uses")
+        for placeholder in re.findall(r"\{(\w+)\}", production["template"]):
+            if placeholder not in slots:
+                errors.append(f"{path}.template uses {{{placeholder}}}, which its slots do not admit")
         try:
-            re.compile(production["pattern"])
-        except re.error as exc:
-            errors.append(f"{path}.pattern is not a regular expression: {exc}")
-    missing = sorted((set(LOWERINGS) | set(TRIGGER_WRAPPERS)) - seen)
+            re.compile(build_pattern(grammar, production))
+        except (re.error, KeyError) as exc:
+            errors.append(f"{path} does not build a regular expression: {exc}")
+    missing = sorted((set(LOWERINGS) | set(COMPOSABLE) | set(TRIGGER_WRAPPERS)) - seen)
     if missing:
         errors.append(f"lowerings with no production in the contract: {missing}")
     return errors

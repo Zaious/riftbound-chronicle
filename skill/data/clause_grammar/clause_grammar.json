@@ -1,41 +1,405 @@
 {
   "schema_version": "clause-grammar.v1",
-  "version": "2026-09-07.1",
+  "version": "2026-09-08.1",
   "ruleset": {
     "core": "2026-07-16",
-    "faq_as_of": "2026-07-16"
+    "faq_as_of": "2026-08-14"
   },
   "complete_grammar": false,
-  "note": "Every production carries a stable id, the locators it implements, this grammar's own normalization rule, the AST node it produces, the engine capability it needs, its boundary, and the two fixtures it is promoted on: a golden clause it must compile and a near-miss it must not match.",
+  "note": "A production is a template over sub-grammar slots (DP-84), not a literal sentence. Its goldens must exercise every alternative of every slot it admits, and the cross product of every slot pair listed in `jointly_meaningful`; its negatives must include one near-miss per slot. Keyword alternatives are generated from keyword-catalog.v1 (DP-85): a keyword the catalogue does not name is not a keyword here, and one it names without a production is known_unsupported rather than parsed. Every fixture is synthetic or Wave A; real card text beyond the seed stays in the private overlay.",
+  "sub_grammars": {
+    "selector": {
+      "note": "who an instruction acts on. `me` is the source object itself.",
+      "alternatives": {
+        "a_unit": {
+          "pattern": "a unit",
+          "value": {
+            "scope": "target",
+            "kind": "unit"
+          }
+        },
+        "a_friendly_unit": {
+          "pattern": "a friendly unit",
+          "value": {
+            "scope": "target",
+            "kind": "unit",
+            "controller_relation": "friendly"
+          }
+        },
+        "an_enemy_unit": {
+          "pattern": "an enemy unit",
+          "value": {
+            "scope": "target",
+            "kind": "unit",
+            "controller_relation": "enemy"
+          }
+        },
+        "friendly_units": {
+          "pattern": "friendly units",
+          "value": {
+            "scope": "affected",
+            "kind": "unit",
+            "controller_relation": "friendly"
+          }
+        },
+        "enemy_units": {
+          "pattern": "enemy units",
+          "value": {
+            "scope": "affected",
+            "kind": "unit",
+            "controller_relation": "enemy"
+          }
+        },
+        "me": {
+          "pattern": "me",
+          "value": {
+            "scope": "source"
+          }
+        }
+      }
+    },
+    "might_delta": {
+      "note": "a signed Might change, with the floor the printed text states.",
+      "alternatives": {
+        "increase": {
+          "pattern": "\\+(?P<increase_amount>\\d+)",
+          "value": {
+            "direction": "increase"
+          }
+        },
+        "decrease": {
+          "pattern": "-(?P<decrease_amount>\\d+)",
+          "value": {
+            "direction": "decrease"
+          }
+        }
+      }
+    },
+    "duration": {
+      "note": "how long a granted characteristic lasts.",
+      "alternatives": {
+        "this_turn": {
+          "pattern": "this turn",
+          "value": {
+            "duration": "this_turn"
+          }
+        },
+        "this_combat": {
+          "pattern": "this combat",
+          "value": {
+            "duration": "this_combat"
+          }
+        }
+      }
+    },
+    "keyword": {
+      "note": "generated from keyword-catalog.v1 (DP-85).",
+      "alternatives": {
+        "ambush": {
+          "pattern": "\\[ambush(?: (?P<ambush_value>\\d+))?\\]",
+          "value": {
+            "keyword": "ambush",
+            "implemented": true
+          }
+        },
+        "backline": {
+          "pattern": "\\[backline(?: (?P<backline_value>\\d+))?\\]",
+          "value": {
+            "keyword": "backline",
+            "implemented": true
+          }
+        },
+        "deflect": {
+          "pattern": "\\[deflect(?: (?P<deflect_value>\\d+))?\\]",
+          "value": {
+            "keyword": "deflect",
+            "implemented": true
+          }
+        },
+        "empower": {
+          "pattern": "\\[empower(?: (?P<empower_value>\\d+))?\\]",
+          "value": {
+            "keyword": "empower",
+            "implemented": true
+          }
+        },
+        "equip": {
+          "pattern": "\\[equip(?: (?P<equip_value>\\d+))?\\]",
+          "value": {
+            "keyword": "equip",
+            "implemented": false
+          }
+        },
+        "ganking": {
+          "pattern": "\\[ganking(?: (?P<ganking_value>\\d+))?\\]",
+          "value": {
+            "keyword": "ganking",
+            "implemented": true
+          }
+        },
+        "hidden": {
+          "pattern": "\\[hidden(?: (?P<hidden_value>\\d+))?\\]",
+          "value": {
+            "keyword": "hidden",
+            "implemented": true
+          }
+        },
+        "hunt": {
+          "pattern": "\\[hunt(?: (?P<hunt_value>\\d+))?\\]",
+          "value": {
+            "keyword": "hunt",
+            "implemented": false
+          }
+        },
+        "level": {
+          "pattern": "\\[level(?: (?P<level_value>\\d+))?\\]",
+          "value": {
+            "keyword": "level",
+            "implemented": false
+          }
+        },
+        "repeat": {
+          "pattern": "\\[repeat(?: (?P<repeat_value>\\d+))?\\]",
+          "value": {
+            "keyword": "repeat",
+            "implemented": true
+          }
+        },
+        "shield": {
+          "pattern": "\\[shield(?: (?P<shield_value>\\d+))?\\]",
+          "value": {
+            "keyword": "shield",
+            "implemented": true
+          }
+        },
+        "tank": {
+          "pattern": "\\[tank(?: (?P<tank_value>\\d+))?\\]",
+          "value": {
+            "keyword": "tank",
+            "implemented": true
+          }
+        },
+        "temporary": {
+          "pattern": "\\[temporary(?: (?P<temporary_value>\\d+))?\\]",
+          "value": {
+            "keyword": "temporary",
+            "implemented": false
+          }
+        },
+        "unique": {
+          "pattern": "\\[unique(?: (?P<unique_value>\\d+))?\\]",
+          "value": {
+            "keyword": "unique",
+            "implemented": false
+          }
+        },
+        "vision": {
+          "pattern": "\\[vision(?: (?P<vision_value>\\d+))?\\]",
+          "value": {
+            "keyword": "vision",
+            "implemented": false
+          }
+        }
+      }
+    },
+    "grantable_keyword": {
+      "note": "the keywords an effect may grant, from the engine's own list.",
+      "alternatives": {
+        "backline": {
+          "pattern": "\\[backline(?: (?P<backline_grant_value>\\d+))?\\]",
+          "value": {
+            "keyword": "backline"
+          }
+        },
+        "ganking": {
+          "pattern": "\\[ganking(?: (?P<ganking_grant_value>\\d+))?\\]",
+          "value": {
+            "keyword": "ganking"
+          }
+        },
+        "shield": {
+          "pattern": "\\[shield(?: (?P<shield_grant_value>\\d+))?\\]",
+          "value": {
+            "keyword": "shield"
+          }
+        },
+        "tank": {
+          "pattern": "\\[tank(?: (?P<tank_grant_value>\\d+))?\\]",
+          "value": {
+            "keyword": "tank"
+          }
+        }
+      }
+    }
+  },
+  "jointly_meaningful": [
+    [
+      "selector",
+      "might_delta"
+    ],
+    [
+      "selector",
+      "grantable_keyword"
+    ],
+    [
+      "might_delta",
+      "duration"
+    ]
+  ],
   "productions": [
     {
-      "production_id": "play_timing_keyword",
-      "form": "[Action] / [Reaction]",
-      "pattern": "\\[(?P<timing>action|reaction)\\]",
+      "production_id": "give_might_for_duration",
+      "form": "Give <selector> <might_delta> [M] <duration>[, to a minimum of N].",
+      "template": "give {selector} {might_delta} \\[m\\] {duration}(?:, to a minimum of (?P<floor>\\d+) \\[m\\])?",
+      "slots": {
+        "selector": [
+          "a_unit",
+          "a_friendly_unit",
+          "an_enemy_unit",
+          "friendly_units",
+          "enemy_units",
+          "me"
+        ],
+        "might_delta": [
+          "increase",
+          "decrease"
+        ],
+        "duration": [
+          "this_turn",
+          "this_combat"
+        ]
+      },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 806",
-        "Core 807",
-        "Core 309.1.a"
+        "Core 476",
+        "Core 479",
+        "Core 317.2"
       ],
-      "ast_node": "play_timing",
+      "ast_node": "instruction",
       "required_capability": [
-        "timing_permission_v1"
+        "modify_might",
+        "targeting"
       ],
-      "boundary": "Only the two printed timing keywords. A timing granted by an effect is not this production.",
+      "boundary": "One signed Might change for a duration. A second linked grant, or a value read from the board, is a different production.",
       "golden": [
-        "[Action]",
-        "[Reaction]"
+        "Give a unit +1 [M] this turn.",
+        "Give a friendly unit +3 [M] this turn.",
+        "Give an enemy unit +1 [M] this turn.",
+        "Give friendly units +2 [M] this turn.",
+        "Give enemy units +1 [M] this turn.",
+        "Give me +2 [M] this turn.",
+        "Give a unit -1 [M] this turn.",
+        "Give a friendly unit -1 [M] this turn.",
+        "Give an enemy unit -3 [M] this turn, to a minimum of 0 [M].",
+        "Give friendly units -1 [M] this turn.",
+        "Give enemy units -2 [M] this turn.",
+        "Give me -1 [M] this turn.",
+        "Give a unit +1 [M] this combat.",
+        "Give me -1 [M] this combat.",
+        "Give friendly units +1 [M] this combat.",
+        "Give an enemy unit -1 [M] this combat."
       ],
       "negative": [
-        "[Action] this turn",
-        "action"
+        "Give the strongest unit +1 [M] this turn.",
+        "Give a unit +X [M] this turn.",
+        "Give a unit +1 [M] permanently.",
+        "Give a unit +1 [M] this turn, then an additional +1 [M] this turn."
+      ]
+    },
+    {
+      "production_id": "grant_keyword_for_duration",
+      "form": "Give <selector> <grantable_keyword> <duration>.",
+      "template": "give {selector} {grantable_keyword} {duration}",
+      "slots": {
+        "selector": [
+          "a_unit",
+          "a_friendly_unit",
+          "an_enemy_unit",
+          "friendly_units",
+          "enemy_units",
+          "me"
+        ],
+        "grantable_keyword": [
+          "backline",
+          "ganking",
+          "shield",
+          "tank"
+        ],
+        "duration": [
+          "this_turn",
+          "this_combat"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 477.2",
+        "Core 317.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_keyword",
+        "targeting"
+      ],
+      "boundary": "Only the keywords the engine can grant. A keyword outside that list is a different clause and stays unparsed.",
+      "golden": [
+        "Give a unit [Shield 2] this turn.",
+        "Give a friendly unit [Shield 1] this turn.",
+        "Give an enemy unit [Shield 1] this turn.",
+        "Give friendly units [Shield 1] this turn.",
+        "Give enemy units [Shield 1] this turn.",
+        "Give me [Shield 2] this turn.",
+        "Give a unit [Tank] this turn.",
+        "Give a friendly unit [Tank] this turn.",
+        "Give an enemy unit [Tank] this turn.",
+        "Give friendly units [Tank] this turn.",
+        "Give enemy units [Tank] this turn.",
+        "Give me [Tank] this turn.",
+        "Give a unit [Ganking] this turn.",
+        "Give a friendly unit [Ganking] this turn.",
+        "Give an enemy unit [Ganking] this turn.",
+        "Give friendly units [Ganking] this turn.",
+        "Give enemy units [Ganking] this turn.",
+        "Give me [Ganking] this turn.",
+        "Give a unit [Backline] this turn.",
+        "Give a friendly unit [Backline] this turn.",
+        "Give an enemy unit [Backline] this turn.",
+        "Give friendly units [Backline] this turn.",
+        "Give enemy units [Backline] this turn.",
+        "Give me [Backline] this turn.",
+        "Give a unit [Shield 1] this combat.",
+        "Give me [Tank] this combat.",
+        "Give friendly units [Ganking] this combat.",
+        "Give an enemy unit [Backline] this combat."
+      ],
+      "negative": [
+        "Give a unit [Assault 3] this turn.",
+        "Give the strongest unit [Tank] this turn.",
+        "Give a unit [Tank] permanently."
       ]
     },
     {
       "production_id": "object_keyword",
-      "form": "[Tank] / [Shield] / [Shield N] / [Ganking] / [Deflect] / [Vision]",
-      "pattern": "\\[(?P<keyword>tank|shield|ganking|deflect|vision|temporary|accelerate|assault|legion)( (?P<value>\\d+))?\\]",
+      "form": "[<keyword>] — a printed keyword on the object",
+      "template": "{keyword}",
+      "slots": {
+        "keyword": [
+          "ambush",
+          "backline",
+          "deflect",
+          "empower",
+          "equip",
+          "ganking",
+          "hidden",
+          "hunt",
+          "level",
+          "repeat",
+          "shield",
+          "tank",
+          "temporary",
+          "unique",
+          "vision"
+        ]
+      },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 813",
@@ -46,22 +410,35 @@
       "required_capability": [
         "keyword_catalogue_v1"
       ],
-      "boundary": "A bare printed keyword on the object. Granting a keyword to something else is a different production.",
+      "boundary": "A bare printed keyword the catalogue names. One it does not name stays unparsed; one it names but the engine does not implement is known_unsupported, not parsed.",
       "golden": [
-        "[Tank]",
-        "[Shield]",
+        "[Ambush]",
+        "[Backline]",
+        "[Deflect]",
+        "[Empower]",
+        "[Equip]",
         "[Ganking]",
-        "[Deflect]"
+        "[Hidden]",
+        "[Hunt]",
+        "[Level]",
+        "[Repeat]",
+        "[Shield]",
+        "[Tank]",
+        "[Temporary]",
+        "[Unique]",
+        "[Vision]"
       ],
       "negative": [
-        "gains [shield 2] this combat",
-        "[unknown]"
+        "[Nonesuch]",
+        "gains [Shield 2] this combat",
+        "[Shield] and [Tank]"
       ]
     },
     {
       "production_id": "draw_n",
-      "form": "Draw N.",
-      "pattern": "draw (?P<count>\\d+)",
+      "form": "Draw 1.",
+      "template": "draw (?P<count>\\d+)",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 413",
@@ -83,8 +460,9 @@
     },
     {
       "production_id": "deal_n_to_a_unit_at_a_battlefield",
-      "form": "Deal N to a unit at a battlefield.",
-      "pattern": "deal (?P<amount>\\d+) to a unit at (?:a )?battlefield",
+      "form": "Deal 2 to a unit at a battlefield.",
+      "template": "deal (?P<amount>\\d+) to a unit at (?:a )?battlefield",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 437",
@@ -107,8 +485,9 @@
     },
     {
       "production_id": "deal_n_to_all_enemy_units_at_a_battlefield",
-      "form": "Deal N to all enemy units at a battlefield.",
-      "pattern": "deal (?P<amount>\\d+) to all enemy units at a battlefield",
+      "form": "Deal 3 to all enemy units at a battlefield.",
+      "template": "deal (?P<amount>\\d+) to all enemy units at a battlefield",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 437",
@@ -120,7 +499,7 @@
         "deal_damage",
         "criteria_expansion"
       ],
-      "boundary": "One chosen Battlefield, then every enemy Unit there. 'All units' without the relation is a different production.",
+      "boundary": "One chosen Battlefield, then every enemy Unit there.",
       "golden": [
         "Deal 3 to all enemy units at a battlefield."
       ],
@@ -131,8 +510,9 @@
     },
     {
       "production_id": "deal_n_to_all_enemy_units_in_combat",
-      "form": "Deal N to all enemy units in combat.",
-      "pattern": "deal (?P<amount>\\d+) to all enemy units in combat",
+      "form": "Deal 2 to all enemy units in combat.",
+      "template": "deal (?P<amount>\\d+) to all enemy units in combat",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 437",
@@ -145,7 +525,7 @@
         "criteria_expansion",
         "combat_state"
       ],
-      "boundary": "The Combat in progress. Outside one the instruction finds nothing; it does not fall back to a Battlefield.",
+      "boundary": "The Combat in progress. Outside one the instruction finds nothing.",
       "golden": [
         "Deal 2 to all enemy units in combat."
       ],
@@ -156,8 +536,9 @@
     },
     {
       "production_id": "deal_n_to_all_units_at_battlefields",
-      "form": "Deal N to all units at battlefields.",
-      "pattern": "deal (?P<amount>\\d+) to all units at battlefields",
+      "form": "Deal 3 to all units at battlefields.",
+      "template": "deal (?P<amount>\\d+) to all units at battlefields",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 437",
@@ -168,7 +549,7 @@
         "deal_damage",
         "criteria_expansion"
       ],
-      "boundary": "Every Unit at every Battlefield, friend and enemy alike, and none in a Base.",
+      "boundary": "Every Unit at every Battlefield, and none in a Base.",
       "golden": [
         "Deal 3 to all units at battlefields."
       ],
@@ -179,8 +560,9 @@
     },
     {
       "production_id": "channel_n_rune_exhausted",
-      "form": "Channel N rune(s) exhausted.",
-      "pattern": "channel (?P<count>\\d+) runes? exhausted",
+      "form": "Channel 1 rune exhausted.",
+      "template": "channel (?P<count>\\d+) runes? exhausted",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 430",
@@ -190,7 +572,7 @@
       "required_capability": [
         "channel_rune"
       ],
-      "boundary": "Entering exhausted. A Channel with no entry state, or one that names a Rune, is a different production.",
+      "boundary": "Entering exhausted. A Channel with no entry state is a different production.",
       "golden": [
         "Channel 1 rune exhausted."
       ],
@@ -202,7 +584,8 @@
     {
       "production_id": "return_a_unit_from_your_trash_to_your_hand",
       "form": "Return a unit from your trash to your hand.",
-      "pattern": "return a unit from your trash to your hand",
+      "template": "return a unit from your trash to your hand",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 415",
@@ -213,7 +596,7 @@
         "return_to_hand",
         "targeting"
       ],
-      "boundary": "A Unit, from the controller's own Trash. A spell, or an opponent's Trash, is a different production.",
+      "boundary": "A Unit, from the controller's own Trash.",
       "golden": [
         "Return a unit from your trash to your hand."
       ],
@@ -223,33 +606,10 @@
       ]
     },
     {
-      "production_id": "give_a_friendly_unit_might_this_turn",
-      "form": "Give a friendly unit +N [M] this turn.",
-      "pattern": "give a friendly unit \\+(?P<amount>\\d+) \\[m\\] this turn",
-      "normalization": "clause-grammar.v1/normalize",
-      "rule_locators": [
-        "Core 476",
-        "Core 479",
-        "Core 317.2"
-      ],
-      "ast_node": "instruction",
-      "required_capability": [
-        "modify_might",
-        "targeting"
-      ],
-      "boundary": "One chosen friendly Unit, for this turn. A second linked grant is a different production.",
-      "golden": [
-        "Give a friendly unit +3 :rb_might: this turn."
-      ],
-      "negative": [
-        "give a friendly unit +1 [m] this turn, then an additional +1 [m] this turn if it is the only unit you control there",
-        "give an enemy unit +3 [m] this turn"
-      ]
-    },
-    {
       "production_id": "while_you_have_n_runes_i_have_might",
-      "form": "While you have N+ runes, I have +M [M].",
-      "pattern": "while you have (?P<runes>\\d+)\\+ runes, i have \\+(?P<amount>\\d+) \\[m\\]",
+      "form": "While you have 8+ runes, I have +4 [M].",
+      "template": "while you have (?P<runes>\\d+)\\+ runes, i have \\+(?P<amount>\\d+) \\[m\\]",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 364.3",
@@ -261,9 +621,9 @@
         "continuous_effects",
         "condition_v1"
       ],
-      "boundary": "A condition on the controller's own Runes on the board. Any other condition is a different production.",
+      "boundary": "A condition on the controller's own Runes on the board.",
       "golden": [
-        "While you have 8+ runes, I have +4 :rb_might:."
+        "While you have 8+ runes, I have +4 [M]."
       ],
       "negative": [
         "while i'm attacking or defending alone, i have +2 [m]",
@@ -273,7 +633,8 @@
     {
       "production_id": "units_you_play_this_turn_enter_ready",
       "form": "Units you play this turn enter ready.",
-      "pattern": "units you play this turn enter ready",
+      "template": "units you play this turn enter ready",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 317.2",
@@ -283,7 +644,7 @@
       "required_capability": [
         "grant_turn_effect"
       ],
-      "boundary": "Entry state for this turn's own plays. Another entry state, or another duration, is a different production.",
+      "boundary": "Entry state for this turn's own plays.",
       "golden": [
         "Units you play this turn enter ready."
       ],
@@ -295,7 +656,8 @@
     {
       "production_id": "no_rules_text",
       "form": "(no rules text)",
-      "pattern": "\\(no rules text\\)",
+      "template": "\\(no rules text\\)",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 185"
@@ -312,9 +674,35 @@
       ]
     },
     {
+      "production_id": "play_timing_keyword",
+      "form": "[Action]",
+      "template": "\\[(?P<timing>action|reaction)\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 806",
+        "Core 807",
+        "Core 309.1.a"
+      ],
+      "ast_node": "play_timing",
+      "required_capability": [
+        "timing_permission_v1"
+      ],
+      "boundary": "Only the two printed timing keywords.",
+      "golden": [
+        "[Action]",
+        "[Reaction]"
+      ],
+      "negative": [
+        "[Action] this turn",
+        "action"
+      ]
+    },
+    {
       "production_id": "when_you_play_me",
-      "form": "When you play me, <instruction>.",
-      "pattern": "when you play me, (?P<inner>.+)",
+      "form": "When you play me, channel 1 rune exhausted.",
+      "template": "when you play me, (?P<inner>.+)",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
@@ -324,10 +712,10 @@
       "required_capability": [
         "play_triggers"
       ],
-      "boundary": "Wraps one instruction this grammar already has. An unparsed instruction makes the whole clause unparsed.",
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
       "golden": [
         "When you play me, channel 1 rune exhausted.",
-        "When you play me, deal 3 to all units at battlefields."
+        "When you play me, draw 1."
       ],
       "negative": [
         "when you play a unit, draw 1",
@@ -336,8 +724,9 @@
     },
     {
       "production_id": "when_i_move",
-      "form": "When I move, <instruction>.",
-      "pattern": "when i move, (?P<inner>.+)",
+      "form": "When I move, draw 1.",
+      "template": "when i move, (?P<inner>.+)",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
@@ -347,7 +736,7 @@
       "required_capability": [
         "move_triggers"
       ],
-      "boundary": "Wraps one instruction this grammar already has.",
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
       "golden": [
         "When I move, draw 1."
       ],
@@ -358,8 +747,9 @@
     },
     {
       "production_id": "at_the_end_of_your_turn",
-      "form": "At the end of your turn, <instruction>.",
-      "pattern": "at the end of your turn, (?P<inner>.+)",
+      "form": "At the end of your turn, draw 1.",
+      "template": "at the end of your turn, (?P<inner>.+)",
+      "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 317.1",
@@ -369,7 +759,7 @@
       "required_capability": [
         "end_of_turn_triggers"
       ],
-      "boundary": "Wraps one instruction this grammar already has. 'At the end of each turn' is a different production.",
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
       "golden": [
         "At the end of your turn, draw 1."
       ],

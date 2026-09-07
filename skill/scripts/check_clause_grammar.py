@@ -66,30 +66,74 @@ def main() -> int:
     if grammar.get("complete_grammar") is not False:
         errors.append("the grammar claims to be complete")
 
-    # --- the two fixtures every production is promoted on -------------------------------------
+    # --- the fixtures every production is promoted on -------------------------------------------
+    # DP-84: a golden must compile to its own production; the goldens together
+    # must exercise every alternative of every slot the production admits and
+    # the cross product of every jointly meaningful slot pair; and a near-miss
+    # must not match. A `production: null` keyword is a known boundary, so its
+    # golden is recognised without being parsed.
+    joint_pairs = [tuple(pair) for pair in grammar["jointly_meaningful"]]
     for production in grammar["productions"]:
         production_id = production["production_id"]
+        exercised: dict[str, set[str]] = {slot: set() for slot in production["slots"]}
+        combinations: set[tuple[str, str, str, str]] = set()
         for text in production["golden"]:
             result = cg.compile_clause(text, grammar)
-            if result.get("production_id") != production_id or result.get("unsupported"):
+            recognised = result.get("production_id") == production_id
+            parsed_or_known = not result.get("unsupported") or result.get("reason_code") == "keyword_not_implemented"
+            if not recognised or not parsed_or_known:
                 errors.append(f"{production_id} did not compile its own golden fixture {text!r}: "
                               f"{result.get('production_id')} {result.get('reason_code', '')}")
+                continue
+            for slot, resolved in (result.get("slots") or {}).items():
+                exercised.setdefault(slot, set()).add(resolved["alternative"])
+            slots = result.get("slots") or {}
+            for left, right in joint_pairs:
+                if left in slots and right in slots:
+                    combinations.add((left, slots[left]["alternative"], right, slots[right]["alternative"]))
+        for slot, admitted in production["slots"].items():
+            missing = sorted(set(cg.slot_alternatives(grammar, production, slot)) - exercised.get(slot, set()))
+            if missing:
+                errors.append(f"{production_id} has no golden for {slot} alternatives {missing}; "
+                              "every alternative a production admits must be exercised (DP-84)")
+        for left, right in joint_pairs:
+            if left not in production["slots"] or right not in production["slots"]:
+                continue
+            wanted = {(left, a, right, b)
+                      for a in cg.slot_alternatives(grammar, production, left)
+                      for b in cg.slot_alternatives(grammar, production, right)}
+            uncovered = sorted(wanted - combinations)
+            if uncovered:
+                errors.append(f"{production_id} leaves {len(uncovered)} of {len(wanted)} {left}x{right} pairs "
+                              f"uncovered, e.g. {uncovered[:2]}; jointly meaningful slots need pairwise goldens (DP-84)")
         for text in production["negative"]:
             result = cg.compile_clause(text, grammar)
             if result.get("production_id") == production_id and not result.get("unsupported"):
                 errors.append(f"{production_id} matched its own near-miss {text!r}; the pattern is too wide")
+        # one near-miss per slot: a negative that differs only in that slot
+        for slot in production["slots"]:
+            if not any(cg.compile_clause(text, grammar).get("production_id") != production_id
+                       or cg.compile_clause(text, grammar).get("unsupported")
+                       for text in production["negative"]):
+                errors.append(f"{production_id} has no near-miss that its pattern rejects for slot {slot}")
 
     # --- the round trip against the corpus -----------------------------------------------------
-    agree = disagree = unparsed = skipped = 0
+    agree = disagree = unparsed = known = skipped = 0
     semantic: list[dict] = []
     for clause in corpus_clauses():
         result = cg.compile_clause(clause["text"], grammar)
         if result.get("unsupported"):
-            unparsed += 1
-            if result.get("reason_code") != "clause_unparsed" or result.get("text") != clause["text"]:
-                errors.append(f"an unparsed clause did not carry its own text: {result}")
-            if "program_effects" in result:
-                errors.append(f"an unparsed clause produced a program anyway: {clause['text']!r}")
+            # Two different things: the grammar cannot read it, or the
+            # catalogue names it and the engine does not implement it (DP-85).
+            reason = result.get("reason_code")
+            if reason == "keyword_not_implemented":
+                known += 1
+            else:
+                unparsed += 1
+            if reason not in {"clause_unparsed", "keyword_not_implemented"} or result.get("text") != clause["text"]:
+                errors.append(f"an unsupported clause did not carry its own text and reason: {result}")
+            if "program_effects" in result or "passive" in result:
+                errors.append(f"an unsupported clause produced a program anyway: {clause['text']!r}")
             continue
         execution = clause.get("execution")
         if execution is None:
@@ -168,9 +212,9 @@ def main() -> int:
         for error in errors:
             print(f"  - {error}")
         return 1
-    print(f"clause grammar checks passed: {len(grammar['productions'])} productions, corpus round trip "
-          f"{agree} reproduced / {disagree} disagreed / {unparsed} unparsed / {skipped} without a program, "
-          f"complete_grammar false")
+    print(f"clause grammar checks passed: {len(grammar['productions'])} productions over "
+          f"{len(grammar['sub_grammars'])} sub-grammars, corpus round trip {agree} reproduced / {disagree} disagreed / "
+          f"{unparsed} unparsed / {known} known-unsupported / {skipped} without a program, complete_grammar false")
     return 0
 
 

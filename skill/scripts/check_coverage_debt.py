@@ -79,8 +79,9 @@ def main() -> int:
 
     # --- every entry says what it is waiting for ---------------------------------------------------
     for entry in committed["entries"]:
-        if not entry.get("text") or entry.get("reason_code") != "clause_unparsed":
-            errors.append(f"a debt entry carries no text or the wrong reason: {entry.get('clause_id')}")
+        if not entry.get("text") or entry.get("reason_code") not in {"clause_unparsed", "keyword_not_implemented"}:
+            errors.append(f"a debt entry carries no text or an unknown reason: {entry.get('clause_id')} "
+                          f"{entry.get('reason_code')}")
         if not entry.get("rule_family") or not entry.get("missing_capability"):
             errors.append(f"a debt entry does not name its rule family or missing capability: {entry.get('clause_id')}")
         if entry.get("risk") not in cd.RISK_ORDER:
@@ -130,7 +131,8 @@ def main() -> int:
         import re as _re
         taught = copy.deepcopy(grammar)
         taught["productions"].insert(0, {
-            "production_id": "no_rules_text", "form": target["text"], "pattern": _re.escape(cg.normalize(target["text"])),
+            "production_id": "no_rules_text", "form": target["text"],
+            "template": _re.escape(cg.normalize(target["text"])), "slots": {},
             "normalization": "clause-grammar.v1/normalize", "rule_locators": ["Core 185"], "ast_node": "empty",
             "required_capability": [], "boundary": "probe", "golden": [target["text"]], "negative": ["x"]})
         original = cg.load_grammar

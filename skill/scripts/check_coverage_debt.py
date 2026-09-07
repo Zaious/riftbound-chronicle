@@ -86,6 +86,15 @@ def main() -> int:
         if entry.get("risk") not in cd.RISK_ORDER:
             errors.append(f"a debt entry has an unknown risk: {entry.get('risk')}")
 
+    # --- the promotion rule is measurable ------------------------------------------------------------
+    promotion = committed["counts"].get("promotion") or {}
+    if set(promotion) != {"grammar_reproduced", "hand_written", "in_debt_but_claimed"}:
+        errors.append(f"the ledger does not report the promotion split: {promotion}")
+    elif promotion["in_debt_but_claimed"] != promotion["hand_written"]:
+        errors.append("a clause claimed full or partial is counted as hand-written without being in the debt")
+    elif promotion["grammar_reproduced"] + promotion["hand_written"] == 0:
+        errors.append("the promotion split counted no claimed clause at all")
+
     # --- no quota -----------------------------------------------------------------------------------
     if committed.get("quota") is not None or "no repayment quota" not in committed.get("note", "").lower():
         errors.append("the ledger does not say that there is no repayment quota")

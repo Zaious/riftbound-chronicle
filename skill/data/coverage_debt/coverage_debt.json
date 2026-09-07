@@ -13,6 +13,11 @@
   "counts": {
     "clauses_parsed": 31,
     "clauses_in_debt": 25,
+    "promotion": {
+      "grammar_reproduced": 28,
+      "hand_written": 20,
+      "in_debt_but_claimed": 20
+    },
     "by_rule_family": {
       "attacking_defending_alone": 2,
       "bonus_damage": 2,
@@ -548,34 +553,8 @@
     }
   ],
   "delta": {
-    "baseline": null,
-    "added": [
-      "annie - dark child (starter)#223039b2",
-      "void gate#3aa2e8f7",
-      "fortified position#9b46c0cf",
-      "fortified position#d0ee5f77",
-      "master yi - wuju bladesman (starter)#96ecd8e6",
-      "meditation#083ddaf7",
-      "meditation#8be0efa4",
-      "flash#7a92a690",
-      "gentlemen's duel#fd48e5d0",
-      "gust#e661650e",
-      "highlander#d659b2ba",
-      "meditation#6ce549b5",
-      "annie - fiery#24035ea0",
-      "annie - stubborn#5086e61a",
-      "disintegrate#033ec095",
-      "en garde#6dd9b599",
-      "highlander#b9d95a9d",
-      "maddened marauder#8815ca64",
-      "master yi - honed#0be72750",
-      "mobilize#27e88ae5",
-      "sai scout#0ede37d4",
-      "sneaky deckhand#0ede37d4",
-      "traveling merchant#92d985e1",
-      "gentlemen's duel#26a3859b",
-      "wielder of water#d2dd9c3e"
-    ],
+    "baseline": "2026-09-07.1",
+    "added": [],
     "repaid": [],
     "reclassified": []
   }

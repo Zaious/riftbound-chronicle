@@ -73,6 +73,10 @@ def build() -> dict[str, Any]:
     slots, ledger = deck_slots(), ledger_index()
     entries: list[dict[str, Any]] = []
     parsed = 0
+    # G-3's promotion rule, made measurable: a clause may be claimed full or
+    # partial only once it passes canonical compile, its fixture and this
+    # ledger. Everything else claiming full is still a hand-written program.
+    promotion = {"grammar_reproduced": 0, "hand_written": 0, "in_debt_but_claimed": 0}
     for path in sorted(PACKS.glob("*/r3a1_programs.json")):
         pack = json.loads(path.read_text(encoding="utf-8"))
         for card in pack["cards"]:
@@ -81,9 +85,15 @@ def build() -> dict[str, Any]:
             decks = record.get("decks", [])
             for clause in card["clauses"]:
                 result = cg.compile_clause(clause["text"], grammar)
+                claimed = clause.get("claim") in {"full", "partial"}
                 if not result.get("unsupported"):
                     parsed += 1
+                    if claimed:
+                        promotion["grammar_reproduced"] += 1
                     continue
+                if claimed:
+                    promotion["in_debt_but_claimed"] += 1
+                    promotion["hand_written"] += 1
                 inventory = (record.get("clauses") or {}).get(clause["clause_id"], {})
                 mechanics = sorted(inventory.get("mechanics", []) or [])
                 entries.append({
@@ -114,7 +124,7 @@ def build() -> dict[str, Any]:
         "quota": None,
         "note": ("No repayment quota: a packet reports what the debt gained, lost or reclassified. "
                  "deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero."),
-        "counts": {"clauses_parsed": parsed, "clauses_in_debt": len(entries),
+        "counts": {"clauses_parsed": parsed, "clauses_in_debt": len(entries), "promotion": promotion,
                    "by_rule_family": dict(sorted(by_family.items())),
                    "by_risk": {risk: sum(1 for e in entries if e["risk"] == risk) for risk in sorted(RISK_ORDER)}},
         "entries": entries,

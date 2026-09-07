@@ -229,7 +229,15 @@ Claude may implement one bounded operation plus tests at a time.
   Cleanup Recall record for a Gear left at a Battlefield, 435.4–435.4.b.
   Equip runs through the activation path. Nested attachments and Effect Text
   appending are declared unsupported.)
-- [ ] Buff/debuff objects and spend/remove/copy behavior beyond raw Might.
+- [x] Buff/debuff objects and spend/remove/copy behavior beyond raw Might.
+  (C-52, ADR-0013 §5: Empowered and Buffed as binary states with the rules'
+  own idempotence — an already-Empowered object is a no-op with no second
+  event, 441.1.c.1, and a Unit that already carries a Buff counter is chosen
+  but not Buffed, 426.1.c — XP as a player value, and the three costs that
+  spend them: spend_xp, spend_buff and disempower_self. A Level ability needs
+  no new machinery: it is a continuous effect gated by `xp_at_least` that
+  stops applying when the XP drops. C-53, ADR-0013 §6: copy as a Trait-layer
+  effect over the traits the model carries.)
 - [x] Channel and Rune-specific entry, ready/exhaust, and zone behavior.
   (C-16: `channel_rune` with entry state, partial completion per 430.3, new
   identity per 124.)
@@ -240,7 +248,11 @@ Claude may implement one bounded operation plus tests at a time.
   DP-67 makes every entry a manual promotion with an official text hash, the
   source cards and a reviewer/date record. The item stays open until tokens
   are actually reviewed. Copy is a typed request that fails closed,
-  `copy_characteristics`, until the P4 layer contract.)
+  `copy_characteristics` — closed by C-53: copy is now a Trait-layer
+  continuous effect over the modelled copyable traits, type and rules text,
+  and a copy that would need a name, tag, printed cost or domain is refused
+  by name rather than half-applied. The item stays open for the catalogue's
+  own contents.)
 - [ ] Score, conquer, hold, battlefield control, and Victory Score operations.
   (C-33..C-35, bounded slice per ADR-0009: control established after a
   Combat or a Non-Combat Showdown and lost in Cleanup; Conquer and Hold once
@@ -269,9 +281,16 @@ program and cannot be safely inferred from isolated examples.
 - [ ] Last-known information and objects that change identity or zone.
   (C-14: object identity across non-board zone changes with selector
   revalidation; last-known information remains.)
-- [ ] Conditions over Might, damage, tags, domains, types, counts, and events.
+- [x] Conditions over Might, damage, tags, domains, types, counts, and events.
   (C-21: "while you have N+ runes" as `runes_at_least`, 364.3; C-22: "the only
-  unit you control there" as a named predicate. General forms remain.)
+  unit you control there" as a named predicate; C-50, ADR-0013 §3:
+  `condition.v1` as a typed AST — and/or/not over leaves for Might, keywords,
+  Empowered, XP, Battlefield control, zone counts and controlled units — with
+  one evaluator and a visibility boundary, so a condition that would need a
+  private zone of anyone but the asking player is refused rather than
+  answered. C-56 adds `same_location_as`, `might_less_than` and `object_kind`,
+  which the Core's own replacement wording needs. Tags and domains are not
+  modelled characteristics yet, so conditions over them stay refused.)
 - [ ] General typed forms for “if,” “if you do,” “if this kills,” “then,”
   “then do this,” “for each,” “instead,” and “up to.”
   (C-15/C-17: “if you do” / “otherwise” via cost predicates, “if you can't”
@@ -283,31 +302,81 @@ program and cannot be safely inferred from isolated examples.
 - [ ] Simultaneous multi-object Move, Deal, Recycle, Kill, and token creation.
   (C-20: area Deal over criteria-found units, each with its own Bonus Damage,
   715.2; the rest remain.)
-- [ ] Player-targeted and uncontrolled-Battlefield replacement ordering.
+- [x] Player-targeted and uncontrolled-Battlefield replacement ordering.
+  (C-56, ADR-0014 §3: the controller of the object being acted on orders the
+  Replacement Effects that apply to that event, a player being acted on
+  decides for itself, and an Uncontrolled Battlefield is the Current Turn
+  Player's call.)
 
 ### Continuous effects, triggers, and replacement still required
 
 Default ownership: `[CODEX-CONTEXT]`. Fixture/data expansion after a contract is
 accepted is `[CLAUDE-READY]`.
 
-- [ ] Cross-object watchers and zone-dependent trigger eligibility.
+- [x] Cross-object watchers and zone-dependent trigger eligibility.
   (C-19/C-21/C-22: play, end-of-turn and move triggers on the object itself,
-  with the at_battlefield trigger condition; cross-object watchers remain.)
-- [ ] Delayed triggers and duration-bound trigger registration.
-- [ ] First/Nth-time, once-per-turn, and per-object event counters.
+  with the at_battlefield trigger condition; C-55, ADR-0014 §2: a watcher
+  names the event kinds it reacts to and a scope — self, controller, location
+  or any — and is matched against the semantic events of C-54, so one object
+  reacts to another's. It stops at the same visibility boundary the conditions
+  do: a watcher may react to the public fact that an opponent drew, but a
+  condition on the card they drew is `watch_beyond_visibility`.)
+- [x] Delayed triggers and duration-bound trigger registration.
+  (C-55, ADR-0014 §2: a delayed trigger carries the source and target
+  identities it was created with, the event or turn moment it waits for and
+  the snapshot its instructions need. It fires once, and the binding is tested
+  as the event saw it — a Unit dying still matches the binding made while it
+  lived, a Unit that left and came back is a stranger and the trigger is
+  dropped with its reason, 124. The end-of-turn ones fire in the real Ending
+  Step alongside the printed triggers.)
+- [x] First/Nth-time, once-per-turn, and per-object event counters.
+  (C-55, ADR-0014 §2: a per-turn count keyed by the source's identity, the
+  ability and the turn. An ability that has been performed its allowance does
+  not trigger at all, 383.3.e, and a "you may" the controller declines at
+  finalization was not performed, so it keeps its use, 383.3.e.2.b. The
+  counters are pruned by the turn transition. C-56 gives Replacement Effects
+  the same treatment under 372.)
 - [ ] Instruction-level optional choices made during resolution.
-- [ ] Complete continuous-effect dependency/layer system.
-  (C-21: conditional passives evaluated on read via `effective_might`;
-  interacting passives stay `unsupported: continuous_dependency`.)
+- [x] Complete continuous-effect dependency/layer system.
+  (C-49, ADR-0013 §1–2: six legacy representations collapsed into one
+  canonical `continuous_effects[]`, and a real Core 476–480 engine over it —
+  Trait, Ability and Arithmetic layers applied to a fixpoint, each effect
+  applied once, dependency detected by trial application rather than declared,
+  and a timestamp fallback where nothing depends on anything. The Core 479
+  dependency example is a fixture: the dependency-aware order reads 6 where
+  plain timestamp order reads 7. A dependency the engine cannot resolve is
+  `layer_dependency_unresolved`, not a guess.)
 - [ ] Duration expiry for this turn, next event, while/source-zone, and cleanup.
   (C-21: this-turn effects are active only for their stamped turn and expire
   at that turn's Expiration Step, 317.2.c; C-24: granted replacements follow
-  the same active-turn boundary; next event, while/source-zone, cleanup
-  durations remain.)
-- [ ] Multiple simultaneous replacement descriptors controlled by one player.
-- [ ] Different-controller simultaneous replacement execution in Turn Order.
-- [ ] Non-prevention replacement programs across simultaneous events.
+  the same active-turn boundary; C-49 adds `while_source_active`,
+  `this_combat` and `until_detached` as first-class durations, with the source
+  activity and the identity binding checked on every read and the dead ones
+  pruned with their reason. Next-event and Cleanup durations remain.)
+- [x] Multiple simultaneous replacement descriptors controlled by one player.
+  (C-56, ADR-0014 §3: a batch with several descriptors used to fail closed and
+  now resolves. A controller with more than one Replacement Effect in the
+  batch orders its own sequences, and each Replacement Effect's controller
+  orders the events of its own sequence.)
+- [x] Different-controller simultaneous replacement execution in Turn Order.
+  (C-56, ADR-0014 §3: the sequences of different controllers execute in Turn
+  Order, and a batch that would need one without being given it fails closed
+  as `turn_order_unknown` instead of guessing an order.)
+- [x] Non-prevention replacement programs across simultaneous events.
+  (C-56, ADR-0014 §3: `replace_with` runs inside a simultaneous batch, with
+  `$affected` and `$source` so a replacement's instructions can say "it" and
+  "me". `augment_with` and `reduce_damage` inside a simultaneous batch stay
+  `batch_replacement_mode`.)
 - [ ] Complete Core 373.2 uninterrupted sequence graph.
+  (C-56, ADR-0014 §3: the sequence rules are implemented and pinned by the
+  rulebook's own examples — 370.2's Zhonya's Hourglass pair, where both apply
+  and the one that applied last dies, and 374's Soraka / Guardian Angel, where
+  both orderings are reproduced because each sequence reads its qualifying set
+  when it starts. A replacement's own actions run before any simultaneous
+  unmodified event. What remains is the graph beyond the kill batch: the
+  descriptor list is computed against the state the batch began in, so a
+  Replacement Effect that only becomes applicable after another sequence is
+  not in it.)
 - [ ] `All` prevention, duration, and allocation choices.
 - [ ] General Core 375 inheritance beyond the token subset.
 

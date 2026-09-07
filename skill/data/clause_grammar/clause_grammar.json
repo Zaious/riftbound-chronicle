@@ -55,6 +55,18 @@
           "value": {
             "scope": "source"
           }
+        },
+        "it": {
+          "pattern": "it",
+          "value": {
+            "scope": "referent"
+          }
+        },
+        "that_unit": {
+          "pattern": "that unit",
+          "value": {
+            "scope": "referent"
+          }
         }
       }
     },
@@ -95,6 +107,13 @@
     "keyword": {
       "note": "generated from keyword-catalog.v1 (DP-85).",
       "alternatives": {
+        "accelerate": {
+          "pattern": "\\[accelerate(?: (?P<accelerate_value>\\d+))?\\]",
+          "value": {
+            "keyword": "accelerate",
+            "implemented": true
+          }
+        },
         "ambush": {
           "pattern": "\\[ambush(?: (?P<ambush_value>\\d+))?\\]",
           "value": {
@@ -265,7 +284,9 @@
           "an_enemy_unit",
           "friendly_units",
           "enemy_units",
-          "me"
+          "me",
+          "it",
+          "that_unit"
         ],
         "might_delta": [
           "increase",
@@ -301,6 +322,10 @@
         "Give friendly units -1 [M] this turn.",
         "Give enemy units -2 [M] this turn.",
         "Give me -1 [M] this turn.",
+        "Give it +1 [M] this turn.",
+        "Give it -1 [M] this turn.",
+        "Give that unit +2 [M] this turn.",
+        "Give that unit -2 [M] this turn.",
         "Give a unit +1 [M] this combat.",
         "Give me -1 [M] this combat.",
         "Give friendly units +1 [M] this combat.",
@@ -324,7 +349,9 @@
           "an_enemy_unit",
           "friendly_units",
           "enemy_units",
-          "me"
+          "me",
+          "it",
+          "that_unit"
         ],
         "grantable_keyword": [
           "backline",
@@ -373,6 +400,14 @@
         "Give friendly units [Backline] this turn.",
         "Give enemy units [Backline] this turn.",
         "Give me [Backline] this turn.",
+        "Give it [Shield 1] this turn.",
+        "Give it [Tank] this turn.",
+        "Give it [Ganking] this turn.",
+        "Give it [Backline] this turn.",
+        "Give that unit [Shield 2] this turn.",
+        "Give that unit [Tank] this turn.",
+        "Give that unit [Ganking] this turn.",
+        "Give that unit [Backline] this turn.",
         "Give a unit [Shield 1] this combat.",
         "Give me [Tank] this combat.",
         "Give friendly units [Ganking] this combat.",
@@ -390,6 +425,7 @@
       "template": "{keyword}\\[>\\] (?P<inner>.+)",
       "slots": {
         "keyword": [
+          "accelerate",
           "ambush",
           "backline",
           "deathknell",
@@ -420,6 +456,7 @@
       ],
       "boundary": "The binder makes the keyword the ability's trigger condition. Only a keyword the engine implements as a trigger compiles; the rest are known_unsupported, and an ability the grammar cannot read makes the whole clause unparsed.",
       "golden": [
+        "[Accelerate][>] Draw 1.",
         "[Ambush][>] Draw 1.",
         "[Backline][>] Draw 1.",
         "[Deathknell][>] Draw 1.",
@@ -449,6 +486,7 @@
       "template": "{keyword}",
       "slots": {
         "keyword": [
+          "accelerate",
           "ambush",
           "backline",
           "deathknell",
@@ -479,6 +517,7 @@
       ],
       "boundary": "A bare printed keyword the catalogue names. One it does not name stays unparsed; one it names but the engine does not implement is known_unsupported, not parsed.",
       "golden": [
+        "[Accelerate]",
         "[Ambush]",
         "[Backline]",
         "[Deathknell]",

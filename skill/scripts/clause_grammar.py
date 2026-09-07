@@ -182,6 +182,11 @@ def _selector_fields(selector: dict[str, Any]) -> dict[str, Any]:
     criteria expansion, or the source object itself."""
     if selector["scope"] == "source":
         return {"object_id": "$source_object"}
+    if selector["scope"] == "referent":
+        # DP-86: no criteria, no zone class - the object is whichever one the
+        # earlier decision produced. The sequence rebinds this reference; a
+        # clause that never gets one stays unbound and is reported as such.
+        return {"target": {"decision_ref": REFERENT_REF}}
     criteria = {k: v for k, v in selector.items() if k in {"kind", "controller_relation"}}
     if selector["scope"] == "affected":
         return {"affected": {"criteria": {**criteria, "location": "board"}}}
@@ -351,15 +356,143 @@ TRIGGER_WRAPPERS = {
 
 
 # --------------------------------------------------------------------------
+# DP-86: sequencing, referents and linked prefixes
+# --------------------------------------------------------------------------
+
+# The decision reference a referent target carries until the sequence binds it
+# to the one the earlier part actually used.
+REFERENT_REF = "$referent"
+
+# A closed white-list. A connective outside it does not join anything; the
+# clause is unparsed rather than guessed at.
+SEQUENCE_CONNECTIVES = (", then ", ", and ", " and ")
+# The three prefixes that read the *previous clause's* receipt. Core 359.3.e.14
+# and 430.5: they test what the earlier instruction did, not what the state
+# looks like now.
+LINK_PREFIXES = {
+    "if you do, ": "action_performed",
+    "if you can't, ": "requested_count_not_reached",
+    "otherwise, ": "action_not_performed",
+}
+
+
+def _split_sequence(normalized: str) -> list[str] | None:
+    """The parts of a sequenced clause, in the order they are performed.
+
+    "A, then B" is two; "A, B, and C" is three. Splitting is strictly by the
+    white-listed connectives, and the Oxford comma is only honoured when an
+    "and" closes the list — so a clause whose comma belongs to one instruction
+    ("to a minimum of 0") is never torn in half.
+    """
+    for connective in (", then ",):
+        if connective in normalized:
+            head, tail = normalized.split(connective, 1)
+            return [head.strip(), tail.strip()]
+    for connective in (", and ", " and "):
+        if connective in normalized:
+            head, tail = normalized.rsplit(connective, 1)
+            parts = [p.strip() for p in head.split(", ")] if connective == ", and " else [head.strip()]
+            return [p for p in parts + [tail.strip()] if p]
+    return None
+
+
+def _antecedent_of(previous: dict[str, Any] | None) -> str | None:
+    """The instruction whose receipt a linked prefix reads: the last one the
+    previous clause actually emitted. None when there is nothing to read -
+    no previous clause, a clause the grammar could not read, or one that
+    performed nothing (a passive-only clause leaves no receipt)."""
+    if not isinstance(previous, dict) or previous.get("unsupported"):
+        return None
+    if previous.get("production_id") == "linked_prefix":
+        # "If you do, X. Otherwise, Y." - both branches test the *same*
+        # receipt. Chaining the second onto the first's own instruction would
+        # make Y depend on X having happened, which is the opposite of what
+        # "otherwise" says.
+        return previous.get("antecedent_effect_id")
+    effects = previous.get("program_effects") or []
+    return effects[-1].get("effect_id") if effects else None
+
+
+def _referent_of(effects: list[dict[str, Any]]) -> str | None:
+    """The decision an earlier instruction chose its object with. Sharing it is
+    how "it" and "that unit" name *that* object rather than another one that
+    happens to match (Codex's DP-86 contract)."""
+    for effect in reversed(effects):
+        target = effect.get("target")
+        if isinstance(target, dict) and isinstance(target.get("decision_ref"), str):
+            return target["decision_ref"]
+    return None
+
+
+def _has_unbound_referent(effects: list[dict[str, Any]]) -> bool:
+    """True while an instruction still points at $referent: it names an object
+    no decision has produced yet, so it cannot be run."""
+    return any(isinstance(e.get("target"), dict) and e["target"].get("decision_ref") == REFERENT_REF
+               for e in effects)
+
+
+def _rebind_referents(effects: list[dict[str, Any]], decision_ref: str) -> list[dict[str, Any]]:
+    """Point every referent target at the decision the earlier part used."""
+    bound = copy.deepcopy(effects)
+    for effect in bound:
+        target = effect.get("target")
+        if isinstance(target, dict) and target.get("decision_ref") == REFERENT_REF:
+            target["decision_ref"] = decision_ref
+    return bound
+
+
+
+# --------------------------------------------------------------------------
 # compiling
 # --------------------------------------------------------------------------
 
 
-def compile_clause(text: str, grammar: dict[str, Any] | None = None) -> dict[str, Any]:
+def compile_clause(text: str, grammar: dict[str, Any] | None = None,
+                   previous: dict[str, Any] | None = None) -> dict[str, Any]:
     """One clause in, one typed result out. Deterministic: the same text
-    always produces the same production, AST and program."""
+    always produces the same production, AST and program.
+
+    ``previous`` is the compiled result of the clause immediately before this
+    one on the same card. It is the only thing "if you do" is allowed to read
+    (DP-86): the receipt of what that instruction did, never the state now and
+    never a re-reading of the text.
+    """
     grammar = grammar or load_grammar()
     normalized = normalize(text)
+
+    # DP-86: a prefix that tests the previous clause's receipt. Without a
+    # previous clause in view there is no receipt to test, and guessing one
+    # from the text is exactly what Core 359.3.e.14 forbids - so abstain.
+    for prefix, link in LINK_PREFIXES.items():
+        if not normalized.startswith(prefix):
+            continue
+        antecedent = _antecedent_of(previous)
+        if antecedent is None:
+            return {"production_id": "linked_prefix", "unsupported": True,
+                    "reason_code": "link_antecedent_not_available", "text": text, "normalized": normalized,
+                    "link": link,
+                    "reason": f"{prefix.strip()!r} tests the previous instruction's receipt, "
+                              f"and no readable previous instruction is in view"}
+        inner = compile_clause(normalized[len(prefix):], grammar)
+        if inner.get("unsupported"):
+            return {"production_id": "linked_prefix", "unsupported": True,
+                    "reason_code": inner.get("reason_code", "clause_unparsed"), "text": text,
+                    "reason": f"the linked instruction did not parse: {normalized[len(prefix):]!r}"}
+        effects = copy.deepcopy(inner.get("program_effects", []))
+        if referent := _referent_of(previous.get("program_effects", []) or []):
+            effects = _rebind_referents(effects, referent)
+        predicate = {"kind": link, "effect_id": antecedent}
+        for effect in effects:
+            effect.setdefault("predicate", predicate)
+        return {
+            "production_id": "linked_prefix", "unsupported": False, "text": text, "normalized": normalized,
+            "params": {}, "slots": {}, "link": link, "antecedent_effect_id": antecedent,
+            "rule_locators": ["Core 359.3.e.14", "Core 430.5"] + inner["rule_locators"],
+            "required_capability": sorted(set(inner["required_capability"]) | {"linked_predicates"}),
+            "ast": {"node": "linked", "link": link, "reads": antecedent, "then": inner["ast"]},
+            "program_effects": effects,
+        }
+
     for production in grammar["productions"]:
         match = re.fullmatch(build_pattern(grammar, production), normalized)
         if match is None:
@@ -417,12 +550,56 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None) -> dict[str
                     "text": text, "normalized": normalized, "slots": slots, "ast": lowered.get("ast"),
                     "rule_locators": list(production["rule_locators"]),
                     "reason": f"{production_id} recognised the clause, but the engine does not implement it"}
-        return {
+        compiled = {
             "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
             "params": params, "slots": slots, "rule_locators": list(production["rule_locators"]),
             "required_capability": list(production["required_capability"]),
             **lowered,
         }
+        if _has_unbound_referent(compiled.get("program_effects", [])):
+            compiled["needs_referent"] = True
+        return compiled
+    # DP-86: a sequence. Every part must parse on its own - "and" joins two
+    # instructions the grammar already reads, or it joins nothing.
+    parts = _split_sequence(normalized)
+    if parts and len(parts) > 1:
+        compiled = [compile_clause(part, grammar) for part in parts]
+        if any(entry.get("unsupported") for entry in compiled):
+            failed = next(part for part, entry in zip(parts, compiled) if entry.get("unsupported"))
+            return {"production_id": "sequence", "unsupported": True, "reason_code": "clause_unparsed",
+                    "text": text, "normalized": normalized,
+                    "reason": f"a connective joined an instruction the grammar cannot read: {failed!r}"}
+        sequential = ", then " in normalized
+        effects: list[dict[str, Any]] = []
+        for index, entry in enumerate(compiled):
+            part_effects = copy.deepcopy(entry.get("program_effects", []))
+            if index and (referent := _referent_of(effects)):
+                part_effects = _rebind_referents(part_effects, referent)
+            for position, effect in enumerate(part_effects):
+                effect["effect_id"] = f"{index}:{effect.get('effect_id', position)}"
+                # 359.3: the parts of a sequenced clause are performed in the
+                # order written. Carrying the order in the program keeps a
+                # consumer from treating the list as a set.
+                effect["order"] = len(effects) + position
+            if index and sequential and part_effects and effects:
+                # "then": the later instruction happens only if the earlier one
+                # did, read off its receipt rather than recomputed (359.3.e.14).
+                part_effects[0]["predicate"] = {"kind": "action_performed", "effect_id": effects[-1]["effect_id"]}
+            effects.extend(part_effects)
+        passive: dict[str, Any] = {}
+        for entry in compiled:
+            for field, value in (entry.get("passive", {}).get("object_fields", {}) or {}).items():
+                passive.setdefault(field, []).extend(copy.deepcopy(value))
+        return {
+            "production_id": "sequence", "unsupported": False, "text": text, "normalized": normalized,
+            "params": {}, "slots": {}, "parts": [entry["production_id"] for entry in compiled],
+            "rule_locators": sorted({loc for entry in compiled for loc in entry["rule_locators"]}),
+            "required_capability": sorted({cap for entry in compiled for cap in entry["required_capability"]}),
+            "ast": {"node": "sequence", "ordered": True, "of": [entry["ast"] for entry in compiled]},
+            "program_effects": effects,
+            **({"passive": {"object_fields": passive}} if passive else {}),
+        }
+
     return {"production_id": None, "unsupported": True, "reason_code": "clause_unparsed", "text": text,
             "normalized": normalized, "reason": "no production in clause-grammar.v1 matches this clause"}
 
@@ -432,7 +609,18 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
     printed cost, its type, where it enters — is not a clause's business, so
     the compiler does not invent one."""
     grammar = grammar or load_grammar()
-    compiled = [compile_clause(clause["text"], grammar) for clause in clauses]
+    compiled: list[dict[str, Any]] = []
+    for clause in clauses:
+        entry = compile_clause(clause["text"], grammar, previous=compiled[-1] if compiled else None)
+        if not entry.get("unsupported") and _has_unbound_referent(entry.get("program_effects", [])):
+            # DP-86: a referent with nothing before it to be. Refusing here is
+            # the point - the alternative is re-finding an object that merely
+            # matches, which is what the contract forbids.
+            entry = {"production_id": entry["production_id"], "unsupported": True,
+                     "reason_code": "referent_not_bound", "text": entry["text"],
+                     "normalized": entry.get("normalized"),
+                     "reason": "the clause names a referent no earlier instruction chose"}
+        compiled.append(entry)
     effects: list[dict[str, Any]] = []
     passive: dict[str, Any] = {}
     for entry in compiled:

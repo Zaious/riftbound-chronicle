@@ -130,7 +130,8 @@ def main() -> int:
                 known += 1
             else:
                 unparsed += 1
-            if reason not in {"clause_unparsed", "keyword_not_implemented"} or result.get("text") != clause["text"]:
+            if reason not in {"clause_unparsed", "keyword_not_implemented",
+                              "link_antecedent_not_available"} or result.get("text") != clause["text"]:
                 errors.append(f"an unsupported clause did not carry its own text and reason: {result}")
             if "program_effects" in result or "passive" in result:
                 errors.append(f"an unsupported clause produced a program anyway: {clause['text']!r}")
@@ -151,6 +152,70 @@ def main() -> int:
                       f"{[d['field'] for d in semantic][:4]}")
     if agree < 25:
         errors.append(f"the round trip reproduces only {agree} of the corpus's hand-written programs")
+
+
+    # --- DP-86: sequencing, referents and linked prefixes ------------------------------------------
+    # (1) "and"/"then" are strictly ordered, and never parallelised.
+    seq = cg.compile_clause("Draw 1 and channel 1 rune exhausted.", grammar)
+    if seq.get("unsupported") or seq["production_id"] != "sequence":
+        errors.append(f"a two-instruction 'and' did not compile as a sequence: {seq}")
+    else:
+        if [e["op"] for e in seq["program_effects"]] != ["draw", "channel_rune"]:
+            errors.append(f"the sequence did not keep the written order: {seq['program_effects']}")
+        if [e.get("order") for e in seq["program_effects"]] != [0, 1]:
+            errors.append("the sequence's program does not carry its own order")
+        if not seq["ast"].get("ordered"):
+            errors.append("the sequence AST does not declare itself ordered")
+    then = cg.compile_clause("Draw 1, then channel 1 rune exhausted.", grammar)
+    if then.get("unsupported"):
+        errors.append(f"'then' did not compile: {then}")
+    else:
+        second = then["program_effects"][1]
+        if second.get("predicate", {}).get("kind") != "action_performed" or                 second["predicate"]["effect_id"] != then["program_effects"][0]["effect_id"]:
+            errors.append(f"'then' did not gate the second instruction on the first's receipt: {second}")
+    # a connective outside the white-list joins nothing
+    for text in ("Draw 1 and summon a dragon.", "Draw 1 while you have 2 runes.", "Draw 1 or draw 2."):
+        if not cg.compile_clause(text, grammar).get("unsupported"):
+            errors.append(f"an unreadable half was joined anyway: {text!r}")
+    # a wrapper binds before the sequence splits, or "when I move" is torn off
+    wrapped_seq = cg.compile_clause("When I move, draw 1, then channel 1 rune exhausted.", grammar)
+    if wrapped_seq.get("unsupported") or wrapped_seq["production_id"] != "when_i_move":
+        errors.append(f"a trigger wrapper was pre-empted by the sequence split: {wrapped_seq}")
+
+    # (2) a referent binds to the object the earlier part chose, not to a fresh
+    #     search. Both halves must carry the *same* decision reference.
+    referent = cg.compile_clause(
+        "Give a friendly unit +2 :rb_might: this turn and give it [Tank] this turn.", grammar)
+    unbound = cg.compile_card([{"text": "Give it [Tank] this turn."}], grammar)
+    if unbound["clauses"][0].get("reason_code") != "referent_not_bound":
+        errors.append(f"a referent with nothing to refer to was compiled anyway: {unbound['clauses'][0]}")
+    if referent.get("unsupported"):
+        errors.append(f"a referent sequence did not compile: {referent}")
+    else:
+        refs = [e.get("target", {}).get("decision_ref") for e in referent["program_effects"]]
+        if len(set(r for r in refs if r)) != 1 or cg.REFERENT_REF in refs:
+            errors.append(f"'it' did not bind to the earlier decision: {refs}")
+
+    # (3) a linked prefix reads a receipt or abstains; it never guesses one.
+    alone = cg.compile_clause("If you do, draw 2.", grammar)
+    if not alone.get("unsupported") or alone.get("reason_code") != "link_antecedent_not_available":
+        errors.append(f"'if you do' invented an antecedent with nothing before it: {alone}")
+    linked_card = cg.compile_card([{"text": "Channel 1 rune exhausted."}, {"text": "If you do, draw 2."},
+                                   {"text": "Otherwise, draw 1."}], grammar)
+    kinds = [(c.get("link"), c.get("antecedent_effect_id")) for c in linked_card["clauses"][1:]]
+    first_id = linked_card["clauses"][0]["program_effects"][0]["effect_id"]
+    if kinds != [("action_performed", first_id), ("action_not_performed", first_id)]:
+        errors.append(f"the linked prefixes did not both read the first instruction's receipt: {kinds}")
+    if any(c.get("unsupported") for c in linked_card["clauses"]):
+        errors.append(f"a card whose links all resolve still reported unsupported clauses: {linked_card['unsupported_clauses']}")
+    # an unreadable previous clause leaves no receipt, so the link abstains
+    blocked = cg.compile_card([{"text": "Summon a dragon."}, {"text": "If you do, draw 2."}], grammar)
+    if blocked["clauses"][1].get("reason_code") != "link_antecedent_not_available":
+        errors.append(f"a link read a receipt from a clause the grammar could not compile: {blocked['clauses'][1]}")
+    # a passive clause performs nothing, so it leaves nothing to test
+    passive_first = cg.compile_card([{"text": "[Tank]"}, {"text": "If you do, draw 2."}], grammar)
+    if passive_first["clauses"][1].get("reason_code") != "link_antecedent_not_available":
+        errors.append(f"a link tested a passive clause as though it were performed: {passive_first['clauses'][1]}")
 
     # --- canonical equality has teeth -----------------------------------------------------------
     left = {"program_effects": [{"op": "draw", "effect_id": "dr", "player": "$controller", "count": 1}]}

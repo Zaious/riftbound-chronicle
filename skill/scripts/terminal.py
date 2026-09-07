@@ -27,6 +27,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from battlefield_control import victory_check  # noqa: E402
+from effect_ir import _bump_identity, _remove_from_location, find_location  # noqa: E402
 from combat import _base as _combat_base, _commit, _invalid, _refuse, _unsupported, _validate_both  # noqa: E402
 from rules_core import DECLARED_TERMINAL_REASONS, TERMINAL_LOCATORS, apply_terminal_event, terminal_event, terminal_record  # noqa: E402,F401
 
@@ -77,7 +78,11 @@ def declare_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any],
         if conceding not in players:
             return _invalid(base, ["declaration.player must be the conceding player"])
         if len(players) != 2:
-            return _unsupported(base, "multi_player_concession", "a concession in a game of more than two players removes one player and continues; that is not modelled", ["Core 196"])
+            # C-59 (ADR-0015 §3): the Removal of a Player is its own procedure,
+            # because the game continues and this one only records endings.
+            return _unsupported(base, "multi_player_concession",
+                                "a concession with more than two players removes that player and the game continues; run the `concede` step (651.4, 652)",
+                                ["Core 651.4", "Core 652"])
         winner = next(p for p in players if p != conceding)
         if declaration.get("winner") not in (None, winner):
             return _invalid(base, [f"declaration.winner must be {winner!r}, the other player, or absent"])
@@ -93,7 +98,134 @@ def declare_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any],
     return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 196"])
 
 
-STEPS = {"check_terminal": check_terminal, "declare_terminal": declare_terminal}
+
+
+# ------------------------------------------------------- Removal of a Player --
+
+REMOVAL_LOCATORS = ["Core 651", "Core 651.2", "Core 651.3", "Core 651.4", "Core 652", "Core 652.3", "Core 652.4", "Core 652.5"]
+
+
+def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None,
+            *, player: str | None = None) -> dict[str, Any]:
+    """Core 651–652 (ADR-0015 §3). A player may concede at any time and is
+    removed from the game in progress. With one other player left, that player
+    Wins and the game ends — the engine records it, it does not derive a
+    winner from points. With more than one left the game continues and the
+    Removal of a Player runs: everything the conceding player owns leaves the
+    game, everything they controlled but did not own is Banished, the
+    Battlefield they contributed becomes a token Battlefield with no abilities
+    while the Units and Hidden cards there do not move, their spells and
+    abilities are Countered, and the turn and the Focus pass to the next
+    available player in Turn Order.
+    """
+    base = _base("concede", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    players = timing_state["players"]
+    if player not in players:
+        return _invalid(base, ["player must be the conceding player"])
+    mode = effect_state.get("mode") if isinstance(effect_state.get("mode"), dict) else {}
+    if mode.get("teams") or any(isinstance(p, dict) and p.get("team_id") for p in effect_state.get("players", {}).values()):
+        return _unsupported(base, "team_scoring", "a concession in a team mode removes the conceding player's Teammates too (652.2.a); teams are not modelled", ["Core 652.2.a"])
+
+    order = [p for p in timing_state["turn_order"] if p != player]
+    if len(order) == 1:
+        # 651.3: the one remaining player Wins. Recorded, never derived.
+        next_timing = copy.deepcopy(timing_state)
+        next_timing["terminal"] = terminal_record(effect_state, "concession", order[0], derived=False,
+                                                  extra={"immediate": True, "source": "declared", "declared_by": player})
+        trace = {"outcome": "ended", "reason": "concession", "winner": order[0], "removed": player,
+                 "remaining": order, "derived": False}
+        return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=REMOVAL_LOCATORS + ["Core 196"])
+
+    # 652: the game continues, so the Removal of a Player runs in full.
+    next_effect = copy.deepcopy(effect_state)
+    contributed = [bf for bf, entry in sorted(next_effect["battlefields"].items()) if entry.get("contributed_by") == player]
+    if not contributed and any("contributed_by" not in entry for entry in next_effect["battlefields"].values()):
+        return _unsupported(base, "contributed_battlefield_unknown",
+                            f"the Removal of a Player removes the Battlefield {player} contributed (652.5); no Battlefield in this state says who contributed it",
+                            ["Core 652.5"])
+    # 652.5: read the chain before anything moves — a card that leaves the
+    # game takes its chain item with it, and the Counter has to be recorded.
+    countered = [item_id for item_id, entry in sorted((next_effect.get("chain_items") or {}).items())
+                 if entry.get("controller") == player]
+    banished: list[str] = []
+    removed_cards: list[str] = []
+    for object_id in sorted(next_effect["objects"]):
+        obj = next_effect["objects"][object_id]
+        if obj.get("owner") == player:
+            removed_cards.append(object_id)
+        elif obj.get("controller") == player:
+            banished.append(object_id)
+    for object_id in banished:
+        # 652.3: Banished to their own owner's Banishment; they stay in the game.
+        owner = next_effect["objects"][object_id]["owner"]
+        _remove_from_location(next_effect, object_id)
+        next_effect["players"][owner]["zones"]["banishment"].append(object_id)
+        # Control is a board relation: a Banished card is its owner's again,
+        # which also keeps the state valid once the seat is gone.
+        next_effect["objects"][object_id]["controller"] = owner
+        _bump_identity(next_effect, object_id)
+    for object_id in removed_cards:
+        # 652.4: every card they own leaves the game entirely.
+        if find_location(next_effect, object_id) is not None:
+            _remove_from_location(next_effect, object_id)
+        del next_effect["objects"][object_id]
+    replaced: list[dict[str, Any]] = []
+    for battlefield_id in contributed:
+        battlefield = next_effect["battlefields"][battlefield_id]
+        # 652.5.a.1: a token Battlefield with no abilities. What is there does
+        # not move, and the old Battlefield's continuous effects cease.
+        kept = {"objects": battlefield.get("objects", []), "facedown": battlefield.get("facedown"),
+                "controller": battlefield.get("controller"), "contested": battlefield.get("contested", False),
+                "contested_by": battlefield.get("contested_by")}
+        replaced.append({"battlefield": battlefield_id, "contributed_by": player,
+                         "abilities_removed": sorted(set(battlefield) - set(kept) - {"identity"})})
+        next_effect["battlefields"][battlefield_id] = {
+            **{k: v for k, v in kept.items() if v is not None or k in {"controller", "contested_by"}},
+            "is_token": True, "replaced_from": battlefield_id,
+        }
+        next_effect["battlefields"][battlefield_id].setdefault("objects", [])
+    for item_id in countered:
+        next_effect.get("chain_items", {}).pop(item_id, None)
+    del next_effect["players"][player]
+    for entry in next_effect.get("continuous_effects", []) or []:
+        pass  # a source that left the game is pruned on read (ADR-0013 §1)
+    next_effect["continuous_effects"] = [e for e in next_effect.get("continuous_effects", []) or []
+                                         if (e.get("source") or {}).get("object") not in set(removed_cards)]
+
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["players"] = [p for p in timing_state["players"] if p != player]
+    next_timing["turn_order"] = order
+    was_turn_player = timing_state["turn_player"] == player
+    if was_turn_player:
+        # 652.5.b: play proceeds in Turn Order to the next available player.
+        position = timing_state["turn_order"].index(player)
+        following = timing_state["turn_order"][position + 1:] + timing_state["turn_order"][:position]
+        next_timing["turn_player"] = next(p for p in following if p != player)
+    if next_timing.get("priority") == player:
+        next_timing["priority"] = next_timing["turn_player"] if next_timing.get("phase") == "main" else None
+    showdown = next_timing.get("showdown") or {}
+    focus_moved = None
+    if showdown.get("focus") == player:
+        position = timing_state["turn_order"].index(player)
+        following = timing_state["turn_order"][position + 1:] + timing_state["turn_order"][:position]
+        focus_moved = next(p for p in following if p != player)
+        showdown["focus"] = focus_moved
+        if next_timing.get("priority") is None:
+            next_timing["priority"] = focus_moved
+    next_timing["chain"]["items"] = [i for i in next_timing["chain"]["items"] if i.get("controller") != player]
+    next_timing["chain"]["consecutive_passes"] = [p for p in next_timing["chain"].get("consecutive_passes", []) if p != player]
+
+    trace = {"outcome": "removed", "removed": player, "remaining": order, "banished": banished,
+             "cards_removed_from_game": removed_cards, "battlefields_replaced": replaced,
+             "countered_chain_items": countered, "turn_player_after": next_timing["turn_player"],
+             "focus_moved_to": focus_moved, "winner": None,
+             "note": "the game continues; no winner is derived from a concession (651.4)"}
+    return _commit(base, next_timing, next_effect, trace=trace, locators=REMOVAL_LOCATORS)
+
+
+STEPS = {"check_terminal": check_terminal, "declare_terminal": declare_terminal, "concede": concede}
 
 
 def _load(path: Path) -> dict[str, Any]:

@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:dbfdc4ead588223165e3ae58",
-  "capability_set_id": "sha256:dbfdc4ead588223165e3ae58abdb4230552c63c410605700fe2713734cf8d776",
+  "manifest_id": "capability-manifest:bd6097ad1390061c05f345a8",
+  "capability_set_id": "sha256:bd6097ad1390061c05f345a82364d6361d90c29817453c325bbe438023340fc6",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:feb14e9c3bdef039a8f0b8d3caa87675f056a94bfd8ce6c1843db13875f64e44",
+    "value": "sha256:67812227252fae1128703de551bc247c34a9ba7e0c17eab7f6775c217bc267b5",
     "files": [
       {
         "path": "rules_core.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:c357140d97bed71407103602d34e0a66f1272dc2f2e75f645dad4a5bc9436383"
+        "sha256": "sha256:f6383e20a7b6f125c1fd49225bf1f39af5233af3a425a4cee844b462290be340"
       },
       {
         "path": "combat.py",
@@ -32,11 +32,11 @@
       },
       {
         "path": "terminal.py",
-        "sha256": "sha256:b2772f85ba7afabf3e570c7da99b6615926adfadb9368d63432cbd182e5735e3"
+        "sha256": "sha256:07c443f4f6f40fa55336524931cde3edd8d74dc275fd3f6ad52f14a84576808e"
       },
       {
         "path": "turn_cycle.py",
-        "sha256": "sha256:3d505d1e891f579572d0c17f320f03fbadde0d7ec0c19824a0d5bc2018a80670"
+        "sha256": "sha256:6ee72542b18284043b5c9fd29251ca8fbebd52ac0158677a79448b7630f40c23"
       },
       {
         "path": "hidden.py",
@@ -376,7 +376,6 @@
         "ready_blockers",
         "opponent_phase_watchers",
         "continuous_dependency",
-        "multi_player_concession",
         "facedown_reveal_at_game_end",
         "complete_game",
         "complete_legality"
@@ -1667,7 +1666,6 @@
     "multi_descriptor_replacement",
     "multi_opponent_choice",
     "multi_player_combat",
-    "multi_player_concession",
     "nested_attachments",
     "non_conquer_point_sources",
     "non_prevent_assignment_replacements",

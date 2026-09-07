@@ -38,7 +38,13 @@ import engine_decisions as _ed  # noqa: E402
 MODE_CATALOGUE = {
     "duel": {"players": 2, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["second"], "skip_draw": []}, "rule_locators": ["Core 485.2", "Core 485.3", "Core 485.7"]},
     "skirmish": {"players": 3, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["last"], "skip_draw": ["first"]}, "rule_locators": ["Core 487.2", "Core 487.3", "Core 487.7"]},
-    "war": {"players": 4, "victory_score": 8, "teams": False, "first_turn": None, "rule_locators": ["Core 488.2", "Core 488.3"]},
+    # C-59 (ADR-0015 §3): War's First Turn Process, in its own words — "The
+    # player going first does not draw a card during their first Draw Phase of
+    # the game. The player going last channels an extra Rune from their Rune
+    # Deck during their first Channel Phase."
+    "war": {"players": 4, "victory_score": 8, "teams": False,
+            "first_turn": {"extra_channel": ["last"], "skip_draw": ["first"]},
+            "rule_locators": ["Core 488.2", "Core 488.3"]},
 }
 UNSUPPORTED_MODES = {"match": ("match_mode", "the Match mode carries Best-of and Game Win semantics (486.6) this slice does not model; it is not read for its Victory Score alone", ["Core 486.6", "Core 486.6.a"]),
                      "magma_chamber": ("team_scoring", "Magma Chamber is a team mode (489.6.a, 489.8.d); teams are not modelled", ["Core 489.6.a", "Core 489.8.d"])}

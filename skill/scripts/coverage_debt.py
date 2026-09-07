@@ -26,10 +26,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import clause_grammar as cg  # noqa: E402
+from pack_locator import pack_files  # noqa: E402
 
 DEBT_VERSION = "coverage-debt.v1"
 DATA = SCRIPT_DIR.parent / "data"
-PACKS = DATA / "card_program_packs"
 LISTS = DATA / "tournament_lists"
 OUT = DATA / "coverage_debt" / "coverage_debt.json"
 
@@ -57,7 +57,7 @@ def ledger_index() -> dict[str, dict[str, Any]]:
     """Per card: the decks that play it, its type, and each clause's mechanics
     as the inventory recorded them."""
     index: dict[str, dict[str, Any]] = {}
-    for path in sorted(PACKS.glob("*/inventory_ledger.json")):
+    for path in pack_files("inventory_ledger.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
         for card in data.get("cards", []) or []:
             index[card["card_key"]] = {
@@ -77,7 +77,7 @@ def build() -> dict[str, Any]:
     # partial only once it passes canonical compile, its fixture and this
     # ledger. Everything else claiming full is still a hand-written program.
     promotion = {"grammar_reproduced": 0, "hand_written": 0, "in_debt_but_claimed": 0}
-    for path in sorted(PACKS.glob("*/r3a1_programs.json")):
+    for path in pack_files("r3a1_programs.json"):
         pack = json.loads(path.read_text(encoding="utf-8"))
         for card in pack["cards"]:
             record = ledger.get(card["card_key"], {})

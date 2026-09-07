@@ -42,8 +42,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import game_events as ge  # noqa: E402
 from check_effect_ir import base_state, program  # noqa: E402
 from effect_ir import SUPPORTED_OPS, apply_program  # noqa: E402
-
-PACKS = SCRIPT_DIR.parent / "data" / "card_program_packs"
+from pack_locator import pack_files  # noqa: E402
 
 
 def kinds(events, kind):
@@ -97,7 +96,7 @@ def corpus_coverage(errors):
     for module, name in bound:
         setattr(module, name, wrapped[name])
     try:
-        for pack in sorted(PACKS.glob("*/r3a1_programs.json")):
+        for pack in pack_files("r3a1_programs.json"):
             rp.run_all(json.loads(pack.read_text(encoding="utf-8")))
     finally:
         for module, name in bound:

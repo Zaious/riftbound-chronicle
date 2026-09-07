@@ -369,6 +369,10 @@ jobs:
       # ADR-0016 §3: what the grammar does not parse, ranked and reported.
       - name: Coverage debt ledger (C-62)
         run: python3 skill/scripts/check_coverage_debt.py
+      # Every all-packs reader goes through one search path; a private overlay
+      # adds packs by naming directories, and a bad path is refused, not skipped.
+      - name: Pack search path
+        run: python3 skill/scripts/check_pack_locator.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -478,6 +482,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_free_for_all.py"
           python3 "$REPO/skill/scripts/check_clause_grammar.py"
           python3 "$REPO/skill/scripts/check_coverage_debt.py"
+          python3 "$REPO/skill/scripts/check_pack_locator.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

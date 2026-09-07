@@ -29,7 +29,7 @@ import coverage_debt as cd  # noqa: E402
 
 
 def corpus_texts():
-    for path in sorted(cd.PACKS.glob("*/r3a1_programs.json")):
+    for path in cd.pack_files("r3a1_programs.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
         for card in data["cards"]:
             for clause in card["clauses"]:

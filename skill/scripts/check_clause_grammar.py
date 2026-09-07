@@ -33,12 +33,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import clause_grammar as cg  # noqa: E402
-
-PACKS = SCRIPT_DIR.parent / "data" / "card_program_packs"
+from pack_locator import pack_files  # noqa: E402
 
 
 def corpus_clauses():
-    for pack in sorted(PACKS.glob("*/r3a1_programs.json")):
+    for pack in pack_files("r3a1_programs.json"):
         data = json.loads(pack.read_text(encoding="utf-8"))
         for card in data["cards"]:
             for clause in card["clauses"]:

@@ -112,7 +112,8 @@ def main() -> int:
     played = apply_program(base_state(), catalogued)
     if not played.get("committed") or played["trace"][0].get("token_id") != "sand-soldier":
         errors.append(f"play_token did not record the catalogue provenance: {played.get('reason') or played.get('errors')}")
-    for pack in sorted((SKILL_DIR / "data" / "card_program_packs").glob("*/r3a1_programs.json")):
+    from pack_locator import pack_files
+    for pack in pack_files("r3a1_programs.json"):
         found = verify_pack(json.loads(pack.read_text(encoding="utf-8")), catalog)
         if found:
             errors.append(f"{pack.name} plays tokens that are not in the catalogue: {found}")

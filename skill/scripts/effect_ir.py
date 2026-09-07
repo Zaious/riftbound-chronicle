@@ -35,7 +35,10 @@ RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability"
 # mandatory any-domain Power cost on opponents' spells that choose the object.
 # ADR-0008 §5: Shield, Tank, Ganking (and Backline, required by the Tank
 # contract) are characteristics printed on the object.
-OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline"}
+# Core 808 (last paragraph): Deathknell "is a characteristic of the permanent
+# and may be checked or referenced by other Game Effects", so it is carried
+# like any other keyword; its behaviour is the object's death triggers.
+OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell"}
 # ADR-0013 §1-2: one canonical representation for every continuous effect, and
 # the Core 476-480 layer engine over it. The six legacy families are translated
 # by `migrate_legacy_effects` at the input boundary; nothing at runtime reads
@@ -2437,7 +2440,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("Kill applies only to a permanent on the board")
         if obj.get("kind") not in {"unit", "gear"}:
             raise ValueError("effect IR v1 only kills supported Unit/Gear permanents")
+        # Core 323 step 3a / 808.2: the abilities are noted *before* the card
+        # moves to the Trash, with its location and attributes as they are now.
         pending_triggers = copy.deepcopy(object_triggers(new_state, object_id, "death_triggers"))
+        deathknell = {trigger["trigger_id"] for trigger in deathknell_instances(new_state, object_id)}
+        for trigger in pending_triggers:
+            trigger["deathknell"] = trigger["trigger_id"] in deathknell
         detached = detach_records(new_state, object_id, _last_board_location(location), host_left_board=True)
         _remove_from_location(new_state, object_id)
         if obj.get("is_token"):
@@ -3310,6 +3318,20 @@ def current_might(obj: dict[str, Any]) -> int:
     continuous effect, so a rules-facing value comes from `effective_might`,
     which runs the layers."""
     return obj["base_might"]
+
+
+def deathknell_instances(state: dict[str, Any], object_id: str) -> list[dict[str, Any]]:
+    """Core 808: which of a dying permanent's death triggers are Deathknell.
+
+    808.2 makes "[Deathknell][>] [Effect]" short for "When I die, [Effect]", so
+    the ability *is* a death trigger; 808.3 makes each instance trigger
+    separately with its controller choosing the order, which is why they are
+    distinguished rather than merged. The keyword is read from the computed
+    characteristics, so one granted or copied counts (808's last paragraph).
+    """
+    if not has_keyword(state, object_id, "deathknell"):
+        return []
+    return [dict(trigger) for trigger in object_triggers(state, object_id, "death_triggers")]
 
 
 def keyword_values(state: dict[str, Any], object_id: str) -> dict[str, Any]:

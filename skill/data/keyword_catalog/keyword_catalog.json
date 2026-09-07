@@ -56,6 +56,33 @@
       "fixture": "check_combat_damage_assignment.py"
     },
     {
+      "keyword_id": "deathknell",
+      "name": "Deathknell",
+      "locators": [
+        "Core 808.1",
+        "Core 808.2",
+        "Core 808.3",
+        "Core 323.4"
+      ],
+      "production": {
+        "module": "effect_ir",
+        "symbol": "deathknell_instances",
+        "layer": "ability",
+        "note": "808.2 makes \"[Deathknell][>] [Effect]\" short for \"When I die, [Effect]\", so the ability is the object's death trigger; the Kill path notes the instances before the card moves to the Trash (323 step 3a) and marks each separately, because 808.3 triggers each instance on its own"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "read from the computed characteristics, so a granted or copied Deathknell counts",
+        "duration": "while the permanent is on the board; the trigger is noted before it reaches the Trash"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-08",
+        "source": "Core Rules 2026-07-16 rule 808 and Cleanup step 3a; the production was verified against the live engine's death-trigger path, the locators against the rule text quoted in the gate"
+      },
+      "fixture": "check_deathknell.py"
+    },
+    {
       "keyword_id": "deflect",
       "name": "Deflect",
       "locators": [

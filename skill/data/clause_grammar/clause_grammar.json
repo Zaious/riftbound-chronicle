@@ -109,6 +109,13 @@
             "implemented": true
           }
         },
+        "deathknell": {
+          "pattern": "\\[deathknell(?: (?P<deathknell_value>\\d+))?\\]",
+          "value": {
+            "keyword": "deathknell",
+            "implemented": true
+          }
+        },
         "deflect": {
           "pattern": "\\[deflect(?: (?P<deflect_value>\\d+))?\\]",
           "value": {
@@ -378,6 +385,65 @@
       ]
     },
     {
+      "production_id": "keyworded_ability",
+      "form": "[<keyword>][>] <ability> — Core 135.2.e.7, 808.1.d",
+      "template": "{keyword}\\[>\\] (?P<inner>.+)",
+      "slots": {
+        "keyword": [
+          "ambush",
+          "backline",
+          "deathknell",
+          "deflect",
+          "empower",
+          "equip",
+          "ganking",
+          "hidden",
+          "hunt",
+          "level",
+          "repeat",
+          "shield",
+          "tank",
+          "temporary",
+          "unique",
+          "vision"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 135.2.e.7",
+        "Core 808.1",
+        "Core 808.2"
+      ],
+      "ast_node": "keyworded_ability",
+      "required_capability": [
+        "keyword_catalogue_v1"
+      ],
+      "boundary": "The binder makes the keyword the ability's trigger condition. Only a keyword the engine implements as a trigger compiles; the rest are known_unsupported, and an ability the grammar cannot read makes the whole clause unparsed.",
+      "golden": [
+        "[Ambush][>] Draw 1.",
+        "[Backline][>] Draw 1.",
+        "[Deathknell][>] Draw 1.",
+        "[Deflect][>] Draw 1.",
+        "[Empower][>] Draw 1.",
+        "[Equip][>] Draw 1.",
+        "[Ganking][>] Draw 1.",
+        "[Hidden][>] Draw 1.",
+        "[Hunt][>] Draw 1.",
+        "[Level][>] Draw 1.",
+        "[Repeat][>] Draw 1.",
+        "[Shield][>] Draw 1.",
+        "[Tank][>] Draw 1.",
+        "[Temporary][>] Draw 1.",
+        "[Unique][>] Draw 1.",
+        "[Vision][>] Draw 1."
+      ],
+      "negative": [
+        "[Nonesuch][>] Draw 1.",
+        "[Deathknell] Draw 1.",
+        "[Deathknell][>] Summon a dragon."
+      ]
+    },
+    {
       "production_id": "object_keyword",
       "form": "[<keyword>] — a printed keyword on the object",
       "template": "{keyword}",
@@ -385,6 +451,7 @@
         "keyword": [
           "ambush",
           "backline",
+          "deathknell",
           "deflect",
           "empower",
           "equip",
@@ -414,6 +481,7 @@
       "golden": [
         "[Ambush]",
         "[Backline]",
+        "[Deathknell]",
         "[Deflect]",
         "[Empower]",
         "[Equip]",

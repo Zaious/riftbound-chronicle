@@ -288,7 +288,26 @@ def _lower_empty(params):
 
 
 # Composable productions receive the resolved slots as well as the raw groups.
+# Core 135.2.e.7 / 808.1.d: `[keyword][>] ability` — the keyword names the
+# trigger condition, the inner clause is the effect. Only the keywords the
+# engine implements as a trigger get a program; the rest are known_unsupported.
+KEYWORDED_TRIGGERS = {"deathknell": ("death_triggers", "deathknell")}
+
+
+def _lower_keyworded_ability(params, slots):
+    keyword = slots["keyword"]
+    name = keyword["keyword"]
+    if name not in KEYWORDED_TRIGGERS or not keyword["implemented"]:
+        return {"ast": {"node": "keyworded_ability", "keyword": name, "implemented": False},
+                "known_unsupported": "keyword_not_implemented"}
+    field, trigger_id = KEYWORDED_TRIGGERS[name]
+    return {"passive": _trigger(field, trigger_id),
+            "object_fields_extra": {"keywords": [name]},
+            "ast": {"node": "keyworded_ability", "keyword": name, "trigger_field": field}}
+
+
 COMPOSABLE = {
+    "keyworded_ability": _lower_keyworded_ability,
     "give_might_for_duration": _lower_give_might,
     "grant_keyword_for_duration": _lower_grant_keyword,
     "object_keyword": _lower_object_keyword,
@@ -333,6 +352,29 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None) -> dict[str
         slots = resolve_slots(grammar, production, match)
         params = {k: v for k, v in match.groupdict().items() if v is not None and "__" not in k}
         production_id = production["production_id"]
+        if production_id == "keyworded_ability":
+            lowered = _lower_keyworded_ability(match.groupdict(), slots)
+            if lowered.pop("known_unsupported", None) is not None:
+                return {"production_id": production_id, "unsupported": True, "reason_code": "keyword_not_implemented",
+                        "text": text, "normalized": normalized, "slots": slots, "ast": lowered.get("ast"),
+                        "rule_locators": list(production["rule_locators"]),
+                        "reason": f"the catalogue names {slots['keyword']['keyword']!r} but the engine does not implement it as a trigger"}
+            inner = compile_clause(match.group("inner"), grammar)
+            if inner.get("unsupported"):
+                return {"production_id": production_id, "unsupported": True, "reason_code": inner.get("reason_code", "clause_unparsed"),
+                        "text": text, "inner_text": match.group("inner"),
+                        "reason": f"the keyword bound an ability the grammar cannot read: {match.group('inner')!r}"}
+            fields = dict(lowered["passive"]["object_fields"])
+            fields.update(lowered.pop("object_fields_extra", {}))
+            return {
+                "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
+                "params": {}, "slots": slots,
+                "rule_locators": list(production["rule_locators"]) + inner["rule_locators"],
+                "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
+                "ast": {"node": "keyworded_ability", "keyword": slots["keyword"]["keyword"], "then": inner["ast"]},
+                "passive": {"object_fields": fields},
+                "program_effects": inner.get("program_effects", []),
+            }
         if production_id in TRIGGER_WRAPPERS:
             field, trigger_id = TRIGGER_WRAPPERS[production_id]
             inner = compile_clause(params["inner"], grammar)

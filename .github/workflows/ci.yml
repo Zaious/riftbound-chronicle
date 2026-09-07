@@ -381,6 +381,10 @@ jobs:
       # mid-card; the splitter reads that, on synthetic shapes.
       - name: Clause splitting
         run: python3 skill/scripts/check_clause_splitting.py
+      # Round H DP-89: Deathknell bound to the real death event, its timing and
+      # its identity - not a label parsed onto an object.
+      - name: Deathknell
+        run: python3 skill/scripts/check_deathknell.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -493,6 +497,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_pack_locator.py"
           python3 "$REPO/skill/scripts/check_evidence_pack.py"
           python3 "$REPO/skill/scripts/check_clause_splitting.py"
+          python3 "$REPO/skill/scripts/check_deathknell.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

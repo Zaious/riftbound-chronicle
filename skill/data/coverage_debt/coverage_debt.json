@@ -596,11 +596,10 @@
   ],
   "delta": {
     "baseline": "2026-09-08.1",
-    "normalization_baseline": "split_clauses:d2d047cfff23c68d",
+    "normalization_baseline": "split_clauses:6d017083475686bc",
     "reclassified": [],
     "added": [],
     "repaid": [],
-    "normalization_reclassification": [],
-    "note": "the clause splitter changed, so every id-level difference is a normalisation reclassification, not a repayment; compare against a build on this splitter for the next real delta"
+    "normalization_reclassification": []
   }
 }

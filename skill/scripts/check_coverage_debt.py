@@ -79,7 +79,7 @@ def main() -> int:
 
     # --- every entry says what it is waiting for ---------------------------------------------------
     for entry in committed["entries"]:
-        if not entry.get("text") or entry.get("reason_code") not in {"clause_unparsed", "keyword_not_implemented"}:
+        if not entry.get("text") or entry.get("reason_code") not in cg.ABSTENTION_REASONS:
             errors.append(f"a debt entry carries no text or an unknown reason: {entry.get('clause_id')} "
                           f"{entry.get('reason_code')}")
         if not entry.get("rule_family") or not entry.get("missing_capability"):

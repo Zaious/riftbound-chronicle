@@ -56,6 +56,23 @@
             "scope": "source"
           }
         },
+        "another_unit": {
+          "pattern": "another unit",
+          "value": {
+            "scope": "target",
+            "kind": "unit",
+            "exclude_source": true
+          }
+        },
+        "another_friendly_unit": {
+          "pattern": "another friendly unit",
+          "value": {
+            "scope": "target",
+            "kind": "unit",
+            "controller_relation": "friendly",
+            "exclude_source": true
+          }
+        },
         "it": {
           "pattern": "it",
           "value": {
@@ -286,7 +303,9 @@
           "enemy_units",
           "me",
           "it",
-          "that_unit"
+          "that_unit",
+          "another_unit",
+          "another_friendly_unit"
         ],
         "might_delta": [
           "increase",
@@ -322,6 +341,10 @@
         "Give friendly units -1 [M] this turn.",
         "Give enemy units -2 [M] this turn.",
         "Give me -1 [M] this turn.",
+        "Give another unit +1 [M] this turn.",
+        "Give another unit -1 [M] this turn.",
+        "Give another friendly unit +2 [M] this turn.",
+        "Give another friendly unit -2 [M] this turn.",
         "Give it +1 [M] this turn.",
         "Give it -1 [M] this turn.",
         "Give that unit +2 [M] this turn.",
@@ -351,7 +374,9 @@
           "enemy_units",
           "me",
           "it",
-          "that_unit"
+          "that_unit",
+          "another_unit",
+          "another_friendly_unit"
         ],
         "grantable_keyword": [
           "backline",
@@ -400,6 +425,14 @@
         "Give friendly units [Backline] this turn.",
         "Give enemy units [Backline] this turn.",
         "Give me [Backline] this turn.",
+        "Give another unit [Shield 1] this turn.",
+        "Give another unit [Tank] this turn.",
+        "Give another unit [Ganking] this turn.",
+        "Give another unit [Backline] this turn.",
+        "Give another friendly unit [Shield 2] this turn.",
+        "Give another friendly unit [Tank] this turn.",
+        "Give another friendly unit [Ganking] this turn.",
+        "Give another friendly unit [Backline] this turn.",
         "Give it [Shield 1] this turn.",
         "Give it [Tank] this turn.",
         "Give it [Ganking] this turn.",
@@ -417,6 +450,92 @@
         "Give a unit [Assault 3] this turn.",
         "Give the strongest unit [Tank] this turn.",
         "Give a unit [Tank] permanently."
+      ]
+    },
+    {
+      "production_id": "ready_selector",
+      "form": "Ready <selector>.",
+      "template": "ready {selector}",
+      "slots": {
+        "selector": [
+          "a_unit",
+          "a_friendly_unit",
+          "an_enemy_unit",
+          "me",
+          "it",
+          "that_unit",
+          "another_unit",
+          "another_friendly_unit"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 415",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "ready",
+        "targeting"
+      ],
+      "boundary": "One chosen object is readied. A count ('ready up to 2 runes') or a rune selector is a different production.",
+      "golden": [
+        "Ready a unit.",
+        "Ready a friendly unit.",
+        "Ready an enemy unit.",
+        "Ready me.",
+        "Ready another unit.",
+        "Ready another friendly unit.",
+        "Ready it.",
+        "Ready that unit."
+      ],
+      "negative": [
+        "Ready up to 2 runes.",
+        "Ready all friendly units.",
+        "Ready the strongest unit."
+      ]
+    },
+    {
+      "production_id": "buff_selector",
+      "form": "Buff <selector>.",
+      "template": "buff {selector}",
+      "slots": {
+        "selector": [
+          "a_unit",
+          "a_friendly_unit",
+          "an_enemy_unit",
+          "me",
+          "it",
+          "that_unit",
+          "another_unit",
+          "another_friendly_unit"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 426.1",
+        "Core 702"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "buff",
+        "targeting"
+      ],
+      "boundary": "One chosen Unit gets a Buff counter. A Unit that already has one is still chosen and is not Buffed again (426.1.c).",
+      "golden": [
+        "Buff a unit.",
+        "Buff a friendly unit.",
+        "Buff an enemy unit.",
+        "Buff me.",
+        "Buff another unit.",
+        "Buff another friendly unit.",
+        "Buff it.",
+        "Buff that unit."
+      ],
+      "negative": [
+        "Buff all friendly units.",
+        "Buff 2 units.",
+        "Buff the strongest unit."
       ]
     },
     {

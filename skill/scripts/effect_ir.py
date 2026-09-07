@@ -1240,7 +1240,12 @@ def validate_program(program: Any) -> list[str]:
 
 
 MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity"}
+# Round H: "another unit" is *this* unit excluded, by identity. The clause
+# writes the sentinel; the engine resolves it from the program's own
+# source_object when the selection is made, so the exclusion can never be a
+# name match and can never quietly pick a substitute.
+SOURCE_IDENTITY_SENTINEL = "$source_identity"
 
 
 def derive_targeted(selector: dict[str, Any]) -> bool:
@@ -1277,6 +1282,10 @@ def _selector_errors(selector: Any) -> list[str]:
         errors.append("bound_identity must be an identity token")
     if "max_might" in selector and (not isinstance(selector["max_might"], int) or selector["max_might"] < 0):
         errors.append("max_might must be a non-negative integer")
+    exclude = selector.get("exclude_source_identity")
+    if "exclude_source_identity" in selector and (not isinstance(exclude, str)
+                                                  or (exclude != SOURCE_IDENTITY_SENTINEL and "@" not in exclude)):
+        errors.append(f"exclude_source_identity must be {SOURCE_IDENTITY_SENTINEL!r} or an identity token")
     return errors
 
 
@@ -1603,6 +1612,14 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
     max_might = target.get("max_might")
     if max_might is not None and effective_might(state, object_id) > max_might:
         return False, "target_might_requirement_failed"
+    exclude = target.get("exclude_source_identity")
+    if exclude == SOURCE_IDENTITY_SENTINEL:
+        # The sentinel reached the check unresolved: nobody bound it to a
+        # source. Refusing is the only safe answer - allowing it would make
+        # "another unit" silently mean "any unit".
+        return False, "target_source_exclusion_unresolved"
+    if exclude is not None and object_identity(state, object_id) == exclude:
+        return False, "target_excludes_source"
     return True, "ok"
 
 
@@ -4072,6 +4089,18 @@ def _resolve_mode(program: dict[str, Any], decisions: dict[str, Any] | None, con
     return list(option["effects"]), {"decision_id": ref, "option_id": chosen, "options": option_ids, "recorded_at_play": entry is None, "rule_locators": ["Core 402.2", "Core 820.2.a"]}
 
 
+def _bind_source_exclusion(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
+    """Resolve `$source_identity` to the identity the program's own source
+    object has right now. A program that excludes its source without naming
+    one is an authoring error, not a selector that excludes nothing."""
+    if selector.get("exclude_source_identity") != SOURCE_IDENTITY_SENTINEL:
+        return selector
+    source = program.get("source_object")
+    if not isinstance(source, str) or source not in state["objects"]:
+        raise ValueError("exclude_source_identity needs the program's source_object to be a known object")
+    return {**selector, "exclude_source_identity": object_identity(state, source)}
+
+
 def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Turn `targets` (or a decision_ref on `target`) into concrete selectors,
     consuming a target_selection decision when the program defers to one.
@@ -4097,10 +4126,10 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
             concrete.setdefault("bound_identity", entry["selection_identities"][concrete["object_id"]])
             if concrete.get("kind") == "battlefield":
                 concrete.setdefault("chosen_zone_class", "board")
-            return [concrete], {"decision_id": entry["decision_id"]}
-        return ([target] if target is not None else []), {}
+            return [_bind_source_exclusion(concrete, state, program)], {"decision_id": entry["decision_id"]}
+        return ([_bind_source_exclusion(target, state, program)] if target is not None else []), {}
     if "selectors" in targets:
-        return [dict(sel) for sel in targets["selectors"]], {}
+        return [_bind_source_exclusion(dict(sel), state, program) for sel in targets["selectors"]], {}
     entry = ed.target_selection(decisions, targets["decision_ref"])
     if entry is None:
         raise TargetDecisionRequired(f"target selection {targets['decision_ref']!r} is required", [targets["decision_ref"]], controller)
@@ -4117,7 +4146,7 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
         sel["object_id"] = object_id
         sel.setdefault("chosen_zone_class", zone_class(find_location(state, object_id)) or "non_board")
         sel.setdefault("bound_identity", entry["selection_identities"][object_id])
-        selectors.append(sel)
+        selectors.append(_bind_source_exclusion(sel, state, program))
     return selectors, {"decision_id": entry["decision_id"]}
 
 

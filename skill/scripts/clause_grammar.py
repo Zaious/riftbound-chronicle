@@ -190,7 +190,12 @@ def _selector_fields(selector: dict[str, Any]) -> dict[str, Any]:
     criteria = {k: v for k, v in selector.items() if k in {"kind", "controller_relation"}}
     if selector["scope"] == "affected":
         return {"affected": {"criteria": {**criteria, "location": "board"}}}
-    return {"target": {"decision_ref": "t", "chosen_zone_class": "board", **criteria}}
+    target = {"decision_ref": "t", "chosen_zone_class": "board", **criteria}
+    if selector.get("exclude_source"):
+        # Round H: "another". The engine binds the sentinel to the program's
+        # own source_object at selection time, so the exclusion is by identity.
+        target["exclude_source_identity"] = "$source_identity"
+    return {"target": target}
 
 
 def _lower_object_keyword(params, slots):
@@ -325,7 +330,21 @@ def _lower_keyworded_ability(params, slots):
             "ast": {"node": "keyworded_ability", "keyword": name, "trigger_field": field}}
 
 
+def _lower_single_target_op(op: str, effect_id: str, capability: str):
+    """Ready and Buff are the same shape: one op, one chosen object, no
+    parameters of their own. The selector carries every difference."""
+    def lower(params, slots):
+        effect: dict[str, Any] = {"op": op, "effect_id": effect_id}
+        effect.update(_selector_fields(slots["selector"]))
+        return {"program_effects": [effect],
+                "ast": {"node": "instruction", "op": op,
+                        "params": {"selector": slots["selector"]["alternative"]}}}
+    return lower
+
+
 COMPOSABLE = {
+    "ready_selector": _lower_single_target_op("ready", "rd", "ready"),
+    "buff_selector": _lower_single_target_op("buff", "bf", "buff"),
     "keyworded_ability": _lower_keyworded_ability,
     "give_might_for_duration": _lower_give_might,
     "grant_keyword_for_duration": _lower_grant_keyword,
@@ -362,6 +381,16 @@ TRIGGER_WRAPPERS = {
 # The decision reference a referent target carries until the sequence binds it
 # to the one the earlier part actually used.
 REFERENT_REF = "$referent"
+
+# Every way a clause can come back unsupported. Gates that check reason codes
+# import this rather than keeping their own copy, so adding a way to abstain
+# cannot leave a gate silently accepting fewer of them (the DP-85 lesson).
+ABSTENTION_REASONS = frozenset({
+    "clause_unparsed",                 # no production matches
+    "keyword_not_implemented",         # the catalogue names it, the engine does not implement it
+    "link_antecedent_not_available",   # "if you do" with no readable previous instruction (DP-86)
+    "referent_not_bound",              # "it" with nothing before it to be (DP-86)
+})
 
 # A closed white-list. A connective outside it does not join anything; the
 # clause is unparsed rather than guessed at.

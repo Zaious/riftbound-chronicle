@@ -130,8 +130,7 @@ def main() -> int:
                 known += 1
             else:
                 unparsed += 1
-            if reason not in {"clause_unparsed", "keyword_not_implemented",
-                              "link_antecedent_not_available"} or result.get("text") != clause["text"]:
+            if reason not in cg.ABSTENTION_REASONS or result.get("text") != clause["text"]:
                 errors.append(f"an unsupported clause did not carry its own text and reason: {result}")
             if "program_effects" in result or "passive" in result:
                 errors.append(f"an unsupported clause produced a program anyway: {clause['text']!r}")

@@ -90,8 +90,10 @@ CLAIMS = {"full", "partial", "unsupported", "stale"}
 FIXTURE_KINDS = {"positive", "negative", "missing_information", "target_invalidated", "not_applicable"}
 SYMBOLS = ("$controller", "$opponent", "$card", "$chain_item", "$source_object", "$combat_id")
 # Bound by the engine when the effect runs (grant_replacement binds
-# $granted_target at grant time), never by a scenario.
-ENGINE_SYMBOLS = {"$granted_target"}
+# $granted_target at grant time; a selector's $source_identity is bound from
+# the program's own source_object when the selection is made), never by a
+# scenario.
+ENGINE_SYMBOLS = {"$granted_target", "$source_identity"}
 COMBAT_RUNS = {"combat_open", "combat_step", "standard_move"}
 RUNS = {"play", "resolution", "effect", "play_entry"} | COMBAT_RUNS
 _SYMBOL_TOKEN = re.compile(r"\$([a-z_]+)")

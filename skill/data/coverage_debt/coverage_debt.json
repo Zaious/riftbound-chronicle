@@ -172,7 +172,7 @@
       ],
       "missing_capability": "E0",
       "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
+      "reason_code": "link_antecedent_not_available"
     },
     {
       "clause_id": "meditation#8be0efa4",
@@ -191,7 +191,7 @@
       ],
       "missing_capability": "E0",
       "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
+      "reason_code": "link_antecedent_not_available"
     },
     {
       "clause_id": "flash#7a92a690",
@@ -489,7 +489,7 @@
       ],
       "missing_capability": "R3-A2-play-conditions-continuous",
       "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
+      "reason_code": "link_antecedent_not_available"
     },
     {
       "clause_id": "sai scout#0ede37d4",

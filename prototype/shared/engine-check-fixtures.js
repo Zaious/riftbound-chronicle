@@ -250,7 +250,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
       "note": "A controller must order simultaneous replacement events before cleanup can continue. The viewer presents the options; it never picks one.",
       "check": {
         "schema_version": "engine-check.v1",
-        "check_id": "engine-check:4d1caea705f348228eeaa3c2",
+        "check_id": "engine-check:8ca38ce0edb003a4ef033f73",
         "check_kind": "cleanup",
         "outcome": "decision_required",
         "authority": {
@@ -285,7 +285,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
         "input_hashes": {
           "state": "sha256:d96f3ba632243e6a046f244e7dced62c0c16ed71b13876e5f3ca9e13043880cf"
         },
-        "result_hash": "sha256:4e0fc1a5febca8c7e34ee37391e75ce462489075d25c0e31f7ff561c4932ba25",
+        "result_hash": "sha256:a9584cca2f8cf88b37e5411e337cccf6b9baf0bc5fa9e6ef90ef81e1b860458a",
         "reason": {
           "code": "replacement controller must order every qualifying simultaneous event",
           "message": "replacement controller must order every qualifying simultaneous event"

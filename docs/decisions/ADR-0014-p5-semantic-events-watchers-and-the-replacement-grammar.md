@@ -85,11 +85,19 @@ ambiguous in the source PDF:
 > different controllers would execute simultaneously, they execute in turn
 > order."
 
-So ordering is two layered decisions, not one: **who orders** is the
-controller of the affected object (372, the Current Turn Player for an
-Uncontrolled Battlefield, 372.2), and **execution across controllers** is Turn
-Order (373.1). The engine asks the right player for each event and never
-mixes the two.
+So ordering is three questions, and each goes to a different player. A
+controller with more than one Replacement Effect in the batch orders its own
+sequences; a Replacement Effect's controller orders the qualifying events of
+its own sequence; and the controller of the object being acted on orders the
+Replacement Effects that apply to that event — the Current Turn Player when
+the affected object is an Uncontrolled Battlefield. Execution across
+controllers is Turn Order. The engine asks the right player for each, and a
+batch that would need a Turn Order without being given one fails closed.
+
+The printed numbering in the source PDF's left column is offset against the
+paragraphs, so this ADR cites the chapter as **Core 370–374** and quotes the
+sentences above verbatim rather than pinning a locator the index cannot
+confirm.
 
 Three further laws are gates, not prose:
 
@@ -98,9 +106,17 @@ Three further laws are gates, not prose:
 - A replacement's own actions are performed **before** any simultaneous
   unmodified event (373.2).
 - Across simultaneous events a replacement may be applied in only **one
-  sequence** (374); the Soraka / Guardian Angel case is a golden fixture.
+  sequence** (374) — where a sequence is one Replacement Effect's uninterrupted
+  series of applications to the simultaneous events it qualifies for, so within
+  its own sequence it may save several Units at once. The Soraka / Guardian
+  Angel case is a golden fixture, and both orderings the rulebook distinguishes
+  are reproduced: the qualifying set is read when each sequence starts, so
+  recalling Soraka first changes what "here" means.
 - "Once each turn" replacements consume their use only when actually applied;
   declining leaves the use available (372).
+- A Replacement Effect's instructions may say "it" and "me" — `$affected` and
+  `$source` — and a binding the replaced event cannot supply is refused rather
+  than half-substituted.
 
 All-prevention allocation ("Prevent all damage") keeps its own fixture. A
 combination none of these fixtures covers fails closed rather than guessing an

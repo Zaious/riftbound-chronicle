@@ -328,7 +328,9 @@ class EventLog:
 
         if outcome in PREVENTED:
             # The replacement applied; the event it replaced did not happen.
-            object_id = next(iter(_objects_of(entry)), None)
+            # A prevented event names its object as `affected_object_id`: the
+            # instruction did not act on it, the replacement did.
+            object_id = next(iter(_objects_of(entry)), None) or entry.get("affected_object_id")
             self._new("replacement_applied", action_id, object_id=object_id,
                       before=before.get(object_id or "", {}), after=after.get(object_id or "", {}),
                       extra={"replacement_id": entry.get("replacement_id"),

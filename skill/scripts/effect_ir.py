@@ -915,6 +915,17 @@ def validate_state(state: Any) -> list[str]:
         uses = replacement.get("uses_remaining")
         if uses is not None and (not isinstance(uses, int) or uses < 0):
             errors.append(f"{label}.uses_remaining must be null or non-negative integer")
+        # Core 372: "once each turn" / "N times each turn". The ledger is
+        # separate from uses_remaining, which is the whole-game allowance.
+        per_turn = replacement.get("uses_per_turn")
+        if per_turn is not None and (not isinstance(per_turn, int) or isinstance(per_turn, bool) or per_turn < 1):
+            errors.append(f"{label}.uses_per_turn must be a positive integer (Core 372)")
+        spent = replacement.get("applied_this_turn")
+        if spent is not None and (not isinstance(spent, dict) or any(
+                not isinstance(k, str) or not isinstance(v, int) or isinstance(v, bool) or v < 0 for k, v in spent.items())):
+            errors.append(f"{label}.applied_this_turn must map a turn id to a non-negative count")
+        if "condition" in replacement:
+            errors.extend(f"{label}.condition {e}" for e in validate_condition(replacement["condition"], "condition"))
         relation = replacement.get("target_controller_relation")
         if relation not in {None, "friendly", "enemy"}:
             errors.append(f"{label}.target_controller_relation is invalid")
@@ -1592,15 +1603,32 @@ def _prune_inactive_replacements(state: dict[str, Any]) -> list[str]:
     return removed
 
 
-def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any]) -> list[dict[str, Any]]:
+def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
+                             applied: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
+    """`applied` is the sequence memory of Core 370.2: a Replacement Effect can
+    only be applied once to an event, or to the events that replace it."""
     object_id = effect.get("object_id")
     obj = state["objects"].get(object_id) if object_id is not None else None
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
     applicable = []
     for replacement in state["replacement_effects"]:
         if replacement["event_op"] != effect.get("op"):
             continue
         if replacement["uses_remaining"] == 0:
             continue
+        if replacement["replacement_id"] in applied:
+            continue
+        per_turn = replacement.get("uses_per_turn")
+        if per_turn is not None and int((replacement.get("applied_this_turn") or {}).get(turn_id, 0)) >= per_turn:
+            continue
+        condition = replacement.get("condition")
+        if condition is not None:
+            try:
+                if not evaluate_condition(state, condition, controller=replacement["controller"], object_id=object_id,
+                                          perspective=replacement["controller"]):
+                    continue
+            except ConditionUnsupported:
+                raise
         if replacement["mode"] == "reduce_damage" and replacement.get("prevent_remaining", 0) <= 0:
             continue
         if "granted" in replacement and not replacement_active(state, replacement):
@@ -1619,6 +1647,30 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any]) -> l
                 continue
         applicable.append(replacement)
     return applicable
+
+
+REPLACEMENT_BINDINGS = ("$affected", "$source")
+
+
+def _bind_replacement_effects(effects: list[dict[str, Any]], affected: str | None, source: str | None) -> list[dict[str, Any]]:
+    """C-56 (ADR-0014 §3): a Replacement Effect's instructions say "it" and
+    "me". `$affected` is the object the replaced event was acting on and
+    `$source` the Replacement Effect's own source; a binding the event cannot
+    supply is a program the engine refuses rather than half-substitutes."""
+    bound = {"$affected": affected, "$source": source}
+
+    def substitute(value: Any, path: str) -> Any:
+        if isinstance(value, str) and value in REPLACEMENT_BINDINGS:
+            if bound[value] is None:
+                raise IllegalOperation(f"{path} names {value}, which this event does not bind")
+            return bound[value]
+        if isinstance(value, dict):
+            return {key: substitute(item, f"{path}.{key}") for key, item in value.items()}
+        if isinstance(value, list):
+            return [substitute(item, f"{path}[{index}]") for index, item in enumerate(value)]
+        return value
+
+    return [substitute(effect, f"replacement_effects[{index}]") for index, effect in enumerate(effects)]
 
 
 def _inherit_event_modifiers(original_effect: dict[str, Any], replacement_effects: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1647,8 +1699,9 @@ def _inherit_event_modifiers(original_effect: dict[str, Any], replacement_effect
     return children
 
 
-def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
-    applicable = _applicable_replacements(state, effect)
+def _select_replacement(state: dict[str, Any], effect: dict[str, Any],
+                        applied: frozenset[str] = frozenset()) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
+    applicable = _applicable_replacements(state, effect, applied)
     if not applicable:
         return None
     ids = [replacement["replacement_id"] for replacement in applicable]
@@ -1676,6 +1729,12 @@ def _select_replacement(state: dict[str, Any], effect: dict[str, Any]) -> tuple[
         stored = next(item for item in new_state["replacement_effects"] if item["replacement_id"] == replacement_id)
         if stored["uses_remaining"] is not None:
             stored["uses_remaining"] -= 1
+        if stored.get("uses_per_turn") is not None:
+            # Core 372: the use is spent when the Replacement Effect is
+            # actually applied; declining above never reaches here.
+            turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+            ledger = stored.setdefault("applied_this_turn", {})
+            ledger[turn_id] = int(ledger.get(turn_id, 0)) + 1
         outcome = {
             "prevent_event": "replaced_prevented",
             "replace_with": "replaced_with",
@@ -2968,10 +3027,18 @@ CONDITION_LEAVES = {
     "xp_at_least": {"count", "player"},
     "battlefield_controlled": {"battlefield", "controller_relation"},
     "zone_count_at_least": {"zone", "count", "player"},
+    # C-56: "another unit you control *here*" and "less Might than me" are the
+    # two comparisons the Core's own replacement examples are written in.
+    "same_location_as": {"object", "as"},
+    "might_less_than": {"object", "than"},
+    # "another *unit* you control": the type as the layers compute it (477.1),
+    # so a card copying a Unit counts as one.
+    "object_kind": {"object", "value"},
 }
 CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
                       "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
-                      "zone_count_at_least": {"zone", "count"}}
+                      "zone_count_at_least": {"zone", "count"}, "same_location_as": {"as"},
+                      "might_less_than": {"than"}, "object_kind": {"value"}}
 PRIVATE_ZONES = {"hand", "main_deck", "rune_deck"}
 
 
@@ -3033,6 +3100,16 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
     if kind == "friendly_unit_defends_alone":
         designation = state["objects"][subject].get("combat_designation") if subject else None
         return designation is not None and designation.get("role") == "defender" and is_alone(state, subject)
+    if kind == "object_kind":
+        return subject is not None and characteristics(state, subject).get("kind") == condition["value"]
+    if kind == "same_location_as":
+        other = condition["as"]
+        return (subject is not None and other in state["objects"]
+                and find_location(state, subject) == find_location(state, other))
+    if kind == "might_less_than":
+        other = condition["than"]
+        return (subject is not None and other in state["objects"]
+                and effective_might(state, subject) < effective_might(state, other))
     if kind == "might_at_least":
         return subject is not None and effective_might(state, subject) >= condition["count"]
     if kind == "has_keyword":
@@ -3299,6 +3376,18 @@ def effective_might(state: dict[str, Any], object_id: str) -> int:
     return max(0, might)
 
 
+def _replacement_ids_applied(trace: list[dict[str, Any]]) -> set[str]:
+    """Every Replacement Effect an application actually applied, including the
+    ones applied inside a replacement's own sequence (Core 370.2, 374)."""
+    found: set[str] = set()
+    for entry in trace or []:
+        if isinstance(entry.get("replacement_id"), str) and entry.get("outcome") != "replacement_declined":
+            found.add(entry["replacement_id"])
+        for nested in ("replacement_trace", "expansion_trace"):
+            found |= _replacement_ids_applied(entry.get(nested) or [])
+    return found
+
+
 def apply_simultaneous_kill_batch(
     state: dict[str, Any],
     object_ids: list[str],
@@ -3308,6 +3397,9 @@ def apply_simultaneous_kill_batch(
     kill_mode: str = "simultaneous",
     attributed_sources: list[str] | None = None,
     attributed_sources_by_object: dict[str, list[str]] | None = None,
+    event_replacement_order: dict[str, list[str]] | None = None,
+    replacement_sequence_order: dict[str, list[str]] | None = None,
+    turn_order: list[str] | None = None,
 ) -> dict[str, Any]:
     """Resolve a bounded Core 373 batch with at most one prevent descriptor.
     `attributed_sources_by_object` names the sources of each kill separately
@@ -3355,83 +3447,186 @@ def apply_simultaneous_kill_batch(
             "errors": [f"cleanup decisions reference non-applicable replacements: {sorted(stale_decision_ids)}"],
             "trace": [],
         }
-    if len(descriptors) > 1:
+    # ADR-0014 §3: the Core ordering law, in the two layers the rules write it
+    # in. *Who orders* the Replacement Effects that apply to one event is the
+    # controller of the object being acted on; *when* the sequences of
+    # different controllers execute is Turn Order. Each Replacement Effect is
+    # applied in exactly one sequence (374), and inside a sequence its own
+    # replacing events may be replaced by others (370.2) — that recursion, and
+    # the memory that stops a Replacement Effect applying to the event that
+    # replaced it, live in apply_program.
+    unsupported_modes = sorted({rid for rid, item in descriptors.items() if item["mode"] not in {"prevent_event", "replace_with"}})
+    if unsupported_modes:
         return {
             **base, "valid": True, "committed": False, "unsupported": True,
-            "reason": "multiple replacement descriptors in one simultaneous batch are outside the bounded Core 373 slice",
+            "reason_code": "batch_replacement_mode",
+            "reason": f"a simultaneous batch applies prevent_event and replace_with; {unsupported_modes} are outside that slice",
+            "replacement_ids": unsupported_modes, "trace": [],
+        }
+    controllers = sorted({item["controller"] for item in descriptors.values()})
+    if len(controllers) > 1 and not turn_order:
+        return {
+            **base, "valid": True, "committed": False, "unsupported": True,
+            "reason_code": "turn_order_unknown",
+            "reason": "Replacement Effects of different controllers execute in Turn Order; this batch was given none",
             "replacement_ids": sorted(descriptors), "trace": [],
         }
-    if descriptors and next(iter(descriptors.values()))["mode"] != "prevent_event":
-        descriptor = next(iter(descriptors.values()))
-        return {
-            **base, "valid": True, "committed": False, "unsupported": True,
-            "reason": "simultaneous batch currently supports prevent_event only",
-            "replacement_ids": [descriptor["replacement_id"]], "trace": [],
-        }
+    if turn_order is not None and (not isinstance(turn_order, list) or set(controllers) - set(turn_order)):
+        return {**base, "valid": False, "committed": False,
+                "errors": [f"turn_order {turn_order!r} does not cover the replacement controllers {controllers}"], "trace": []}
+    if event_replacement_order is not None and not isinstance(event_replacement_order, dict):
+        return {**base, "valid": False, "committed": False, "errors": ["event_replacement_order must be an object"], "trace": []}
 
     current = copy.deepcopy(state)
     trace: list[dict[str, Any]] = []
     prevented: set[str] = set()
-    if descriptors:
-        replacement_id, descriptor = next(iter(descriptors.items()))
-        qualified_ids = qualifying[replacement_id]
-        supplied = (replacement_event_order or {}).get(replacement_id)
+    spent: set[str] = set()  # Core 374: one sequence per Replacement Effect
+
+    # A sequence is one Replacement Effect's uninterrupted series of
+    # applications to the simultaneous events it qualifies for (Core 374), so
+    # the batch iterates *replacements*, not events: within its own sequence a
+    # Replacement Effect may apply to any number of the qualifying events, and
+    # once that sequence ends it may not start another.
+    turn_position = {player: index for index, player in enumerate(turn_order or controllers)}
+    # "Replacement Effects with the same controller are applied in the order of
+    # their controller's choosing": with more than one of its own in the batch,
+    # that controller must say which sequence runs first.
+    by_controller: dict[str, list[str]] = {}
+    for replacement_id, item in descriptors.items():
+        by_controller.setdefault(item["controller"], []).append(replacement_id)
+    sequence_rank: dict[str, int] = {}
+    for controller, ids in by_controller.items():
+        if len(ids) == 1:
+            sequence_rank[ids[0]] = 0
+            continue
+        supplied = (replacement_sequence_order or {}).get(controller)
+        if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(ids):
+            return {
+                **base, "valid": True, "committed": False, "replacement_decision_required": True,
+                "reason": "a controller with several Replacement Effects in one batch orders its own sequences",
+                "replacement_ids": sorted(ids), "event_ids": sorted(object_ids),
+                "decision_controller": controller, "trace": [],
+            }
+        for position, replacement_id in enumerate(supplied):
+            sequence_rank[replacement_id] = position
+    sequences = [replacement_id for _, _, replacement_id in
+                 sorted((turn_position.get(descriptors[rid]["controller"], 0), sequence_rank[rid], rid) for rid in descriptors)]
+
+    sequence_index = -1
+    for sequence_id in sequences:
+        if sequence_id in spent:
+            continue  # Core 374: it was already applied in an earlier sequence
+        descriptor = descriptors[sequence_id]
+        # The qualifying set is read when the sequence starts, not before the
+        # batch: an earlier sequence may have moved the Replacement Effect's
+        # source, and "another unit you control *here*" then means somewhere
+        # else. This is the Soraka / Guardian Angel example's whole point.
+        qualified_ids = [object_id for object_id in object_ids
+                         if object_id not in prevented
+                         and any(item["replacement_id"] == sequence_id
+                                 for item in _applicable_replacements(current, events[object_id]))]
+        if not qualified_ids:
+            continue
+        supplied = (replacement_event_order or {}).get(sequence_id)
         if len(qualified_ids) > 1:
             if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(qualified_ids):
                 return {
                     **base, "valid": True, "committed": False, "replacement_decision_required": True,
                     "reason": "replacement controller must order every qualifying simultaneous event",
-                    "replacement_ids": [replacement_id], "event_ids": qualified_ids,
-                    "decision_controller": descriptor["controller"], "trace": [],
+                    "replacement_ids": [sequence_id], "event_ids": qualified_ids,
+                    "decision_controller": descriptor["controller"], "trace": trace,
                 }
-            event_order = supplied
-        else:
-            event_order = qualified_ids
-        per_event_choices = (replacement_choices or {}).get(replacement_id, {})
-        if not isinstance(per_event_choices, dict):
-            return {**base, "valid": False, "committed": False, "errors": [f"replacement choices for {replacement_id} must be an object"], "trace": []}
-        for sequence_index, object_id in enumerate(event_order):
-            applicable_now = next((item for item in _applicable_replacements(current, events[object_id]) if item["replacement_id"] == replacement_id), None)
-            if applicable_now is None:
+            qualified_ids = supplied
+        sequence_applied: set[str] = set()
+        for object_id in qualified_ids:
+            sequence_index += 1
+            if object_id in prevented:
                 continue
+            applicable_now = [item for item in _applicable_replacements(current, events[object_id])
+                              if item["replacement_id"] not in spent]
+            if not applicable_now or sequence_id not in {item["replacement_id"] for item in applicable_now}:
+                continue
+            # Core 373.1: this event's order is the affected object's controller's.
+            decider = current["objects"][object_id].get("controller")
             event = copy.deepcopy(events[object_id])
-            if descriptor["optional"]:
-                choice = per_event_choices.get(object_id)
+            choices: dict[str, bool] = {}
+            for item in applicable_now:
+                if not item["optional"]:
+                    continue
+                choice = ((replacement_choices or {}).get(item["replacement_id"]) or {}).get(object_id)
                 if not isinstance(choice, bool):
                     return {
                         **base, "valid": True, "committed": False, "replacement_decision_required": True,
                         "reason": "optional simultaneous replacement requires an explicit choice for the next qualifying event",
-                        "replacement_ids": [replacement_id], "event_ids": [object_id],
-                        "decision_controller": descriptor["controller"], "trace": trace,
+                        "replacement_ids": [item["replacement_id"]], "event_ids": [object_id],
+                        "decision_controller": item["controller"], "trace": trace,
                     }
-                if choice is False:
-                    unchanged_hash = hash_value(current)
-                    trace.append({
-                        "phase": "replacement_sequence", "sequence_index": sequence_index,
-                        "effect_id": event["effect_id"], "object_id": object_id, "op": "kill",
-                        "outcome": "replacement_declined", "replacement_id": replacement_id,
-                        "before_state_hash": unchanged_hash, "after_state_hash": unchanged_hash,
-                        "rule_locators": ["Core 371.2–371.2.b", "Core 373–373.2.a.1"],
-                    })
-                    continue
-                event["replacement_choices"] = {replacement_id: choice}
-            selection = _select_replacement(current, event)
-            if selection is None:
+                choices[item["replacement_id"]] = choice
+            if not any(choices.get(item["replacement_id"], True) for item in applicable_now):
+                # Core 372: every applicable one was declined, so none was applied
+                # and none spent its use; the event dies unmodified with the rest.
+                unchanged_hash = hash_value(current)
+                trace.append({
+                    "phase": "replacement_sequence", "sequence_index": sequence_index,
+                    "effect_id": event["effect_id"], "object_id": object_id, "op": "kill",
+                    "outcome": "replacement_declined",
+                    "replacement_id": sorted(choices)[0] if choices else None,
+                    "declined": sorted(choices),
+                    "before_state_hash": unchanged_hash, "after_state_hash": unchanged_hash,
+                    "rule_locators": ["Core 371.2–371.2.b", "Core 373–373.2.a.1"],
+                })
                 continue
-            selected_state, replacement_trace, _ = selection
-            current = selected_state
-            sequence_locators = ["Core 373–373.2.a.1"]
-            if descriptor["source_object"] in object_ids:
+            if len(applicable_now) > 1:
+                ids = [item["replacement_id"] for item in applicable_now]
+                supplied = (event_replacement_order or {}).get(object_id)
+                if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(ids):
+                    return {
+                        **base, "valid": True, "committed": False, "replacement_decision_required": True,
+                        "reason": "the controller of the object being acted on orders the Replacement Effects that apply to it",
+                        "replacement_ids": sorted(ids), "event_ids": [object_id],
+                        "decision_controller": decider, "trace": trace,
+                    }
+                event["replacement_order"] = list(supplied)
+                event["replacement_decider"] = decider
+            if choices:
+                event["replacement_choices"] = choices
+            before_hash = hash_value(current)
+            sequence_program = {
+                "schema_version": PROGRAM_VERSION,
+                "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                "program_id": f"simultaneous:{event['effect_id']}",
+                "controller": decider,
+                "effects": [event],
+            }
+            sequence_result = apply_program(current, sequence_program, _applied_replacements=frozenset(spent))
+            if sequence_result.get("committed") is not True:
+                return {
+                    **base, "valid": sequence_result.get("valid", True), "committed": False,
+                    "unsupported": sequence_result.get("unsupported", False),
+                    "reason_code": sequence_result.get("reason_code", "replacement_sequence_failed"),
+                    "reason": sequence_result.get("reason", "; ".join(sequence_result.get("errors", [])) or "replacement sequence failed"),
+                    "sequence_result": sequence_result, "trace": trace,
+                }
+            applied_here = _replacement_ids_applied(sequence_result.get("trace", []))
+            if not applied_here:
+                continue
+            current = sequence_result["next_state"]
+            sequence_applied |= applied_here
+            entry = dict(sequence_result["trace"][0])
+            sequence_locators = ["Core 373–373.2.a.1", "Core 374"]
+            if any(descriptors[rid]["source_object"] in object_ids for rid in applied_here if rid in descriptors):
                 sequence_locators.insert(0, "Core 370.4")
-            replacement_trace.update({
+            entry.update({
                 "phase": "replacement_sequence", "sequence_index": sequence_index,
                 "effect_id": event["effect_id"], "object_id": object_id,
-                "before_state_hash": trace[-1]["after_state_hash"] if trace else hash_value(state),
-                "after_state_hash": hash_value(current),
-                "rule_locators": list(dict.fromkeys(replacement_trace["rule_locators"] + sequence_locators)),
+                "applied_replacements": sorted(applied_here),
+                "before_state_hash": before_hash, "after_state_hash": hash_value(current),
+                "rule_locators": list(dict.fromkeys(entry.get("rule_locators", []) + sequence_locators)),
             })
-            trace.append(replacement_trace)
+            trace.append(entry)
             prevented.add(object_id)
+        # The sequence has ended: everything it applied is spent for the batch.
+        spent |= sequence_applied | ({sequence_id} if sequence_applied else set())
 
     import game_events
 
@@ -3477,6 +3672,9 @@ def perform_lethal_cleanup(
     replacement_event_order: dict[str, list[str]] | None = None,
     replacement_choices: dict[str, dict[str, bool]] | None = None,
     attributed_sources_by_object: dict[str, list[str]] | None = None,
+    event_replacement_order: dict[str, list[str]] | None = None,
+    replacement_sequence_order: dict[str, list[str]] | None = None,
+    turn_order: list[str] | None = None,
 ) -> dict[str, Any]:
     base = {
         "schema_version": "riftbound-lethal-cleanup-result.v1",
@@ -3514,6 +3712,9 @@ def perform_lethal_cleanup(
             group,
             replacement_event_order=replacement_event_order if iterations == 0 else None,
             replacement_choices=replacement_choices if iterations == 0 else None,
+            event_replacement_order=event_replacement_order if iterations == 0 else None,
+            replacement_sequence_order=replacement_sequence_order if iterations == 0 else None,
+            turn_order=turn_order,
             kill_mode="passive_lethal_cleanup",
             attributed_sources=attributed_sources,
             attributed_sources_by_object=attributed_sources_by_object,
@@ -3524,6 +3725,9 @@ def perform_lethal_cleanup(
                 "unsupported": batch.get("unsupported", False),
                 "replacement_decision_required": batch.get("replacement_decision_required", False),
                 "reason": batch.get("reason", "; ".join(batch.get("errors", [])) or "simultaneous lethal batch failed"),
+                # ADR-0014 §3: the caller has to know which player is being
+                # asked to order which Replacement Effects, over which events.
+                **{key: batch[key] for key in ("reason_code", "replacement_ids", "event_ids", "decision_controller") if key in batch},
                 "batch_result": batch, "trace": trace,
             }
         current = batch["next_state"]
@@ -3810,7 +4014,7 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
     return selectors, {"decision_id": entry["decision_id"]}
 
 
-def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: dict[str, Any] | None = None, context: dict[str, Any] | None = None, _replacement_depth: int = 0) -> dict[str, Any]:
+def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: dict[str, Any] | None = None, context: dict[str, Any] | None = None, _replacement_depth: int = 0, _applied_replacements: frozenset[str] = frozenset()) -> dict[str, Any]:
     """`context` carries facts only a procedure knows — today the Combat in
     progress ({"combat": {"combat_id", "battlefield"}}) that a 'this combat'
     grant binds to. The bridge supplies it; a bare effect run has none."""
@@ -4245,7 +4449,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 if merged:
                     effect["replacement_choices"] = merged
         try:
-            replacement_selection = _select_replacement(current, effect)
+            replacement_selection = _select_replacement(current, effect, _applied_replacements)
         except ReplacementDecisionRequired as exc:
             return {
                 **base,
@@ -4298,7 +4502,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "source_object": program.get("source_object"),
                     "effects": [original_effect],
                 }
-                original_result = apply_program(recursive_state, original_program, context=context, _replacement_depth=_replacement_depth + 1)
+                original_result = apply_program(recursive_state, original_program, context=context,
+                                                _replacement_depth=_replacement_depth + 1,
+                                                _applied_replacements=_applied_replacements | {replacement_id})
                 if original_result.get("committed") is not True:
                     return {
                         **base, "valid": original_result.get("valid", True), "committed": False,
@@ -4307,7 +4513,16 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                         "replacement_id": replacement_id, "replacement_result": original_result, "trace": trace,
                     }
                 try:
-                    augmentation_effects = _inherit_event_modifiers(effect, replacement["replacement_effects"])
+                    try:
+                        augmentation_effects = _bind_replacement_effects(
+                            _inherit_event_modifiers(effect, replacement["replacement_effects"]),
+                            effect.get("object_id"), replacement.get("source_object"))
+                    except IllegalOperation as exc:
+                        return {
+                            **base, "valid": True, "committed": False, "applied": False,
+                            "reason_code": "replacement_binding_unbound", "reason": str(exc),
+                            "replacement_id": replacement_id, "failed_effect_index": index, "trace": trace,
+                        }
                 except NotImplementedError as exc:
                     return {
                         **base, "valid": True, "committed": False, "unsupported": True,
@@ -4321,7 +4536,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     **({"source_object": replacement["source_object"]} if "source_object" in replacement else {}),
                     "effects": augmentation_effects,
                 }
-                augmentation_result = apply_program(original_result["next_state"], augmentation_program, context=context, _replacement_depth=_replacement_depth + 1)
+                augmentation_result = apply_program(original_result["next_state"], augmentation_program, context=context,
+                                                    _replacement_depth=_replacement_depth + 1,
+                                                    _applied_replacements=_applied_replacements | {replacement_id})
                 if augmentation_result.get("committed") is not True:
                     return {
                         **base, "valid": augmentation_result.get("valid", True), "committed": False,
@@ -4363,7 +4580,16 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 outcomes[effect_id] = "applied" if original_happened else event["outcome"]
                 continue
             try:
-                replacement_program_effects = _inherit_event_modifiers(effect, replacement.get("replacement_effects", []))
+                try:
+                    replacement_program_effects = _bind_replacement_effects(
+                        _inherit_event_modifiers(effect, replacement.get("replacement_effects", [])),
+                        effect.get("object_id"), replacement.get("source_object"))
+                except IllegalOperation as exc:
+                    return {
+                        **base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": "replacement_binding_unbound", "reason": str(exc),
+                        "replacement_id": replacement_id, "failed_effect_index": index, "trace": trace,
+                    }
             except NotImplementedError as exc:
                 return {
                     **base, "valid": True, "committed": False, "unsupported": True,
@@ -4411,7 +4637,12 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 **({"source_object": replacement["source_object"]} if "source_object" in replacement else {}),
                 "effects": replacement_program_effects,
             }
-            recursive_result = apply_program(recursive_state, recursive_program, context=context, _replacement_depth=_replacement_depth + 1)
+            # Core 370.2: the replacing events carry the memory of what has
+            # already been applied in this sequence, so a Replacement Effect
+            # cannot apply to the event that replaced its own application.
+            recursive_result = apply_program(recursive_state, recursive_program, context=context,
+                                             _replacement_depth=_replacement_depth + 1,
+                                             _applied_replacements=_applied_replacements | {replacement_id})
             if recursive_result.get("committed") is not True:
                 return {
                     **base,

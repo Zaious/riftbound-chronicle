@@ -285,9 +285,31 @@ def main() -> int:
         "mode": "prevent_event", "event_op": "kill", "optional": False,
         "uses_remaining": None, "target_object_id": "u2",
     })
+    # C-56 (ADR-0014 §3): a batch with several descriptors used to fail closed.
+    # It now resolves under the ordering law, and asks the two questions the
+    # rules ask: the replacement's controller orders its own qualifying events,
+    # and the controller of the object being acted on orders the Replacement
+    # Effects that apply to it.
     multi_descriptor = perform_lethal_cleanup(multi_descriptor_state)
-    if multi_descriptor.get("committed") or multi_descriptor.get("unsupported") is not True:
-        failures.append("multi-descriptor simultaneous replacement batch did not fail closed")
+    if multi_descriptor.get("committed") or multi_descriptor.get("replacement_decision_required") is not True:
+        failures.append(f"multi-descriptor batch did not ask for the event order: {multi_descriptor.get('reason')}")
+    if multi_descriptor.get("decision_controller") != "p2" or sorted(multi_descriptor.get("replacement_ids") or []) != ["guard-all", "guard-second"]:
+        failures.append(f"the controller with two Replacement Effects was not asked to order its own sequences: {multi_descriptor.get('decision_controller')}")
+    half = perform_lethal_cleanup(multi_descriptor_state, replacement_sequence_order={"p2": ["guard-all", "guard-second"]},
+                                  replacement_event_order={"guard-all": ["u3", "u2"]})
+    if half.get("committed") or half.get("decision_controller") != "p2" or sorted(half.get("replacement_ids") or []) != ["guard-all", "guard-second"]:
+        failures.append(f"the affected object's controller was not asked to order the two replacements: {half.get('reason')} {half.get('decision_controller')}")
+    multi_resolved = perform_lethal_cleanup(
+        multi_descriptor_state,
+        replacement_sequence_order={"p2": ["guard-all", "guard-second"]},
+        replacement_event_order={"guard-all": ["u3", "u2"]},
+        event_replacement_order={"u2": ["guard-all", "guard-second"]},
+    )
+    applied = [event.get("applied_replacements") for event in multi_resolved.get("trace", []) if event.get("phase") == "replacement_sequence"]
+    if not multi_resolved.get("committed") or multi_resolved.get("stable_prevented_objects") != ["u2", "u3"]:
+        failures.append(f"the multi-descriptor batch did not resolve: {multi_resolved.get('reason')}")
+    elif applied != [["guard-all"], ["guard-all"]]:
+        failures.append(f"Core 374: one Replacement Effect's sequence did not cover both qualifying events: {applied}")
 
     reflexive = apply_program(state, program(
         "reflexive",

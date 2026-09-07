@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
 import re
 import sys
@@ -140,30 +141,67 @@ def snapshot_is_stale(errata: dict[str, Any] | None, snapshot_text: str) -> bool
     return bool(errata) and text_key(errata["new_text"]) not in text_key(snapshot_text)
 
 
-KEYWORD_BLOCK = re.compile(r"^\[(?P<kw>[A-Za-z]+(?: \d+)?)\]\s*(?:\((?P<reminder>[^)]*)\))?\s*")
-TRAILING_REMINDER = re.compile(r"\s*\((?P<reminder>[^)]*)\)\s*$")
+KEYWORD_BLOCK = re.compile(r"^\[(?P<kw>[A-Za-z]+(?: \d+)?)\]\s*")
+PARENTHETICAL = re.compile(r"\(([^()]*)\)")
+# Printed card text runs sentences together: a full stop or a closing bracket is
+# followed straight by the next capital, with no space. Splitting only on
+# whitespace glued those sentences into one clause, so the clause was neither
+# the printed sentence nor anything a grammar could read.
+SENTENCE_BREAK = re.compile(r"(?<=[.!?])(?=\s|[A-Z\[])")
+# An em dash introduces a modal option or separates a keyword from its cost;
+# `[>]` separates a printed label from what it does. Both are separators before
+# a new sentence and bullets otherwise, and neither belongs to any clause.
+OPTION_BREAK = re.compile(r"\s*(?:[—–]|\[>\])\s*(?=[A-Z])")
+LEADING_MARKER = re.compile(r"^(?:\[>\]|[—–\-•])\s*")
+BULLET_PREFIX = "\u2014\u2013-\u2022 "
 
 
 def split_clauses(text: str) -> list[dict[str, str]]:
-    """Keyword blocks first, then sentences. Reminder text is kept as a note, not a clause."""
-    text = " ".join(text.split())
+    """Keyword blocks first, then sentences. Reminder text is kept as a note, not a clause.
+
+    Reminder text is parenthetical and sits *anywhere* — after a keyword, after
+    a sentence, or spanning a sentence break. It is lifted out before any
+    splitting, so a sentence break can never land inside it, and each reminder
+    is attached to the clause it followed. HTML entities are decoded first:
+    the snapshot carries some as `&gt;` and `&quot;`, and a clause that keeps
+    them is not the printed text.
+    """
+    text = " ".join(html.unescape(text).split())
+    chunks: list[str] = []
+    reminders: list[tuple[int, str]] = []
+    cursor = 0
+    for match in PARENTHETICAL.finditer(text):
+        chunks.append(text[cursor:match.start()])
+        reminders.append((sum(len(c) for c in chunks), match.group(1).strip()))
+        cursor = match.end()
+    chunks.append(text[cursor:])
+    body = "".join(chunks)
+
     clauses: list[dict[str, str]] = []
-    while True:
-        m = KEYWORD_BLOCK.match(text)
-        if not m:
-            break
-        clauses.append({"text": f"[{m.group('kw')}]", "reminder": m.group("reminder") or ""})
-        text = text[m.end():]
-    body = text.strip()
-    if body:
-        # A trailing parenthetical on the whole body is reminder text (e.g. Highlander).
-        trailing = ""
-        tm = TRAILING_REMINDER.search(body)
-        if tm and body.count("(") == 1:
-            trailing, body = tm.group("reminder"), body[: tm.start()].strip()
-        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", body) if s.strip()]
-        for i, sentence in enumerate(sentences):
-            clauses.append({"text": sentence, "reminder": trailing if i == len(sentences) - 1 else ""})
+    spans: list[tuple[int, int]] = []
+    offset = 0
+    while (m := KEYWORD_BLOCK.match(body[offset:])):
+        clauses.append({"text": f"[{m.group('kw')}]", "reminder": ""})
+        spans.append((offset, offset + m.end()))
+        offset += m.end()
+    for part in SENTENCE_BREAK.split(body[offset:]):
+        for piece in OPTION_BREAK.split(part):
+            start, offset = offset, offset + len(piece)
+            stripped = piece.strip()
+            while (shorter := LEADING_MARKER.sub("", stripped).strip(BULLET_PREFIX).strip()) != stripped:
+                stripped = shorter
+            if stripped:
+                clauses.append({"text": stripped, "reminder": ""})
+                spans.append((start, offset))
+    for index, reminder in reminders:
+        if not reminder or not clauses:
+            continue
+        # The clause it followed: the last one that *finished* at or before it.
+        # A reminder trails the keyword or sentence it explains, and the clause
+        # that begins where the reminder ended is not that clause.
+        target = max((i for i, (_, end) in enumerate(spans) if end <= index), default=0)
+        existing = clauses[target]["reminder"]
+        clauses[target]["reminder"] = f"{existing} {reminder}".strip() if existing else reminder
     if not clauses:
         clauses.append({"text": "", "reminder": ""})
     return clauses

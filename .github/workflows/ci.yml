@@ -377,6 +377,10 @@ jobs:
       # three forgeries must each be caught on their own field.
       - name: Evidence pack build/verify
         run: python3 skill/scripts/check_evidence_pack.py
+      # DP-90: printed card text runs sentences together and puts reminder text
+      # mid-card; the splitter reads that, on synthetic shapes.
+      - name: Clause splitting
+        run: python3 skill/scripts/check_clause_splitting.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -488,6 +492,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_coverage_debt.py"
           python3 "$REPO/skill/scripts/check_pack_locator.py"
           python3 "$REPO/skill/scripts/check_evidence_pack.py"
+          python3 "$REPO/skill/scripts/check_clause_splitting.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -1,6 +1,7 @@
 {
   "schema_version": "coverage-debt.v1",
   "grammar_version": "2026-09-07.1",
+  "normalization_version": "split_clauses:d2d047cfff23c68d",
   "ranking": [
     "deck_slots",
     "deck_count",
@@ -554,8 +555,11 @@
   ],
   "delta": {
     "baseline": "2026-09-07.1",
+    "normalization_baseline": null,
+    "reclassified": [],
     "added": [],
     "repaid": [],
-    "reclassified": []
+    "normalization_reclassification": [],
+    "note": "the clause splitter changed, so every id-level difference is a normalisation reclassification, not a repayment; compare against a build on this splitter for the next real delta"
   }
 }

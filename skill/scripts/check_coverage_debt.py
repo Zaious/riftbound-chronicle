@@ -95,6 +95,28 @@ def main() -> int:
     elif promotion["grammar_reproduced"] + promotion["hand_written"] == 0:
         errors.append("the promotion split counted no claimed clause at all")
 
+    # --- a splitter change is not a repayment (DP-90) -------------------------------------------------
+    if committed["entries"]:
+        renormalised = copy.deepcopy(committed)
+        renormalised["normalization_version"] = "split_clauses:0000000000000000"
+        # A build on a different splitter, with one clause id moved: the id-level
+        # difference must be filed as a normalisation reclassification, not repaid.
+        moved = copy.deepcopy(fresh)
+        moved["entries"] = moved["entries"][1:]
+        movement = cd.delta(moved, renormalised)
+        if movement["repaid"] or movement["added"]:
+            errors.append(f"a splitter change was reported as repayment: repaid={movement['repaid'][:2]}")
+        if committed["entries"][0]["clause_id"] not in movement["normalization_reclassification"]:
+            errors.append(f"the moved clause was not filed as a normalisation reclassification: {movement}")
+        if movement.get("normalization_baseline") != renormalised["normalization_version"]:
+            errors.append("the movement does not keep the old normalisation baseline")
+        # the same movement on the same splitter is a real repayment
+        same = cd.delta(moved, committed)
+        if committed["entries"][0]["clause_id"] not in same["repaid"] or same["normalization_reclassification"]:
+            errors.append(f"negative mutation failed: on one splitter the same movement was not a repayment: {same}")
+    if not committed.get("normalization_version", "").startswith("split_clauses:"):
+        errors.append(f"the ledger does not record which splitter produced it: {committed.get('normalization_version')}")
+
     # --- no quota -----------------------------------------------------------------------------------
     if committed.get("quota") is not None or "no repayment quota" not in committed.get("note", "").lower():
         errors.append("the ledger does not say that there is no repayment quota")

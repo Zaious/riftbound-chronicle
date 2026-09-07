@@ -17,6 +17,8 @@ with immature semantics.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -26,12 +28,25 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import clause_grammar as cg  # noqa: E402
+from build_r3_inventory import split_clauses  # noqa: E402
 from pack_locator import pack_files  # noqa: E402
 
 DEBT_VERSION = "coverage-debt.v1"
 DATA = SCRIPT_DIR.parent / "data"
 LISTS = DATA / "tournament_lists"
 OUT = DATA / "coverage_debt" / "coverage_debt.json"
+
+def normalization_version() -> str:
+    """The identity of the clause splitter (DP-90).
+
+    A clause id is a hash of its text, so a change to how text is split into
+    clauses moves ids without the grammar having learned anything. The ledger
+    records which splitter produced it, and `delta` uses that to tell a
+    normalisation change apart from a repayment.
+    """
+    digest = hashlib.sha256(inspect.getsource(split_clauses).encode("utf-8")).hexdigest()
+    return f"split_clauses:{digest[:16]}"
+
 
 # A card that is always in play leaks its unparsed clause into every game it is
 # in; a main-deck card only into the games it is drawn.
@@ -120,6 +135,7 @@ def build() -> dict[str, Any]:
     return {
         "schema_version": DEBT_VERSION,
         "grammar_version": grammar["version"],
+        "normalization_version": normalization_version(),
         "ranking": ["deck_slots", "deck_count", "risk", "missing_capability", "clause_id"],
         "quota": None,
         "note": ("No repayment quota: a packet reports what the debt gained, lost or reclassified. "
@@ -132,20 +148,38 @@ def build() -> dict[str, Any]:
 
 
 def delta(fresh: dict[str, Any], committed: dict[str, Any] | None) -> dict[str, Any]:
+    """What moved, and whether the grammar is why.
+
+    Codex's Round H ruling on DP-90: when the clause splitter changes, clause
+    ids move without the engine having learned anything, and reporting that as
+    `repaid` would read a parser fix as capability growth. Both baselines are
+    kept, and the movement is filed under `normalization_reclassification`
+    until a build runs on the same splitter as the one it is compared against.
+    """
     if committed is None:
-        return {"baseline": None, "added": [e["clause_id"] for e in fresh["entries"]], "repaid": [],
-                "reclassified": []}
+        return {"baseline": None, "normalization_baseline": None, "added": [e["clause_id"] for e in fresh["entries"]],
+                "repaid": [], "reclassified": [], "normalization_reclassification": []}
     before = {e["clause_id"]: e for e in committed.get("entries", [])}
     after = {e["clause_id"]: e for e in fresh["entries"]}
     reclassified = [cid for cid in sorted(set(before) & set(after))
                     if {k: before[cid].get(k) for k in ("risk", "missing_capability", "rule_family", "deck_slots")}
                     != {k: after[cid].get(k) for k in ("risk", "missing_capability", "rule_family", "deck_slots")}]
-    return {
+    added, repaid = sorted(set(after) - set(before)), sorted(set(before) - set(after))
+    renormalised = committed.get("normalization_version") != fresh.get("normalization_version")
+    movement = {
         "baseline": committed.get("grammar_version"),
-        "added": sorted(set(after) - set(before)),
-        "repaid": sorted(set(before) - set(after)),
+        "normalization_baseline": committed.get("normalization_version"),
         "reclassified": reclassified,
     }
+    if renormalised:
+        # The clause ids moved because the text did. Nothing was repaid here.
+        movement.update({"added": [], "repaid": [], "normalization_reclassification": sorted(added + repaid),
+                         "note": ("the clause splitter changed, so every id-level difference is a normalisation "
+                                  "reclassification, not a repayment; compare against a build on this splitter "
+                                  "for the next real delta")})
+    else:
+        movement.update({"added": added, "repaid": repaid, "normalization_reclassification": []})
+    return movement
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -161,7 +195,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if {k: v for k, v in committed.items() if k != "delta"} != {k: v for k, v in fresh.items() if k != "delta"}:
             print("FAILED: the committed coverage debt is stale; re-run coverage_debt.py build and commit the diff")
-            print(f"  added={movement['added']} repaid={movement['repaid']} reclassified={movement['reclassified']}")
+            print(f"  added={movement['added']} repaid={movement['repaid']} "
+                  f"reclassified={movement['reclassified']} "
+                  f"normalization_reclassification={movement['normalization_reclassification']}")
             return 1
         print(f"coverage debt is current: {fresh['counts']['clauses_in_debt']} clauses in debt, "
               f"{fresh['counts']['clauses_parsed']} parsed")
@@ -170,7 +206,8 @@ def main(argv: list[str] | None = None) -> int:
     fresh["delta"] = movement
     OUT.write_text(json.dumps(fresh, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {OUT}: {fresh['counts']['clauses_in_debt']} in debt, {fresh['counts']['clauses_parsed']} parsed; "
-          f"added={len(movement['added'])} repaid={len(movement['repaid'])} reclassified={len(movement['reclassified'])}")
+          f"added={len(movement['added'])} repaid={len(movement['repaid'])} reclassified={len(movement['reclassified'])} "
+          f"normalization_reclassification={len(movement['normalization_reclassification'])}")
     return 0
 
 

@@ -722,6 +722,30 @@
       ]
     },
     {
+      "production_id": "self_cost_reduction_score",
+      "form": "If an opponent's score is within 3 points of the Victory Score, this costs :rb_energy_2: less.",
+      "template": "if an opponent's score is within (?P<within>\\d+) points? of the victory score, this costs :rb_energy_(?P<amount>\\d+): less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 194.1"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "self_card_conditional_fixed_energy_reduction.v1"
+      ],
+      "boundary": "The card's own text, a fixed Energy amount, and the one condition leaf this wave registered. A reduction of Power, a variable amount, or a value read off the board is a different clause and stays unparsed.",
+      "golden": [
+        "If an opponent's score is within 3 points of the Victory Score, this costs :rb_energy_2: less."
+      ],
+      "negative": [
+        "if an opponent's score is within 3 points of the victory score, this costs :rb_rune_rainbow: less",
+        "this spell's energy cost is reduced by the highest might among units you control",
+        "i cost :rb_energy_2: less"
+      ]
+    },
+    {
       "production_id": "no_rules_text",
       "form": "(no rules text)",
       "template": "\\(no rules text\\)",

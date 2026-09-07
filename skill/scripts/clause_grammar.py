@@ -283,6 +283,20 @@ def _lower_units_enter_ready(params):
                     "params": {"turn_effect_kind": "entry_state_for_played_units", "value": "ready"}}}
 
 
+def _lower_self_cost_reduction(params):
+    """Round H: "If <condition>, this costs N less." — the card's own text,
+    a fixed Energy amount, a registered condition leaf. The program is not an
+    instruction: it is a printed characteristic the play transaction reads."""
+    return {
+        "object_fields": {"printed_cost_modifications": [{
+            "modification_id": "own-text", "kind": "energy_reduction", "amount": int(params["amount"]),
+            "condition": {"kind": "score_within_of_victory", "count": int(params["within"])},
+        }]},
+        "ast": {"node": "self_cost_reduction", "amount": int(params["amount"]),
+                "condition": {"kind": "score_within_of_victory", "count": int(params["within"])}},
+    }
+
+
 def _lower_empty(params):
     return {"ast": {"node": "empty"}}
 
@@ -325,6 +339,7 @@ LOWERINGS = {
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
     "no_rules_text": _lower_empty,
+    "self_cost_reduction_score": _lower_self_cost_reduction,
 }
 
 # Productions that wrap another clause: "When you play me, <inner>."
@@ -391,6 +406,9 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None) -> dict[str
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
             }
         lowered = COMPOSABLE[production_id](params, slots) if production_id in COMPOSABLE else LOWERINGS[production_id](params)
+        if "object_fields" in lowered:
+            lowered = {**{k: v for k, v in lowered.items() if k != "object_fields"},
+                       "passive": {"object_fields": lowered["object_fields"]}}
         known = lowered.pop("known_unsupported", None)
         if known is not None:
             # Named by the catalogue, not implemented by the engine (DP-85).

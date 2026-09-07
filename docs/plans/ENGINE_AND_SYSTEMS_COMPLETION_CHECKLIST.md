@@ -407,8 +407,14 @@ Dependency milestones are defined in
   its Burn Out rollback, typed Score triggers, staged Non-Combat Showdowns
   opened by the Turn Player's choice, the board Cleanup steps 323.6 /
   323.11 / 323.11.a, Hold as the Scoring Step, and `victory_check` facts.
-  Still open: team scoring, Hidden, 323.7, non-Conquer/Hold point sources,
-  383.4.g "activate", the Beginning Phase state machine.)
+  C-58, ADR-0015 §2: Cleanup step 5 — the unattached non-Unit Gear and Runes
+  at Battlefields and everything in someone else's Base Recalled, and a Hidden
+  card at a Battlefield its controller does not control sent to its owner's
+  Trash, all on the working state the rest of the Cleanup acts on. An attached
+  Gear is passed by, its location being its Top-Most card's (434.4); a card
+  that stays facedown is never named in the public trace.
+  Still open: team scoring, non-Conquer/Hold point sources, 383.4.g
+  "activate", the Beginning Phase state machine.)
 - [ ] **G3 — Victory and Terminal State.** Complete Victory Score, ties,
   simultaneous terminal events, Burn Out, terminal reasons, and reward adapter.
   (ADR-0010 fixes the contracts; C-36 through C-39 implement the bounded
@@ -416,11 +422,21 @@ Dependency milestones are defined in
   ties that continue, Burn Out on Draw with randomization receipts and the
   terminal bridge, the Start of Turn state machine and turn transition, the
   atomic Cleanup with 322 iterations, and the read-only reward projection.
+  C-59, ADR-0015 §3: free-for-all — War's First Turn Process in the
+  catalogue, and the Removal of a Player (651–652) as its own procedure. With
+  one other player left that player Wins, recorded rather than derived; with
+  more than one left the game continues, everything the conceding player owns
+  leaves the game, everything they controlled but did not own is Banished to
+  its own owner, the Battlefield they contributed becomes a token Battlefield
+  with no abilities while the Units and Hidden cards there do not move, their
+  chain items are Countered, and the turn and the Focus pass to the next
+  available player in Turn Order.
   Still open: non-Draw Burn Out, Setup, Match / Best-of and team modes,
-  ready blockers, 323.7, the facedown reveal at game end, multi-player
-  concession.)
+  ready blockers, the facedown reveal at game end.)
 
-- [ ] Complete normal Cleanup steps 1–10a.
+- [x] Complete normal Cleanup steps 1–10a.
+  (C-58 closes step 5, the last step that failed the whole run closed; the
+  Cleanup now runs 1–10a end to end on one working state.)
   (C-26/C-31: step 2 designation synchronization, 3a/3b lethal Cleanup with
   Combat-Damage attribution, and steps 7–7a/10 as `stage_combat`; C-34:
   steps 4, 6, 8–8a and 9 as `run_board_cleanup`, `stage_showdown` and
@@ -538,16 +554,60 @@ normalization and adversarial fixtures become `[CLAUDE-READY]`.
 - [ ] Reconstruct timing and supported effect state at every event.
 - [x] Phase A: classify user-supplied candidates from supported structured state.
 - [ ] Filter candidates by targets, costs, and effect prerequisites.
+  (C-57: cost and timing are filtered for the enumerated families; targets and
+  effect prerequisites are still Phase A's `unsupported_check`.)
 - [ ] Explain every included/excluded action and its coverage.
+  (C-57: every enumerated candidate carries the checks that produced it and
+  the facts it needed, and every family carries its exclusions by reason; the
+  same explanation for a *classified* candidate is still open.)
 - [x] Abstain when the observation cannot support an unambiguous candidate verdict;
   Phase A still never claims a complete legal set.
-- [ ] Phase B: generate candidates only for covered action families and keep
+- [x] Phase B: generate candidates only for covered action families and keep
   `complete_action_set: false` without a machine-checkable completeness proof.
+  (C-57, ADR-0015 §1: `enumerate(observation)` over playing a card from the
+  actor's own hand, Standard Move, Hide, and passing priority or focus. Every
+  family reports; one that would need something the observation does not carry
+  abstains by name — `activate_ability` abstains outright, since the effect
+  state carries no per-object catalogue of activated abilities — and each has
+  that mutation as a gate. `complete_action_set` stays false, and the
+  validator now enforces that on every result rather than only on Phase A.
+  Affordability is the same function the payment path uses, so a candidate the
+  enumerator calls payable is payable; a card whose printed cost the
+  observation does not carry is `printed_cost_not_observed`, never assumed
+  free. The opponent's hand is in the same observed state and never reaches a
+  candidate.)
 - [x] Prove Player 1 hidden information cannot enter Player 2's Phase-A query/results.
 - [x] Add sourced fixtures for legal and illegal response windows within R1 coverage.
 - [ ] Bind P2-A ranking to supported candidates without moving legality or
   physical-state authority away from the human.
 - [ ] Measure confirmation latency/disagreement to detect rubber-stamping.
+
+### R4 — clause grammar and coverage debt
+
+- [x] A versioned, public clause grammar with a fixture rule for promotion.
+  (C-60, ADR-0016 §1: `clause-grammar.v1` ships as data — 16 productions, each
+  with a stable id, its locators, this grammar's own normalization rule, the
+  AST it produces, the capability it needs, its boundary, and the two fixtures
+  it is promoted on: a golden clause it must compile and a near-miss it must
+  not match. A production that swallows its own near-miss fails the gate.)
+- [x] Compile card text to programs, with agreement defined canonically.
+  (C-61, ADR-0016 §2: `compile_card` is deterministic and a clause no
+  production parses is `clause_unparsed` carrying its own text. Agreement is
+  canonical equality over production ids, the AST, every parameter and
+  binding, timing, cost, duration, visibility and the unsupported reason; the
+  canonicalizer erases naming but keeps the links names carried, as positions.
+  A semantic difference escalates, a format or ordering rewrite closes with an
+  audit record, and one signature escalates once. The corpus is the golden
+  set: 29 of the 31 clauses the grammar parses reproduce the hand-written
+  program exactly, with no disagreement.)
+- [x] Rank what the grammar cannot parse, and report the movement each packet.
+  (C-62, ADR-0016 §3: `coverage_debt.json` — 25 clauses, ranked by deck slots
+  counted from the deck lists this repo carries, then decks played, whether
+  the card is always in play, and the missing capability. Each build reports
+  added / repaid / reclassified. There is no repayment quota. The ledger also
+  counts the promotion split, so G-3's three-gate rule is a number: 28 claimed
+  clauses the grammar reproduces, 20 still hand-written and in the debt.)
+- [ ] Grow the grammar past the first Proving Grounds corpus.
 
 ## 6. R5 — Evaluation, search, and learning research
 

@@ -382,11 +382,38 @@ approved public deployment.
 - keep P2-S planned but unimplemented unless Riot approval and a separate product
   decision justify opening that gate.
 
+## What is open, and what is not
+
+This repository is the **verifiable base** of Riftbound Chronicle, and it is
+deliberately the whole of that base: the rules engine, every gate, the schemas,
+the ADRs, the `clause-grammar.v1` contract with all of its productions, the
+Wave A seed corpus, and `verify_evidence_pack.py`. Anyone can re-run an
+evidence pack the service emits with nothing but this repo, because the
+service's authority claim is that its answers can be re-run by someone who is
+not us.
+
+What is not here, and will not be: the compiled card corpora from Wave B
+onward, the coverage debt over them, the state builder, the fact-ledger gate,
+the evidence-pack assembly, the consult command, and the question corpus. Those
+are the labour and the product, and they live in a private overlay that pins
+this repo as a submodule and reads extra packs through `CHRONICLE_PACK_PATHS`
+without editing anything here.
+
+The line is drawn so the two do not conflict: re-runnability is **per
+answer** — an evidence pack discloses the programs that one answer used — while
+the corpus is **per service**. Pull requests that add a card program pack
+beyond the public seed are closed; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License and Riot notice
 
-Original code and methodology are licensed under [MIT](LICENSE). The bundled card
-names, rules text, and other Riot-owned material are not covered by that grant;
-see [skill/data/README.md](skill/data/README.md) for provenance.
+Original code and methodology are licensed under the
+[GNU Affero General Public License v3.0](LICENSE). Versions released before the
+licence change remain available under the MIT licence they were published
+with. Contributions of code, data or documentation require the
+[Contributor License Agreement](CLA.md); reporting an issue does not. The
+bundled card names, rules text, and other Riot-owned material are not covered
+by either grant; see [skill/data/README.md](skill/data/README.md) for
+provenance.
 
 > Riftbound Chronicle was created under Riot Games' "Legal Jibber Jabber" policy
 > using assets owned by Riot Games. Riot Games does not endorse or sponsor this

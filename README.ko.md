@@ -156,7 +156,9 @@ Get-ChildItem skill/scripts/check_*.py | ForEach-Object {
 
 이 프로젝트는 승률, 사용률, 매치업 비율 또는 Tier 순위를 게시하거나 저장하지 않습니다. 공식 심판 권한을 주장하지 않으며 Riftbound 경기를 자동화하지 않습니다. Riot product registration과 공식 API 카드 출처는 아직 해결되지 않은 문제입니다.
 
-원본 코드와 방법론은 [MIT](LICENSE) 라이선스입니다. 카드 이름, 규칙 텍스트 및 기타 Riot 소유 자료는 이 라이선스에 포함되지 않습니다.
+원본 코드와 방법론은 [GNU Affero General Public License v3.0](LICENSE)입니다. 라이선스 변경 이전에 공개된 버전(태그 `mit-final` 이전)은 원래의 MIT 라이선스를 유지합니다. 코드, 데이터, 문서 기여에는 [CLA](CLA.md) 서명이 필요하며, 이슈 보고에는 필요하지 않습니다. 카드 이름, 규칙 텍스트 및 기타 Riot 소유 자료는 어떤 라이선스에도 포함되지 않습니다.
+
+**공개와 비공개의 경계**: 이 저장소는 검증 가능한 기반입니다 — 엔진, 모든 게이트, 스키마, ADR, `clause-grammar.v1` 계약과 모든 production, Wave A 시드 코퍼스, `verify_evidence_pack.py`. 서비스가 발행한 증거 팩은 이 저장소만으로 누구나 재실행할 수 있습니다. Wave B 이후의 컴파일된 카드 코퍼스, 커버리지 부채, 상태 빌더, 사실 원장 게이트, 증거 팩 조립, 상담 명령, 질문 코퍼스는 비공개 오버레이에 있으며 여기에 들어오지 않습니다. 재실행 가능성은 **답변 단위**(증거 팩은 그 답변이 사용한 프로그램을 포함)이고 코퍼스는 **서비스 단위**입니다. 팩을 추가하는 PR은 닫힙니다. [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
 
 > Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
 

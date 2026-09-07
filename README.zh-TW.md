@@ -156,7 +156,9 @@ Get-ChildItem skill/scripts/check_*.py | ForEach-Object {
 
 本專案不發布或保存勝率、使用率、對局率或 Tier 排名，不聲稱官方主審權威，也不自動化 Riftbound 對局。Riot product registration 與官方 API 卡牌來源目前仍是開放問題。
 
-原創程式碼與方法論採 [MIT](LICENSE)。卡名、規則文字與其他 Riot-owned material 不在此授權內。
+原創程式碼與方法論採 [GNU Affero General Public License v3.0](LICENSE)；換授權之前發布的版本（tag `mit-final` 以前）維持原本的 MIT。提交程式碼、資料或文件需簽署 [CLA](CLA.md)，回報問題不用。卡名、規則文字與其他 Riot-owned material 不在任何授權內。
+
+**公開與不公開的界線**：這個 repo 是可驗證的基底——引擎、全部閘門、schema、ADR、`clause-grammar.v1` 契約與全部 production、Wave A 種子語料、`verify_evidence_pack.py`——任何人只靠它就能重跑服務發出的證據包。Wave B 起的編譯卡語料、覆蓋債、狀態建構器、事實帳本閘、證據包組裝、諮詢指令與問題語料在私有 overlay，不會進來。可重跑是**逐答案**的（證據包附該答案用到的程式），語料是**整個服務**的；兩者不衝突。新增 pack 的 PR 會被關閉，見 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 > Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
 

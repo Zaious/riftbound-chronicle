@@ -496,6 +496,23 @@ def _restricted_entries(resources: dict[str, Any], use: str, kind: str, domain: 
     return [r for r in resources.get("restricted", []) if r["kind"] == kind and (kind == "energy" or r.get("domain") == domain) and use in r["uses"]]
 
 
+def affordability(resources: dict[str, Any], total: dict[str, Any], use: str) -> dict[str, Any]:
+    """Core 357.1: can this pool pay this total for this use? The one place
+    the question is answered — the payment path and the C-57 enumeration both
+    ask here, so a candidate the enumerator calls payable is payable."""
+    any_amount = total.get("power_any", 0)
+    restricted_energy = sum(r["amount"] for r in _restricted_entries(resources, use, "energy"))
+    inapplicable = [r for r in resources.get("restricted", []) if use not in r["uses"]]
+    general_specific = {d: max(0, a - sum(r["amount"] for r in _restricted_entries(resources, use, "power", d)))
+                        for d, a in total["power"].items()}
+    short = (resources["energy"] + restricted_energy < total["energy"]
+             or any(resources["power"].get(d, 0) < a for d, a in general_specific.items())
+             or sum(resources["power"].values()) - sum(general_specific.values()) < any_amount)
+    return {"short": short, "inapplicable": inapplicable, "general_specific": general_specific,
+            "restricted_energy": restricted_energy, "power_any": any_amount,
+            "nonzero": total["energy"] > 0 or any(a > 0 for a in total["power"].values()) or any_amount > 0}
+
+
 def _allocate(events: list[dict[str, Any]], components: list[dict[str, Any]]) -> None:
     """Reference each payment event from the components it settles, in order, with exact amounts."""
     for event in events:
@@ -548,13 +565,9 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
     total = skeleton["total"]
     ctx = declaration.get("payment_context") or {}
     use = use or _play_use(declaration, working)
-    any_amount = total.get("power_any", 0)
-    restricted_energy = sum(r["amount"] for r in _restricted_entries(resources, use, "energy"))
-    inapplicable = [r for r in resources.get("restricted", []) if use not in r["uses"]]
-    general_specific = {d: max(0, a - sum(r["amount"] for r in _restricted_entries(resources, use, "power", d))) for d, a in total["power"].items()}
-    short = (resources["energy"] + restricted_energy < total["energy"] or any(resources["power"].get(d, 0) < a for d, a in general_specific.items())
-             or sum(resources["power"].values()) - sum(general_specific.values()) < any_amount)
-    nonzero = total["energy"] > 0 or any(a > 0 for a in total["power"].values()) or any_amount > 0
+    verdict = affordability(resources, total, use)
+    inapplicable, short, nonzero = verdict["inapplicable"], verdict["short"], verdict["nonzero"]
+    any_amount, general_specific = verdict["power_any"], verdict["general_specific"]
     # Core 429.3 (Codex Round B, point A): whenever a resource cost is paid, the
     # controller may use Add reactions first. The engine never assumes they
     # decline — a human confirms the window is closed before any non-zero

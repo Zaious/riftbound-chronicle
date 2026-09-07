@@ -355,6 +355,10 @@ jobs:
       # working state the rest of the Cleanup acts on.
       - name: Cleanup step 5 Recall and Hidden removal (C-58)
         run: python3 skill/scripts/check_cleanup_recall.py
+      # ADR-0015 §1: bounded enumeration with per-family abstention and a
+      # complete_action_set that stays false.
+      - name: Bounded legal-action enumeration (C-57)
+        run: python3 skill/scripts/check_legal_enumeration.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -460,6 +464,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_watchers.py"
           python3 "$REPO/skill/scripts/check_replacement_grammar.py"
           python3 "$REPO/skill/scripts/check_cleanup_recall.py"
+          python3 "$REPO/skill/scripts/check_legal_enumeration.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

@@ -52,6 +52,8 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
+import effect_ir  # noqa: E402
+import play_transaction  # noqa: E402
 import rules_core  # noqa: E402
 from p2a_session import FORBIDDEN_HIDDEN_KEYS, _find_forbidden_keys  # noqa: E402
 
@@ -66,7 +68,7 @@ FACT_SETS = ("confirmed_public", "own_private", "inferred", "later_revealed", "u
 DECISION_TIME_FACT_SETS = ("confirmed_public", "own_private")
 COMPLETENESS_GROUPS = ("timing_state", "board", "hands", "resources", "pending_decisions")
 COMPLETENESS_VALUES = ("complete", "partial", "absent")
-CANDIDATE_SOURCE_MODES = ("user_supplied",)  # Phase B adds engine_enumerated; not here
+CANDIDATE_SOURCE_MODES = ("user_supplied", "engine_enumerated")  # C-57 (ADR-0015 §1) adds the second
 VERDICTS = ("legal", "illegal", "indeterminate", "unsupported", "decision_required")
 ACTION_FAMILIES = ("play_card", "activate_ability", "pass_priority", "pass_focus")
 # What a candidate may ask to have checked. Phase A implements timing only;
@@ -118,6 +120,7 @@ def build_observation(
     source: dict[str, Any],
     context: dict[str, Any],
     timing_state: dict[str, Any] | None = None,
+    effect_state: dict[str, Any] | None = None,
     facts: dict[str, list[dict[str, Any]]] | None = None,
     pending_decisions: list[dict[str, Any]] | None = None,
     completeness: dict[str, str] | None = None,
@@ -130,9 +133,22 @@ def build_observation(
             "hash": rules_core.state_hash(timing_state),
             "state": copy.deepcopy(timing_state),
         }
+    if effect_state is not None:
+        # C-57: the board, hands and resources an enumeration reads. The
+        # completeness this derives is the *structural* one; whether this
+        # perspective may see a hand is the caller's own `completeness`.
+        component_states["effect_state"] = {
+            "schema_version": effect_state.get("schema_version"),
+            "hash": effect_ir.hash_value(effect_state),
+            "state": copy.deepcopy(effect_state),
+        }
     derived_completeness = {group: "absent" for group in COMPLETENESS_GROUPS}
     if timing_state is not None:
         derived_completeness["timing_state"] = "complete" if not rules_core.validate_state(timing_state) else "partial"
+    if effect_state is not None:
+        structural = "complete" if not effect_ir.validate_state(effect_state) else "partial"
+        derived_completeness["board"] = structural
+        derived_completeness["resources"] = structural
     derived_completeness["pending_decisions"] = "complete" if pending_decisions is not None else "absent"
     derived_completeness.update(completeness or {})
     observation = {
@@ -169,9 +185,14 @@ def validate_observation(value: Any) -> list[str]:
     elif "region" in context and not _str(context["region"]):
         errors.append("context.region must be a non-empty string when present")
     states = value.get("component_states")
-    if not isinstance(states, dict) or set(states) - {"timing_state"}:
-        errors.append("component_states may only contain timing_state in Phase A")
-    elif "timing_state" in states:
+    if not isinstance(states, dict) or set(states) - {"timing_state", "effect_state"}:
+        errors.append("component_states may only contain timing_state and effect_state")
+    elif "effect_state" in states and (not isinstance(states["effect_state"], dict)
+                                       or set(states["effect_state"]) != {"schema_version", "hash", "state"}
+                                       or not isinstance(states["effect_state"].get("state"), dict)
+                                       or states["effect_state"]["hash"] != effect_ir.hash_value(states["effect_state"]["state"])):
+        errors.append("component_states.effect_state must carry schema_version, hash, state, and the hash must match")
+    if isinstance(states, dict) and "timing_state" in states:
         ts = states["timing_state"]
         if not isinstance(ts, dict) or set(ts) != {"schema_version", "hash", "state"} or not isinstance(ts.get("state"), dict):
             errors.append("component_states.timing_state must carry schema_version, hash, state")
@@ -400,6 +421,289 @@ def classify_candidates(observation: dict[str, Any], query: dict[str, Any]) -> d
     return result
 
 
+# --------------------------------------------------------------------------
+# Phase B: bounded enumeration (C-57, ADR-0015 §1)
+# --------------------------------------------------------------------------
+
+# Families the engine can produce candidates for. A family absent from this
+# tuple is not enumerated at all — the result says so rather than implying the
+# player has no such action.
+ENUMERABLE_FAMILIES = ("play_card", "activate_ability", "standard_move", "hide", "pass_priority", "pass_focus")
+# What each family must be able to read before it may answer. A group that is
+# not `complete` makes the family abstain by name.
+FAMILY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
+    "play_card": ("timing_state", "hands", "resources"),
+    "activate_ability": ("timing_state", "board", "resources"),
+    "standard_move": ("timing_state", "board"),
+    "hide": ("timing_state", "hands", "board"),
+    "pass_priority": ("timing_state",),
+    "pass_focus": ("timing_state",),
+}
+# What the enumeration is allowed to look at. `observation.facts` is prose
+# with provenance, so it is never parsed for a conclusion; structured
+# knowledge comes from the component states the observation carries.
+ENUMERATION_SOURCES = ("component_states.timing_state", "component_states.effect_state")
+
+
+def _abstain(family: str, reason_code: str, missing: list[str], locators: list[str] | None = None) -> dict[str, Any]:
+    return {"family": family, "status": "abstained", "reason_code": reason_code,
+            "missing_information": list(missing), "candidates": [], "rule_locators": list(locators or [])}
+
+
+def _enumerated(family: str, candidates: list[str], locators: list[str], excluded: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"family": family, "status": "enumerated", "reason_code": "ok", "missing_information": [],
+            "candidates": list(candidates), "rule_locators": list(locators), "excluded": excluded}
+
+
+def _timing_verdict(timing_state: dict[str, Any], action: dict[str, Any]) -> dict[str, Any]:
+    return rules_core.validate_timing(timing_state, action)
+
+
+def _cost_total(cost: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """The total of a printed cost the state carries, or why the enumeration
+    will not compute one. A cost with modifications, additional components or
+    intents is a decision the player makes, not one an enumeration makes for
+    them."""
+    if not isinstance(cost, dict):
+        return None, "printed_cost_not_observed"
+    if set(cost) - {"base"}:
+        return None, "cost_modelling_beyond_enumeration"
+    base = cost.get("base")
+    if not isinstance(base, dict) or not isinstance(base.get("energy"), int) or not isinstance(base.get("power"), dict):
+        return None, "printed_cost_not_observed"
+    try:
+        skeleton = play_transaction.determine_total_cost(cost, {})
+    except Exception:  # a shape the transaction itself will not read
+        return None, "cost_modelling_beyond_enumeration"
+    return skeleton["total"], None
+
+
+def _enumerate_play_card(observation, timing_state, effect_state, actor):
+    player = (effect_state.get("players") or {}).get(actor)
+    resources = player.get("resources") if isinstance(player, dict) else None
+    if not isinstance(resources, dict):
+        return _abstain("play_card", "observation_incomplete:resources", [f"{actor}'s resource pool"]), []
+    candidates, excluded = [], []
+    # Only this player's own hand. An opponent's hand is in the observation
+    # only when the observer may see it, and enumeration never reaches for it.
+    for object_id in list(player["zones"]["hand"]):
+        obj = effect_state["objects"].get(object_id) or {}
+        object_kind = obj.get("kind")
+        if object_kind not in {"unit", "gear", "spell", "rune"}:
+            excluded.append({"object_id": object_id, "reason_code": "card_kind_not_observed"})
+            continue
+        timing = obj.get("play_timing", "default")
+        verdict = _timing_verdict(timing_state, {"actor": actor, "kind": "play_card", "timing": timing,
+                                                 "object_kind": object_kind})
+        if verdict.get("legal") is not True:
+            excluded.append({"object_id": object_id, "reason_code": verdict.get("reason_code", "timing_illegal"),
+                             "check": "timing"})
+            continue
+        printed = obj.get("printed_cost")
+        total, problem = _cost_total({"base": printed} if isinstance(printed, dict) else printed)
+        if total is None:
+            excluded.append({"object_id": object_id, "reason_code": problem, "check": "cost"})
+            continue
+        if play_transaction.affordability(resources, total, f"play_{object_kind}")["short"]:
+            excluded.append({"object_id": object_id, "reason_code": "cost_unpayable", "check": "cost"})
+            continue
+        candidates.append({
+            "candidate_id": f"play:{object_id}",
+            "family": "play_card",
+            "action": {"kind": "play_card", "actor": actor, "timing": timing, "object_kind": object_kind,
+                       "card": object_id, "checks": ["timing", "cost"]},
+            "required_facts": [f"hand:{actor}", f"printed_cost:{object_id}", f"resources:{actor}"],
+            "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 357.1"],
+        })
+    return _enumerated("play_card", [c["candidate_id"] for c in candidates],
+                       ["Core 349", "Core 357.1"], excluded), candidates
+
+
+def _enumerate_activate_ability(observation, timing_state, effect_state, actor):
+    # The effect state carries no catalogue of a card's activated abilities —
+    # those live in the compiled card programs — so this family has nothing to
+    # read and says so instead of offering none.
+    return _abstain("activate_ability", "capability_missing:activated_ability_catalogue",
+                    ["a per-object list of activated abilities with their costs and timings"],
+                    ["Core 349"]), []
+
+
+def _enumerate_standard_move(observation, timing_state, effect_state, actor):
+    verdict = _timing_verdict(timing_state, {"actor": actor, "kind": "standard_move", "timing": "default"})
+    if verdict.get("legal") is not True:
+        return _enumerated("standard_move", [], list(verdict.get("rule_locators", [])),
+                           [{"reason_code": verdict.get("reason_code", "timing_illegal"), "check": "timing"}]), []
+    candidates, excluded = [], []
+    battlefields = sorted(effect_state.get("battlefields", {}))
+    for object_id in sorted(effect_state.get("objects", {})):
+        obj = effect_state["objects"][object_id]
+        if obj.get("kind") != "unit" or obj.get("controller") != actor:
+            continue
+        location = effect_ir.find_location(effect_state, object_id)
+        if effect_ir.zone_class(location) != "board":
+            continue
+        if obj.get("exhausted"):
+            excluded.append({"object_id": object_id, "reason_code": "unit_is_exhausted"})
+            continue
+        here = location[1] if location[0] == "battlefield" else None
+        destinations = [{"kind": "base", "player": actor}] if here is not None else []
+        destinations += [{"kind": "battlefield", "battlefield": bf} for bf in battlefields if bf != here]
+        for destination in destinations:
+            label = destination.get("battlefield") or f"base:{destination['player']}"
+            candidates.append({
+                "candidate_id": f"move:{object_id}:{label}",
+                "family": "standard_move",
+                "action": {"kind": "standard_move", "actor": actor, "timing": "default", "object_kind": "unit",
+                           "object_id": object_id, "destination": destination, "checks": ["timing"]},
+                "required_facts": [f"board:{object_id}"],
+                "rule_locators": list(verdict.get("rule_locators", [])),
+            })
+    return _enumerated("standard_move", [c["candidate_id"] for c in candidates],
+                       list(verdict.get("rule_locators", [])), excluded), candidates
+
+
+def _enumerate_hide(observation, timing_state, effect_state, actor):
+    player = (effect_state.get("players") or {}).get(actor) or {"zones": {"hand": []}}
+    cards = [{"object_id": object_id} for object_id in player["zones"]["hand"]
+             if (effect_state["objects"].get(object_id) or {}).get("hidden") is True]
+    verdict = _timing_verdict(timing_state, {"actor": actor, "kind": "standard_move", "timing": "default"})
+    controlled = [bf for bf, entry in sorted(effect_state.get("battlefields", {}).items())
+                  if entry.get("controller") == actor]
+    candidates, excluded = [], []
+    if verdict.get("legal") is not True:
+        excluded.append({"reason_code": verdict.get("reason_code", "timing_illegal"), "check": "timing"})
+    else:
+        for fact in sorted(cards, key=lambda f: str(f.get("object_id"))):
+            object_id = fact.get("object_id")
+            for battlefield_id in controlled:
+                zone = (effect_state["battlefields"][battlefield_id].get("facedown") or {})
+                if len(zone.get("cards", []) or []) >= zone.get("capacity", 1):
+                    excluded.append({"object_id": object_id, "battlefield": battlefield_id,
+                                     "reason_code": "facedown_zone_full"})
+                    continue
+                candidates.append({
+                    "candidate_id": f"hide:{object_id}:{battlefield_id}",
+                    "family": "hide",
+                    "action": {"kind": "hide", "actor": actor, "timing": "default", "object_kind": "spell",
+                               "card": object_id, "battlefield": battlefield_id, "checks": ["timing"]},
+                    "required_facts": [f"hand_card:{object_id}", f"battlefield:{battlefield_id}"],
+                    "rule_locators": ["Core 811.1", "Core 107.3.f"],
+                })
+    return _enumerated("hide", [c["candidate_id"] for c in candidates],
+                       ["Core 811.1"], excluded), candidates
+
+
+def _enumerate_pass(family, observation, timing_state, effect_state, actor):
+    verdict = _timing_verdict(timing_state, {"actor": actor, "kind": family, "timing": "default"})
+    if verdict.get("legal") is not True:
+        return _enumerated(family, [], list(verdict.get("rule_locators", [])),
+                           [{"reason_code": verdict.get("reason_code", "timing_illegal"), "check": "timing"}]), []
+    candidate = {
+        "candidate_id": family,
+        "family": family,
+        "action": {"kind": family, "actor": actor, "timing": "default", "object_kind": None, "checks": ["timing"]},
+        "required_facts": ["timing_state"],
+        "rule_locators": list(verdict.get("rule_locators", [])),
+    }
+    return _enumerated(family, [candidate["candidate_id"]], list(verdict.get("rule_locators", [])), []), [candidate]
+
+
+ENUMERATORS = {
+    "play_card": _enumerate_play_card,
+    "activate_ability": _enumerate_activate_ability,
+    "standard_move": _enumerate_standard_move,
+    "hide": _enumerate_hide,
+}
+
+
+def enumerate_actions(observation: dict[str, Any], acting_player: str) -> dict[str, Any]:
+    """Phase B (ADR-0015 §1). Produces candidates for the families the engine
+    covers *and* the observation confirms; every other family abstains by name.
+
+    `complete_action_set` is always false: there is no machine-checkable proof
+    that this enumeration is exhaustive, so the field says so rather than
+    implying one. A family that would need a private zone this perspective
+    cannot see, a fact the observation does not carry, or a capability the
+    engine lacks, produces no candidate and says which.
+    """
+    obs_errors = validate_observation(observation)
+    valid = not obs_errors
+    if valid and observation["perspective"] in ("player1", "player2"):
+        expected = {"player1": "p1", "player2": "p2"}[observation["perspective"]]
+        if acting_player != expected:
+            valid = False
+            obs_errors = obs_errors + [f"acting_player must be {expected} for perspective {observation['perspective']}"]
+
+    families: list[dict[str, Any]] = []
+    enumerated: list[dict[str, Any]] = []
+    if valid:
+        completeness = observation.get("completeness", {})
+        components = observation.get("component_states", {})
+        timing_state = (components.get("timing_state") or {}).get("state")
+        effect_state = (components.get("effect_state") or {}).get("state")
+        for family in ENUMERABLE_FAMILIES:
+            missing = [group for group in FAMILY_REQUIREMENTS[family] if completeness.get(group) != "complete"]
+            if missing:
+                families.append(_abstain(family, "observation_incomplete:" + ",".join(missing),
+                                         [f"a complete {group} view" for group in missing]))
+                continue
+            if timing_state is None:
+                families.append(_abstain(family, "observation_incomplete:timing_state", ["a timing_state component"]))
+                continue
+            if family in {"pass_priority", "pass_focus"}:
+                record, produced = _enumerate_pass(family, observation, timing_state, effect_state, acting_player)
+            elif effect_state is None:
+                families.append(_abstain(family, "observation_incomplete:effect_state", ["an effect_state component"]))
+                continue
+            else:
+                record, produced = ENUMERATORS[family](observation, timing_state, effect_state, acting_player)
+            if isinstance(record, dict) and record.get("status") == "abstained":
+                families.append(record)
+                continue
+            families.append(record)
+            enumerated.extend(produced)
+
+    enumerated.sort(key=lambda c: c["candidate_id"])
+    candidates = [{
+        "candidate_id": c["candidate_id"],
+        "verdict": "legal",
+        "reason_code": "ok",
+        "explanation": f"Enumerated by the {c['family']} family from the observation's own facts.",
+        "rule_locators": c["rule_locators"],
+        "required_capabilities": ["timing_permission_v1"] + (["cost_payment_v1"] if "cost" in c["action"].get("checks", []) else []),
+        "missing_information": [],
+        "decision_id": None,
+    } for c in enumerated]
+    verdicts = [c["verdict"] for c in candidates]
+    result = {
+        "schema_version": RESULT_VERSION,
+        "valid": valid,
+        "errors": obs_errors,
+        "observation_hash": observation.get("observation_hash"),
+        "query_hash": None,
+        "perspective": observation.get("perspective"),
+        "acting_player": acting_player,
+        "candidate_source_mode": "engine_enumerated",
+        "enumeration_attempted": True,
+        # ADR-0015 §1: never true without a machine-checkable completeness proof.
+        "complete_action_set": False,
+        "proof_scope": None,
+        "candidates": candidates,
+        "summary": {v: verdicts.count(v) for v in VERDICTS},
+        "rule_locators": sorted({loc for c in candidates for loc in c["rule_locators"]}),
+        "reason_code": "invalid_input" if not valid else ("ok" if candidates else "no_enumerated_actions"),
+        "enumeration": {
+            "families": families,
+            "abstained": sorted(f["family"] for f in families if f["status"] == "abstained"),
+            "actions": [{"candidate_id": c["candidate_id"], "family": c["family"], "action": c["action"],
+                         "required_facts": c["required_facts"]} for c in enumerated],
+            "sources_read": list(ENUMERATION_SOURCES),
+        },
+    }
+    result["result_hash"] = canonical_hash({k: v for k, v in result.items() if k != "result_hash"})
+    return result
+
+
 def validate_result(value: Any) -> list[str]:
     if not isinstance(value, dict):
         return ["result must be an object"]
@@ -407,12 +711,37 @@ def validate_result(value: Any) -> list[str]:
                 "candidate_source_mode", "enumeration_attempted", "complete_action_set", "proof_scope", "candidates",
                 "summary", "rule_locators", "reason_code", "result_hash"}
     errors: list[str] = []
-    if set(value) != required:
+    enumeration = value.get("enumeration")
+    if set(value) - {"enumeration"} != required:
         errors.append("result top-level fields are invalid")
     if value.get("schema_version") != RESULT_VERSION:
         errors.append(f"schema_version must be {RESULT_VERSION}")
-    if value.get("enumeration_attempted") is not False or value.get("complete_action_set") is not False or value.get("proof_scope") is not None:
-        errors.append("Phase A results must not attempt enumeration or claim a complete action set")
+    if value.get("complete_action_set") is not False or value.get("proof_scope") is not None:
+        errors.append("no result may claim a complete action set without a machine-checkable proof (ADR-0015 §1)")
+    if enumeration is None:
+        if value.get("enumeration_attempted") is not False:
+            errors.append("a result without an enumeration record must not claim to have enumerated")
+    else:
+        if value.get("enumeration_attempted") is not True or value.get("candidate_source_mode") != "engine_enumerated":
+            errors.append("an enumerated result must say so in enumeration_attempted and candidate_source_mode")
+        if not isinstance(enumeration, dict) or set(enumeration) != {"families", "abstained", "actions", "sources_read"}:
+            errors.append("enumeration must be {families, abstained, actions, sources_read}")
+        else:
+            seen_families = []
+            for record in enumeration["families"]:
+                if not isinstance(record, dict) or record.get("family") not in ENUMERABLE_FAMILIES:
+                    errors.append("an enumeration family record is invalid")
+                    continue
+                seen_families.append(record["family"])
+                if record.get("status") not in {"enumerated", "abstained"}:
+                    errors.append(f"family {record['family']} has no status")
+                if record.get("status") == "abstained" and not record.get("missing_information"):
+                    errors.append(f"family {record['family']} abstained without saying what is missing")
+            if value.get("valid") is True and seen_families != list(ENUMERABLE_FAMILIES):
+                errors.append("every enumerable family must report, in order")
+            named = {c["candidate_id"] for c in value.get("candidates", []) if isinstance(c, dict)}
+            if {a.get("candidate_id") for a in enumeration["actions"]} != named:
+                errors.append("the enumerated actions and the candidate verdicts do not agree")
     if value.get("candidate_source_mode") not in CANDIDATE_SOURCE_MODES:
         errors.append("candidate_source_mode is invalid")
     cands = value.get("candidates")

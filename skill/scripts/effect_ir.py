@@ -719,6 +719,13 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
         if "stunned" in obj and not isinstance(obj["stunned"], bool):
             errors.append(f"objects.{object_id}.stunned must be boolean (Core 423.1.a)")
+        # C-57 (ADR-0015 §1): the printed cost, when the observation carries
+        # it. Optional, so every state written before this stays valid; the
+        # enumeration abstains on a card that does not have one.
+        printed = obj.get("printed_cost")
+        if printed is not None:
+            if not isinstance(printed, dict) or set(printed) != {"energy", "power"} or not isinstance(printed.get("energy"), int)                     or isinstance(printed.get("energy"), bool) or printed["energy"] < 0 or not isinstance(printed.get("power"), dict)                     or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 for v in printed["power"].values()):
+                errors.append(f"objects.{object_id}.printed_cost must be {{energy: non-negative int, power: {{domain: non-negative int}}}}")
         if "shield_value" in obj and (not isinstance(obj["shield_value"], int) or isinstance(obj["shield_value"], bool) or obj["shield_value"] < 1):
             errors.append(f"objects.{object_id}.shield_value must be a positive integer (Core 814.1.b)")
         # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1),

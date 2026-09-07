@@ -156,6 +156,8 @@ def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         return refuse(exc.reason_code, str(exc), locators, unsupported=bool(extra.pop("unsupported", False)), **extra)
     trace.append({"stage": "payment", "outcome": "applied", "event_ids": [e["event_id"] for e in events], "use": "hide", "rule_locators": ["Core 357.1", "Core 811.1"]})
 
+    import game_events
+    before_snapshot = game_events.snapshot(working)
     working["players"][actor]["zones"][source].remove(card)
     turn_id = working.get("turn_id", DEFAULT_TURN_ID)
     facedown = working["battlefields"][battlefield_id].setdefault("facedown", {"capacity": zone["capacity"], "cards": []})
@@ -167,6 +169,12 @@ def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         return invalid(found)
     trace.append({"stage": "hide", "outcome": "applied", "card_visible_to": [actor], "battlefield": battlefield_id, "identity_after": identity,
                   "hidden_on_turn": turn_id, "opens_chain": False, "not_a_play": True, "rule_locators": RULES})
+    # ADR-0014 SS1: the Hide is publicly known to have happened; which card it
+    # is stays with the hiding player, hand and Facedown Zone both being hidden.
+    log = game_events.EventLog(declaration["hide_id"], actor=actor, source_object=card)
+    log.record(before_snapshot, game_events.snapshot(working),
+               {"op": "hide_card", "effect_id": "hide", "object_id": card, "outcome": "applied",
+                "objects_visible_to": [actor]})
     receipt = {
         "schema_version": RECEIPT_VERSION, "play_id": declaration["hide_id"], "actor": actor, "card": card,
         "base": skeleton["base"], "after_base_modifications": skeleton["after_base_modifications"],
@@ -181,5 +189,6 @@ def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         "cost_receipt": receipt, "battlefield": battlefield_id,
         "next_timing_state": copy.deepcopy(timing_state), "next_timing_state_hash": state_hash(timing_state),
         "next_effect_state": working, "next_effect_state_hash": hash_value(working),
-        "trace": trace, "rule_locators": RULES + ["Core 357.1"],
+        "trace": trace, "events": log.events, "event_coverage": log.problems or "complete",
+        "rule_locators": RULES + ["Core 357.1"],
     }

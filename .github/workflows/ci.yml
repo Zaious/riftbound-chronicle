@@ -339,6 +339,10 @@ jobs:
       # ADR-0013 §6: the Effect Text of attachments in the Ability layer, and copy over modelled traits.
       - name: Effect Text append and copy (C-53)
         run: python3 skill/scripts/check_effect_text_and_copy.py
+      # ADR-0014 §1: one action, several causally linked semantic events, with
+      # the two visibility levels and no generic per-operation event.
+      - name: Semantic event catalogue (C-54)
+        run: python3 skill/scripts/check_game_events.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -440,6 +444,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_keyword_catalog.py"
           python3 "$REPO/skill/scripts/check_empower_xp.py"
           python3 "$REPO/skill/scripts/check_effect_text_and_copy.py"
+          python3 "$REPO/skill/scripts/check_game_events.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

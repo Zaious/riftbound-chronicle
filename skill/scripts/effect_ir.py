@@ -3395,10 +3395,15 @@ def apply_simultaneous_kill_batch(
             trace.append(replacement_trace)
             prevented.add(object_id)
 
+    import game_events
+
+    log = game_events.EventLog(f"kill-batch:{base['input_state_hash'][:12]}", actor=None,
+                               source_object=(attributed_sources or [None])[0])
     killed = []
     for object_id in object_ids:
         if object_id in prevented:
             continue
+        before_snapshot = game_events.snapshot(current)
         current, event_trace = _apply_one(current, events[object_id])
         event_trace.update({
             "phase": "unmodified_simultaneous_events", "effect_id": events[object_id]["effect_id"],
@@ -3408,6 +3413,13 @@ def apply_simultaneous_kill_batch(
             "rule_locators": list(dict.fromkeys(event_trace["rule_locators"] + ["Core 373.1.a"])),
         })
         trace.append(event_trace)
+        # ADR-0014 §1: these deaths are simultaneous, so every one of them is an
+        # event of the same batch, each with its own causality.
+        try:
+            log.record(before_snapshot, game_events.snapshot(current), event_trace)
+        except game_events.EventKindUnknown as exc:
+            return {**base, "valid": True, "committed": False, "unsupported": True,
+                    "reason_code": exc.reason_code, "reason": str(exc), "trace": trace}
         killed.append(object_id)
     pending_triggers = [trigger for event in trace for trigger in event.get("pending_triggers", [])]
     return {
@@ -3415,6 +3427,7 @@ def apply_simultaneous_kill_batch(
         "next_state": current, "next_state_hash": hash_value(current),
         "killed_objects": killed, "prevented_objects": [object_id for object_id in object_ids if object_id in prevented],
         "trace": trace, "pending_triggers": pending_triggers,
+        "events": log.events, "event_coverage": log.problems or "complete",
         "coverage": "single-prevention-descriptor-simultaneous-kill-batch",
     }
 
@@ -3785,6 +3798,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     # taken over the caller's state, so envelopes still bind.
     current = migrate_legacy_effects(copy.deepcopy(state))
     trace = []
+    # ADR-0014 §1: one snapshot per instruction, taken before it runs. Scalars
+    # only, so a later in-place edit of the state cannot rewrite history; the
+    # snapshot at position i+1 is the after-state of the entry at position i.
+    import game_events
+    snapshots: list[dict[str, Any]] = []
     outcomes: dict[str, str] = {}
     terminal: dict[str, Any] | None = None
     try:
@@ -3798,6 +3816,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         return {**base, "valid": False, "committed": False, "errors": [str(exc)], "trace": []}
     for index, effect in enumerate(effects_to_run):
         before_hash = hash_value(current)
+        snapshots.append(game_events.snapshot(current))
         effect_id = effect.get("effect_id", f"effect-{index}")
         if terminal is not None:
             # ADR-0010 §4: the game ended inside this program; nothing after runs.
@@ -4462,6 +4481,17 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             event["removed_continuous_effects"] = dead
         trace.append(event)
         outcomes[effect_id] = event["outcome"]
+    log = game_events.EventLog(program.get("program_id"), actor=program.get("controller"),
+                               source_object=program.get("source_object"))
+    for position, entry in enumerate(trace):
+        after_snapshot = snapshots[position + 1] if position + 1 < len(snapshots) else game_events.snapshot(current)
+        try:
+            log.record(snapshots[position], after_snapshot, entry)
+        except game_events.EventKindUnknown as exc:
+            # Fail closed: the instruction ran, but the engine will not hand
+            # back a state whose events it cannot name (ADR-0014 §1).
+            return {**base, "valid": True, "committed": False, "unsupported": True,
+                    "reason_code": exc.reason_code, "reason": str(exc), "trace": trace}
     reveals_ended = 0
     if _replacement_depth == 0 and current.get("reveals"):
         # Core 424.3.a: a reveal / look lasts until this resolution finishes.
@@ -4480,6 +4510,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         "next_state": current,
         "next_state_hash": hash_value(current),
         "trace": trace,
+        "events": log.events,
+        "event_coverage": log.problems or "complete",
         "pending_triggers": [trigger for event in trace for trigger in event.get("pending_triggers", [])],
         "terminal_event": terminal,
     }

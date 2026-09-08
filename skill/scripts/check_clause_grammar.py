@@ -173,9 +173,13 @@ def main() -> int:
         if second.get("predicate", {}).get("kind") != "action_performed" or                 second["predicate"]["effect_id"] != then["program_effects"][0]["effect_id"]:
             errors.append(f"'then' did not gate the second instruction on the first's receipt: {second}")
     # a connective outside the white-list joins nothing
-    for text in ("Draw 1 and summon a dragon.", "Draw 1 while you have 2 runes.", "Draw 1 or draw 2."):
+    for text in ("Draw 1 and summon a dragon.", "Draw 1 while you have 2 runes."):
         if not cg.compile_clause(text, grammar).get("unsupported"):
             errors.append(f"an unreadable half was joined anyway: {text!r}")
+    # "or" is a mode, never a sequence: joining it would perform both halves.
+    either = cg.compile_clause("Draw 1 or draw 2.", grammar)
+    if either.get("production_id") == "sequence" or either.get("program_effects"):
+        errors.append(f"'or' was joined as a sequence: {either.get('production_id')} {either.get('program_effects')}")
     # a wrapper binds before the sequence splits, or "when I move" is torn off
     wrapped_seq = cg.compile_clause("When I move, draw 1, then channel 1 rune exhausted.", grammar)
     if wrapped_seq.get("unsupported") or wrapped_seq["production_id"] != "when_i_move":

@@ -83,10 +83,11 @@ def load_grammar(path: Path | None = None) -> dict[str, Any]:
     return json.loads((path or GRAMMAR_PATH).read_text(encoding="utf-8"))
 
 
-def _trigger(field: str, trigger_id: str) -> dict[str, Any]:
+def _trigger(field: str, trigger_id: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"object_fields": {field: [{"trigger_id": trigger_id, "controller": "$controller",
                                        "source_object": "$source_object", "controller_order": 0,
-                                       "effect_program_id": "$clause_id", "optional_at_finalize": False}]}}
+                                       "effect_program_id": "$clause_id", "optional_at_finalize": False,
+                                       **(extra or {})}]}}
 
 
 
@@ -398,9 +399,13 @@ LOWERINGS = {
 
 # Productions that wrap another clause: "When you play me, <inner>."
 TRIGGER_WRAPPERS = {
-    "when_you_play_me": ("play_triggers", "on-play"),
-    "when_i_move": ("move_triggers", "on-move"),
-    "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot"),
+    "when_you_play_me": ("play_triggers", "on-play", None),
+    "when_i_move": ("move_triggers", "on-move", None),
+    "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
+    # Core 469.1: the unit conquering is the one at the Battlefield being
+    # scored. That is the engine's default scope for a conquer trigger; the
+    # clause states it rather than relying on the default.
+    "when_i_conquer": ("conquer_triggers", "on-conquer", {"scope": "unit_here"}),
 }
 
 
@@ -451,6 +456,22 @@ def _offer_of(previous: dict[str, Any] | None) -> str | None:
         return None
     offers = ((previous.get("passive") or {}).get("object_fields", {}) or {}).get("optional_additional_costs") or []
     return offers[0]["cost_offer_id"] if len(offers) == 1 else None
+
+
+# Core 402.2: "X or Y" is a mode chosen by the controller, not two things
+# that both happen. It is deliberately *not* one of the sequence connectives -
+# a sequence performs both parts, and reading "or" as one would silently do
+# twice what the card says to do once.
+MODE_CONNECTIVE = " or "
+
+
+def _split_modes(normalized: str) -> list[str] | None:
+    """The modes of a modal clause, or None. Exactly one "or": a clause with
+    two is a nesting the grammar does not read, and guessing which binds
+    tighter would change what the card does."""
+    if normalized.count(MODE_CONNECTIVE) != 1:
+        return None
+    return [part.strip() for part in normalized.split(MODE_CONNECTIVE)]
 
 
 def _split_sequence(normalized: str) -> list[str] | None:
@@ -627,7 +648,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "program_effects": inner.get("program_effects", []),
             }
         if production_id in TRIGGER_WRAPPERS:
-            field, trigger_id = TRIGGER_WRAPPERS[production_id]
+            field, trigger_id, trigger_extra = TRIGGER_WRAPPERS[production_id]
             inner = compile_clause(params["inner"], grammar, previous=previous)
             if inner.get("unsupported"):
                 # The wrapper keeps the inner clause's own reason. "The
@@ -643,11 +664,12 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
                 "params": params, "rule_locators": production["rule_locators"] + inner["rule_locators"],
                 "ast": {"node": "triggered", "on": production_id, "then": inner["ast"]},
-                "passive": _trigger(field, trigger_id),
+                "passive": _trigger(field, trigger_id, trigger_extra),
                 "program_effects": inner.get("program_effects", []),
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
                 # what the inner clause bound to travels with the wrapper, so a
                 # card-level check sees it
+                **({"modal": {**inner["modal"], "timing": "trigger_finalization"}} if inner.get("modal") else {}),
                 **({"cost_offer_id": inner["cost_offer_id"]} if inner.get("cost_offer_id") is not None else {}),
                 **({"antecedent_effect_id": inner["antecedent_effect_id"]} if inner.get("antecedent_effect_id") is not None else {}),
             }
@@ -677,6 +699,42 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
         if _has_unbound_referent(compiled.get("program_effects", [])):
             compiled["needs_referent"] = True
         return compiled
+    # Round H: a mode. Both halves must be instructions the grammar reads and
+    # neither may contribute a passive - a mode that changes what the card *is*
+    # rather than what it does is not something Core 402.2 covers.
+    modes = _split_modes(normalized)
+    if modes:
+        compiled = [compile_clause(part, grammar) for part in modes]
+        problem = next((f"{part!r} did not parse" for part, entry in zip(modes, compiled) if entry.get("unsupported")), None)
+        if problem is None:
+            problem = next((f"{part!r} is a passive, not an instruction" for part, entry in zip(modes, compiled)
+                            if entry.get("passive")), None)
+        if problem is None and any(entry.get("modal") for entry in compiled):
+            problem = "a mode may not itself be modal"
+        if problem is not None:
+            return {"production_id": "modal_choice", "unsupported": True, "reason_code": "clause_unparsed",
+                    "text": text, "normalized": normalized,
+                    "reason": f"the clause offers a choice the grammar cannot read: {problem}"}
+        return {
+            "production_id": "modal_choice", "unsupported": False, "text": text, "normalized": normalized,
+            "params": {}, "slots": {},
+            "rule_locators": sorted({"Core 402.2", "Core 820.2.a"} | {loc for e in compiled for loc in e["rule_locators"]}),
+            "required_capability": sorted({"mode_selection"} | {c for e in compiled for c in e["required_capability"]}),
+            "ast": {"node": "modal", "choose": 1, "of": [entry["ast"] for entry in compiled]},
+            "program_effects": [],
+            "modal": {
+                "choose": 1,
+                # A spell chooses as it is played; a triggered ability chooses
+                # when the trigger is finalized. The wrapper knows which this
+                # is and rewrites the timing; on its own a clause is the first.
+                "timing": "play_declaration",
+                "decision_ref": "mode",
+                "options": [{"option_id": f"mode-{index}",
+                             "effects": copy.deepcopy(entry.get("program_effects", []))}
+                            for index, entry in enumerate(compiled)],
+            },
+        }
+
     # DP-86: a sequence. Every part must parse on its own - "and" joins two
     # instructions the grammar already reads, or it joins nothing.
     parts = _split_sequence(normalized)
@@ -761,8 +819,10 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
             passive.setdefault(field, []).extend(copy.deepcopy(value))
         for field, value in ((entry.get("passive") or {}).get("state_lists", {}) or {}).items():
             state_lists.setdefault(field, []).extend(copy.deepcopy(value))
+    modal = [entry["modal"] for entry in compiled if entry.get("modal")]
     return {
         "schema_version": GRAMMAR_VERSION,
+        **({"modal": modal[0]} if len(modal) == 1 else {}),
         "grammar_version": grammar["version"],
         "clauses": compiled,
         "program_effects": effects,

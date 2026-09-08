@@ -331,6 +331,8 @@ WRAPPERS = [
      ["when you play a unit, draw 1", "when i move, draw 1"]),
     ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 428"], ["move_triggers"],
      ["When I move, draw 1."], ["when a unit moves, draw 1", "when you play me, draw 1"]),
+    ("when_i_conquer", r"when i conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.1"], ["conquer_triggers"],
+     ["When I conquer, draw 1."], ["when you conquer, draw 1", "when i hold, draw 1", "when i move, draw 1"]),
     ("at_the_end_of_your_turn", r"at the end of your turn, (?P<inner>.+)", ["Core 317.1", "Core 383.1"],
      ["end_of_turn_triggers"], ["At the end of your turn, draw 1."],
      ["at the end of each turn, draw 1", "at the beginning of your turn, draw 1"]),

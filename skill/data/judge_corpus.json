@@ -499,6 +499,951 @@
         "template_coverage_debt": []
       },
       "correction_record": null
+    },
+    {
+      "question_id": "JC-CS-001",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "It is my Beginning Phase and I control a Battlefield my opponent has no units at. Does the scoring step complete and Hold it for me?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 315.2.b.2",
+        "Core 469.2"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "control_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "control_step_completes"
+        ],
+        "required_source_locators": [
+          "Core 315.2.b.2",
+          "Core 469.2"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": {
+        "observed": "Run 2026-09-09: the contract expects the scoring step to complete at tier A; the control kernel returned unsupported / mode_unknown — 'the Mode of Play (Victory Score) is not in the state; scoring needs it (456.3, 471.1)'. With the phase set to main instead, the kernel refuses correctly with scoring_step_requires_beginning_phase, so the Beginning Phase draft is right.",
+        "decided": "The engine is right to decline, and the contract stays at A: the rules say the step completes, and rewriting the contract to expect an abstention would hide that the service cannot yet answer a scoring question.",
+        "follow_up": "The minimum state builder has no slot for the Mode of Play, so no Victory Score is in the state and the control kernel declines (mode_unknown, citing Core 456.3). The same absence is what makes the engine decline every Burn Out question. This is a state-builder coverage gap the corpus has now hit from two families; it belongs to a state-builder package, not to S-04."
+      },
+      "zh_hant": {
+        "question": "我的開始階段，我控制一個對手沒有單位的戰場。計分步驟會完成並讓我 Hold 它嗎？"
+      },
+      "notes": "315.2.b.2 makes Holding every controlled Battlefield the scoring step's task; 469.2 defines Hold as control maintained through the Beginning Phase."
+    },
+    {
+      "question_id": "JC-CS-002",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "Can the victory facts be determined from this position at cleanup?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 472"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "control_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "control_step_completes"
+        ],
+        "required_source_locators": [
+          "Core 472"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": {
+        "observed": "Run 2026-09-09: the contract expects the victory facts to be determined at tier A; the control kernel returned unsupported / mode_unknown — 'the victory facts need the Mode of Play and no teams' (456.3, 472).",
+        "decided": "Same as JC-CS-001: the engine is right to decline, the contract stays at A, and the gap is recorded rather than papered over.",
+        "follow_up": "The minimum state builder has no slot for the Mode of Play, so no Victory Score is in the state and the control kernel declines (mode_unknown, citing Core 456.3). The same absence is what makes the engine decline every Burn Out question. This is a state-builder coverage gap the corpus has now hit from two families; it belongs to a state-builder package, not to S-04."
+      },
+      "zh_hant": null,
+      "notes": "472: at a cleanup a player with points at or above the Victory Score and more than any opponent wins. The control step that reads those facts is the claim."
+    },
+    {
+      "question_id": "JC-CS-003",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "I Held a Battlefield this turn and then Conquered it again. Do I score it twice?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 470"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_score_once_per_battlefield_per_turn"
+        ],
+        "required_source_locators": [
+          "Core 470"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_score_once_per_battlefield_per_turn"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "470: a player may only Score, from either method, once per Battlefield per turn. The answer surface has no template for it; declared as debt."
+    },
+    {
+      "question_id": "JC-CS-004",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "I am one point short of the Victory Score and I Conquer a Battlefield. Do I gain the Final Point?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 471.1.b",
+        "Core 471.1.b.1"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_final_point_needs_every_battlefield_scored"
+        ],
+        "required_source_locators": [
+          "Core 471.1.b",
+          "Core 471.1.b.1"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_final_point_needs_every_battlefield_scored"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "471.1.b.1: the Final Point through Conquer only if every Battlefield was scored this turn; otherwise the player draws a card instead. Declared as debt."
+    },
+    {
+      "question_id": "JC-CS-005",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "A spell gives me a point while I am one short of the Victory Score. Is that gain held back the way a Conquer is?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 471.1.a.1"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_non_conquer_points_unrestricted"
+        ],
+        "required_source_locators": [
+          "Core 471.1.a.1"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_non_conquer_points_unrestricted"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "471.1.a.1: points gained from sources that are not Conquer are not beholden to the Final Point restrictions. Declared as debt."
+    },
+    {
+      "question_id": "JC-CS-006",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "Which abilities trigger when I Hold a Battlefield, and can they trigger again the same turn?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 471.2.b",
+        "Core 471.2.c"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_hold_abilities_trigger_once_when_scored"
+        ],
+        "required_source_locators": [
+          "Core 471.2.b",
+          "Core 471.2.c"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_hold_abilities_trigger_once_when_scored"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "471.2.b: Hold abilities trigger at a Battlefield that was Held; 471.2.c: only when the Battlefield is Scored, so at most once per turn per player. Declared as debt."
+    },
+    {
+      "question_id": "JC-CS-007",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "In what ways can a player gain points in Riftbound?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 194.1"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_ways_to_gain_points"
+        ],
+        "required_source_locators": [
+          "Core 194.1"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_ways_to_gain_points"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "194.1.a-d: Holding, Conquering, effects that instruct a gain, and an opponent's Burn Out that picks the player. Declared as debt."
+    },
+    {
+      "question_id": "JC-TSE-001",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "My deck is empty during my Draw Phase. Do I still draw after Burning Out?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "engine_check_did_not_decide",
+      "consultation_entry": "effect",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "315.4.b.1-2: the Turn Player has Burned Out and, after completing it, still Draws 1. The engine declines: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry. A real boundary, expected to abstain."
+    },
+    {
+      "question_id": "JC-TSE-002",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "An effect tells me to draw two with one card left in my deck. What happens?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "engine_check_did_not_decide",
+      "consultation_entry": "effect",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "431.1.a: draw as many as possible, Burn Out, then draw the remaining amount. Same boundary as JC-TSE-001; the engine declines rather than ruling."
+    },
+    {
+      "question_id": "JC-TSE-003",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "I Burn Out twice in one turn. Does my opponent gain a point each time?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "engine_check_did_not_decide",
+      "consultation_entry": "effect",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "431.2.c: to Burn Out, the player chooses an opponent to gain 1 point. The engine declines the repeated Burn Out without a Victory Score; expected to abstain."
+    },
+    {
+      "question_id": "JC-TSE-004",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "What is the Victory Score by default, and can anything change it?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 194.3",
+        "Core 194.3.a"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_victory_score_default"
+        ],
+        "required_source_locators": [
+          "Core 194.3",
+          "Core 194.3.a"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_victory_score_default"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "194.3: 8 points by default; 194.3.a: modes or card effects may alter it. Declared as debt."
+    },
+    {
+      "question_id": "JC-TSE-005",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "Both of us reach the Victory Score in the same cleanup with the same points. Who wins?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 194.2.a",
+        "Core 194.2.b"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_victory_tie_continues"
+        ],
+        "required_source_locators": [
+          "Core 194.2.a",
+          "Core 194.2.b"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_victory_tie_continues"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "194.2.a: more points wins; 194.2.b: equal points, play continues until one player has more in a cleanup. Declared as debt."
+    },
+    {
+      "question_id": "JC-TSE-006",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "An effect would make me lose a point while I have zero. Do I go negative, and does anything trigger?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 194.4",
+        "Core 194.4.a",
+        "Core 194.4.b"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_points_floor_at_zero"
+        ],
+        "required_source_locators": [
+          "Core 194.4",
+          "Core 194.4.a",
+          "Core 194.4.b"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_points_floor_at_zero"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "194.4: never below 0; 194.4.a: nothing occurs; 194.4.b: loss triggers do not trigger. Declared as debt."
+    },
+    {
+      "question_id": "JC-TSE-007",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "When exactly does the game end after someone reaches the Victory Score?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 194.2",
+        "Core 196"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_game_ends_when_a_player_wins"
+        ],
+        "required_source_locators": [
+          "Core 194.2",
+          "Core 196"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_game_ends_when_a_player_wins"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "194.2: the win is checked in a cleanup; 196: when a player wins, the game ends. Declared as debt."
+    },
+    {
+      "question_id": "JC-AA-001",
+      "family": "available_actions",
+      "language": "en",
+      "question": "It is my main phase, the chain is empty and I hold priority. What may I do right now?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 410.1.a"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "legal_action",
+      "bounded_note": true,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "legal_action_available"
+        ],
+        "required_source_locators": [
+          "Core 410.1.a"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "410.1.a: a Discretionary Action may be performed at any time during a player's turn in a Neutral Open State. Bounded enumeration; the answer must say so."
+    },
+    {
+      "question_id": "JC-AA-002",
+      "family": "available_actions",
+      "language": "en",
+      "question": "It is my opponent's turn and nothing is on the chain. Do I have any discretionary action?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 409"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "legal_action",
+      "bounded_note": true,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "legal_action_available"
+        ],
+        "required_source_locators": [
+          "Core 409"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "409: a player may only perform actions on their turn unless otherwise specified. Expected: the enumeration for p1 on p2's turn finds a legal action only if one is timed for it; the engine's verdict is the answer."
+    },
+    {
+      "question_id": "JC-AA-003",
+      "family": "available_actions",
+      "language": "en",
+      "question": "During my main phase, how many discretionary actions may I take?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 316.5.a",
+        "Core 410.1.b"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": true,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_any_number_of_discretionary_actions"
+        ],
+        "required_source_locators": [
+          "Core 316.5.a",
+          "Core 410.1.b"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_any_number_of_discretionary_actions"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "316.5.a and 410.1.b: any number, as long as conditions are met and costs paid. Declared as debt."
+    },
+    {
+      "question_id": "JC-AA-004",
+      "family": "available_actions",
+      "language": "en",
+      "question": "May I take a discretionary action that would leave the game in a forbidden state?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 410.1.b.3"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": true,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_no_forbidden_state_by_discretionary_action"
+        ],
+        "required_source_locators": [
+          "Core 410.1.b.3"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_no_forbidden_state_by_discretionary_action"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "410.1.b.3, with its own example of a Standard Move onto a Battlefield occupied by two other players' units. Declared as debt."
+    },
+    {
+      "question_id": "JC-AA-005",
+      "family": "available_actions",
+      "language": "en",
+      "question": "Can I choose to draw a card whenever I want?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 410.2.a",
+        "Core 410.2.b"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": true,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_limited_actions_only_when_instructed"
+        ],
+        "required_source_locators": [
+          "Core 410.2.a",
+          "Core 410.2.b"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_limited_actions_only_when_instructed"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "410.2.a-b: a Limited Action is caused by a spell, ability or the turn's progression and cannot be taken at will; drawing is the rule's own example. Declared as debt rather than reusing the 312.1.b.1 template, whose text is a different sentence."
+    },
+    {
+      "question_id": "JC-AA-006",
+      "family": "available_actions",
+      "language": "en",
+      "question": "Who may play spells during a Neutral Open State?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 316.5.b"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": true,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_only_turn_player_acts_in_neutral_open_state"
+        ],
+        "required_source_locators": [
+          "Core 316.5.b"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_only_turn_player_acts_in_neutral_open_state"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "316.5.b: only the Turn Player has the ability to play spells or activate abilities in a Neutral Open State. Declared as debt."
+    },
+    {
+      "question_id": "JC-AA-007",
+      "family": "available_actions",
+      "language": "en",
+      "question": "My opponent holds priority in my main phase. May I play a spell right now?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 312.1.a"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": true,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "timing_play_refused"
+        ],
+        "required_source_locators": [
+          "Core 312.1.a"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "312.1.a: only the player with Priority can take Discretionary Actions. Not the enumeration entry: this asks about one action, and the timing kernel rules on it."
+    },
+    {
+      "question_id": "JC-CI-001",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "My spell deals 1 damage to an enemy unit with Shield that is not currently defending. Does Shield reduce it?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 814.1.c",
+        "Core 814.1.d"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "effect",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "effect_program_applies"
+        ],
+        "required_source_locators": [
+          "Core 814.1.c",
+          "Core 814.1.d"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "814.1.c: Shield is short for 'While I am a defender, I have +X [M]'; 814.1.d: defender means the Defender designation during Combat. Outside Combat the damage applies as written, and the effect kernel's verdict is the claim."
+    },
+    {
+      "question_id": "JC-CI-002",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "A unit's ability is printed on a card the service has no text for. Does the ability change anything here?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "unknown_card_snapshot",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "No snapshot, no claim. The answer abstains rather than reasoning from the card's name."
+    },
+    {
+      "question_id": "JC-CI-003",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "A card says Shield with no number. What is its Shield Value?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 814.1.b.3"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_shield_value_omitted_is_one"
+        ],
+        "required_source_locators": [
+          "Core 814.1.b.3"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_shield_value_omitted_is_one"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "814.1.b.3: if X is omitted it is presumed to be 1. Declared as debt."
+    },
+    {
+      "question_id": "JC-CI-004",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "A unit has Shield and is granted Shield 3 by an effect. What is its Shield Value?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 814.2"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_shield_values_sum"
+        ],
+        "required_source_locators": [
+          "Core 814.2"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_shield_values_sum"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "814.2: the Shield Value of all granted Shield keywords is summed; the rule's own example reaches Shield 4. Declared as debt."
+    },
+    {
+      "question_id": "JC-CI-005",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "My unit has Tank. What does Tank require of the player assigning combat damage?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 815.1.b",
+        "Core 815.1.c.1"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_tank_assigned_lethal_first"
+        ],
+        "required_source_locators": [
+          "Core 815.1.b",
+          "Core 815.1.c.1"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_tank_assigned_lethal_first"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "815.1.b: lethal damage must be assigned to it before any same-controller unit without Tank; 815.1.c.1: still lethal before moving on. Declared as debt."
+    },
+    {
+      "question_id": "JC-CI-006",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "A unit has Tank from two sources. Does it get assigned damage twice over?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 815.2"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_multiple_tank_redundant"
+        ],
+        "required_source_locators": [
+          "Core 815.2"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_multiple_tank_redundant"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "815.2: multiple instances of Tank are redundant. Declared as debt."
+    },
+    {
+      "question_id": "JC-CI-007",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "Does my unit keep its Shield bonus once the Combat it was defending in has ended?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 814.1.d.1"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_shield_lasts_while_defender"
+        ],
+        "required_source_locators": [
+          "Core 814.1.d.1"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_shield_lasts_while_defender"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "814.1.d.1: Shield remains in effect as long as the unit maintains the Defender designation. Declared as debt."
+    },
+    {
+      "question_id": "JC-TP-001",
+      "family": "tournament_policy",
+      "language": "en",
+      "question": "My opponent's decklist does not match what they are playing. What is the ruling and the penalty?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "tournament_policy_red_line",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": {
+        "question": "對手的牌表跟實際打的不一樣。裁決與罰則是什麼？"
+      },
+      "notes": "Declined by policy: tournament procedure and penalties are not the service's to rule on, and this abstention is a decision rather than a mechanism running out."
+    },
+    {
+      "question_id": "JC-TP-002",
+      "family": "tournament_policy",
+      "language": "en",
+      "question": "We ran out of time in a Swiss round with the game undecided. How is the match scored?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "tournament_policy_red_line",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "Declined by policy: tournament procedure and penalties are not the service's to rule on, and this abstention is a decision rather than a mechanism running out."
+    },
+    {
+      "question_id": "JC-TP-003",
+      "family": "tournament_policy",
+      "language": "en",
+      "question": "A judge made a call I think is wrong. How do I appeal it?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "tournament_policy_red_line",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "Declined by policy: tournament procedure and penalties are not the service's to rule on, and this abstention is a decision rather than a mechanism running out."
+    },
+    {
+      "question_id": "JC-TP-004",
+      "family": "tournament_policy",
+      "language": "en",
+      "question": "Is my opponent allowed to take notes during the match?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "tournament_policy_red_line",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "Declined by policy: tournament procedure and penalties are not the service's to rule on, and this abstention is a decision rather than a mechanism running out."
+    },
+    {
+      "question_id": "JC-TP-005",
+      "family": "tournament_policy",
+      "language": "en",
+      "question": "What happens if a player is late to their seat when the round starts?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "tournament_policy_red_line",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "Declined by policy: tournament procedure and penalties are not the service's to rule on, and this abstention is a decision rather than a mechanism running out."
     }
   ]
 }

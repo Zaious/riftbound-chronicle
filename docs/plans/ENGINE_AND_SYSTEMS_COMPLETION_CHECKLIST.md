@@ -4,7 +4,7 @@ Status: active implementation ledger
 
 Baseline: Core Rules 2026-07-16; FAQ as of 2026-08-14
 
-Last reconciled: 2026-09-02
+Last reconciled: 2026-09-08
 
 This is the single completion ledger for Chronicle's sovereign rules engine and
 four user-facing systems. A checked item means an implementation, contract, and
@@ -511,8 +511,17 @@ collect/normalize card clauses and implement assigned cards.
 - [x] Accept the global-core card-program plus regional-overlay architecture.
 - [x] Select Annie and Master Yi Proving Grounds as Wave A; defer Lux/Garen to
   Wave B of the same global core pack.
+  (**Superseded by the Round H reconciliation, 2026-09-08.** Wave B was not
+  compiled as a Lux/Garen clause inventory. It became a general clause grammar
+  in the public engine plus two engine-closed Master Yi decks in the private
+  overlay. The original selection is kept here as history; the Lux/Garen
+  inventory is neither delivered nor cancelled, and no schedule now depends on
+  it.)
 - [ ] Verify the candidate fixed decklists against a physical Proving Grounds
   product or a second independent source.
+  (**Superseded schedule, 2026-09-08.** This gated the original Proving Grounds
+  harness. That harness is now R5-P in section 13, planned internal research
+  rather than a service-v0 gate; the verification itself is still open.)
 - [ ] Define the first `taiwan-origins-v1` release/legality/localization overlay.
 - [ ] Freeze applicable card text, errata, ruleset, global pack, and overlay.
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
@@ -607,7 +616,12 @@ normalization and adversarial fixtures become `[CLAUDE-READY]`.
   added / repaid / reclassified. There is no repayment quota. The ledger also
   counts the promotion split, so G-3's three-gate rule is a number: 28 claimed
   clauses the grammar reproduces, 20 still hand-written and in the debt.)
-- [ ] Grow the grammar past the first Proving Grounds corpus.
+- [x] Grow the grammar past the first Proving Grounds corpus.
+  (Round H: 37 productions over 5 sub-grammars, measured across the 33 deck
+  snapshots the private overlay carries rather than the first corpus alone.
+  Gate: `check_clause_grammar.py`, corpus round trip 30 reproduced / 0
+  disagreed. What the grammar still cannot read stays in the coverage debt and
+  is reported, not estimated.)
 
 ## 6. R5 — Evaluation, search, and learning research
 
@@ -628,7 +642,9 @@ gates remain `[CODEX-CONTEXT]`.
 - [ ] **R5-B:** bounded local search only after state ownership, R4 legal
   actions, deterministic transitions, and G3 terminal-state conformance.
 - [ ] **R5-C:** P2-S/public simulation/RL remains outside the active roadmap
-  until a separate authorization and product decision.
+  until a separate authorization and product decision. (Private, non-public
+  simulation research is R5-P in section 13; it is planned, not cancelled, and
+  it is not a public-service gate.)
 
 ## 7. Shared `engine-check.v1` integration layer
 
@@ -931,6 +947,63 @@ real artifact migration should establish the presentation semantics first.
 | X-06 — architecture completed 2026-09-02 | R4 observation and legal-action architecture | ADR-0003 fixes Phase A/B, information sets, completeness, hidden-data safety, and abstention |
 | X-07 | Match Analyst normalization/review contract and router activation | Must keep Review/Commentary consistent and satisfy all gates |
 | X-08 | Riot authorization interpretation and P2-S boundary | Product authority cannot be inferred from an isolated coding task |
+
+### Round H — 2026-09-07/08 reconciliation
+
+Delivered against decision packets DP-84 to DP-96. Every row names the artifact
+and the gate that accepts it; a row without a gate is not a completed row. The
+engine work below is in the public repository; the deck snapshots, card
+mappings, closures and Deck Coach artifacts named in the last three rows are
+private-overlay data and are **not** part of a public clone.
+
+| ID — status | Delivered | Artifact | Gate |
+| --- | --- | --- | --- |
+| DP-84 — completed 2026-09-07 | Productions became templates over sub-grammars, with pairwise goldens for jointly meaningful slots | `build_clause_grammar.py`, `clause_grammar.json` | `check_clause_grammar.py` |
+| DP-85 — completed 2026-09-07 | The keyword catalogue is the single source; a production may not name a keyword the catalogue does not | `keyword_catalog.py` | `check_keyword_catalog.py`, `check_deathknell.py` |
+| DP-86 — completed 2026-09-07 | Sequencing (`and` / `then`), referents (`it`, `that unit`) bound to the earlier decision, and three linked prefixes reading only the previous receipt | `clause_grammar.py` | `check_clause_grammar.py` |
+| DP-87 — deferred | Recruit/Sprite token promotion; needs a named human reviewer and stays `pending_human_review` | — | — |
+| DP-88 — accepted 2026-09-07 | Seven declared not-doing classes | coverage debt entries | `check_coverage_debt.py` |
+| DP-89 — completed 2026-09-07 | Deathknell bound to the real death event, identity and timing | `effect_ir.deathknell_instances` | `check_deathknell.py` |
+| DP-90 — completed 2026-09-07 | Splitter normalization; a splitter change is reported as `normalization_reclassification`, never as repayment | `build_r3_inventory.split_clauses`, `coverage_debt.py` | `check_clause_splitting.py`, `check_coverage_debt.py` |
+| DP-91 — accepted 2026-09-07 | Depth before breadth, with the target chosen by measured blockers | `docs/measurements/` (overlay) | — |
+| DP-92 — completed 2026-09-07 | `accelerate.v1` under four contracts: explicit choice, Domain-matched Power, receipt bound to one play, enumerator and payment path shared | `play_transaction.accelerate_offer` | `check_accelerate.py` |
+| DP-93 — completed 2026-09-08 | `cost-comparison.v1`: three cost bases, two power measures per basis, mandatory authority status; an unobservable basis abstains rather than qualifying | `cost_comparison.py` | `check_cost_comparison.py` |
+| DP-94 — completed 2026-09-08 | `stun.v1`: direct application only, owned by a turn effect and cleared at Expiration 3d; Combat Damage contribution only, Might and lethal threshold unchanged; re-stunning is a legal no-op with no event | `effect_ir` stun op, `resolution_bridge` expiration | `check_stun.py` |
+| DP-95 — completed 2026-09-08 | `occupied_enemy_battlefield` play permission behind one predicate the transaction and the enumerator both read | `play_transaction.battlefield_entry_paths` | `check_play_destination.py` |
+| DP-96 — completed 2026-09-08 | `move_restriction.v1`: one predicate, two behaviours — a Standard Move is refused by name, an effect-induced Move keeps the choice and has that instruction ignored (Core 359.3.e.6) | `effect_ir.move_restricted` | `check_move_restriction.py` |
+| Round H engine — completed 2026-09-08 | Card-self optional additional costs, modal clauses, the replacement subject, the player referent bound to a reveal, `exclude_source_identity`, and a chosen Move destination | `play_transaction`, `effect_ir`, `clause_grammar` | `check_card_self_cost.py`, `check_modal_clause.py`, `check_replacement_subject.py`, `check_player_ref_and_reveal.py`, `check_exclude_source.py`, `check_move_destination.py` |
+| Round H closure — completed 2026-09-08 (private overlay) | `deck-closure.v1`: every slot of two Master Yi decks carries an active program and an evidence receipt, verified by re-derivation; six edits each break it | overlay `scripts/deck_closure.py` | overlay `scripts/check_deck_closure.py` |
+| Round H Deck Coach consumption — completed 2026-09-08 (private overlay) | The real pipeline produces a finalized session with an eight-section primer, and the closure attaches through `deck_coach.attach_engine_check()` as `rules_consistency_only` | overlay `scripts/deck_coach_closure.py` | overlay `scripts/check_deck_closure.py` |
+| Round H portability — completed 2026-09-08 (private overlay) | 33 version-controlled `deck-snapshot.v1` files replace a maintainer's runtime path; import is a maintainer command with an explicit source root | overlay `scripts/deck_snapshot.py` | overlay `scripts/check_portability.py` |
+
+Not delivered by Round H, and not to be read as delivered: the service-layer
+state builder, the fact-ledger gate, the unified Rule Consult command, and the
+judge corpus. Section 9 below still holds for all four.
+
+### R5-P — Private simulation / Proving Grounds research
+
+Status: **planned internal research**. Not cancelled, not descoped, and not a
+public-service v0 gate. It supersedes the original Proving Grounds harness
+schedule, which assumed a Wave B that took a different shape (see the
+superseded rows in section 4).
+
+- [ ] **R5-P:** specification — purpose, scope, admissible outputs, and the
+  seven entry conditions. Private overlay only. The hard boundaries are: no
+  user-facing automated player, no public automated play, no public endpoint,
+  and no published win rate, Tier, meta, or official-rules claim. Internal
+  versioned policy runners are permitted only after all seven entry gates
+  pass; they are research instruments, not a user-facing Player 2 agent or a
+  public gameplay feature.
+- [ ] **R5-P:** a complete legal-action set proved for the closed environment.
+  The current bounded enumeration keeps `complete_action_set: false` and may
+  not stand in for it.
+- [ ] **R5-P:** deterministic transitions over every reachable state, or an
+  explicit unsupported stop.
+- [ ] **R5-P:** seed, receipt, and replay for draw, shuffle, and every other
+  random event.
+- [ ] **R5-P:** terminal-state and reward/observation contract.
+- [ ] **R5-P:** a fixed, versionable policy interface.
+- [ ] **R5-P:** a fresh Riot boundary review before any external exposure.
 
 ## Claude handoff template
 

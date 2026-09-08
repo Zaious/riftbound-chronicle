@@ -188,13 +188,19 @@ def verify_pack(pack: dict[str, Any]) -> dict[str, Any]:
     result_match = rerun["result_hash"] == pack["engine_check"]["result_hash"]
     check_match = rerun["check_id"] == pack["engine_check"]["check_id"]
     outcome_match = rerun["outcome"] == pack["engine_check"]["outcome"]
-    verified = engine_match and inputs_match and result_match and check_match
+    verified = engine_match and inputs_match and result_match and check_match and outcome_match
     if not engine_match:
         reason = "engine_mismatch"
     elif not inputs_match:
         reason = "inputs_tampered"
     elif not result_match:
         reason = "result_not_reproduced"
+    elif not outcome_match:
+        # The outcome is derived from the result. A pack whose result still
+        # reproduces but whose outcome does not is one where the verdict was
+        # edited by hand, which is the cheapest possible forgery and was
+        # previously reported as verified.
+        reason = "outcome_not_reproduced"
     else:
         reason = "ok"
     return {

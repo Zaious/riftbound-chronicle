@@ -45,6 +45,21 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 CASES = SKILL_DIR / "data" / "fact_ledger_cases.json"
 
 
+class Retriever:
+    """A source retriever standing in for the indexed rules corpus.
+
+    The real service passes one backed by the rules index; this one is a table,
+    because the public repository holds no licensed document text. What matters
+    to the ledger is the shape of the answer, not where it came from.
+    """
+
+    def __init__(self, table):
+        self.table = copy.deepcopy(table)
+
+    def retrieve(self, locator):
+        return copy.deepcopy(self.table.get(locator, {"status": "not_found", "record": None}))
+
+
 def real_engine_checks() -> dict[str, dict]:
     """Three engine checks from real kernel runs on S-01-built states."""
     timing = state_builder.build_state_assumption(
@@ -102,6 +117,7 @@ def main() -> int:
     payload = json.loads(CASES.read_text(encoding="utf-8"))
     cases = payload["cases"]
     index = set(payload["locator_index"])
+    retriever = Retriever(payload["retrievals"])
     snapshots = payload["card_snapshots"]
     checks, assumption_artifact = real_engine_checks()
 
@@ -119,14 +135,15 @@ def main() -> int:
         case_id = case["case_id"]
         expected = case["expected"]
         sentences = [{**s, "sources": resolve(s["sources"], checks)} for s in case["sentences"]]
+        case_index = retriever if case.get("use_retriever") else index
         ledger = build_ledger(question=case["question"], sentences=sentences,
-                              engine_checks=list(checks.values()), locator_index=index,
+                              engine_checks=list(checks.values()), locator_index=case_index,
                               card_snapshots=snapshots, assumption_artifact=assumption_artifact)
         built[case_id] = ledger
 
         if problems := validate_ledger(ledger):
             failures.append(f"{case_id}: its own ledger does not validate: {problems}")
-        if problems := verify_ledger(ledger, list(checks.values()), index, snapshots, assumption_artifact):
+        if problems := verify_ledger(ledger, list(checks.values()), case_index, snapshots, assumption_artifact):
             failures.append(f"{case_id}: its own ledger does not verify against the context it was built on: {problems}")
         if ledger["admissible"] is not expected["admissible"]:
             failures.append(f"{case_id}: admissible was {ledger['admissible']}, expected {expected['admissible']}")
@@ -317,6 +334,25 @@ def main() -> int:
             {**context, "assumption_artifact": reordered},
             expect_in_reason="bound to content that is no longer what the context holds")
 
+    # F8. A retrieved official-text source binds its document. The document is
+    # revised under the same locator, so the ledger still names a real source
+    # and still cites it correctly — and the answer was built on text that is
+    # no longer what that locator says.
+    retrieved = built["FL-017"]["entries"][0]["sources"][0]
+    if retrieved["status"] != "verified" or not retrieved["bound_hash"]:
+        failures.append("a retrieved official-text source must carry its binding")
+    revised = copy.deepcopy(payload["retrievals"])
+    revised["Core 339.1"]["record"]["text_hash"] = "sha256:" + "ff" * 32
+    forgery("official text revised under the same locator", copy.deepcopy(built["FL-017"]),
+            {**context, "locator_index": Retriever(revised)},
+            expect_in_reason="bound to content that is no longer what the context holds")
+
+    # F9. The same ledger against a bare set instead of the retriever: the
+    # source still passes membership, but the binding it claims is gone.
+    forgery("retrieved source checked against an index that cannot bind",
+            copy.deepcopy(built["FL-017"]), {**context, "locator_index": {"Core 339.1"}},
+            expect_in_reason="bound to content that is no longer what the context holds")
+
     # F7. No status touched at all: the violations are simply deleted from a
     # ledger whose second sentence has no source.
     f7 = copy.deepcopy(fallen)
@@ -326,7 +362,7 @@ def main() -> int:
     forgery("violations deleted from an unsourced answer", reseal(f7), context,
             expect_in_reason="violations claimed []")
 
-    forgeries = 7
+    forgeries = 9
 
     # The validator has to refuse the ledgers a hand-written one would be.
     good = copy.deepcopy(built["FL-001"])

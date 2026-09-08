@@ -1,8 +1,29 @@
 {
   "schema_version": "consultation-command-cases.v1",
   "ruleset_baseline": "2026-07-16",
-  "note": "Each of the five entries has a path that produces an answer and a path that does not. A path that does not produce an answer names its reason; none of them produces prose. Values written as @name are placeholders the gate replaces with objects it builds by running the real engine, so no case can pass against a stub.",
-  "locator_index": ["Core 312", "Core 339.1", "Core 423.1.b", "Core 464.2", "Core 323.6"],
+  "note": "Each of the five entries has a path that answers and a path that does not, and the three tiers each have cases of their own. Values written as @name are placeholders the gate replaces with objects it builds by running the real engine, so no case can pass against a stub. The source table stands in for the rules index; the service passes a retriever backed by the real one.",
+  "sources": {
+    "table": {
+      "Core 312": {"status": "retrieved",
+                   "record": {"document_id": "core-rules", "document_version": "2026-07-16",
+                              "locator": "Core 312",
+                              "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"}},
+      "Core 339.1": {"status": "retrieved",
+                     "record": {"document_id": "core-rules", "document_version": "2026-07-16",
+                                "locator": "Core 339.1",
+                                "text_hash": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"}},
+      "Core 423.1.b": {"status": "retrieved",
+                       "record": {"document_id": "core-rules", "document_version": "2026-07-16",
+                                  "locator": "Core 423.1.b",
+                                  "text_hash": "sha256:3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c"}},
+      "Core 341.2": {"status": "conflict", "record": null},
+      "Core 205.1": {"status": "superseded", "record": null}
+    },
+    "surfaced": {}
+  },
+  "card_snapshots": {
+    "synthetic-unit-a": {"text_hash": "sha256:0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0"}
+  },
   "timing_draft": {"players": ["p1", "p2"], "turn_player": "p1", "phase": "main", "priority": "p1"},
   "effect_draft": {
     "players": ["p1", "p2"],
@@ -13,12 +34,13 @@
     {
       "case_id": "CR-001",
       "path": "happy",
+      "tier_case": "A",
       "question": "It is my main phase and I hold priority. May I play a spell?",
       "entry": "timing",
       "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
       "claims": [
         {"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}},
-        {"template": "official_text_governs", "slots": {"locator": "Core 312"}, "ref": "Core 312"}
+        {"template": "official_text_recorded", "slots": {"locator": "Core 312"}}
       ],
       "expected": {"status": "answered", "tier": "A", "claims": 2}
     },
@@ -30,17 +52,18 @@
       "draft_override": {"players": ["p1", "p2"], "phase": "main"},
       "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
       "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}}],
-      "expected": {"status": "not_attempted", "reason": "state_not_built"}
+      "expected": {"status": "not_attempted", "reason": "state_not_built", "tier": "C"}
     },
     {
       "case_id": "CR-003",
       "path": "happy",
+      "tier_case": "A",
       "question": "My unit deals 1 damage to their 2 Might unit. Does the effect apply?",
       "entry": "effect",
       "entry_inputs": {"program": "@applying_program"},
       "claims": [
         {"template": "effect_program_applies", "slots": {}},
-        {"template": "assumption_stands", "slots": {"assumption_slot": "chain_items"}, "ref": "chain_items"}
+        {"template": "assumption_stands", "slots": {"assumption_slot": "chain_items"}}
       ],
       "expected": {"status": "answered", "tier": "A", "claims": 2}
     },
@@ -51,11 +74,36 @@
       "entry": "effect",
       "entry_inputs": {"program": "@declining_program"},
       "claims": [{"template": "effect_program_applies", "slots": {}}],
-      "expected": {"status": "not_attempted", "reason": "engine_declined"}
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid", "tier": "C",
+                   "engine_declined": true}
     },
     {
       "case_id": "CR-005",
       "path": "happy",
+      "tier_case": "B",
+      "question": "If my spell kills their unit, what does the official text say about the follow-up?",
+      "entry": "effect",
+      "entry_inputs": {"program": "@declining_program"},
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 423.1.b"}}],
+      "expected": {"status": "answered", "tier": "B", "claims": 1, "engine_declined": true}
+    },
+    {
+      "case_id": "CR-006",
+      "path": "failure",
+      "question": "If my spell kills their unit, may I draw a card?",
+      "entry": "effect",
+      "entry_inputs": {"program": "@declining_program"},
+      "claims": [
+        {"template": "official_text_recorded", "slots": {"locator": "Core 423.1.b"}},
+        {"template": "effect_program_applies", "slots": {}}
+      ],
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid", "tier": "C",
+                   "engine_declined": true}
+    },
+    {
+      "case_id": "CR-007",
+      "path": "happy",
+      "tier_case": "A",
       "question": "Can damage be assigned in Combat from this position?",
       "entry": "combat_step",
       "entry_inputs": {"step": "assign"},
@@ -63,17 +111,18 @@
       "expected": {"status": "answered", "tier": "A", "claims": 1}
     },
     {
-      "case_id": "CR-006",
+      "case_id": "CR-008",
       "path": "failure",
       "question": "What happens at the resolution step of Combat?",
       "entry": "combat_step",
       "entry_inputs": {"step": "resolution"},
       "claims": [{"template": "combat_step_completes", "slots": {"step": "assign"}}],
-      "expected": {"status": "not_attempted", "reason": "entry_inputs_missing"}
+      "expected": {"status": "not_attempted", "reason": "entry_inputs_missing", "tier": "C"}
     },
     {
-      "case_id": "CR-007",
+      "case_id": "CR-009",
       "path": "happy",
+      "tier_case": "A",
       "question": "Does board cleanup complete from this position?",
       "entry": "control_step",
       "entry_inputs": {"step": "board_cleanup"},
@@ -81,18 +130,19 @@
       "expected": {"status": "answered", "tier": "A", "claims": 1}
     },
     {
-      "case_id": "CR-008",
+      "case_id": "CR-010",
       "path": "failure",
       "question": "Does board cleanup complete?",
       "entry": "control_step",
       "omit_effect_draft": true,
       "entry_inputs": {"step": "board_cleanup"},
       "claims": [{"template": "control_step_completes", "slots": {"step": "board_cleanup"}}],
-      "expected": {"status": "not_attempted", "reason": "entry_inputs_missing"}
+      "expected": {"status": "not_attempted", "reason": "entry_inputs_missing", "tier": "C"}
     },
     {
-      "case_id": "CR-009",
+      "case_id": "CR-011",
       "path": "happy",
+      "tier_case": "A",
       "question": "Do I have any legal action in this position?",
       "entry": "legal_action",
       "entry_inputs": {"acting_player": "p1", "observation": "@observation"},
@@ -100,34 +150,34 @@
       "expected": {"status": "answered", "tier": "A", "claims": 1}
     },
     {
-      "case_id": "CR-010",
+      "case_id": "CR-012",
       "path": "failure",
       "question": "Do I have any legal action, and may I play a spell?",
       "entry": "legal_action",
       "entry_inputs": {"acting_player": "p1", "observation": "@observation"},
       "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}}],
-      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid", "tier": "C"}
     },
     {
-      "case_id": "CR-011",
+      "case_id": "CR-013",
       "path": "failure",
       "question": "During the mulligan, do the set-aside cards go to the bottom first?",
       "entry": "mulligan",
       "entry_inputs": {},
       "claims": [],
-      "expected": {"status": "not_attempted", "reason": "entry_not_covered"}
+      "expected": {"status": "not_attempted", "reason": "entry_not_covered", "tier": "C"}
     },
     {
-      "case_id": "CR-012",
+      "case_id": "CR-014",
       "path": "failure",
       "question": "It is my main phase and I hold priority. May I play a spell?",
       "entry": "timing",
       "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
       "claims": [],
-      "expected": {"status": "not_attempted", "reason": "no_claims_offered"}
+      "expected": {"status": "not_attempted", "reason": "no_claims_offered", "tier": "C"}
     },
     {
-      "case_id": "CR-013",
+      "case_id": "CR-015",
       "path": "failure",
       "question": "May I play a spell?",
       "entry": "timing",
@@ -135,27 +185,7 @@
       "claims": [{"template": "timing_play_permitted",
                   "slots": {"actor": "You may play a spell, and your opponent cannot respond.",
                             "object_kind": "spell"}}],
-      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
-    },
-    {
-      "case_id": "CR-014",
-      "path": "failure",
-      "question": "May I play a spell?",
-      "entry": "timing",
-      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
-      "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"},
-                  "ref": "engine-check:0000000000000000000000ff"}],
-      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
-    },
-    {
-      "case_id": "CR-015",
-      "path": "failure",
-      "question": "May I play a spell, and what covers it?",
-      "entry": "timing",
-      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
-      "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}},
-                 {"template": "official_text_governs", "slots": {"locator": "Core 999.9"}, "ref": "Core 999.9"}],
-      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid", "tier": "C"}
     },
     {
       "case_id": "CR-016",
@@ -164,7 +194,62 @@
       "entry": "timing",
       "entry_inputs": {"action": {"actor": "p2", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
       "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p2", "object_kind": "spell"}}],
-      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid", "tier": "C"}
+    },
+    {
+      "case_id": "CR-017",
+      "path": "happy",
+      "tier_case": "B",
+      "question": "Which official text covers passing on a closed chain?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 339.1"}},
+                 {"template": "card_text_recorded", "slots": {"card": "synthetic-unit-a"}}],
+      "expected": {"status": "answered", "tier": "B", "claims": 2}
+    },
+    {
+      "case_id": "CR-018",
+      "path": "failure",
+      "tier_case": "C",
+      "question": "Which official text covers this? I think it is Core 999.9.",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 999.9"}}],
+      "expected": {"status": "abstained", "tier": "C", "claims": 1,
+                   "violations": ["locator_not_in_index", "unsourced_conclusion"]}
+    },
+    {
+      "case_id": "CR-019",
+      "path": "failure",
+      "tier_case": "C",
+      "question": "Two documents describe this differently. Which one covers it?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 341.2"}}],
+      "expected": {"status": "abstained", "tier": "C", "claims": 1,
+                   "violations": ["source_not_retrievable", "unsourced_conclusion"]}
+    },
+    {
+      "case_id": "CR-020",
+      "path": "failure",
+      "tier_case": "C",
+      "question": "An older printing covered this. Does it still?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 205.1"}}],
+      "expected": {"status": "abstained", "tier": "C", "claims": 1,
+                   "violations": ["source_not_retrievable", "unsourced_conclusion"]}
+    },
+    {
+      "case_id": "CR-021",
+      "path": "failure",
+      "tier_case": "C",
+      "question": "Does the printed text of that other unit change the answer?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "card_text_recorded", "slots": {"card": "synthetic-unit-b"}}],
+      "expected": {"status": "abstained", "tier": "C", "claims": 1,
+                   "violations": ["unknown_card_snapshot", "unsourced_conclusion"]}
     }
   ]
 }

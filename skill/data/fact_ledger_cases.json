@@ -1,165 +1,449 @@
 {
   "schema_version": "fact-ledger-cases.v1",
   "ruleset_baseline": "2026-07-16",
-  "note": "Answers labelled with the tier they may go out at. The engine references are placeholders the gate replaces with the check_id of an engine check it builds by running the real kernel, so no case can pass against a stub. The locator index below stands in for the rules index; the service passes the real one.",
+  "note": "Answers labelled with the tier they may go out at. The engine references are placeholders the gate replaces with the check_id of an engine check it builds by running the real kernel, so no case can pass against a stub. The locator index below stands in for the rules index; the service passes the real one. Cases marked use_retriever are run against a retriever rather than a bare locator set, so their official-text sources carry a binding and can fail for reasons absence cannot express.",
   "locator_index": [
-    "Core 310.1.a", "Core 312", "Core 312.2.a", "Core 316", "Core 339.1",
-    "Core 423.1.b", "Core 359.3.e.6", "Core 355.2.a"
+    "Core 310.1.a",
+    "Core 312",
+    "Core 312.2.a",
+    "Core 316",
+    "Core 339.1",
+    "Core 423.1.b",
+    "Core 359.3.e.6",
+    "Core 355.2.a"
   ],
   "card_snapshots": {
-    "synthetic-unit-a": {"text_hash": "sha256:0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0"}
+    "synthetic-unit-a": {
+      "text_hash": "sha256:0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0"
+    }
   },
   "cases": [
     {
       "case_id": "FL-001",
       "question": "It is my main phase, the chain is empty, and I hold priority. May I play a spell?",
       "sentences": [
-        {"text": "You may play a spell right now.", "mechanical": true,
-         "sources": ["engine:@timing_supported", "official_text:Core 312"]},
-        {"text": "Your opponent gets the chance to respond once it is on the chain.", "mechanical": true,
-         "sources": ["official_text:Core 339.1"]}
+        {
+          "text": "You may play a spell right now.",
+          "mechanical": true,
+          "sources": [
+            "engine:@timing_supported",
+            "official_text:Core 312"
+          ]
+        },
+        {
+          "text": "Your opponent gets the chance to respond once it is on the chain.",
+          "mechanical": true,
+          "sources": [
+            "official_text:Core 339.1"
+          ]
+        }
       ],
-      "expected": {"admissible": true, "tier": "A", "violations": []}
+      "expected": {
+        "admissible": true,
+        "tier": "A",
+        "violations": []
+      }
     },
     {
       "case_id": "FL-002",
       "question": "When both players pass on a closed chain, does the whole chain resolve?",
       "sentences": [
-        {"text": "Only the newest item resolves, and then priority opens again.", "mechanical": true,
-         "sources": ["official_text:Core 339.1"]}
+        {
+          "text": "Only the newest item resolves, and then priority opens again.",
+          "mechanical": true,
+          "sources": [
+            "official_text:Core 339.1"
+          ]
+        }
       ],
-      "expected": {"admissible": true, "tier": "B", "violations": []}
+      "expected": {
+        "admissible": true,
+        "tier": "B",
+        "violations": []
+      }
     },
     {
       "case_id": "FL-003",
       "question": "If my spell kills their unit, do I draw a card from the follow-up effect?",
       "sentences": [
-        {"text": "You draw the card.", "mechanical": true,
-         "sources": ["engine:@effect_unsupported"]}
+        {
+          "text": "You draw the card.",
+          "mechanical": true,
+          "sources": [
+            "engine:@effect_unsupported"
+          ]
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["engine_check_did_not_decide", "unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "engine_check_did_not_decide",
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-004",
       "question": "It is my main phase and I hold priority. May I play a spell, and may my opponent?",
       "sentences": [
-        {"text": "You may play a spell right now.", "mechanical": true,
-         "sources": ["engine:@timing_supported"]},
-        {"text": "Your opponent cannot play one before you pass.", "mechanical": true,
-         "sources": []}
+        {
+          "text": "You may play a spell right now.",
+          "mechanical": true,
+          "sources": [
+            "engine:@timing_supported"
+          ]
+        },
+        {
+          "text": "Your opponent cannot play one before you pass.",
+          "mechanical": true,
+          "sources": []
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-005",
       "question": "May I play a spell in my main phase?",
       "sentences": [
-        {"text": "You may play a spell right now.", "mechanical": true,
-         "sources": ["official_text:Core 999.9"]}
+        {
+          "text": "You may play a spell right now.",
+          "mechanical": true,
+          "sources": [
+            "official_text:Core 999.9"
+          ]
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["locator_not_in_index", "unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "locator_not_in_index",
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-006",
       "question": "Does my opponent get priority before my spell resolves?",
       "sentences": [
-        {"text": "Your opponent holds priority before it resolves.", "mechanical": false,
-         "sources": []}
+        {
+          "text": "Your opponent holds priority before it resolves.",
+          "mechanical": false,
+          "sources": []
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["untagged_mechanical_sentence", "unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "untagged_mechanical_sentence",
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-007",
       "question": "You said no Showdown is open. Is that why my opponent has to wait?",
       "sentences": [
-        {"text": "No Showdown is open in the position this answer was built on.", "mechanical": true,
-         "sources": ["assumption:showdown_active"]},
-        {"text": "You may play a spell right now.", "mechanical": true,
-         "sources": ["engine:@timing_supported"]}
+        {
+          "text": "No Showdown is open in the position this answer was built on.",
+          "mechanical": true,
+          "sources": [
+            "assumption:showdown_active"
+          ]
+        },
+        {
+          "text": "You may play a spell right now.",
+          "mechanical": true,
+          "sources": [
+            "engine:@timing_supported"
+          ]
+        }
       ],
-      "expected": {"admissible": true, "tier": "A", "violations": []}
+      "expected": {
+        "admissible": true,
+        "tier": "A",
+        "violations": []
+      }
     },
     {
       "case_id": "FL-008",
       "question": "How many cards is my opponent holding in the position you used?",
       "sentences": [
-        {"text": "Your opponent may hold up to seven cards there.", "mechanical": true,
-         "sources": ["assumption:hand_size"]}
+        {
+          "text": "Your opponent may hold up to seven cards there.",
+          "mechanical": true,
+          "sources": [
+            "assumption:hand_size"
+          ]
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["unknown_assumption", "unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "unknown_assumption",
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-009",
       "question": "Does the printed text of that unit change the answer?",
       "sentences": [
-        {"text": "That unit deals damage equal to its Might.", "mechanical": true,
-         "sources": ["card_text:synthetic-unit-a", "official_text:Core 423.1.b"]}
+        {
+          "text": "That unit deals damage equal to its Might.",
+          "mechanical": true,
+          "sources": [
+            "card_text:synthetic-unit-a",
+            "official_text:Core 423.1.b"
+          ]
+        }
       ],
-      "expected": {"admissible": true, "tier": "B", "violations": []}
+      "expected": {
+        "admissible": true,
+        "tier": "B",
+        "violations": []
+      }
     },
     {
       "case_id": "FL-010",
       "question": "Does the printed text of the other unit change the answer?",
       "sentences": [
-        {"text": "That unit deals damage equal to its Might.", "mechanical": true,
-         "sources": ["card_text:synthetic-unit-b"]}
+        {
+          "text": "That unit deals damage equal to its Might.",
+          "mechanical": true,
+          "sources": [
+            "card_text:synthetic-unit-b"
+          ]
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["unknown_card_snapshot", "unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "unknown_card_snapshot",
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-011",
       "question": "May I play a spell in my main phase?",
       "sentences": [
-        {"text": "You may play a spell right now.", "mechanical": true,
-         "sources": ["Core 312"]}
+        {
+          "text": "You may play a spell right now.",
+          "mechanical": true,
+          "sources": [
+            "Core 312"
+          ]
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["malformed_source", "unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "malformed_source",
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-012",
       "question": "May I play a spell, and what happens next?",
       "sentences": [
-        {"text": "You may play a spell right now. Your opponent then holds priority.", "mechanical": true,
-         "sources": ["engine:@timing_supported"]}
+        {
+          "text": "You may play a spell right now. Your opponent then holds priority.",
+          "mechanical": true,
+          "sources": [
+            "engine:@timing_supported"
+          ]
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["multi_sentence_entry"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "multi_sentence_entry"
+        ]
+      }
     },
     {
       "case_id": "FL-013",
       "question": "May I play a spell in my main phase?",
       "sentences": [
-        {"text": "You may play a spell right now.", "mechanical": true,
-         "sources": ["engine:engine-check:0000000000000000000000ff"]}
+        {
+          "text": "You may play a spell right now.",
+          "mechanical": true,
+          "sources": [
+            "engine:engine-check:0000000000000000000000ff"
+          ]
+        }
       ],
-      "expected": {"admissible": false, "tier": "C", "violations": ["unknown_engine_check", "unsourced_conclusion"]}
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "unknown_engine_check",
+          "unsourced_conclusion"
+        ]
+      }
     },
     {
       "case_id": "FL-014",
       "question": "What does this answer cover?",
       "sentences": [
-        {"text": "This note describes the position the answer was built on.", "mechanical": false,
-         "sources": []},
-        {"text": "It was written for a two-player game.", "mechanical": false, "sources": []}
+        {
+          "text": "This note describes the position the answer was built on.",
+          "mechanical": false,
+          "sources": []
+        },
+        {
+          "text": "It was written for a two-player game.",
+          "mechanical": false,
+          "sources": []
+        }
       ],
-      "expected": {"admissible": true, "tier": "B", "violations": []}
+      "expected": {
+        "admissible": true,
+        "tier": "B",
+        "violations": []
+      }
     },
     {
       "case_id": "FL-015",
       "question": "Which Battlefield does this concern?",
       "sentences": [
-        {"text": "The position has one Battlefield in it.", "mechanical": true,
-         "sources": ["official_text:Core 355.2.a"]}
+        {
+          "text": "The position has one Battlefield in it.",
+          "mechanical": true,
+          "sources": [
+            "official_text:Core 355.2.a"
+          ]
+        }
       ],
-      "expected": {"admissible": true, "tier": "B", "violations": []}
+      "expected": {
+        "admissible": true,
+        "tier": "B",
+        "violations": []
+      }
     },
     {
       "case_id": "FL-016",
       "question": "May my opponent play a spell while I hold priority?",
       "sentences": [
-        {"text": "Your opponent cannot play a spell while you hold priority.", "mechanical": true,
-         "sources": ["engine:@timing_illegal", "official_text:Core 312"]}
+        {
+          "text": "Your opponent cannot play a spell while you hold priority.",
+          "mechanical": true,
+          "sources": [
+            "engine:@timing_illegal",
+            "official_text:Core 312"
+          ]
+        }
       ],
-      "expected": {"admissible": true, "tier": "A", "violations": []}
+      "expected": {
+        "admissible": true,
+        "tier": "A",
+        "violations": []
+      }
+    },
+    {
+      "case_id": "FL-017",
+      "question": "When both players pass on a closed chain, does the whole chain resolve?",
+      "use_retriever": true,
+      "sentences": [
+        {
+          "text": "Only the newest item resolves, and then priority opens again.",
+          "mechanical": true,
+          "sources": [
+            "official_text:Core 339.1"
+          ]
+        }
+      ],
+      "expected": {
+        "admissible": true,
+        "tier": "B",
+        "violations": []
+      }
+    },
+    {
+      "case_id": "FL-018",
+      "question": "Two documents describe this step differently. Which one holds?",
+      "use_retriever": true,
+      "sentences": [
+        {
+          "text": "The step resolves before priority opens.",
+          "mechanical": true,
+          "sources": [
+            "official_text:Core 341.2"
+          ]
+        }
+      ],
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "source_not_retrievable",
+          "unsourced_conclusion"
+        ]
+      }
+    },
+    {
+      "case_id": "FL-019",
+      "question": "An older printing of the rules covered this. Does it still?",
+      "use_retriever": true,
+      "sentences": [
+        {
+          "text": "The unit is destroyed before damage is assigned.",
+          "mechanical": true,
+          "sources": [
+            "official_text:Core 205.1"
+          ]
+        }
+      ],
+      "expected": {
+        "admissible": false,
+        "tier": "C",
+        "violations": [
+          "source_not_retrievable",
+          "unsourced_conclusion"
+        ]
+      }
     }
-  ]
+  ],
+  "retrievals": {
+    "Core 312": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 312",
+        "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+      }
+    },
+    "Core 339.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 339.1",
+        "text_hash": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"
+      }
+    },
+    "Core 341.2": {
+      "status": "conflict",
+      "record": null
+    },
+    "Core 205.1": {
+      "status": "superseded",
+      "record": null
+    }
+  }
 }

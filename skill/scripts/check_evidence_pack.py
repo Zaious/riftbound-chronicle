@@ -83,6 +83,17 @@ def main() -> int:
     if vp.verify_pack(unhashed).get("reason_code") != "invalid_pack":
         errors.append("a pack edited without its hash was accepted")
 
+    # The outcome is derived from the result, so a pack carrying a different
+    # one has had its verdict written by hand.
+    flipped = copy.deepcopy(pack)
+    flipped["engine_check"]["outcome"] = "illegal" if flipped["engine_check"]["outcome"] != "illegal" else "supported"
+    flipped = rehash(flipped)
+    flipped_verdict = vp.verify_pack(flipped)
+    if flipped_verdict.get("verified") is not False:
+        errors.append("a pack whose outcome was edited under an unchanged result was verified")
+    elif flipped_verdict.get("reason_code") != "outcome_not_reproduced":
+        errors.append(f"an edited outcome is not named: {flipped_verdict.get('reason_code')}")
+
     # --- refused by name --------------------------------------------------------------------
     # `resolution` is outside VERIFIABLE_KINDS and stays there. The five kinds
     # the consultation command covers were brought inside deliberately; a kind

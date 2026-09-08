@@ -46,9 +46,18 @@ the state-assumption artifact together with the assumption entry it named; an
 engine record binds the hash of the check as supplied. A snapshot rewritten
 under the same id, an assumption whose value moved, or a check swapped in the
 bundle under its own check_id each fail verification, because the ledger was
-built on something that is no longer there. An official-text record carries no
-binding: the index interface answers membership only, and the module does not
-pretend to see the text behind a locator it cannot read.
+built on something that is no longer there.
+
+An official-text record binds whatever the locator index can tell it. A bare
+container or callable answers membership and nothing else, so the record
+carries no binding and the module does not pretend to see text it cannot read.
+A *retriever* — anything with a `retrieve(locator)` returning
+`{"status", "record"}` — is asked instead, and a retrieved record's document
+id, document version, locator and text hash are bound together. Then a source
+whose document was revised under the same locator fails verification the same
+way a rewritten card snapshot does. `not_found` is `locator_not_in_index`;
+`conflict` and `superseded` are `source_not_retrievable`, which is a different
+thing from absence and is named differently.
 
 The marker set errs toward firing. A marker that fires on an ordinary sentence
 costs one source, which is cheap; a marker that fails to fire on a real
@@ -101,13 +110,20 @@ VIOLATION_CODES = frozenset({
     "locator_not_in_index",
     "unknown_card_snapshot",
     "unknown_assumption",
+    "source_not_retrievable",
 })
 
 SOURCE_STATUSES = frozenset({
     "verified", "malformed", "unknown_engine_check", "invalid_engine_check",
     "engine_check_did_not_decide", "locator_not_in_index", "unknown_card_snapshot",
-    "unknown_assumption",
+    "unknown_assumption", "source_not_retrievable",
 })
+
+# What a retriever must return about one locator. `retrieved` is the only
+# status that can back a claim; the rest say why the locator is not a source
+# right now, which is not the same as saying it never was.
+RETRIEVAL_STATUSES = frozenset({"retrieved", "not_found", "conflict", "superseded"})
+RETRIEVAL_RECORD_FIELDS = {"document_id", "document_version", "locator", "text_hash"}
 
 # Lexical markers of a mechanical claim. Phrases are matched on word
 # boundaries over the casefolded sentence.
@@ -172,14 +188,38 @@ def parse_source(source: Any) -> tuple[str, str] | None:
     return kind, ref.strip()
 
 
-def _index_contains(index: Any, locator: str) -> bool:
+def _is_retriever(index: Any) -> bool:
+    return hasattr(index, "retrieve") and callable(index.retrieve)
+
+
+def _retrieve(index: Any, locator: str) -> tuple[str, str | None]:
+    """Ask the locator index about one locator: the status it earns, and its binding."""
     if index is None:
-        return False
+        return "locator_not_in_index", None
+    if _is_retriever(index):
+        answer = index.retrieve(locator)
+        if not isinstance(answer, dict) or answer.get("status") not in RETRIEVAL_STATUSES:
+            raise FactLedgerError(
+                f"a retriever must answer with a status in {sorted(RETRIEVAL_STATUSES)}")
+        status = answer["status"]
+        if status == "not_found":
+            return "locator_not_in_index", None
+        if status != "retrieved":
+            return "source_not_retrievable", None
+        record = answer.get("record")
+        if not isinstance(record, dict) or set(record) != RETRIEVAL_RECORD_FIELDS or \
+                not all(isinstance(record[f], str) and record[f] for f in RETRIEVAL_RECORD_FIELDS):
+            raise FactLedgerError(
+                f"a retrieved source must carry exactly {sorted(RETRIEVAL_RECORD_FIELDS)}")
+        if record["locator"] != locator:
+            raise FactLedgerError(
+                f"the retriever answered about {record['locator']!r}, not {locator!r}")
+        return "verified", canonical_hash(record)
     if callable(index):
-        return bool(index(locator))
+        return ("verified" if index(locator) else "locator_not_in_index"), None
     if isinstance(index, Container):
-        return locator in index
-    raise FactLedgerError("locator_index must be a container or a callable")
+        return ("verified" if locator in index else "locator_not_in_index"), None
+    raise FactLedgerError("locator_index must be a container, a callable, or a retriever")
 
 
 class _Context:
@@ -214,7 +254,7 @@ class _Context:
                 return "engine_check_did_not_decide", None
             return "verified", canonical_hash(check)
         if kind == "official_text":
-            return ("verified" if _index_contains(self.index, ref) else "locator_not_in_index"), None
+            return _retrieve(self.index, ref)
         if kind == "card_text":
             snapshot = self.snapshots.get(ref)
             if not isinstance(snapshot, dict) or not isinstance(snapshot.get("text_hash"), str) \
@@ -234,6 +274,7 @@ _STATUS_TO_VIOLATION = {
     "locator_not_in_index": "locator_not_in_index",
     "unknown_card_snapshot": "unknown_card_snapshot",
     "unknown_assumption": "unknown_assumption",
+    "source_not_retrievable": "source_not_retrievable",
 }
 
 

@@ -1,37 +1,78 @@
 #!/usr/bin/env python3
-"""One consultation command over the five engine entries, and one claim per ledger entry.
+"""One consultation command over the five engine entries, at all three tiers.
 
 The pipeline is fixed and every stage is somebody else's module:
 
     state-assumption.v1  build the minimum state the question needs (S-01)
       -> engine entry     timing / effect / combat_step / control_step / legal_action
       -> evidence-pack.v1 the check, its inputs, and the engine identity, re-runnable
+      -> source retrieval what the rules corpus actually returns for this question
       -> claim surface    templates rendered from closed slots, never authored prose
       -> fact-ledger.v1   one claim, one entry, verified against this context (S-02)
 
 The answer surface is the part worth reading twice. A producer here does not
 write sentences. It picks a template from a closed table and fills that
-template's slots, and every slot type is a closed set drawn from the run's own
-context — a player in the state that was built, an object kind the timing
-kernel knows, a step name the combat table holds, a locator the index holds, a
-slot the assumption artifact carries. There is no free-text slot type, so there
-is no way to put a sentence into a claim, so a claim cannot carry two of them.
+template's slots, and every slot type is closed — to the players in the state
+that was built, to the object kinds the timing kernel knows, to a step in the
+combat table, to a slot the assumption artifact carries, or, for a locator or a
+card, to a shape the retriever recognises rather than to prose. There is no
+free-text slot type, so there is no way to put a sentence into a claim, so a
+claim cannot carry two of them.
 
 That is the guarantee: one claim is one assertion because the producer never
 composed it. The lexical marker layer in fact_ledger is a backstop against
 hand-written ledgers arriving from elsewhere; it is not what holds atomicity
 here, and it was never strong enough to.
 
-Every claim becomes exactly one ledger entry, and every claim is mechanical.
-Nothing on this surface can be tagged non-mechanical to avoid needing a source.
+Three tiers, one path
+---------------------
+A claim is one of two classes, and the class is a property of its template:
 
-When the engine declines — unsupported, decision_required, invalid_input — the
-run stops at `not_attempted` and names the decline. It does not fall back to
-citing text at the reader. The question was routed to an engine entry because
-it was a mechanical question about a position; an answer assembled from
-locators after the engine refused to rule is a different answer to a different
-question, and printing it here is how a service starts sounding certain about
-things it did not decide.
+  position_conclusion   "p1 may play a spell in this position." Requires an
+                        engine check of the right kind that reached a verdict.
+                        There is no other way to make one.
+  source_statement      "Core 312 is official text retrieved for this question."
+                        Requires a retrieved source. It may not take a player
+                        slot and may not use the legality vocabulary, so it
+                        cannot be bent into a statement about what anyone may
+                        do — checked against the template table by the gate.
+
+So tier A is a run that carries a position conclusion, tier B a run that
+carries only source statements, and tier C an abstention. The engine declining
+does not end the run any more: it removes every position conclusion from reach,
+because their templates require a verdict, and what is left is the B route —
+here is the text, and here is the statement that the engine has not compiled
+this mechanism, so nothing is concluded about the position. That statement is
+derived by this module when the engine declines, not offered by a producer, so
+it cannot be omitted from a run that needs it or attached to one that does not.
+
+What the B route is not is a second way to answer the mechanical question. A
+locator cannot become "you may play this" because no template joins the two,
+and the gate re-runs a declined question with a perfectly good locator claim to
+show that it still yields no position conclusion.
+
+Sources come from retrieval
+---------------------------
+A producer naming a locator is not a source. A retriever answers with the
+document id, the document version, the locator and the text hash, and
+fact_ledger binds all four; a document revised under the same locator fails
+verification afterwards. Not found, conflicting, or superseded is not a source
+either, and each is named rather than folded into the others. Those land at C.
+
+Two checks read a run, and they are not the same check
+------------------------------------------------------
+  validate_run(run)            structural. Shape, every claim's text re-rendered
+                               from its template and slots, atomicity, the
+                               derived coverage statement, the local hash. It
+                               reads no context, so it cannot know whether a
+                               ledger record marked "verified" ever was.
+  verify_run(run, ...context)  bound. Re-runs the whole consultation from the
+                               request the run carries, against the engine,
+                               retriever and snapshots supplied now, and
+                               compares every derived field.
+
+Only the second is verification. A run that passed the first has been checked
+for self-consistency and nothing else.
 """
 
 from __future__ import annotations
@@ -39,6 +80,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Iterable
@@ -58,8 +100,6 @@ SCHEMA_VERSION = "consultation-run.v1"
 CORE_RULESET = rules_core.CORE_RULESET
 FAQ_AS_OF = rules_core.FAQ_AS_OF
 
-# The five entries this command wraps. Each names the engine-check kind it
-# produces and the extra inputs it needs beyond the state S-01 built.
 ENTRIES = {
     "timing": {"check_kind": "timing", "needs_effect_state": False, "inputs": ("action",)},
     "effect": {"check_kind": "effect", "needs_effect_state": True, "inputs": ("program",)},
@@ -74,95 +114,192 @@ NOT_ATTEMPTED_REASONS = frozenset({
     "entry_not_covered",
     "state_not_built",
     "entry_inputs_missing",
-    "engine_declined",
     "claim_binding_invalid",
     "no_claims_offered",
     "evidence_not_reproducible",
 })
 
-# An engine check that reached a verdict. Same line fact_ledger draws, and for
-# the same reason.
 DECIDING_OUTCOMES = fact_ledger.DECIDING_OUTCOMES
+
+# The sentence a declined engine ruling earns. Derived here, never offered: a
+# run that needs it cannot omit it, and a run that does not cannot carry it.
+COVERAGE_STATEMENT = ("The engine has not compiled this mechanism, so this answer "
+                      "draws no conclusion about the position.")
+
+CLAIM_CLASSES = ("position_conclusion", "source_statement")
+
+# A source statement talks about what the corpus holds. If it can use this
+# vocabulary it is talking about what someone may do instead, which is the A
+# tier wearing the B tier's clothes. Checked against the template table, not
+# against a producer's output — producers do not write text here.
+LEGALITY_VOCABULARY = (
+    "may", "may not", "cannot", "can not", "can't", "must", "must not",
+    "is legal", "is not legal", "is illegal", "is allowed", "is not allowed",
+    "you can", "you may", "has priority", "holds priority", "resolves",
+    "is destroyed", "wins", "loses", "completes", "takes effect",
+)
+
+# "Core 312", "Core 359.3.e.6", "FAQ 12.1". Not a sentence: a locator is one or
+# two words and then a dotted number, so prose cannot pass for one. A retriever
+# may recognise more than this; it may not recognise less.
+LOCATOR_SHAPE = re.compile(r"^[A-Z][A-Za-z]{1,15}(?:\s[A-Za-z]{1,15})?\s\d+(?:\.[0-9A-Za-z]+)*$")
+# A card snapshot id: one token, no spaces.
+SNAPSHOT_SHAPE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
 
 
 class ConsultationError(ValueError):
     pass
 
 
+class TableRetriever:
+    """A source retriever over a fixed table, for tests and for callers without an index.
+
+    The service passes one backed by the rules index. What every retriever owes
+    this module is the same: say whether a string is a locator at all, say what
+    a question surfaced, and answer about one locator with a record carrying its
+    document id, document version, locator and text hash — or with the reason it
+    is not a source right now.
+    """
+
+    def __init__(self, table: dict[str, Any], surfaced: dict[str, list[str]] | None = None) -> None:
+        self.table = copy.deepcopy(table)
+        self.surfaced = copy.deepcopy(surfaced or {})
+
+    def is_locator(self, value: Any) -> bool:
+        return isinstance(value, str) and bool(LOCATOR_SHAPE.match(value))
+
+    def catalogue(self) -> list[str]:
+        return sorted(self.table)
+
+    def retrieve_for(self, question: str) -> list[dict[str, Any]]:
+        locators = self.surfaced.get(question, self.catalogue())
+        return [copy.deepcopy(self.table[loc]["record"]) for loc in locators
+                if self.table.get(loc, {}).get("status") == "retrieved"]
+
+    def retrieve(self, locator: str) -> dict[str, Any]:
+        return copy.deepcopy(self.table.get(locator, {"status": "not_found", "record": None}))
+
+
+def _is_retriever(value: Any) -> bool:
+    return all(hasattr(value, name) for name in ("is_locator", "retrieve", "retrieve_for"))
+
+
 # --- the claim surface ------------------------------------------------------
-#
-# Every slot type resolves to a closed set built from the run's own context. A
-# new slot type is a decision about what a producer may say, so adding one is a
-# visible change here rather than a string that slipped through.
 
 def _players(ctx: dict[str, Any]) -> set[str]:
-    state = ctx.get("timing_state") or {}
-    return set(state.get("players", []))
+    return set((ctx.get("timing_state") or {}).get("players", []))
 
 
-SLOT_TYPES = {
-    "player": _players,
-    "object_kind": lambda ctx: set(rules_core.OBJECT_KINDS),
-    "phase": lambda ctx: set(rules_core.PHASES),
-    "combat_step": lambda ctx: set(COMBAT_STEPS),
-    "control_step": lambda ctx: set(CONTROL_STEPS),
-    "locator": lambda ctx: set(ctx.get("locators") or ()),
-    "assumption_slot": lambda ctx: set(ctx.get("assumption_slots") or ()),
+SLOT_TYPES: dict[str, dict[str, Any]] = {
+    "player": {
+        "admits": lambda ctx, v: v in _players(ctx),
+        "samples": lambda ctx: sorted(_players(ctx)),
+    },
+    "object_kind": {
+        "admits": lambda ctx, v: v in rules_core.OBJECT_KINDS,
+        "samples": lambda ctx: sorted(rules_core.OBJECT_KINDS),
+    },
+    "phase": {
+        "admits": lambda ctx, v: v in rules_core.PHASES,
+        "samples": lambda ctx: sorted(rules_core.PHASES),
+    },
+    "combat_step": {
+        "admits": lambda ctx, v: v in COMBAT_STEPS,
+        "samples": lambda ctx: sorted(COMBAT_STEPS),
+    },
+    "control_step": {
+        "admits": lambda ctx, v: v in CONTROL_STEPS,
+        "samples": lambda ctx: sorted(CONTROL_STEPS),
+    },
+    "assumption_slot": {
+        "admits": lambda ctx, v: v in (ctx.get("assumption_slots") or set()),
+        "samples": lambda ctx: sorted(ctx.get("assumption_slots") or ()),
+    },
+    # Shape-closed rather than list-closed, on purpose. A locator that does not
+    # exist is still a locator, and the contract puts it at tier C — an
+    # abstention with a named reason — rather than treating it as a malformed
+    # claim. Prose is not locator-shaped, so nothing is opened up by this.
+    "locator": {
+        "admits": lambda ctx, v: bool(ctx.get("retriever")) and ctx["retriever"].is_locator(v),
+        "samples": lambda ctx: (ctx["retriever"].catalogue()[:1] if ctx.get("retriever") else []),
+    },
+    "card_snapshot": {
+        "admits": lambda ctx, v: isinstance(v, str) and bool(SNAPSHOT_SHAPE.match(v)),
+        "samples": lambda ctx: sorted(ctx.get("card_snapshots") or ()),
+    },
 }
 
 CLAIM_TEMPLATES: dict[str, dict[str, Any]] = {
     "timing_play_permitted": {
+        "class": "position_conclusion",
         "text": "{actor} may play a {object_kind} in this position.",
         "slots": {"actor": "player", "object_kind": "object_kind"},
         "basis": {"kind": "engine", "check_kind": "timing", "outcomes": ("supported",)},
     },
     "timing_play_refused": {
+        "class": "position_conclusion",
         "text": "{actor} cannot play a {object_kind} in this position.",
         "slots": {"actor": "player", "object_kind": "object_kind"},
         "basis": {"kind": "engine", "check_kind": "timing", "outcomes": ("illegal",)},
     },
     "effect_program_applies": {
+        "class": "position_conclusion",
         "text": "The effect applies as written.",
         "slots": {},
         "basis": {"kind": "engine", "check_kind": "effect", "outcomes": ("supported",)},
     },
     "effect_program_refused": {
+        "class": "position_conclusion",
         "text": "The effect does not apply here.",
         "slots": {},
         "basis": {"kind": "engine", "check_kind": "effect", "outcomes": ("illegal",)},
     },
     "combat_step_completes": {
+        "class": "position_conclusion",
         "text": "The {step} step of Combat completes in this position.",
         "slots": {"step": "combat_step"},
         "basis": {"kind": "engine", "check_kind": "combat_step", "outcomes": ("supported",)},
     },
     "combat_step_refused": {
+        "class": "position_conclusion",
         "text": "The {step} step of Combat cannot be taken in this position.",
         "slots": {"step": "combat_step"},
         "basis": {"kind": "engine", "check_kind": "combat_step", "outcomes": ("illegal",)},
     },
     "control_step_completes": {
+        "class": "position_conclusion",
         "text": "The {step} control step completes in this position.",
         "slots": {"step": "control_step"},
         "basis": {"kind": "engine", "check_kind": "control_step", "outcomes": ("supported",)},
     },
     "control_step_refused": {
+        "class": "position_conclusion",
         "text": "The {step} control step cannot be taken in this position.",
         "slots": {"step": "control_step"},
         "basis": {"kind": "engine", "check_kind": "control_step", "outcomes": ("illegal",)},
     },
     "legal_action_available": {
+        "class": "position_conclusion",
         "text": "{actor} has at least one legal action in this position.",
         "slots": {"actor": "player"},
         "basis": {"kind": "engine", "check_kind": "legal_action", "outcomes": ("supported",)},
     },
-    "official_text_governs": {
-        "text": "{locator} governs this position.",
+    # --- the B route. Nothing below says what anyone may do. -----------------
+    "official_text_recorded": {
+        "class": "source_statement",
+        "text": "{locator} is official text retrieved for this question.",
         "slots": {"locator": "locator"},
         "basis": {"kind": "official_text"},
     },
+    "card_text_recorded": {
+        "class": "source_statement",
+        "text": "{card} is card text retrieved for this question.",
+        "slots": {"card": "card_snapshot"},
+        "basis": {"kind": "card_text"},
+    },
     "assumption_stands": {
-        "text": "This answer assumes {assumption_slot}, which you can correct.",
+        "class": "source_statement",
+        "text": "This answer rests on the assumption {assumption_slot}, open to your correction.",
         "slots": {"assumption_slot": "assumption_slot"},
         "basis": {"kind": "assumption"},
     },
@@ -181,17 +318,17 @@ def render(template_id: str, slots: dict[str, str]) -> str:
     return template["text"].format(**slots)
 
 
-def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any], check: dict[str, Any] | None,
-                 ) -> tuple[list[dict[str, Any]], list[str]]:
+def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
+                 check: dict[str, Any] | None) -> tuple[list[dict[str, Any]], list[str]]:
     """Turn the producer's template choices into claims, or say why they do not bind."""
     claims: list[dict[str, Any]] = []
     problems: list[str] = []
     for position, binding in enumerate(bindings):
         label = f"claims[{position}]"
-        if not isinstance(binding, dict) or set(binding) - {"template", "slots", "ref"} or \
+        if not isinstance(binding, dict) or set(binding) - {"template", "slots"} or \
                 {"template", "slots"} - set(binding):
-            problems.append(f"{label} must carry template and slots, and ref only for a "
-                            f"non-engine basis")
+            problems.append(f"{label} must carry exactly template and slots; a claim's source is "
+                            f"determined by its template, not supplied")
             continue
         template_id = binding["template"]
         template = CLAIM_TEMPLATES.get(template_id)
@@ -204,29 +341,23 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any], check: dic
             continue
         bad = False
         for slot, value in slots.items():
-            allowed = SLOT_TYPES[template["slots"][slot]](context)
-            if value not in allowed:
+            slot_type = template["slots"][slot]
+            if not SLOT_TYPES[slot_type]["admits"](context, value):
                 problems.append(f"{label}.slots.{slot}={value!r} is not one of this run's "
-                                f"{template['slots'][slot]} values; a slot is a choice, not free text")
+                                f"{slot_type} values; a slot is a choice, not free text")
                 bad = True
         if bad:
             continue
 
         basis = template["basis"]
         if basis["kind"] == "engine":
-            # An engine claim's source is this run's check, and there is no way
-            # to name a different one. The producer cannot supply it, both
-            # because it could not know the id before the run and because
-            # letting it choose is how a claim ends up citing a check that
-            # answered some other question.
-            if "ref" in binding:
-                problems.append(f"{label} is an engine claim; its source is this run's check "
-                                f"and cannot be supplied")
-                continue
+            # An engine claim's source is this run's check. The producer cannot
+            # name it, both because it could not know the id before the run and
+            # because letting it choose is how a claim ends up citing a check
+            # that answered some other question.
             if check is None:
                 problems.append(f"{label} needs an engine check and this run has none")
                 continue
-            ref = check["check_id"]
             if check["check_kind"] != basis["check_kind"]:
                 problems.append(f"{label} is a {basis['check_kind']} claim, but the check is "
                                 f"a {check['check_kind']} one")
@@ -235,15 +366,16 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any], check: dic
                 problems.append(f"{label} needs an outcome in {list(basis['outcomes'])}; "
                                 f"the engine returned {check['outcome']!r}")
                 continue
+            ref = check["check_id"]
         else:
-            ref = binding.get("ref")
-            if not isinstance(ref, str) or not ref.strip():
-                problems.append(f"{label}.ref must name the {basis['kind']} source")
-                continue
+            # A source claim's ref is the slot it already filled: the locator,
+            # the snapshot, the assumption. There is nothing left to supply.
+            ref = next(iter(slots.values()))
 
         claims.append({
             "claim_id": f"claim-{position + 1}",
             "template": template_id,
+            "claim_class": template["class"],
             "slots": dict(slots),
             "text": render(template_id, slots),
             "source": f"{basis['kind']}:{ref}",
@@ -253,40 +385,63 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any], check: dic
 
 # --- the pipeline -----------------------------------------------------------
 
-def _not_attempted(shell: dict[str, Any], reason: str, detail: str) -> dict[str, Any]:
-    shell["status"] = "not_attempted"
-    shell["not_attempted_reason"] = reason
-    shell["detail"] = detail
-    return _seal(shell)
-
-
 def _seal(run: dict[str, Any]) -> dict[str, Any]:
     run["run_hash"] = canonical_hash({k: v for k, v in run.items() if k != "run_hash"})
     return run
 
 
+def _not_attempted(run: dict[str, Any], reason: str, detail: str) -> dict[str, Any]:
+    run["status"] = "not_attempted"
+    run["not_attempted_reason"] = reason
+    run["detail"] = detail
+    # An abstention is tier C whether the pipeline stopped or the ledger
+    # refused. The three tiers are exhaustive over runs, so a caller never has
+    # to read the status to know how much authority an answer carries.
+    run["tier"] = "C"
+    return _seal(run)
+
+
 def run_consultation(*, question: str, entry: str, draft: Any, question_kind: str = "timing_priority",
                      effect_draft: Any = None, effect_question_kind: str = "unit_damage",
                      entry_inputs: dict[str, Any] | None = None,
-                     claims: Iterable[Any] = (), locator_index: Any = None,
+                     claims: Iterable[Any] = (), source_retriever: Any = None,
                      card_snapshots: dict[str, Any] | None = None) -> dict[str, Any]:
     """Run one consultation end to end, or stop and say where."""
     if not isinstance(question, str) or not question.strip():
         raise ConsultationError("question must be a non-empty string")
+    if source_retriever is not None and not _is_retriever(source_retriever):
+        raise ConsultationError("a source retriever must offer is_locator, retrieve_for and retrieve")
     entry_inputs = dict(entry_inputs or {})
     claims = list(claims)
 
+    # The request records what this run actually used. An entry that needs no
+    # effect state does not carry one, so the run hash moves only with inputs
+    # that could have moved the answer.
+    profile = ENTRIES.get(entry)
+    wants_effect = bool(profile and profile["needs_effect_state"])
+    request = {
+        "entry": entry,
+        "question_kind": question_kind,
+        "effect_question_kind": effect_question_kind if wants_effect else None,
+        "draft": copy.deepcopy(draft),
+        "effect_draft": copy.deepcopy(effect_draft) if wants_effect else None,
+        "entry_inputs": copy.deepcopy(entry_inputs),
+        "claim_bindings": copy.deepcopy(claims),
+    }
     run: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
         "question": question,
         "entry": entry,
+        "request": request,
         "status": "not_attempted",
         "not_attempted_reason": None,
         "detail": "",
         "tier": None,
         "engine_declined": False,
+        "coverage_statement": None,
         "state_assumptions": [],
+        "retrieved_sources": [],
         "engine_check": None,
         "evidence_pack": None,
         "evidence_verification": None,
@@ -294,15 +449,12 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
         "ledger": None,
     }
 
-    profile = ENTRIES.get(entry)
     if profile is None:
-        return _not_attempted(run, "entry_not_covered",
-                              f"{entry!r} is not one of {sorted(ENTRIES)}")
+        return _not_attempted(run, "entry_not_covered", f"{entry!r} is not one of {sorted(ENTRIES)}")
 
     missing_inputs = [name for name in profile["inputs"] if name not in entry_inputs]
     if missing_inputs:
-        return _not_attempted(run, "entry_inputs_missing",
-                              f"the {entry} entry needs {missing_inputs}")
+        return _not_attempted(run, "entry_inputs_missing", f"the {entry} entry needs {missing_inputs}")
 
     # Stage 1: every state in this run comes through S-01, so every assumption
     # it rests on is one the reader can see and correct.
@@ -310,10 +462,10 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
         question=question, question_kind=question_kind, draft=draft)
     run["state_assumptions"].append(timing_artifact)
     if not timing_artifact["buildable"]:
+        down = timing_artifact["downgrade"]
         return _not_attempted(run, "state_not_built",
-                              f"the timing state could not be built: "
-                              f"{timing_artifact['downgrade']['reason']} "
-                              f"{timing_artifact['downgrade']['missing_fields'] or timing_artifact['downgrade']['rejected_fields']}")
+                              f"the timing state could not be built: {down['reason']} "
+                              f"{down['missing_fields'] or down['rejected_fields']}")
 
     effect_artifact = None
     if profile["needs_effect_state"]:
@@ -324,13 +476,12 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
             question=question, question_kind=effect_question_kind, draft=effect_draft)
         run["state_assumptions"].append(effect_artifact)
         if not effect_artifact["buildable"]:
+            down = effect_artifact["downgrade"]
             return _not_attempted(run, "state_not_built",
-                                  f"the effect state could not be built: "
-                                  f"{effect_artifact['downgrade']['reason']} "
-                                  f"{effect_artifact['downgrade']['missing_fields'] or effect_artifact['downgrade']['rejected_fields']}")
+                                  f"the effect state could not be built: {down['reason']} "
+                                  f"{down['missing_fields'] or down['rejected_fields']}")
 
     # Stage 2: the engine, wrapped in a pack that can be re-run by someone else.
-    inputs: dict[str, Any] = {}
     if entry == "timing":
         inputs = {"timing_state": timing_artifact["state"], "timing_action": entry_inputs["action"]}
     elif entry == "effect":
@@ -364,24 +515,31 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
         return _not_attempted(run, "evidence_not_reproducible",
                               f"the pack did not re-run on this engine: {verification['reason_code']}")
 
+    # A declined ruling does not end the run. It puts every position conclusion
+    # out of reach — their templates require a verdict — and leaves the B route.
     if check["outcome"] not in DECIDING_OUTCOMES:
         run["engine_declined"] = True
-        return _not_attempted(run, "engine_declined",
-                              f"the engine returned {check['outcome']!r} ({check['reason']['code']}): "
-                              f"{check['reason']['message']}")
+        run["coverage_statement"] = COVERAGE_STATEMENT
 
-    # Stage 3: the claim surface. Nothing here is authored.
+    # Stage 3: what retrieval actually returned for this question, recorded
+    # whether or not a producer went on to cite any of it.
+    if source_retriever is not None:
+        run["retrieved_sources"] = copy.deepcopy(source_retriever.retrieve_for(question))
+
     assumption_slots = {e["slot"] for artifact in run["state_assumptions"] for e in artifact["assumptions"]}
     context = {
         "timing_state": timing_artifact["state"],
-        "locators": set(locator_index) if isinstance(locator_index, (set, frozenset, list, tuple)) else set(),
+        "retriever": source_retriever,
         "assumption_slots": assumption_slots,
+        "card_snapshots": card_snapshots or {},
     }
     bound, problems = _bind_claims(claims, context=context, check=check)
     if problems:
         return _not_attempted(run, "claim_binding_invalid", "; ".join(problems))
     if not bound:
         return _not_attempted(run, "no_claims_offered",
+                              "the engine declined and no source statement was offered"
+                              if run["engine_declined"] else
                               "the engine decided, but no claim was offered to carry the answer")
     run["claims"] = bound
 
@@ -390,7 +548,7 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
                  for claim in bound]
     ledger_context = {
         "engine_checks": [check],
-        "locator_index": locator_index,
+        "locator_index": source_retriever,
         "card_snapshots": card_snapshots,
         "assumption_artifact": timing_artifact,
     }
@@ -407,13 +565,22 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
     return _seal(run)
 
 
-REQUIRED_TOP = {"schema_version", "ruleset", "question", "entry", "status", "not_attempted_reason",
-                "detail", "tier", "engine_declined", "state_assumptions", "engine_check",
-                "evidence_pack", "evidence_verification", "claims", "ledger", "run_hash"}
+REQUIRED_TOP = {"schema_version", "ruleset", "question", "entry", "request", "status",
+                "not_attempted_reason", "detail", "tier", "engine_declined", "coverage_statement",
+                "state_assumptions", "retrieved_sources", "engine_check", "evidence_pack",
+                "evidence_verification", "claims", "ledger", "run_hash"}
+CLAIM_FIELDS = {"claim_id", "template", "claim_class", "slots", "text", "source"}
 
 
 def validate_run(value: Any) -> list[str]:
-    """Check a run, re-deriving every claim's text from its template and slots."""
+    """Structural validation only: shape, re-rendered claim text, atomicity, local hash.
+
+    This reads no context. It can tell that a run is internally consistent; it
+    cannot tell whether the ledger records inside it were ever verified against
+    anything, nor whether its evidence pack still re-runs. That is
+    verify_run's job, and a run that only passed this check has not been
+    verified.
+    """
     errors: list[str] = []
     if not isinstance(value, dict):
         return ["run must be a JSON object"]
@@ -432,19 +599,32 @@ def validate_run(value: Any) -> list[str]:
         errors.append(f"status must be one of {list(STATUSES)}")
     if value["entry"] not in ENTRIES and value["not_attempted_reason"] != "entry_not_covered":
         errors.append(f"entry must be one of {sorted(ENTRIES)}")
+    if not isinstance(value["request"], dict) or value["request"].get("entry") != value["entry"]:
+        errors.append("request must be the request this run was made from")
+    if value["tier"] not in fact_ledger.TIERS:
+        errors.append(f"tier must be one of {list(fact_ledger.TIERS)}; every run has one")
+
+    # The coverage statement is derived, so it is neither omissible nor
+    # attachable: it is present exactly when the engine declined, and it is the
+    # sentence this module writes.
+    if value["engine_declined"]:
+        if value["coverage_statement"] != COVERAGE_STATEMENT:
+            errors.append("a declined ruling carries the coverage statement, unedited")
+    elif value["coverage_statement"] is not None:
+        errors.append("a run whose engine ruled carries no coverage statement")
 
     if value["status"] == "not_attempted":
         if value["not_attempted_reason"] not in NOT_ATTEMPTED_REASONS:
             errors.append(f"not_attempted_reason must be one of {sorted(NOT_ATTEMPTED_REASONS)}")
         if not isinstance(value["detail"], str) or not value["detail"].strip():
             errors.append("a run that was not attempted says why")
-        if value["claims"] or value["ledger"] is not None or value["tier"] is not None:
-            errors.append("a run that was not attempted carries no claims, no ledger, and no tier")
+        if value["claims"] or value["ledger"] is not None:
+            errors.append("a run that was not attempted carries no claims and no ledger")
+        if value["tier"] != "C":
+            errors.append("a run that was not attempted is an abstention, and abstentions are tier C")
     else:
         if value["not_attempted_reason"] is not None:
             errors.append("an attempted run carries no not_attempted_reason")
-        if value["tier"] not in fact_ledger.TIERS:
-            errors.append(f"tier must be one of {list(fact_ledger.TIERS)}")
         if not value["claims"]:
             errors.append("an attempted run carries at least one claim")
         if not isinstance(value["ledger"], dict):
@@ -458,24 +638,34 @@ def validate_run(value: Any) -> list[str]:
             errors.append("a run answered at tier C is an abstention, and must say so")
         if value["status"] == "abstained" and value["tier"] != "C":
             errors.append("an abstention is tier C")
-        if value["engine_declined"]:
-            errors.append("a declined engine ruling cannot produce an attempted run")
+        # Tier A is a position conclusion. A run that reports A while carrying
+        # only source statements has claimed an authority its claims do not have.
+        has_position = any(isinstance(c, dict) and c.get("claim_class") == "position_conclusion"
+                           for c in value["claims"])
+        if value["tier"] == "A" and not has_position:
+            errors.append("tier A requires a position conclusion; this run carries only source statements")
+        if value["tier"] == "B" and has_position:
+            errors.append("a run carrying a position conclusion is not tier B")
+        if value["engine_declined"] and has_position:
+            errors.append("the engine declined, so no position conclusion can stand in this run")
 
     for position, claim in enumerate(value["claims"]):
         label = f"claims[{position}]"
-        if not isinstance(claim, dict) or set(claim) != {"claim_id", "template", "slots", "text", "source"}:
-            errors.append(f"{label} must carry claim_id, template, slots, text, source")
+        if not isinstance(claim, dict) or set(claim) != CLAIM_FIELDS:
+            errors.append(f"{label} must carry exactly {sorted(CLAIM_FIELDS)}")
             continue
         template = CLAIM_TEMPLATES.get(claim["template"])
         if template is None:
             errors.append(f"{label} names the unknown template {claim['template']!r}")
             continue
+        if claim["claim_class"] != template["class"]:
+            errors.append(f"{label} is a {claim['claim_class']!r} claim, but {claim['template']!r} "
+                          f"is a {template['class']!r} template")
         if set(claim["slots"]) != set(template["slots"]):
             errors.append(f"{label} must fill exactly {sorted(template['slots'])}")
             continue
         # The text is re-rendered. A claim whose text was edited after the fact
-        # is a claim someone wrote, which is the thing this surface exists to
-        # make impossible.
+        # is a claim someone wrote, which is what this surface exists to prevent.
         expected = render(claim["template"], claim["slots"])
         if claim["text"] != expected:
             errors.append(f"{label}.text is {claim['text']!r}, but its template renders {expected!r}")
@@ -491,37 +681,122 @@ def validate_run(value: Any) -> list[str]:
     return errors
 
 
+def verify_run(run: Any, *, source_retriever: Any = None,
+               card_snapshots: dict[str, Any] | None = None) -> list[str]:
+    """Consultation verification: re-run from the run's own request, and compare.
+
+    Nothing the run says about its sources, its engine check, its ledger or its
+    tier is believed. The request it carries is run again against the engine,
+    retriever and snapshots supplied now, and every derived field is compared to
+    what the run claims. A mismatch is named by field.
+    """
+    errors = validate_run(run)
+    if errors:
+        return [f"structural: {error}" for error in errors]
+
+    request = run["request"]
+    rebuilt = run_consultation(
+        question=run["question"], entry=request["entry"], draft=request["draft"],
+        question_kind=request["question_kind"], effect_draft=request["effect_draft"],
+        effect_question_kind=request["effect_question_kind"] or "unit_damage",
+        entry_inputs=request["entry_inputs"], claims=request["claim_bindings"],
+        source_retriever=source_retriever, card_snapshots=card_snapshots)
+
+    for field in ("status", "tier", "not_attempted_reason", "engine_declined", "coverage_statement"):
+        if run[field] != rebuilt[field]:
+            errors.append(f"{field} claims {run[field]!r}; rebuilt against this context it is "
+                          f"{rebuilt[field]!r}")
+
+    if len(run["claims"]) != len(rebuilt["claims"]):
+        errors.append(f"claims claims {len(run['claims'])}; rebuilt {len(rebuilt['claims'])}")
+    else:
+        for position, (claimed, actual) in enumerate(zip(run["claims"], rebuilt["claims"])):
+            for field in ("template", "claim_class", "slots", "text", "source"):
+                if claimed[field] != actual[field]:
+                    errors.append(f"claims[{position}].{field} claims {claimed[field]!r}; "
+                                  f"rebuilt {actual[field]!r}")
+
+    # The ledger is verified against the same context, by the module that owns
+    # that judgment. A record marked verified is checked, not read.
+    if isinstance(run["ledger"], dict):
+        ledger_problems = verify_ledger(
+            run["ledger"], [run["engine_check"]] if run["engine_check"] else [],
+            source_retriever, card_snapshots,
+            run["state_assumptions"][0] if run["state_assumptions"] else None)
+        errors.extend(f"ledger: {problem}" for problem in ledger_problems)
+
+    # The evidence pack is re-run, not trusted. A check swapped under its own
+    # id, or inputs edited beneath it, fails here.
+    if isinstance(run["evidence_pack"], dict):
+        verification = evidence.verify_pack(run["evidence_pack"])
+        if not verification["verified"]:
+            errors.append(f"evidence pack does not re-run: {verification['reason_code']}")
+        if run["engine_check"] != run["evidence_pack"]["engine_check"]:
+            errors.append("the run's engine check is not the one inside its evidence pack")
+        if rebuilt["engine_check"] and run["engine_check"]["result_hash"] != rebuilt["engine_check"]["result_hash"]:
+            errors.append("the engine no longer reproduces this run's result")
+
+    if run["state_assumptions"] != rebuilt["state_assumptions"]:
+        errors.append("the state this run was built on is not the state its request builds now")
+    if run["retrieved_sources"] != rebuilt["retrieved_sources"]:
+        errors.append("retrieval returns something different for this question now")
+    if run["run_hash"] != rebuilt["run_hash"]:
+        errors.append("run_hash differs from the hash of the run rebuilt against this context")
+    return errors
+
+
 def _load(path: str) -> Any:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def _retriever_from(path: str | None) -> Any:
+    if not path:
+        return None
+    payload = _load(path)
+    return TableRetriever(payload.get("table", payload), payload.get("surfaced"))
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run or validate one consultation over the five engine entries.")
+    parser = argparse.ArgumentParser(
+        description="Run, validate, or verify one consultation over the five engine entries.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="run one consultation end to end")
     run.add_argument("--question", required=True)
     run.add_argument("--entry", required=True, choices=sorted(ENTRIES))
     run.add_argument("--request", required=True,
-                     help="path to the request: draft, effect_draft, question_kind, entry_inputs, claims")
-    run.add_argument("--index", help="path to a JSON array of admissible locators")
+                     help="path to the request: draft, effect_draft, entry_inputs, claims")
+    run.add_argument("--sources", help="path to a source retrieval table")
 
-    check = sub.add_parser("validate", help="validate a run, re-rendering every claim")
+    check = sub.add_parser("validate", help="structural validation only; this is not verification")
     check.add_argument("run")
 
-    templates = sub.add_parser("templates", help="list the claim templates and their slots")
+    verify = sub.add_parser("verify", help="re-run the consultation against the given context and compare")
+    verify.add_argument("run")
+    verify.add_argument("--sources", help="path to a source retrieval table")
+    verify.add_argument("--card-snapshots", help="path to a snapshot map")
+
+    sub.add_parser("templates", help="list the claim templates and their slots")
     args = parser.parse_args(argv)
 
     if args.command == "templates":
-        json.dump({name: {"text": t["text"], "slots": t["slots"], "basis": t["basis"]}
-                   for name, t in sorted(CLAIM_TEMPLATES.items())}, sys.stdout, ensure_ascii=False, indent=2)
+        json.dump({name: {"class": t["class"], "text": t["text"], "slots": t["slots"],
+                          "basis": t["basis"]} for name, t in sorted(CLAIM_TEMPLATES.items())},
+                  sys.stdout, ensure_ascii=False, indent=2)
         print()
         return 0
     if args.command == "validate":
         problems = validate_run(_load(args.run))
         for problem in problems:
             print(problem, file=sys.stderr)
-        print("valid" if not problems else f"{len(problems)} problem(s)")
+        print("structurally valid (not verified)" if not problems else f"{len(problems)} problem(s)")
+        return 0 if not problems else 1
+    if args.command == "verify":
+        problems = verify_run(_load(args.run), source_retriever=_retriever_from(args.sources),
+                              card_snapshots=_load(args.card_snapshots) if args.card_snapshots else None)
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        print("verified against the given context" if not problems else f"{len(problems)} problem(s)")
         return 0 if not problems else 1
 
     request = _load(args.request)
@@ -531,7 +806,7 @@ def main(argv: list[str] | None = None) -> int:
         effect_draft=request.get("effect_draft"),
         effect_question_kind=request.get("effect_question_kind", "unit_damage"),
         entry_inputs=request.get("entry_inputs"), claims=request.get("claims", ()),
-        locator_index=set(_load(args.index)) if args.index else None,
+        source_retriever=_retriever_from(args.sources),
         card_snapshots=request.get("card_snapshots"))
     json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
     print()

@@ -349,6 +349,9 @@ def main() -> int:
         return next(d for d in candidate["coverage_debts"]
                     if d["class"] == cls and d["status"] == "open")
 
+    def first_scheduled(candidate):
+        return next(d for d in candidate["coverage_debts"] if d["owner"]["package_id"] is not None)
+
     policy_id = next(q["question_id"] for q in stored["questions"]
                      if q["family"] == "tournament_policy")
     ledger_cases = [
@@ -359,9 +362,7 @@ def main() -> int:
         ("a corpus with no ledger",
          stored_with(lambda c: c.pop("coverage_debts")), "missing top-level fields"),
         ("an open template debt the surface already has",
-         stored_with(lambda c: (first_open(c).__setitem__("id", "official_text_recorded"),
-                                first_open(c)["trigger"].__setitem__("threshold_or_condition",
-                                                                     "official_text_recorded"))),
+         stored_with(lambda c: first_open(c).__setitem__("id", "official_text_recorded")),
          "which the answer surface has"),
         ("a debt observed in no question",
          stored_with(lambda c: first_open(c).__setitem__("observed_in", [])),
@@ -392,19 +393,53 @@ def main() -> int:
          "owner.track must be one of"),
         ("a debt owned by a package that does not exist",
          stored_with(lambda c: first_open(c)["owner"].__setitem__("package_id", "T-99")),
-         "owner.package_id must be one of"),
+         "owner.package_id must be null or one of"),
+        # S-04e. No package is not a package: it is null, a review date, and a
+        # triage trigger — each refused without the others.
+        ("a debt parked under an invented 'unscheduled' package",
+         stored_with(lambda c: first_open(c)["owner"].__setitem__("package_id", "unscheduled")),
+         "owner.package_id must be null or one of"),
+        ("a debt with no package and no review date",
+         stored_with(lambda c: first_open(c).__setitem__("review_by", None)),
+         "carries review_by as YYYY-MM-DD"),
+        ("a debt with no package and a prose review date",
+         stored_with(lambda c: first_open(c).__setitem__("review_by", "next sprint")),
+         "carries review_by as YYYY-MM-DD"),
+        ("a debt with no package triggered like an owned one",
+         stored_with(lambda c: first_open(c)["trigger"].__setitem__("kind", "template_missing")),
+         "is triggered by 'triage_required'"),
+        ("a triage threshold outside the closed list",
+         stored_with(lambda c: first_open(c)["trigger"]
+                     .__setitem__("threshold_or_condition", "when someone has time")),
+         "a triage threshold is one of"),
+        ("an owned debt carrying a review date",
+         stored_with(lambda c: first_scheduled(c).__setitem__("review_by", "2026-10-09")),
+         "carries no review_by"),
+        ("an owned debt triggered by triage",
+         stored_with(lambda c: first_scheduled(c)["trigger"].__setitem__("kind", "triage_required")),
+         "is for a debt with no package"),
+        ("a closed debt with no package",
+         stored_with(lambda c: (first_scheduled(c)["owner"].__setitem__("package_id", None),
+                                first_scheduled(c).__setitem__("review_by", "2026-10-09"),
+                                first_scheduled(c)["trigger"].__setitem__("kind", "triage_required"),
+                                first_scheduled(c)["trigger"].__setitem__("threshold_or_condition",
+                                                                          "review_by_reached"))),
+         "names the package that closed it"),
         ("a debt whose trigger is a description",
          stored_with(lambda c: first_open(c).__setitem__("trigger", "the surface had no template")),
          "trigger carries exactly"),
         ("a template debt triggered like a state-builder one",
-         stored_with(lambda c: first_open(c)["trigger"].__setitem__("kind", "slot_missing")),
+         stored_with(lambda c: first_scheduled(c)["trigger"].__setitem__("kind", "slot_missing")),
          "is triggered by 'template_missing'"),
         ("a template debt whose condition is not the template it lacks",
-         stored_with(lambda c: first_open(c)["trigger"].__setitem__("threshold_or_condition", "rule_other")),
+         stored_with(lambda c: first_scheduled(c)["trigger"].__setitem__("threshold_or_condition", "rule_other")),
          "its own id"),
-        ("an open state-builder debt naming a slot the builder has",
-         stored_with(lambda c: first_open(c, "state_builder")["trigger"]
-                     .__setitem__("threshold_or_condition", "combat")),
+        ("an open state-builder debt, owned, naming a slot the builder has",
+         stored_with(lambda c: (first_open(c, "state_builder")["owner"].__setitem__("package_id", "S-01c"),
+                                first_open(c, "state_builder").__setitem__("review_by", None),
+                                first_open(c, "state_builder")["trigger"].__setitem__("kind", "slot_missing"),
+                                first_open(c, "state_builder")["trigger"]
+                                .__setitem__("threshold_or_condition", "combat"))),
          "which the builder has"),
         ("an open template debt no observed question still requires",
          stored_with(lambda c: c["questions"].__setitem__(
@@ -448,6 +483,11 @@ def main() -> int:
     # questions carry a family claim that the run actually binds, so "closed"
     # is read off the runs below, not off the status field.
     closed_template = [d for d in stored["coverage_debts"] if d["class"] == "template" and d["status"] == "closed"]
+    parked = [d for d in stored["coverage_debts"] if d["owner"]["package_id"] is None]
+    if any(d["owner"]["package_id"] == "unscheduled" for d in stored["coverage_debts"]):
+        failures.append("'unscheduled' is not a package")
+    if parked and not all(d["review_by"] for d in parked):
+        failures.append("every debt with no package carries a review date")
     if not closed_template:
         failures.append("T-01 closed no template debt; the families absorbed nothing")
 
@@ -541,7 +581,8 @@ def main() -> int:
           f"ledger mutations refused: {len(ledger_cases)}")
     ledger = coverage["coverage_debts"]
     print(f"coverage debts: {ledger['open']} open, {ledger['closed']} closed; by class {ledger['by_class']}; "
-          f"by blocks {ledger['by_blocks']}; questions blocked {ledger['questions_blocked']}")
+          f"by blocks {ledger['by_blocks']}; questions blocked {ledger['questions_blocked']}; "
+          f"no package yet: {len(parked)} (review by {sorted({d['review_by'] for d in parked}) or '-'})")
     print(f"run against the real consultation command: "
           + ", ".join(f"{value} {key}" for key, value in sorted(counts.items())))
     return 0

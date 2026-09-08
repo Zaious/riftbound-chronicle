@@ -167,17 +167,22 @@ QUESTION_FIELDS = {"question_id", "family", "language", "question", "expected_ti
 
 CORRECTION_FIELDS = {"observed", "decided", "follow_up"}
 
-DEBT_FIELDS = {"id", "class", "blocks", "owner", "observed_in", "trigger", "status"}
+DEBT_FIELDS = {"id", "class", "blocks", "owner", "observed_in", "trigger", "status", "review_by"}
 DEBT_CLASSES = ("template", "state_builder", "engine", "source", "policy")
 DEBT_BLOCKS = ("answer_contract", "position_conclusion", "source_explanation")
 DEBT_STATUSES = ("open", "closed")
-# owner: which track closes the debt, and under which package. Both closed.
-# `unscheduled` is a package id on purpose: a debt no package has been opened
-# for says so, rather than carrying a description of who might.
+# owner: which track closes the debt, and under which package. Both closed. A
+# package id names real work; a debt no package has been opened for carries
+# package_id null, and then it must say when it is next looked at
+# (review_by) and what would force that look sooner (a triage trigger).
 OWNER_FIELDS = {"track", "package_id"}
 DEBT_TRACKS = ("answer_surface", "state_builder", "engine", "rules_index", "policy")
-PACKAGE_IDS = ("S-01", "S-01b", "S-01c", "S-02", "S-03", "S-04", "S-04d", "S-05", "I-01", "T-01",
-               "unscheduled")
+PACKAGE_IDS = ("S-01", "S-01b", "S-01c", "S-02", "S-03", "S-04", "S-04d", "S-05", "I-01", "T-01")
+TRIAGE_KIND = "triage_required"
+# What would pull an unscheduled debt into triage before its review date:
+# the stop rules the loop already runs on the ledger, plus the date itself.
+TRIAGE_THRESHOLDS = ("recurrence_at_3", "family_fully_blocked", "review_by_reached")
+DATE_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # trigger: the kind of measured event that raised the debt, fixed by class,
 # and the condition — a template id, a slot name, a reason code, a retrieval
 # status — checked by kind against the module that owns that vocabulary.
@@ -504,17 +509,47 @@ def validate_debts(corpus: dict[str, Any]) -> list[str]:
             errors.append(f"{label}: status must be one of {list(DEBT_STATUSES)}")
 
         owner = debt["owner"]
+        scheduled = None
         if not isinstance(owner, dict) or set(owner) != OWNER_FIELDS:
             errors.append(f"{label}: owner carries exactly {sorted(OWNER_FIELDS)}; not a description")
         else:
             if owner["track"] not in DEBT_TRACKS:
                 errors.append(f"{label}: owner.track must be one of {list(DEBT_TRACKS)}")
-            if owner["package_id"] not in PACKAGE_IDS:
-                errors.append(f"{label}: owner.package_id must be one of {list(PACKAGE_IDS)}")
+            if owner["package_id"] is None:
+                scheduled = False
+            elif owner["package_id"] in PACKAGE_IDS:
+                scheduled = True
+            else:
+                errors.append(f"{label}: owner.package_id must be null or one of {list(PACKAGE_IDS)}")
+        if scheduled is False and status == "closed":
+            errors.append(f"{label}: a closed debt names the package that closed it")
+
+        # review_by: only an unscheduled debt has one, and it must have one.
+        review_by = debt["review_by"]
+        if scheduled is False:
+            if not (isinstance(review_by, str) and DATE_SHAPE.match(review_by)):
+                errors.append(f"{label}: a debt with no package carries review_by as YYYY-MM-DD")
+        elif scheduled is True and review_by is not None:
+            errors.append(f"{label}: a debt with a package carries no review_by; the package "
+                          f"is its review")
 
         trigger = debt["trigger"]
         if not isinstance(trigger, dict) or set(trigger) != TRIGGER_FIELDS:
             errors.append(f"{label}: trigger carries exactly {sorted(TRIGGER_FIELDS)}; not a description")
+            trigger = None
+        elif scheduled is False:
+            # No package: the trigger is what forces triage, from the closed
+            # list of things that do. The class-specific condition checks
+            # below do not apply; nothing owns this debt yet.
+            if trigger["kind"] != TRIAGE_KIND:
+                errors.append(f"{label}: a debt with no package is triggered by {TRIAGE_KIND!r}, "
+                              f"not {trigger['kind']!r}")
+            elif trigger["threshold_or_condition"] not in TRIAGE_THRESHOLDS:
+                errors.append(f"{label}: a triage threshold is one of {list(TRIAGE_THRESHOLDS)}")
+            trigger = None
+        elif scheduled and trigger["kind"] == TRIAGE_KIND:
+            errors.append(f"{label}: {TRIAGE_KIND!r} is for a debt with no package; this one is "
+                          f"owned by {owner['package_id']!r}")
             trigger = None
         elif trigger["kind"] != TRIGGER_KIND_BY_CLASS[cls]:
             errors.append(f"{label}: a {cls} debt is triggered by {TRIGGER_KIND_BY_CLASS[cls]!r}, "

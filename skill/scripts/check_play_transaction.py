@@ -124,8 +124,15 @@ def main() -> int:
         p1 = nxt["players"]["p1"]
         if p1["resources"] != {"energy": 1, "power": {"fury": 0}}:
             errors.append(f"pool not debited correctly: {p1['resources']}")
-        if "c1" in p1["zones"]["hand"] or "chain" in p1["zones"] or nxt.get("chain_items") != {"spell-1": {"card": "c1", "controller": "p1", "effect_program_id": "spell-1-effects"}} or object_identity(nxt, "c1") != "c1@1":
+        chain_entry = (nxt.get("chain_items") or {}).get("spell-1")
+        placed = {k: v for k, v in (chain_entry or {}).items() if k != "cost_receipt"}
+        if "c1" in p1["zones"]["hand"] or "chain" in p1["zones"] or list(nxt.get("chain_items") or {}) != ["spell-1"]                 or placed != {"card": "c1", "controller": "p1", "effect_program_id": "spell-1-effects"}                 or object_identity(nxt, "c1") != "c1@1":
             errors.append(f"card did not move hand → shared chain with a new identity: {nxt.get('chain_items')}")
+        # DP-93: and the item carries the receipt of the play that made it, so a
+        # later cost comparison has a modified cost and a payment to read.
+        if (chain_entry or {}).get("cost_receipt", {}).get("chain_item") != "spell-1":
+            errors.append(f"the chain item does not carry its own play's receipt: "
+                          f"{(chain_entry or {}).get('cost_receipt')}")
         if validate_state(nxt):
             errors.append(f"next effect state invalid: {validate_state(nxt)}")
         items = ok["next_timing_state"]["chain"]["items"]

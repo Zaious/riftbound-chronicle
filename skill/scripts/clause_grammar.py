@@ -62,6 +62,15 @@ class ClauseUnparsed(ValueError):
 
 SYMBOLS = {":rb_might:": "[m]", ":rb_energy:": "[e]", "’": "'", "‘": "'",
            "“": '"', "”": '"', "–": "-", "—": "-"}
+# The parameterised symbols, in order. Rainbow before the general rune rule, or
+# "any Domain" would normalise to a Domain called "rainbow". The forms match the
+# card frames' own accessibility rendering: [1][C] for one Energy and a Domain
+# Power, [A] for any Domain.
+SYMBOL_PATTERNS = (
+    (re.compile(r":rb_energy_(\d+):"), r"[e\g<1>]"),
+    (re.compile(r":rb_rune_rainbow:"), "[a]"),
+    (re.compile(r":rb_rune_([a-z]+):"), r"[rune:\g<1>]"),
+)
 
 
 def normalize(text: str) -> str:
@@ -70,6 +79,8 @@ def normalize(text: str) -> str:
     normalized = text.strip()
     for symbol, plain in SYMBOLS.items():
         normalized = normalized.replace(symbol, plain)
+    for pattern, replacement in SYMBOL_PATTERNS:
+        normalized = pattern.sub(replacement, normalized)
     normalized = re.sub(r"\s+", " ", normalized).lower()
     return normalized[:-1] if normalized.endswith(".") else normalized
 
@@ -401,7 +412,24 @@ def _lower_death_replacement(params):
     }
 
 
+def _lower_counter_within_cost_limit(params):
+    """The clause states the numbers; a card mapping states which cost they are
+    compared against and on whose authority. The two are deliberately separate:
+    the numbers are printed on the card and the reading is not."""
+    return {
+        "program_effects": [{
+            "op": "counter", "effect_id": "ctr",
+            "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain",
+                       "max_cost": {"energy": int(params["energy"]), "power": 1}},
+        }],
+        "needs_mapping": "cost_comparison",
+        "ast": {"node": "instruction", "op": "counter",
+                "params": {"max_energy": int(params["energy"]), "max_power": 1}},
+    }
+
+
 LOWERINGS = {
+    "counter_a_spell_within_a_cost_limit": _lower_counter_within_cost_limit,
     "if_a_friendly_unit_would_die_kill_this_instead": _lower_death_replacement,
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     "play_timing_keyword": _lower_play_timing,
@@ -447,7 +475,53 @@ ABSTENTION_REASONS = frozenset({
     "link_antecedent_not_available",   # "if you do" with no readable previous instruction (DP-86)
     "referent_not_bound",              # "it" with nothing before it to be (DP-86)
     "cost_offer_not_declared",         # "if you paid additional cost" with no offer on this card
+    "mapping_not_supplied",            # the clause needs a card mapping the caller did not provide
+    "mapping_invalid",                 # a mapping was supplied and does not satisfy its own contract
 })
+
+
+# DP-93: what a card mapping may supply, and the module that validates it.
+# The public engine ships the contract and the verifier; which reading a
+# particular card takes is service data and lives with the card corpus.
+MAPPING_VALIDATORS = {"cost_comparison": ("cost_comparison", "validate_limit")}
+
+
+def _apply_mapping(compiled: dict[str, Any], mappings: dict[str, Any] | None) -> dict[str, Any]:
+    """Fill the one hole a clause deliberately left, or abstain.
+
+    A clause that leaves a hole is not broken - it is a clause whose meaning
+    the rules do not fix. Filling it from a default would be inventing a
+    ruling; leaving it empty and calling the clause compiled would be worse,
+    because the program would then run against an incomplete limit.
+    """
+    need = compiled.get("needs_mapping")
+    if need is None:
+        return compiled
+    supplied = (mappings or {}).get(need)
+    if supplied is None:
+        return {"production_id": compiled["production_id"], "unsupported": True,
+                "reason_code": "mapping_not_supplied", "text": compiled["text"],
+                "normalized": compiled.get("normalized"), "needs_mapping": need,
+                "reason": f"this clause needs a {need} mapping; the rules do not fix the reading and "
+                          "the grammar will not pick one"}
+    module_name, function_name = MAPPING_VALIDATORS[need]
+    module = __import__(module_name)
+    filled = copy.deepcopy(compiled)
+    for effect in filled.get("program_effects", []):
+        target = effect.get("target")
+        if isinstance(target, dict) and isinstance(target.get("max_cost"), dict):
+            target["max_cost"] = {**target["max_cost"], **supplied}
+    problems = [problem for effect in filled.get("program_effects", [])
+                if isinstance(effect.get("target"), dict) and isinstance(effect["target"].get("max_cost"), dict)
+                for problem in getattr(module, function_name)(effect["target"]["max_cost"])]
+    if problems:
+        return {"production_id": compiled["production_id"], "unsupported": True,
+                "reason_code": "mapping_invalid", "text": compiled["text"],
+                "normalized": compiled.get("normalized"), "needs_mapping": need,
+                "reason": f"the {need} mapping does not satisfy its own contract: {problems}"}
+    filled.pop("needs_mapping", None)
+    filled["mapping"] = {need: supplied}
+    return filled
 
 # A closed white-list. A connective outside it does not join anything; the
 # clause is unparsed rather than guessed at.
@@ -587,7 +661,8 @@ def _rebind_referents(effects: list[dict[str, Any]], decision_ref: str) -> list[
 
 
 def compile_clause(text: str, grammar: dict[str, Any] | None = None,
-                   previous: dict[str, Any] | None = None) -> dict[str, Any]:
+                   previous: dict[str, Any] | None = None,
+                   mappings: dict[str, Any] | None = None) -> dict[str, Any]:
     """One clause in, one typed result out. Deterministic: the same text
     always produces the same production, AST and program.
 
@@ -739,7 +814,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
         }
         if _has_unbound_referent(compiled.get("program_effects", [])):
             compiled["needs_referent"] = True
-        return compiled
+        return _apply_mapping(compiled, mappings)
     # Round H: a mode. Both halves must be instructions the grammar reads and
     # neither may contribute a passive - a mode that changes what the card *is*
     # rather than what it does is not something Core 402.2 covers.
@@ -821,7 +896,8 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
             "normalized": normalized, "reason": "no production in clause-grammar.v1 matches this clause"}
 
 
-def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None = None) -> dict[str, Any]:
+def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None = None,
+                 mappings: dict[str, Any] | None = None) -> dict[str, Any]:
     """Every clause of one card, in order. The card's own declaration — its
     printed cost, its type, where it enters — is not a clause's business, so
     the compiler does not invent one."""
@@ -830,7 +906,8 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
     state_lists: dict[str, Any] = {}
     declared_offers = 0
     for clause in clauses:
-        entry = compile_clause(clause["text"], grammar, previous=compiled[-1] if compiled else None)
+        entry = compile_clause(clause["text"], grammar, previous=compiled[-1] if compiled else None,
+                               mappings=mappings)
         if not entry.get("unsupported") and entry.get("cost_offer_id") is not None and declared_offers > 1:
             # "the additional cost" names one offer. A card that prints two has
             # not said which, and the clause abstains rather than taking the

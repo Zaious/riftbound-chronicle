@@ -481,13 +481,19 @@ def validate_state(state: Any) -> list[str]:
         chain_items = {}
     for item_id, entry in chain_items.items():
         is_ability = isinstance(entry, dict) and "source_object" in entry
-        allowed = {"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable"} if is_ability else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable"}
+        # DP-93: a chain item may carry the receipt of the play that made it, so
+        # a cost comparison can read what that spell actually cost rather than
+        # only what is printed on it.
+        allowed = ({"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable", "cost_receipt"} if is_ability
+                   else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt"})
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
             continue
         if "counterable" in entry and not isinstance(entry["counterable"], bool):
             errors.append(f"chain_items.{item_id}.counterable must be boolean (ADR-0011 §5)")
+        if "cost_receipt" in entry:
+            errors.extend(f"chain_items.{item_id}.cost_receipt {e}" for e in _receipt_errors(entry["cost_receipt"]))
         repeat = entry.get("repeat")
         if repeat is not None and (not isinstance(repeat, dict) or set(repeat) - {"executions", "modes"} or not isinstance(repeat.get("executions"), int) or isinstance(repeat.get("executions"), bool) or repeat["executions"] < 1
                                    or ("modes" in repeat and (not isinstance(repeat["modes"], list) or len(repeat["modes"]) != repeat["executions"] or any(not isinstance(m, dict) or set(m) != {"decision_id", "option_id"} for m in repeat["modes"])))):
@@ -1303,7 +1309,7 @@ def validate_program(program: Any) -> list[str]:
 
 
 MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost"}
 # Round H: "another unit" is *this* unit excluded, by identity. The clause
 # writes the sentinel; the engine resolves it from the program's own
 # source_object when the selection is made, so the exclusion can never be a
@@ -1349,6 +1355,9 @@ def _selector_errors(selector: Any) -> list[str]:
     if "exclude_source_identity" in selector and (not isinstance(exclude, str)
                                                   or (exclude != SOURCE_IDENTITY_SENTINEL and "@" not in exclude)):
         errors.append(f"exclude_source_identity must be {SOURCE_IDENTITY_SENTINEL!r} or an identity token")
+    if "max_cost" in selector:
+        from cost_comparison import validate_limit  # standalone module; no cycle
+        errors.extend(f"max_cost {e}" for e in validate_limit(selector["max_cost"]))
     return errors
 
 
@@ -1689,6 +1698,17 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
     max_might = target.get("max_might")
     if max_might is not None and effective_might(state, object_id) > max_might:
         return False, "target_might_requirement_failed"
+    limit = target.get("max_cost")
+    if limit is not None:
+        from cost_comparison import compare  # standalone module; no cycle
+        verdict = compare(state, object_id, limit)
+        if verdict["holds"] is None:
+            # DP-93: the basis this card reads is not observable here. Refusing
+            # is the only safe answer - treating "cannot see" as "qualifies"
+            # would let a spell be countered on no evidence at all.
+            return False, f"target_cost_not_observed:{verdict['reason']}"
+        if verdict["holds"] is False:
+            return False, f"target_cost_over_limit:{verdict['reason']}"
     exclude = target.get("exclude_source_identity")
     if exclude == SOURCE_IDENTITY_SENTINEL:
         # The sentinel reached the check unresolved: nobody bound it to a

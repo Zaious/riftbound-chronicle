@@ -1045,7 +1045,7 @@
     {
       "production_id": "self_cost_reduction_score",
       "form": "If an opponent's score is within 3 points of the Victory Score, this costs :rb_energy_2: less.",
-      "template": "if an opponent's score is within (?P<within>\\d+) points? of the victory score, this costs :rb_energy_(?P<amount>\\d+): less",
+      "template": "if an opponent's score is within (?P<within>\\d+) points? of the victory score, this costs \\[e(?P<amount>\\d+)\\] less",
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
@@ -1116,6 +1116,32 @@
         "if a unit would die, kill this instead",
         "if a friendly unit would die, prevent it",
         "the next time a friendly unit would die, kill this instead"
+      ]
+    },
+    {
+      "production_id": "counter_a_spell_within_a_cost_limit",
+      "form": "Counter a spell that costs no more than [E4] and no more than [A].",
+      "template": "counter a spell that costs no more than \\[e(?P<energy>\\d+)\\] and no more than \\[a\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 367",
+        "Core 355.9",
+        "Core 356.1"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "counter",
+        "typed_selectors"
+      ],
+      "boundary": "Counter one chosen spell whose cost is within the printed limits. Which of the three costs 'costs no more than' reads is not something this clause decides - the Core Rules never define the phrase - so the production leaves cost_basis unset and a card mapping must supply it. Without one the clause abstains rather than picking a reading.",
+      "golden": [
+        "Counter a spell that costs no more than [E4] and no more than [A]."
+      ],
+      "negative": [
+        "counter a spell that costs no more than [e4]",
+        "counter a spell",
+        "counter a spell that costs no more than [e4] and no more than [c]"
       ]
     },
     {

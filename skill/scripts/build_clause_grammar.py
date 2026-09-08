@@ -344,7 +344,7 @@ LITERAL = [
      ["Units you play this turn enter ready."],
      ["units you play this turn enter exhausted", "i enter ready"]),
     ("self_cost_reduction_score",
-     r"if an opponent's score is within (?P<within>\d+) points? of the victory score, this costs :rb_energy_(?P<amount>\d+): less",
+     r"if an opponent's score is within (?P<within>\d+) points? of the victory score, this costs \[e(?P<amount>\d+)\] less",
      ["Core 356.4", "Core 194.1"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
      "The card's own text, a fixed Energy amount, and the one condition leaf this wave registered. A reduction of Power, a variable amount, or a value read off the board is a different clause and stays unparsed.",
      ["If an opponent's score is within 3 points of the Victory Score, this costs :rb_energy_2: less."],
@@ -371,6 +371,17 @@ LITERAL = [
      ["if a unit would die, kill this instead",
       "if a friendly unit would die, prevent it",
       "the next time a friendly unit would die, kill this instead"]),
+    ("counter_a_spell_within_a_cost_limit",
+     r"counter a spell that costs no more than \[e(?P<energy>\d+)\] and no more than \[a\]",
+     ["Core 367", "Core 355.9", "Core 356.1"], "instruction", ["counter", "typed_selectors"],
+     ("Counter one chosen spell whose cost is within the printed limits. Which of the three costs "
+      "'costs no more than' reads is not something this clause decides - the Core Rules never define "
+      "the phrase - so the production leaves cost_basis unset and a card mapping must supply it. "
+      "Without one the clause abstains rather than picking a reading."),
+     ["Counter a spell that costs no more than [E4] and no more than [A]."],
+     ["counter a spell that costs no more than [e4]",
+      "counter a spell",
+      "counter a spell that costs no more than [e4] and no more than [c]"]),
     ("no_rules_text", r"\(no rules text\)", ["Core 185"], "empty", [],
      "A card with nothing to compile. It is a parsed clause, not an unparsed one.",
      ["(no rules text)"], ["no rules text", "(vanilla)"]),

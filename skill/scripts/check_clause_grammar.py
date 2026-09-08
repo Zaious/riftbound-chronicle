@@ -58,6 +58,15 @@ def compiled_of(result):
             "play_timing": result.get("play_timing")}
 
 
+# Synthetic, and synthetic on purpose: the public repo carries the contract and
+# the verifier, never a real card's reading.
+SYNTHETIC_MAPPINGS = {
+    "cost_comparison": {"cost_basis": "printed_cost", "power_measure": "total_printed_power",
+                        "authority_status": "house_ruling", "official_status": "unverified",
+                        "source": {"platform": "synthetic gate fixture", "recorded_on": "2026-09-08"}},
+}
+
+
 def main() -> int:
     errors: list[str] = []
     grammar = cg.load_grammar()
@@ -78,7 +87,11 @@ def main() -> int:
         exercised: dict[str, set[str]] = {slot: set() for slot in production["slots"]}
         combinations: set[tuple[str, str, str, str]] = set()
         for text in production["golden"]:
-            result = cg.compile_clause(text, grammar)
+            # A production may deliberately leave a hole the rules do not fill
+            # (DP-93's cost basis). Its goldens are compiled with a synthetic
+            # mapping, so the gate still proves the production parses without
+            # any real card mapping entering the public repo.
+            result = cg.compile_clause(text, grammar, mappings=SYNTHETIC_MAPPINGS)
             recognised = result.get("production_id") == production_id
             parsed_or_known = not result.get("unsupported") or result.get("reason_code") == "keyword_not_implemented"
             if not recognised or not parsed_or_known:

@@ -1376,6 +1376,13 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         "paid": all(c["paid"] for c in skeleton["components"] if c["mandatory"] or c["intent"] is True),
         "rule_locators": list(dict.fromkeys(RULES["cost"] + RULES["payment"] + ["Core 356.4.f.1"])),
     }
+    # DP-93: the chain item carries the receipt of the play that made it, so a
+    # later comparison can read this spell's modified cost or what was actually
+    # paid, not only what is printed on it. Written here because the receipt is
+    # not complete until payment is.
+    if item_id in (working.get("chain_items") or {}):
+        working["chain_items"][item_id] = {**working["chain_items"][item_id],
+                                           "cost_receipt": copy.deepcopy(receipt)}
     next_timing = insertion["next_state"]
     result = {
         **base, "valid": True, "committed": True, "unsupported": False, "rolled_back": False, "stage": "commit", "reason_code": "ok",

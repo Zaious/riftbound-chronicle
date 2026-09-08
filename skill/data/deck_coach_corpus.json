@@ -1,0 +1,42 @@
+{
+  "schema_version": "deck-coach-corpus.v1",
+  "corpus_id": "deck-coach-corpus-2026-09-08",
+  "description": "The two claim classes, stored apart. The general-primer cases here are synthetic: this is the public repository, and it carries the contract and its validator rather than licensed decklists. The engine-closed case here binds a synthetic closure the gate builds, so the five damage tests run without any licensed data; the engine-closed cases for real decks live in the private overlay with the closures they bind, and are not part of a public clone.",
+  "general_primer_cases": [
+    {
+      "case_id": "DC-GP-001",
+      "case_class": "general_primer",
+      "deck_id": "synthetic-aggro-a",
+      "sections": {"legend": 1, "main": 40, "battlefields": 3, "runes": 12},
+      "expectations": [
+        "The primer names the deck's curve and where it wants to be on turn three.",
+        "The primer describes the plan for contesting Battlefields, without claiming an outcome.",
+        "The primer says which slots it could not read, rather than passing over them."
+      ],
+      "notes": "Structure and plan only. No coverage claim belongs here even when the deck happens to be closed."
+    },
+    {
+      "case_id": "DC-GP-002",
+      "case_class": "general_primer",
+      "deck_id": "synthetic-control-b",
+      "sections": {"legend": 1, "main": 40, "battlefields": 3, "runes": 12},
+      "expectations": [
+        "The primer identifies the deck as reactive and names what it is holding up.",
+        "The primer explains the Rune curve in terms of what it can pay for and when."
+      ],
+      "notes": null
+    },
+    {
+      "case_id": "DC-GP-003",
+      "case_class": "general_primer",
+      "deck_id": "synthetic-incomplete-c",
+      "sections": {"legend": 1, "main": 37, "battlefields": 3, "runes": 12},
+      "expectations": [
+        "The primer states that the main deck is short of the required count.",
+        "The primer still produces a plan for the cards that are present."
+      ],
+      "notes": "A decklist that does not satisfy deck construction still gets a primer; that is what 'any decklist' means."
+    }
+  ],
+  "engine_closed_cases": []
+}

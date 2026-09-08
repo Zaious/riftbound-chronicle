@@ -1,0 +1,98 @@
+{
+  "schema_version": "judge-corpus.v1",
+  "corpus_id": "judge-corpus-2026-09-08",
+  "description": "Seven exemplar questions, one per family, showing the shape the contract requires. This is NOT the sixty-question corpus: coverage reports 7/60 and names the shortfall per family. Writing the remaining questions is separate work, and each one is annotated by hand — a batch generated and declared complete would satisfy no part of this contract.",
+  "questions": [
+    {
+      "question_id": "JC-EX-TIMING-1",
+      "family": "timing_priority_chain",
+      "language": "en",
+      "question": "Both players have passed once each on a closed chain during my main phase. Does the whole chain resolve, or just one item?",
+      "expected_tier": "A",
+      "locators": ["Core 339.1"],
+      "abstention_contract": null,
+      "consultation_entry": "timing",
+      "bounded_note": null,
+      "zh_hant": {"question": "在我的主要階段，雙方各讓過一次、連鎖已封閉。整個連鎖會一起結算，還是只結算一項？"},
+      "notes": "Exemplar. The tier-A expectation is that the timing kernel rules, not that the locator is quoted."
+    },
+    {
+      "question_id": "JC-EX-COMBAT-1",
+      "family": "combat",
+      "language": "en",
+      "question": "My attacking unit is in the Backline. Does it contribute Combat Damage this step?",
+      "expected_tier": "A",
+      "locators": ["Core 423.1.b"],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "zh_hant": null,
+      "notes": "Exemplar."
+    },
+    {
+      "question_id": "JC-EX-CONTROL-1",
+      "family": "control_scoring",
+      "language": "en",
+      "question": "I control the Battlefield and my opponent has no units there. Do I score at the scoring step?",
+      "expected_tier": "A",
+      "locators": ["Core 323.6"],
+      "abstention_contract": null,
+      "consultation_entry": "control_step",
+      "bounded_note": null,
+      "zh_hant": null,
+      "notes": "Exemplar."
+    },
+    {
+      "question_id": "JC-EX-ENDGAME-1",
+      "family": "turn_structure_endgame",
+      "language": "en",
+      "question": "My deck is empty and I am about to draw. What happens, and when does the game end?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "engine_check_did_not_decide",
+      "consultation_entry": "effect",
+      "bounded_note": null,
+      "zh_hant": null,
+      "notes": "Exemplar, and a real boundary rather than an invented one: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry, so the engine declines and the answer must abstain with that named reason."
+    },
+    {
+      "question_id": "JC-EX-ACTIONS-1",
+      "family": "available_actions",
+      "language": "en",
+      "question": "It is my main phase and I hold priority. What can I do right now?",
+      "expected_tier": "A",
+      "locators": ["Core 312"],
+      "abstention_contract": null,
+      "consultation_entry": "legal_action",
+      "bounded_note": true,
+      "zh_hant": null,
+      "notes": "Exemplar. bounded_note is required for this family: the enumeration is bounded, complete_action_set is false, and an answer that lists correctly without saying so is still wrong."
+    },
+    {
+      "question_id": "JC-EX-CARD-1",
+      "family": "card_interaction",
+      "language": "en",
+      "question": "A unit with an uncompiled ability is on the board. Does its ability change this combat?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "unknown_card_snapshot",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "zh_hant": null,
+      "notes": "Exemplar. A card whose text is not in the snapshot set cannot back a claim, so the answer abstains rather than reasoning from the card name."
+    },
+    {
+      "question_id": "JC-EX-POLICY-1",
+      "family": "tournament_policy",
+      "language": "en",
+      "question": "My opponent drew an extra card by accident in round three. What is the penalty?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "tournament_policy_red_line",
+      "consultation_entry": null,
+      "bounded_note": null,
+      "zh_hant": {"question": "第三輪對手不小心多抽了一張牌。罰則是什麼？"},
+      "notes": "Exemplar. This abstention is a decision, not a mechanism running out: the service declines tournament procedure and penalties by policy."
+    }
+  ]
+}

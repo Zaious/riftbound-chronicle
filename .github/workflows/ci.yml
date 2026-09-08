@@ -422,6 +422,10 @@ jobs:
         run: python3 skill/scripts/check_rule_consult_command.py
       - name: rules index locator integrity (I-01, two-column pairing)
         run: python3 skill/scripts/check_rules_index_integrity.py
+      - name: judge-corpus.v1 (S-04, the corpus contract and its quotas)
+        run: python3 skill/scripts/check_judge_corpus.py
+      - name: deck-coach-corpus.v1 (S-05, two claim classes kept apart)
+        run: python3 skill/scripts/check_deck_coach_corpus.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -552,6 +556,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_fact_ledger.py"
           python3 "$REPO/skill/scripts/check_rule_consult_command.py"
           python3 "$REPO/skill/scripts/check_rules_index_integrity.py"
+          python3 "$REPO/skill/scripts/check_judge_corpus.py"
+          python3 "$REPO/skill/scripts/check_deck_coach_corpus.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

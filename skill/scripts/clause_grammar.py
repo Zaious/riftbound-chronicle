@@ -94,6 +94,16 @@ def load_grammar(path: Path | None = None) -> dict[str, Any]:
     return json.loads((path or GRAMMAR_PATH).read_text(encoding="utf-8"))
 
 
+def _battlefield_trigger(field: str, trigger_id: str, optional: bool = False) -> dict[str, Any]:
+    """A trigger printed on a Battlefield. Core 190.6.a: its controller is
+    whoever controls the Battlefield when it triggers, so the descriptor names
+    none - which is why this is a different shape from an object's trigger and
+    not a parameter of one."""
+    return {"battlefield_fields": {field: [{"trigger_id": trigger_id, "controller_order": 0,
+                                            "effect_program_id": "$clause_id",
+                                            "optional_at_finalize": optional}]}}
+
+
 def _trigger(field: str, trigger_id: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"object_fields": {field: [{"trigger_id": trigger_id, "controller": "$controller",
                                        "source_object": "$source_object", "controller_order": 0,
@@ -823,6 +833,25 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "passive": {"object_fields": fields},
                 "program_effects": inner.get("program_effects", []),
             }
+        if production_id == "when_you_hold_here":
+            # "You may" is the trigger's own optionality at finalization
+            # (383.3), not a separate instruction - the engine already carries
+            # it on the descriptor.
+            optional = bool(params.get("optional"))
+            inner = compile_clause(params["inner"], grammar, previous=previous)
+            if inner.get("unsupported"):
+                return {"production_id": production_id, "unsupported": True,
+                        "reason_code": inner.get("reason_code", "clause_unparsed"),
+                        "text": text, "inner_text": params["inner"],
+                        "reason": f"the Battlefield trigger parsed but its instruction did not: {params['inner']!r}"}
+            return {
+                "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
+                "params": params, "rule_locators": production["rule_locators"] + inner["rule_locators"],
+                "ast": {"node": "triggered", "on": production_id, "optional": optional, "then": inner["ast"]},
+                "passive": _battlefield_trigger("hold_triggers", "on-hold", optional),
+                "program_effects": inner.get("program_effects", []),
+                "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
+            }
         if production_id in TRIGGER_WRAPPERS:
             field, trigger_id, trigger_extra = TRIGGER_WRAPPERS[production_id]
             inner = compile_clause(params["inner"], grammar, previous=previous)
@@ -850,13 +879,15 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 **({"antecedent_effect_id": inner["antecedent_effect_id"]} if inner.get("antecedent_effect_id") is not None else {}),
             }
         lowered = COMPOSABLE[production_id](params, slots) if production_id in COMPOSABLE else LOWERINGS[production_id](params)
-        if "object_fields" in lowered or "state_lists" in lowered:
+        if any(k in lowered for k in ("object_fields", "battlefield_fields", "state_lists")):
             # ADR-0007: what a card contributes while it exists is either a
             # field on its own object or an entry in a state-level list. An
             # aura is the second kind - it is not a field of the unit it
             # modifies, because it modifies whichever unit is defending alone.
-            passive_shape = {k: lowered[k] for k in ("object_fields", "state_lists") if k in lowered}
-            lowered = {**{k: v for k, v in lowered.items() if k not in {"object_fields", "state_lists"}},
+            passive_shape = {k: lowered[k] for k in ("object_fields", "battlefield_fields", "state_lists")
+                             if k in lowered}
+            lowered = {**{k: v for k, v in lowered.items()
+                          if k not in {"object_fields", "battlefield_fields", "state_lists"}},
                        "passive": passive_shape}
         known = lowered.pop("known_unsupported", None)
         if known is not None:
@@ -1042,6 +1073,7 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
                            "reason": "the clause names a referent no earlier instruction chose"}
     effects: list[dict[str, Any]] = []
     passive: dict[str, Any] = {}
+    battlefield_fields: dict[str, Any] = {}
     conflicts: list[str] = []
     for entry in compiled:
         for effect in entry.get("program_effects", []) or []:
@@ -1060,6 +1092,8 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
                 passive[field] = copy.deepcopy(value)
         for field, value in ((entry.get("passive") or {}).get("state_lists", {}) or {}).items():
             state_lists.setdefault(field, []).extend(copy.deepcopy(value))
+        for field, value in ((entry.get("passive") or {}).get("battlefield_fields", {}) or {}).items():
+            battlefield_fields.setdefault(field, []).extend(copy.deepcopy(value))
     modal = [entry["modal"] for entry in compiled if entry.get("modal")]
     return {
         "schema_version": GRAMMAR_VERSION,
@@ -1068,6 +1102,7 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
         "clauses": compiled,
         "program_effects": effects,
         "passive": ({**({"object_fields": passive} if passive else {}),
+                     **({"battlefield_fields": battlefield_fields} if battlefield_fields else {}),
                      **({"state_lists": state_lists} if state_lists else {})} or None),
         **({"passive_conflicts": conflicts} if conflicts else {}),
         "unsupported_clauses": [{"text": e["text"], "reason_code": e["reason_code"]} for e in compiled if e.get("unsupported")],

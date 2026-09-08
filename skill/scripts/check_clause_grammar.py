@@ -117,6 +117,19 @@ def main() -> int:
                        for text in production["negative"]):
                 errors.append(f"{production_id} has no near-miss that its pattern rejects for slot {slot}")
 
+    # --- every capability the grammar names is one the engine declares ------------------------------
+    # Codex, after the ranking misled the target choice: capability gaps must
+    # be derived from the engine, not from a second vocabulary kept by hand.
+    from capability_manifest import build_manifest
+    manifest = build_manifest()
+    declared = ({entry["id"] for entry in manifest["operations"]}
+                | {scope for component in manifest["components"] for scope in component["supported_scope"]})
+    for production in grammar["productions"]:
+        unknown = sorted(set(production["required_capability"]) - declared)
+        if unknown:
+            errors.append(f"{production['production_id']} requires {unknown}, which this engine does not "
+                          "declare; a capability the manifest has never heard of cannot be reasoned about")
+
     # --- the round trip against the corpus -----------------------------------------------------
     agree = disagree = unparsed = known = skipped = 0
     semantic: list[dict] = []

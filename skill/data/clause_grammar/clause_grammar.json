@@ -325,7 +325,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "modify_might",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "One signed Might change for a duration. A second linked grant, or a value read from the board, is a different production.",
       "golden": [
@@ -397,7 +397,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "grant_keyword",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "Only the keywords the engine can grant. A keyword outside that list is a different clause and stays unparsed.",
       "golden": [
@@ -470,8 +470,8 @@
       ],
       "ast_node": "passive",
       "required_capability": [
-        "might_aura",
-        "combat_state"
+        "active_combat_criteria",
+        "continuous_effects"
       ],
       "boundary": "A standing Might aura whose condition the engine names exactly: a lone defender. The aura is not a target and grants nothing else; a different combat condition, or a keyword instead of Might, is a different production.",
       "golden": [
@@ -510,7 +510,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "ready",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "One chosen object is readied. A count ('ready up to 2 runes') or a rune selector is a different production.",
       "golden": [
@@ -553,7 +553,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "heal_all_damage",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "All damage is removed from one chosen object. 'Heal N' is a different production.",
       "golden": [
@@ -596,7 +596,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "exhaust",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "One chosen object is exhausted. A count or a rune selector is a different production.",
       "golden": [
@@ -639,7 +639,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "recall",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "One chosen object is sent to its controller's Base. Recall is not a Move (434.1).",
       "golden": [
@@ -682,7 +682,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "buff",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "One chosen Unit gets a Buff counter. A Unit that already has one is still chosen and is not Buffed again (426.1.c).",
       "golden": [
@@ -734,7 +734,7 @@
       ],
       "ast_node": "keyworded_ability",
       "required_capability": [
-        "keyword_catalogue_v1"
+        "keyword_catalog"
       ],
       "boundary": "The binder makes the keyword the ability's trigger condition. Only a keyword the engine implements as a trigger compiles; the rest are known_unsupported, and an ability the grammar cannot read makes the whole clause unparsed.",
       "golden": [
@@ -795,7 +795,7 @@
       ],
       "ast_node": "keyword",
       "required_capability": [
-        "keyword_catalogue_v1"
+        "keyword_catalog"
       ],
       "boundary": "A bare printed keyword the catalogue names. One it does not name stays unparsed; one it names but the engine does not implement is known_unsupported, not parsed.",
       "golden": [
@@ -860,7 +860,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "deal_damage",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "One chosen Unit at a Battlefield. A Might restriction on the target is a different production.",
       "golden": [
@@ -885,8 +885,8 @@
       ],
       "ast_node": "instruction",
       "required_capability": [
-        "deal_damage",
-        "criteria_expansion"
+        "criteria_expansion",
+        "deal_damage"
       ],
       "boundary": "One chosen Battlefield, then every enemy Unit there.",
       "golden": [
@@ -910,9 +910,9 @@
       ],
       "ast_node": "instruction",
       "required_capability": [
-        "deal_damage",
+        "active_combat_criteria",
         "criteria_expansion",
-        "combat_state"
+        "deal_damage"
       ],
       "boundary": "The Combat in progress. Outside one the instruction finds nothing.",
       "golden": [
@@ -935,8 +935,8 @@
       ],
       "ast_node": "instruction",
       "required_capability": [
-        "deal_damage",
-        "criteria_expansion"
+        "criteria_expansion",
+        "deal_damage"
       ],
       "boundary": "Every Unit at every Battlefield, and none in a Base.",
       "golden": [
@@ -983,7 +983,7 @@
       "ast_node": "instruction",
       "required_capability": [
         "return_to_hand",
-        "targeting"
+        "typed_selectors"
       ],
       "boundary": "A Unit, from the controller's own Trash.",
       "golden": [
@@ -1008,7 +1008,7 @@
       "ast_node": "conditional_might",
       "required_capability": [
         "continuous_effects",
-        "condition_v1"
+        "typed_conditions"
       ],
       "boundary": "A condition on the controller's own Runes on the board.",
       "golden": [
@@ -1054,7 +1054,7 @@
       ],
       "ast_node": "self_cost_reduction",
       "required_capability": [
-        "self_card_conditional_fixed_energy_reduction.v1"
+        "evaluated_cost_modifications"
       ],
       "boundary": "The card's own text, a fixed Energy amount, and the one condition leaf this wave registered. A reduction of Power, a variable amount, or a value read off the board is a different clause and stays unparsed.",
       "golden": [
@@ -1079,8 +1079,8 @@
       ],
       "ast_node": "passive",
       "required_capability": [
-        "card_self_optional_cost",
-        "domain_power"
+        "self_costs",
+        "typed_cost_payment"
       ],
       "boundary": "The card offers one Power of its own Domain as an optional additional cost for its own play. [C] is the card's Domain, not any Domain ([A]) - a card whose Domains are not observed abstains at play time rather than being offered an unpayable or an over-payable cost.",
       "golden": [
@@ -1105,7 +1105,7 @@
       ],
       "ast_node": "passive",
       "required_capability": [
-        "replacement_effects",
+        "bounded_replacement",
         "kill"
       ],
       "boundary": "A source-backed Replacement Effect over the death of a friendly Unit. What happens instead starts with killing the source; a following clause may add to it, and its referents name the unit that would have died.",
@@ -1151,7 +1151,7 @@
       ],
       "ast_node": "play_timing",
       "required_capability": [
-        "timing_permission_v1"
+        "timing_permission_classification"
       ],
       "boundary": "Only the two printed timing keywords.",
       "golden": [
@@ -1222,7 +1222,7 @@
       ],
       "ast_node": "triggered",
       "required_capability": [
-        "conquer_triggers"
+        "score_triggers"
       ],
       "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
       "golden": [
@@ -1246,7 +1246,7 @@
       ],
       "ast_node": "triggered",
       "required_capability": [
-        "end_of_turn_triggers"
+        "ending_step"
       ],
       "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
       "golden": [

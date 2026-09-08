@@ -394,7 +394,49 @@ WRAPPERS = [
 ]
 
 
+# DP-84 wrote the grammar's capability names by hand, and they drifted into a
+# second vocabulary: "targeting" for what the engine calls typed_selectors,
+# "keyword_catalogue_v1" for keyword_catalog. Every clause then looked like it
+# needed a capability the manifest had never heard of, which is exactly the
+# drift the manifest exists to prevent. Authoring keeps the readable name; the
+# emitted data carries the engine's, and the build fails if a name maps to
+# nothing the engine declares.
+CAPABILITY_ALIAS = {
+    "targeting": "typed_selectors",
+    "condition_v1": "typed_conditions",
+    "keyword_catalogue_v1": "keyword_catalog",
+    "combat_state": "active_combat_criteria",
+    "replacement_effects": "bounded_replacement",
+    "conquer_triggers": "score_triggers",
+    "end_of_turn_triggers": "ending_step",
+    "might_aura": "continuous_effects",
+    "domain_power": "typed_cost_payment",
+    "card_self_optional_cost": "self_costs",
+    "self_card_conditional_fixed_energy_reduction.v1": "evaluated_cost_modifications",
+    "timing_permission_v1": "timing_permission_classification",
+}
+
+
+def engine_capabilities() -> set[str]:
+    """Everything this build of the engine declares it supports: its operations
+    and every supported scope its check kinds name."""
+    from capability_manifest import build_manifest
+    manifest = build_manifest()
+    return ({entry["id"] for entry in manifest["operations"]}
+            | {scope for component in manifest["components"] for scope in component["supported_scope"]})
+
+
+def resolve_capabilities(names, production_id: str, declared: set[str]) -> list[str]:
+    resolved = [CAPABILITY_ALIAS.get(name, name) for name in names]
+    unknown = sorted(set(resolved) - declared)
+    if unknown:
+        raise ValueError(f"{production_id} requires {unknown}, which this engine does not declare; "
+                         "add the capability to the engine or map it in CAPABILITY_ALIAS")
+    return sorted(dict.fromkeys(resolved))
+
+
 def main() -> int:
+    declared = engine_capabilities()
     productions = list(PRODUCTIONS)
     for pid, pattern, locators, node, capability, boundary, golden, negative in LITERAL:
         productions.append({"production_id": pid, "form": golden[0], "template": pattern, "slots": {},
@@ -407,6 +449,9 @@ def main() -> int:
                             "required_capability": capability,
                             "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
                             "golden": golden, "negative": negative})
+    for production in productions:
+        production["required_capability"] = resolve_capabilities(
+            production["required_capability"], production["production_id"], declared)
     grammar = {
         "schema_version": "clause-grammar.v1",
         "version": "2026-09-08.1",

@@ -153,6 +153,16 @@ def main() -> int:
         errors.append(f"the power measure did not decide a two-Domain spell: total={total['holds']} "
                       f"per_domain={per_domain['holds']}")
 
+    # --- a Power total with no Domain split answers one measure and not the other ------------------
+    lump = copy.deepcopy(state)
+    lump["objects"]["s1"]["printed_cost"] = {"energy": 2, "power": {cc.UNSPECIFIED_DOMAIN: 2}}
+    summed = cc.compare(lump, "s1", limit(power=1, basis="printed_cost", measure="total_printed_power"))
+    split = cc.compare(lump, "s1", limit(power=1, basis="printed_cost", measure="per_domain_printed_power"))
+    if summed["holds"] is not False:
+        errors.append(f"a printed Power total of 2 was within a limit of 1: {summed}")
+    if split["holds"] is not None or split["reason"] != "power_split_not_observed":
+        errors.append(f"a per-Domain measure answered from a Power total with no split: {split}")
+
     # --- what a limit may not be --------------------------------------------------------------------
     for label, bad in (
         ("no basis", {"energy": 4, "authority_status": "community_interpretation",

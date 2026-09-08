@@ -152,9 +152,18 @@ def read_cost(state: dict[str, Any], object_id: str, basis: str) -> dict[str, An
     return _from_receipt(state, object_id, basis)
 
 
-def measure_power(power: dict[str, int], measure: str) -> int:
+# A card corpus that records a printed Power *total* without saying how it
+# splits across Domains carries it under this key. Summing it is exact; asking
+# which Domain holds the most is not answerable from it.
+UNSPECIFIED_DOMAIN = "$unspecified"
+
+
+def measure_power(power: dict[str, int], measure: str) -> int | None:
+    """The measured Power, or None when this data cannot answer this measure."""
     if measure in {"total_printed_power", "total_power"}:
         return sum(power.values())
+    if UNSPECIFIED_DOMAIN in power:
+        return None
     return max(power.values(), default=0)
 
 
@@ -190,6 +199,11 @@ def compare(state: dict[str, Any], object_id: str, limit: dict[str, Any]) -> dic
             return {"holds": False, "reason": "energy_over_limit", "evidence": evidence}
     if limit.get("power") is not None:
         measured = measure_power(cost["power"], limit["power_measure"])
+        if measured is None:
+            # The data gives a Power total and this measure needs the split.
+            # Guessing a split would decide real cards on invented data.
+            evidence["power_limit"] = limit["power"]
+            return {"holds": None, "reason": "power_split_not_observed", "evidence": evidence}
         evidence.update({"power_limit": limit["power"], "power_measured": measured})
         if measured > limit["power"]:
             return {"holds": False, "reason": "power_over_limit", "evidence": evidence}

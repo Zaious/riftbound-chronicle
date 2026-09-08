@@ -8,247 +8,1129 @@
       "question": "Both players have passed once each on an open chain during my main phase. Whose priority is it?",
       "question_kind": "timing_priority",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "turn_player": "p1",
         "phase": "main",
         "priority": "p2",
         "showdown_active": false,
         "showdown_focus": null,
-        "chain_items": [{"item_id": "spell-1", "controller": "p1", "object_kind": "spell", "timing": "default"}]
+        "chain_items": [
+          {
+            "item_id": "spell-1",
+            "controller": "p1",
+            "object_kind": "spell",
+            "timing": "default"
+          }
+        ]
       },
-      "expected": {"buildable": true, "assumed_slots": []}
+      "expected": {
+        "buildable": true,
+        "assumed_slots": []
+      }
     },
     {
       "case_id": "SB-002",
       "question": "It is my main phase and nothing has happened yet. Can my opponent act before I do?",
       "question_kind": "timing_priority",
-      "draft": {"players": ["p1", "p2"], "turn_player": "p1", "phase": "main"},
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main"
+      },
       "expected": {
         "buildable": true,
-        "assumed_slots": ["chain_items", "priority", "showdown_active", "showdown_focus"]
+        "assumed_slots": [
+          "chain_items",
+          "priority",
+          "showdown_active",
+          "showdown_focus"
+        ]
       }
     },
     {
       "case_id": "SB-003",
       "question": "Who acts first here?",
       "question_kind": "timing_priority",
-      "draft": {"players": ["p1", "p2"], "phase": "main"},
-      "expected": {"buildable": false, "tier": "B", "reason": "missing_required_slot", "missing_fields": ["turn_player"]}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "phase": "main"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "turn_player"
+        ]
+      }
     },
     {
       "case_id": "SB-004",
       "question": "A Showdown is open. Who may act next?",
       "question_kind": "timing_priority",
-      "draft": {"players": ["p1", "p2"], "turn_player": "p1", "phase": "main", "showdown_active": true},
-      "expected": {"buildable": false, "tier": "B", "reason": "missing_required_slot", "missing_fields": ["showdown_focus"]}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "showdown_focus"
+        ]
+      }
     },
     {
       "case_id": "SB-005",
       "question": "It is my main phase. Can my opponent respond?",
       "question_kind": "timing_priority",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "turn_player": "p1",
         "phase": "main",
         "opponent_hand_count": 4
       },
-      "expected": {"buildable": false, "tier": "C", "reason": "schema_outside_field", "rejected_fields": ["opponent_hand_count"]}
+      "expected": {
+        "buildable": false,
+        "tier": "C",
+        "reason": "schema_outside_field",
+        "rejected_fields": [
+          "opponent_hand_count"
+        ]
+      }
     },
     {
       "case_id": "SB-006",
       "question": "Two items are on the chain and both players pass. What resolves?",
       "question_kind": "chain_resolution",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "turn_player": "p1",
         "phase": "main",
         "priority": "p2",
         "chain_items": [
-          {"item_id": "spell-1", "controller": "p1", "object_kind": "spell", "timing": "default"},
-          {"item_id": "spell-2", "controller": "p2", "object_kind": "spell", "timing": "reaction"}
+          {
+            "item_id": "spell-1",
+            "controller": "p1",
+            "object_kind": "spell",
+            "timing": "default"
+          },
+          {
+            "item_id": "spell-2",
+            "controller": "p2",
+            "object_kind": "spell",
+            "timing": "reaction"
+          }
         ]
       },
-      "expected": {"buildable": true, "assumed_slots": ["showdown_active", "showdown_focus"]}
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "showdown_active",
+          "showdown_focus"
+        ]
+      }
     },
     {
       "case_id": "SB-007",
       "question": "If we both pass, does the whole chain resolve at once?",
       "question_kind": "chain_resolution",
-      "draft": {"players": ["p1", "p2"], "turn_player": "p1", "phase": "main"},
-      "expected": {"buildable": false, "tier": "B", "reason": "missing_required_slot", "missing_fields": ["chain_items"]}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "chain_items"
+        ]
+      }
     },
     {
       "case_id": "SB-008",
       "question": "A Showdown just opened and I hold Focus. Who acts first?",
       "question_kind": "showdown_focus",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "turn_player": "p1",
         "phase": "main",
         "showdown_active": true,
         "showdown_focus": "p1",
         "priority": "p1"
       },
-      "expected": {"buildable": true, "assumed_slots": ["chain_items"]}
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "chain_items"
+        ]
+      }
     },
     {
       "case_id": "SB-009",
       "question": "A Showdown is open, I hold Focus, and my opponent says priority is theirs. Is that right?",
       "question_kind": "showdown_focus",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "turn_player": "p1",
         "phase": "main",
         "showdown_active": true,
         "showdown_focus": "p1",
         "priority": "p2"
       },
-      "expected": {"buildable": false, "tier": "B", "reason": "engine_rejected_state"}
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "engine_rejected_state"
+      }
     },
     {
       "case_id": "SB-010",
       "question": "A triggered ability is waiting on the chain. Can I respond to it?",
       "question_kind": "timing_priority",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "turn_player": "p1",
         "phase": "main",
-        "chain_items": [{"item_id": "trig-1", "controller": "p1", "object_kind": "ability", "timing": "triggered"}]
+        "chain_items": [
+          {
+            "item_id": "trig-1",
+            "controller": "p1",
+            "object_kind": "ability",
+            "timing": "triggered"
+          }
+        ]
       },
-      "expected": {"buildable": false, "tier": "B", "reason": "slot_type_invalid", "rejected_fields": ["chain_items"]}
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "chain_items"
+        ]
+      }
     },
     {
       "case_id": "SB-011",
       "question": "A third player's spell is on the chain. Who acts next?",
       "question_kind": "timing_priority",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "turn_player": "p1",
         "phase": "main",
-        "chain_items": [{"item_id": "spell-1", "controller": "p3", "object_kind": "spell", "timing": "default"}]
+        "chain_items": [
+          {
+            "item_id": "spell-1",
+            "controller": "p3",
+            "object_kind": "spell",
+            "timing": "default"
+          }
+        ]
       },
-      "expected": {"buildable": false, "tier": "B", "reason": "slot_value_out_of_scope", "rejected_fields": ["chain_items[0].controller"]}
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "chain_items[0].controller"
+        ]
+      }
     },
     {
       "case_id": "SB-012",
       "question": "My 3 Might unit already has 1 damage on it. Does 2 more damage kill it?",
       "question_kind": "unit_damage",
       "draft": {
-        "players": ["p1", "p2"],
+        "players": [
+          "p1",
+          "p2"
+        ],
         "units": [
-          {"object_id": "u1", "controller": "p1", "might": 3, "damage": 1},
-          {"object_id": "u2", "controller": "p2", "might": 4, "damage": 0, "exhausted": true}
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "damage": 1
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 4,
+            "damage": 0,
+            "exhausted": true
+          }
         ]
       },
-      "expected": {"buildable": true, "assumed_slots": ["battlefields", "energy", "power"]}
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "battlefields",
+          "energy",
+          "power"
+        ]
+      }
     },
     {
       "case_id": "SB-013",
       "question": "Does that damage kill it?",
       "question_kind": "unit_damage",
-      "draft": {"players": ["p1", "p2"]},
-      "expected": {"buildable": false, "tier": "B", "reason": "missing_required_slot", "missing_fields": ["units"]}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "units"
+        ]
+      }
     },
     {
       "case_id": "SB-014",
       "question": "My unit is at a Battlefield I control and has taken damage. Is it still alive?",
       "question_kind": "unit_damage",
       "draft": {
-        "players": ["p1", "p2"],
-        "units": [{"object_id": "u1", "controller": "p1", "might": 5, "damage": 2, "location": "bf1"}],
-        "battlefields": [{"battlefield_id": "bf1", "controller": "p1"}]
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 5,
+            "damage": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ]
       },
-      "expected": {"buildable": true, "assumed_slots": ["energy", "power"]}
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "energy",
+          "power"
+        ]
+      }
     },
     {
       "case_id": "SB-015",
       "question": "My unit at the contested Battlefield has taken damage. Is it still alive?",
       "question_kind": "unit_damage",
       "draft": {
-        "players": ["p1", "p2"],
-        "units": [{"object_id": "u1", "controller": "p1", "might": 5, "damage": 2, "location": "bf2"}],
-        "battlefields": [{"battlefield_id": "bf1", "controller": "p1"}]
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 5,
+            "damage": 2,
+            "location": "bf2"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ]
       },
-      "expected": {"buildable": false, "tier": "B", "reason": "slot_value_out_of_scope", "rejected_fields": ["units[0].location"]}
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "units[0].location"
+        ]
+      }
     },
     {
       "case_id": "SB-016",
       "question": "I have 2 Energy and one Power of my Legend's domain. Can I pay a cost of 2 and one Power?",
       "question_kind": "resource_payment",
       "draft": {
-        "players": ["p1", "p2"],
-        "energy": {"p1": 2, "p2": 0},
-        "power": {"p1": {"fury": 1}, "p2": {}}
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "energy": {
+          "p1": 2,
+          "p2": 0
+        },
+        "power": {
+          "p1": {
+            "fury": 1
+          },
+          "p2": {}
+        }
       },
-      "expected": {"buildable": true, "assumed_slots": ["battlefields", "units"]}
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "battlefields",
+          "units"
+        ]
+      }
     },
     {
       "case_id": "SB-017",
       "question": "I have 2 Energy. Can I pay for it?",
       "question_kind": "resource_payment",
-      "draft": {"players": ["p1", "p2"], "energy": {"p1": 2, "p2": 0}},
-      "expected": {"buildable": false, "tier": "B", "reason": "missing_required_slot", "missing_fields": ["power"]}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "energy": {
+          "p1": 2,
+          "p2": 0
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "power"
+        ]
+      }
     },
     {
       "case_id": "SB-018",
       "question": "I have 2 Energy and one Power. Can I pay for it?",
       "question_kind": "resource_payment",
       "draft": {
-        "players": ["p1", "p2"],
-        "energy": {"p1": 2},
-        "power": {"p1": {"fury": 1}, "p2": {}}
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "energy": {
+          "p1": 2
+        },
+        "power": {
+          "p1": {
+            "fury": 1
+          },
+          "p2": {}
+        }
       },
-      "expected": {"buildable": false, "tier": "B", "reason": "slot_value_out_of_scope", "rejected_fields": ["energy"]}
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "energy"
+        ]
+      }
     },
     {
       "case_id": "SB-019",
       "question": "During a mulligan, do the set-aside cards go to the bottom before I draw replacements?",
       "question_kind": "mulligan_procedure",
-      "draft": {"players": ["p1", "p2"]},
-      "expected": {"buildable": false, "tier": "C", "reason": "unrecognized_question_kind"}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "C",
+        "reason": "unrecognized_question_kind"
+      }
     },
     {
       "case_id": "SB-020",
       "question": "It is my main phase. Does 2 damage kill my 3 Might unit?",
       "question_kind": "unit_damage",
       "draft": {
-        "players": ["p1", "p2"],
-        "units": [{"object_id": "u1", "controller": "p1", "might": 3, "damage": 1}],
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "damage": 1
+          }
+        ],
         "phase": "main"
       },
-      "expected": {"buildable": false, "tier": "C", "reason": "slot_not_in_question_kind", "rejected_fields": ["phase"]}
+      "expected": {
+        "buildable": false,
+        "tier": "C",
+        "reason": "slot_not_in_question_kind",
+        "rejected_fields": [
+          "phase"
+        ]
+      }
     },
     {
       "case_id": "SB-021",
       "question": "In a solitaire practice game, who has priority?",
       "question_kind": "timing_priority",
-      "draft": {"players": ["p1"], "turn_player": "p1", "phase": "main"},
-      "expected": {"buildable": false, "tier": "B", "reason": "slot_type_invalid", "rejected_fields": ["players"]}
+      "draft": {
+        "players": [
+          "p1"
+        ],
+        "turn_player": "p1",
+        "phase": "main"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "players"
+        ]
+      }
     },
     {
       "case_id": "SB-022",
       "question": "It is the third player's turn. Who has priority?",
       "question_kind": "timing_priority",
-      "draft": {"players": ["p1", "p2"], "turn_player": "p9", "phase": "main"},
-      "expected": {"buildable": false, "tier": "B", "reason": "slot_value_out_of_scope", "rejected_fields": ["turn_player"]}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p9",
+        "phase": "main"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "turn_player"
+        ]
+      }
     },
     {
       "case_id": "SB-023",
       "question": "During the combat phase, who holds priority?",
       "question_kind": "timing_priority",
-      "draft": {"players": ["p1", "p2"], "turn_player": "p1", "phase": "combat"},
-      "expected": {"buildable": false, "tier": "B", "reason": "slot_type_invalid", "rejected_fields": ["phase"]}
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "combat"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "phase"
+        ]
+      }
     },
     {
       "case_id": "SB-024",
       "question": "My unit has 2 damage and I still hold 3 Energy. Does the next hit kill it?",
       "question_kind": "unit_damage",
       "draft": {
-        "players": ["p1", "p2"],
-        "units": [{"object_id": "u1", "controller": "p1", "might": 4, "damage": 2}],
-        "energy": {"p1": 3, "p2": 1}
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 4,
+            "damage": 2
+          }
+        ],
+        "energy": {
+          "p1": 3,
+          "p2": 1
+        }
       },
-      "expected": {"buildable": true, "assumed_slots": ["battlefields", "power"]}
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "battlefields",
+          "power"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-025",
+      "question": "The Combat Showdown at my Battlefield just closed. Is Combat Damage assigned now?",
+      "question_kind": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "chain_items"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-026",
+      "question": "Is Combat Damage assigned now?",
+      "question_kind": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "combat"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-027",
+      "question": "A Combat is in progress but no Showdown is open. Is damage assigned?",
+      "question_kind": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": false,
+        "showdown_focus": null,
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "showdown_active"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-028",
+      "question": "The Combat is only staged. Is damage assigned yet?",
+      "question_kind": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "staged",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "engine_rejected_state"
+      }
+    },
+    {
+      "case_id": "SB-029",
+      "question": "A third player is attacking. Is damage assigned?",
+      "question_kind": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p9",
+          "defender": "p2"
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "combat.attacker"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-030",
+      "question": "Is damage assigned, and what is on the board?",
+      "question_kind": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        },
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1",
+            "keywords": [
+              "backline"
+            ]
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "C",
+        "reason": "slot_not_in_question_kind",
+        "rejected_fields": [
+          "units"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-031",
+      "question": "My attacking unit is in the Backline. Does it contribute Combat Damage?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1",
+            "keywords": [
+              "backline"
+            ]
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "energy",
+          "power"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-032",
+      "question": "Does my unit contribute Combat Damage?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1",
+            "keywords": [
+              "backline"
+            ]
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "combat_designations"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-033",
+      "question": "My unit at base is designated as the attacker. Does it fight?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "base",
+            "keywords": [
+              "backline"
+            ]
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "combat_designations[0].object_id"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-034",
+      "question": "My unit has a keyword the engine does not know. Does it fight?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1",
+            "keywords": [
+              "flying"
+            ]
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "units"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-035",
+      "question": "It is my main phase; does my unit contribute Combat Damage?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1",
+            "keywords": [
+              "backline"
+            ]
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ],
+        "phase": "main"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "C",
+        "reason": "slot_not_in_question_kind",
+        "rejected_fields": [
+          "phase"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-036",
+      "question": "I am attacking my own units. Is damage assigned?",
+      "question_kind": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p1"
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "combat"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-037",
+      "question": "No unit is designated. Does anything contribute Combat Damage?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1",
+            "keywords": [
+              "backline"
+            ]
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": []
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "combat_designations"
+        ]
+      }
     }
   ]
 }

@@ -54,12 +54,33 @@ def main() -> int:
     stated_slots: set[str] = set()
     kind_outcomes: dict[str, set[bool]] = {kind: set() for kind in QUESTION_KINDS}
 
+    # S-01b. The slots that are never assumed have no default and are required
+    # by every kind that names them. Making one optional would either default
+    # it — which is the assumption the rule forbids — or crash the builder on
+    # its None; both are caught here, before any draft is read.
+    for slot in state_builder.UNDEFAULTABLE:
+        if SLOTS[slot]["default"] is not None:
+            failures.append(f"slot {slot!r} is never assumed and must carry no default; "
+                            f"it carries {SLOTS[slot]['default']!r}")
+        for kind, profile in QUESTION_KINDS.items():
+            if slot in profile["optional"]:
+                failures.append(f"the {kind!r} kind lists {slot!r} as optional; a slot with no "
+                                f"default is required or absent, never optional")
+    if not any("combat" in p["required"] for p in QUESTION_KINDS.values()):
+        failures.append("no kind requires the combat slot, so a Combat can never be stated")
+
     for case in cases:
         case_id = case["case_id"]
         expected = case["expected"]
-        artifact = build_state_assumption(question=case["question"],
-                                          question_kind=case["question_kind"],
-                                          draft=case["draft"])
+        try:
+            artifact = build_state_assumption(question=case["question"],
+                                              question_kind=case["question_kind"],
+                                              draft=case["draft"])
+        except StateBuilderError as exc:
+            # The builder refusing by name is the right behaviour; a gate that
+            # dies on it has the right exit code and says nothing.
+            failures.append(f"{case_id}: the builder refused to run: {exc}")
+            continue
         built[case_id] = artifact
 
         if problems := validate_assumption_artifact(artifact):
@@ -96,6 +117,19 @@ def main() -> int:
         if downgrade["reason"] == "engine_rejected_state" and not downgrade["engine_errors"]:
             failures.append(f"{case_id}: an engine refusal carries the engine's own words")
 
+    # A built Combat lists the record fields the kernel filled in, each as a
+    # derived assumption, so the reader can see what the position rests on.
+    for case in cases:
+        run = built.get(case["case_id"])
+        if not run or not run["buildable"] or "combat" not in (case["draft"] or {}):
+            continue
+        derived = {e["slot"] for e in run["assumptions"] if e["origin"] == "derived"}
+        for name in ("combat_participants", "combat_battlefield_identity",
+                     "combat_triggered_identities", "showdown_at_combat_battlefield"):
+            if name not in derived:
+                failures.append(f"{case['case_id']}: a built Combat must list the derived "
+                                f"assumption {name!r}")
+
     # Coverage. A kind that only ever builds, or only ever refuses, is a kind
     # whose boundary this fixture set has not located.
     for kind, outcomes in kind_outcomes.items():
@@ -111,6 +145,12 @@ def main() -> int:
     # builds. If the builder were sanitising, both would build and this pair
     # would be indistinguishable.
     dirty = next(case for case in cases if case["case_id"] == "SB-005")
+    if "SB-005" not in built or "SB-002" not in built or "SB-001" not in built \
+            or "SB-019" not in built:
+        for failure in failures:
+            print(f"FAIL: {failure}")
+        print(f"\n{len(failures)} failure(s); the cases the later sections rely on did not build")
+        return 1
     dirty_artifact = built["SB-005"]
     if dirty_artifact["buildable"] or (dirty_artifact["downgrade"] or {}).get("reason") != "schema_outside_field":
         failures.append("SB-005 must be refused as a schema-outside field, not cleaned and accepted")

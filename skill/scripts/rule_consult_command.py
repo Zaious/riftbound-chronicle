@@ -481,6 +481,21 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
                                   f"the effect state could not be built: {down['reason']} "
                                   f"{down['missing_fields'] or down['rejected_fields']}")
 
+    if effect_artifact is not None:
+        record = timing_artifact["state"].get("combat")
+        named = {obj["combat_designation"]["combat_id"]
+                 for obj in effect_artifact["state"]["objects"].values()
+                 if obj.get("combat_designation")}
+        if record is not None and named and named != {record["combat_id"]}:
+            return _not_attempted(run, "entry_inputs_missing",
+                                  f"the timing draft names Combat {record['combat_id']!r} and the "
+                                  f"board's designations name {sorted(named)}; the two halves "
+                                  f"of one position describe one Combat")
+        if record is None and named:
+            return _not_attempted(run, "entry_inputs_missing",
+                                  "the board carries Combat designations but the timing draft "
+                                  "states no Combat")
+
     # Stage 2: the engine, wrapped in a pack that can be re-run by someone else.
     if entry == "timing":
         inputs = {"timing_state": timing_artifact["state"], "timing_action": entry_inputs["action"]}

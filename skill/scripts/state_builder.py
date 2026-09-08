@@ -54,6 +54,16 @@ if (effect_ir.CORE_RULESET, effect_ir.FAQ_AS_OF) != (CORE_RULESET, FAQ_AS_OF):  
     raise RuntimeError("the timing and effect kernels disagree on the ruleset baseline")
 
 CHAIN_TIMINGS = {"default", "action", "reaction"}
+
+# S-01b. What a Combat procedure reads, and nothing it does not. The record's
+# statuses and the designation roles are the kernels' own vocabularies, so a
+# draft cannot name a Combat state the engine does not have; the keywords a
+# unit may carry are the object keywords the assignment path actually consults
+# (Tank first, Backline last, 465.2.c.6-c.9), taken from effect_ir rather than
+# restated here.
+COMBAT_STATUSES = frozenset(rules_core.COMBAT_STATUSES)
+COMBAT_ROLES = frozenset(effect_ir.COMBAT_ROLES)
+UNIT_KEYWORDS = frozenset(effect_ir.OBJECT_KEYWORDS)
 CHAIN_STATUSES = {"pending", "finalized"}
 TIERS = {"B", "C"}
 
@@ -141,7 +151,7 @@ def _check_units(value: Any) -> str | None:
         label = f"units[{index}]"
         if not isinstance(entry, dict):
             return f"{label} must be an object"
-        unknown = set(entry) - {"object_id", "controller", "might", "damage", "exhausted", "location"}
+        unknown = set(entry) - {"object_id", "controller", "might", "damage", "exhausted", "location", "keywords"}
         if unknown:
             return f"{label} carries fields outside the vocabulary: {sorted(unknown)}"
         missing = {"object_id", "controller"} - set(entry)
@@ -159,6 +169,49 @@ def _check_units(value: Any) -> str | None:
             return f"{label}.exhausted must be true or false"
         if "location" in entry and not _is_id(entry["location"]):
             return f"{label}.location must be 'base' or a battlefield id"
+        if "keywords" in entry:
+            keywords = entry["keywords"]
+            if not isinstance(keywords, list) or any(k not in UNIT_KEYWORDS for k in keywords) \
+                    or len(set(keywords)) != len(keywords):
+                return f"{label}.keywords must be distinct entries from {sorted(UNIT_KEYWORDS)}"
+    return None
+
+
+def _check_combat(value: Any) -> str | None:
+    """The Combat record a Combat procedure reads. Every field is stated; none is guessed."""
+    fields = {"combat_id", "battlefield", "status", "attacker", "defender"}
+    if not isinstance(value, dict):
+        return "combat must be an object"
+    if unknown := set(value) - fields:
+        return f"combat carries fields outside the vocabulary: {sorted(unknown)}"
+    if missing := fields - set(value):
+        return f"combat is missing {sorted(missing)}"
+    for field in ("combat_id", "battlefield", "attacker", "defender"):
+        if not _is_id(value[field]):
+            return f"combat.{field} must be a non-empty id"
+    if value["status"] not in COMBAT_STATUSES:
+        return f"combat.status must be one of {sorted(COMBAT_STATUSES)}"
+    if value["attacker"] == value["defender"]:
+        return "combat.attacker and combat.defender must be different players (Core 464.2.c)"
+    return None
+
+
+def _check_combat_designations(value: Any) -> str | None:
+    """Which units fight, on which side, in which Combat. Stated per unit."""
+    if not isinstance(value, list) or not value:
+        return "combat_designations must be a non-empty array; which units fight is never assumed"
+    seen: set[str] = set()
+    for index, entry in enumerate(value):
+        label = f"combat_designations[{index}]"
+        if not isinstance(entry, dict) or set(entry) != {"object_id", "combat_id", "role"}:
+            return f"{label} must carry exactly object_id, combat_id, role"
+        if not _is_id(entry["object_id"]) or entry["object_id"] in seen:
+            return f"{label}.object_id must be a unit id designated once"
+        seen.add(entry["object_id"])
+        if not _is_id(entry["combat_id"]):
+            return f"{label}.combat_id must be a non-empty id"
+        if entry["role"] not in COMBAT_ROLES:
+            return f"{label}.role must be one of {sorted(COMBAT_ROLES)}"
     return None
 
 
@@ -232,7 +285,22 @@ SLOTS: dict[str, dict[str, Any]] = {
                   for p, pools in sorted(v.items())) + "."},
     "battlefields": {"check": _check_battlefields, "family": "effect", "default": [], "material": True,
                      "text": lambda v: "No Battlefield is in play." if not v else f"{len(v)} Battlefield(s) are in play."},
+    # No default on either: a Combat that was not stated is not a Combat that
+    # is assumed to be staged, and units that were not designated are not
+    # assumed to fight. A kind that needs them requires them.
+    "combat": {"check": _check_combat, "family": "timing", "default": None, "material": True,
+               "text": lambda v: (f"A Combat ({v['status']}) is in progress at {v['battlefield']}: "
+                                  f"{v['attacker']} attacking, {v['defender']} defending.")},
+    "combat_designations": {"check": _check_combat_designations, "family": "effect", "default": None,
+                            "material": True,
+                            "text": lambda v: f"{len(v)} unit(s) carry a Combat designation."},
 }
+
+# Slots that are never assumed. A kind that names one must require it; the
+# builder refuses to default one, and the gate checks no kind lists one as
+# optional. Codex's S-01b rule, made mechanical: a Combat that was not stated
+# is not a Combat, and units that were not designated do not fight.
+UNDEFAULTABLE = frozenset({"combat", "combat_designations"})
 
 # Slots whose default is computed from the players list rather than fixed.
 PLAYER_KEYED_DEFAULTS = {"energy": lambda players: {p: 0 for p in players},
@@ -264,6 +332,21 @@ QUESTION_KINDS: dict[str, dict[str, Any]] = {
         "required": {"players", "energy", "power"},
         "optional": {"units", "battlefields"},
     },
+    # S-01b. The two halves of the position a Combat procedure runs over: the
+    # timing side carries the record and the open Combat Showdown, the effect
+    # side carries the board with its designated units. Every Combat fact is
+    # required; the only optional slots are the ones every timing or effect
+    # state has anyway.
+    "combat_step": {
+        "family": "timing",
+        "required": {"players", "turn_player", "phase", "showdown_active", "showdown_focus", "combat"},
+        "optional": {"priority", "chain_items"},
+    },
+    "combat_board": {
+        "family": "effect",
+        "required": {"players", "units", "battlefields", "combat_designations"},
+        "optional": {"energy", "power"},
+    },
 }
 
 # What materialization adds that no producer supplied. These are shown to the
@@ -278,6 +361,13 @@ DERIVED_SLOTS = {
     "object_owner": "Each unit is owned by the player who controls it.",
     "empty_zones": "Every deck, hand, trash, and banishment is empty.",
     "replacement_effects": "No replacement effects are in play.",
+    # The Combat record fields the kernel requires that a draft cannot state
+    # because they are bookkeeping rather than facts about the position. Each
+    # is what the kernel itself uses when nothing has happened yet.
+    "combat_participants": "The Combat's participants are its attacker and its defender.",
+    "combat_battlefield_identity": "The Combat Battlefield is at its first generation.",
+    "combat_triggered_identities": "No Attack or Defend trigger has fired in this Combat yet.",
+    "showdown_at_combat_battlefield": "The open Showdown is the Combat Showdown at the Combat's Battlefield.",
 }
 
 ORIGINS = {"stated", "default", "derived"}
@@ -322,14 +412,15 @@ def _materialize_timing(values: dict[str, Any]) -> dict[str, Any]:
         "ability_kind": None,
     } for entry in values["chain_items"]]
     active = values["showdown_active"]
-    return {
+    showdown = {"active": active, "kind": "combat" if active else None, "focus": values["showdown_focus"]}
+    state = {
         "schema_version": rules_core.SCHEMA_VERSION,
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
         "players": list(values["players"]),
         "turn_order": list(values["players"]),
         "turn_player": values["turn_player"],
         "phase": values["phase"],
-        "showdown": {"active": active, "kind": "combat" if active else None, "focus": values["showdown_focus"]},
+        "showdown": showdown,
         "priority": values["priority"],
         "outstanding_tasks": [],
         "chain": {
@@ -338,6 +429,23 @@ def _materialize_timing(values: dict[str, Any]) -> dict[str, Any]:
             "consecutive_passes": [],
         },
     }
+    combat = values.get("combat")
+    if combat is not None:
+        # Exactly the record rules_core validates and combat.py reads. The
+        # participants, identity and trigger bookkeeping are the kernel's own
+        # starting values, and each is listed as a derived assumption.
+        showdown["battlefield"] = combat["battlefield"]
+        state["combat"] = {
+            "combat_id": combat["combat_id"],
+            "battlefield": combat["battlefield"],
+            "battlefield_identity": f"{combat['battlefield']}@0",
+            "status": combat["status"],
+            "attacker": combat["attacker"],
+            "defender": combat["defender"],
+            "participants": [combat["attacker"], combat["defender"]],
+            "triggered_identities": {"attacker": [], "defender": []},
+        }
+    return state
 
 
 def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
@@ -358,11 +466,16 @@ def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
             "damage": unit.get("damage", 0),
             "exhausted": unit.get("exhausted", False),
         }
+        if unit.get("keywords"):
+            objects[object_id]["keywords"] = list(unit["keywords"])
         location = unit.get("location", "base")
         if location == "base":
             base[controller].append(object_id)
         else:
             battlefields[location]["objects"].append(object_id)
+    for entry in values.get("combat_designations") or []:
+        objects[entry["object_id"]]["combat_designation"] = {"combat_id": entry["combat_id"],
+                                                             "role": entry["role"]}
     return {
         "schema_version": effect_ir.STATE_VERSION,
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -388,6 +501,14 @@ def _derived_for(family: str, values: dict[str, Any]) -> list[dict[str, Any]]:
             entries.append(("showdown_kind", "combat"))
         if values["chain_items"]:
             entries.append(("chain_initiated_by", "played_card"))
+        if values.get("combat") is not None:
+            combat = values["combat"]
+            entries.extend([
+                ("combat_participants", [combat["attacker"], combat["defender"]]),
+                ("combat_battlefield_identity", f"{combat['battlefield']}@0"),
+                ("combat_triggered_identities", {"attacker": [], "defender": []}),
+                ("showdown_at_combat_battlefield", combat["battlefield"]),
+            ])
     else:
         entries = [
             ("object_owner", None),
@@ -471,6 +592,36 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
 
     if draft.get("showdown_active") is True and draft.get("showdown_focus") is None:
         conditional_missing.append("showdown_focus")
+    combat = draft.get("combat")
+    if combat is not None:
+        # A Combat in progress is a Combat Showdown (464.2). A draft that
+        # states a Combat and no open Showdown has left out a fact the record
+        # depends on, so the slot is named as missing rather than switched on.
+        if draft.get("showdown_active") is not True:
+            conditional_missing.append("showdown_active")
+        for role in ("attacker", "defender"):
+            if combat[role] not in players:
+                out_of_scope.append(f"combat.{role}")
+                scope_details.append(f"combat.{role} names {combat[role]!r}, who is not a player")
+    designations = draft.get("combat_designations")
+    if designations is not None:
+        by_id = {unit["object_id"]: unit for unit in draft.get("units", []) or []}
+        for index, entry in enumerate(designations):
+            unit = by_id.get(entry["object_id"])
+            if unit is None:
+                out_of_scope.append(f"combat_designations[{index}].object_id")
+                scope_details.append(f"combat_designations[{index}] designates {entry['object_id']!r}, "
+                                     f"which is not one of the units")
+            elif unit.get("location", "base") == "base":
+                # A designated unit that is not at a Battlefield is not in the
+                # fight (465.1); saying it is designated and leaving it at base
+                # is a position the kernel would read as "no combatant here".
+                out_of_scope.append(f"combat_designations[{index}].object_id")
+                scope_details.append(f"combat_designations[{index}] designates {entry['object_id']!r}, "
+                                     f"which is at base rather than at a Battlefield")
+        if len({entry["combat_id"] for entry in designations}) > 1:
+            out_of_scope.append("combat_designations")
+            scope_details.append("combat_designations name more than one Combat; a board carries one")
     if family == "effect":
         for slot in ("energy", "power"):
             if slot in draft and set(draft[slot]) != set(players):
@@ -499,9 +650,15 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
             scope_details.append(f"battlefields[{index}].controller names {controller!r}, who is not a player")
 
     if conditional_missing:
+        reasons = {
+            "showdown_focus": "an open Showdown has a Focus holder, and who holds it is not "
+                              "derivable from the rest of the draft",
+            "showdown_active": "a Combat in progress is a Combat Showdown (Core 464.2); a draft "
+                               "that states a Combat and no open Showdown has left that out",
+        }
         artifact["downgrade"] = _downgrade(
             "missing_required_slot", missing=conditional_missing,
-            detail="an open Showdown has a Focus holder; it is not derivable from the rest of the draft")
+            detail="; ".join(reasons[slot] for slot in sorted(set(conditional_missing))))
         return artifact
     if out_of_scope:
         artifact["downgrade"] = _downgrade("slot_value_out_of_scope", rejected=out_of_scope,
@@ -522,6 +679,13 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
             value = PLAYER_KEYED_DEFAULTS[slot](players)
         else:
             value = copy.deepcopy(SLOTS[slot]["default"])
+            if value is None and slot in UNDEFAULTABLE:
+                # A slot with no default is one the contract says is never
+                # assumed. Reaching here means a kind listed it as optional,
+                # which is a contract error in this module, not in the draft.
+                raise StateBuilderError(
+                    f"slot {slot!r} has no default and cannot be optional; the "
+                    f"{question_kind!r} kind must require it or not name it")
         values[slot] = value
         assumptions.append({"slot": slot, "origin": "default", "value": value,
                             "material": SLOTS[slot]["material"], "text": SLOTS[slot]["text"](value)})

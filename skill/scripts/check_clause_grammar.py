@@ -129,6 +129,23 @@ def main() -> int:
         if unknown:
             errors.append(f"{production['production_id']} requires {unknown}, which this engine does not "
                           "declare; a capability the manifest has never heard of cannot be reasoned about")
+    # the compile-time branches - sequence, modes, the two linked prefixes -
+    # name capabilities inline, so they are checked by compiling one of each
+    # rather than by reading the data.
+    for text in ("Draw 1 and channel 1 rune exhausted.", "Draw 1 or channel 1 rune exhausted.",
+                 "When I move, draw 1, then channel 1 rune exhausted."):
+        branch = cg.compile_clause(text, grammar)
+        unknown = sorted(set(branch.get("required_capability", [])) - declared)
+        if unknown:
+            errors.append(f"compiling {text!r} required {unknown}, which this engine does not declare")
+    linked = cg.compile_card([{"text": "Channel 1 rune exhausted."}, {"text": "If you do, draw 2."}], grammar)
+    offer = cg.compile_card([{"text": "You may pay [C] as additional cost to play me."},
+                             {"text": "When you play me, if you paid additional cost, draw 1."}], grammar)
+    for label, card in (("a linked prefix", linked), ("a cost link", offer)):
+        for clause in card["clauses"]:
+            unknown = sorted(set(clause.get("required_capability", [])) - declared)
+            if unknown:
+                errors.append(f"{label} required {unknown}, which this engine does not declare")
 
     # --- the round trip against the corpus -----------------------------------------------------
     agree = disagree = unparsed = known = skipped = 0

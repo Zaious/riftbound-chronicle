@@ -7,6 +7,32 @@ report it produces reads `complete: false` until the quotas are met, per
 family, with the shortfall named. A corpus cannot be declared finished by
 asserting that it is.
 
+What an answer owes
+-------------------
+A tier is not an answer. A run can reach tier B by citing the right rule and
+saying nothing about what was asked — "Core 345 is official text retrieved for
+this question" is true, bound, verifiable, and useless to the person who asked
+which player gains Focus. A corpus that only checks tiers would pass a service
+that never answered anything.
+
+So every question also carries an `expected_answer_contract`: what the answer
+must be shaped like, which claim templates must appear in it, which locators
+those claims must be bound to, and which claim classes must not appear at all.
+
+  full_position_conclusion       the answer rules on this position, and an
+                                 engine check that reached a verdict backs it
+  conditional_rule_explanation   the answer states what the rule says, in the
+                                 rule's own terms, and explicitly draws no
+                                 conclusion about this position
+  source_boundary_only           the answer reports which text governs and
+                                 nothing further
+  explicit_abstention            the answer declines, for the named reason
+
+The templates named have to exist. Where no template can state a rule, that is
+`template_coverage_debt` — declared on the question, listing exactly what is
+missing — and never a licence to fall back to free text, which this surface has
+no way to accept anyway.
+
 What a question owes
 --------------------
 Its family, from the seven the v0 baseline drew from what players actually ask.
@@ -115,7 +141,24 @@ TOTAL_QUOTA = sum(family["quota"] for family in FAMILIES.values())
 
 QUESTION_FIELDS = {"question_id", "family", "language", "question", "expected_tier",
                    "locators", "abstention_contract", "consultation_entry", "bounded_note",
-                   "zh_hant", "notes"}
+                   "expected_answer_contract", "correction_record", "zh_hant", "notes"}
+
+CORRECTION_FIELDS = {"observed", "decided", "follow_up"}
+
+ANSWER_SCOPES = ("full_position_conclusion", "conditional_rule_explanation",
+                 "source_boundary_only", "explicit_abstention")
+
+CONTRACT_FIELDS = {"answer_scope", "required_templates", "required_source_locators",
+                   "forbidden_claim_classes", "template_coverage_debt"}
+
+# Which scopes each tier may take. A tier-A answer that only explains a rule has
+# not used the engine verdict it claims to rest on; a tier-C answer that
+# concludes about the position is not an abstention.
+SCOPES_BY_TIER = {
+    "A": ("full_position_conclusion",),
+    "B": ("conditional_rule_explanation", "source_boundary_only"),
+    "C": ("explicit_abstention",),
+}
 
 LANGUAGES = ("en",)
 
@@ -210,6 +253,24 @@ def validate_question(question: Any, *, seen: set[str] | None = None) -> list[st
     elif question["bounded_note"] not in (False, None):
         errors.append(f"{label}: bounded_note is for the available-actions family")
 
+    errors.extend(f"{label}: {problem}" for problem in
+                  _contract_errors(question["expected_answer_contract"], tier))
+
+    record = question["correction_record"]
+    if record is not None:
+        # A recorded difference says what came back, what was decided about it,
+        # and what is left to do. A record that only says "known issue" is how a
+        # corpus stops being a test.
+        if not isinstance(record, dict) or set(record) != CORRECTION_FIELDS:
+            errors.append(f"{label}: correction_record must carry exactly "
+                          f"{sorted(CORRECTION_FIELDS)}")
+        else:
+            for field in ("observed", "decided"):
+                if not _nonempty(record[field]):
+                    errors.append(f"{label}: correction_record.{field} must say what it says")
+            if record["follow_up"] is not None and not _nonempty(record["follow_up"]):
+                errors.append(f"{label}: correction_record.follow_up is null or a description")
+
     zh = question["zh_hant"]
     if zh is not None:
         if not isinstance(zh, dict) or set(zh) != {"question"} or not _nonempty(zh["question"]):
@@ -217,6 +278,79 @@ def validate_question(question: Any, *, seen: set[str] | None = None) -> list[st
 
     if question["notes"] is not None and not _nonempty(question["notes"]):
         errors.append(f"{label}: notes must be null or a non-empty string")
+    return errors
+
+
+def _known_templates() -> dict[str, dict[str, Any]]:
+    return rule_consult_command.CLAIM_TEMPLATES
+
+
+def _contract_errors(contract: Any, tier: Any) -> list[str]:
+    """Check the answer contract: shape, scope against tier, and declared debt."""
+    if not isinstance(contract, dict) or set(contract) != CONTRACT_FIELDS:
+        return [f"expected_answer_contract must carry exactly {sorted(CONTRACT_FIELDS)}"]
+    errors: list[str] = []
+    scope = contract["answer_scope"]
+    if scope not in ANSWER_SCOPES:
+        errors.append(f"answer_scope must be one of {list(ANSWER_SCOPES)}")
+    elif tier in SCOPES_BY_TIER and scope not in SCOPES_BY_TIER[tier]:
+        errors.append(f"a tier-{tier} answer is scoped {list(SCOPES_BY_TIER[tier])}, not {scope!r}")
+
+    for field in ("required_templates", "required_source_locators", "forbidden_claim_classes",
+                  "template_coverage_debt"):
+        if not isinstance(contract[field], list) or any(not _nonempty(v) for v in contract[field]):
+            errors.append(f"{field} must be an array of non-empty strings")
+            return errors
+
+    known = _known_templates()
+    debt = contract["template_coverage_debt"]
+    missing = [name for name in contract["required_templates"] if name not in known]
+    # Debt is declared, never inferred. A question may name a template that does
+    # not exist yet, but it must say so and say exactly which - otherwise a
+    # typo and an unwritten template look the same.
+    if sorted(missing) != sorted(debt):
+        errors.append(f"required_templates names {missing or 'no'} template(s) this build does "
+                      f"not have, and template_coverage_debt declares {debt or 'none'}; they "
+                      f"must be the same set")
+    for name in debt:
+        if name in known:
+            errors.append(f"template_coverage_debt names {name!r}, which exists")
+
+    classes = {known[name]["class"] for name in contract["required_templates"] if name in known}
+    forbidden = set(contract["forbidden_claim_classes"])
+    if unknown := sorted(forbidden - set(rule_consult_command.CLAIM_CLASSES)):
+        errors.append(f"forbidden_claim_classes names unknown classes {unknown}")
+    if overlap := sorted(classes & forbidden):
+        errors.append(f"the contract requires templates of class {overlap}, which it also forbids")
+
+    if scope == "full_position_conclusion":
+        # The rule Codex named: a tier-A answer needs an engine-backed position
+        # claim, not a citation that happens to be correct.
+        if "position_conclusion" not in classes and not debt:
+            errors.append("a full position conclusion requires at least one position_conclusion "
+                          "template, backed by an engine check that reached a verdict")
+        if not contract["required_templates"]:
+            errors.append("a full position conclusion names the templates that must carry it")
+    elif scope == "conditional_rule_explanation":
+        # And the rule the JC-TPC-012 measurement produced: reporting that a
+        # locator was retrieved is not explaining what it says.
+        if "conditional_rule" not in classes and not debt:
+            errors.append("a conditional rule explanation requires a conditional_rule template; "
+                          "reporting that a locator was retrieved explains nothing")
+        if "position_conclusion" in classes:
+            errors.append("a conditional rule explanation draws no conclusion about the position")
+        if not contract["required_source_locators"]:
+            errors.append("a conditional rule explanation names the locators it explains")
+    elif scope == "source_boundary_only":
+        if "position_conclusion" in classes:
+            errors.append("a source boundary answer draws no conclusion about the position")
+        if not contract["required_source_locators"]:
+            errors.append("a source boundary answer names the text it reports")
+    elif scope == "explicit_abstention":
+        if contract["required_templates"]:
+            errors.append("an abstention carries no claims, so it requires no templates")
+        if contract["required_source_locators"]:
+            errors.append("an abstention cites nothing, because it does not answer")
     return errors
 
 
@@ -232,8 +366,16 @@ def corpus_coverage(corpus: dict[str, Any]) -> dict[str, Any]:
         for name, spec in FAMILIES.items()
     }
     total_present = sum(present.values())
+    debt = sorted({name for question in corpus.get("questions", [])
+                   if isinstance(question, dict)
+                   for name in (question.get("expected_answer_contract") or {})
+                   .get("template_coverage_debt", [])})
     return {
         "families": families,
+        # Visible in the coverage report rather than buried in a question: a
+        # rule the answer surface cannot state is a gap in the service, not a
+        # note on one corpus entry.
+        "template_coverage_debt": debt,
         "total_required": TOTAL_QUOTA,
         "total_present": total_present,
         "total_missing": sum(f["missing"] for f in families.values()),

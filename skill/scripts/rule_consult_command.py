@@ -126,7 +126,26 @@ DECIDING_OUTCOMES = fact_ledger.DECIDING_OUTCOMES
 COVERAGE_STATEMENT = ("The engine has not compiled this mechanism, so this answer "
                       "draws no conclusion about the position.")
 
-CLAIM_CLASSES = ("position_conclusion", "source_statement")
+# Carried by every run that reaches tier B, whether the engine declined or the
+# producer simply made no position claim. A reader of a B-tier answer must be
+# told that it concluded nothing about their position, and telling them is the
+# artifact's job rather than the interface's.
+POSITION_STATEMENT = ("This answer reports what the rules text says and draws no "
+                      "conclusion about this position.")
+
+CLAIM_CLASSES = ("position_conclusion", "conditional_rule", "source_statement")
+
+# A conditional rule says what the text says, in the text's own terms. It is
+# allowed the legality vocabulary — a rule about what a player may do cannot be
+# stated without it — and is kept from becoming a position conclusion by a
+# different line: it may not name anyone in this position. No player slot, and
+# the subject is whoever the rule describes, not p1.
+#
+# "Core 312 is official text retrieved for this question" is a source
+# statement. It is true, it is bound, and it answers nothing. A tier-B answer
+# that consists only of those has cited its way out of saying anything, which
+# is why the two classes are separate and why a corpus can require one and not
+# the other.
 
 # A source statement talks about what the corpus holds. If it can use this
 # vocabulary it is talking about what someone may do instead, which is the A
@@ -285,6 +304,52 @@ CLAIM_TEMPLATES: dict[str, dict[str, Any]] = {
         "basis": {"kind": "engine", "check_kind": "legal_action", "outcomes": ("supported",)},
     },
     # --- the B route. Nothing below says what anyone may do. -----------------
+    # --- conditional rules: what the text says, never about this position ---
+    "rule_focus_on_showdown_start": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, the player who applied Contested status to the Battlefield "
+                "gains Focus as a Showdown begins.",
+        "slots": {"locator": "locator"},
+        "basis": {"kind": "official_text"},
+    },
+    "rule_focus_retained_on_pass": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, a player who passes Priority retains Focus.",
+        "slots": {"locator": "locator"},
+        "basis": {"kind": "official_text"},
+    },
+    "rule_no_priority_no_discretionary": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, no player can take a Discretionary Action while no player "
+                "holds Priority.",
+        "slots": {"locator": "locator"},
+        "basis": {"kind": "official_text"},
+    },
+    "rule_limited_actions_regardless_of_priority": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, players may take and make choices for Limited Actions when "
+                "instructed, regardless of Priority.",
+        "slots": {"locator": "locator"},
+        "basis": {"kind": "official_text"},
+    },
+    "rule_no_focus_in_neutral_state": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, no player holds Focus while the turn is in a Neutral State.",
+        "slots": {"locator": "locator"},
+        "basis": {"kind": "official_text"},
+    },
+    "rule_finalizing_does_not_pass_priority": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, finalizing an item to the chain does not pass Priority.",
+        "slots": {"locator": "locator"},
+        "basis": {"kind": "official_text"},
+    },
+    "rule_newest_item_resolves": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, the newest Finalized Chain Item is the one that resolves.",
+        "slots": {"locator": "locator"},
+        "basis": {"kind": "official_text"},
+    },
     "official_text_recorded": {
         "class": "source_statement",
         "text": "{locator} is official text retrieved for this question.",
@@ -440,6 +505,7 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
         "tier": None,
         "engine_declined": False,
         "coverage_statement": None,
+        "position_statement": None,
         "state_assumptions": [],
         "retrieved_sources": [],
         "engine_check": None,
@@ -574,6 +640,8 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
                               f"the ledger this run just built does not verify: {problems}")
 
     run["tier"] = ledger["admissible_tier"]
+    if run["tier"] == "B":
+        run["position_statement"] = POSITION_STATEMENT
     run["status"] = "answered" if ledger["admissible"] else "abstained"
     if not ledger["admissible"]:
         run["detail"] = "; ".join(f"{v['code']} at claim {v['entry'] + 1}" for v in ledger["violations"])
@@ -582,8 +650,8 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
 
 REQUIRED_TOP = {"schema_version", "ruleset", "question", "entry", "request", "status",
                 "not_attempted_reason", "detail", "tier", "engine_declined", "coverage_statement",
-                "state_assumptions", "retrieved_sources", "engine_check", "evidence_pack",
-                "evidence_verification", "claims", "ledger", "run_hash"}
+                "position_statement", "state_assumptions", "retrieved_sources", "engine_check",
+                "evidence_pack", "evidence_verification", "claims", "ledger", "run_hash"}
 CLAIM_FIELDS = {"claim_id", "template", "claim_class", "slots", "text", "source"}
 
 
@@ -628,6 +696,14 @@ def validate_run(value: Any) -> list[str]:
     elif value["coverage_statement"] is not None:
         errors.append("a run whose engine ruled carries no coverage statement")
 
+    # Derived the same way and for the same reason: a tier-B answer says so in
+    # the artifact, and a run at any other tier does not carry the sentence.
+    if value["tier"] == "B":
+        if value["position_statement"] != POSITION_STATEMENT:
+            errors.append("a tier-B answer carries the position statement, unedited")
+    elif value["position_statement"] is not None:
+        errors.append("only a tier-B answer carries the position statement")
+
     if value["status"] == "not_attempted":
         if value["not_attempted_reason"] not in NOT_ATTEMPTED_REASONS:
             errors.append(f"not_attempted_reason must be one of {sorted(NOT_ATTEMPTED_REASONS)}")
@@ -661,6 +737,9 @@ def validate_run(value: Any) -> list[str]:
             errors.append("tier A requires a position conclusion; this run carries only source statements")
         if value["tier"] == "B" and has_position:
             errors.append("a run carrying a position conclusion is not tier B")
+        classes = {c.get("claim_class") for c in value["claims"] if isinstance(c, dict)}
+        if unknown_classes := sorted(classes - set(CLAIM_CLASSES)):
+            errors.append(f"claims carry unknown classes {unknown_classes}")
         if value["engine_declined"] and has_position:
             errors.append("the engine declined, so no position conclusion can stand in this run")
 

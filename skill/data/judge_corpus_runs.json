@@ -1,0 +1,727 @@
+{
+  "schema_version": "judge-corpus-runs.v1",
+  "note": "Run inputs for the corpus questions: the position to build, the engine entry to route to, and the claim templates to offer. Kept apart from the corpus because a question is a specification and these are one pipeline's argument shapes. Questions with no consultation entry are absent on purpose - the service declines them before any engine is reached. The source table stands in for the rules index.",
+  "sources": {
+    "Core 312": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 312",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+      }
+    },
+    "Core 312.1.a": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 312.1.a",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000002"
+      }
+    },
+    "Core 312.1.b": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 312.1.b",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000003"
+      }
+    },
+    "Core 312.1.b.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 312.1.b.1",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000004"
+      }
+    },
+    "Core 313.1.a": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 313.1.a",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000005"
+      }
+    },
+    "Core 313.3": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 313.3",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000006"
+      }
+    },
+    "Core 313.4": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 313.4",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000007"
+      }
+    },
+    "Core 313.5": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 313.5",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000008"
+      }
+    },
+    "Core 323.6": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 323.6",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000009"
+      }
+    },
+    "Core 337.1.a": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 337.1.a",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000a"
+      }
+    },
+    "Core 337.2": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 337.2",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000b"
+      }
+    },
+    "Core 338.1.a.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 338.1.a.1",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000c"
+      }
+    },
+    "Core 340.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 340.1",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000d"
+      }
+    },
+    "Core 345": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 345",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000e"
+      }
+    },
+    "Core 423.1.b": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 423.1.b",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000f"
+      }
+    }
+  },
+  "runs": {
+    "JC-TPC-001": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p2",
+        "chain_items": [
+          {
+            "item_id": "spell-1",
+            "controller": "p1",
+            "object_kind": "spell",
+            "timing": "default"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "rule_newest_item_resolves",
+          "slots": {
+            "locator": "Core 340.1"
+          }
+        }
+      ]
+    },
+    "JC-TPC-002": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "rule_finalizing_does_not_pass_priority",
+          "slots": {
+            "locator": "Core 337.1.a"
+          }
+        }
+      ]
+    },
+    "JC-TPC-003": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": null
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "timing_play_refused",
+          "slots": {
+            "actor": "p1",
+            "object_kind": "spell"
+          }
+        },
+        {
+          "template": "rule_no_priority_no_discretionary",
+          "slots": {
+            "locator": "Core 312.1.b"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 312.1.b"
+          }
+        }
+      ]
+    },
+    "JC-TPC-004": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "rule_limited_actions_regardless_of_priority",
+          "slots": {
+            "locator": "Core 312.1.b.1"
+          }
+        }
+      ]
+    },
+    "JC-TPC-005": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "timing_play_refused",
+          "slots": {
+            "actor": "p1",
+            "object_kind": "spell"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 313.1.a"
+          }
+        }
+      ]
+    },
+    "JC-TPC-006": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "rule_focus_retained_on_pass",
+          "slots": {
+            "locator": "Core 313.3"
+          }
+        }
+      ]
+    },
+    "JC-TPC-007": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "rule_no_focus_in_neutral_state",
+          "slots": {
+            "locator": "Core 313.5"
+          }
+        }
+      ]
+    },
+    "JC-TPC-008": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": []
+    },
+    "JC-TPC-009": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p2",
+        "chain_items": [
+          {
+            "item_id": "spell-1",
+            "controller": "p1",
+            "object_kind": "spell",
+            "timing": "default"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "timing_play_refused",
+          "slots": {
+            "actor": "p1",
+            "object_kind": "spell"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 338.1.a.1"
+          }
+        }
+      ]
+    },
+    "JC-TPC-010": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p2",
+        "chain_items": [
+          {
+            "item_id": "spell-1",
+            "controller": "p1",
+            "object_kind": "spell",
+            "timing": "default"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "timing_play_refused",
+          "slots": {
+            "actor": "p1",
+            "object_kind": "spell"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 312.1.a"
+          }
+        }
+      ]
+    },
+    "JC-TPC-011": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": []
+    },
+    "JC-TPC-012": {
+      "entry": "timing",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "entry_inputs": {
+        "action": {
+          "actor": "p1",
+          "kind": "play_card",
+          "object_kind": "spell",
+          "timing": "default"
+        }
+      },
+      "claims": [
+        {
+          "template": "rule_focus_on_showdown_start",
+          "slots": {
+            "locator": "Core 345"
+          }
+        }
+      ]
+    },
+    "JC-EX-COMBAT-1": {
+      "entry": "combat_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "combat_step_completes",
+          "slots": {
+            "step": "assign"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 423.1.b"
+          }
+        }
+      ]
+    },
+    "JC-EX-CONTROL-1": {
+      "entry": "control_step",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "board_cleanup"
+      },
+      "claims": [
+        {
+          "template": "control_step_completes",
+          "slots": {
+            "step": "board_cleanup"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 323.6"
+          }
+        }
+      ]
+    },
+    "JC-EX-ENDGAME-1": {
+      "entry": "effect",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2
+          }
+        ]
+      },
+      "entry_inputs": {
+        "program": {
+          "schema_version": "riftbound-effect-program.v1",
+          "ruleset": {
+            "core": "2026-07-16",
+            "faq_as_of": "2026-08-14"
+          },
+          "controller": "p1",
+          "program_id": "kill-then-draw",
+          "effects": [
+            {
+              "op": "draw",
+              "player": "p1",
+              "count": 1,
+              "condition": {
+                "kind": "caused_kill",
+                "effect_id": "e1"
+              }
+            }
+          ]
+        }
+      },
+      "claims": [
+        {
+          "template": "effect_program_applies",
+          "slots": {}
+        }
+      ]
+    },
+    "JC-EX-ACTIONS-1": {
+      "entry": "legal_action",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "priority": "p1"
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2
+          }
+        ]
+      },
+      "entry_inputs": {
+        "acting_player": "p1",
+        "observation": "$build"
+      },
+      "claims": [
+        {
+          "template": "legal_action_available",
+          "slots": {
+            "actor": "p1"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 312"
+          }
+        }
+      ]
+    }
+  }
+}

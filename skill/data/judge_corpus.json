@@ -16,7 +16,23 @@
       "consultation_entry": "combat_step",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "Exemplar."
+      "notes": "Exemplar.",
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "combat_step_completes"
+        ],
+        "required_source_locators": [
+          "Core 423.1.b"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": {
+        "observed": "Run 2026-09-08: the contract expects a full position conclusion via combat_step_completes, and the pipeline abstained. The engine refused the assign step, which is correct — the position the run builds has no Combat staged, so there is nothing to assign damage in.",
+        "decided": "The engine is right and the pair of contract and run inputs is wrong. Left as a difference rather than fixed by swapping the contract to combat_step_refused, which would change what the question asks about instead of answering it.",
+        "follow_up": "The minimum state builder has no slot for a staged Combat, so this question cannot be run as asked until it does. That is a state-builder coverage gap this corpus surfaced, and it belongs to a state-builder package rather than to S-04."
+      }
     },
     {
       "question_id": "JC-EX-CONTROL-1",
@@ -31,7 +47,19 @@
       "consultation_entry": "control_step",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "Exemplar."
+      "notes": "Exemplar.",
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "control_step_completes"
+        ],
+        "required_source_locators": [
+          "Core 323.6"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-EX-ENDGAME-1",
@@ -44,7 +72,15 @@
       "consultation_entry": "effect",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "Exemplar, and a real boundary rather than an invented one: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry, so the engine declines and the answer must abstain with that named reason."
+      "notes": "Exemplar, and a real boundary rather than an invented one: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry, so the engine declines and the answer must abstain with that named reason.",
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-EX-ACTIONS-1",
@@ -59,7 +95,19 @@
       "consultation_entry": "legal_action",
       "bounded_note": true,
       "zh_hant": null,
-      "notes": "Exemplar. bounded_note is required for this family: the enumeration is bounded, complete_action_set is false, and an answer that lists correctly without saying so is still wrong."
+      "notes": "Exemplar. bounded_note is required for this family: the enumeration is bounded, complete_action_set is false, and an answer that lists correctly without saying so is still wrong.",
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "legal_action_available"
+        ],
+        "required_source_locators": [
+          "Core 312"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-EX-CARD-1",
@@ -72,7 +120,15 @@
       "consultation_entry": null,
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "Exemplar. A card whose text is not in the snapshot set cannot back a claim, so the answer abstains rather than reasoning from the card name."
+      "notes": "Exemplar. A card whose text is not in the snapshot set cannot back a claim, so the answer abstains rather than reasoning from the card name.",
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-EX-POLICY-1",
@@ -87,16 +143,23 @@
       "zh_hant": {
         "question": "第三輪對手不小心多抽了一張牌。罰則是什麼？"
       },
-      "notes": "Exemplar. This abstention is a decision, not a mechanism running out: the service declines tournament procedure and penalties by policy."
+      "notes": "Exemplar. This abstention is a decision, not a mechanism running out: the service declines tournament procedure and penalties by policy.",
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-001",
       "family": "timing_priority_chain",
       "language": "en",
       "question": "Both players have passed once each on a closed chain during my main phase. Does the whole chain resolve, or one item?",
-      "expected_tier": "A",
+      "expected_tier": "B",
       "locators": [
-        "Core 339.1",
         "Core 340.1"
       ],
       "abstention_contract": null,
@@ -105,14 +168,28 @@
       "zh_hant": {
         "question": "我的主要階段，連鎖已封閉，雙方各讓過一次。整個連鎖會一起結算，還是只結算一項？"
       },
-      "notes": "340.1 resolves the newest finalized item only; 339.1 is the pass condition that sends the chain to Step 4."
+      "notes": "340.1 resolves the newest finalized item only; 339.1 is the pass condition that sends the chain to Step 4.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_newest_item_resolves"
+        ],
+        "required_source_locators": [
+          "Core 340.1"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-002",
       "family": "timing_priority_chain",
       "language": "en",
       "question": "I finalized my card onto the chain. Did finalizing it pass priority to my opponent?",
-      "expected_tier": "A",
+      "expected_tier": "B",
       "locators": [
         "Core 337.1.a"
       ],
@@ -120,7 +197,21 @@
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "337.1.a: finalizing an item to the chain does not pass Priority."
+      "notes": "337.1.a: finalizing an item to the chain does not pass Priority.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_finalizing_does_not_pass_priority"
+        ],
+        "required_source_locators": [
+          "Core 337.1.a"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-003",
@@ -137,14 +228,27 @@
       "zh_hant": {
         "question": "現在沒有任何玩家持有優先權。雙方還能做自主行動嗎？"
       },
-      "notes": "312.1.b: if no player has Priority, no player can take Discretionary Actions. Measured 2026-09-08 through the real consultation command: the pipeline reached tier A. The engine refused with priority_required and cited Core 312; the precise sub-rule is 312.1.b. My first prediction for this question was C and it was wrong — the engine models the rule."
+      "notes": "312.1.b: if no player has Priority, no player can take Discretionary Actions. Measured 2026-09-08 through the real consultation command: the pipeline reached tier A. The engine refused with priority_required and cited Core 312; the precise sub-rule is 312.1.b. My first prediction for this question was C and it was wrong — the engine models the rule.",
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "timing_play_refused",
+          "rule_no_priority_no_discretionary"
+        ],
+        "required_source_locators": [
+          "Core 312.1.b"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-004",
       "family": "timing_priority_chain",
       "language": "en",
       "question": "An effect instructs me to make a choice, but I do not hold priority. May I still make it?",
-      "expected_tier": "A",
+      "expected_tier": "B",
       "locators": [
         "Core 312.1.b.1"
       ],
@@ -152,7 +256,21 @@
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "312.1.b.1: players can always take and make choices for Limited Actions when instructed, regardless of Priority. The distinction this question tests is Limited Action against Discretionary Action."
+      "notes": "312.1.b.1: players can always take and make choices for Limited Actions when instructed, regardless of Priority. The distinction this question tests is Limited Action against Discretionary Action.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_limited_actions_regardless_of_priority"
+        ],
+        "required_source_locators": [
+          "Core 312.1.b.1"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-005",
@@ -161,21 +279,32 @@
       "question": "A Showdown is open and I just gained Focus. May I play a spell with no Action or Reaction keyword?",
       "expected_tier": "A",
       "locators": [
-        "Core 313.1.a",
-        "Core 313.2"
+        "Core 313.1.a"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "313.2 gives Priority with Focus; 313.1.a's own example refuses a spell without Action or Reaction. Measured 2026-09-08 through the real consultation command: the pipeline reached tier A. The engine refused with action_or_reaction_required_in_showdown, citing Core 313.1 among others."
+      "notes": "313.2 gives Priority with Focus; 313.1.a's own example refuses a spell without Action or Reaction. Measured 2026-09-08 through the real consultation command: the pipeline reached tier A. The engine refused with action_or_reaction_required_in_showdown, citing Core 313.1 among others.",
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "timing_play_refused"
+        ],
+        "required_source_locators": [
+          "Core 313.1.a"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-006",
       "family": "timing_priority_chain",
       "language": "en",
       "question": "I passed priority during a Showdown. Do I still hold Focus?",
-      "expected_tier": "A",
+      "expected_tier": "B",
       "locators": [
         "Core 313.3"
       ],
@@ -183,14 +312,28 @@
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "313.3: a player who passes Priority retains Focus. The two are separate, and this question exists because they are easy to conflate."
+      "notes": "313.3: a player who passes Priority retains Focus. The two are separate, and this question exists because they are easy to conflate.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_focus_retained_on_pass"
+        ],
+        "required_source_locators": [
+          "Core 313.3"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-007",
       "family": "timing_priority_chain",
       "language": "en",
       "question": "The turn is in a Neutral State. Which player holds Focus?",
-      "expected_tier": "A",
+      "expected_tier": "B",
       "locators": [
         "Core 313.5"
       ],
@@ -198,14 +341,28 @@
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "313.5: in a Neutral State no player has Focus. Neither player is the answer, not the turn player."
+      "notes": "313.5: in a Neutral State no player has Focus. Neither player is the answer, not the turn player.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_no_focus_in_neutral_state"
+        ],
+        "required_source_locators": [
+          "Core 313.5"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-008",
       "family": "timing_priority_chain",
       "language": "en",
       "question": "I hold Focus but my opponent holds priority. May I take a discretionary action?",
-      "expected_tier": "A",
+      "expected_tier": "B",
       "locators": [
         "Core 313.4"
       ],
@@ -213,7 +370,23 @@
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "313.4: a player may not make discretionary actions with Focus unless they also possess Priority."
+      "notes": "313.4: a player may not make discretionary actions with Focus unless they also possess Priority.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_focus_without_priority_cannot_act"
+        ],
+        "required_source_locators": [
+          "Core 313.4"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_focus_without_priority_cannot_act"
+        ]
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-009",
@@ -222,14 +395,25 @@
       "question": "The turn is in a Closed State. May I play a card that has no Reaction?",
       "expected_tier": "A",
       "locators": [
-        "Core 338.1.a.1",
-        "Core 338.1.a.2"
+        "Core 338.1.a.1"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "338.1.a.1: cards and activated abilities cannot be played during a Closed State by default; 338.1.a.2 names Reaction as what makes one legally timed there."
+      "notes": "338.1.a.1: cards and activated abilities cannot be played during a Closed State by default; 338.1.a.2 names Reaction as what makes one legally timed there.",
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "timing_play_refused"
+        ],
+        "required_source_locators": [
+          "Core 338.1.a.1"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-010",
@@ -238,21 +422,32 @@
       "question": "My opponent's spell is on the chain and they hold priority. May I play a card right now?",
       "expected_tier": "A",
       "locators": [
-        "Core 312.1.a",
-        "Core 340.4"
+        "Core 312.1.a"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "Priority is exclusive (312), and after the chain settles the controller of the newest item gains it (340.4). Measured 2026-09-08 through the real consultation command: the pipeline reached tier A."
+      "notes": "Priority is exclusive (312), and after the chain settles the controller of the newest item gains it (340.4). Measured 2026-09-08 through the real consultation command: the pipeline reached tier A.",
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "timing_play_refused"
+        ],
+        "required_source_locators": [
+          "Core 312.1.a"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-011",
       "family": "timing_priority_chain",
       "language": "en",
       "question": "My chain item finalized and it is a Unit. Does it wait on the chain for a response?",
-      "expected_tier": "A",
+      "expected_tier": "B",
       "locators": [
         "Core 337.2"
       ],
@@ -260,7 +455,23 @@
       "consultation_entry": "timing",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "337.2: a finalized Unit, Gear, or resource-adding ability resolves immediately and moves to Step 4, so there is no window on it."
+      "notes": "337.2: a finalized Unit, Gear, or resource-adding ability resolves immediately and moves to Step 4, so there is no window on it.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_finalized_permanent_resolves_immediately"
+        ],
+        "required_source_locators": [
+          "Core 337.2"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_finalized_permanent_resolves_immediately"
+        ]
+      },
+      "correction_record": null
     },
     {
       "question_id": "JC-TPC-012",
@@ -277,7 +488,21 @@
       "zh_hant": {
         "question": "爭奪中的戰場剛開啟對峙。哪一位玩家取得聚焦？"
       },
-      "notes": "345: the player who applied Contested status gains Focus. Expected B rather than A: the minimum state builder has no slot for who applied Contested, so the engine has nothing to rule on and the answer is the text. Measured 2026-09-08 through the real consultation command: the pipeline reached tier B. Worth a second look at review: a tier-B run cites the right text without answering 'which player', so the tier alone does not say the question was answered."
+      "notes": "345: the player who applied Contested status gains Focus. Expected B rather than A: the minimum state builder has no slot for who applied Contested, so the engine has nothing to rule on and the answer is the text. Measured 2026-09-08 through the real consultation command: the pipeline reached tier B. Worth a second look at review: a tier-B run cites the right text without answering 'which player', so the tier alone does not say the question was answered.",
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_focus_on_showdown_start"
+        ],
+        "required_source_locators": [
+          "Core 345"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": []
+      },
+      "correction_record": null
     }
   ]
 }

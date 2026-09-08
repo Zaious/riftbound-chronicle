@@ -400,6 +400,7 @@ def main() -> int:
         run["ledger"]["admissible_tier"] = "B"
         reseal_ledger(run)
         run["status"], run["tier"], run["detail"] = "answered", "B", ""
+        run["position_statement"] = rcc.POSITION_STATEMENT
         reseal(run)
 
     forge("ledger source status rewritten to verified", "CR-018", _g1,
@@ -448,6 +449,7 @@ def main() -> int:
     # an answer, tier and all, and resealed.
     def _g7(run):
         run["status"], run["tier"], run["detail"] = "answered", "B", ""
+        run["position_statement"] = rcc.POSITION_STATEMENT
         reseal(run)
 
     forge("abstention relabelled as a tier-B answer", "CR-019", _g7,
@@ -533,6 +535,36 @@ def main() -> int:
         elif not any(expected in problem for problem in problems):
             failures.append(f"{label} was refused, but not by the rule that should have "
                             f"caught it: {problems}")
+
+    # A tier-B run's position statement is derived too, so it cannot be dropped
+    # and cannot be attached to a run at another tier.
+    for label, case_id, edit in (
+        ("a tier-B answer with its position statement removed", "CR-017",
+         lambda r: r.__setitem__("position_statement", None)),
+        ("a tier-A answer carrying the position statement", "CR-001",
+         lambda r: r.__setitem__("position_statement", rcc.POSITION_STATEMENT)),
+    ):
+        candidate = copy.deepcopy(ran[case_id])
+        edit(candidate)
+        reseal(candidate)
+        if not validate_run(candidate):
+            failures.append(f"the validator accepts {label}")
+
+    # A conditional rule is neither a position conclusion nor a bare source
+    # statement: it says what the text says without naming anyone here. The
+    # template table is what holds that, so it is checked there.
+    for template_id, template in CLAIM_TEMPLATES.items():
+        if template["class"] != "conditional_rule":
+            continue
+        if template["basis"]["kind"] == "engine":
+            failures.append(f"{template_id} is a conditional rule resting on the engine")
+        if "player" in template["slots"].values():
+            failures.append(f"{template_id} is a conditional rule that names a player in "
+                            f"this position")
+        if "locator" not in template["slots"].values():
+            failures.append(f"{template_id} states a rule without binding the rule it states")
+        if not template["text"].startswith("Under {locator},"):
+            failures.append(f"{template_id} must attribute the rule it states to its locator")
 
     # The declined run's coverage statement is derived, so it cannot be dropped.
     dropped = copy.deepcopy(ran["CR-005"])

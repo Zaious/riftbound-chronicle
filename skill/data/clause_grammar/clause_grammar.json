@@ -530,6 +530,135 @@
       ]
     },
     {
+      "production_id": "heal_selector",
+      "form": "Heal <selector>.",
+      "template": "heal {selector}",
+      "slots": {
+        "selector": [
+          "a_unit",
+          "a_friendly_unit",
+          "an_enemy_unit",
+          "me",
+          "it",
+          "that_unit",
+          "another_unit",
+          "another_friendly_unit"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 441",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "heal_all_damage",
+        "targeting"
+      ],
+      "boundary": "All damage is removed from one chosen object. 'Heal N' is a different production.",
+      "golden": [
+        "Heal a unit.",
+        "Heal a friendly unit.",
+        "Heal an enemy unit.",
+        "Heal me.",
+        "Heal another unit.",
+        "Heal another friendly unit.",
+        "Heal it.",
+        "Heal that unit."
+      ],
+      "negative": [
+        "Heal 2 damage from a unit.",
+        "Heal all friendly units.",
+        "Heal the strongest unit."
+      ]
+    },
+    {
+      "production_id": "exhaust_selector",
+      "form": "Exhaust <selector>.",
+      "template": "exhaust {selector}",
+      "slots": {
+        "selector": [
+          "a_unit",
+          "a_friendly_unit",
+          "an_enemy_unit",
+          "me",
+          "it",
+          "that_unit",
+          "another_unit",
+          "another_friendly_unit"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 416",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "exhaust",
+        "targeting"
+      ],
+      "boundary": "One chosen object is exhausted. A count or a rune selector is a different production.",
+      "golden": [
+        "Exhaust a unit.",
+        "Exhaust a friendly unit.",
+        "Exhaust an enemy unit.",
+        "Exhaust me.",
+        "Exhaust another unit.",
+        "Exhaust another friendly unit.",
+        "Exhaust it.",
+        "Exhaust that unit."
+      ],
+      "negative": [
+        "Exhaust 2 runes.",
+        "Exhaust all enemy units.",
+        "Exhaust the strongest unit."
+      ]
+    },
+    {
+      "production_id": "recall_selector",
+      "form": "Recall <selector>.",
+      "template": "recall {selector}",
+      "slots": {
+        "selector": [
+          "a_unit",
+          "a_friendly_unit",
+          "an_enemy_unit",
+          "me",
+          "it",
+          "that_unit",
+          "another_unit",
+          "another_friendly_unit"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 434",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "recall",
+        "targeting"
+      ],
+      "boundary": "One chosen object is sent to its controller's Base. Recall is not a Move (434.1).",
+      "golden": [
+        "Recall a unit.",
+        "Recall a friendly unit.",
+        "Recall an enemy unit.",
+        "Recall me.",
+        "Recall another unit.",
+        "Recall another friendly unit.",
+        "Recall it.",
+        "Recall that unit."
+      ],
+      "negative": [
+        "Recall a unit exhausted.",
+        "Recall all friendly units.",
+        "Recall the strongest unit."
+      ]
+    },
+    {
       "production_id": "buff_selector",
       "form": "Buff <selector>.",
       "template": "buff {selector}",
@@ -961,6 +1090,32 @@
         "you may pay [a] as additional cost to play me",
         "you may pay [c] as additional cost to play another unit",
         "pay [c] as additional cost to play me"
+      ]
+    },
+    {
+      "production_id": "if_a_friendly_unit_would_die_kill_this_instead",
+      "form": "If a friendly unit would die, kill this instead.",
+      "template": "if a friendly unit would die, kill this instead",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 367",
+        "Core 370.1.b",
+        "Core 373.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "replacement_effects",
+        "kill"
+      ],
+      "boundary": "A source-backed Replacement Effect over the death of a friendly Unit. What happens instead starts with killing the source; a following clause may add to it, and its referents name the unit that would have died.",
+      "golden": [
+        "If a friendly unit would die, kill this instead."
+      ],
+      "negative": [
+        "if a unit would die, kill this instead",
+        "if a friendly unit would die, prevent it",
+        "the next time a friendly unit would die, kill this instead"
       ]
     },
     {

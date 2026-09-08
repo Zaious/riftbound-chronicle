@@ -1133,6 +1133,12 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].depends_on must reference an earlier effect")
             if effect.get("dependency_mode", "if_applied") not in {"if_applied", "always"}:
                 errors.append(f"effects[{index}].dependency_mode is invalid")
+            subject_identity = effect.get("subject_identity")
+            if subject_identity is not None and (not isinstance(subject_identity, str)
+                                                 or ("@" not in subject_identity and not subject_identity.startswith("$"))):
+                errors.append(f"effects[{index}].subject_identity must be an identity token or a binding")
+            if subject_identity is not None and not effect.get("object_id"):
+                errors.append(f"effects[{index}].subject_identity needs the object_id it pins")
             predicate = effect.get("predicate")
             if predicate is not None:
                 errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt"), seen, {e.get("effect_id", f"effect-{i}"): e for i, e in enumerate(effects[:index]) if isinstance(e, dict)}))
@@ -1783,15 +1789,21 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
     return applicable
 
 
-REPLACEMENT_BINDINGS = ("$affected", "$source")
+REPLACEMENT_BINDINGS = ("$affected", "$source", "$affected_identity")
 
 
-def _bind_replacement_effects(effects: list[dict[str, Any]], affected: str | None, source: str | None) -> list[dict[str, Any]]:
+def _bind_replacement_effects(effects: list[dict[str, Any]], affected: str | None, source: str | None,
+                             affected_identity: str | None = None) -> list[dict[str, Any]]:
     """C-56 (ADR-0014 §3): a Replacement Effect's instructions say "it" and
     "me". `$affected` is the object the replaced event was acting on and
     `$source` the Replacement Effect's own source; a binding the event cannot
-    supply is a program the engine refuses rather than half-substitutes."""
-    bound = {"$affected": affected, "$source": source}
+    supply is a program the engine refuses rather than half-substitutes.
+
+    Round H adds `$affected_identity`: the identity the subject had when the
+    replacement applied (Core 359.3.e.4). Instructions that name the subject
+    carry it as their bound_identity, so "heal that unit" cannot land on some
+    other object that happens to hold the same id later in the resolution."""
+    bound = {"$affected": affected, "$source": source, "$affected_identity": affected_identity}
 
     def substitute(value: Any, path: str) -> Any:
         if isinstance(value, str) and value in REPLACEMENT_BINDINGS:
@@ -4600,6 +4612,24 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        # Round H: an instruction that names a captured subject rather than a
+        # chosen target. It is not targeting (355.10.a) - nobody chose it - but
+        # it still must be the *same* object the capture named, so a later
+        # instruction cannot land on something else holding that id now.
+        subject_identity = effect.get("subject_identity")
+        if subject_identity is not None:
+            subject = effect.get("object_id")
+            if subject not in current["objects"] or object_identity(current, subject) != subject_identity:
+                event = {
+                    "index": index, "effect_id": effect_id, "op": effect["op"],
+                    "outcome": "ignored_subject_changed", "completion": "none",
+                    "reason": "subject_identity_changed", "object_id": subject,
+                    "rule_locators": ["Core 359.3.e.4", "Core 370.1.b"],
+                    "before_state_hash": before_hash, "after_state_hash": before_hash,
+                }
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
         target = selectors[0] if selectors else None
         if target is not None:
             effect = {**effect, "target": target, "object_id": effect.get("object_id", target.get("object_id"))}
@@ -4790,7 +4820,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 try:
                     replacement_program_effects = _bind_replacement_effects(
                         _inherit_event_modifiers(effect, replacement.get("replacement_effects", [])),
-                        effect.get("object_id"), replacement.get("source_object"))
+                        effect.get("object_id"), replacement.get("source_object"),
+                        object_identity(selected_state, effect["object_id"])
+                        if effect.get("object_id") in selected_state["objects"] else None)
                 except IllegalOperation as exc:
                     return {
                         **base, "valid": True, "committed": False, "applied": False,

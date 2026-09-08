@@ -361,6 +361,9 @@ def _lower_single_target_op(op: str, effect_id: str, capability: str):
 
 COMPOSABLE = {
     "while_a_friendly_unit_defends_alone_it_gets_might": _lower_defends_alone_aura,
+    "heal_selector": _lower_single_target_op("heal_all_damage", "hl", "heal_all_damage"),
+    "exhaust_selector": _lower_single_target_op("exhaust", "ex", "exhaust"),
+    "recall_selector": _lower_single_target_op("recall", "rc", "recall"),
     "ready_selector": _lower_single_target_op("ready", "rd", "ready"),
     "buff_selector": _lower_single_target_op("buff", "bf", "buff"),
     "keyworded_ability": _lower_keyworded_ability,
@@ -381,7 +384,25 @@ def _lower_card_self_offer(params):
     }
 
 
+def _lower_death_replacement(params):
+    """Core 370.1.b: what happens instead of the death. The list starts with
+    killing the source; a following clause of the same card adds to it, and
+    its referents name the unit that would have died rather than re-choosing
+    one (Codex: the subject is captured, not re-found)."""
+    return {
+        "state_lists": {"replacement_effects": [{
+            "replacement_id": "$clause_id", "controller": "$controller", "source_object": "$source_object",
+            "mode": "replace_with", "event_op": "kill", "optional": False, "uses_remaining": None,
+            "target_controller_relation": "friendly",
+            "replacement_effects": [{"op": "kill", "effect_id": "kill-self", "object_id": "$source"}],
+        }]},
+        "replacement_continuation": "$clause_id",
+        "ast": {"node": "passive", "kind": "replacement", "params": {"event_op": "kill", "mode": "replace_with"}},
+    }
+
+
 LOWERINGS = {
+    "if_a_friendly_unit_would_die_kill_this_instead": _lower_death_replacement,
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
@@ -520,6 +541,26 @@ def _referent_of(effects: list[dict[str, Any]]) -> str | None:
         if isinstance(target, dict) and isinstance(target.get("decision_ref"), str):
             return target["decision_ref"]
     return None
+
+
+# Core 359.3.e.4: the object the replaced event was acting on, and the
+# identity it had at that moment. Both are bound by the engine when the
+# replacement applies.
+REPLACEMENT_SUBJECT = {"object_id": "$affected", "subject_identity": "$affected_identity"}
+
+
+def _bind_to_replacement_subject(effects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Point every referent at the object that would have died. It carries the
+    identity that object had when the replacement applied, so a later
+    instruction cannot land on a different object at the same id - and it is
+    never re-chosen, so it can never become the Gear or a fresh target."""
+    bound = copy.deepcopy(effects)
+    for effect in bound:
+        target = effect.get("target")
+        if isinstance(target, dict) and target.get("decision_ref") == REFERENT_REF:
+            effect.pop("target")
+            effect.update(copy.deepcopy(REPLACEMENT_SUBJECT))
+    return bound
 
 
 def _has_unbound_referent(effects: list[dict[str, Any]]) -> bool:
@@ -799,17 +840,40 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
                      "normalized": entry.get("normalized"),
                      "reason": f"this card declares {declared_offers} optional additional costs; "
                                "'the additional cost' does not name one of them"}
-        if not entry.get("unsupported") and _has_unbound_referent(entry.get("program_effects", [])):
-            # DP-86: a referent with nothing before it to be. Refusing here is
-            # the point - the alternative is re-finding an object that merely
-            # matches, which is what the contract forbids.
-            entry = {"production_id": entry["production_id"], "unsupported": True,
-                     "reason_code": "referent_not_bound", "text": entry["text"],
-                     "normalized": entry.get("normalized"),
-                     "reason": "the clause names a referent no earlier instruction chose"}
         declared_offers += len(((entry.get("passive") or {}).get("object_fields", {}) or {})
                                .get("optional_additional_costs") or [])
         compiled.append(entry)
+
+    # Round H: a clause that continues an open replacement. "Heal that unit,
+    # exhaust it, and recall it." is not something the card does on its own -
+    # it is the rest of what happens instead of the death, and its referents
+    # name the unit that would have died.
+    for index, entry in enumerate(compiled[:-1] if compiled else []):
+        replacement_id = entry.get("replacement_continuation")
+        following = compiled[index + 1]
+        if replacement_id is None or following.get("unsupported") or not following.get("program_effects"):
+            continue
+        if not _has_unbound_referent(following["program_effects"]):
+            continue  # it names its own targets, so it is a clause of its own
+        replacements = ((entry.get("passive") or {}).get("state_lists", {}) or {}).get("replacement_effects") or []
+        if len(replacements) != 1:
+            continue
+        replacements[0]["replacement_effects"] = (replacements[0]["replacement_effects"]
+                                                  + _bind_to_replacement_subject(following["program_effects"]))
+        compiled[index + 1] = {**following, "program_effects": [],
+                               "absorbed_into": replacements[0]["replacement_id"]}
+
+    # DP-86, checked once the replacement above has had its chance to bind: a
+    # referent with nothing before it to be. Refusing here is the point - the
+    # alternative is re-finding an object that merely matches, which is what
+    # the contract forbids.
+    for index, entry in enumerate(compiled):
+        if entry.get("unsupported") or not _has_unbound_referent(entry.get("program_effects", [])):
+            continue
+        compiled[index] = {"production_id": entry["production_id"], "unsupported": True,
+                           "reason_code": "referent_not_bound", "text": entry["text"],
+                           "normalized": entry.get("normalized"),
+                           "reason": "the clause names a referent no earlier instruction chose"}
     effects: list[dict[str, Any]] = []
     passive: dict[str, Any] = {}
     for entry in compiled:

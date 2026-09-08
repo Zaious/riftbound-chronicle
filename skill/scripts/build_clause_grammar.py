@@ -211,6 +211,24 @@ PRODUCTIONS = [
         "negative": ["Ready up to 2 runes.", "Ready all friendly units.", "Ready the strongest unit."],
     },
     {
+        "production_id": "move_selector",
+        "form": "Move <selector>.",
+        "template": r"move {selector}",
+        "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
+                               "another_unit", "another_friendly_unit"]},
+        "normalization": N,
+        "rule_locators": ["Core 428", "Core 355.4.a", "Core 355.9"],
+        "ast_node": "instruction",
+        "required_capability": ["move_board_object", "targeting"],
+        "boundary": ("One chosen object moves to a board Location its controller's opponent does not "
+                     "get to pick. The destination is a resolution-stage choice made by the effect's "
+                     "controller from the Locations this board actually has; a named destination "
+                     "('move it to your base') is a different production."),
+        "golden": ["Move a unit.", "Move a friendly unit.", "Move an enemy unit.", "Move me.",
+                   "Move another unit.", "Move another friendly unit.", "Move it.", "Move that unit."],
+        "negative": ["Move a unit to your base.", "Move all enemy units.", "Move up to 2 units."],
+    },
+    {
         "production_id": "heal_selector",
         "form": "Heal <selector>.",
         "template": r"heal {selector}",

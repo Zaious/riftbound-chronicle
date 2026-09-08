@@ -358,11 +358,13 @@ def _lower_defends_alone_aura(params, slots):
     }
 
 
-def _lower_single_target_op(op: str, effect_id: str, capability: str):
+def _lower_single_target_op(op: str, effect_id: str, capability: str, extra: dict[str, Any] | None = None):
     """Ready and Buff are the same shape: one op, one chosen object, no
-    parameters of their own. The selector carries every difference."""
+    parameters of their own. The selector carries every difference. `extra`
+    is for an op that needs one more field of its own - a Move needs somewhere
+    to go, and where is the controller's choice at resolution."""
     def lower(params, slots):
-        effect: dict[str, Any] = {"op": op, "effect_id": effect_id}
+        effect: dict[str, Any] = {"op": op, "effect_id": effect_id, **copy.deepcopy(extra or {})}
         effect.update(_selector_fields(slots["selector"]))
         return {"program_effects": [effect],
                 "ast": {"node": "instruction", "op": op,
@@ -372,6 +374,8 @@ def _lower_single_target_op(op: str, effect_id: str, capability: str):
 
 COMPOSABLE = {
     "while_a_friendly_unit_defends_alone_it_gets_might": _lower_defends_alone_aura,
+    "move_selector": _lower_single_target_op("move_board_object", "mv", "move_board_object",
+                                            extra={"destination": {"decision_ref": "dest"}}),
     "heal_selector": _lower_single_target_op("heal_all_damage", "hl", "heal_all_damage"),
     "exhaust_selector": _lower_single_target_op("exhaust", "ex", "exhaust"),
     "recall_selector": _lower_single_target_op("recall", "rc", "recall"),

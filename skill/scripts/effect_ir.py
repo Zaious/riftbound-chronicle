@@ -222,6 +222,20 @@ class ChoiceRequired(ValueError):
         self.reason_code = f"{summary['decision_kind']}_required"
 
 
+class LocationSelectionRequired(ValueError):
+    """Core 428: a Move whose destination the controller has not chosen. The
+    candidates travel with it, generated from the board, so a caller never has
+    to guess what the legal destinations were."""
+
+    reason_code = "location_selection_required"
+
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None, candidates: list[str]):
+        super().__init__(message)
+        self.decision_ids = decision_ids
+        self.controller = controller
+        self.candidates = candidates
+
+
 class ModeSelectionRequired(ValueError):
     """ADR-0011 §2: a modal program whose mode has not been chosen."""
 
@@ -1605,6 +1619,30 @@ def same_side(state: dict[str, Any], left: str | None, right: str | None) -> boo
     return left_team is not None and left_team == right_team
 
 
+def location_token(location: tuple[str, str, str | None] | None) -> str | None:
+    """The full name of a board Location, or None for anything off the board."""
+    if location is None:
+        return None
+    if location[0] == "battlefield":
+        return f"battlefield:{location[1]}"
+    if location[0] == "player" and location[2] == "base":
+        return f"base:{location[1]}"
+    return None
+
+
+def legal_move_destinations(state: dict[str, Any], object_id: str) -> list[str]:
+    """Core 428 / 355.4.a: a Move goes from one board Location to *another*.
+    The candidates are every Battlefield and every Base except the one the
+    object is already at - generated from the state, never supplied, so a
+    decision cannot name a destination the board does not have."""
+    here = location_token(find_location(state, object_id))
+    if here is None:
+        return []
+    candidates = [f"battlefield:{bf}" for bf in sorted(state.get("battlefields") or {})]
+    candidates += [f"base:{player}" for player in sorted(state.get("players") or {})]
+    return [candidate for candidate in candidates if candidate != here]
+
+
 def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str | None] | None:
     for player_id, player in state["players"].items():
         for zone, ids in player["zones"].items():
@@ -2166,7 +2204,8 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
                    "completion": "full" if ids else "none"}
 
 
-def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None = None,
+               controller: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     op = effect.get("op")
     if op not in SUPPORTED_OPS:
         raise NotImplementedError(f"unsupported effect op {op!r}")
@@ -2211,6 +2250,25 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         object_id, destination = effect.get("object_id"), effect.get("destination")
         if object_id not in new_state["objects"] or not isinstance(destination, dict):
             raise ValueError("move_board_object requires a known object and destination")
+        if "decision_ref" in destination:
+            # Charm: "Move an enemy unit." The player chooses where, from the
+            # destinations this board actually offers.
+            import engine_decisions as _ed
+            candidates = legal_move_destinations(new_state, object_id)
+            entry = next((e for e in _ed.entries(decisions, kind="location_selection")
+                          if e["decision_id"] == destination["decision_ref"]), None)
+            if entry is None:
+                raise LocationSelectionRequired(
+                    f"a Move destination for {object_id!r} is required (Core 428)",
+                    [destination["decision_ref"]], controller, candidates)
+            if entry["controller"] != controller:
+                raise IllegalDecision(f"location selection {destination['decision_ref']!r} was made by "
+                                      f"{entry['controller']!r}, not the program controller")
+            if entry["value"] not in candidates:
+                raise ValueError(f"location selection {destination['decision_ref']!r} names "
+                                 f"{entry['value']!r}; the legal Move destinations are {candidates}")
+            kind, _, name = entry["value"].partition(":")
+            destination = {"kind": kind, "battlefield": name} if kind == "battlefield" else {"kind": "base", "player": name}
         source = find_location(new_state, object_id)
         if source is None or not (source[0] == "battlefield" or source[2] == "base"):
             raise ValueError("Move applies only between board locations")
@@ -4950,7 +5008,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             outcomes[effect_id] = "applied" if event["outcome"] == "replaced_modified_applied" else event["outcome"]
             continue
         try:
-            current, event = _apply_one(current, effect, decisions=decisions)
+            current, event = _apply_one(current, effect, decisions=decisions,
+                                        controller=program.get("controller"))
         except NotImplementedError as exc:
             return {
                 **base,
@@ -4960,6 +5019,14 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "failed_effect_index": index,
                 "reason": str(exc),
                 "trace": trace,
+            }
+        except LocationSelectionRequired as exc:
+            return {
+                **base, "valid": True, "committed": False, "location_selection_required": True,
+                "reason_code": exc.reason_code, "reason": str(exc),
+                "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                "location_candidates": exc.candidates,
+                "failed_effect_index": index, "trace": trace,
             }
         except (ExternalInputRequired, PlayerSelectionRequired) as exc:
             return {

@@ -34,6 +34,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from typing import Any
 
 DECISIONS_VERSION = "engine-decisions.v1"
@@ -46,6 +47,11 @@ STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
 # that remain: complete whenever any card is left, empty when none is.
 KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
+
+
+# The full form of a board location, used where a decision may name either
+# kind. Core 355.4.a: the Board's Locations are the Battlefields and the Bases.
+_LOCATION_TOKEN = re.compile(r"^(battlefield|base):(.+)$")
 
 
 def _is_hash(value: Any) -> bool:
@@ -160,9 +166,16 @@ def validate_engine_decisions(value: Any) -> list[str]:
         if kind == "player_selection" and item["stage"] not in ("resolution", "procedure"):
             errors.append(f"{label}: player_selection is a resolution- or procedure-stage decision")
         if kind == "location_selection" and (not isinstance(val, str) or not val):
-            errors.append(f"{label}.value must be a battlefield id")
-        if kind == "location_selection" and item["stage"] != "procedure":
-            errors.append(f"{label}: location_selection is a procedure-stage decision")
+            errors.append(f"{label}.value must be a battlefield id, or a board location token at resolution")
+        if kind == "location_selection" and item["stage"] not in ("procedure", "resolution"):
+            errors.append(f"{label}: location_selection is a procedure- or resolution-stage decision")
+        # A procedure names a Battlefield by id (opening a Combat, staging a
+        # Showdown). A Move at resolution may also name a Base, so it names the
+        # location in full - "battlefield:<id>" or "base:<player>" - and the
+        # bare-id form stays where it already means something.
+        if kind == "location_selection" and item["stage"] == "resolution" and isinstance(val, str) \
+                and not _LOCATION_TOKEN.match(val):
+            errors.append(f"{label}.value must be 'battlefield:<id>' or 'base:<player>' at resolution")
     return errors
 
 

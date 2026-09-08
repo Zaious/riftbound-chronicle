@@ -636,7 +636,16 @@
       },
       "claims": [
         {
-          "template": "rule_newest_item_resolves",
+          "template": "rule_role_holder",
+          "slots": {
+            "locator": "Core 340.1",
+            "occasion": "when_the_chain_resolves",
+            "role": "resolving_chain_item",
+            "holder": "newest_finalized_chain_item"
+          }
+        },
+        {
+          "template": "official_text_recorded",
           "slots": {
             "locator": "Core 340.1"
           }
@@ -699,9 +708,13 @@
           }
         },
         {
-          "template": "rule_no_priority_no_discretionary",
+          "template": "rule_action_permission",
           "slots": {
-            "locator": "Core 312.1.b"
+            "locator": "Core 312.1.b",
+            "actor": "no_player",
+            "modality": "may",
+            "action": "take_a_discretionary_action",
+            "condition": "while_no_player_holds_priority"
           }
         },
         {
@@ -733,7 +746,17 @@
       },
       "claims": [
         {
-          "template": "rule_limited_actions_regardless_of_priority",
+          "template": "rule_action_permission",
+          "slots": {
+            "locator": "Core 312.1.b.1",
+            "actor": "any_player",
+            "modality": "may",
+            "action": "take_a_limited_action",
+            "condition": "when_instructed_regardless_of_priority"
+          }
+        },
+        {
+          "template": "official_text_recorded",
           "slots": {
             "locator": "Core 312.1.b.1"
           }
@@ -800,7 +823,16 @@
       },
       "claims": [
         {
-          "template": "rule_focus_retained_on_pass",
+          "template": "rule_role_holder",
+          "slots": {
+            "locator": "Core 313.3",
+            "occasion": "when_priority_is_passed",
+            "role": "focus",
+            "holder": "the_passing_player"
+          }
+        },
+        {
+          "template": "official_text_recorded",
           "slots": {
             "locator": "Core 313.3"
           }
@@ -828,7 +860,16 @@
       },
       "claims": [
         {
-          "template": "rule_no_focus_in_neutral_state",
+          "template": "rule_role_holder",
+          "slots": {
+            "locator": "Core 313.5",
+            "occasion": "in_a_neutral_state",
+            "role": "focus",
+            "holder": "no_player"
+          }
+        },
+        {
+          "template": "official_text_recorded",
           "slots": {
             "locator": "Core 313.5"
           }
@@ -854,7 +895,24 @@
           "timing": "default"
         }
       },
-      "claims": []
+      "claims": [
+        {
+          "template": "rule_action_permission",
+          "slots": {
+            "locator": "Core 313.4",
+            "actor": "a_player_with_focus_but_not_priority",
+            "modality": "may_not",
+            "action": "take_a_discretionary_action",
+            "condition": "unconditionally"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 313.4"
+          }
+        }
+      ]
     },
     "JC-TPC-009": {
       "entry": "timing",
@@ -961,7 +1019,14 @@
           "timing": "default"
         }
       },
-      "claims": []
+      "claims": [
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 337.2"
+          }
+        }
+      ]
     },
     "JC-TPC-012": {
       "entry": "timing",
@@ -984,7 +1049,16 @@
       },
       "claims": [
         {
-          "template": "rule_focus_on_showdown_start",
+          "template": "rule_role_holder",
+          "slots": {
+            "locator": "Core 345",
+            "occasion": "when_showdown_begins",
+            "role": "focus",
+            "holder": "applied_contested"
+          }
+        },
+        {
+          "template": "official_text_recorded",
           "slots": {
             "locator": "Core 345"
           }
@@ -1392,6 +1466,15 @@
       },
       "claims": [
         {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 470",
+            "quantity": "scores_per_battlefield_per_turn_per_player",
+            "relation": "at_most",
+            "value": 1
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 470"
@@ -1420,9 +1503,24 @@
       },
       "claims": [
         {
+          "template": "rule_step_order",
+          "slots": {
+            "locator": "Core 471.1.b.1",
+            "first": "scoring_every_battlefield_this_turn",
+            "relation": "is_required_before",
+            "second": "gaining_the_final_point_by_conquer"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 471.1.b.1"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 471.1.b"
           }
         }
       ]
@@ -1476,9 +1574,24 @@
       },
       "claims": [
         {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 471.2.c",
+            "quantity": "hold_ability_triggers_per_battlefield_per_turn_per_player",
+            "relation": "at_most",
+            "value": 1
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 471.2.b"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 471.2.c"
           }
         }
       ]
@@ -1753,9 +1866,24 @@
       },
       "claims": [
         {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 194.3",
+            "quantity": "victory_score_by_default",
+            "relation": "is",
+            "value": 8
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 194.3"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.3.a"
           }
         }
       ]
@@ -1785,6 +1913,12 @@
           "slots": {
             "locator": "Core 194.2.b"
           }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.2.a"
+          }
         }
       ]
     },
@@ -1809,9 +1943,30 @@
       },
       "claims": [
         {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 194.4",
+            "quantity": "a_players_points",
+            "relation": "at_least",
+            "value": 0
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 194.4"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.4.a"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.4.b"
           }
         }
       ]
@@ -1840,6 +1995,12 @@
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 196"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.2"
           }
         }
       ]
@@ -1961,9 +2122,33 @@
       },
       "claims": [
         {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 316.5.a",
+            "quantity": "discretionary_actions_a_player_may_take_in_the_main_phase",
+            "relation": "unbounded",
+            "value": null
+          }
+        },
+        {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 410.1.b",
+            "quantity": "discretionary_actions_a_player_may_take_in_a_turn",
+            "relation": "unbounded",
+            "value": null
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 410.1.b"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 316.5.a"
           }
         }
       ]
@@ -1988,6 +2173,16 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_action_permission",
+          "slots": {
+            "locator": "Core 410.1.b.3",
+            "actor": "any_player",
+            "modality": "may_not",
+            "action": "take_a_discretionary_action",
+            "condition": "if_a_forbidden_action_or_game_state_would_result"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -2017,9 +2212,35 @@
       },
       "claims": [
         {
+          "template": "rule_action_permission",
+          "slots": {
+            "locator": "Core 410.2.a",
+            "actor": "any_player",
+            "modality": "may_not",
+            "action": "take_a_limited_action",
+            "condition": "at_will"
+          }
+        },
+        {
+          "template": "rule_action_permission",
+          "slots": {
+            "locator": "Core 410.2.b",
+            "actor": "any_player",
+            "modality": "may",
+            "action": "take_a_limited_action",
+            "condition": "when_instructed_or_at_its_occasion_in_the_turn"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 410.2.b"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 410.2.a"
           }
         }
       ]
@@ -2044,6 +2265,26 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_action_permission",
+          "slots": {
+            "locator": "Core 316.5.b",
+            "actor": "the_turn_player",
+            "modality": "may",
+            "action": "play_a_spell_or_activate_an_ability",
+            "condition": "in_a_neutral_open_state"
+          }
+        },
+        {
+          "template": "rule_action_permission",
+          "slots": {
+            "locator": "Core 316.5.b",
+            "actor": "a_player_other_than_the_turn_player",
+            "modality": "may_not",
+            "action": "play_a_spell_or_activate_an_ability",
+            "condition": "in_a_neutral_open_state"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -2184,6 +2425,15 @@
       },
       "claims": [
         {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 814.1.b.3",
+            "quantity": "shield_value_when_x_is_omitted",
+            "relation": "is",
+            "value": 1
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 814.1.b.3"
@@ -2211,6 +2461,15 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 814.2",
+            "quantity": "shield_value_from_several_sources",
+            "relation": "is_the_sum_of_the_values",
+            "value": null
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -2240,9 +2499,33 @@
       },
       "claims": [
         {
+          "template": "rule_step_order",
+          "slots": {
+            "locator": "Core 815.1.b",
+            "first": "assigning_lethal_damage_to_a_tank_unit",
+            "relation": "comes_before",
+            "second": "assigning_damage_to_a_non_tank_unit_of_the_same_controller"
+          }
+        },
+        {
+          "template": "rule_step_order",
+          "slots": {
+            "locator": "Core 815.1.c.1",
+            "first": "assigning_lethal_damage_in_full_to_one_unit",
+            "relation": "is_required_before",
+            "second": "assigning_damage_to_another_unit"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 815.1.b"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 815.1.c.1"
           }
         }
       ]
@@ -2267,6 +2550,15 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 815.2",
+            "quantity": "tank_instances_in_effect_on_a_unit",
+            "relation": "at_most",
+            "value": 1
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -2611,6 +2903,15 @@
       },
       "claims": [
         {
+          "template": "rule_quantity",
+          "slots": {
+            "locator": "Core 462",
+            "quantity": "players_whose_units_are_in_one_combat",
+            "relation": "exactly",
+            "value": 2
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 462"
@@ -2688,6 +2989,24 @@
         "step": "assign"
       },
       "claims": [
+        {
+          "template": "rule_role_holder",
+          "slots": {
+            "locator": "Core 464.2.c.1",
+            "occasion": "when_combat_opens",
+            "role": "attacker",
+            "holder": "applied_contested"
+          }
+        },
+        {
+          "template": "rule_role_holder",
+          "slots": {
+            "locator": "Core 464.2.c.2",
+            "occasion": "when_combat_opens",
+            "role": "defender",
+            "holder": "did_not_apply_contested"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -2767,6 +3086,15 @@
       },
       "claims": [
         {
+          "template": "rule_role_holder",
+          "slots": {
+            "locator": "Core 464.2.d",
+            "occasion": "when_combat_opens",
+            "role": "focus",
+            "holder": "the_attacker"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 464.2.d"
@@ -2838,6 +3166,24 @@
         "step": "assign"
       },
       "claims": [
+        {
+          "template": "rule_step_order",
+          "slots": {
+            "locator": "Core 465.2.c.1",
+            "first": "assigning_combat_damage",
+            "relation": "is_distinct_from",
+            "second": "dealing_combat_damage"
+          }
+        },
+        {
+          "template": "rule_step_order",
+          "slots": {
+            "locator": "Core 465.2.c.1.a",
+            "first": "assigning_all_combat_damage",
+            "relation": "is_required_before",
+            "second": "dealing_combat_damage_simultaneously"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -2916,6 +3262,24 @@
         "step": "assign"
       },
       "claims": [
+        {
+          "template": "rule_step_order",
+          "slots": {
+            "locator": "Core 465.2.c.3",
+            "first": "assigning_lethal_damage_in_full_to_one_unit",
+            "relation": "is_required_before",
+            "second": "assigning_damage_to_another_unit"
+          }
+        },
+        {
+          "template": "rule_step_order",
+          "slots": {
+            "locator": "Core 465.2.c.4",
+            "first": "exhausting_the_units_that_can_still_be_assigned_damage",
+            "relation": "is_required_before",
+            "second": "assigning_a_unit_more_than_its_minimum_lethal_damage"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {

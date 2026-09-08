@@ -76,12 +76,19 @@ def compare(question: dict[str, Any], run: dict[str, Any]) -> list[str]:
         problems.append(f"answer scope {scope!r}, contract says {contract['answer_scope']!r}")
 
     templates = [claim["template"] for claim in run["claims"]]
-    for required in contract["required_templates"]:
-        if required in contract["template_coverage_debt"]:
+    # A required claim is met by a run claim with the same template and the
+    # same value in every slot. The same template with another value is a
+    # different claim and does not count.
+    for required in contract["required_claims"]:
+        if required["template"] in contract["template_coverage_debt"]:
             continue
-        if required not in templates:
-            problems.append(f"the contract requires the template {required!r}; "
-                            f"the run carried {templates or 'none'}")
+        if not any(claim["template"] == required["template"] and claim["slots"] == required["slots"]
+                   for claim in run["claims"]):
+            same = [claim["slots"] for claim in run["claims"] if claim["template"] == required["template"]]
+            carried = (f"that template with slots {same}" if same
+                       else f"{templates or 'none'}")
+            problems.append(f"the contract requires {required['template']!r} with slots "
+                            f"{required['slots']}; the run carried {carried}")
 
     forbidden = set(contract["forbidden_claim_classes"])
     for claim in run["claims"]:

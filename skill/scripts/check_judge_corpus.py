@@ -34,6 +34,7 @@ from judge_corpus import (
     DEBT_BLOCKS,
     DEBT_CLASSES,
     DERIVED_DEBT_FIELD,
+    DERIVED_TEMPLATES_FIELD,
     attach_debts,
     validate_debts,
     ABSTENTION_CONTRACTS,
@@ -227,16 +228,21 @@ def main() -> int:
          with_contract(conclusion, answer_scope="conditional_rule_explanation"),
          "a tier-A answer is scoped"),
         ("a full position conclusion with no position template",
-         with_contract(conclusion, required_templates=["official_text_recorded"],
+         with_contract(conclusion, required_claims=[{"template": "official_text_recorded", "slots": {"locator": "Core 312"}}],
+                       required_templates=["official_text_recorded"],
                        required_source_locators=["Core 312"]),
          "requires at least one position_conclusion template"),
         # The rule the JC-TPC-012 measurement produced: reporting that a locator
         # came back is not explaining what it says.
         ("a rule explanation that only reports a locator was retrieved",
-         with_contract(explanation, required_templates=["official_text_recorded"]),
+         with_contract(explanation, required_claims=[{"template": "official_text_recorded", "slots": {"locator": "Core 312"}}],
+                       required_templates=["official_text_recorded"]),
          "requires a conditional_rule template"),
         ("a rule explanation that also concludes about the position",
          with_contract(explanation,
+                       required_claims=explanation["expected_answer_contract"]["required_claims"]
+                       + [{"template": "timing_play_refused",
+                           "slots": {"actor": "p1", "object_kind": "spell"}}],
                        required_templates=explanation["expected_answer_contract"]
                        ["required_templates"] + ["timing_play_refused"]),
          "draws no conclusion about the position"),
@@ -244,7 +250,8 @@ def main() -> int:
          with_contract(explanation, required_source_locators=[]),
          "names the locators it explains"),
         ("an abstention that requires templates",
-         with_contract(abstention, required_templates=["official_text_recorded"]),
+         with_contract(abstention, required_claims=[{"template": "official_text_recorded", "slots": {"locator": "Core 312"}}],
+                       required_templates=["official_text_recorded"]),
          "carries no claims"),
         ("an abstention that cites locators",
          with_contract(abstention, required_source_locators=["Core 312"]),
@@ -261,12 +268,55 @@ def main() -> int:
         # Debt is declared or it is a typo; the two must not look the same.
         ("a template that does not exist and is not declared as debt",
          with_contract(conclusion,
+                       required_claims=conclusion["expected_answer_contract"]["required_claims"]
+                       + [{"template": "rule_invented_here", "slots": {}}],
                        required_templates=conclusion["expected_answer_contract"]
                        ["required_templates"] + ["rule_invented_here"]),
          "must be the same set"),
         ("debt declared for a template that exists",
          with_contract(conclusion, template_coverage_debt=["official_text_recorded"]),
          "must be the same set"),
+        # S-04d. A claim pins its slot values, and those values are choices.
+        ("a required claim whose slot value is outside the lexicon",
+         with_contract(explanation,
+                       required_claims=[{"template": "rule_role_holder",
+                                         "slots": {"locator": "Core 345", "occasion": "when_showdown_begins",
+                                                   "role": "focus", "holder": "p1"}}],
+                       required_templates=["rule_role_holder"]),
+         "is not a value of rule_holder"),
+        ("a required claim with a sentence in a slot",
+         with_contract(explanation,
+                       required_claims=[{"template": "rule_action_permission",
+                                         "slots": {"locator": "Core 313.4", "actor": "any_player",
+                                                   "modality": "may_not",
+                                                   "action": "take a discretionary action whenever they like",
+                                                   "condition": "unconditionally"}}],
+                       required_templates=["rule_action_permission"]),
+         "is not a value of rule_action"),
+        ("a required claim missing a slot its template takes",
+         with_contract(explanation,
+                       required_claims=[{"template": "rule_role_holder",
+                                         "slots": {"locator": "Core 345", "role": "focus"}}],
+                       required_templates=["rule_role_holder"]),
+         "takes exactly"),
+        ("a required claim whose number is a word",
+         with_contract(explanation,
+                       required_claims=[{"template": "rule_quantity",
+                                         "slots": {"locator": "Core 194.3", "quantity": "victory_score_by_default",
+                                                   "relation": "is", "value": "eight"}}],
+                       required_templates=["rule_quantity"]),
+         "is not a value of rule_value"),
+        ("a required claim whose relation and number disagree",
+         with_contract(explanation,
+                       required_claims=[{"template": "rule_quantity",
+                                         "slots": {"locator": "Core 814.2",
+                                                   "quantity": "shield_value_from_several_sources",
+                                                   "relation": "is_the_sum_of_the_values", "value": 4}}],
+                       required_templates=["rule_quantity"]),
+         "does not cohere"),
+        ("a derived template list that disagrees with the claims",
+         with_contract(explanation, required_templates=["official_text_recorded"]),
+         "is derived from required_claims"),
     ]
     for label, candidate, expected in contract_cases:
         problems = validate_question(candidate)
@@ -309,11 +359,10 @@ def main() -> int:
         ("a corpus with no ledger",
          stored_with(lambda c: c.pop("coverage_debts")), "missing top-level fields"),
         ("an open template debt the surface already has",
-         stored_with(lambda c: first_open(c).__setitem__("id", "official_text_recorded")),
+         stored_with(lambda c: (first_open(c).__setitem__("id", "official_text_recorded"),
+                                first_open(c)["trigger"].__setitem__("threshold_or_condition",
+                                                                     "official_text_recorded"))),
          "which the answer surface has"),
-        ("a closed template debt the surface does not have",
-         stored_with(lambda c: first_open(c).__setitem__("status", "closed")),
-         "which the answer surface does not have"),
         ("a debt observed in no question",
          stored_with(lambda c: first_open(c).__setitem__("observed_in", [])),
          "a debt nobody measured is a wish"),
@@ -335,9 +384,46 @@ def main() -> int:
         ("two debts with one id",
          stored_with(lambda c: c["coverage_debts"].append(dict(first_open(c)))),
          "id is used more than once"),
-        ("a debt missing its owner",
-         stored_with(lambda c: first_open(c).__setitem__("owner", "  ")),
-         "owner must say what it says"),
+        ("a debt whose owner is a description",
+         stored_with(lambda c: first_open(c).__setitem__("owner", "the template-review package")),
+         "owner carries exactly"),
+        ("a debt owned by a track the loop does not run",
+         stored_with(lambda c: first_open(c)["owner"].__setitem__("track", "vibes")),
+         "owner.track must be one of"),
+        ("a debt owned by a package that does not exist",
+         stored_with(lambda c: first_open(c)["owner"].__setitem__("package_id", "T-99")),
+         "owner.package_id must be one of"),
+        ("a debt whose trigger is a description",
+         stored_with(lambda c: first_open(c).__setitem__("trigger", "the surface had no template")),
+         "trigger carries exactly"),
+        ("a template debt triggered like a state-builder one",
+         stored_with(lambda c: first_open(c)["trigger"].__setitem__("kind", "slot_missing")),
+         "is triggered by 'template_missing'"),
+        ("a template debt whose condition is not the template it lacks",
+         stored_with(lambda c: first_open(c)["trigger"].__setitem__("threshold_or_condition", "rule_other")),
+         "its own id"),
+        ("an open state-builder debt naming a slot the builder has",
+         stored_with(lambda c: first_open(c, "state_builder")["trigger"]
+                     .__setitem__("threshold_or_condition", "combat")),
+         "which the builder has"),
+        ("an open template debt no observed question still requires",
+         stored_with(lambda c: c["questions"].__setitem__(
+             next(i for i, q in enumerate(c["questions"])
+                  if q["question_id"] == first_open(c)["observed_in"][0]),
+             dict(next(q for q in c["questions"] if q["question_id"] == first_open(c)["observed_in"][0]),
+                  expected_answer_contract=dict(
+                      next(q for q in c["questions"] if q["question_id"] == first_open(c)["observed_in"][0])
+                      ["expected_answer_contract"], required_claims=[])))),
+         "none asks for"),
+        ("a question storing the derived template list",
+         stored_with(lambda c: c["questions"][0]["expected_answer_contract"]
+                     .__setitem__(DERIVED_TEMPLATES_FIELD, [])),
+         "is derived from required_claims"),
+        # Closed is measured, not declared: a closed template debt whose
+        # observed question still requires the missing template is not closed.
+        ("a template debt closed while its question still requires it",
+         stored_with(lambda c: first_open(c).__setitem__("status", "closed")),
+         "still blocks a question"),
         # The derivation is what keeps a typo and an unwritten template apart:
         # drop the ledger entry and the question's unknown template is a typo.
         ("a required template whose debt was removed from the ledger",
@@ -358,6 +444,12 @@ def main() -> int:
     if not any(d["class"] != "template" for d in stored["coverage_debts"]):
         failures.append("the ledger holds only template debts; the Stun gap is a state_builder "
                         "debt and must be entered as one")
+    # T-01 closed debts by measurement: every closed template debt's observed
+    # questions carry a family claim that the run actually binds, so "closed"
+    # is read off the runs below, not off the status field.
+    closed_template = [d for d in stored["coverage_debts"] if d["class"] == "template" and d["status"] == "closed"]
+    if not closed_template:
+        failures.append("T-01 closed no template debt; the families absorbed nothing")
 
     # Every scope is exercised, or the contract has parts nothing has tried.
     used = {question["expected_answer_contract"]["answer_scope"] for question in corpus["questions"]}
@@ -385,6 +477,12 @@ def main() -> int:
     if not counts.get("matches_contract"):
         failures.append("no question matched its contract, so the comparison proves nothing")
 
+    for debt in closed_template:
+        for qid in debt["observed_in"]:
+            item = next(i for i in report["results"] if i["question_id"] == qid)
+            if item["outcome"] not in ("matches_contract", "blocked_by_template_debt"):
+                failures.append(f"{debt['id']} is closed, but {qid} runs to {item['outcome']}")
+
     # A recorded difference must actually differ, or the record is describing
     # something that is not happening.
     for item in report["results"]:
@@ -401,6 +499,12 @@ def main() -> int:
         question = next(q for q in corpus["questions"] if q["question_id"] == item["question_id"])
         if not question["expected_answer_contract"]["template_coverage_debt"]:
             failures.append(f"{item['question_id']} is reported as blocked by debt it does not declare")
+        # And the debt must be the only thing in the way. A locator the run
+        # never bound is a gap in the run inputs, and the debt was hiding it.
+        for problem in item["problems"]:
+            if "requires a claim bound to" in problem:
+                failures.append(f"{item['question_id']} is blocked by debt, and also short of a "
+                                f"source binding the debt does not explain: {problem}")
 
     # --- the abstention vocabulary is imported, not restated ----------------
     for module, name in ((state_builder, "DOWNGRADE_REASONS"),

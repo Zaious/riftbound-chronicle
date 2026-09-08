@@ -1,292 +1,533 @@
 {
   "schema_version": "judge-corpus.v1",
   "corpus_id": "judge-corpus-2026-09-08",
-  "description": "Sixty questions across seven families, each with an expected answer contract; every locator was read off the Core Rules PDF page itself. Every gap the corpus measured is in coverage_debts, one ledger for template, state-builder, engine, source and policy gaps, and a question's template_coverage_debt is derived from it rather than stored. The coverage report is the authority on counts; this description names none.",
+  "description": "Sixty questions across seven families, each with an expected answer contract whose required_claims pin template and slot values; every locator was read off the Core Rules PDF page itself. Every gap the corpus measured is in coverage_debts, one ledger for template, state-builder, engine, source and policy gaps with a closed owner and trigger; a question's template_coverage_debt and required_templates are derived, never stored. The coverage report is the authority on counts; this description names none.",
   "coverage_debts": [
     {
-      "id": "rule_focus_without_priority_cannot_act",
+      "id": "rule_choices_creating_a_combat_of_more_than_two_players_are_invalid",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "unscheduled"
+      },
       "observed_in": [
-        "JC-TPC-008"
+        "JC-CB-004"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 313.4 in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_choices_creating_a_combat_of_more_than_two_players_are_invalid"
+      },
+      "status": "open"
+    },
+    {
+      "id": "rule_final_point_withheld_draws_a_card",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "unscheduled"
+      },
+      "observed_in": [
+        "JC-CS-004"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_final_point_withheld_draws_a_card"
+      },
       "status": "open"
     },
     {
       "id": "rule_finalized_permanent_resolves_immediately",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
         "JC-TPC-011"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 337.2 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_score_once_per_battlefield_per_turn",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CS-003"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 470 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_final_point_needs_every_battlefield_scored",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CS-004"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 471.1.b, Core 471.1.b.1 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_non_conquer_points_unrestricted",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CS-005"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 471.1.a.1 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_hold_abilities_trigger_once_when_scored",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CS-006"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 471.2.b, Core 471.2.c in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_ways_to_gain_points",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CS-007"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 194.1 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_victory_score_default",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-TSE-004"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 194.3, Core 194.3.a in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_victory_tie_continues",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-TSE-005"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 194.2.a, Core 194.2.b in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_points_floor_at_zero",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-TSE-006"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 194.4, Core 194.4.a, Core 194.4.b in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_finalized_permanent_resolves_immediately"
+      },
       "status": "open"
     },
     {
       "id": "rule_game_ends_when_a_player_wins",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
         "JC-TSE-007"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 194.2, Core 196 in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_game_ends_when_a_player_wins"
+      },
       "status": "open"
     },
     {
-      "id": "rule_any_number_of_discretionary_actions",
+      "id": "rule_hold_abilities_trigger_when_a_held_battlefield_is_scored",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "unscheduled"
+      },
       "observed_in": [
-        "JC-AA-003"
+        "JC-CS-006"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 316.5.a, Core 410.1.b in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_hold_abilities_trigger_when_a_held_battlefield_is_scored"
+      },
       "status": "open"
     },
     {
-      "id": "rule_no_forbidden_state_by_discretionary_action",
+      "id": "rule_non_conquer_points_unrestricted",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
-        "JC-AA-004"
+        "JC-CS-005"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 410.1.b.3 in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_non_conquer_points_unrestricted"
+      },
       "status": "open"
     },
     {
-      "id": "rule_limited_actions_only_when_instructed",
+      "id": "rule_point_loss_at_zero_points_does_nothing",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "unscheduled"
+      },
       "observed_in": [
-        "JC-AA-005"
+        "JC-TSE-006"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 410.2.a, Core 410.2.b in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_only_turn_player_acts_in_neutral_open_state",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-AA-006"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 316.5.b in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_shield_value_omitted_is_one",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CI-003"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 814.1.b.3 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_shield_values_sum",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CI-004"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 814.2 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_tank_assigned_lethal_first",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CI-005"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 815.1.b, Core 815.1.c.1 in the rule's own terms; the answer surface has none",
-      "status": "open"
-    },
-    {
-      "id": "rule_multiple_tank_redundant",
-      "class": "template",
-      "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
-      "observed_in": [
-        "JC-CI-006"
-      ],
-      "trigger": "the contract requires a conditional_rule template stating Core 815.2 in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_point_loss_at_zero_points_does_nothing"
+      },
       "status": "open"
     },
     {
       "id": "rule_shield_lasts_while_defender",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
         "JC-CI-007"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 814.1.d.1 in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_shield_lasts_while_defender"
+      },
       "status": "open"
     },
     {
-      "id": "rule_combat_between_exactly_two_players",
+      "id": "rule_victory_score_alterable_by_mode_or_card_effect",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "unscheduled"
+      },
       "observed_in": [
-        "JC-CB-004"
+        "JC-TSE-004"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 462, Core 462.3 in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_victory_score_alterable_by_mode_or_card_effect"
+      },
       "status": "open"
     },
     {
-      "id": "rule_attacker_is_who_applied_contested",
+      "id": "rule_victory_tie_continues",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
-        "JC-CB-005"
+        "JC-TSE-005"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 464.2.c.1, Core 464.2.c.2 in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_victory_tie_continues"
+      },
       "status": "open"
     },
     {
-      "id": "rule_attacker_gains_focus_at_combat_open",
+      "id": "rule_ways_to_gain_points",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
-        "JC-CB-006"
+        "JC-CS-007"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 464.2.d in the rule's own terms; the answer surface has none",
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_ways_to_gain_points"
+      },
       "status": "open"
+    },
+    {
+      "id": "rule_any_number_of_discretionary_actions",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-AA-003"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_any_number_of_discretionary_actions"
+      },
+      "status": "closed"
     },
     {
       "id": "rule_assigning_is_not_dealing",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
         "JC-CB-007"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 465.2.c.1, Core 465.2.c.1.a in the rule's own terms; the answer surface has none",
-      "status": "open"
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_assigning_is_not_dealing"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_attacker_gains_focus_at_combat_open",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CB-006"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_attacker_gains_focus_at_combat_open"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_attacker_is_who_applied_contested",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CB-005"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_attacker_is_who_applied_contested"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_combat_between_exactly_two_players",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CB-004"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_combat_between_exactly_two_players"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_final_point_needs_every_battlefield_scored",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CS-004"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_final_point_needs_every_battlefield_scored"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_focus_without_priority_cannot_act",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-TPC-008"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_focus_without_priority_cannot_act"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_hold_abilities_trigger_once_when_scored",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CS-006"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_hold_abilities_trigger_once_when_scored"
+      },
+      "status": "closed"
     },
     {
       "id": "rule_lethal_in_full_before_another",
       "class": "template",
       "blocks": "source_explanation",
-      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
       "observed_in": [
         "JC-CB-008"
       ],
-      "trigger": "the contract requires a conditional_rule template stating Core 465.2.c.3, Core 465.2.c.4 in the rule's own terms; the answer surface has none",
-      "status": "open"
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_lethal_in_full_before_another"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_limited_actions_only_when_instructed",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-AA-005"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_limited_actions_only_when_instructed"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_multiple_tank_redundant",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CI-006"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_multiple_tank_redundant"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_no_forbidden_state_by_discretionary_action",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-AA-004"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_no_forbidden_state_by_discretionary_action"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_only_turn_player_acts_in_neutral_open_state",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-AA-006"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_only_turn_player_acts_in_neutral_open_state"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_points_floor_at_zero",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-TSE-006"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_points_floor_at_zero"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_score_once_per_battlefield_per_turn",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CS-003"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_score_once_per_battlefield_per_turn"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_shield_value_omitted_is_one",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CI-003"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_shield_value_omitted_is_one"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_shield_values_sum",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CI-004"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_shield_values_sum"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_tank_assigned_lethal_first",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-CI-005"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_tank_assigned_lethal_first"
+      },
+      "status": "closed"
+    },
+    {
+      "id": "rule_victory_score_default",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": {
+        "track": "answer_surface",
+        "package_id": "T-01"
+      },
+      "observed_in": [
+        "JC-TSE-004"
+      ],
+      "trigger": {
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_victory_score_default"
+      },
+      "status": "closed"
     },
     {
       "id": "state_builder.stunned_unit",
       "class": "state_builder",
       "blocks": "position_conclusion",
-      "owner": "state_builder (S-01 family), together with turn effects (DP-94)",
+      "owner": {
+        "track": "state_builder",
+        "package_id": "unscheduled"
+      },
       "observed_in": [
         "JC-CB-002"
       ],
-      "trigger": "the draft stated a unit as stunned; the builder has no such slot and refused it (state_not_built: slot_type_invalid ['units']), so the assign path's 423.1.b reading was never reached",
+      "trigger": {
+        "kind": "slot_missing",
+        "threshold_or_condition": "stunned"
+      },
       "status": "open"
     }
   ],
@@ -307,8 +548,13 @@
       "notes": "Exemplar. Runs over a closed Combat Showdown built by S-01b: the timing draft states the Combat record, the board states the designated units. First run 2026-09-08 abstained because the minimum state builder had no way to state a Combat; S-01b added that and this question is what it was built to make runnable.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "combat_step_completes"
+        "required_claims": [
+          {
+            "template": "combat_step_completes",
+            "slots": {
+              "step": "assign"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 423.1.b"
@@ -333,8 +579,13 @@
       "notes": "Exemplar.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "control_step_completes"
+        "required_claims": [
+          {
+            "template": "control_step_completes",
+            "slots": {
+              "step": "board_cleanup"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 323.6"
@@ -360,8 +611,11 @@
       "notes": "Exemplar, and a real boundary rather than an invented one: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry, so the engine declines and the answer must abstain with that named reason. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "effect_program_applies"
+        "required_claims": [
+          {
+            "template": "effect_program_applies",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 431.2",
@@ -387,8 +641,13 @@
       "notes": "Exemplar. bounded_note is required for this family: the enumeration is bounded, complete_action_set is false, and an answer that lists correctly without saying so is still wrong.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "legal_action_available"
+        "required_claims": [
+          {
+            "template": "legal_action_available",
+            "slots": {
+              "actor": "p1"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 312"
@@ -411,7 +670,7 @@
       "notes": "Exemplar. A card whose text is not in the snapshot set cannot back a claim, so the answer abstains rather than reasoning from the card name.",
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -433,7 +692,7 @@
       "notes": "Exemplar. This abstention is a decision, not a mechanism running out: the service declines tournament procedure and penalties by policy.",
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -457,8 +716,16 @@
       "notes": "340.1 resolves the newest finalized item only; 339.1 is the pass condition that sends the chain to Step 4.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_newest_item_resolves"
+        "required_claims": [
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 340.1",
+              "occasion": "when_the_chain_resolves",
+              "role": "resolving_chain_item",
+              "holder": "newest_finalized_chain_item"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 340.1"
@@ -485,8 +752,13 @@
       "notes": "337.1.a: finalizing an item to the chain does not pass Priority.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_finalizing_does_not_pass_priority"
+        "required_claims": [
+          {
+            "template": "rule_finalizing_does_not_pass_priority",
+            "slots": {
+              "locator": "Core 337.1.a"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 337.1.a"
@@ -515,9 +787,24 @@
       "notes": "312.1.b: if no player has Priority, no player can take Discretionary Actions. Measured 2026-09-08 through the real consultation command: the pipeline reached tier A. The engine refused with priority_required and cited Core 312; the precise sub-rule is 312.1.b. My first prediction for this question was C and it was wrong — the engine models the rule.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "timing_play_refused",
-          "rule_no_priority_no_discretionary"
+        "required_claims": [
+          {
+            "template": "timing_play_refused",
+            "slots": {
+              "actor": "p1",
+              "object_kind": "spell"
+            }
+          },
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 312.1.b",
+              "actor": "no_player",
+              "modality": "may",
+              "action": "take_a_discretionary_action",
+              "condition": "while_no_player_holds_priority"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 312.1.b"
@@ -542,8 +829,17 @@
       "notes": "312.1.b.1: players can always take and make choices for Limited Actions when instructed, regardless of Priority. The distinction this question tests is Limited Action against Discretionary Action.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_limited_actions_regardless_of_priority"
+        "required_claims": [
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 312.1.b.1",
+              "actor": "any_player",
+              "modality": "may",
+              "action": "take_a_limited_action",
+              "condition": "when_instructed_regardless_of_priority"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 312.1.b.1"
@@ -570,8 +866,14 @@
       "notes": "313.2 gives Priority with Focus; 313.1.a's own example refuses a spell without Action or Reaction. Measured 2026-09-08 through the real consultation command: the pipeline reached tier A. The engine refused with action_or_reaction_required_in_showdown, citing Core 313.1 among others.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "timing_play_refused"
+        "required_claims": [
+          {
+            "template": "timing_play_refused",
+            "slots": {
+              "actor": "p1",
+              "object_kind": "spell"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 313.1.a"
@@ -596,8 +898,16 @@
       "notes": "313.3: a player who passes Priority retains Focus. The two are separate, and this question exists because they are easy to conflate.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_focus_retained_on_pass"
+        "required_claims": [
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 313.3",
+              "occasion": "when_priority_is_passed",
+              "role": "focus",
+              "holder": "the_passing_player"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 313.3"
@@ -624,8 +934,16 @@
       "notes": "313.5: in a Neutral State no player has Focus. Neither player is the answer, not the turn player.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_no_focus_in_neutral_state"
+        "required_claims": [
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 313.5",
+              "occasion": "in_a_neutral_state",
+              "role": "focus",
+              "holder": "no_player"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 313.5"
@@ -652,8 +970,17 @@
       "notes": "313.4: a player may not make discretionary actions with Focus unless they also possess Priority.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_focus_without_priority_cannot_act"
+        "required_claims": [
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 313.4",
+              "actor": "a_player_with_focus_but_not_priority",
+              "modality": "may_not",
+              "action": "take_a_discretionary_action",
+              "condition": "unconditionally"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 313.4"
@@ -680,8 +1007,14 @@
       "notes": "338.1.a.1: cards and activated abilities cannot be played during a Closed State by default; 338.1.a.2 names Reaction as what makes one legally timed there.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "timing_play_refused"
+        "required_claims": [
+          {
+            "template": "timing_play_refused",
+            "slots": {
+              "actor": "p1",
+              "object_kind": "spell"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 338.1.a.1"
@@ -706,8 +1039,14 @@
       "notes": "Priority is exclusive (312), and after the chain settles the controller of the newest item gains it (340.4). Measured 2026-09-08 through the real consultation command: the pipeline reached tier A.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "timing_play_refused"
+        "required_claims": [
+          {
+            "template": "timing_play_refused",
+            "slots": {
+              "actor": "p1",
+              "object_kind": "spell"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 312.1.a"
@@ -732,8 +1071,11 @@
       "notes": "337.2: a finalized Unit, Gear, or resource-adding ability resolves immediately and moves to Step 4, so there is no window on it.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_finalized_permanent_resolves_immediately"
+        "required_claims": [
+          {
+            "template": "rule_finalized_permanent_resolves_immediately",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 337.2"
@@ -762,8 +1104,16 @@
       "notes": "345: the player who applied Contested status gains Focus. Expected B rather than A: the minimum state builder has no slot for who applied Contested, so the engine has nothing to rule on and the answer is the text. Measured 2026-09-08 through the real consultation command: the pipeline reached tier B. Worth a second look at review: a tier-B run cites the right text without answering 'which player', so the tier alone does not say the question was answered.",
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_focus_on_showdown_start"
+        "required_claims": [
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 345",
+              "occasion": "when_showdown_begins",
+              "role": "focus",
+              "holder": "applied_contested"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 345"
@@ -789,8 +1139,13 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "control_step_completes"
+        "required_claims": [
+          {
+            "template": "control_step_completes",
+            "slots": {
+              "step": "scoring_step"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 315.2.b.2",
@@ -818,8 +1173,13 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "control_step_completes"
+        "required_claims": [
+          {
+            "template": "control_step_completes",
+            "slots": {
+              "step": "victory_facts"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 472"
@@ -844,8 +1204,16 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_score_once_per_battlefield_per_turn"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 470",
+              "quantity": "scores_per_battlefield_per_turn_per_player",
+              "relation": "at_most",
+              "value": 1
+            }
+          }
         ],
         "required_source_locators": [
           "Core 470"
@@ -873,8 +1241,20 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_final_point_needs_every_battlefield_scored"
+        "required_claims": [
+          {
+            "template": "rule_step_order",
+            "slots": {
+              "locator": "Core 471.1.b.1",
+              "first": "scoring_every_battlefield_this_turn",
+              "relation": "is_required_before",
+              "second": "gaining_the_final_point_by_conquer"
+            }
+          },
+          {
+            "template": "rule_final_point_withheld_draws_a_card",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 471.1.b",
@@ -902,8 +1282,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_non_conquer_points_unrestricted"
+        "required_claims": [
+          {
+            "template": "rule_non_conquer_points_unrestricted",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 471.1.a.1"
@@ -931,8 +1314,20 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_hold_abilities_trigger_once_when_scored"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 471.2.c",
+              "quantity": "hold_ability_triggers_per_battlefield_per_turn_per_player",
+              "relation": "at_most",
+              "value": 1
+            }
+          },
+          {
+            "template": "rule_hold_abilities_trigger_when_a_held_battlefield_is_scored",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 471.2.b",
@@ -960,8 +1355,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_ways_to_gain_points"
+        "required_claims": [
+          {
+            "template": "rule_ways_to_gain_points",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 194.1"
@@ -989,8 +1387,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "effect_program_applies"
+        "required_claims": [
+          {
+            "template": "effect_program_applies",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 315.4.b.1",
@@ -1016,8 +1417,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "effect_program_applies"
+        "required_claims": [
+          {
+            "template": "effect_program_applies",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 431.1.a"
@@ -1042,8 +1446,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "effect_program_applies"
+        "required_claims": [
+          {
+            "template": "effect_program_applies",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 431.2.c"
@@ -1069,8 +1476,20 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_victory_score_default"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 194.3",
+              "quantity": "victory_score_by_default",
+              "relation": "is",
+              "value": 8
+            }
+          },
+          {
+            "template": "rule_victory_score_alterable_by_mode_or_card_effect",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 194.3",
@@ -1099,8 +1518,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_victory_tie_continues"
+        "required_claims": [
+          {
+            "template": "rule_victory_tie_continues",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 194.2.a",
@@ -1130,8 +1552,20 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_points_floor_at_zero"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 194.4",
+              "quantity": "a_players_points",
+              "relation": "at_least",
+              "value": 0
+            }
+          },
+          {
+            "template": "rule_point_loss_at_zero_points_does_nothing",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 194.4",
@@ -1161,8 +1595,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_game_ends_when_a_player_wins"
+        "required_claims": [
+          {
+            "template": "rule_game_ends_when_a_player_wins",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 194.2",
@@ -1190,8 +1627,13 @@
       "bounded_note": true,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "legal_action_available"
+        "required_claims": [
+          {
+            "template": "legal_action_available",
+            "slots": {
+              "actor": "p1"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 410.1.a"
@@ -1216,8 +1658,13 @@
       "bounded_note": true,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "legal_action_available"
+        "required_claims": [
+          {
+            "template": "legal_action_available",
+            "slots": {
+              "actor": "p1"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 409"
@@ -1243,8 +1690,25 @@
       "bounded_note": true,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_any_number_of_discretionary_actions"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 316.5.a",
+              "quantity": "discretionary_actions_a_player_may_take_in_the_main_phase",
+              "relation": "unbounded",
+              "value": null
+            }
+          },
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 410.1.b",
+              "quantity": "discretionary_actions_a_player_may_take_in_a_turn",
+              "relation": "unbounded",
+              "value": null
+            }
+          }
         ],
         "required_source_locators": [
           "Core 316.5.a",
@@ -1272,8 +1736,17 @@
       "bounded_note": true,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_no_forbidden_state_by_discretionary_action"
+        "required_claims": [
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 410.1.b.3",
+              "actor": "any_player",
+              "modality": "may_not",
+              "action": "take_a_discretionary_action",
+              "condition": "if_a_forbidden_action_or_game_state_would_result"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 410.1.b.3"
@@ -1301,8 +1774,27 @@
       "bounded_note": true,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_limited_actions_only_when_instructed"
+        "required_claims": [
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 410.2.a",
+              "actor": "any_player",
+              "modality": "may_not",
+              "action": "take_a_limited_action",
+              "condition": "at_will"
+            }
+          },
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 410.2.b",
+              "actor": "any_player",
+              "modality": "may",
+              "action": "take_a_limited_action",
+              "condition": "when_instructed_or_at_its_occasion_in_the_turn"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 410.2.a",
@@ -1330,8 +1822,27 @@
       "bounded_note": true,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_only_turn_player_acts_in_neutral_open_state"
+        "required_claims": [
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 316.5.b",
+              "actor": "the_turn_player",
+              "modality": "may",
+              "action": "play_a_spell_or_activate_an_ability",
+              "condition": "in_a_neutral_open_state"
+            }
+          },
+          {
+            "template": "rule_action_permission",
+            "slots": {
+              "locator": "Core 316.5.b",
+              "actor": "a_player_other_than_the_turn_player",
+              "modality": "may_not",
+              "action": "play_a_spell_or_activate_an_ability",
+              "condition": "in_a_neutral_open_state"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 316.5.b"
@@ -1358,8 +1869,14 @@
       "bounded_note": true,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "timing_play_refused"
+        "required_claims": [
+          {
+            "template": "timing_play_refused",
+            "slots": {
+              "actor": "p1",
+              "object_kind": "spell"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 312.1.a"
@@ -1385,8 +1902,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "effect_program_applies"
+        "required_claims": [
+          {
+            "template": "effect_program_applies",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 814.1.c",
@@ -1410,7 +1930,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -1432,8 +1952,16 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_shield_value_omitted_is_one"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 814.1.b.3",
+              "quantity": "shield_value_when_x_is_omitted",
+              "relation": "is",
+              "value": 1
+            }
+          }
         ],
         "required_source_locators": [
           "Core 814.1.b.3"
@@ -1460,8 +1988,16 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_shield_values_sum"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 814.2",
+              "quantity": "shield_value_from_several_sources",
+              "relation": "is_the_sum_of_the_values",
+              "value": null
+            }
+          }
         ],
         "required_source_locators": [
           "Core 814.2"
@@ -1489,8 +2025,25 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_tank_assigned_lethal_first"
+        "required_claims": [
+          {
+            "template": "rule_step_order",
+            "slots": {
+              "locator": "Core 815.1.b",
+              "first": "assigning_lethal_damage_to_a_tank_unit",
+              "relation": "comes_before",
+              "second": "assigning_damage_to_a_non_tank_unit_of_the_same_controller"
+            }
+          },
+          {
+            "template": "rule_step_order",
+            "slots": {
+              "locator": "Core 815.1.c.1",
+              "first": "assigning_lethal_damage_in_full_to_one_unit",
+              "relation": "is_required_before",
+              "second": "assigning_damage_to_another_unit"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 815.1.b",
@@ -1518,8 +2071,16 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_multiple_tank_redundant"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 815.2",
+              "quantity": "tank_instances_in_effect_on_a_unit",
+              "relation": "at_most",
+              "value": 1
+            }
+          }
         ],
         "required_source_locators": [
           "Core 815.2"
@@ -1546,8 +2107,11 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_shield_lasts_while_defender"
+        "required_claims": [
+          {
+            "template": "rule_shield_lasts_while_defender",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 814.1.d.1"
@@ -1572,7 +2136,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -1594,7 +2158,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -1614,7 +2178,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -1634,7 +2198,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -1654,7 +2218,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -1677,8 +2241,13 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "combat_step_completes"
+        "required_claims": [
+          {
+            "template": "combat_step_completes",
+            "slots": {
+              "step": "assign"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 465.2.c.6",
@@ -1702,7 +2271,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },
@@ -1724,8 +2293,13 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
-        "required_templates": [
-          "combat_step_completes"
+        "required_claims": [
+          {
+            "template": "combat_step_completes",
+            "slots": {
+              "step": "assign"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 465.1"
@@ -1751,8 +2325,20 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_combat_between_exactly_two_players"
+        "required_claims": [
+          {
+            "template": "rule_quantity",
+            "slots": {
+              "locator": "Core 462",
+              "quantity": "players_whose_units_are_in_one_combat",
+              "relation": "exactly",
+              "value": 2
+            }
+          },
+          {
+            "template": "rule_choices_creating_a_combat_of_more_than_two_players_are_invalid",
+            "slots": {}
+          }
         ],
         "required_source_locators": [
           "Core 462",
@@ -1781,8 +2367,25 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_attacker_is_who_applied_contested"
+        "required_claims": [
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 464.2.c.1",
+              "occasion": "when_combat_opens",
+              "role": "attacker",
+              "holder": "applied_contested"
+            }
+          },
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 464.2.c.2",
+              "occasion": "when_combat_opens",
+              "role": "defender",
+              "holder": "did_not_apply_contested"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 464.2.c.1",
@@ -1810,8 +2413,16 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_attacker_gains_focus_at_combat_open"
+        "required_claims": [
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 464.2.d",
+              "occasion": "when_combat_opens",
+              "role": "focus",
+              "holder": "the_attacker"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 464.2.d"
@@ -1839,8 +2450,25 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_assigning_is_not_dealing"
+        "required_claims": [
+          {
+            "template": "rule_step_order",
+            "slots": {
+              "locator": "Core 465.2.c.1",
+              "first": "assigning_combat_damage",
+              "relation": "is_distinct_from",
+              "second": "dealing_combat_damage"
+            }
+          },
+          {
+            "template": "rule_step_order",
+            "slots": {
+              "locator": "Core 465.2.c.1.a",
+              "first": "assigning_all_combat_damage",
+              "relation": "is_required_before",
+              "second": "dealing_combat_damage_simultaneously"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 465.2.c.1",
@@ -1869,8 +2497,25 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "conditional_rule_explanation",
-        "required_templates": [
-          "rule_lethal_in_full_before_another"
+        "required_claims": [
+          {
+            "template": "rule_step_order",
+            "slots": {
+              "locator": "Core 465.2.c.3",
+              "first": "assigning_lethal_damage_in_full_to_one_unit",
+              "relation": "is_required_before",
+              "second": "assigning_damage_to_another_unit"
+            }
+          },
+          {
+            "template": "rule_step_order",
+            "slots": {
+              "locator": "Core 465.2.c.4",
+              "first": "exhausting_the_units_that_can_still_be_assigned_damage",
+              "relation": "is_required_before",
+              "second": "assigning_a_unit_more_than_its_minimum_lethal_damage"
+            }
+          }
         ],
         "required_source_locators": [
           "Core 465.2.c.3",
@@ -1896,7 +2541,7 @@
       "bounded_note": null,
       "expected_answer_contract": {
         "answer_scope": "explicit_abstention",
-        "required_templates": [],
+        "required_claims": [],
         "required_source_locators": [],
         "forbidden_claim_classes": []
       },

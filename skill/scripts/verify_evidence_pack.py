@@ -28,15 +28,36 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
+from battlefield_control import STEPS as CONTROL_STEPS  # noqa: E402
 from capability_manifest import build_manifest, capability_binding  # noqa: E402
+from combat import STEPS as COMBAT_STEPS  # noqa: E402
 from effect_ir import apply_program, hash_value  # noqa: E402
 from engine_check import build_engine_check, canonical_hash, validate_engine_check  # noqa: E402
 from engine_decisions import validate_engine_decisions  # noqa: E402
+from legal_action import enumerate_actions, observation_hash  # noqa: E402
+from rules_core import state_hash, validate_timing  # noqa: E402
 
 PACK_VERSION = "evidence-pack.v1"
 # Kinds this verifier can re-run. Anything else is refused by name, never
-# reported as verified because nothing contradicted it.
-VERIFIABLE_KINDS = {"effect"}
+# reported as verified because nothing contradicted it — `resolution`, `play`,
+# `cleanup`, `turn_step`, `hide_step` and `standard_move` are still outside.
+#
+# The five here are the entries the unified consultation command covers, and
+# they are here because that command's contract requires its evidence to be
+# re-runnable. Each re-run below mirrors the input hashes engine_check's own
+# runner produces for the same kind, so a pack reproduces the check the CLI
+# would have built rather than a look-alike of it.
+VERIFIABLE_KINDS = {"effect", "timing", "combat_step", "control_step", "legal_action"}
+
+# What each verifiable kind needs in `inputs`. A pack missing one of these is
+# refused before anything is run.
+REQUIRED_INPUTS = {
+    "effect": ("effect_state", "effect_program"),
+    "timing": ("timing_state", "timing_action"),
+    "combat_step": ("timing_state", "effect_state", "step"),
+    "control_step": ("timing_state", "effect_state", "step"),
+    "legal_action": ("observation", "acting_player"),
+}
 
 
 class EvidencePackError(ValueError):
@@ -48,7 +69,44 @@ def live_engine() -> dict[str, Any]:
     return {**capability_binding(manifest), "ruleset": copy.deepcopy(manifest["ruleset"])}
 
 
+def _decisions_of(inputs: dict[str, Any]) -> dict[str, Any] | None:
+    decisions = inputs.get("engine_decisions")
+    if decisions is not None:
+        problems = validate_engine_decisions(decisions)
+        if problems:
+            raise EvidencePackError("invalid engine-decisions.v1: " + "; ".join(problems))
+    return decisions
+
+
+def _two_state_hashes(inputs: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, str]:
+    hashes = {"timing_state": state_hash(inputs["timing_state"]),
+              "effect_state": hash_value(inputs["effect_state"])}
+    if decisions is not None:
+        hashes["engine_decisions"] = canonical_hash(decisions)
+    return hashes
+
+
 def _run(kind: str, inputs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    if kind in REQUIRED_INPUTS:
+        missing = [name for name in REQUIRED_INPUTS[kind] if name not in inputs]
+        if missing:
+            raise EvidencePackError(f"a {kind} pack needs {missing} in its inputs (inputs_incomplete)")
+    if kind == "timing":
+        state = inputs["timing_state"]
+        return validate_timing(state, inputs["timing_action"]), {"timing_state": state_hash(state)}
+    if kind in {"combat_step", "control_step"}:
+        steps = COMBAT_STEPS if kind == "combat_step" else CONTROL_STEPS
+        step = inputs["step"]
+        if step not in steps:
+            raise EvidencePackError(f"{kind} step {step!r} is not one of {sorted(steps)} (unknown_step)")
+        decisions = _decisions_of(inputs)
+        result = steps[step](inputs["timing_state"], inputs["effect_state"], decisions)
+        return result, _two_state_hashes(inputs, decisions)
+    if kind == "legal_action":
+        observation = inputs["observation"]
+        result = enumerate_actions(observation, inputs["acting_player"])
+        return result, {"observation": observation_hash(observation),
+                        "query": canonical_hash({"acting_player": inputs["acting_player"]})}
     if kind == "effect":
         state, program = inputs["effect_state"], inputs["effect_program"]
         decisions = inputs.get("engine_decisions")
@@ -72,6 +130,8 @@ def build_pack(kind: str, inputs: dict[str, Any], *, programs_used: list[dict[st
     check = build_engine_check(kind, result, input_hashes=hashes,
                                capability={k: engine[k] for k in ("manifest_id", "capability_set_id", "implementation_identity")})
     programs = programs_used if programs_used is not None else ([inputs["effect_program"]] if kind == "effect" else [])
+    if kind != "effect" and programs_used is None and "effect_program" in inputs:
+        programs = [inputs["effect_program"]]
     pack = {
         "schema_version": PACK_VERSION,
         "engine": engine,
@@ -170,6 +230,9 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--state", type=Path, required=True)
     build.add_argument("--program", type=Path, required=True)
     build.add_argument("--decisions", type=Path)
+    # The CLI builds effect packs. The other four kinds take inputs this flag
+    # set cannot express; the consultation command builds those through
+    # build_pack directly, and `verify` re-runs any of the five.
     build.add_argument("--note", default="")
     build.add_argument("--out", type=Path, required=True)
     verify = sub.add_parser("verify")

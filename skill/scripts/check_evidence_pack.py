@@ -84,17 +84,32 @@ def main() -> int:
         errors.append("a pack edited without its hash was accepted")
 
     # --- refused by name --------------------------------------------------------------------
+    # `resolution` is outside VERIFIABLE_KINDS and stays there. The five kinds
+    # the consultation command covers were brought inside deliberately; a kind
+    # nothing can re-run must still be refused rather than reported verified
+    # because nothing contradicted it.
+    if "resolution" in vp.VERIFIABLE_KINDS:
+        errors.append("this case needs a kind that is still unverifiable")
     try:
-        vp.build_pack("combat_step", {"effect_state": state, "effect_program": prog})
+        vp.build_pack("resolution", {"effect_state": state, "effect_program": prog})
         errors.append("a kind the verifier cannot re-run was built anyway")
     except vp.EvidencePackError as exc:
         if "kind_not_verifiable" not in str(exc):
             errors.append(f"the refusal is not named: {exc}")
     bad_kind = copy.deepcopy(pack)
-    bad_kind["check_kind"] = "combat_step"
+    bad_kind["check_kind"] = "resolution"
     bad_kind = rehash(bad_kind)
     if vp.verify_pack(bad_kind).get("verified") is not False:
         errors.append("a pack of an unverifiable kind was verified")
+
+    # A verifiable kind whose inputs are incomplete is refused before anything
+    # runs, and refused by name.
+    try:
+        vp.build_pack("timing", {"timing_state": {}})
+        errors.append("a timing pack without its action was built anyway")
+    except vp.EvidencePackError as exc:
+        if "inputs_incomplete" not in str(exc):
+            errors.append(f"the incomplete-inputs refusal is not named: {exc}")
 
     # --- CLI off-cwd, and deterministic -----------------------------------------------------
     with tempfile.TemporaryDirectory(prefix="evidence-") as temp_name:

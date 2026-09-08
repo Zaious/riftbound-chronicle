@@ -1,0 +1,170 @@
+{
+  "schema_version": "consultation-command-cases.v1",
+  "ruleset_baseline": "2026-07-16",
+  "note": "Each of the five entries has a path that produces an answer and a path that does not. A path that does not produce an answer names its reason; none of them produces prose. Values written as @name are placeholders the gate replaces with objects it builds by running the real engine, so no case can pass against a stub.",
+  "locator_index": ["Core 312", "Core 339.1", "Core 423.1.b", "Core 464.2", "Core 323.6"],
+  "timing_draft": {"players": ["p1", "p2"], "turn_player": "p1", "phase": "main", "priority": "p1"},
+  "effect_draft": {
+    "players": ["p1", "p2"],
+    "units": [{"object_id": "u1", "controller": "p1", "might": 3},
+              {"object_id": "u2", "controller": "p2", "might": 2}]
+  },
+  "cases": [
+    {
+      "case_id": "CR-001",
+      "path": "happy",
+      "question": "It is my main phase and I hold priority. May I play a spell?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [
+        {"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}},
+        {"template": "official_text_governs", "slots": {"locator": "Core 312"}, "ref": "Core 312"}
+      ],
+      "expected": {"status": "answered", "tier": "A", "claims": 2}
+    },
+    {
+      "case_id": "CR-002",
+      "path": "failure",
+      "question": "Whose turn is it, and may they act?",
+      "entry": "timing",
+      "draft_override": {"players": ["p1", "p2"], "phase": "main"},
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}}],
+      "expected": {"status": "not_attempted", "reason": "state_not_built"}
+    },
+    {
+      "case_id": "CR-003",
+      "path": "happy",
+      "question": "My unit deals 1 damage to their 2 Might unit. Does the effect apply?",
+      "entry": "effect",
+      "entry_inputs": {"program": "@applying_program"},
+      "claims": [
+        {"template": "effect_program_applies", "slots": {}},
+        {"template": "assumption_stands", "slots": {"assumption_slot": "chain_items"}, "ref": "chain_items"}
+      ],
+      "expected": {"status": "answered", "tier": "A", "claims": 2}
+    },
+    {
+      "case_id": "CR-004",
+      "path": "failure",
+      "question": "If my spell kills their unit, do I draw a card from the follow-up effect?",
+      "entry": "effect",
+      "entry_inputs": {"program": "@declining_program"},
+      "claims": [{"template": "effect_program_applies", "slots": {}}],
+      "expected": {"status": "not_attempted", "reason": "engine_declined"}
+    },
+    {
+      "case_id": "CR-005",
+      "path": "happy",
+      "question": "Can damage be assigned in Combat from this position?",
+      "entry": "combat_step",
+      "entry_inputs": {"step": "assign"},
+      "claims": [{"template": "combat_step_refused", "slots": {"step": "assign"}}],
+      "expected": {"status": "answered", "tier": "A", "claims": 1}
+    },
+    {
+      "case_id": "CR-006",
+      "path": "failure",
+      "question": "What happens at the resolution step of Combat?",
+      "entry": "combat_step",
+      "entry_inputs": {"step": "resolution"},
+      "claims": [{"template": "combat_step_completes", "slots": {"step": "assign"}}],
+      "expected": {"status": "not_attempted", "reason": "entry_inputs_missing"}
+    },
+    {
+      "case_id": "CR-007",
+      "path": "happy",
+      "question": "Does board cleanup complete from this position?",
+      "entry": "control_step",
+      "entry_inputs": {"step": "board_cleanup"},
+      "claims": [{"template": "control_step_completes", "slots": {"step": "board_cleanup"}}],
+      "expected": {"status": "answered", "tier": "A", "claims": 1}
+    },
+    {
+      "case_id": "CR-008",
+      "path": "failure",
+      "question": "Does board cleanup complete?",
+      "entry": "control_step",
+      "omit_effect_draft": true,
+      "entry_inputs": {"step": "board_cleanup"},
+      "claims": [{"template": "control_step_completes", "slots": {"step": "board_cleanup"}}],
+      "expected": {"status": "not_attempted", "reason": "entry_inputs_missing"}
+    },
+    {
+      "case_id": "CR-009",
+      "path": "happy",
+      "question": "Do I have any legal action in this position?",
+      "entry": "legal_action",
+      "entry_inputs": {"acting_player": "p1", "observation": "@observation"},
+      "claims": [{"template": "legal_action_available", "slots": {"actor": "p1"}}],
+      "expected": {"status": "answered", "tier": "A", "claims": 1}
+    },
+    {
+      "case_id": "CR-010",
+      "path": "failure",
+      "question": "Do I have any legal action, and may I play a spell?",
+      "entry": "legal_action",
+      "entry_inputs": {"acting_player": "p1", "observation": "@observation"},
+      "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}}],
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+    },
+    {
+      "case_id": "CR-011",
+      "path": "failure",
+      "question": "During the mulligan, do the set-aside cards go to the bottom first?",
+      "entry": "mulligan",
+      "entry_inputs": {},
+      "claims": [],
+      "expected": {"status": "not_attempted", "reason": "entry_not_covered"}
+    },
+    {
+      "case_id": "CR-012",
+      "path": "failure",
+      "question": "It is my main phase and I hold priority. May I play a spell?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [],
+      "expected": {"status": "not_attempted", "reason": "no_claims_offered"}
+    },
+    {
+      "case_id": "CR-013",
+      "path": "failure",
+      "question": "May I play a spell?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "timing_play_permitted",
+                  "slots": {"actor": "You may play a spell, and your opponent cannot respond.",
+                            "object_kind": "spell"}}],
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+    },
+    {
+      "case_id": "CR-014",
+      "path": "failure",
+      "question": "May I play a spell?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"},
+                  "ref": "engine-check:0000000000000000000000ff"}],
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+    },
+    {
+      "case_id": "CR-015",
+      "path": "failure",
+      "question": "May I play a spell, and what covers it?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p1", "object_kind": "spell"}},
+                 {"template": "official_text_governs", "slots": {"locator": "Core 999.9"}, "ref": "Core 999.9"}],
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+    },
+    {
+      "case_id": "CR-016",
+      "path": "failure",
+      "question": "My opponent holds priority. May they play a spell?",
+      "entry": "timing",
+      "entry_inputs": {"action": {"actor": "p2", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+      "claims": [{"template": "timing_play_permitted", "slots": {"actor": "p2", "object_kind": "spell"}}],
+      "expected": {"status": "not_attempted", "reason": "claim_binding_invalid"}
+    }
+  ]
+}

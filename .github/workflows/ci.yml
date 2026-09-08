@@ -462,6 +462,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_card_behavior_coverage.py"
           python3 "$REPO/skill/scripts/check_r3_pack_selection.py"
           python3 "$REPO/skill/scripts/check_deck_coach_prototype.py"
+          python3 "$REPO/skill/scripts/check_tier2_freshness.py"
           python3 "$REPO/skill/scripts/check_tournament_lists.py"
           python3 "$REPO/skill/scripts/check_p2a_protocol.py"
           python3 "$REPO/skill/scripts/check_p2a_prototype.py"

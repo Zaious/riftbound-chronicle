@@ -21,6 +21,35 @@ would simply mark its conclusions non-mechanical, so the marker vocabulary is
 re-derived from the sentence text here and in the validator: a sentence a
 marker fires on cannot be tagged non-mechanical, whoever wrote the ledger.
 
+Neither is a source's status. Two checks read a ledger, and they are not the
+same check:
+
+  validate_ledger(ledger)              structural. Shape, markers re-derived
+                                       from the text, verdict re-derived from
+                                       the records, hash. It reads no context,
+                                       so it cannot know whether a record that
+                                       says "verified" is telling the truth.
+  verify_ledger(ledger, ...context)    bound. Rebuilds the ledger from its own
+                                       sentences against the engine checks,
+                                       index, snapshots and assumption artifact
+                                       handed to it now, and compares every
+                                       derived field. A record's status is
+                                       what the context says it is, never what
+                                       the ledger wrote.
+
+Only the second is fact-ledger verification. The first is what a ledger has to
+pass to be read at all.
+
+Sources that can change under a ledger are content-addressed. A card snapshot
+record binds the snapshot's text hash; an assumption record binds the hash of
+the state-assumption artifact together with the assumption entry it named; an
+engine record binds the hash of the check as supplied. A snapshot rewritten
+under the same id, an assumption whose value moved, or a check swapped in the
+bundle under its own check_id each fail verification, because the ledger was
+built on something that is no longer there. An official-text record carries no
+binding: the index interface answers membership only, and the module does not
+pretend to see the text behind a locator it cannot read.
+
 The marker set errs toward firing. A marker that fires on an ordinary sentence
 costs one source, which is cheap; a marker that fails to fire on a real
 conclusion is the failure this set exists to prevent. So it is added to, and
@@ -41,7 +70,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Container, Iterable
+from typing import Any, Container, Iterable
 
 from engine_check import canonical_hash, validate_engine_check
 import rules_core
@@ -153,33 +182,49 @@ def _index_contains(index: Any, locator: str) -> bool:
     raise FactLedgerError("locator_index must be a container or a callable")
 
 
-def _assumption_slots(artifact: Any) -> set[str]:
-    if not isinstance(artifact, dict):
-        return set()
-    return {entry["slot"] for entry in artifact.get("assumptions", [])
-            if isinstance(entry, dict) and isinstance(entry.get("slot"), str)}
+class _Context:
+    """The four things a source can be checked against, indexed once."""
 
+    def __init__(self, engine_checks: Iterable[Any], locator_index: Any,
+                 card_snapshots: dict[str, Any] | None, assumption_artifact: Any) -> None:
+        self.checks: dict[str, Any] = {}
+        for check in engine_checks:
+            if not isinstance(check, dict) or not isinstance(check.get("check_id"), str):
+                raise FactLedgerError("every supplied engine check must carry a check_id")
+            self.checks[check["check_id"]] = check
+        self.index = locator_index
+        self.snapshots = dict(card_snapshots or {})
+        self.artifact_hash: str | None = None
+        self.assumptions: dict[str, Any] = {}
+        if isinstance(assumption_artifact, dict):
+            self.artifact_hash = canonical_hash(assumption_artifact)
+            for entry in assumption_artifact.get("assumptions", []):
+                if isinstance(entry, dict) and isinstance(entry.get("slot"), str):
+                    self.assumptions[entry["slot"]] = entry
 
-def _check_source(kind: str, ref: str, *, engine_checks: dict[str, Any],
-                  locator_index: Any, card_snapshots: dict[str, Any],
-                  assumption_slots: set[str]) -> str:
-    if kind == "engine":
-        check = engine_checks.get(ref)
-        if check is None:
-            return "unknown_engine_check"
-        if validate_engine_check(check):
-            return "invalid_engine_check"
-        if check.get("outcome") not in DECIDING_OUTCOMES:
-            return "engine_check_did_not_decide"
-        return "verified"
-    if kind == "official_text":
-        return "verified" if _index_contains(locator_index, ref) else "locator_not_in_index"
-    if kind == "card_text":
-        snapshot = card_snapshots.get(ref)
-        if not isinstance(snapshot, dict) or not isinstance(snapshot.get("text_hash"), str) or not snapshot["text_hash"]:
-            return "unknown_card_snapshot"
-        return "verified"
-    return "verified" if ref in assumption_slots else "unknown_assumption"
+    def check_source(self, kind: str, ref: str) -> tuple[str, str | None]:
+        """The status a source earns now, and the hash the record binds to."""
+        if kind == "engine":
+            check = self.checks.get(ref)
+            if check is None:
+                return "unknown_engine_check", None
+            if validate_engine_check(check):
+                return "invalid_engine_check", None
+            if check.get("outcome") not in DECIDING_OUTCOMES:
+                return "engine_check_did_not_decide", None
+            return "verified", canonical_hash(check)
+        if kind == "official_text":
+            return ("verified" if _index_contains(self.index, ref) else "locator_not_in_index"), None
+        if kind == "card_text":
+            snapshot = self.snapshots.get(ref)
+            if not isinstance(snapshot, dict) or not isinstance(snapshot.get("text_hash"), str) \
+                    or not snapshot["text_hash"]:
+                return "unknown_card_snapshot", None
+            return "verified", snapshot["text_hash"]
+        entry = self.assumptions.get(ref)
+        if entry is None or self.artifact_hash is None:
+            return "unknown_assumption", None
+        return "verified", canonical_hash({"artifact_hash": self.artifact_hash, "entry": entry})
 
 
 _STATUS_TO_VIOLATION = {
@@ -199,13 +244,7 @@ def build_ledger(*, question: str, sentences: Iterable[Any], engine_checks: Iter
     if not isinstance(question, str) or not question.strip():
         raise FactLedgerError("question must be a non-empty string")
     sentences = list(sentences)
-    checks_by_id: dict[str, Any] = {}
-    for check in engine_checks:
-        if not isinstance(check, dict) or not isinstance(check.get("check_id"), str):
-            raise FactLedgerError("every supplied engine check must carry a check_id")
-        checks_by_id[check["check_id"]] = check
-    card_snapshots = dict(card_snapshots or {})
-    assumption_slots = _assumption_slots(assumption_artifact)
+    context = _Context(engine_checks, locator_index, card_snapshots, assumption_artifact)
 
     entries: list[dict[str, Any]] = []
     violations: list[dict[str, Any]] = []
@@ -239,11 +278,11 @@ def build_ledger(*, question: str, sentences: Iterable[Any], engine_checks: Iter
                 "detail": "an entry is one sentence; several claims in one entry would share one set of sources",
             })
 
-        source_records: list[dict[str, str]] = []
+        source_records: list[dict[str, Any]] = []
         for source in sentence["sources"]:
             parsed = parse_source(source)
             if parsed is None:
-                source_records.append({"kind": "", "ref": str(source), "status": "malformed"})
+                source_records.append({"kind": "", "ref": str(source), "status": "malformed", "bound_hash": None})
                 if mechanical:
                     violations.append({
                         "entry": index, "code": "malformed_source",
@@ -251,9 +290,8 @@ def build_ledger(*, question: str, sentences: Iterable[Any], engine_checks: Iter
                     })
                 continue
             kind, ref = parsed
-            status = _check_source(kind, ref, engine_checks=checks_by_id, locator_index=locator_index,
-                                   card_snapshots=card_snapshots, assumption_slots=assumption_slots)
-            source_records.append({"kind": kind, "ref": ref, "status": status})
+            status, bound = context.check_source(kind, ref)
+            source_records.append({"kind": kind, "ref": ref, "status": status, "bound_hash": bound})
             if status == "verified" and kind == "engine":
                 cited_engine_ids.append(ref)
             elif status != "verified" and mechanical:
@@ -305,11 +343,18 @@ def verdict_tier(entries: list[dict[str, Any]], violations: list[dict[str, Any]]
 REQUIRED_TOP = {"schema_version", "ruleset", "question", "admissible", "admissible_tier",
                 "entries", "violations", "cited_engine_checks", "ledger_hash"}
 ENTRY_FIELDS = {"index", "text", "mechanical", "declared_mechanical", "markers", "sources"}
+SOURCE_FIELDS = {"kind", "ref", "status", "bound_hash"}
 VIOLATION_FIELDS = {"entry", "code", "detail"}
 
 
 def validate_ledger(value: Any) -> list[str]:
-    """Check a ledger, re-deriving the markers rather than believing them."""
+    """Structural validation only: shape, markers re-derived, verdict re-derived, hash.
+
+    This reads no context. It can tell that a ledger is internally consistent;
+    it cannot tell whether a record marked "verified" was ever verified against
+    anything. That is verify_ledger's job, and a ledger that only passed this
+    check has not been verified.
+    """
     errors: list[str] = []
     if not isinstance(value, dict):
         return ["ledger must be a JSON object"]
@@ -362,13 +407,18 @@ def validate_ledger(value: Any) -> list[str]:
             continue
         for s_index, record in enumerate(entry["sources"]):
             s_label = f"{label}.sources[{s_index}]"
-            if not isinstance(record, dict) or set(record) != {"kind", "ref", "status"}:
-                errors.append(f"{s_label} must carry kind, ref, status")
+            if not isinstance(record, dict) or set(record) != SOURCE_FIELDS:
+                errors.append(f"{s_label} must carry exactly {sorted(SOURCE_FIELDS)}")
                 continue
             if record["status"] not in SOURCE_STATUSES:
                 errors.append(f"{s_label}.status must be one of {sorted(SOURCE_STATUSES)}")
             if record["status"] != "malformed" and record["kind"] not in SOURCE_KINDS:
                 errors.append(f"{s_label}.kind must be one of {list(SOURCE_KINDS)}")
+            if record["bound_hash"] is not None and (not isinstance(record["bound_hash"], str) or not record["bound_hash"]):
+                errors.append(f"{s_label}.bound_hash must be a hash or null")
+            if record["status"] == "verified" and record["kind"] in {"engine", "card_text", "assumption"} \
+                    and record["bound_hash"] is None:
+                errors.append(f"{s_label} is a verified {record['kind']} source and must carry its binding")
 
     violations = value["violations"]
     if not isinstance(violations, list):
@@ -405,24 +455,96 @@ def validate_ledger(value: Any) -> list[str]:
     return errors
 
 
+def _sentences_of(ledger: dict[str, Any]) -> list[dict[str, Any]]:
+    """The producer's input, read back out of a ledger's entries."""
+    sentences = []
+    for entry in ledger["entries"]:
+        sources = []
+        for record in entry["sources"]:
+            sources.append(record["ref"] if record["status"] == "malformed" else f"{record['kind']}:{record['ref']}")
+        sentences.append({"text": entry["text"], "mechanical": entry["declared_mechanical"], "sources": sources})
+    return sentences
+
+
+def verify_ledger(ledger: Any, engine_checks: Iterable[Any] = (), locator_index: Any = None,
+                  card_snapshots: dict[str, Any] | None = None, assumption_artifact: Any = None) -> list[str]:
+    """Fact-ledger verification: rebuild from the ledger's own sentences against this context, and compare.
+
+    Nothing the ledger wrote about a source is believed. Its sentences and
+    their declared sources are read back, a fresh ledger is built against the
+    engine checks, index, snapshots and assumption artifact supplied now, and
+    every derived field — each source's status and binding, the violations,
+    admissibility, tier, the cited checks, the hash — is compared to what the
+    ledger claims. A mismatch is named by field.
+    """
+    errors = validate_ledger(ledger)
+    if errors:
+        return [f"structural: {error}" for error in errors]
+
+    rebuilt = build_ledger(question=ledger["question"], sentences=_sentences_of(ledger),
+                           engine_checks=engine_checks, locator_index=locator_index,
+                           card_snapshots=card_snapshots, assumption_artifact=assumption_artifact)
+
+    for position, (claimed, actual) in enumerate(zip(ledger["entries"], rebuilt["entries"])):
+        for s_index, (c_rec, a_rec) in enumerate(zip(claimed["sources"], actual["sources"])):
+            label = f"entries[{position}].sources[{s_index}] ({c_rec['kind']}:{c_rec['ref']})"
+            if c_rec["status"] != a_rec["status"]:
+                errors.append(f"{label} claims status {c_rec['status']!r}; against this context it is {a_rec['status']!r}")
+            elif c_rec["bound_hash"] != a_rec["bound_hash"]:
+                errors.append(f"{label} is bound to content that is no longer what the context holds")
+        if claimed["mechanical"] != actual["mechanical"]:
+            errors.append(f"entries[{position}].mechanical claims {claimed['mechanical']}, rebuilt as {actual['mechanical']}")
+
+    claimed_codes = [(v["entry"], v["code"]) for v in ledger["violations"]]
+    actual_codes = [(v["entry"], v["code"]) for v in rebuilt["violations"]]
+    if claimed_codes != actual_codes:
+        errors.append(f"violations claimed {claimed_codes}; rebuilt {actual_codes}")
+    if ledger["admissible"] != rebuilt["admissible"]:
+        errors.append(f"admissible claims {ledger['admissible']}; rebuilt {rebuilt['admissible']}")
+    if ledger["admissible_tier"] != rebuilt["admissible_tier"]:
+        errors.append(f"admissible_tier claims {ledger['admissible_tier']!r}; rebuilt {rebuilt['admissible_tier']!r}")
+    if ledger["cited_engine_checks"] != rebuilt["cited_engine_checks"]:
+        errors.append(f"cited_engine_checks claims {ledger['cited_engine_checks']}; rebuilt {rebuilt['cited_engine_checks']}")
+    if ledger["ledger_hash"] != rebuilt["ledger_hash"]:
+        errors.append("ledger_hash differs from the hash of the ledger rebuilt against this context")
+    return errors
+
+
 def _load(path: str) -> Any:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def _add_context_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--engine-checks", help="path to an array of engine-check.v1 artifacts")
+    parser.add_argument("--index", help="path to a JSON array of admissible locators")
+    parser.add_argument("--card-snapshots", help="path to a snapshot map")
+    parser.add_argument("--assumptions", help="path to a state-assumption.v1 artifact")
+
+
+def _context_from(args: argparse.Namespace) -> dict[str, Any]:
+    return {
+        "engine_checks": _load(args.engine_checks) if args.engine_checks else (),
+        "locator_index": set(_load(args.index)) if args.index else None,
+        "card_snapshots": _load(args.card_snapshots) if args.card_snapshots else None,
+        "assumption_artifact": _load(args.assumptions) if args.assumptions else None,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build or validate a fact-ledger.v1.")
+    parser = argparse.ArgumentParser(description="Build, validate, or verify a fact-ledger.v1.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     build = sub.add_parser("build", help="check an answer's sentences against their sources")
     build.add_argument("--question", required=True)
     build.add_argument("--sentences", required=True, help="path to the tagged sentences")
-    build.add_argument("--engine-checks", help="path to an array of engine-check.v1 artifacts")
-    build.add_argument("--index", help="path to a JSON array of admissible locators")
-    build.add_argument("--card-snapshots", help="path to a snapshot map")
-    build.add_argument("--assumptions", help="path to a state-assumption.v1 artifact")
+    _add_context_arguments(build)
 
-    check = sub.add_parser("validate", help="validate a ledger, re-deriving its markers")
+    check = sub.add_parser("validate", help="structural validation only; this is not verification")
     check.add_argument("ledger")
+
+    verify = sub.add_parser("verify", help="fact-ledger verification: rebuild against the given context and compare")
+    verify.add_argument("ledger")
+    _add_context_arguments(verify)
 
     markers = sub.add_parser("markers", help="show which markers a sentence fires")
     markers.add_argument("text")
@@ -437,17 +559,16 @@ def main(argv: list[str] | None = None) -> int:
         problems = validate_ledger(_load(args.ledger))
         for problem in problems:
             print(problem, file=sys.stderr)
-        print("valid" if not problems else f"{len(problems)} problem(s)")
+        print("structurally valid (not verified)" if not problems else f"{len(problems)} problem(s)")
+        return 0 if not problems else 1
+    if args.command == "verify":
+        problems = verify_ledger(_load(args.ledger), **_context_from(args))
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        print("verified against the given context" if not problems else f"{len(problems)} problem(s)")
         return 0 if not problems else 1
 
-    ledger = build_ledger(
-        question=args.question,
-        sentences=_load(args.sentences),
-        engine_checks=_load(args.engine_checks) if args.engine_checks else (),
-        locator_index=set(_load(args.index)) if args.index else None,
-        card_snapshots=_load(args.card_snapshots) if args.card_snapshots else None,
-        assumption_artifact=_load(args.assumptions) if args.assumptions else None,
-    )
+    ledger = build_ledger(question=args.question, sentences=_load(args.sentences), **_context_from(args))
     json.dump(ledger, sys.stdout, ensure_ascii=False, indent=2)
     print()
     return 0 if ledger["admissible"] else 2

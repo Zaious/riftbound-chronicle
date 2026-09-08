@@ -11,6 +11,12 @@ The four counterexamples the S-02 contract names each get their own section
 below: a question the engine declines to rule on, an answer with one source
 removed, a citation to a locator the index does not hold, and a conclusion
 tagged non-mechanical to slip past the ledger.
+
+Then the forgeries. validate_ledger reads no context, so a ledger that writes
+"verified" on a source that never was, and reseals its hash, passes it. Each
+forgery below is first shown to pass structural validation — that is the
+point, not a defect being tolerated — and then refused by verify_ledger, which
+rebuilds the ledger against the context and does not read the status field.
 """
 
 from __future__ import annotations
@@ -25,11 +31,13 @@ import fact_ledger
 import rules_core
 import state_builder
 from engine_check import build_engine_check
+from engine_check import validate_engine_check
 from fact_ledger import (
     VIOLATION_CODES,
     build_ledger,
     markers_in,
     validate_ledger,
+    verify_ledger,
 )
 
 
@@ -118,6 +126,8 @@ def main() -> int:
 
         if problems := validate_ledger(ledger):
             failures.append(f"{case_id}: its own ledger does not validate: {problems}")
+        if problems := verify_ledger(ledger, list(checks.values()), index, snapshots, assumption_artifact):
+            failures.append(f"{case_id}: its own ledger does not verify against the context it was built on: {problems}")
         if ledger["admissible"] is not expected["admissible"]:
             failures.append(f"{case_id}: admissible was {ledger['admissible']}, expected {expected['admissible']}")
         if ledger["admissible_tier"] != expected["tier"]:
@@ -207,6 +217,117 @@ def main() -> int:
     if missing := sorted(VIOLATION_CODES - seen_codes):
         failures.append(f"no case exercises the violation codes {missing}")
 
+    # ---- Source-status forgeries -------------------------------------------
+    # Each one passes validate_ledger. That is what these cases exist to show:
+    # structural validation cannot see a lie about a source, because it has
+    # nothing to check the source against. verify_ledger has, and refuses.
+    context = dict(engine_checks=list(checks.values()), locator_index=index,
+                   card_snapshots=snapshots, assumption_artifact=assumption_artifact)
+
+    def reseal(ledger):
+        ledger["ledger_hash"] = fact_ledger.canonical_hash(
+            {k: v for k, v in ledger.items() if k != "ledger_hash"})
+        return ledger
+
+    def forgery(label, ledger, ctx, *, expect_in_reason):
+        structural = validate_ledger(ledger)
+        if structural:
+            failures.append(f"forgery '{label}' should pass structural validation "
+                            f"(that is the hole being demonstrated), but got {structural}")
+        problems = verify_ledger(ledger, **ctx)
+        if not problems:
+            failures.append(f"verify_ledger accepts the forgery '{label}'")
+        elif not any(expect_in_reason in problem for problem in problems):
+            failures.append(f"forgery '{label}' was refused, but not for the right reason: {problems}")
+
+    # F1. The bypass as reported: an off-index locator written up as verified.
+    f1 = copy.deepcopy(built["FL-005"])
+    f1["entries"][0]["sources"][0]["status"] = "verified"
+    f1["violations"] = []
+    f1["admissible"] = True
+    f1["admissible_tier"] = "B"
+    forgery("off-index locator marked verified", reseal(f1), context,
+            expect_in_reason="against this context it is 'locator_not_in_index'")
+
+    # F2. A declined engine ruling written up as a verdict, binding and all.
+    # The forger can compute the check's hash — the bundle is not secret —
+    # so the binding is right; the status is still not what the context says.
+    f2 = copy.deepcopy(built["FL-003"])
+    undecided = checks["@effect_unsupported"]
+    f2["entries"][0]["sources"][0]["status"] = "verified"
+    f2["entries"][0]["sources"][0]["bound_hash"] = fact_ledger.canonical_hash(undecided)
+    f2["violations"] = []
+    f2["admissible"] = True
+    f2["admissible_tier"] = "A"
+    f2["cited_engine_checks"] = [undecided["check_id"]]
+    forgery("declined engine ruling marked verified", reseal(f2), context,
+            expect_in_reason="against this context it is 'engine_check_did_not_decide'")
+
+    # F3. The ledger is honest; the bundle is not. The check it cites has been
+    # swapped for one with the same check_id and a flipped outcome, still a
+    # structurally valid engine check. Only the binding tells them apart.
+    swapped = copy.deepcopy(checks["@timing_illegal"])
+    swapped["outcome"] = "supported"
+    swapped["reason"] = {"code": "ok", "message": "ok"}
+    if validate_engine_check(swapped):
+        failures.append("the swapped check must still validate, or the binding is not what catches it")
+    swapped_bundle = [c for c in checks.values() if c["check_id"] != swapped["check_id"]] + [swapped]
+    forgery("engine check swapped in the bundle under its own id", copy.deepcopy(built["FL-016"]),
+            {**context, "engine_checks": swapped_bundle},
+            expect_in_reason="bound to content that is no longer what the context holds")
+
+    # F4. Same snapshot id, different text behind it.
+    rewritten = copy.deepcopy(snapshots)
+    rewritten["synthetic-unit-a"]["text_hash"] = "sha256:" + "e" * 64
+    forgery("card snapshot rewritten under the same id", copy.deepcopy(built["FL-009"]),
+            {**context, "card_snapshots": rewritten},
+            expect_in_reason="bound to content that is no longer what the context holds")
+
+    # F5. The assumption artifact moved. The slot is still there with the same
+    # value; the artifact it belongs to is a different one, and the answer was
+    # built on the old one.
+    moved = state_builder.build_state_assumption(
+        question="A different question over the same position.",
+        question_kind="timing_priority",
+        draft=assumption_artifact["input_draft"])
+    if "showdown_active" not in {e["slot"] for e in moved["assumptions"]}:
+        failures.append("the moved artifact must still carry the cited slot, or this tests absence")
+    forgery("assumption artifact replaced, slot still present", copy.deepcopy(built["FL-007"]),
+            {**context, "assumption_artifact": moved},
+            expect_in_reason="bound to content that is no longer what the context holds")
+
+    # F6. The assumption's value moved. turn_order is derived from the order
+    # the players were listed; reverse them and the slot survives with a
+    # different value.
+    order_ledger = build_ledger(
+        question="Who takes the second turn?",
+        sentences=[{"text": "Turn order follows the order the players were listed.", "mechanical": True,
+                    "sources": ["assumption:turn_order"]}], **context)
+    if not order_ledger["admissible"]:
+        failures.append(f"the turn-order ledger must build clean first: {order_ledger['violations']}")
+    reversed_draft = dict(assumption_artifact["input_draft"],
+                          players=list(reversed(assumption_artifact["input_draft"]["players"])))
+    reordered = state_builder.build_state_assumption(question=assumption_artifact["question"],
+                                                     question_kind="timing_priority", draft=reversed_draft)
+    new_value = next((e["value"] for e in reordered["assumptions"] if e["slot"] == "turn_order"), None)
+    old_value = next((e["value"] for e in assumption_artifact["assumptions"] if e["slot"] == "turn_order"), None)
+    if new_value is None or new_value == old_value:
+        failures.append("the reordered artifact must carry turn_order with a different value")
+    forgery("assumption value changed, slot still present", order_ledger,
+            {**context, "assumption_artifact": reordered},
+            expect_in_reason="bound to content that is no longer what the context holds")
+
+    # F7. No status touched at all: the violations are simply deleted from a
+    # ledger whose second sentence has no source.
+    f7 = copy.deepcopy(fallen)
+    f7["violations"] = []
+    f7["admissible"] = True
+    f7["admissible_tier"] = "A"
+    forgery("violations deleted from an unsourced answer", reseal(f7), context,
+            expect_in_reason="violations claimed []")
+
+    forgeries = 7
+
     # The validator has to refuse the ledgers a hand-written one would be.
     good = copy.deepcopy(built["FL-001"])
     mutations = [
@@ -231,6 +352,12 @@ def main() -> int:
          lambda l: l["violations"].append({"entry": 99, "code": "unsourced_conclusion", "detail": "x"})),
         ("an unknown top-level field", lambda l: l.__setitem__("reviewed_by", "nobody")),
         ("a stale ledger hash", lambda l: l["entries"][0].__setitem__("text", "You may not.")),
+        ("a verified engine source with no binding",
+         lambda l: l["entries"][0]["sources"][0].__setitem__("bound_hash", None)),
+        ("a binding that is not a hash",
+         lambda l: l["entries"][0]["sources"][0].__setitem__("bound_hash", 42)),
+        ("a source record without the binding field",
+         lambda l: l["entries"][0]["sources"][0].pop("bound_hash")),
     ]
     for label, mutate in mutations:
         candidate = copy.deepcopy(good)
@@ -268,7 +395,8 @@ def main() -> int:
           f"violation codes exercised: {len(seen_codes)}/{len(VIOLATION_CODES)}")
     print(f"engine checks from real kernel runs: {len(checks)} "
           f"({', '.join(f'{k[1:]}={v}' for k, v in sorted(outcomes.items()))})")
-    print(f"validator mutations refused: {len(mutations)}")
+    print(f"structural mutations refused: {len(mutations) + 1}; "
+          f"source-status forgeries refused by verify_ledger: {forgeries}")
     return 0
 
 

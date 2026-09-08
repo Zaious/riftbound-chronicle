@@ -69,6 +69,9 @@ COPYABLE_TRAITS = {"type", "rules_text"}
 
 CONTINUOUS_DURATIONS = {"permanent", "this_turn", "this_combat", "while_source_active", "until_detached"}
 MIGHT_MODES = {"delta", "increase_to"}
+# ADR-0010 §6 / Core 484-489: the Modes of Play the state may name. One set,
+# read here and by the state builder; a caller that restated it would drift.
+SANCTIONED_MODES = frozenset({"duel", "match", "skirmish", "war", "magma_chamber"})
 LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers")
 COMBAT_ROLES = {"attacker", "defender"}
 # ADR-0007 §6–8.
@@ -602,7 +605,7 @@ def validate_state(state: Any) -> list[str]:
         errors.append("mode must be {victory_score: positive integer, teams?: boolean, id?, first_turn?} (Core 456.3, 483)")
     elif mode is not None:
         # ADR-0010 §6: the sanctioned Mode of Play or explicit First Turn facts.
-        if "id" in mode and mode["id"] not in {"duel", "match", "skirmish", "war", "magma_chamber"}:
+        if "id" in mode and mode["id"] not in SANCTIONED_MODES:
             errors.append("mode.id must name a sanctioned Mode of Play (Core 484–489)")
         first = mode.get("first_turn")
         if first is not None and (not isinstance(first, dict) or set(first) - {"extra_channel", "skip_draw"} or any(not isinstance(first.get(k, []), list) or any(p not in state["players"] for p in first.get(k, [])) for k in ("extra_channel", "skip_draw"))):

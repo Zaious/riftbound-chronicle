@@ -47,6 +47,12 @@ from rules_core import next_procedure, pass_focus, state_hash, validate_timing  
 
 def add_unit(state, object_id, owner, where, might=3, **fields):
     state["objects"][object_id] = {"owner": owner, "controller": owner, "kind": "unit", "base_might": might, "might_modifiers": [], "damage": 0, "exhausted": False, **fields}
+    if fields.get("stunned"):
+        # DP-94: the status and the turn effect that will expire it travel
+        # together, so a fixture cannot write a Stun that never ends.
+        state.setdefault("turn_effects", []).append(
+            {"effect_id": f"stunned:{object_id}", "kind": "stunned_unit", "controller": owner,
+             "turn_id": state.get("turn_id", "turn-0"), "object_id": object_id})
     if where.startswith("base:"):
         state["players"][where[5:]]["zones"]["base"].append(object_id)
     else:

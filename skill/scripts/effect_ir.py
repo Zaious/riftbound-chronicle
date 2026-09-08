@@ -120,6 +120,7 @@ SUPPORTED_OPS = {
     # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
     # taking a looked-at card, Recycle as one action, Predict.
     "look_at_top",
+    "choose_player",
     "reveal",
     "put_back",
     "put_in_hand",
@@ -150,7 +151,7 @@ SUPPORTED_OPS = {
 # several Deal events that each pass through the replacement path).
 COMPOSITE_OPS = {"mutual_damage_current_might"}
 # ADR-0011 §1: instructions whose single object comes from a typed `choice`.
-CHOICE_OPS = {"recycle_one"}
+CHOICE_OPS = {"recycle_one", "choose_player"}
 # Instructions that resolve their own choice into a set (they may need an order too).
 SELF_RESOLVING_CHOICE_OPS = {"recycle", "banish"}
 
@@ -287,6 +288,7 @@ OP_RULES = {
     "modify_might": ["Core 135.2.e.3", "Core 477"],
     "deal_damage": ["Core 417"],
     "heal_damage": ["Core 418"],
+    "choose_player": ["Core 355.1", "Core 355.17"],
     "ready": ["Core 415"],
     "exhaust": ["Core 414"],
     "add_resource": ["Core 429"],
@@ -1199,6 +1201,14 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].add_resource.restriction must be {{uses: non-empty unique subset of {RESOURCE_USES}}}")
                 if effect.get("resource") not in {"energy", "power"}:
                     errors.append(f"effects[{index}].add_resource.restriction applies to energy or power")
+            # Sabotage: "they" - a player an earlier instruction of this same
+            # program chose. Deferring is only legal to a decision reference;
+            # anything else is a player named, or an error.
+            player_field = effect.get("player")
+            if isinstance(player_field, dict) and (set(player_field) != {"decision_ref"}
+                                                   or not isinstance(player_field.get("decision_ref"), str)
+                                                   or not player_field["decision_ref"]):
+                errors.append(f"effects[{index}].player must be a player id or {{decision_ref}}")
             choice = effect.get("choice")
             if choice is not None:
                 import engine_decisions as ed
@@ -1460,8 +1470,14 @@ def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
         if not isinstance(value, str) or not value:
             errors.append(f"{field} must be a non-empty string")
 
-    if not isinstance(effect.get("player"), str) or not effect.get("player"):
-        errors.append("needs a player")
+    player = effect.get("player")
+    # Sabotage: "they reveal their hand" - the player an earlier instruction
+    # chose. A reference is only legal to a decision, never to a rule for
+    # finding a player again.
+    if not ((isinstance(player, str) and player)
+            or (isinstance(player, dict) and set(player) == {"decision_ref"}
+                and isinstance(player.get("decision_ref"), str) and player["decision_ref"])):
+        errors.append("needs a player, or a {decision_ref} naming the one an earlier instruction chose")
     if op == "look_at_top":
         positive("count")
     elif op == "reveal":
@@ -1480,6 +1496,13 @@ def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
         ref("decision_ref")
     elif op == "draw_it":
         ref("decision_ref")
+    elif op == "choose_player":
+        choice = effect.get("choice")
+        if not isinstance(choice, dict) or choice.get("from") != "players" or choice.get("selection_kind") != "single":
+            errors.append("choose_player needs a single choice from players")
+        ref("decision_ref")
+        if effect.get("player") is not None:
+            errors.append("choose_player is the instruction that picks the player; it does not name one")
     elif op == "recycle":
         objects = effect.get("objects")
         if (objects is None) == (effect.get("choice") is None):
@@ -2693,8 +2716,19 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if not looked:
             trace["outcome"] = "no_op"
 
+    elif op == "choose_player":
+        # Core 355.1: an instruction whose whole content is a choice. It changes
+        # nothing; what it produces is the receipt every later instruction of
+        # this program reads instead of choosing again.
+        chosen, meta = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"),
+                                      decisions=decisions, controller=controller)
+        if len(chosen) != 1:
+            raise ValueError("choose_player chooses exactly one player")
+        trace.update({"player": chosen[0], "decision_ref": effect.get("decision_ref"),
+                      "selection": {k: v for k, v in meta.items() if k != "choice"}, "completion": "full"})
+
     elif op == "reveal":
-        player_id = effect.get("player")
+        player_id = resolve_player_ref(effect.get("player"), decisions, new_state, controller)
         if player_id not in new_state["players"]:
             raise ValueError("reveal requires a known player")
         zone = "main_deck" if effect.get("from") == "main_deck_top" else "hand"
@@ -4095,7 +4129,15 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
     elif source == "main_deck_top":
         ids = list(state["players"][chooser]["zones"]["main_deck"][: spec["top"]])
     elif source == "revealed":
-        ids = [r["object_id"] for r in (session or state).get("reveals", []) if r.get("visible_to") == "all" or chooser in (r.get("visible_to") or [])]
+        # The candidates are exactly what a reveal actually put on the table for
+        # this chooser. Nothing else in the zone is choosable, which is what
+        # keeps a hand private until it is revealed (Core 424.2.b, 128.4).
+        ids = [r["object_id"] for r in (session or state).get("reveals", [])
+               if r.get("visible_to") == "all" or chooser in (r.get("visible_to") or [])]
+        excluded = set((spec.get("criteria") or {}).get("excluded_kinds") or [])
+        if excluded:
+            ids = [object_id for object_id in ids
+                   if state["objects"].get(object_id, {}).get("kind") not in excluded]
     elif source == "board":
         criteria = spec.get("criteria") or {}
         ids = []
@@ -4121,6 +4163,30 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
         raise ValueError(f"unknown choice source {source!r}")
     identities = {c: (object_identity(state, c) if source != "players" else None) for c in ids}
     return ids, identities
+
+
+def resolve_player_ref(player: Any, decisions: dict[str, Any] | None, state: dict[str, Any],
+                       controller: str | None) -> str:
+    """A player named directly, or the one an earlier instruction of this same
+    program chose. The reference is to the *decision*, not to a re-run of the
+    choice: "they" means the opponent already chosen, and choosing again could
+    land on somebody else."""
+    if isinstance(player, str):
+        return player
+    if not isinstance(player, dict) or not isinstance(player.get("decision_ref"), str):
+        raise ValueError("a player must be named, or deferred to a decision_ref")
+    import engine_decisions as ed
+    entry = ed.player_selection(decisions, player["decision_ref"])
+    if entry is None:
+        raise PlayerSelectionRequired(
+            f"player selection {player['decision_ref']!r} is required", [player["decision_ref"]], controller)
+    if entry["controller"] != controller:
+        raise IllegalDecision(f"player selection {player['decision_ref']!r} was made by "
+                              f"{entry['controller']!r}, not the program controller")
+    if entry["value"] not in state["players"]:
+        raise ValueError(f"player selection {player['decision_ref']!r} names {entry['value']!r}, "
+                         "who is not in this game")
+    return entry["value"]
 
 
 def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref: str | None, decisions: dict[str, Any] | None,

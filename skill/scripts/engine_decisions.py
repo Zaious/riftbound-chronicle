@@ -250,6 +250,10 @@ def target_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict
 # sources are never listed in an engine result.
 SELECTION_KINDS = ("single", "unordered_set", "ordered_permutation")
 CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "players")
+# Sabotage: "a non-unit card". Stated as an exclusion from a closed list rather
+# than as a negation, so a card kind nobody has thought about is *included* by
+# default and never silently filtered out.
+EXCLUDABLE_KINDS = ("unit", "gear", "spell", "rune", "legend")
 CHOICE_VISIBILITY = ("public", "private_to_chooser")
 CHOICE_BY = ("controller", "opponent", "each_player")
 COUNT_FORMS = ("exactly", "up_to", "any_number", "one")
@@ -282,6 +286,15 @@ def validate_choice_spec(spec: Any) -> list[str]:
             errors.append("an ordered_permutation orders every candidate (count any_number)")
     if spec["from"] not in CHOICE_SOURCES:
         errors.append(f"choice.from must be one of {CHOICE_SOURCES}")
+    criteria = spec.get("criteria")
+    if isinstance(criteria, dict) and "excluded_kinds" in criteria:
+        excluded = criteria["excluded_kinds"]
+        if spec["from"] != "revealed":
+            errors.append("choice.criteria.excluded_kinds applies to a revealed choice")
+        elif (not isinstance(excluded, list) or not excluded or len(excluded) != len(set(excluded))
+                or any(kind not in EXCLUDABLE_KINDS for kind in excluded)):
+            errors.append(f"choice.criteria.excluded_kinds must be a non-empty unique subset of "
+                          f"{list(EXCLUDABLE_KINDS)}")
     by = spec.get("by", "controller")
     if not (by in CHOICE_BY or (isinstance(by, str) and by)):
         errors.append("choice.by must be controller, opponent, each_player or a player id")
@@ -294,8 +307,10 @@ def validate_choice_spec(spec: Any) -> list[str]:
     cap = spec.get("enumerable_cap", DEFAULT_ENUMERABLE_CAP)
     if not isinstance(cap, int) or isinstance(cap, bool) or cap < 1:
         errors.append("choice.enumerable_cap must be a positive integer")
-    if "criteria" in spec and spec["from"] != "board":
-        errors.append("choice.criteria only applies to a board source")
+    if "criteria" in spec and spec["from"] not in {"board", "revealed"}:
+        errors.append("choice.criteria applies to a board or revealed source")
+    if "criteria" in spec and spec["from"] == "revealed" and set(spec["criteria"]) - {"excluded_kinds"}:
+        errors.append("a revealed choice's criteria carries excluded_kinds and nothing else")
     if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location"}):
         errors.append("choice.from board needs criteria {kind?, controller_relation?, location?}")
     if "players" in spec and spec["from"] != "players":

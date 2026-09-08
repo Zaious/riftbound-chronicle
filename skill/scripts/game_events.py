@@ -81,6 +81,9 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "revealed": {"about": "object", "rules": ["Core 424.2"]},
     "looked_at": {"about": "object", "rules": ["Core 424.1"]},
     # --- player ----------------------------------------------------------
+    # Sabotage: the instruction that only chooses. The event is what every
+    # later instruction of the same program reads instead of choosing again.
+    "player_chosen": {"about": "player", "rules": ["Core 355.1", "Core 355.17"]},
     "resource_added": {"about": "player", "rules": ["Core 446", "Core 447"]},
     "xp_gained": {"about": "player", "rules": ["Core 730"]},
     "burned_out": {"about": "player", "rules": ["Core 431.2"]},
@@ -120,6 +123,7 @@ OP_PRIMARY: dict[str, str] = {
     "discard": "discarded",
     "grant_replacement": "replacement_granted",
     "grant_keyword": "keyword_granted",
+    "choose_player": "player_chosen",
     "look_at_top": "looked_at",
     "reveal": "revealed",
     "put_back": "cards_put_back",

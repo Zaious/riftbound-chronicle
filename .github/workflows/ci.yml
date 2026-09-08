@@ -406,6 +406,8 @@ jobs:
         run: python3 skill/scripts/check_cost_comparison.py
       - name: chosen Move destination (Core 428)
         run: python3 skill/scripts/check_move_destination.py
+      - name: player referent bound to a reveal (Sabotage)
+        run: python3 skill/scripts/check_player_ref_and_reveal.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -527,6 +529,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_replacement_subject.py"
           python3 "$REPO/skill/scripts/check_cost_comparison.py"
           python3 "$REPO/skill/scripts/check_move_destination.py"
+          python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

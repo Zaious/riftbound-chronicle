@@ -432,7 +432,49 @@ def _lower_counter_within_cost_limit(params):
     }
 
 
+# Sabotage's three clauses share one decision: the opponent chosen by the
+# first. The later two name it rather than choosing again - "they" is a
+# referent, and re-choosing could land on a different player.
+OPPONENT_REF = "chosen-opponent"
+
+
+def _lower_choose_an_opponent(params):
+    return {
+        "program_effects": [{"op": "choose_player", "effect_id": "opp", "decision_ref": OPPONENT_REF,
+                             "choice": {"selection_kind": "single", "from": "players",
+                                        "players": "opponents", "count": {"one": True}}}],
+        "declares_player_ref": OPPONENT_REF,
+        "ast": {"node": "instruction", "op": "choose_player", "params": {"from": "opponents"}},
+    }
+
+
+def _lower_they_reveal_their_hand(params):
+    return {
+        "program_effects": [{"op": "reveal", "effect_id": "rv", "from": "hand",
+                             "player": {"decision_ref": OPPONENT_REF}}],
+        "needs_player_ref": OPPONENT_REF,
+        "declares_reveal": "rv",
+        "ast": {"node": "instruction", "op": "reveal", "params": {"from": "hand", "player": "$referent_player"}},
+    }
+
+
+def _lower_recycle_a_non_unit_from_the_reveal(params):
+    return {
+        "program_effects": [{"op": "recycle", "effect_id": "rc", "player": "$controller",
+                             "decision_ref": "sabotage-card", "order_ref": "sabotage-order",
+                             "choice": {"selection_kind": "single", "from": "revealed",
+                                        "by": "controller", "count": {"one": True},
+                                        "criteria": {"excluded_kinds": ["unit"]}}}],
+        "needs_reveal": True,
+        "ast": {"node": "instruction", "op": "recycle",
+                "params": {"from": "revealed", "excluded_kinds": ["unit"]}},
+    }
+
+
 LOWERINGS = {
+    "choose_an_opponent": _lower_choose_an_opponent,
+    "they_reveal_their_hand": _lower_they_reveal_their_hand,
+    "choose_a_non_unit_card_from_it_and_recycle_that_card": _lower_recycle_a_non_unit_from_the_reveal,
     "counter_a_spell_within_a_cost_limit": _lower_counter_within_cost_limit,
     "if_a_friendly_unit_would_die_kill_this_instead": _lower_death_replacement,
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
@@ -479,6 +521,8 @@ ABSTENTION_REASONS = frozenset({
     "link_antecedent_not_available",   # "if you do" with no readable previous instruction (DP-86)
     "referent_not_bound",              # "it" with nothing before it to be (DP-86)
     "cost_offer_not_declared",         # "if you paid additional cost" with no offer on this card
+    "player_ref_not_declared",         # "they" with no earlier clause that chose a player
+    "reveal_not_declared",             # a choice "from it" with no earlier reveal to choose from
     "mapping_not_supplied",            # the clause needs a card mapping the caller did not provide
     "mapping_invalid",                 # a mapping was supplied and does not satisfy its own contract
 })
@@ -943,6 +987,35 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
                                                   + _bind_to_replacement_subject(following["program_effects"]))
         compiled[index + 1] = {**following, "program_effects": [],
                                "absorbed_into": replacements[0]["replacement_id"]}
+
+    # Sabotage: "they" and "from it" name things an earlier clause of the same
+    # card established. Checked across the card rather than inside a clause,
+    # because that is the only place the earlier clause is visible - and
+    # refused rather than defaulted, because defaulting "they" to the sole
+    # opponent silently makes a two-player reading of a card that does not
+    # say so.
+    declared_player_refs: set[str] = set()
+    declared_reveals = 0
+    for index, entry in enumerate(compiled):
+        if entry.get("unsupported"):
+            continue
+        need_player = entry.get("needs_player_ref")
+        if need_player is not None and need_player not in declared_player_refs:
+            compiled[index] = {"production_id": entry["production_id"], "unsupported": True,
+                               "reason_code": "player_ref_not_declared", "text": entry["text"],
+                               "normalized": entry.get("normalized"),
+                               "reason": "the clause names a player no earlier clause chose"}
+            continue
+        if entry.get("needs_reveal") and not declared_reveals:
+            compiled[index] = {"production_id": entry["production_id"], "unsupported": True,
+                               "reason_code": "reveal_not_declared", "text": entry["text"],
+                               "normalized": entry.get("normalized"),
+                               "reason": "the clause chooses from a reveal no earlier clause performed"}
+            continue
+        if entry.get("declares_player_ref"):
+            declared_player_refs.add(entry["declares_player_ref"])
+        if entry.get("declares_reveal"):
+            declared_reveals += 1
 
     # DP-86, checked once the replacement above has had its chance to bind: a
     # referent with nothing before it to be. Refusing here is the point - the

@@ -1189,6 +1189,80 @@
       ]
     },
     {
+      "production_id": "choose_an_opponent",
+      "form": "Choose an opponent.",
+      "template": "choose an opponent",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.1",
+        "Core 355.17"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "choose_player"
+      ],
+      "boundary": "The whole instruction is a choice of one opponent. It changes nothing; what it leaves is the receipt the clauses after it read, so 'they' means this opponent and not whoever matches later.",
+      "golden": [
+        "Choose an opponent."
+      ],
+      "negative": [
+        "choose a player",
+        "choose an opponent unit",
+        "each opponent"
+      ]
+    },
+    {
+      "production_id": "they_reveal_their_hand",
+      "form": "They reveal their hand.",
+      "template": "they reveal their hand",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 424.2.b",
+        "Core 128.4"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "reveal"
+      ],
+      "boundary": "The opponent an earlier clause chose reveals their whole hand (424.2.b: a hand reveal shows every card, so it takes no count). The clause abstains unless an earlier clause chose the player.",
+      "golden": [
+        "They reveal their hand."
+      ],
+      "negative": [
+        "reveal your hand",
+        "they reveal 2 cards",
+        "each opponent reveals their hand"
+      ]
+    },
+    {
+      "production_id": "choose_a_non_unit_card_from_it_and_recycle_that_card",
+      "form": "Choose a non-unit card from it, and recycle that card.",
+      "template": "choose a non-unit card from it, and recycle that card",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 424.3.a",
+        "Core 433",
+        "Core 355.10.a"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "recycle",
+        "reveal"
+      ],
+      "boundary": "One card from what the preceding reveal actually put on the table, excluding Units, recycled. The candidates are the reveal's own marks, so nothing still private is choosable.",
+      "golden": [
+        "Choose a non-unit card from it, and recycle that card."
+      ],
+      "negative": [
+        "choose a card from it, and recycle that card",
+        "choose a non-unit card from their hand, and recycle that card",
+        "choose a non-unit card from it"
+      ]
+    },
+    {
       "production_id": "no_rules_text",
       "form": "(no rules text)",
       "template": "\\(no rules text\\)",

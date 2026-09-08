@@ -348,6 +348,54 @@ RULE_QUANTITY_RELATIONS = {
     "is_the_sum_of_the_values": ("is the sum of the granted Shield Values", False),
 }
 
+# T-02. Event-consequence rules and the ways points are gained. Every event
+# and consequence below is used by one rule today; they are lexicon entries
+# rather than literal templates so that the same sentence frame, the same
+# binding rule and the same registry cover them.
+RULE_EVENTS = {
+    "a_chain_item_is_finalized": "a Chain Item is finalized",
+    "a_finalized_chain_item_is_a_unit_gear_or_add_ability":
+        "the finalized Chain Item is a Unit, Gear, or an ability that Adds resources",
+    "the_final_point_by_conquer_is_withheld":
+        "a Conquer would give the Final Point and not every Battlefield has been Scored this turn",
+    "a_point_is_gained_from_a_source_other_than_conquer":
+        "a point is gained from a source other than a Conquer",
+    "a_battlefield_is_scored_by_hold": "a Battlefield is Scored by being Held",
+    "a_mode_of_play_or_card_effect_alters_the_victory_score":
+        "a Mode of Play or a card effect alters the Victory Score",
+    "a_cleanup_finds_more_than_one_player_at_or_above_the_victory_score_with_equal_points":
+        "a cleanup finds more than one player at or above the Victory Score with the same points",
+    "a_player_at_zero_points_would_lose_points": "a player at 0 points would lose points",
+    "a_cleanup_finds_one_player_at_or_above_the_victory_score_and_ahead":
+        "a cleanup finds a player at or above the Victory Score with more points than any other player",
+    "a_player_wins": "a player wins the game",
+    "a_unit_keeps_its_defender_designation": "a Unit keeps its Defender designation",
+    "a_choice_would_put_more_than_two_players_in_one_combat":
+        "a choice would put more than two players in one Combat",
+}
+RULE_CONSEQUENCES = {
+    "priority_is_not_passed": "Priority is not passed",
+    "it_resolves_immediately": "it resolves immediately",
+    "the_player_draws_a_card_instead": "that player draws a card instead",
+    "the_final_point_restriction_does_not_apply": "the Final Point restriction does not apply to it",
+    "its_hold_abilities_trigger": "its Hold abilities trigger",
+    "that_victory_score_applies": "that Victory Score applies",
+    "play_continues_until_a_cleanup_finds_one_player_ahead":
+        "play continues until a cleanup finds one player with more points",
+    "nothing_occurs_and_no_point_loss_trigger_fires":
+        "nothing occurs, and effects that trigger on losing points do not trigger",
+    "that_player_wins": "that player wins the game",
+    "the_game_ends": "the game ends",
+    "its_shield_remains_in_effect": "its Shield remains in effect",
+    "the_choice_is_invalid": "the choice is invalid and cannot be completed",
+}
+RULE_POINT_SOURCES = {
+    "holding_a_battlefield": "Holding a Battlefield",
+    "conquering_a_battlefield": "Conquering a Battlefield",
+    "an_effect_that_instructs_it": "a spell or ability that instructs the player to gain points",
+    "an_opponents_burn_out": "an opponent Burning Out and choosing that player",
+}
+
 
 def _lexicon(table: dict[str, str]) -> dict[str, Any]:
     return {
@@ -369,6 +417,9 @@ SLOT_TYPES.update({
     "rule_order_relation": _lexicon(RULE_ORDER_RELATIONS),
     "rule_quantity": _lexicon(RULE_QUANTITIES),
     "rule_quantity_relation": _lexicon({k: v[0] for k, v in RULE_QUANTITY_RELATIONS.items()}),
+    "rule_event": _lexicon(RULE_EVENTS),
+    "rule_consequence": _lexicon(RULE_CONSEQUENCES),
+    "rule_point_source": _lexicon(RULE_POINT_SOURCES),
     # A number or nothing. Not a string: "eight" is prose.
     "rule_value": {
         "admits": lambda ctx, v: v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
@@ -474,12 +525,16 @@ CLAIM_TEMPLATES: dict[str, dict[str, Any]] = {
         "basis": {"kind": "official_text"},
         "coheres": _quantity_coheres,
     },
-    # Event-consequence rules were not approved as a family (their events do
-    # not recur); this one literal stays until they do.
-    "rule_finalizing_does_not_pass_priority": {
+    "rule_event_consequence": {
         "class": "conditional_rule",
-        "text": "Under {locator}, finalizing an item to the chain does not pass Priority.",
-        "slots": {"locator": "locator"},
+        "text": "Under {locator}, when {event}, {consequence}.",
+        "slots": {"locator": "locator", "event": "rule_event", "consequence": "rule_consequence"},
+        "basis": {"kind": "official_text"},
+    },
+    "rule_point_source": {
+        "class": "conditional_rule",
+        "text": "Under {locator}, {source} is a way a player gains points.",
+        "slots": {"locator": "locator", "source": "rule_point_source"},
         "basis": {"kind": "official_text"},
     },
     "official_text_recorded": {
@@ -550,6 +605,27 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
         if (incoherent := template.get("coheres", lambda s: None)(slots)) is not None:
             problems.append(f"{label} does not cohere: {incoherent}")
             continue
+        if template["class"] == "conditional_rule":
+            # T-02. Closed values can still be paired into a sentence the
+            # text does not say. The claim binds only as a reading the
+            # registry recorded for this exact retrieved text: document,
+            # version, locator and hash all as the retriever returned them.
+            retriever, registry = context.get("retriever"), context.get("semantic_bindings")
+            if retriever is None or registry is None:
+                problems.append(f"{label} states a rule, and this run has no retriever or no "
+                                f"semantic-binding registry to read it against")
+                continue
+            retrieval = retriever.retrieve(slots["locator"])
+            if retrieval.get("status") != "retrieved":
+                problems.append(f"{label} reads {slots['locator']!r}, which was not retrieved "
+                                f"({retrieval.get('status')!r})")
+                continue
+            record = retrieval["record"]
+            if not registry.is_registered(record, template_id, slots):
+                problems.append(f"{label} reads {template_id} {json.dumps({k: v for k, v in slots.items() if k != 'locator'}, sort_keys=True)} into "
+                                f"{record['locator']} ({record['document_id']}@{record['document_version']}, "
+                                f"{record['text_hash'][:23]}…), which is not a registered reading of that text")
+                continue
 
         basis = template["basis"]
         if basis["kind"] == "engine":
@@ -607,7 +683,8 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
                      effect_draft: Any = None, effect_question_kind: str = "unit_damage",
                      entry_inputs: dict[str, Any] | None = None,
                      claims: Iterable[Any] = (), source_retriever: Any = None,
-                     card_snapshots: dict[str, Any] | None = None) -> dict[str, Any]:
+                     card_snapshots: dict[str, Any] | None = None,
+                     semantic_bindings: Any = None) -> dict[str, Any]:
     """Run one consultation end to end, or stop and say where."""
     if not isinstance(question, str) or not question.strip():
         raise ConsultationError("question must be a non-empty string")
@@ -748,6 +825,7 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
     context = {
         "timing_state": timing_artifact["state"],
         "retriever": source_retriever,
+        "semantic_bindings": semantic_bindings,
         "assumption_slots": assumption_slots,
         "card_snapshots": card_snapshots or {},
     }
@@ -913,7 +991,8 @@ def validate_run(value: Any) -> list[str]:
 
 
 def verify_run(run: Any, *, source_retriever: Any = None,
-               card_snapshots: dict[str, Any] | None = None) -> list[str]:
+               card_snapshots: dict[str, Any] | None = None,
+               semantic_bindings: Any = None) -> list[str]:
     """Consultation verification: re-run from the run's own request, and compare.
 
     Nothing the run says about its sources, its engine check, its ledger or its
@@ -931,7 +1010,8 @@ def verify_run(run: Any, *, source_retriever: Any = None,
         question_kind=request["question_kind"], effect_draft=request["effect_draft"],
         effect_question_kind=request["effect_question_kind"] or "unit_damage",
         entry_inputs=request["entry_inputs"], claims=request["claim_bindings"],
-        source_retriever=source_retriever, card_snapshots=card_snapshots)
+        source_retriever=source_retriever, card_snapshots=card_snapshots,
+        semantic_bindings=semantic_bindings)
 
     for field in ("status", "tier", "not_attempted_reason", "engine_declined", "coverage_statement"):
         if run[field] != rebuilt[field]:
@@ -980,6 +1060,13 @@ def _load(path: str) -> Any:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def _registry_from(path: str | None) -> Any:
+    if not path:
+        return None
+    import source_semantic_bindings
+    return source_semantic_bindings.load_registry(path)
+
+
 def _retriever_from(path: str | None) -> Any:
     if not path:
         return None
@@ -998,6 +1085,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--request", required=True,
                      help="path to the request: draft, effect_draft, entry_inputs, claims")
     run.add_argument("--sources", help="path to a source retrieval table")
+    run.add_argument("--bindings", help="path to a source-semantic-bindings registry")
 
     check = sub.add_parser("validate", help="structural validation only; this is not verification")
     check.add_argument("run")
@@ -1005,6 +1093,7 @@ def main(argv: list[str] | None = None) -> int:
     verify = sub.add_parser("verify", help="re-run the consultation against the given context and compare")
     verify.add_argument("run")
     verify.add_argument("--sources", help="path to a source retrieval table")
+    verify.add_argument("--bindings", help="path to a source-semantic-bindings registry")
     verify.add_argument("--card-snapshots", help="path to a snapshot map")
 
     sub.add_parser("templates", help="list the claim templates and their slots")
@@ -1024,7 +1113,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if not problems else 1
     if args.command == "verify":
         problems = verify_run(_load(args.run), source_retriever=_retriever_from(args.sources),
-                              card_snapshots=_load(args.card_snapshots) if args.card_snapshots else None)
+                              card_snapshots=_load(args.card_snapshots) if args.card_snapshots else None,
+                              semantic_bindings=_registry_from(args.bindings))
         for problem in problems:
             print(problem, file=sys.stderr)
         print("verified against the given context" if not problems else f"{len(problems)} problem(s)")
@@ -1038,7 +1128,8 @@ def main(argv: list[str] | None = None) -> int:
         effect_question_kind=request.get("effect_question_kind", "unit_damage"),
         entry_inputs=request.get("entry_inputs"), claims=request.get("claims", ()),
         source_retriever=_retriever_from(args.sources),
-        card_snapshots=request.get("card_snapshots"))
+        card_snapshots=request.get("card_snapshots"),
+        semantic_bindings=_registry_from(args.bindings))
     json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
     print()
     return 0 if result["status"] == "answered" else 2

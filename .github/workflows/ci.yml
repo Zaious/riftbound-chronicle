@@ -422,6 +422,8 @@ jobs:
         run: python3 skill/scripts/check_rule_consult_command.py
       - name: rules index locator integrity (I-01, two-column pairing)
         run: python3 skill/scripts/check_rules_index_integrity.py
+      - name: source-semantic-bindings.v1 (T-02, a rule claim is a registered reading)
+        run: python3 skill/scripts/check_source_semantic_bindings.py
       - name: judge-corpus.v1 (S-04, the corpus contract and its quotas)
         run: python3 skill/scripts/check_judge_corpus.py
       - name: deck-coach-corpus.v1 (S-05, two claim classes kept apart)
@@ -556,6 +558,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_fact_ledger.py"
           python3 "$REPO/skill/scripts/check_rule_consult_command.py"
           python3 "$REPO/skill/scripts/check_rules_index_integrity.py"
+          python3 "$REPO/skill/scripts/check_source_semantic_bindings.py"
           python3 "$REPO/skill/scripts/check_judge_corpus.py"
           python3 "$REPO/skill/scripts/check_deck_coach_corpus.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"

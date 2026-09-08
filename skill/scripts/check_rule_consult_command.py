@@ -38,6 +38,7 @@ import fact_ledger
 import legal_action
 import rule_consult_command as rcc
 import rule_consult_command as rcc_module
+import source_semantic_bindings as ssb
 import state_builder
 import verify_evidence_pack as evidence
 from rule_consult_command import (
@@ -102,7 +103,21 @@ def main() -> int:
     effect_state = state_builder.build_state_assumption(
         question="probe", question_kind="unit_damage", draft=effect_draft)["state"]
     substitutions = {**programs(), "@observation": observation(timing_state, effect_state)}
-    context = {"source_retriever": retriever, "card_snapshots": snapshots}
+    # T-02: the readings the fixture text admits. Bound to the fixture table's
+    # own hashes, so a claim that pairs legal values the text does not say, or
+    # reads text whose hash moved, has nothing to bind to.
+    fixture_record = lambda loc: payload["sources"]["table"][loc]["record"]  # noqa: E731
+    registry = ssb.BindingRegistry({"schema_version": ssb.SCHEMA_VERSION, "bindings": [
+        {**fixture_record("Core 312"), "template": "rule_role_holder",
+         "slots": {"locator": "Core 312", "occasion": "when_showdown_begins", "role": "focus",
+                   "holder": "applied_contested"}},
+        {**fixture_record("Core 312"), "template": "rule_event_consequence",
+         "slots": {"locator": "Core 312", "event": "a_chain_item_is_finalized",
+                   "consequence": "priority_is_not_passed"}},
+        {**fixture_record("Core 312"), "template": "rule_point_source",
+         "slots": {"locator": "Core 312", "source": "holding_a_battlefield"}},
+    ]})
+    context = {"source_retriever": retriever, "card_snapshots": snapshots, "semantic_bindings": registry}
 
     def resolve(value):
         if isinstance(value, str) and value.startswith("@"):
@@ -573,12 +588,14 @@ def main() -> int:
     # number written as a word, and a relation given a number it does not take
     # are each refused by name; a family claim answers at tier B and renders
     # the sentence its lexicons say.
-    families = {"rule_action_permission", "rule_role_holder", "rule_step_order", "rule_quantity"}
+    families = {"rule_action_permission", "rule_role_holder", "rule_step_order", "rule_quantity",
+                "rule_event_consequence", "rule_point_source"}
     if missing_families := sorted(families - set(CLAIM_TEMPLATES)):
         failures.append(f"the approved rule families are missing: {missing_families}")
     for absorbed in ("rule_focus_on_showdown_start", "rule_focus_retained_on_pass",
                      "rule_no_priority_no_discretionary", "rule_limited_actions_regardless_of_priority",
-                     "rule_no_focus_in_neutral_state", "rule_newest_item_resolves"):
+                     "rule_no_focus_in_neutral_state", "rule_newest_item_resolves",
+                     "rule_finalizing_does_not_pass_priority"):
         if absorbed in CLAIM_TEMPLATES:
             failures.append(f"{absorbed} was absorbed by a family and must not survive beside it")
 
@@ -640,7 +657,72 @@ def main() -> int:
         if refused["not_attempted_reason"] != "claim_binding_invalid" or expected not in refused["detail"]:
             failures.append(f"{label} must be refused as claim_binding_invalid ({expected!r}); got "
                             f"{refused['status']}/{refused['not_attempted_reason']}: {refused['detail'][:120]}")
+
+    # --- T-02: semantic binding ----------------------------------------------
+    # Legal values in every slot, and still refused: the registry never
+    # recorded this reading of this text. Then the same reading against text
+    # whose hash moved, a T-01 family with the wrong slot pairing, a locator
+    # that was not retrieved, and a run with no registry at all.
+    event_ok = {"template": "rule_event_consequence",
+                "slots": {"locator": "Core 312", "event": "a_chain_item_is_finalized",
+                          "consequence": "priority_is_not_passed"}}
+    good_event = family_run(event_ok)
+    if good_event["status"] != "answered" or good_event["tier"] != "B":
+        failures.append(f"a registered event reading must answer at tier B; got "
+                        f"{good_event['status']}/{good_event['not_attempted_reason']}: {good_event['detail'][:120]}")
+    elif good_event["claims"][0]["text"] != "Under Core 312, when a Chain Item is finalized, Priority is not passed.":
+        failures.append(f"the event family renders its lexicons; got {good_event['claims'][0]['text']!r}")
+    if verify_run(good_event, **context):
+        failures.append("a registered reading must verify against the registry it was bound on")
+
+    semantic_refusals = [
+        ("legal event and legal consequence the text does not pair",
+         {"template": "rule_event_consequence",
+          "slots": {"locator": "Core 312", "event": "a_player_wins",
+                    "consequence": "priority_is_not_passed"}}, context,
+         "not a registered reading"),
+        ("a T-01 family with the wrong slot pairing for its locator",
+         {"template": "rule_role_holder",
+          "slots": {"locator": "Core 312", "occasion": "when_showdown_begins", "role": "focus",
+                    "holder": "the_attacker"}}, context,
+         "not a registered reading"),
+        ("a registered reading of a locator the retriever does not have",
+         {"template": "rule_event_consequence",
+          "slots": {"locator": "Core 999", "event": "a_chain_item_is_finalized",
+                    "consequence": "priority_is_not_passed"}}, context,
+         "was not retrieved"),
+        ("a rule claim in a run with no registry",
+         event_ok, {**context, "semantic_bindings": None},
+         "no semantic-binding registry"),
+    ]
+    moved_table = copy.deepcopy(payload["sources"]["table"])
+    moved_table["Core 312"]["record"]["text_hash"] = "sha256:" + "e" * 64
+    moved = TableRetriever(moved_table, payload["sources"]["surfaced"])
+    semantic_refusals.append(
+        ("the registered reading, against the same locator whose text hash moved",
+         event_ok, {**context, "source_retriever": moved}, "not a registered reading"))
+    versioned_table = copy.deepcopy(payload["sources"]["table"])
+    versioned_table["Core 312"]["record"]["document_version"] = "2027-01-01"
+    versioned = TableRetriever(versioned_table, payload["sources"]["surfaced"])
+    semantic_refusals.append(
+        ("the registered reading, against a later document version",
+         event_ok, {**context, "source_retriever": versioned}, "not a registered reading"))
+    for label, binding, ctx, expected in semantic_refusals:
+        refused = run_consultation(
+            question="What does the rule say?", entry="timing", draft=timing_draft,
+            entry_inputs={"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell",
+                                     "timing": "default"}},
+            claims=[binding], **ctx)
+        if refused["not_attempted_reason"] != "claim_binding_invalid" or expected not in refused["detail"]:
+            failures.append(f"{label} must be refused as claim_binding_invalid ({expected!r}); got "
+                            f"{refused['status']}/{refused['not_attempted_reason']}: {refused['detail'][:140]}")
+    # A run bound on one registry does not verify against a context whose
+    # text moved: verification re-runs, and the reading no longer binds.
+    if not verify_run(good_event, **{**context, "source_retriever": moved}):
+        failures.append("a rule claim must fail verification once its locator's text hash moved")
     for name, table in (("RULE_ACTORS", rcc_module.RULE_ACTORS), ("RULE_CONDITIONS", rcc_module.RULE_CONDITIONS),
+                        ("RULE_EVENTS", rcc_module.RULE_EVENTS), ("RULE_CONSEQUENCES", rcc_module.RULE_CONSEQUENCES),
+                        ("RULE_POINT_SOURCES", rcc_module.RULE_POINT_SOURCES),
                         ("RULE_OCCASIONS", rcc_module.RULE_OCCASIONS), ("RULE_ROLES", rcc_module.RULE_ROLES),
                         ("RULE_HOLDERS", rcc_module.RULE_HOLDERS), ("RULE_STEPS", rcc_module.RULE_STEPS),
                         ("RULE_QUANTITIES", rcc_module.RULE_QUANTITIES)):
@@ -673,7 +755,8 @@ def main() -> int:
     print(f"evidence packs re-run: {sorted(reproduced)}")
     print(f"structural mutations refused: {len(mutations) + 1}; "
           f"forgeries refused by verify_run: {forgeries}; "
-          f"rule-family bindings refused: {len(family_refusals)}")
+          f"rule-family bindings refused: {len(family_refusals)}; "
+          f"semantic bindings refused: {len(semantic_refusals)}")
     return 0
 
 

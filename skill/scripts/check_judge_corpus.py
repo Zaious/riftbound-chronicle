@@ -55,11 +55,14 @@ def main() -> int:
         failures.append(f"the shipped corpus does not validate: {problems}")
 
     coverage = corpus_coverage(corpus)
-    # The point of this package is the contract. A corpus that reported itself
-    # complete on seven questions would be the exact failure the delivery
-    # discipline names: a batch declared finished.
-    if coverage["complete"]:
-        failures.append("the shipped corpus reports itself complete; it is seven exemplars")
+    # The corpus met every quota on 2026-09-09. The coverage report must say
+    # so from the counts, and must not say so if a family falls short again:
+    # completeness is read off the quotas, never declared.
+    if coverage["complete"] != (coverage["total_missing"] == 0):
+        failures.append("the coverage report's completeness disagrees with its own shortfall")
+    if not coverage["complete"]:
+        short = {n: r for n, r in coverage["families"].items() if r["missing"]}
+        failures.append(f"the shipped corpus is short of quota: {short}")
     if coverage["total_required"] != 60:
         failures.append(f"the quotas must sum to 60; they sum to {coverage['total_required']}")
     if coverage["total_present"] != len(corpus["questions"]):

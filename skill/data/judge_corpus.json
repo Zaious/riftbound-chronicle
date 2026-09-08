@@ -62,17 +62,25 @@
       "family": "turn_structure_endgame",
       "language": "en",
       "question": "My deck is empty and I am about to draw. What happens, and when does the game end?",
-      "expected_tier": "C",
-      "locators": [],
-      "abstention_contract": "engine_check_did_not_decide",
+      "expected_tier": "A",
+      "locators": [
+        "Core 431.2",
+        "Core 194.1.d"
+      ],
+      "abstention_contract": null,
       "consultation_entry": "effect",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "Exemplar, and a real boundary rather than an invented one: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry, so the engine declines and the answer must abstain with that named reason.",
+      "notes": "Exemplar, and a real boundary rather than an invented one: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry, so the engine declines and the answer must abstain with that named reason. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement.",
       "expected_answer_contract": {
-        "answer_scope": "explicit_abstention",
-        "required_templates": [],
-        "required_source_locators": [],
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "effect_program_applies"
+        ],
+        "required_source_locators": [
+          "Core 431.2",
+          "Core 194.1.d"
+        ],
         "forbidden_claim_classes": [],
         "template_coverage_debt": []
       },
@@ -525,15 +533,11 @@
         "forbidden_claim_classes": [],
         "template_coverage_debt": []
       },
-      "correction_record": {
-        "observed": "Run 2026-09-09: the contract expects the scoring step to complete at tier A; the control kernel returned unsupported / mode_unknown — 'the Mode of Play (Victory Score) is not in the state; scoring needs it (456.3, 471.1)'. With the phase set to main instead, the kernel refuses correctly with scoring_step_requires_beginning_phase, so the Beginning Phase draft is right.",
-        "decided": "The engine is right to decline, and the contract stays at A: the rules say the step completes, and rewriting the contract to expect an abstention would hide that the service cannot yet answer a scoring question.",
-        "follow_up": "The minimum state builder has no slot for the Mode of Play, so no Victory Score is in the state and the control kernel declines (mode_unknown, citing Core 456.3). The same absence is what makes the engine decline every Burn Out question. This is a state-builder coverage gap the corpus has now hit from two families; it belongs to a state-builder package, not to S-04."
-      },
+      "correction_record": null,
       "zh_hant": {
         "question": "我的開始階段，我控制一個對手沒有單位的戰場。計分步驟會完成並讓我 Hold 它嗎？"
       },
-      "notes": "315.2.b.2 makes Holding every controlled Battlefield the scoring step's task; 469.2 defines Hold as control maintained through the Beginning Phase."
+      "notes": "315.2.b.2 makes Holding every controlled Battlefield the scoring step's task; 469.2 defines Hold as control maintained through the Beginning Phase. Run again 2026-09-09 over a scored_board (duel, Victory Score 8, p1 at 7, p2 at 3): the control kernel now rules where it previously declined with mode_unknown."
     },
     {
       "question_id": "JC-CS-002",
@@ -558,13 +562,9 @@
         "forbidden_claim_classes": [],
         "template_coverage_debt": []
       },
-      "correction_record": {
-        "observed": "Run 2026-09-09: the contract expects the victory facts to be determined at tier A; the control kernel returned unsupported / mode_unknown — 'the victory facts need the Mode of Play and no teams' (456.3, 472).",
-        "decided": "Same as JC-CS-001: the engine is right to decline, the contract stays at A, and the gap is recorded rather than papered over.",
-        "follow_up": "The minimum state builder has no slot for the Mode of Play, so no Victory Score is in the state and the control kernel declines (mode_unknown, citing Core 456.3). The same absence is what makes the engine decline every Burn Out question. This is a state-builder coverage gap the corpus has now hit from two families; it belongs to a state-builder package, not to S-04."
-      },
+      "correction_record": null,
       "zh_hant": null,
-      "notes": "472: at a cleanup a player with points at or above the Victory Score and more than any opponent wins. The control step that reads those facts is the claim."
+      "notes": "472: at a cleanup a player with points at or above the Victory Score and more than any opponent wins. The control step that reads those facts is the claim. Run again 2026-09-09 over a scored_board (duel, Victory Score 8, p1 at 7, p2 at 3): the control kernel now rules where it previously declined with mode_unknown."
     },
     {
       "question_id": "JC-CS-003",
@@ -730,63 +730,83 @@
       "family": "turn_structure_endgame",
       "language": "en",
       "question": "My deck is empty during my Draw Phase. Do I still draw after Burning Out?",
-      "expected_tier": "C",
-      "locators": [],
-      "abstention_contract": "engine_check_did_not_decide",
+      "expected_tier": "A",
+      "locators": [
+        "Core 315.4.b.1",
+        "Core 315.4.b.2"
+      ],
+      "abstention_contract": null,
       "consultation_entry": "effect",
       "bounded_note": null,
       "expected_answer_contract": {
-        "answer_scope": "explicit_abstention",
-        "required_templates": [],
-        "required_source_locators": [],
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "effect_program_applies"
+        ],
+        "required_source_locators": [
+          "Core 315.4.b.1",
+          "Core 315.4.b.2"
+        ],
         "forbidden_claim_classes": [],
         "template_coverage_debt": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "315.4.b.1-2: the Turn Player has Burned Out and, after completing it, still Draws 1. The engine declines: a repeated Burn Out needs the Mode of Play's Victory Score, which the minimum state does not carry. A real boundary, expected to abstain."
+      "notes": "315.4.b.1-2: the Turn Player has Burned Out and, after completing it, still Draws 1. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement."
     },
     {
       "question_id": "JC-TSE-002",
       "family": "turn_structure_endgame",
       "language": "en",
       "question": "An effect tells me to draw two with one card left in my deck. What happens?",
-      "expected_tier": "C",
-      "locators": [],
-      "abstention_contract": "engine_check_did_not_decide",
+      "expected_tier": "A",
+      "locators": [
+        "Core 431.1.a"
+      ],
+      "abstention_contract": null,
       "consultation_entry": "effect",
       "bounded_note": null,
       "expected_answer_contract": {
-        "answer_scope": "explicit_abstention",
-        "required_templates": [],
-        "required_source_locators": [],
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "effect_program_applies"
+        ],
+        "required_source_locators": [
+          "Core 431.1.a"
+        ],
         "forbidden_claim_classes": [],
         "template_coverage_debt": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "431.1.a: draw as many as possible, Burn Out, then draw the remaining amount. Same boundary as JC-TSE-001; the engine declines rather than ruling."
+      "notes": "431.1.a: draw as many as possible, Burn Out, then draw the remaining amount. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement."
     },
     {
       "question_id": "JC-TSE-003",
       "family": "turn_structure_endgame",
       "language": "en",
       "question": "I Burn Out twice in one turn. Does my opponent gain a point each time?",
-      "expected_tier": "C",
-      "locators": [],
-      "abstention_contract": "engine_check_did_not_decide",
+      "expected_tier": "A",
+      "locators": [
+        "Core 431.2.c"
+      ],
+      "abstention_contract": null,
       "consultation_entry": "effect",
       "bounded_note": null,
       "expected_answer_contract": {
-        "answer_scope": "explicit_abstention",
-        "required_templates": [],
-        "required_source_locators": [],
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "effect_program_applies"
+        ],
+        "required_source_locators": [
+          "Core 431.2.c"
+        ],
         "forbidden_claim_classes": [],
         "template_coverage_debt": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "431.2.c: to Burn Out, the player chooses an opponent to gain 1 point. The engine declines the repeated Burn Out without a Victory Score; expected to abstain."
+      "notes": "431.2.c: to Burn Out, the player chooses an opponent to gain 1 point. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement."
     },
     {
       "question_id": "JC-TSE-004",
@@ -1444,6 +1464,267 @@
       "correction_record": null,
       "zh_hant": null,
       "notes": "Declined by policy: tournament procedure and penalties are not the service's to rule on, and this abstention is a decision rather than a mechanism running out."
+    },
+    {
+      "question_id": "JC-CB-001",
+      "family": "combat",
+      "language": "en",
+      "question": "The defender has a unit with Tank and a unit without; my attacker's Might equals the Tank unit's lethal damage exactly. Where does my damage go?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 465.2.c.6",
+        "Core 815.1.b"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "combat_step_completes"
+        ],
+        "required_source_locators": [
+          "Core 465.2.c.6",
+          "Core 815.1.b"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "465.2.c.6 with 815.1.b: lethal damage goes to the Tank unit first, and with nothing left over the assignment is forced, so the step completes without a choice."
+    },
+    {
+      "question_id": "JC-CB-002",
+      "family": "combat",
+      "language": "en",
+      "question": "The defending unit is Stunned when the Combat Showdown closes. Does it contribute Combat Damage?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "state_not_built",
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "423.1.b says a Stunned unit contributes nothing, and the assign path reads that flag. The minimum state cannot state it: under DP-94 a Stun travels with the turn effect that expires it, and S-01b was scoped to the assign path's Combat context, not to turn effects. The draft is refused by name and the question stops here. Coverage debt: a stunned slot for the state builder, owned with turn effects."
+    },
+    {
+      "question_id": "JC-CB-003",
+      "family": "combat",
+      "language": "en",
+      "question": "My attacker is at the Battlefield but every defending unit has already left it. Is Combat Damage assigned?",
+      "expected_tier": "A",
+      "locators": [
+        "Core 465.1"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "full_position_conclusion",
+        "required_templates": [
+          "combat_step_completes"
+        ],
+        "required_source_locators": [
+          "Core 465.1"
+        ],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "465.1: the damage tasks arise only if both Attacking and Defending units remain. With no defender the step is skipped, and the kernel commits that as its verdict."
+    },
+    {
+      "question_id": "JC-CB-004",
+      "family": "combat",
+      "language": "en",
+      "question": "Three of us have units at one Battlefield. Can a three-way Combat happen?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 462",
+        "Core 462.3"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_combat_between_exactly_two_players"
+        ],
+        "required_source_locators": [
+          "Core 462",
+          "Core 462.3"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_combat_between_exactly_two_players"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "462: Combat only between units controlled by exactly two players; 462.3: choices that would produce a Combat among more are invalid. Declared as debt."
+    },
+    {
+      "question_id": "JC-CB-005",
+      "family": "combat",
+      "language": "en",
+      "question": "When Combat opens, which player is the Attacker?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 464.2.c.1",
+        "Core 464.2.c.2"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_attacker_is_who_applied_contested"
+        ],
+        "required_source_locators": [
+          "Core 464.2.c.1",
+          "Core 464.2.c.2"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_attacker_is_who_applied_contested"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "464.2.c.1: the Attacker is the player whose units applied Contested; 464.2.c.2: the Defender is the other. Declared as debt."
+    },
+    {
+      "question_id": "JC-CB-006",
+      "family": "combat",
+      "language": "en",
+      "question": "Does the Attacker gain Focus when Combat opens?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 464.2.d"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_attacker_gains_focus_at_combat_open"
+        ],
+        "required_source_locators": [
+          "Core 464.2.d"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_attacker_gains_focus_at_combat_open"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "464.2.d: the Attacker gains Focus. A different rule from Core 345 (Focus as a Showdown begins), so the existing Showdown template is not reused. Declared as debt."
+    },
+    {
+      "question_id": "JC-CB-007",
+      "family": "combat",
+      "language": "en",
+      "question": "I assigned damage to a unit. Has that damage been dealt yet?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 465.2.c.1",
+        "Core 465.2.c.1.a"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_assigning_is_not_dealing"
+        ],
+        "required_source_locators": [
+          "Core 465.2.c.1",
+          "Core 465.2.c.1.a"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_assigning_is_not_dealing"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "465.2.c.1: assigning is not dealing; 465.2.c.1.a: once all damage is assigned it is dealt simultaneously. Declared as debt."
+    },
+    {
+      "question_id": "JC-CB-008",
+      "family": "combat",
+      "language": "en",
+      "question": "I have 5 damage to assign among four 3-Might units. May I spread it 2-1-1-1?",
+      "expected_tier": "B",
+      "locators": [
+        "Core 465.2.c.3",
+        "Core 465.2.c.4"
+      ],
+      "abstention_contract": null,
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "conditional_rule_explanation",
+        "required_templates": [
+          "rule_lethal_in_full_before_another"
+        ],
+        "required_source_locators": [
+          "Core 465.2.c.3",
+          "Core 465.2.c.4"
+        ],
+        "forbidden_claim_classes": [
+          "position_conclusion"
+        ],
+        "template_coverage_debt": [
+          "rule_lethal_in_full_before_another"
+        ]
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "465.2.c.3 with its own example: lethal in full to one unit before any to another; 465.2.c.4: no more than the minimum lethal while units remain. Declared as debt."
+    },
+    {
+      "question_id": "JC-CB-009",
+      "family": "combat",
+      "language": "en",
+      "question": "My attacker has 5 Might against two 2-Might defenders. Where does the fifth point go?",
+      "expected_tier": "C",
+      "locators": [],
+      "abstention_contract": "claim_binding_invalid",
+      "consultation_entry": "combat_step",
+      "bounded_note": null,
+      "expected_answer_contract": {
+        "answer_scope": "explicit_abstention",
+        "required_templates": [],
+        "required_source_locators": [],
+        "forbidden_claim_classes": [],
+        "template_coverage_debt": []
+      },
+      "correction_record": null,
+      "zh_hant": null,
+      "notes": "465.2.c.4: once both defenders have lethal assigned, the remaining point may go to either — that is the assigning player's choice. The engine returns decision_required rather than a verdict, and the service must not choose for the player, so no position conclusion binds and the run abstains by name."
     }
   ]
 }

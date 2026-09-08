@@ -451,6 +451,159 @@
         "locator": "Core 815.2",
         "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000032"
       }
+    },
+    "Core 194.1.d": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 194.1.d",
+        "text_hash": "sha256:00000000000000000000000000000000000000000000000000000000000001f6"
+      }
+    },
+    "Core 315.4.b.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 315.4.b.1",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000209"
+      }
+    },
+    "Core 315.4.b.2": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 315.4.b.2",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000020a"
+      }
+    },
+    "Core 431.1.a": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 431.1.a",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021a"
+      }
+    },
+    "Core 431.2": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 431.2",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021b"
+      }
+    },
+    "Core 431.2.c": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 431.2.c",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021c"
+      }
+    },
+    "Core 462": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 462",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021d"
+      }
+    },
+    "Core 462.3": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 462.3",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021e"
+      }
+    },
+    "Core 464.2.c.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 464.2.c.1",
+        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021f"
+      }
+    },
+    "Core 464.2.c.2": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 464.2.c.2",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000220"
+      }
+    },
+    "Core 464.2.d": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 464.2.d",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000221"
+      }
+    },
+    "Core 465.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 465.1",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000222"
+      }
+    },
+    "Core 465.2.c.1": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 465.2.c.1",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000223"
+      }
+    },
+    "Core 465.2.c.1.a": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 465.2.c.1.a",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000224"
+      }
+    },
+    "Core 465.2.c.3": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 465.2.c.3",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000225"
+      }
+    },
+    "Core 465.2.c.4": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 465.2.c.4",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000226"
+      }
+    },
+    "Core 465.2.c.6": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 465.2.c.6",
+        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000227"
+      }
     }
   },
   "runs": {
@@ -982,6 +1135,15 @@
           "p1",
           "p2"
         ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 0,
+          "p2": 0
+        },
         "units": [
           {
             "object_id": "u1",
@@ -1021,8 +1183,21 @@
         {
           "template": "effect_program_applies",
           "slots": {}
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 431.2"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.1.d"
+          }
         }
-      ]
+      ],
+      "effect_question_kind": "scored_board"
     },
     "JC-EX-ACTIONS-1": {
       "entry": "legal_action",
@@ -1088,6 +1263,15 @@
           "p1",
           "p2"
         ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 7,
+          "p2": 3
+        },
         "units": [
           {
             "object_id": "u1",
@@ -1118,8 +1302,15 @@
           "slots": {
             "locator": "Core 315.2.b.2"
           }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 469.2"
+          }
         }
-      ]
+      ],
+      "effect_question_kind": "scored_board"
     },
     "JC-CS-002": {
       "entry": "control_step",
@@ -1137,6 +1328,15 @@
           "p1",
           "p2"
         ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 7,
+          "p2": 3
+        },
         "units": [
           {
             "object_id": "u1",
@@ -1168,7 +1368,8 @@
             "locator": "Core 472"
           }
         }
-      ]
+      ],
+      "effect_question_kind": "scored_board"
     },
     "JC-CS-003": {
       "entry": "timing",
@@ -1326,6 +1527,15 @@
           "p1",
           "p2"
         ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 0,
+          "p2": 0
+        },
         "units": [
           {
             "object_id": "u1",
@@ -1361,8 +1571,21 @@
         {
           "template": "effect_program_applies",
           "slots": {}
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 315.4.b.1"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 315.4.b.2"
+          }
         }
-      ]
+      ],
+      "effect_question_kind": "scored_board"
     },
     "JC-TSE-002": {
       "entry": "effect",
@@ -1380,6 +1603,15 @@
           "p1",
           "p2"
         ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 0,
+          "p2": 0
+        },
         "units": [
           {
             "object_id": "u1",
@@ -1415,8 +1647,15 @@
         {
           "template": "effect_program_applies",
           "slots": {}
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 431.1.a"
+          }
         }
-      ]
+      ],
+      "effect_question_kind": "scored_board"
     },
     "JC-TSE-003": {
       "entry": "effect",
@@ -1434,6 +1673,15 @@
           "p1",
           "p2"
         ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 0,
+          "p2": 0
+        },
         "units": [
           {
             "object_id": "u1",
@@ -1474,8 +1722,15 @@
         {
           "template": "effect_program_applies",
           "slots": {}
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 431.2.c"
+          }
         }
-      ]
+      ],
+      "effect_question_kind": "scored_board"
     },
     "JC-TSE-004": {
       "entry": "timing",
@@ -2044,6 +2299,716 @@
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 814.1.d.1"
+          }
+        }
+      ]
+    },
+    "JC-CB-001": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 2,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "keywords": [
+              "tank"
+            ]
+          },
+          {
+            "object_id": "u3",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          },
+          {
+            "object_id": "u3",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "combat_step_completes",
+          "slots": {
+            "step": "assign"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 465.2.c.6"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 815.1.b"
+          }
+        }
+      ]
+    },
+    "JC-CB-002": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "combat_step_completes",
+          "slots": {
+            "step": "assign"
+          }
+        }
+      ]
+    },
+    "JC-CB-003": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "combat_step_completes",
+          "slots": {
+            "step": "assign"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 465.1"
+          }
+        }
+      ]
+    },
+    "JC-CB-004": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 462"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 462.3"
+          }
+        }
+      ]
+    },
+    "JC-CB-005": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 464.2.c.1"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 464.2.c.2"
+          }
+        }
+      ]
+    },
+    "JC-CB-006": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 464.2.d"
+          }
+        }
+      ]
+    },
+    "JC-CB-007": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 465.2.c.1"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 465.2.c.1.a"
+          }
+        }
+      ]
+    },
+    "JC-CB-008": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 465.2.c.3"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 465.2.c.4"
+          }
+        }
+      ]
+    },
+    "JC-CB-009": {
+      "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "turn_player": "p1",
+        "phase": "main",
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
+      },
+      "effect_draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 5,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u3",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          },
+          {
+            "object_id": "u3",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "entry_inputs": {
+        "step": "assign"
+      },
+      "claims": [
+        {
+          "template": "combat_step_completes",
+          "slots": {
+            "step": "assign"
           }
         }
       ]

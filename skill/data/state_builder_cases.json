@@ -1347,6 +1347,472 @@
           "mode"
         ]
       }
+    },
+    {
+      "case_id": "SB-046",
+      "question": "The defender is Stunned. Does it contribute Combat Damage?",
+      "question_kind": "stunned_combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ],
+        "turn_effects": [
+          {
+            "kind": "stunned_unit",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          }
+        ],
+        "turn_id": "turn-1"
+      },
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "energy",
+          "power"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-047",
+      "question": "The defender is Stunned. Does it contribute Combat Damage?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "turn_effects"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-048",
+      "question": "The defender is Stunned; which turn is it?",
+      "question_kind": "stunned_combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ],
+        "turn_effects": [
+          {
+            "kind": "stunned_unit",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "turn_id"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-049",
+      "question": "A turn effect says a unit is Stunned; the unit is not.",
+      "question_kind": "stunned_combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": false
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ],
+        "turn_effects": [
+          {
+            "kind": "stunned_unit",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          }
+        ],
+        "turn_id": "turn-1"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "turn_effects[0].object_id"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-050",
+      "question": "A turn effect names a unit that is not in play.",
+      "question_kind": "stunned_combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ],
+        "turn_effects": [
+          {
+            "kind": "stunned_unit",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          },
+          {
+            "kind": "stunned_unit",
+            "object_id": "u9",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          }
+        ],
+        "turn_id": "turn-1"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "turn_effects[1].object_id"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-051",
+      "question": "The Stun is from last turn.",
+      "question_kind": "stunned_combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ],
+        "turn_effects": [
+          {
+            "kind": "stunned_unit",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-0"
+          }
+        ],
+        "turn_id": "turn-1"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "turn_effects[0].turn_id"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-052",
+      "question": "A Stunned unit takes 2 damage.",
+      "question_kind": "unit_damage",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "turn_effects": [
+          {
+            "kind": "stunned_unit",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          }
+        ],
+        "turn_id": "turn-1"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "C",
+        "reason": "slot_not_in_question_kind",
+        "rejected_fields": [
+          "turn_effects",
+          "turn_id"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-053",
+      "question": "A played unit enters exhausted this turn.",
+      "question_kind": "stunned_combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1",
+            "stunned": true
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ],
+        "turn_effects": [
+          {
+            "kind": "entry_state_for_played_units",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          }
+        ],
+        "turn_id": "turn-1"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "turn_effects"
+        ]
+      }
     }
   ]
 }

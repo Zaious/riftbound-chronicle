@@ -154,7 +154,8 @@ def _check_units(value: Any) -> str | None:
         label = f"units[{index}]"
         if not isinstance(entry, dict):
             return f"{label} must be an object"
-        unknown = set(entry) - {"object_id", "controller", "might", "damage", "exhausted", "location", "keywords"}
+        unknown = set(entry) - {"object_id", "controller", "might", "damage", "exhausted", "location", "keywords",
+                                "stunned"}
         if unknown:
             return f"{label} carries fields outside the vocabulary: {sorted(unknown)}"
         missing = {"object_id", "controller"} - set(entry)
@@ -172,6 +173,8 @@ def _check_units(value: Any) -> str | None:
             return f"{label}.exhausted must be true or false"
         if "location" in entry and not _is_id(entry["location"]):
             return f"{label}.location must be 'base' or a battlefield id"
+        if "stunned" in entry and not isinstance(entry["stunned"], bool):
+            return f"{label}.stunned must be true or false (Core 423.1.a)"
         if "keywords" in entry:
             keywords = entry["keywords"]
             if not isinstance(keywords, list) or any(k not in UNIT_KEYWORDS for k in keywords) \
@@ -243,6 +246,36 @@ def _check_mode(value: Any) -> str | None:
     if not isinstance(value["teams"], bool):
         return "mode.teams must be true or false"
     return None
+
+
+def _check_turn_effects(value: Any) -> str | None:
+    """The turn effects a draft states. S-01d carries one kind: the effect that
+    owns a Stun's lifetime (DP-94, Core 423.2). Its fields are the kernel's:
+    the unit, the controller, and the turn it expires with."""
+    if not isinstance(value, list):
+        return "turn_effects must be an array"
+    fields = {"kind", "object_id", "controller", "turn_id"}
+    seen: set[str] = set()
+    for index, entry in enumerate(value):
+        label = f"turn_effects[{index}]"
+        if not isinstance(entry, dict):
+            return f"{label} must be an object"
+        if unknown := set(entry) - fields:
+            return f"{label} carries fields outside the vocabulary: {sorted(unknown)}"
+        if missing := fields - set(entry):
+            return f"{label} is missing {sorted(missing)}"
+        if entry["kind"] != "stunned_unit":
+            return f"{label}.kind must be 'stunned_unit'; the minimum state carries no other turn effect"
+        if not _is_id(entry["object_id"]) or entry["object_id"] in seen:
+            return f"{label}.object_id must be a unit id, once"
+        seen.add(entry["object_id"])
+        if not _is_id(entry["controller"]) or not _is_id(entry["turn_id"]):
+            return f"{label}.controller and .turn_id must be non-empty ids"
+    return None
+
+
+def _check_turn_id(value: Any) -> str | None:
+    return None if _is_id(value) else "turn_id must be a non-empty id"
 
 
 def _check_points(value: Any) -> str | None:
@@ -342,13 +375,20 @@ SLOTS: dict[str, dict[str, Any]] = {
                                f"{v['victory_score']}; it is not a team mode."},
     "points": {"check": _check_points, "family": "effect", "default": None, "material": True,
                "text": lambda v: "Points: " + ", ".join(f"{p}={n}" for p, n in sorted(v.items())) + "."},
+    # S-01d. No default on either. A Stun that was not stated is not in force;
+    # the turn a position is in is not guessable, and it is what a Stun
+    # expires with.
+    "turn_effects": {"check": _check_turn_effects, "family": "effect", "default": None, "material": True,
+                     "text": lambda v: f"{len(v)} turn effect(s) are in force."},
+    "turn_id": {"check": _check_turn_id, "family": "effect", "default": None, "material": True,
+                "text": lambda v: f"The current turn is {v}."},
 }
 
 # Slots that are never assumed. A kind that names one must require it; the
 # builder refuses to default one, and the gate checks no kind lists one as
 # optional. Codex's S-01b rule, made mechanical: a Combat that was not stated
 # is not a Combat, and units that were not designated do not fight.
-UNDEFAULTABLE = frozenset({"combat", "combat_designations", "mode", "points"})
+UNDEFAULTABLE = frozenset({"combat", "combat_designations", "mode", "points", "turn_effects", "turn_id"})
 
 # Slots whose default is computed from the players list rather than fixed.
 PLAYER_KEYED_DEFAULTS = {"energy": lambda players: {p: 0 for p in players},
@@ -395,6 +435,13 @@ QUESTION_KINDS: dict[str, dict[str, Any]] = {
         "required": {"players", "units", "battlefields", "combat_designations"},
         "optional": {"energy", "power"},
     },
+    # S-01d. A Combat board on which a unit is Stunned: the Stun and the turn
+    # effect that owns it, both stated, and the turn the position is in.
+    "stunned_combat_board": {
+        "family": "effect",
+        "required": {"players", "units", "battlefields", "combat_designations", "turn_effects", "turn_id"},
+        "optional": {"energy", "power"},
+    },
     # S-01c. The board a scoring, victory or Burn Out question runs over: the
     # Mode of Play and every player's points, both stated. Units and
     # Battlefields keep their usual defaults, listed as assumptions.
@@ -423,6 +470,7 @@ DERIVED_SLOTS = {
     "combat_participants": "The Combat's participants are its attacker and its defender.",
     "combat_battlefield_identity": "The Combat Battlefield is at its first generation.",
     "combat_triggered_identities": "No Attack or Defend trigger has fired in this Combat yet.",
+    "turn_effect_ids": "Each turn effect is identified the way the kernel names it: kind, unit and turn.",
     "showdown_at_combat_battlefield": "The open Showdown is the Combat Showdown at the Combat's Battlefield.",
 }
 
@@ -524,6 +572,8 @@ def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
         }
         if unit.get("keywords"):
             objects[object_id]["keywords"] = list(unit["keywords"])
+        if unit.get("stunned"):
+            objects[object_id]["stunned"] = True
         location = unit.get("location", "base")
         if location == "base":
             base[controller].append(object_id)
@@ -553,6 +603,15 @@ def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
     if points is not None:
         for player in players:
             state["players"][player]["points"] = points[player]
+    if values.get("turn_id") is not None:
+        state["turn_id"] = values["turn_id"]
+    effects = values.get("turn_effects")
+    if effects is not None:
+        # Exactly the entry the kernel writes when it Stuns (DP-94); the id is
+        # the kernel's own naming, derived, and listed as such.
+        state["turn_effects"] = [{"effect_id": f"stunned:{e['object_id']}:{e['turn_id']}", "kind": e["kind"],
+                                  "controller": e["controller"], "turn_id": e["turn_id"],
+                                  "object_id": e["object_id"]} for e in effects]
     return state
 
 
@@ -581,6 +640,9 @@ def _derived_for(family: str, values: dict[str, Any]) -> list[dict[str, Any]]:
             ("empty_zones", None),
             ("replacement_effects", []),
         ]
+        if values.get("turn_effects"):
+            entries.append(("turn_effect_ids",
+                            [f"stunned:{e['object_id']}:{e['turn_id']}" for e in values["turn_effects"]]))
     return [{"slot": name, "origin": "derived", "value": value, "material": True,
              "text": DERIVED_SLOTS[name]} for name, value in entries]
 
@@ -689,6 +751,31 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
             out_of_scope.append("combat_designations")
             scope_details.append("combat_designations name more than one Combat; a board carries one")
     if family == "effect":
+        # S-01d. A Stunned unit and the turn effect that expires it travel
+        # together (Core 423.2, 317.2.d). The status without the effect is a
+        # fact with its end left out, named as missing; the effect without
+        # the status, or for a unit not in play, or from another turn, is
+        # out of scope rather than reconciled.
+        units_by_id = {unit["object_id"]: unit for unit in draft.get("units", []) or []}
+        effects = draft.get("turn_effects")
+        owned = {entry["object_id"] for entry in (effects or [])}
+        if any(unit.get("stunned") and unit["object_id"] not in owned for unit in units_by_id.values()):
+            conditional_missing.append("turn_effects")
+        for index, entry in enumerate(effects or []):
+            unit = units_by_id.get(entry["object_id"])
+            if unit is None:
+                out_of_scope.append(f"turn_effects[{index}].object_id")
+                scope_details.append(f"turn_effects[{index}] names {entry['object_id']!r}, which is not one of the units")
+            elif not unit.get("stunned"):
+                out_of_scope.append(f"turn_effects[{index}].object_id")
+                scope_details.append(f"turn_effects[{index}] says {entry['object_id']!r} is Stunned; the unit does not")
+            if entry["controller"] not in players:
+                out_of_scope.append(f"turn_effects[{index}].controller")
+                scope_details.append(f"turn_effects[{index}].controller names {entry['controller']!r}, who is not a player")
+            if draft.get("turn_id") is not None and entry["turn_id"] != draft["turn_id"]:
+                out_of_scope.append(f"turn_effects[{index}].turn_id")
+                scope_details.append(f"turn_effects[{index}] belongs to turn {entry['turn_id']!r}; a Stun lasts the "
+                                     f"turn it was applied (Core 423.2), and this position is in turn {draft['turn_id']!r}")
         for slot in ("energy", "power", "points"):
             if slot in draft and set(draft[slot]) != set(players):
                 out_of_scope.append(slot)
@@ -728,6 +815,9 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
                               "derivable from the rest of the draft",
             "showdown_active": "a Combat in progress is a Combat Showdown (Core 464.2); a draft "
                                "that states a Combat and no open Showdown has left that out",
+            "turn_effects": "a Stunned unit is owned by the turn effect that expires it (Core 423.2, "
+                            "317.2.d); a draft that states the status and no turn effect has left out "
+                            "what ends it",
         }
         artifact["downgrade"] = _downgrade(
             "missing_required_slot", missing=conditional_missing,

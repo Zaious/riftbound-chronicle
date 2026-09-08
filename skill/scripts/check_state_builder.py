@@ -76,6 +76,8 @@ def main() -> int:
                         "not a restatement")
     if not any("mode" in p["required"] for p in QUESTION_KINDS.values()):
         failures.append("no kind requires the mode slot, so a Mode of Play can never be stated")
+    if not any("turn_effects" in p["required"] for p in QUESTION_KINDS.values()):
+        failures.append("no kind requires the turn_effects slot, so a Stun can never be stated with its owner")
 
     for case in cases:
         case_id = case["case_id"]
@@ -161,6 +163,20 @@ def main() -> int:
             if found != draft["points"]:
                 failures.append(f"{case['case_id']}: the stated points {draft['points']} are not "
                                 f"in the built state (found {found})")
+        # S-01d. A stated Stun reaches the object, and its turn effect reaches
+        # the state in the kernel's own shape, with the turn the draft named.
+        for unit in draft.get("units", []) or []:
+            if unit.get("stunned") and not state["objects"].get(unit["object_id"], {}).get("stunned"):
+                failures.append(f"{case['case_id']}: unit {unit['object_id']} was stated Stunned and is not "
+                                f"in the built state")
+        if "turn_effects" in draft:
+            built_effects = state.get("turn_effects") or []
+            if {(e["kind"], e["object_id"], e["controller"], e["turn_id"]) for e in built_effects} != \
+                    {(e["kind"], e["object_id"], e["controller"], e["turn_id"]) for e in draft["turn_effects"]}:
+                failures.append(f"{case['case_id']}: the stated turn effects are not in the built state")
+            if state.get("turn_id") != draft.get("turn_id"):
+                failures.append(f"{case['case_id']}: the stated turn {draft.get('turn_id')!r} is not the "
+                                f"built state's turn ({state.get('turn_id')!r})")
 
     # Coverage. A kind that only ever builds, or only ever refuses, is a kind
     # whose boundary this fixture set has not located.

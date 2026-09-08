@@ -722,7 +722,11 @@ Default ownership: `[CODEX-CONTEXT]` for artifact migration and authority
 semantics; fixtures and the engine-check viewer are `[CLAUDE-READY]` after that
 migration lands.
 
-- [ ] Run timing/effect/combined checks from one consultation command.
+- [x] Run timing/effect/combined checks from one consultation command.
+  (S-03: `rule_consult_command.py` covers timing, effect, combat_step,
+  control_step and legal_action behind `consultation-run.v1`. Success carries a
+  tier; failure returns `not_attempted` with a reason from a closed vocabulary
+  and no prose. Gate: `check_rule_consult_command.py`.)
 - [x] Present engine trace beside official passages without treating it as
   authority.
 - [x] Render `decision_required` options neutrally in a read-only viewer.
@@ -1049,12 +1053,46 @@ absence. Each row names its gate; a row without one is not a completed row.
   source-status forgeries each shown to pass structural validation and be
   refused by verification. It runs in CI; the service-side half of the v0
   gate-1 wording waits on S-03, since there is no service to run it in yet.
-- [ ] **S-03:** one Rule Consult command over the timing, effect, combat-step,
-  control-step and legal-action entries, returning `not_attempted` or a named
-  abstention rather than free prose. This is the section 9 item above.
+- [x] **S-03:** one Rule Consult command over the timing, effect, combat-step,
+  control-step and legal-action entries — `consultation-run.v1`. The pipeline is
+  fixed: S-01 builds every state the run uses, one engine entry runs, an
+  evidence pack is built and re-run before anything is said, the claims bind,
+  and S-02's ledger is built and verified against the context it was built on.
+  Failure returns `not_attempted` with a reason from a closed vocabulary, never
+  prose.
+  The answer surface admits no authored prose: a producer picks a claim
+  template from a closed table and fills slots whose types are each closed, so
+  one claim is one assertion by construction rather than by lexical
+  inspection. An engine claim's source is the run's own check and cannot be
+  supplied. One claim is one ledger entry.
+  All three tiers come out of this one path. A template's class decides what it
+  may say: a position conclusion requires an engine check of the right kind
+  that reached a verdict, and a source statement requires a retrieved source,
+  takes no player slot and may not use the legality vocabulary. So tier A is a
+  run carrying a position conclusion, tier B a run carrying only source
+  statements, and tier C an abstention. A declined engine ruling puts every
+  position conclusion out of reach and leaves the B route, with a derived
+  statement that the mechanism is not compiled; a locator cannot answer the
+  position the engine declined.
+  Two checks read a run and are not the same check: `validate_run` is
+  structural, `verify_run` re-runs the consultation from the request the run
+  carries against the engine, retriever and snapshots supplied now and compares
+  every derived field.
+  Artifact: `rule_consult_command.py`, `rule_consult_command_cases.json`.
+  Gate: `check_rule_consult_command.py` — 21 cases covering all three tiers,
+  each of the five entries with an answering and a non-answering path, all six
+  `not_attempted` reasons, all five evidence-pack kinds re-run to an equal
+  hash, and nine forged runs each shown to pass structural validation and be
+  refused by verification.
 - [ ] **S-04:** judge corpus contract — family quotas, an expected tier per
   question, locators for A/B questions and an abstention contract for C ones.
   The contract and its validator, not the questions themselves.
+  (Unblocked by S-03: `evidence-pack.v1` now re-runs all five consultation
+  entries rather than `effect` alone, so a corpus question of any of the five
+  can carry re-runnable evidence, and a B-tier question can carry a retrieved
+  source bound by document version and text hash. `resolution`, `play`,
+  `cleanup`, `turn_step`, `hide_step` and `standard_move` remain outside the
+  verifier and are refused by name.)
 - [ ] **S-05:** Deck Coach regression corpus, with general primer cases and
   engine-closed cases stored and verified separately, and no win rate, Tier,
   keep-rule or match-simulation claim admissible in either.

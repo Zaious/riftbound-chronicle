@@ -62,7 +62,10 @@ MIGHT_MODES = {"delta", "increase_to"}
 LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers")
 COMBAT_ROLES = {"attacker", "defender"}
 # ADR-0007 §6–8.
-TURN_EFFECT_KINDS = {"entry_state_for_played_units"}
+# DP-94 / Core 423: a Stun lasts the turn, so the Expiration Step is what
+# ends it. `stunned` on the object stays as the readable status, but the entry
+# here is what owns its lifetime - a status with no owner never comes off.
+TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit"}
 # ADR-0008 §5: attacking_or_defending_alone reads the Unit's own designation
 # and company (740.2.a); friendly_unit_defends_alone is the bounded external
 # aura of the Master Yi Legend clause, carried by a might_auras entry.
@@ -120,6 +123,7 @@ SUPPORTED_OPS = {
     # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
     # taking a looked-at card, Recycle as one action, Predict.
     "look_at_top",
+    "stun",
     "choose_player",
     "reveal",
     "put_back",
@@ -288,6 +292,7 @@ OP_RULES = {
     "modify_might": ["Core 135.2.e.3", "Core 477"],
     "deal_damage": ["Core 417"],
     "heal_damage": ["Core 418"],
+    "stun": ["Core 423", "Core 423.1", "Core 423.1.b", "Core 423.2", "Core 317.2.d"],
     "choose_player": ["Core 355.1", "Core 355.17"],
     "ready": ["Core 415"],
     "exhaust": ["Core 414"],
@@ -556,8 +561,8 @@ def validate_state(state: Any) -> list[str]:
     effect_ids: set[str] = set()
     for index, effect in enumerate(turn_effects):
         label = f"turn_effects[{index}]"
-        if not isinstance(effect, dict) or not {"effect_id", "kind", "controller", "turn_id"} <= set(effect) or set(effect) - {"effect_id", "kind", "controller", "turn_id", "value", "source"}:
-            errors.append(f"{label} must carry effect_id, kind, controller, turn_id (and value/source)")
+        if not isinstance(effect, dict) or not {"effect_id", "kind", "controller", "turn_id"} <= set(effect) or set(effect) - {"effect_id", "kind", "controller", "turn_id", "value", "source", "object_id"}:
+            errors.append(f"{label} must carry effect_id, kind, controller, turn_id (and value/source/object_id)")
             continue
         if not isinstance(effect["effect_id"], str) or not effect["effect_id"] or effect["effect_id"] in effect_ids:
             errors.append(f"{label}.effect_id is invalid or duplicated")
@@ -568,6 +573,17 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.turn_id must be a non-empty string")
         if effect["kind"] == "entry_state_for_played_units" and effect.get("value") not in {"ready", "exhausted"}:
             errors.append(f"{label}.value must be ready or exhausted")
+        if effect["kind"] == "stunned_unit":
+            if effect.get("object_id") not in objects:
+                errors.append(f"{label}.object_id must name an object in this state")
+            elif not objects[effect["object_id"]].get("stunned"):
+                errors.append(f"{label} says {effect['object_id']!r} is Stunned; the object does not")
+    # A Stunned object with nothing to expire it would stay Stunned for the
+    # rest of the game (Core 423.2). The status and its owner travel together.
+    owned = {e.get("object_id") for e in turn_effects if isinstance(e, dict) and e.get("kind") == "stunned_unit"}
+    for object_id, obj in objects.items():
+        if isinstance(obj, dict) and obj.get("stunned") and object_id not in owned:
+            errors.append(f"objects.{object_id}.stunned has no turn_effects entry to expire it (Core 423.2, 317.2.d)")
     # ADR-0009 §1: the Mode of Play; scoring never guesses a Victory Score.
     mode = state.get("mode")
     if mode is not None and (not isinstance(mode, dict) or set(mode) - {"victory_score", "teams", "id", "first_turn"} or not isinstance(mode.get("victory_score"), int) or isinstance(mode.get("victory_score"), bool) or mode["victory_score"] < 1 or not isinstance(mode.get("teams", False), bool)):
@@ -2715,6 +2731,33 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                       "completion": "full" if len(looked) == count else ("partial" if looked else "none")})
         if not looked:
             trace["outcome"] = "no_op"
+
+    elif op == "stun":
+        # Core 423: a binary status, applied by an effect that chooses a Unit
+        # on the board. It is not a Might change - what it does to Combat is
+        # read at damage assignment (423.1.b), and everything else reads the
+        # Unit's Might unchanged.
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("stun requires a known object")
+        obj = new_state["objects"][object_id]
+        if obj.get("kind") != "unit" or zone_class(find_location(new_state, object_id)) != "board":
+            raise IllegalOperation(f"Stun applies to a Unit on the board; {object_id!r} is not one (423.1)")
+        if obj.get("stunned"):
+            # 423.2: already Stunned. The choice was legal and nothing happens -
+            # no refreshed duration, no second entry, and no event for a
+            # "when you stun" to read.
+            trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none",
+                          "already_stunned": True, "was_stunned": False,
+                          "reason": "the Unit is already Stunned; Stun is a binary status (423.2)"})
+            return new_state, trace
+        obj["stunned"] = True
+        turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+        entry = {"effect_id": f"stunned:{object_id}:{turn_id}", "kind": "stunned_unit",
+                 "controller": obj.get("controller"), "turn_id": turn_id, "object_id": object_id}
+        new_state.setdefault("turn_effects", []).append(entry)
+        trace.update({"object_id": object_id, "was_stunned": True, "already_stunned": False,
+                      "expires": {"turn_id": turn_id, "step": "expiration_3d"}})
 
     elif op == "choose_player":
         # Core 355.1: an instruction whose whole content is a choice. It changes

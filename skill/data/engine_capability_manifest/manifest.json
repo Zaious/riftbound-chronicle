@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:249e5173bab5a129812aa928",
-  "capability_set_id": "sha256:249e5173bab5a129812aa9286f41ddf4f800d4d3a91596fda657fc0a708df8c7",
+  "manifest_id": "capability-manifest:74619a6bbd597266c7024a7b",
+  "capability_set_id": "sha256:74619a6bbd597266c7024a7b55c4c30db6b80210ba693505e7392204139d9d99",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:c0e87be9e8488850ff05a2b7ac9eac5e3c605f4dd00459e751e9318fc75c321f",
+    "value": "sha256:ea821f415001210b12f31b2cb69511b1e82d05dcbc140dd462b97cf4f18b5128",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,11 +12,11 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:c7ac9fc3d8f07927f7b28018f37e5f9b836c10a714673166c37576380cabf864"
+        "sha256": "sha256:1e4797adfed9fe0c808fa8cbc77da1778fbd51b59e3775d89367a2973f61f269"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:e6b7c725b5ff9255834afeac86d41bfe889de1ee96f8a3ea5d330340cbfe2bec"
+        "sha256": "sha256:5fda9a363571233b792de8cbb454aa936eef17793b7ec6503152c73561d38821"
       },
       {
         "path": "engine_check.py",
@@ -713,6 +713,16 @@
         "Core 424.3.a",
         "Core 431.1.c"
       ]
+    },
+    {
+      "id": "stun",
+      "rule_locators": [
+        "Core 423",
+        "Core 423.1",
+        "Core 423.1.b",
+        "Core 423.2",
+        "Core 317.2.d"
+      ]
     }
   ],
   "procedures": [
@@ -1398,6 +1408,7 @@
     "Core 316.9.b",
     "Core 317.1",
     "Core 317.2.c",
+    "Core 317.2.d",
     "Core 317.2–317.2.d",
     "Core 317.3",
     "Core 318–320",
@@ -1514,7 +1525,10 @@
     "Core 422.1.a",
     "Core 422.1–422.4",
     "Core 422.4",
+    "Core 423",
+    "Core 423.1",
     "Core 423.1.b",
+    "Core 423.2",
     "Core 424.1",
     "Core 424.2",
     "Core 424.2.a",

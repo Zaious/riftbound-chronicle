@@ -211,6 +211,24 @@ PRODUCTIONS = [
         "negative": ["Ready up to 2 runes.", "Ready all friendly units.", "Ready the strongest unit."],
     },
     {
+        "production_id": "stun_selector",
+        "form": "Stun <selector>.",
+        "template": r"stun {selector}",
+        "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
+                               "another_unit", "another_friendly_unit"]},
+        "normalization": N,
+        "rule_locators": ["Core 423", "Core 423.1", "Core 423.2", "Core 355.9"],
+        "ast_node": "instruction",
+        "required_capability": ["stun", "targeting"],
+        "boundary": ("Direct application only: one chosen Unit on the board becomes Stunned until the "
+                     "Expiration Step. A trigger on stunning, a condition or aura reading the status, a "
+                     "replacement for being Stunned, and a cost condition are each a different clause "
+                     "and stay unparsed."),
+        "golden": ["Stun a unit.", "Stun a friendly unit.", "Stun an enemy unit.", "Stun me.",
+                   "Stun another unit.", "Stun another friendly unit.", "Stun it.", "Stun that unit."],
+        "negative": ["Stun all enemy units.", "Stun up to 2 units.", "Stun the strongest unit."],
+    },
+    {
         "production_id": "move_selector",
         "form": "Move <selector>.",
         "template": r"move {selector}",

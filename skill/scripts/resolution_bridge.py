@@ -621,6 +621,17 @@ def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, An
     expired_granted = [r["replacement_id"] for r in working["replacement_effects"] if "granted" in r and r["granted"].get("turn_id") == turn_id]
     working["replacement_effects"] = [r for r in working["replacement_effects"] if not ("granted" in r and r["granted"].get("turn_id") == turn_id)]
     expired_effects = [e for e in working.get("turn_effects", []) if e.get("turn_id") == turn_id]
+    # Core 317.2.d / 423.2: a Stun is a "this turn" effect, so 3d is where it
+    # ends. The status comes off with the entry that owned it, in the same
+    # simultaneous step as every other expiry.
+    unstunned = []
+    for entry in expired_effects:
+        if entry.get("kind") != "stunned_unit":
+            continue
+        obj = working["objects"].get(entry.get("object_id"))
+        if isinstance(obj, dict) and obj.get("stunned"):
+            obj["stunned"] = False
+            unstunned.append(entry["object_id"])
     remaining = [e for e in working.get("turn_effects", []) if e.get("turn_id") != turn_id]
     if remaining:
         working["turn_effects"] = remaining
@@ -635,7 +646,7 @@ def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, An
     return {**base, "valid": True, "committed": True, "applied": True, "reason_code": "ok", "turn_id": turn_id,
             "next_timing_state": next_timing, "next_timing_state_hash": state_hash(next_timing),
             "next_effect_state": working, "next_effect_state_hash": hash_value(working),
-            "trace": {"heal_all_units": healed, "expire_this_turn": {"might_modifiers": expired_modifiers, "turn_effects": expired_effects, "granted_replacements": expired_granted}, "empty_rune_pools": emptied,
+            "trace": {"heal_all_units": healed, "expire_this_turn": {"might_modifiers": expired_modifiers, "turn_effects": expired_effects, "granted_replacements": expired_granted, "unstunned": unstunned}, "empty_rune_pools": emptied,
                       "simultaneous": True, "follow_up_cleanup": "normal (324.2)"},
             "rule_locators": ["Core 317.2", "Core 317.2.a", "Core 317.2.b", "Core 317.2.c", "Core 317.2.d", "Core 324.2"]}
 

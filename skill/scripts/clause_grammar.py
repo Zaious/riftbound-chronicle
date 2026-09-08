@@ -374,6 +374,7 @@ def _lower_single_target_op(op: str, effect_id: str, capability: str, extra: dic
 
 COMPOSABLE = {
     "while_a_friendly_unit_defends_alone_it_gets_might": _lower_defends_alone_aura,
+    "stun_selector": _lower_single_target_op("stun", "st", "stun"),
     "move_selector": _lower_single_target_op("move_board_object", "mv", "move_board_object",
                                             extra={"destination": {"decision_ref": "dest"}}),
     "heal_selector": _lower_single_target_op("heal_all_damage", "hl", "heal_all_damage"),

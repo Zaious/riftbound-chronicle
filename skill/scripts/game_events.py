@@ -80,6 +80,9 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "replacement_granted": {"about": "object", "rules": ["Core 370", "Core 124"]},
     "revealed": {"about": "object", "rules": ["Core 424.2"]},
     "looked_at": {"about": "object", "rules": ["Core 424.1"]},
+    # DP-94: only a Stun that actually happened. Stunning an already Stunned
+    # Unit is a no_op and emits nothing, so "when you stun" cannot fire twice.
+    "stunned": {"about": "object", "rules": ["Core 423", "Core 423.2"]},
     # --- player ----------------------------------------------------------
     # Sabotage: the instruction that only chooses. The event is what every
     # later instruction of the same program reads instead of choosing again.
@@ -123,6 +126,7 @@ OP_PRIMARY: dict[str, str] = {
     "discard": "discarded",
     "grant_replacement": "replacement_granted",
     "grant_keyword": "keyword_granted",
+    "stun": "stunned",
     "choose_player": "player_chosen",
     "look_at_top": "looked_at",
     "reveal": "revealed",

@@ -979,6 +979,9 @@ private-overlay data and are **not** part of a public clone.
 Not delivered by Round H, and not to be read as delivered: the service-layer
 state builder, the fact-ledger gate, the unified Rule Consult command, and the
 judge corpus. Section 9 below still holds for all four.
+(**Partly superseded, 2026-09-08.** The state builder has since been delivered
+as S-01; see the service-layer section below. The other three are still
+undelivered, and section 9 still holds for them.)
 
 ### R5-P — Private simulation / Proving Grounds research
 
@@ -1004,6 +1007,39 @@ superseded rows in section 4).
 - [ ] **R5-P:** terminal-state and reward/observation contract.
 - [ ] **R5-P:** a fixed, versionable policy interface.
 - [ ] **R5-P:** a fresh Riot boundary review before any external exposure.
+
+### S-01 to S-05 — Public service layer
+
+The engine side of the v0 must list is done. What is left between here and a
+public Rule Consult service is five service-layer packages, in this order:
+S-01 -> S-02 -> S-03 -> S-04 / S-05. They are listed here so that the four
+components section 9 still calls missing are visible as work rather than as an
+absence. Each row names its gate; a row without one is not a completed row.
+
+- [x] **S-01:** minimum state builder — `state-assumption.v1`. A producer's
+  state draft is read against a closed slot vocabulary: a key outside it
+  refuses the draft whole rather than being stripped, a question missing a
+  required slot downgrades and names the slot, and what was assumed rather
+  than read becomes an artifact the user can correct — a correction re-runs
+  the whole build instead of patching the previous one. A built state is one
+  the engine's own `validate_state` accepts, so a draft the builder accepts
+  and the kernel refuses is a failed build carrying the kernel's own words.
+  Artifact: `state_builder.py`, `state_builder_cases.json`.
+  Gate: `check_state_builder.py` — 24 labelled cases, 8 that build and 16 that
+  refuse, covering all five question kinds, all eleven slots and all seven
+  downgrade reasons.
+- [ ] **S-02:** fact-ledger gate. Every mechanical conclusion sentence resolves
+  to an engine check, an official locator that hits the index, a card snapshot,
+  or a named assumption; a missing one downgrades rather than answers.
+- [ ] **S-03:** one Rule Consult command over the timing, effect, combat-step,
+  control-step and legal-action entries, returning `not_attempted` or a named
+  abstention rather than free prose. This is the section 9 item above.
+- [ ] **S-04:** judge corpus contract — family quotas, an expected tier per
+  question, locators for A/B questions and an abstention contract for C ones.
+  The contract and its validator, not the questions themselves.
+- [ ] **S-05:** Deck Coach regression corpus, with general primer cases and
+  engine-closed cases stored and verified separately, and no win rate, Tier,
+  keep-rule or match-simulation claim admissible in either.
 
 ## Claude handoff template
 

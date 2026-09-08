@@ -194,7 +194,7 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append(f"cost.base_modifications[{i}].cost is required for for_cost")
     seen: set[str] = set()
     for i, add in enumerate(cost.get("additional", []) or []):
-        if not isinstance(add, dict) or not {"cost_id", "mandatory", "payment"} <= set(add) or set(add) - {"cost_id", "mandatory", "payment", "source", "repeat"}:
+        if not isinstance(add, dict) or not {"cost_id", "mandatory", "payment"} <= set(add) or set(add) - {"cost_id", "mandatory", "payment", "source", "repeat", "cost_offer_id", "offered_by"}:
             errors.append(f"cost.additional[{i}] is invalid")
             continue
         if "repeat" in add and (not isinstance(add["repeat"], bool) or (add["repeat"] and add.get("mandatory") is True)):
@@ -382,7 +382,12 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
         requested = pay.get("amount") if pay["kind"] in {"energy", "power", "power_any"} else {k: v for k, v in pay.items() if k != "kind"}
         components.append(component(add["cost_id"], pay["kind"], add["mandatory"], intent, requested,
                                     (["Core 356.2.a"] if add["mandatory"] else ["Core 356.2.b", "Core 356.4.f.1"]) + (["Core 820.1.a", "Core 820.1.c"] if add.get("repeat") else []),
-                                    domain=pay.get("domain"), object_id=pay.get("object_id"), **({"repeat": True} if add.get("repeat") else {})))
+                                    domain=pay.get("domain"), object_id=pay.get("object_id"),
+                                    **({"repeat": True} if add.get("repeat") else {}),
+                                    # Round H: a printed offer names itself and its object on the
+                                    # component, so a cost_paid predicate can check both.
+                                    **({"cost_offer_id": add["cost_offer_id"], "offered_by": add["offered_by"]}
+                                       if add.get("cost_offer_id") else {})))
     by_id = {c["cost_id"]: c for c in components}
 
     def chosen(c):
@@ -551,6 +556,62 @@ def accelerate_entry_replacement(card_id: str, item_id: str) -> dict[str, Any]:
     return {"replacement_id": f"accelerate:{item_id}", "mode": "entry_state", "value": "ready",
             "source": "accelerate", "chain_item": item_id, "card": card_id}
 
+
+
+# --------------------------------------------------------------------------
+# Card-self optional additional costs (Core 356.2.b, 820.1) - Round H
+# --------------------------------------------------------------------------
+
+CARD_SELF_OFFER_PREFIX = "self_offer"
+
+
+def card_self_cost_offers(effect_state: dict[str, Any], card_id: str | None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The optional additional costs the card itself prints, resolved.
+
+    Returns (entries, abstentions). An offer whose payment cannot be resolved
+    from the card's own data is *not* silently dropped: it is reported, because
+    "the card offers nothing" and "we cannot tell what the card offers" are
+    different answers and only the first is a fact.
+
+    `power_own_domain` is the errata documents' [C]: one Power of the card's
+    own Domain. Three independent readings fix that meaning - Blazing
+    Scorcher prints ":rb_energy_1::rb_rune_fury:" and is rendered "[1][C]"
+    with Domain Fury; Clockwork Keeper printed ":rb_rune_calm:" and its
+    erratum writes "[C]" with Domain Calm; ":rb_rune_rainbow:" is rendered
+    "[A]", so [C] is not "any". A card whose Domains are not observed
+    abstains rather than guessing between them.
+    """
+    obj = (effect_state.get("objects") or {}).get(card_id) if card_id else None
+    if not isinstance(obj, dict):
+        return [], []
+    entries: list[dict[str, Any]] = []
+    abstentions: list[dict[str, Any]] = []
+    for offer in obj.get("optional_additional_costs", []) or []:
+        offer_id = offer["cost_offer_id"]
+        payment = dict(offer["payment"])
+        if payment["kind"] == "power_own_domain":
+            domains = obj.get("domains")
+            if domains is None:
+                abstentions.append({"cost_offer_id": offer_id, "reason": "offer_domain_not_observed"})
+                continue
+            if len(domains) != 1:
+                # No Domain at all, or a choice between several: 356 makes the
+                # payable Power a fact about the card, and neither case is one.
+                abstentions.append({"cost_offer_id": offer_id,
+                                    "reason": "offer_domain_not_single" if domains else "offer_has_no_domain"})
+                continue
+            payment = {"kind": "power", "domain": domains[0], "amount": payment["amount"]}
+        entries.append({
+            "cost_id": f"{CARD_SELF_OFFER_PREFIX}:{offer_id}",
+            "mandatory": False,
+            "payment": payment,
+            "energy": int(offer.get("energy", 0)),
+            "cost_offer_id": offer_id,
+            "offered_by": card_id,
+            "source": {"kind": "printed_offer", "cost_offer_id": offer_id, "object": card_id},
+            "rule_locators": ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"],
+        })
+    return entries, abstentions
 
 
 SELF_REDUCTION_CAPABILITY = "self_card_conditional_fixed_energy_reduction.v1"
@@ -1083,10 +1144,17 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # goes through the same explicit-choice rule as any other optional
         # cost - a full pool never pays it by itself (356.2.b.1).
         accelerate_entry, accelerate_reason = accelerate_offer(effect_state, declaration.get("card"))
+        self_offers, self_offer_abstentions = card_self_cost_offers(effect_state, declaration.get("card"))
         declared_additional = list(declaration["cost"].get("additional", []) or [])
         if accelerate_entry is not None:
             declared_additional = declared_additional + [
                 {k: v for k, v in accelerate_entry.items() if k not in {"energy", "rule_locators"}}]
+        # Core 356.2.b.1: a printed offer joins the declared costs *before* the
+        # intent loop, so paying it is an explicit choice like any other -
+        # a full pool never pays it by itself.
+        declared_additional = declared_additional + [
+            {k: v for k, v in entry.items() if k not in {"energy", "rule_locators", "cost_offer_id", "offered_by"}}
+            for entry in self_offers]
         intents: dict[str, bool] = {}
         missing: list[str] = []
         for add in declared_additional:
@@ -1150,6 +1218,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             cost["base_modifications"] = [modification] + list(cost.get("base_modifications", []) or [])
         if deflect:
             cost["additional"] = list(cost.get("additional", []) or []) + deflect
+        for entry in self_offers:
+            component = {k: v for k, v in entry.items() if k not in {"energy", "rule_locators"}}
+            cost["additional"] = list(cost.get("additional", []) or []) + (
+                [{"cost_id": f"{entry['cost_id']}:energy", "mandatory": False,
+                  "payment": {"kind": "energy", "amount": entry["energy"]},
+                  "cost_offer_id": entry["cost_offer_id"], "offered_by": entry["offered_by"]}]
+                if entry["energy"] else []) + [component]
+            if entry["energy"]:
+                intents[f"{entry['cost_id']}:energy"] = intents.get(entry["cost_id"], False)
         if accelerate_entry is not None:
             # The Energy half rides as its own component so the receipt shows
             # both halves of [1][C] separately (805.2.b).
@@ -1159,6 +1236,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 {k: v for k, v in accelerate_entry.items() if k not in {"energy", "rule_locators"}}]
             intents[f"{ACCELERATE_COST_ID}:energy"] = intents.get(ACCELERATE_COST_ID, False)
         trace.append({"stage": "choices", "outcome": "applied",
+                      **({"card_self_offers": {"offered": [e["cost_offer_id"] for e in self_offers],
+                                               "paid": [e["cost_offer_id"] for e in self_offers if intents.get(e["cost_id"])],
+                                               "abstained": self_offer_abstentions}}
+                         if (self_offers or self_offer_abstentions) else {}),
                       **({"accelerate": {"offered": accelerate_entry is not None, "reason": accelerate_reason,
                                          "paid": bool(intents.get(ACCELERATE_COST_ID))}}
                          if (accelerate_entry is not None or accelerate_reason) else {}),
@@ -1285,6 +1366,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
 
     receipt = {
         "schema_version": RECEIPT_VERSION, "play_id": declaration["play_id"], "actor": actor, "card": card,
+        # Round H: the chain item this play created, so a trigger that fires
+        # from it can prove the payment it reads belongs to its own play.
+        "chain_item": item_id,
         "base": skeleton["base"], "after_base_modifications": skeleton["after_base_modifications"],
         "components": skeleton["components"], "aggregate": skeleton["aggregate"],
         "discount_order": skeleton["discount_order"], "order_provenance": skeleton["order_provenance"],

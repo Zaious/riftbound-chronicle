@@ -12,20 +12,20 @@
   "quota": null,
   "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
   "counts": {
-    "clauses_parsed": 29,
-    "clauses_in_debt": 27,
+    "clauses_parsed": 30,
+    "clauses_in_debt": 26,
     "promotion": {
-      "grammar_reproduced": 28,
-      "hand_written": 20,
-      "in_debt_but_claimed": 20
+      "grammar_reproduced": 29,
+      "hand_written": 19,
+      "in_debt_but_claimed": 19
     },
     "by_rule_family": {
-      "attacking_defending_alone": 2,
+      "attacking_defending_alone": 1,
       "bonus_damage": 2,
-      "combat_state": 4,
+      "combat_state": 3,
       "conditional_effects": 3,
-      "conditional_might": 2,
-      "continuous_effects": 2,
+      "conditional_might": 1,
+      "continuous_effects": 1,
       "discard": 1,
       "duration_expiry": 2,
       "end_of_turn_trigger": 1,
@@ -47,7 +47,7 @@
       "unclassified": 2
     },
     "by_risk": {
-      "always_in_play": 5,
+      "always_in_play": 4,
       "main_deck": 22,
       "unknown": 0
     }
@@ -128,28 +128,6 @@
         "combat_state",
         "play_and_move_triggers",
         "target_choice"
-      ],
-      "missing_capability": "R3-A3-combat",
-      "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
-    },
-    {
-      "clause_id": "master yi - wuju bladesman (starter)#96ecd8e6",
-      "card_key": "master yi - wuju bladesman (starter)",
-      "card": "Master Yi - Wuju Bladesman (Starter)",
-      "text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
-      "pack": "global-core-origins-v1",
-      "deck_slots": 0,
-      "deck_count": 1,
-      "decks": [
-        "proving-grounds-master-yi"
-      ],
-      "risk": "always_in_play",
-      "rule_family": [
-        "attacking_defending_alone",
-        "combat_state",
-        "conditional_might",
-        "continuous_effects"
       ],
       "missing_capability": "R3-A3-combat",
       "claim_in_pack": "full",
@@ -599,7 +577,9 @@
     "normalization_baseline": "split_clauses:6d017083475686bc",
     "reclassified": [],
     "added": [],
-    "repaid": [],
+    "repaid": [
+      "master yi - wuju bladesman (starter)#96ecd8e6"
+    ],
     "normalization_reclassification": []
   }
 }

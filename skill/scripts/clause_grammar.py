@@ -330,6 +330,22 @@ def _lower_keyworded_ability(params, slots):
             "ast": {"node": "keyworded_ability", "keyword": name, "trigger_field": field}}
 
 
+def _lower_defends_alone_aura(params, slots):
+    """Core 477.3 / 460: a standing arithmetic modifier over a named combat
+    condition. The engine already carries exactly this condition
+    (AURA_CONDITION_KINDS), so the clause supplies the amount and nothing else."""
+    delta = slots["might_delta"]
+    signed = int(params["increase_amount"]) if delta["direction"] == "increase" else -int(params["decrease_amount"])
+    return {
+        "state_lists": {"might_auras": [{
+            "modifier_id": "$clause_id", "source_object": "$source_object", "controller": "$controller",
+            "amount": signed, "condition": {"kind": "friendly_unit_defends_alone"},
+        }]},
+        "ast": {"node": "passive", "kind": "might_aura",
+                "params": {"amount": signed, "condition": "friendly_unit_defends_alone"}},
+    }
+
+
 def _lower_single_target_op(op: str, effect_id: str, capability: str):
     """Ready and Buff are the same shape: one op, one chosen object, no
     parameters of their own. The selector carries every difference."""
@@ -343,6 +359,7 @@ def _lower_single_target_op(op: str, effect_id: str, capability: str):
 
 
 COMPOSABLE = {
+    "while_a_friendly_unit_defends_alone_it_gets_might": _lower_defends_alone_aura,
     "ready_selector": _lower_single_target_op("ready", "rd", "ready"),
     "buff_selector": _lower_single_target_op("buff", "bf", "buff"),
     "keyworded_ability": _lower_keyworded_ability,
@@ -351,7 +368,20 @@ COMPOSABLE = {
     "object_keyword": _lower_object_keyword,
 }
 
+def _lower_card_self_offer(params):
+    """Core 356.2.b: the card prints the offer; the engine resolves the Power
+    to the card's own Domain when the play is declared, and abstains when the
+    Domains are not observed. Nothing here reads the board."""
+    return {
+        "object_fields": {"optional_additional_costs": [
+            {"cost_offer_id": "$clause_id", "payment": {"kind": "power_own_domain", "amount": 1}}]},
+        "ast": {"node": "passive", "kind": "optional_additional_cost",
+                "params": {"payment": "power_own_domain", "amount": 1}},
+    }
+
+
 LOWERINGS = {
+    "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
@@ -390,6 +420,7 @@ ABSTENTION_REASONS = frozenset({
     "keyword_not_implemented",         # the catalogue names it, the engine does not implement it
     "link_antecedent_not_available",   # "if you do" with no readable previous instruction (DP-86)
     "referent_not_bound",              # "it" with nothing before it to be (DP-86)
+    "cost_offer_not_declared",         # "if you paid additional cost" with no offer on this card
 })
 
 # A closed white-list. A connective outside it does not join anything; the
@@ -403,6 +434,23 @@ LINK_PREFIXES = {
     "if you can't, ": "requested_count_not_reached",
     "otherwise, ": "action_not_performed",
 }
+# The one prefix that reads a *cost* receipt instead of an operation receipt.
+# It is bound to an offer an earlier clause of the same card declared, so it
+# can never read another card's payment (Codex's three-way binding).
+COST_LINK_PREFIXES = {
+    "if you paid additional cost, ": "cost_paid",
+    "if you did not pay additional cost, ": "cost_not_paid",
+}
+
+
+def _offer_of(previous: dict[str, Any] | None) -> str | None:
+    """The card-self cost offer the previous clause declared, if it declared
+    exactly one. Two offers make "the additional cost" ambiguous, and the
+    clause abstains rather than picking one."""
+    if not isinstance(previous, dict) or previous.get("unsupported"):
+        return None
+    offers = ((previous.get("passive") or {}).get("object_fields", {}) or {}).get("optional_additional_costs") or []
+    return offers[0]["cost_offer_id"] if len(offers) == 1 else None
 
 
 def _split_sequence(normalized: str) -> list[str] | None:
@@ -492,6 +540,32 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
     # DP-86: a prefix that tests the previous clause's receipt. Without a
     # previous clause in view there is no receipt to test, and guessing one
     # from the text is exactly what Core 359.3.e.14 forbids - so abstain.
+    for prefix, link in COST_LINK_PREFIXES.items():
+        if not normalized.startswith(prefix):
+            continue
+        offer = _offer_of(previous)
+        if offer is None:
+            return {"production_id": "cost_linked_prefix", "unsupported": True,
+                    "reason_code": "cost_offer_not_declared", "text": text, "normalized": normalized, "link": link,
+                    "reason": f"{prefix.strip()!r} reads an additional cost this card has not declared exactly once"}
+        inner = compile_clause(normalized[len(prefix):], grammar)
+        if inner.get("unsupported"):
+            return {"production_id": "cost_linked_prefix", "unsupported": True,
+                    "reason_code": inner.get("reason_code", "clause_unparsed"), "text": text,
+                    "reason": f"the linked instruction did not parse: {normalized[len(prefix):]!r}"}
+        effects = copy.deepcopy(inner.get("program_effects", []))
+        predicate = {"kind": link, "cost_id": f"self_offer:{offer}", "cost_offer_id": offer}
+        for effect in effects:
+            effect.setdefault("predicate", predicate)
+        return {
+            "production_id": "cost_linked_prefix", "unsupported": False, "text": text, "normalized": normalized,
+            "params": {}, "slots": {}, "link": link, "cost_offer_id": offer,
+            "rule_locators": ["Core 356.4.f.1", "Core 356.2.b.1"] + inner["rule_locators"],
+            "required_capability": sorted(set(inner["required_capability"]) | {"cost_predicates"}),
+            "ast": {"node": "cost_linked", "link": link, "reads": offer, "then": inner["ast"]},
+            "program_effects": effects,
+        }
+
     for prefix, link in LINK_PREFIXES.items():
         if not normalized.startswith(prefix):
             continue
@@ -536,7 +610,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                         "text": text, "normalized": normalized, "slots": slots, "ast": lowered.get("ast"),
                         "rule_locators": list(production["rule_locators"]),
                         "reason": f"the catalogue names {slots['keyword']['keyword']!r} but the engine does not implement it as a trigger"}
-            inner = compile_clause(match.group("inner"), grammar)
+            inner = compile_clause(match.group("inner"), grammar, previous=previous)
             if inner.get("unsupported"):
                 return {"production_id": production_id, "unsupported": True, "reason_code": inner.get("reason_code", "clause_unparsed"),
                         "text": text, "inner_text": match.group("inner"),
@@ -554,11 +628,17 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
             }
         if production_id in TRIGGER_WRAPPERS:
             field, trigger_id = TRIGGER_WRAPPERS[production_id]
-            inner = compile_clause(params["inner"], grammar)
+            inner = compile_clause(params["inner"], grammar, previous=previous)
             if inner.get("unsupported"):
-                return {"production_id": production_id, "unsupported": True, "reason_code": "clause_unparsed",
+                # The wrapper keeps the inner clause's own reason. "The
+                # trigger parsed and its instruction did not" and "the
+                # instruction reads a cost this card never declared" are
+                # different findings, and only the second names a fix.
+                return {"production_id": production_id, "unsupported": True,
+                        "reason_code": inner.get("reason_code", "clause_unparsed"),
                         "text": text, "inner_text": params["inner"],
-                        "reason": f"the wrapper parsed but its instruction did not: {params['inner']!r}"}
+                        "reason": f"the wrapper parsed but its instruction did not: {params['inner']!r} "
+                                  f"({inner.get('reason', '')})"}
             return {
                 "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
                 "params": params, "rule_locators": production["rule_locators"] + inner["rule_locators"],
@@ -566,11 +646,20 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "passive": _trigger(field, trigger_id),
                 "program_effects": inner.get("program_effects", []),
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
+                # what the inner clause bound to travels with the wrapper, so a
+                # card-level check sees it
+                **({"cost_offer_id": inner["cost_offer_id"]} if inner.get("cost_offer_id") is not None else {}),
+                **({"antecedent_effect_id": inner["antecedent_effect_id"]} if inner.get("antecedent_effect_id") is not None else {}),
             }
         lowered = COMPOSABLE[production_id](params, slots) if production_id in COMPOSABLE else LOWERINGS[production_id](params)
-        if "object_fields" in lowered:
-            lowered = {**{k: v for k, v in lowered.items() if k != "object_fields"},
-                       "passive": {"object_fields": lowered["object_fields"]}}
+        if "object_fields" in lowered or "state_lists" in lowered:
+            # ADR-0007: what a card contributes while it exists is either a
+            # field on its own object or an entry in a state-level list. An
+            # aura is the second kind - it is not a field of the unit it
+            # modifies, because it modifies whichever unit is defending alone.
+            passive_shape = {k: lowered[k] for k in ("object_fields", "state_lists") if k in lowered}
+            lowered = {**{k: v for k, v in lowered.items() if k not in {"object_fields", "state_lists"}},
+                       "passive": passive_shape}
         known = lowered.pop("known_unsupported", None)
         if known is not None:
             # Named by the catalogue, not implemented by the engine (DP-85).
@@ -639,8 +728,19 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
     the compiler does not invent one."""
     grammar = grammar or load_grammar()
     compiled: list[dict[str, Any]] = []
+    state_lists: dict[str, Any] = {}
+    declared_offers = 0
     for clause in clauses:
         entry = compile_clause(clause["text"], grammar, previous=compiled[-1] if compiled else None)
+        if not entry.get("unsupported") and entry.get("cost_offer_id") is not None and declared_offers > 1:
+            # "the additional cost" names one offer. A card that prints two has
+            # not said which, and the clause abstains rather than taking the
+            # nearest one (Codex: bind the same cost_offer_id, do not guess it).
+            entry = {"production_id": entry["production_id"], "unsupported": True,
+                     "reason_code": "cost_offer_not_declared", "text": entry["text"],
+                     "normalized": entry.get("normalized"),
+                     "reason": f"this card declares {declared_offers} optional additional costs; "
+                               "'the additional cost' does not name one of them"}
         if not entry.get("unsupported") and _has_unbound_referent(entry.get("program_effects", [])):
             # DP-86: a referent with nothing before it to be. Refusing here is
             # the point - the alternative is re-finding an object that merely
@@ -649,20 +749,25 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
                      "reason_code": "referent_not_bound", "text": entry["text"],
                      "normalized": entry.get("normalized"),
                      "reason": "the clause names a referent no earlier instruction chose"}
+        declared_offers += len(((entry.get("passive") or {}).get("object_fields", {}) or {})
+                               .get("optional_additional_costs") or [])
         compiled.append(entry)
     effects: list[dict[str, Any]] = []
     passive: dict[str, Any] = {}
     for entry in compiled:
         for effect in entry.get("program_effects", []) or []:
             effects.append(copy.deepcopy(effect))
-        for field, value in (entry.get("passive", {}).get("object_fields", {}) or {}).items():
+        for field, value in ((entry.get("passive") or {}).get("object_fields", {}) or {}).items():
             passive.setdefault(field, []).extend(copy.deepcopy(value))
+        for field, value in ((entry.get("passive") or {}).get("state_lists", {}) or {}).items():
+            state_lists.setdefault(field, []).extend(copy.deepcopy(value))
     return {
         "schema_version": GRAMMAR_VERSION,
         "grammar_version": grammar["version"],
         "clauses": compiled,
         "program_effects": effects,
-        "passive": {"object_fields": passive} if passive else None,
+        "passive": ({**({"object_fields": passive} if passive else {}),
+                     **({"state_lists": state_lists} if state_lists else {})} or None),
         "unsupported_clauses": [{"text": e["text"], "reason_code": e["reason_code"]} for e in compiled if e.get("unsupported")],
         "complete_grammar": False,
     }

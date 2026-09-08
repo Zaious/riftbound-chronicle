@@ -724,6 +724,27 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
         if "stunned" in obj and not isinstance(obj["stunned"], bool):
             errors.append(f"objects.{object_id}.stunned must be boolean (Core 423.1.a)")
+        # Round H: an optional additional cost the card itself offers, of
+        # which Accelerate is one printed instance. Only the card may offer it,
+        # and only for its own play (Core 356.2.b, 820.1).
+        for o_index, offer in enumerate(obj.get("optional_additional_costs", []) or []):
+            label = f"objects.{object_id}.optional_additional_costs[{o_index}]"
+            if not isinstance(offer, dict) or set(offer) - {"cost_offer_id", "energy", "payment"} or "cost_offer_id" not in offer or "payment" not in offer:
+                errors.append(f"{label} must be {{cost_offer_id, payment, energy?}}")
+                continue
+            if not isinstance(offer["cost_offer_id"], str) or not offer["cost_offer_id"]:
+                errors.append(f"{label}.cost_offer_id must be a non-empty string")
+            if "energy" in offer and (not isinstance(offer["energy"], int) or isinstance(offer["energy"], bool) or offer["energy"] < 0):
+                errors.append(f"{label}.energy must be a non-negative integer")
+            payment = offer["payment"]
+            if not isinstance(payment, dict) or payment.get("kind") not in {"power_own_domain", "power_any", "energy"}:
+                errors.append(f"{label}.payment.kind must be power_own_domain, power_any or energy")
+            elif not isinstance(payment.get("amount"), int) or isinstance(payment.get("amount"), bool) or payment["amount"] < 1 or set(payment) - {"kind", "amount"}:
+                errors.append(f"{label}.payment must be {{kind, amount >= 1}}")
+        offer_ids = [o.get("cost_offer_id") for o in (obj.get("optional_additional_costs") or []) if isinstance(o, dict)]
+        if len(offer_ids) != len(set(offer_ids)):
+            errors.append(f"objects.{object_id}.optional_additional_costs have duplicate cost_offer_ids")
+
         # Round H / Core 805: a card's printed Domains. Absent means the data
         # does not say, which is not the same as "no Domain" - an empty list
         # says that, and only an empty list lets Accelerate take any Power.
@@ -993,6 +1014,41 @@ def validate_state(state: Any) -> list[str]:
     return errors
 
 
+def _offer_binding_errors(program: dict[str, Any]) -> list[str]:
+    """Round H: a `cost_paid` naming a card-self offer must be reading *this*
+    card's receipt for *this* play. Codex's three-way binding - source_object,
+    chain_item, cost_offer_id - is checked here, statically, so a program that
+    borrows another card's payment never reaches execution."""
+    receipt = program.get("cost_receipt")
+    named = [e["predicate"] for e in (program.get("effects") or [])
+             if isinstance(e, dict) and isinstance(e.get("predicate"), dict)
+             and e["predicate"].get("cost_offer_id") is not None]
+    if not named:
+        return []
+    if not isinstance(receipt, dict):
+        return ["a cost_offer_id predicate needs this program to carry the receipt it reads"]
+    errors: list[str] = []
+    source = program.get("source_object")
+    if source is not None and receipt.get("card") != source:
+        errors.append(f"the receipt is for card {receipt.get('card')!r} but this program's source is {source!r}; "
+                      "one card's additional cost does not satisfy another's")
+    chain_item = program.get("chain_item")
+    if chain_item is not None and receipt.get("chain_item") is None:
+        errors.append("this program names a chain item but the receipt it reads names none; "
+                      "an additional cost is bound to the play that paid it")
+    elif chain_item is not None and receipt.get("chain_item") != chain_item:
+        errors.append(f"the receipt is for chain item {receipt.get('chain_item')!r} but this program belongs to "
+                      f"{chain_item!r}; an additional cost is bound to the play that paid it")
+    for predicate in named:
+        component = next((c for c in receipt.get("components", []) if c.get("cost_id") == predicate["cost_id"]), None)
+        if component is None:
+            errors.append(f"predicate names cost_id {predicate['cost_id']!r}, which this receipt has no component for")
+        elif component.get("cost_offer_id") != predicate["cost_offer_id"]:
+            errors.append(f"predicate names offer {predicate['cost_offer_id']!r}; the receipt's component for "
+                          f"{predicate['cost_id']!r} records {component.get('cost_offer_id')!r}")
+    return errors
+
+
 def validate_program(program: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(program, dict):
@@ -1004,6 +1060,7 @@ def validate_program(program: Any) -> list[str]:
     if not isinstance(program.get("program_id"), str) or not program.get("program_id"):
         errors.append("program_id must be non-empty")
     errors.extend(_receipt_errors(program.get("cost_receipt")))
+    errors.extend(_offer_binding_errors(program))
     conditional = program.get("conditional_triggers")
     if conditional is not None:
         effect_ids = {e.get("effect_id", f"effect-{i}") for i, e in enumerate(program.get("effects") or []) if isinstance(e, dict)}
@@ -1302,11 +1359,15 @@ def _predicate_errors(predicate: Any, receipt: Any, earlier: set[str] | None = N
     action predicate must name an earlier instruction; an unknown id is
     invalid_input. Recognized-but-unimplemented kinds validate here and
     answer `unsupported` at execution."""
-    if not isinstance(predicate, dict) or predicate.get("kind") not in PREDICATE_KINDS or set(predicate) - {"kind", "cost_id", "effect_id"}:
+    if not isinstance(predicate, dict) or predicate.get("kind") not in PREDICATE_KINDS or set(predicate) - {"kind", "cost_id", "effect_id", "cost_offer_id"}:
         return ["must carry a known kind"]
+    if "cost_offer_id" in predicate and predicate["kind"] not in {"cost_paid", "cost_not_paid"}:
+        return ["cost_offer_id belongs to a cost predicate"]
     if predicate["kind"] in {"cost_paid", "cost_not_paid"}:
         if not isinstance(predicate.get("cost_id"), str) or not predicate["cost_id"]:
             return ["cost_id is required for cost predicates"]
+        if "cost_offer_id" in predicate and (not isinstance(predicate["cost_offer_id"], str) or not predicate["cost_offer_id"]):
+            return ["cost_offer_id must be a non-empty string"]
         if receipt is None:
             return ["needs the program's cost_receipt"]
         if predicate["cost_id"] not in {c.get("cost_id") for c in receipt.get("components", [])}:
@@ -1438,7 +1499,17 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
     if kind not in IMPLEMENTED_PREDICATES:
         return None, []
     if kind in {"cost_paid", "cost_not_paid"}:
-        component = next(c for c in receipt["components"] if c["cost_id"] == predicate["cost_id"])
+        component = next((c for c in (receipt or {}).get("components", []) if c["cost_id"] == predicate["cost_id"]), None)
+        if component is None:
+            # No component, no receipt to read. "Not paid" is the honest answer
+            # for cost_not_paid; "paid" would be a claim about a payment this
+            # program has no evidence of.
+            return (kind == "cost_not_paid"), ["Core 356.4.f.1"]
+        wanted = predicate.get("cost_offer_id")
+        if wanted is not None and component.get("cost_offer_id") != wanted:
+            # The receipt names a different offer - another card's, or another
+            # offer on this one. It does not satisfy this predicate.
+            return (kind == "cost_not_paid"), ["Core 356.4.f.1", "Core 820.1"]
         paid = bool(component["paid"])
         return (paid if kind == "cost_paid" else not paid), ["Core 356.4.f.1", "Core 356.2.b.1"]
     event = (events or {}).get(predicate["effect_id"])

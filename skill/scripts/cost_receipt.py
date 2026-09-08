@@ -24,9 +24,16 @@ PAYMENT_EVENT_KINDS = {"pay_energy", "pay_power", "pay_exhaust", "pay_kill", "pa
                        "pay_spend_xp", "pay_spend_buff", "pay_disempower_self"}
 
 _TOP = {"schema_version", "play_id", "actor", "card", "base", "after_base_modifications", "components", "aggregate",
-        "discount_order", "order_provenance", "payment_events", "total", "paid", "rule_locators"}
+        "discount_order", "order_provenance", "payment_events", "total", "paid", "rule_locators",
+        # Round H: the chain item this play created. A card-self cost is bound
+        # to the play that paid it, and this is what a later trigger checks.
+        "chain_item"}
 _COMPONENT = {"cost_id", "kind", "mandatory", "intent", "requested", "increases", "reductions", "final",
-              "payment_refs", "paid", "rule_locators", "domain", "object_id", "repeat"}
+              "payment_refs", "paid", "rule_locators", "domain", "object_id", "repeat",
+              # Round H: which printed offer this component came from, and the
+              # object that printed it. A predicate reading a card-self cost
+              # checks both, so it cannot be satisfied by another card's.
+              "cost_offer_id", "offered_by"}
 
 
 def _is_resource(value: Any) -> bool:
@@ -47,6 +54,8 @@ def validate_cost_receipt(value: Any) -> list[str]:
     for key in ("play_id", "actor", "card", "order_provenance"):
         if not isinstance(value[key], str) or not value[key]:
             errors.append(f"{key} must be a non-empty string")
+    if "chain_item" in value and (not isinstance(value["chain_item"], str) or not value["chain_item"]):
+        errors.append("chain_item must be a non-empty string when supplied")
     if not _is_resource(value["base"]) or not _is_resource(value["after_base_modifications"]) or not _is_resource(value["total"]):
         errors.append("base, after_base_modifications and total must be {energy, power} resource objects")
     if not isinstance(value["paid"], bool):

@@ -174,6 +174,26 @@ PRODUCTIONS = [
         ],
     },
     {
+        "production_id": "while_a_friendly_unit_defends_alone_it_gets_might",
+        "form": "While a friendly unit defends alone, it gets <might_delta> [M].",
+        "template": r"while a friendly unit defends alone, it gets {might_delta} \[m\]",
+        "slots": {"might_delta": ["increase", "decrease"]},
+        "normalization": N,
+        "rule_locators": ["Core 477.3", "Core 460", "Core 462"],
+        "ast_node": "passive",
+        "required_capability": ["might_aura", "combat_state"],
+        "boundary": ("A standing Might aura whose condition the engine names exactly: a lone defender. "
+                     "The aura is not a target and grants nothing else; a different combat condition, "
+                     "or a keyword instead of Might, is a different production."),
+        "golden": ["While a friendly unit defends alone, it gets +2 [M].",
+                   "While a friendly unit defends alone, it gets +1 [M].",
+                   "While a friendly unit defends alone, it gets -1 [M]."],
+        "negative": ["While a friendly unit defends, it gets +2 [M].",
+                     "While a friendly unit attacks alone, it gets +2 [M].",
+                     "While a friendly unit defends alone, it gets [Tank].",
+                     "While a friendly unit defends alone, it gets +2 [M] this turn."],
+    },
+    {
         "production_id": "ready_selector",
         "form": "Ready <selector>.",
         "template": r"ready {selector}",
@@ -286,6 +306,16 @@ LITERAL = [
      ["if an opponent's score is within 3 points of the victory score, this costs :rb_rune_rainbow: less",
       "this spell's energy cost is reduced by the highest might among units you control",
       "i cost :rb_energy_2: less"]),
+    ("you_may_pay_own_domain_power_as_additional_cost_to_play_me",
+     r"you may pay \[c\] as additional cost to play me",
+     ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"], "passive", ["card_self_optional_cost", "domain_power"],
+     ("The card offers one Power of its own Domain as an optional additional cost for its own play. "
+      "[C] is the card's Domain, not any Domain ([A]) - a card whose Domains are not observed abstains "
+      "at play time rather than being offered an unpayable or an over-payable cost."),
+     ["You may pay [C] as additional cost to play me."],
+     ["you may pay [a] as additional cost to play me",
+      "you may pay [c] as additional cost to play another unit",
+      "pay [c] as additional cost to play me"]),
     ("no_rules_text", r"\(no rules text\)", ["Core 185"], "empty", [],
      "A card with nothing to compile. It is a parsed clause, not an unparsed one.",
      ["(no rules text)"], ["no rules text", "(vanilla)"]),

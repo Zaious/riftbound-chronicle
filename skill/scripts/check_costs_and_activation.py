@@ -185,8 +185,13 @@ def main() -> int:
         errors.append(f"activating an ability of a controlled board unit failed: {activated.get('reason_code')} {activated.get('reason')}")
     else:
         entry = activated["next_effect_state"]["chain_items"]["ability-1"]
-        if entry != {"source_object": "u1", "ability_id": "u1:a1", "controller": "p1"} or activated["next_effect_state"]["players"]["p1"]["zones"]["hand"] != ["c1"]:
-            errors.append(f"the ability chain entry is wrong or the hand changed: {entry}")
+        placed = {k: v for k, v in entry.items() if k != "cost_receipt"}
+        if placed != {"source_object": "u1", "ability_id": "u1:a1", "controller": "p1"} or activated["next_effect_state"]["players"]["p1"]["zones"]["hand"] != ["c1"]:
+            errors.append(f"the ability chain entry is wrong or the hand changed: {placed}")
+        # DP-93: an activated ability's chain item carries its own receipt too,
+        # so a cost comparison reading this item reads this activation.
+        if entry.get("cost_receipt", {}).get("chain_item") != "ability-1":
+            errors.append(f"the ability's chain item does not carry its own receipt: {entry.get('cost_receipt')}")
         if activated["next_effect_state"]["players"]["p1"]["zones"]["base"] != ["u1"] or object_identity(activated["next_effect_state"], "u1") != "u1@0":
             errors.append("activating moved or renewed the source object")
         if activated["next_timing_state"]["chain"]["initiated_by"] != "activated_ability" or validate_play_result(activated):

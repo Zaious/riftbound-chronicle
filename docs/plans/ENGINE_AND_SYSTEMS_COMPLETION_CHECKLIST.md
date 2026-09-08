@@ -1028,9 +1028,27 @@ absence. Each row names its gate; a row without one is not a completed row.
   Gate: `check_state_builder.py` — 24 labelled cases, 8 that build and 16 that
   refuse, covering all five question kinds, all eleven slots and all seven
   downgrade reasons.
-- [ ] **S-02:** fact-ledger gate. Every mechanical conclusion sentence resolves
-  to an engine check, an official locator that hits the index, a card snapshot,
-  or a named assumption; a missing one downgrades rather than answers.
+- [x] **S-02:** fact-ledger gate — `fact-ledger.v1`. Every mechanical
+  conclusion sentence resolves to one of four sources: a verified engine check
+  that reached a verdict, a locator that hits the index, a present card
+  snapshot, or an assumption the state-assumption artifact carries. A sentence
+  that resolves to none of them costs the whole answer its tier, not just
+  itself. The mechanical tagging is re-derived from the sentence text rather
+  than read from the ledger, so a conclusion cannot be tagged non-mechanical to
+  slip past. An engine check that came back unsupported, decision_required or
+  invalid_input is refused by name as a declined ruling.
+  Artifact: `fact_ledger.py`, `fact_ledger_cases.json`.
+  Two checks read a ledger and are not the same check: `validate_ledger` is
+  structural and reads no context; `verify_ledger` rebuilds the ledger from its
+  own sentences against the engine checks, index, snapshots and assumption
+  artifact supplied now and compares every derived field, so a record's status
+  is what the context says rather than what the ledger wrote. Engine, card and
+  assumption sources are content-addressed by hash.
+  Gate: `check_fact_ledger.py` — 16 cases over all ten violation codes, citing
+  engine checks built by running the real timing and effect kernels, plus seven
+  source-status forgeries each shown to pass structural validation and be
+  refused by verification. It runs in CI; the service-side half of the v0
+  gate-1 wording waits on S-03, since there is no service to run it in yet.
 - [ ] **S-03:** one Rule Consult command over the timing, effect, combat-step,
   control-step and legal-action entries, returning `not_attempted` or a named
   abstention rather than free prose. This is the section 9 item above.

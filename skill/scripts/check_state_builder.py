@@ -68,6 +68,14 @@ def main() -> int:
                                 f"default is required or absent, never optional")
     if not any("combat" in p["required"] for p in QUESTION_KINDS.values()):
         failures.append("no kind requires the combat slot, so a Combat can never be stated")
+    # The builder's mode vocabulary is the kernel's, by identity — not a copy
+    # that happens to match today.
+    import effect_ir as _effect_ir
+    if state_builder.SANCTIONED_MODES is not _effect_ir.SANCTIONED_MODES:
+        failures.append("state_builder.SANCTIONED_MODES must be effect_ir.SANCTIONED_MODES itself, "
+                        "not a restatement")
+    if not any("mode" in p["required"] for p in QUESTION_KINDS.values()):
+        failures.append("no kind requires the mode slot, so a Mode of Play can never be stated")
 
     for case in cases:
         case_id = case["case_id"]
@@ -80,6 +88,11 @@ def main() -> int:
             # The builder refusing by name is the right behaviour; a gate that
             # dies on it has the right exit code and says nothing.
             failures.append(f"{case_id}: the builder refused to run: {exc}")
+            continue
+        except Exception as exc:  # noqa: BLE001 — any crash is reported by case, never raised
+            # Third time this shape came up (S-01b, I-01, S-01c): a crash inside
+            # one build must name the case, not end the report.
+            failures.append(f"{case_id}: the builder crashed: {type(exc).__name__}: {exc}")
             continue
         built[case_id] = artifact
 
@@ -129,6 +142,25 @@ def main() -> int:
             if name not in derived:
                 failures.append(f"{case['case_id']}: a built Combat must list the derived "
                                 f"assumption {name!r}")
+
+    # S-01c. A stated Mode of Play and stated points reach the state the
+    # kernel reads, unchanged: the shape effect_ir validates and the scoring
+    # kernel reads. A builder that accepted them and dropped them would hand
+    # the kernel the very state that made it decline before S-01c.
+    for case in cases:
+        run = built.get(case["case_id"])
+        draft = case["draft"] or {}
+        if not run or not run["buildable"]:
+            continue
+        state = run["state"]
+        if "mode" in draft and state.get("mode") != draft["mode"]:
+            failures.append(f"{case['case_id']}: the stated mode {draft['mode']} is not in the "
+                            f"built state (found {state.get('mode')!r})")
+        if "points" in draft:
+            found = {p: state["players"].get(p, {}).get("points") for p in draft["players"]}
+            if found != draft["points"]:
+                failures.append(f"{case['case_id']}: the stated points {draft['points']} are not "
+                                f"in the built state (found {found})")
 
     # Coverage. A kind that only ever builds, or only ever refuses, is a kind
     # whose boundary this fixture set has not located.

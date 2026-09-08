@@ -64,6 +64,9 @@ CHAIN_TIMINGS = {"default", "action", "reaction"}
 COMBAT_STATUSES = frozenset(rules_core.COMBAT_STATUSES)
 COMBAT_ROLES = frozenset(effect_ir.COMBAT_ROLES)
 UNIT_KEYWORDS = frozenset(effect_ir.OBJECT_KEYWORDS)
+# S-01c. The Mode of Play ids the kernel sanctions (Core 484-489). Imported: a
+# mode id is a choice from the kernel's list, not a name a draft invents.
+SANCTIONED_MODES = effect_ir.SANCTIONED_MODES
 CHAIN_STATUSES = {"pending", "finalized"}
 TIERS = {"B", "C"}
 
@@ -215,6 +218,42 @@ def _check_combat_designations(value: Any) -> str | None:
     return None
 
 
+def _check_mode(value: Any) -> str | None:
+    """The Mode of Play facts the kernels read (Core 456.3, 483). Stated, never guessed.
+
+    Three fields, all required: the mode's id, its Victory Score, and whether
+    it is a team mode. Team modes are refused rather than modelled — the
+    scoring kernel itself declines them (469.1.a, 315.2.b.3) — so `teams`
+    must be stated and must be false. The kernel treats absence as "not a
+    team mode"; this builder does not pass absence through as a fact.
+    """
+    fields = {"id", "victory_score", "teams"}
+    if not isinstance(value, dict):
+        return "mode must be an object"
+    if unknown := set(value) - fields:
+        return f"mode carries fields outside the vocabulary: {sorted(unknown)}"
+    if missing := fields - set(value):
+        return f"mode is missing {sorted(missing)}"
+    if value["id"] not in SANCTIONED_MODES:
+        return f"mode.id must be one of the sanctioned Modes of Play {sorted(SANCTIONED_MODES)} " \
+               f"(Core 484-489)"
+    score = value["victory_score"]
+    if not isinstance(score, int) or isinstance(score, bool) or score < 1:
+        return "mode.victory_score must be a positive integer (Core 456.3)"
+    if not isinstance(value["teams"], bool):
+        return "mode.teams must be true or false"
+    return None
+
+
+def _check_points(value: Any) -> str | None:
+    if not isinstance(value, dict) or not value:
+        return "points must map every player to a non-negative point total"
+    for player, total in value.items():
+        if not _is_id(player) or not _is_count(total):
+            return f"points.{player} must be a non-negative integer"
+    return None
+
+
 def _check_energy(value: Any) -> str | None:
     if not isinstance(value, dict) or not value:
         return "energy must map every player to an energy total"
@@ -294,13 +333,22 @@ SLOTS: dict[str, dict[str, Any]] = {
     "combat_designations": {"check": _check_combat_designations, "family": "effect", "default": None,
                             "material": True,
                             "text": lambda v: f"{len(v)} unit(s) carry a Combat designation."},
+    # S-01c. No default on either. A Victory Score that was not stated is not
+    # eight; a score that was not stated is not zero. Both change what the
+    # engine rules about scoring, victory and Burn Out, so both are required
+    # by the one kind that carries them.
+    "mode": {"check": _check_mode, "family": "effect", "default": None, "material": True,
+             "text": lambda v: f"The Mode of Play is {v['id']} with a Victory Score of "
+                               f"{v['victory_score']}; it is not a team mode."},
+    "points": {"check": _check_points, "family": "effect", "default": None, "material": True,
+               "text": lambda v: "Points: " + ", ".join(f"{p}={n}" for p, n in sorted(v.items())) + "."},
 }
 
 # Slots that are never assumed. A kind that names one must require it; the
 # builder refuses to default one, and the gate checks no kind lists one as
 # optional. Codex's S-01b rule, made mechanical: a Combat that was not stated
 # is not a Combat, and units that were not designated do not fight.
-UNDEFAULTABLE = frozenset({"combat", "combat_designations"})
+UNDEFAULTABLE = frozenset({"combat", "combat_designations", "mode", "points"})
 
 # Slots whose default is computed from the players list rather than fixed.
 PLAYER_KEYED_DEFAULTS = {"energy": lambda players: {p: 0 for p in players},
@@ -346,6 +394,14 @@ QUESTION_KINDS: dict[str, dict[str, Any]] = {
         "family": "effect",
         "required": {"players", "units", "battlefields", "combat_designations"},
         "optional": {"energy", "power"},
+    },
+    # S-01c. The board a scoring, victory or Burn Out question runs over: the
+    # Mode of Play and every player's points, both stated. Units and
+    # Battlefields keep their usual defaults, listed as assumptions.
+    "scored_board": {
+        "family": "effect",
+        "required": {"players", "mode", "points"},
+        "optional": {"units", "battlefields", "energy", "power"},
     },
 }
 
@@ -476,7 +532,7 @@ def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
     for entry in values.get("combat_designations") or []:
         objects[entry["object_id"]]["combat_designation"] = {"combat_id": entry["combat_id"],
                                                              "role": entry["role"]}
-    return {
+    state = {
         "schema_version": effect_ir.STATE_VERSION,
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
         "players": {player: {
@@ -488,6 +544,16 @@ def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
         "battlefields": battlefields,
         "replacement_effects": [],
     }
+    mode = values.get("mode")
+    if mode is not None:
+        # Exactly the shape effect_ir validates and battlefield_control reads.
+        state["mode"] = {"id": mode["id"], "victory_score": mode["victory_score"],
+                         "teams": mode["teams"]}
+    points = values.get("points")
+    if points is not None:
+        for player in players:
+            state["players"][player]["points"] = points[player]
+    return state
 
 
 def _derived_for(family: str, values: dict[str, Any]) -> list[dict[str, Any]]:
@@ -623,10 +689,17 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
             out_of_scope.append("combat_designations")
             scope_details.append("combat_designations name more than one Combat; a board carries one")
     if family == "effect":
-        for slot in ("energy", "power"):
+        for slot in ("energy", "power", "points"):
             if slot in draft and set(draft[slot]) != set(players):
                 out_of_scope.append(slot)
                 scope_details.append(f"{slot} must name exactly the players {sorted(players)}")
+        if draft.get("mode") is not None and draft["mode"]["teams"] is True:
+            # Refused, not modelled: the scoring kernel declines team modes
+            # (469.1.a, 315.2.b.3), and this builder does not add what the
+            # kernel does not have.
+            out_of_scope.append("mode.teams")
+            scope_details.append("team modes are not modelled; the scoring kernel declines them "
+                                 "(Core 469.1.a, 315.2.b.3)")
     for slot, id_fields in (("chain_items", ("controller",)), ("units", ("controller",))):
         for index, entry in enumerate(draft.get(slot, []) or []):
             for field in id_fields:

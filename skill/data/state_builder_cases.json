@@ -1131,6 +1131,222 @@
           "combat_designations"
         ]
       }
+    },
+    {
+      "case_id": "SB-038",
+      "question": "I have 7 points to a Victory Score of 8. What do the victory facts say?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 7,
+          "p2": 3
+        }
+      },
+      "expected": {
+        "buildable": true,
+        "assumed_slots": [
+          "battlefields",
+          "energy",
+          "power",
+          "units"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-039",
+      "question": "What do the victory facts say?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "points": {
+          "p1": 7,
+          "p2": 3
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "mode"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-040",
+      "question": "We are playing to 8. Who is closer?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "missing_required_slot",
+        "missing_fields": [
+          "points"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-041",
+      "question": "We are playing a team mode. Who is closer?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": true
+        },
+        "points": {
+          "p1": 7,
+          "p2": 3
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "mode.teams"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-042",
+      "question": "The Victory Score is zero. Has anyone won?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 0,
+          "teams": false
+        },
+        "points": {
+          "p1": 7,
+          "p2": 3
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "mode"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-043",
+      "question": "Only my score is known. Who is closer?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 7
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_value_out_of_scope",
+        "rejected_fields": [
+          "points"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-044",
+      "question": "It is my main phase; who is closer to winning?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "mode": {
+          "id": "duel",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 7,
+          "p2": 3
+        },
+        "phase": "main"
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "C",
+        "reason": "slot_not_in_question_kind",
+        "rejected_fields": [
+          "phase"
+        ]
+      }
+    },
+    {
+      "case_id": "SB-045",
+      "question": "We are playing a mode I made up. Who is closer to winning?",
+      "question_kind": "scored_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "mode": {
+          "id": "standard",
+          "victory_score": 8,
+          "teams": false
+        },
+        "points": {
+          "p1": 7,
+          "p2": 3
+        }
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "slot_type_invalid",
+        "rejected_fields": [
+          "mode"
+        ]
+      }
     }
   ]
 }

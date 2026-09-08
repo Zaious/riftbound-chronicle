@@ -1,7 +1,15 @@
 # Riftbound Chronicle
 
-An evidence-aware AI assistant for building, learning, and practising physical
-**Riftbound** decks.
+A bounded **Riftbound** rules engine, and the evidence-aware assistant built
+on top of it.
+
+**What this is** — a versioned clause grammar that compiles printed card text
+into typed programs, a capability manifest the engine derives from its own
+source, and machine-checked evidence for covered mechanical conclusions.
+
+**What this is not** — a game simulator, an official rules authority, or an
+automated player. Coverage is measured and published; the parts the engine
+cannot read say so by name rather than guessing.
 
 [繁體中文](README.zh-TW.md) · [한국어](README.ko.md)
 
@@ -219,6 +227,20 @@ gameplay. Partnership drafts and unaccepted localization material are kept
 outside the public repository until the other maintainer agrees to publish
 them.
 
+## Deck closure
+
+Two Master Yi decklists are engine-closed in Chronicle's private licensed
+overlay and can generate evidence-backed Deck Coach primers. The evidence is a
+rules-consistency and coverage check only: it is not a complete game simulator,
+an official ruling source, or an automated player.
+
+A closure is verified by re-derivation, not by trusting a stored file: every
+deck slot is rechecked against the live engine, current card text, and—where
+applicable—the current grammar or private card-program pack. The resulting
+program and evidence receipt must match. The public repository carries the
+contracts and verifiers this uses; the closures themselves, their licensed deck
+snapshots, card mappings, and Deck Coach artifacts are private overlay data.
+
 ## Rule Consult
 
 Rule Consult is for players who need a careful explanation, including detailed
@@ -384,6 +406,11 @@ approved public deployment.
 
 ## What is open, and what is not
 
+The public repository ships the reusable engine, schemas, verifiers, and
+synthetic fixtures. Licensed card programs, deck snapshots, and the two
+evidence-backed deck closures live in the private overlay and are not
+included in a public clone.
+
 This repository is the **verifiable base** of Riftbound Chronicle, and it is
 deliberately the whole of that base: the rules engine, every gate, the schemas,
 the ADRs, the `clause-grammar.v1` contract with all of its productions, the
@@ -393,8 +420,10 @@ service's authority claim is that its answers can be re-run by someone who is
 not us.
 
 What is not here, and will not be: the compiled card corpora from Wave B
-onward, the coverage debt over them, the state builder, the fact-ledger gate,
-the evidence-pack assembly, the consult command, and the question corpus. Those
+onward, the coverage debt over them, the deck snapshots, the card mappings that
+tie a reading the rules leave open to a real card, the deck closures and their
+Deck Coach artifacts, the state builder, the fact-ledger gate, the evidence-pack
+assembly, the consult command, and the question corpus. Those
 are the labour and the product, and they live in a private overlay that pins
 this repo as a submodule and reads extra packs through `CHRONICLE_PACK_PATHS`
 without editing anything here.

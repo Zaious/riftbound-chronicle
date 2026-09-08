@@ -1,6 +1,10 @@
 # Riftbound Chronicle
 
-실물 Riftbound 덱을 구성하고, 덱의 운용법을 배우고, 두 덱으로 연습할 수 있도록 설계된 근거 중심 AI Skill입니다.
+경계가 명확한 Riftbound 규칙 엔진과, 그 위에 세워진 근거 중심 AI Skill입니다.
+
+**이것은 무엇인가** — 카드에 인쇄된 텍스트를 타입이 있는 프로그램으로 컴파일하는 버전 관리된 절(clause) 문법, 엔진이 자신의 소스에서 도출하는 capability manifest, 그리고 **커버되는 범위 안에서** 모든 기계적 결론에 대한 기계 검증 근거입니다.
+
+**이것은 무엇이 아닌가** — 게임 시뮬레이터가 아니고, 공식 규칙 권위가 아니며, 자동 플레이어도 아닙니다. 커버리지는 측정되어 공개되며, 엔진이 읽지 못하는 부분은 추측하지 않고 이름을 들어 그렇다고 말합니다.
 
 [English](README.md) · [繁體中文](README.zh-TW.md)
 
@@ -100,6 +104,12 @@ python skill/scripts/riftatlas_bridge.py `
 ```
 
 URL은 출처 기록으로만 사용됩니다. bridge는 Rift Atlas를 스크랩하거나 private API를 호출하거나 게임을 자동화하지 않습니다. 상대 유지 관리자가 공개에 동의하기 전까지 협력 제안과 번체 중국어 sample은 공개 저장소에 넣지 않습니다.
+
+## 덱 closure
+
+두 개의 Master Yi 덱 리스트가 Chronicle의 비공개 라이선스 overlay 안에서 engine-closed 상태이며, 근거가 뒷받침된 Deck Coach primer를 생성할 수 있습니다. 그 근거는 규칙 일관성과 커버리지 확인**일 뿐**입니다. 완전한 게임 시뮬레이터도, 공식 재정 출처도, 자동 플레이어도 아닙니다.
+
+closure는 저장된 파일을 신뢰하는 것이 아니라 **재도출**로 검증됩니다. 모든 덱 슬롯을 현재 엔진, 현재 카드 텍스트, 그리고 해당하는 경우 현재 문법 또는 비공개 카드 프로그램 팩에 대해 다시 확인하며, 그 결과로 나온 프로그램과 근거 영수증이 일치해야 합니다. 공개 저장소는 여기에 쓰이는 계약과 verifier를 담고 있습니다. closure 자체와 그것이 기반한 라이선스 덱 snapshot, card mapping, Deck Coach artifact는 비공개 overlay의 데이터입니다.
 
 ## Rule Consult와 규칙 PDF
 

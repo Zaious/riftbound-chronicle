@@ -1,6 +1,10 @@
 # Riftbound Chronicle
 
-一套以證據為核心的 Riftbound AI Skill，協助玩家組牌、理解牌組打法，以及用實體牌進行對練。
+一套有界的 Riftbound 規則引擎，以及建立在它之上、以證據為核心的 AI Skill。
+
+**它是什麼**——一份帶版本的子句文法，把卡片印製文字編譯成型別化程式；一份引擎由自身原始碼導出的能力清單；以及**在覆蓋範圍內**、每一個機械結論都有機器可檢查的證據。
+
+**它不是什麼**——不是遊戲模擬器，不是官方規則權威，也不是自動代打。覆蓋率是量測並公開的；引擎讀不懂的部分會具名說出來，不猜。
 
 [English](README.md) · [한국어](README.ko.md)
 
@@ -101,6 +105,12 @@ python skill/scripts/riftatlas_bridge.py `
 
 網址只作來源紀錄；bridge 不抓取 Rift Atlas、不呼叫私有 API，也不自動對戰。尚未被對方接受的合作提案與繁中化 sample 會留在本地，不放入公開 repo。
 
+## 牌組 closure
+
+兩副 Master Yi 牌表在 Chronicle 的私有授權 overlay 中達成 engine-closed，並能產出有證據支撐的 Deck Coach primer。那份證據**只是**規則一致性與覆蓋率的檢查：它不是完整的遊戲模擬器，不是官方裁定來源，也不是自動代打。
+
+closure 是靠**重新推導**驗證的，不是信任一份存起來的檔案：每一個牌組槽位都會對照當下的引擎、當下的卡片文字，以及——在適用時——當下的文法或私有卡程式包重新檢查一次，產出的程式與證據收據必須一致。公開 repo 帶的是這件事用到的契約與 verifier；closure 本身、它們所依據的已授權牌組 snapshot、card mapping 與 Deck Coach artifact，都是私有 overlay 的資料。
+
 ## Rule Consult 與規則書
 
 Rule Consult 將玩家提供的事實、假設、規則依據、分析、信心與升級處理分開保存，並固定標示 `official_status: unofficial`、`state_effect: none`。
@@ -158,7 +168,9 @@ Get-ChildItem skill/scripts/check_*.py | ForEach-Object {
 
 原創程式碼與方法論採 [GNU Affero General Public License v3.0](LICENSE)；換授權之前發布的版本（tag `mit-final` 以前）維持原本的 MIT。提交程式碼、資料或文件需簽署 [CLA](CLA.md)，回報問題不用。卡名、規則文字與其他 Riot-owned material 不在任何授權內。
 
-**公開與不公開的界線**：這個 repo 是可驗證的基底——引擎、全部閘門、schema、ADR、`clause-grammar.v1` 契約與全部 production、Wave A 種子語料、`verify_evidence_pack.py`——任何人只靠它就能重跑服務發出的證據包。Wave B 起的編譯卡語料、覆蓋債、狀態建構器、事實帳本閘、證據包組裝、諮詢指令與問題語料在私有 overlay，不會進來。可重跑是**逐答案**的（證據包附該答案用到的程式），語料是**整個服務**的；兩者不衝突。新增 pack 的 PR 會被關閉，見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+**公開與不公開的界線**：公開 repo 提供可重用的引擎、schema、verifier 與合成 fixture。**已授權的卡程式、牌組 snapshot，以及那兩副有證據支撐的牌組 closure 都在私有 overlay，不包含在公開 clone 裡。**
+
+這個 repo 是可驗證的基底——引擎、全部閘門、schema、ADR、`clause-grammar.v1` 契約與全部 production、Wave A 種子語料、`verify_evidence_pack.py`——任何人只靠它就能重跑服務發出的證據包。Wave B 起的編譯卡語料、覆蓋債、牌組 snapshot、把規則未定死的讀法對應到實卡的 card mapping、牌組 closure 與其 Deck Coach artifact、狀態建構器、事實帳本閘、證據包組裝、諮詢指令與問題語料在私有 overlay，不會進來。可重跑是**逐答案**的（證據包附該答案用到的程式），語料是**整個服務**的；兩者不衝突。新增 pack 的 PR 會被關閉，見 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 > Riftbound Chronicle was created under Riot Games' “Legal Jibber Jabber” policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
 

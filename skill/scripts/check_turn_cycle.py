@@ -126,7 +126,14 @@ def main() -> int:
     awake = run_awaken_step(t1h, e0)
     if not awake.get("committed") or awake["next_effect_state"]["objects"]["u1"]["exhausted"] or awake["next_effect_state"]["objects"]["u2"]["exhausted"] is not True or awake["trace"].get("readied") != ["u1"] or awake["next_timing_state"]["turn_progress"].get("awaken_complete") is not True:
         errors.append(f"the Awaken step did not ready only the Turn Player's exhausted objects: {awake.get('reason_code')} {awake.get('trace')}")
-    stunned = copy.deepcopy(e0); stunned["objects"]["u1"]["stunned"] = True
+    # DP-94: the status travels with the turn effect that will expire it, so a
+    # state carrying one without the other is invalid before it ever reaches
+    # the Awaken step.
+    stunned = copy.deepcopy(e0)
+    stunned["objects"]["u1"]["stunned"] = True
+    stunned.setdefault("turn_effects", []).append(
+        {"effect_id": "stunned:u1", "kind": "stunned_unit", "controller": "p1",
+         "turn_id": stunned.get("turn_id", "turn-0"), "object_id": "u1"})
     if run_awaken_step(t1h, stunned).get("reason_code") != "ready_blocker_unknown" or run_awaken_step(t1h, stunned).get("unsupported") is not True:
         errors.append("a stunned object was readied or guessed around")
     if enter_beginning_phase(t1h, e0).get("reason_code") != "phase_step_incomplete":

@@ -876,11 +876,22 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
                            "reason": "the clause names a referent no earlier instruction chose"}
     effects: list[dict[str, Any]] = []
     passive: dict[str, Any] = {}
+    conflicts: list[str] = []
     for entry in compiled:
         for effect in entry.get("program_effects", []) or []:
             effects.append(copy.deepcopy(effect))
         for field, value in ((entry.get("passive") or {}).get("object_fields", {}) or {}).items():
-            passive.setdefault(field, []).extend(copy.deepcopy(value))
+            # Two shapes of printed field: a list a card may contribute to more
+            # than once (its triggers, its keywords), and a scalar it either
+            # has or has not (its play timing). Extending the second would
+            # silently turn "reaction" into a list nothing reads; two clauses
+            # setting it differently is a card the grammar cannot represent.
+            if isinstance(value, list):
+                passive.setdefault(field, []).extend(copy.deepcopy(value))
+            elif field in passive and passive[field] != value:
+                conflicts.append(f"{field}: {passive[field]!r} then {value!r}")
+            else:
+                passive[field] = copy.deepcopy(value)
         for field, value in ((entry.get("passive") or {}).get("state_lists", {}) or {}).items():
             state_lists.setdefault(field, []).extend(copy.deepcopy(value))
     modal = [entry["modal"] for entry in compiled if entry.get("modal")]
@@ -892,6 +903,7 @@ def compile_card(clauses: list[dict[str, Any]], grammar: dict[str, Any] | None =
         "program_effects": effects,
         "passive": ({**({"object_fields": passive} if passive else {}),
                      **({"state_lists": state_lists} if state_lists else {})} or None),
+        **({"passive_conflicts": conflicts} if conflicts else {}),
         "unsupported_clauses": [{"text": e["text"], "reason_code": e["reason_code"]} for e in compiled if e.get("unsupported")],
         "complete_grammar": False,
     }

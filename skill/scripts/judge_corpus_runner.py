@@ -150,6 +150,7 @@ def run_question(question: dict[str, Any], inputs: dict[str, Any],
 
 
 def run_corpus(corpus: dict[str, Any], runs: dict[str, Any]) -> dict[str, Any]:
+    corpus = judge_corpus.attach_debts(corpus)
     retriever = build_retriever(runs["sources"])
     inputs_by_id = runs["runs"]
     results = []

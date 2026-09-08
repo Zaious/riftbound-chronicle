@@ -1,7 +1,295 @@
 {
   "schema_version": "judge-corpus.v1",
   "corpus_id": "judge-corpus-2026-09-08",
-  "description": "The timing_priority_chain family is drafted in full; the other six families carry one exemplar each. The coverage report is the authority on how much exists and what is short per family — this description names no count, because a count written here drifts. Every locator was read off the Core Rules PDF page itself rather than the extracted rules index, which misattributes locators. This is NOT the sixty-question corpus, and the remaining questions are annotated by hand rather than generated in a batch.",
+  "description": "Sixty questions across seven families, each with an expected answer contract; every locator was read off the Core Rules PDF page itself. Every gap the corpus measured is in coverage_debts, one ledger for template, state-builder, engine, source and policy gaps, and a question's template_coverage_debt is derived from it rather than stored. The coverage report is the authority on counts; this description names none.",
+  "coverage_debts": [
+    {
+      "id": "rule_focus_without_priority_cannot_act",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-TPC-008"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 313.4 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_finalized_permanent_resolves_immediately",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-TPC-011"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 337.2 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_score_once_per_battlefield_per_turn",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CS-003"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 470 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_final_point_needs_every_battlefield_scored",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CS-004"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 471.1.b, Core 471.1.b.1 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_non_conquer_points_unrestricted",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CS-005"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 471.1.a.1 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_hold_abilities_trigger_once_when_scored",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CS-006"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 471.2.b, Core 471.2.c in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_ways_to_gain_points",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CS-007"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 194.1 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_victory_score_default",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-TSE-004"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 194.3, Core 194.3.a in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_victory_tie_continues",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-TSE-005"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 194.2.a, Core 194.2.b in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_points_floor_at_zero",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-TSE-006"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 194.4, Core 194.4.a, Core 194.4.b in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_game_ends_when_a_player_wins",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-TSE-007"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 194.2, Core 196 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_any_number_of_discretionary_actions",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-AA-003"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 316.5.a, Core 410.1.b in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_no_forbidden_state_by_discretionary_action",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-AA-004"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 410.1.b.3 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_limited_actions_only_when_instructed",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-AA-005"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 410.2.a, Core 410.2.b in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_only_turn_player_acts_in_neutral_open_state",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-AA-006"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 316.5.b in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_shield_value_omitted_is_one",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CI-003"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 814.1.b.3 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_shield_values_sum",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CI-004"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 814.2 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_tank_assigned_lethal_first",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CI-005"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 815.1.b, Core 815.1.c.1 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_multiple_tank_redundant",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CI-006"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 815.2 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_shield_lasts_while_defender",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CI-007"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 814.1.d.1 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_combat_between_exactly_two_players",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CB-004"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 462, Core 462.3 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_attacker_is_who_applied_contested",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CB-005"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 464.2.c.1, Core 464.2.c.2 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_attacker_gains_focus_at_combat_open",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CB-006"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 464.2.d in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_assigning_is_not_dealing",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CB-007"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 465.2.c.1, Core 465.2.c.1.a in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "rule_lethal_in_full_before_another",
+      "class": "template",
+      "blocks": "source_explanation",
+      "owner": "rule_consult_command.CLAIM_TEMPLATES (template-review)",
+      "observed_in": [
+        "JC-CB-008"
+      ],
+      "trigger": "the contract requires a conditional_rule template stating Core 465.2.c.3, Core 465.2.c.4 in the rule's own terms; the answer surface has none",
+      "status": "open"
+    },
+    {
+      "id": "state_builder.stunned_unit",
+      "class": "state_builder",
+      "blocks": "position_conclusion",
+      "owner": "state_builder (S-01 family), together with turn effects (DP-94)",
+      "observed_in": [
+        "JC-CB-002"
+      ],
+      "trigger": "the draft stated a unit as stunned; the builder has no such slot and refused it (state_not_built: slot_type_invalid ['units']), so the assign path's 423.1.b reading was never reached",
+      "status": "open"
+    }
+  ],
   "questions": [
     {
       "question_id": "JC-EX-COMBAT-1",
@@ -25,8 +313,7 @@
         "required_source_locators": [
           "Core 423.1.b"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -52,8 +339,7 @@
         "required_source_locators": [
           "Core 323.6"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -81,8 +367,7 @@
           "Core 431.2",
           "Core 194.1.d"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -108,8 +393,7 @@
         "required_source_locators": [
           "Core 312"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -129,8 +413,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -152,8 +435,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -183,8 +465,7 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": []
+        ]
       },
       "correction_record": null
     },
@@ -212,8 +493,7 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": []
+        ]
       },
       "correction_record": null
     },
@@ -242,8 +522,7 @@
         "required_source_locators": [
           "Core 312.1.b"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -271,8 +550,7 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": []
+        ]
       },
       "correction_record": null
     },
@@ -298,8 +576,7 @@
         "required_source_locators": [
           "Core 313.1.a"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -327,8 +604,7 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": []
+        ]
       },
       "correction_record": null
     },
@@ -356,8 +632,7 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": []
+        ]
       },
       "correction_record": null
     },
@@ -385,9 +660,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_focus_without_priority_cannot_act"
         ]
       },
       "correction_record": null
@@ -414,8 +686,7 @@
         "required_source_locators": [
           "Core 338.1.a.1"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -441,8 +712,7 @@
         "required_source_locators": [
           "Core 312.1.a"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null
     },
@@ -470,9 +740,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_finalized_permanent_resolves_immediately"
         ]
       },
       "correction_record": null
@@ -503,8 +770,7 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": []
+        ]
       },
       "correction_record": null
     },
@@ -530,8 +796,7 @@
           "Core 315.2.b.2",
           "Core 469.2"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": {
@@ -559,8 +824,7 @@
         "required_source_locators": [
           "Core 472"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -588,9 +852,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_score_once_per_battlefield_per_turn"
         ]
       },
       "correction_record": null,
@@ -621,9 +882,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_final_point_needs_every_battlefield_scored"
         ]
       },
       "correction_record": null,
@@ -652,9 +910,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_non_conquer_points_unrestricted"
         ]
       },
       "correction_record": null,
@@ -685,9 +940,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_hold_abilities_trigger_once_when_scored"
         ]
       },
       "correction_record": null,
@@ -716,9 +968,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_ways_to_gain_points"
         ]
       },
       "correction_record": null,
@@ -747,8 +996,7 @@
           "Core 315.4.b.1",
           "Core 315.4.b.2"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -774,8 +1022,7 @@
         "required_source_locators": [
           "Core 431.1.a"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -801,8 +1048,7 @@
         "required_source_locators": [
           "Core 431.2.c"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -832,9 +1078,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_victory_score_default"
         ]
       },
       "correction_record": null,
@@ -865,9 +1108,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_victory_tie_continues"
         ]
       },
       "correction_record": null,
@@ -900,9 +1140,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_points_floor_at_zero"
         ]
       },
       "correction_record": null,
@@ -933,9 +1170,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_game_ends_when_a_player_wins"
         ]
       },
       "correction_record": null,
@@ -962,8 +1196,7 @@
         "required_source_locators": [
           "Core 410.1.a"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -989,8 +1222,7 @@
         "required_source_locators": [
           "Core 409"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1020,9 +1252,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_any_number_of_discretionary_actions"
         ]
       },
       "correction_record": null,
@@ -1051,9 +1280,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_no_forbidden_state_by_discretionary_action"
         ]
       },
       "correction_record": null,
@@ -1084,9 +1310,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_limited_actions_only_when_instructed"
         ]
       },
       "correction_record": null,
@@ -1115,9 +1338,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_only_turn_player_acts_in_neutral_open_state"
         ]
       },
       "correction_record": null,
@@ -1144,8 +1364,7 @@
         "required_source_locators": [
           "Core 312.1.a"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1173,8 +1392,7 @@
           "Core 814.1.c",
           "Core 814.1.d"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1194,8 +1412,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1223,9 +1440,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_shield_value_omitted_is_one"
         ]
       },
       "correction_record": null,
@@ -1254,9 +1468,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_shield_values_sum"
         ]
       },
       "correction_record": null,
@@ -1287,9 +1498,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_tank_assigned_lethal_first"
         ]
       },
       "correction_record": null,
@@ -1318,9 +1526,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_multiple_tank_redundant"
         ]
       },
       "correction_record": null,
@@ -1349,9 +1554,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_shield_lasts_while_defender"
         ]
       },
       "correction_record": null,
@@ -1372,8 +1574,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": {
@@ -1395,8 +1596,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1416,8 +1616,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1437,8 +1636,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1458,8 +1656,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1487,8 +1684,7 @@
           "Core 465.2.c.6",
           "Core 815.1.b"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1508,8 +1704,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1535,8 +1730,7 @@
         "required_source_locators": [
           "Core 465.1"
         ],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
@@ -1566,9 +1760,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_combat_between_exactly_two_players"
         ]
       },
       "correction_record": null,
@@ -1599,9 +1790,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_attacker_is_who_applied_contested"
         ]
       },
       "correction_record": null,
@@ -1630,9 +1818,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_attacker_gains_focus_at_combat_open"
         ]
       },
       "correction_record": null,
@@ -1663,9 +1848,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_assigning_is_not_dealing"
         ]
       },
       "correction_record": null,
@@ -1696,9 +1878,6 @@
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
-        ],
-        "template_coverage_debt": [
-          "rule_lethal_in_full_before_another"
         ]
       },
       "correction_record": null,
@@ -1719,8 +1898,7 @@
         "answer_scope": "explicit_abstention",
         "required_templates": [],
         "required_source_locators": [],
-        "forbidden_claim_classes": [],
-        "template_coverage_debt": []
+        "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,

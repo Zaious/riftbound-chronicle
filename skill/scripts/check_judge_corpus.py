@@ -31,6 +31,11 @@ import judge_corpus_runner
 import rule_consult_command
 import state_builder
 from judge_corpus import (
+    DEBT_BLOCKS,
+    DEBT_CLASSES,
+    DERIVED_DEBT_FIELD,
+    attach_debts,
+    validate_debts,
     ABSTENTION_CONTRACTS,
     ANSWER_SCOPES,
     FAMILIES,
@@ -49,10 +54,16 @@ CORPUS = SKILL_DIR / "data" / "judge_corpus.json"
 
 def main() -> int:
     failures: list[str] = []
-    corpus = json.loads(CORPUS.read_text(encoding="utf-8"))
+    stored = json.loads(CORPUS.read_text(encoding="utf-8"))
 
-    if problems := validate_corpus(corpus):
+    if problems := validate_corpus(stored):
         failures.append(f"the shipped corpus does not validate: {problems}")
+        for failure in failures:
+            print(f"FAIL: {failure}")
+        return 1
+    # Everything below reads the in-memory form: every contract carries the
+    # debt list derived from the ledger.
+    corpus = attach_debts(stored)
 
     coverage = corpus_coverage(corpus)
     # The corpus met every quota on 2026-09-09. The coverage report must say
@@ -161,8 +172,9 @@ def main() -> int:
         failures.append("the bounded note outside its family must be refused")
 
     # --- quotas are not satisfiable by piling into one family ---------------
-    stuffed = {**corpus, "questions": [
-        dict(good, question_id=f"JC-STUFF-{index}") for index in range(TOTAL_QUOTA)]}
+    good_stored = copy.deepcopy(stored["questions"][0])
+    stuffed = {**stored, "coverage_debts": [], "questions": [
+        dict(good_stored, question_id=f"JC-STUFF-{index}") for index in range(TOTAL_QUOTA)]}
     stuffed_coverage = corpus_coverage(stuffed)
     if stuffed_coverage["complete"]:
         failures.append("sixty questions in one family reported the corpus complete")
@@ -175,15 +187,15 @@ def main() -> int:
 
     # A corpus that does meet every quota reports complete, so the check above
     # is about the distribution and not about the number being unreachable.
-    abstaining_contract = next(q for q in corpus["questions"]
+    abstaining_contract = next(q for q in stored["questions"]
                                if q["expected_tier"] == "C")["expected_answer_contract"]
-    filled = {**corpus, "questions": [
-        dict(good, question_id=f"JC-FILL-{name}-{index}", family=name,
+    filled = {**stored, "coverage_debts": [], "questions": [
+        dict(good_stored, question_id=f"JC-FILL-{name}-{index}", family=name,
              expected_tier="C" if name == "tournament_policy" else "A",
-             locators=[] if name == "tournament_policy" else good["locators"],
+             locators=[] if name == "tournament_policy" else good_stored["locators"],
              abstention_contract="tournament_policy_red_line" if name == "tournament_policy" else None,
              expected_answer_contract=(abstaining_contract if name == "tournament_policy"
-                                       else good["expected_answer_contract"]),
+                                       else good_stored["expected_answer_contract"]),
              bounded_note=True if FAMILIES[name].get("requires_bounded_note") else None)
         for name, spec in FAMILIES.items() for index in range(spec["quota"])]}
     filled_coverage = corpus_coverage(filled)
@@ -269,10 +281,83 @@ def main() -> int:
                 for name in question["expected_answer_contract"]["template_coverage_debt"]}
     if set(coverage["template_coverage_debt"]) != declared:
         failures.append(f"coverage reports debt {coverage['template_coverage_debt']}, "
-                        f"the questions declare {sorted(declared)}")
+                        f"the questions derive {sorted(declared)}")
     for name in declared:
         if name in rule_consult_command.CLAIM_TEMPLATES:
             failures.append(f"{name} is declared as debt but the answer surface has it")
+
+    # --- one ledger, one truth ---------------------------------------------
+    # Each mutation of the stored corpus must be refused by the rule that names
+    # it. A ledger that could be talked into any of these would be two truths
+    # with a tidier shape.
+    def stored_with(mutate):
+        candidate = copy.deepcopy(stored)
+        mutate(candidate)
+        return candidate
+
+    def first_open(candidate, cls="template"):
+        return next(d for d in candidate["coverage_debts"]
+                    if d["class"] == cls and d["status"] == "open")
+
+    policy_id = next(q["question_id"] for q in stored["questions"]
+                     if q["family"] == "tournament_policy")
+    ledger_cases = [
+        ("a question storing the derived debt field",
+         stored_with(lambda c: c["questions"][0]["expected_answer_contract"]
+                     .__setitem__(DERIVED_DEBT_FIELD, [])),
+         "is derived from coverage_debts; it is not stored"),
+        ("a corpus with no ledger",
+         stored_with(lambda c: c.pop("coverage_debts")), "missing top-level fields"),
+        ("an open template debt the surface already has",
+         stored_with(lambda c: first_open(c).__setitem__("id", "official_text_recorded")),
+         "which the answer surface has"),
+        ("a closed template debt the surface does not have",
+         stored_with(lambda c: first_open(c).__setitem__("status", "closed")),
+         "which the answer surface does not have"),
+        ("a debt observed in no question",
+         stored_with(lambda c: first_open(c).__setitem__("observed_in", [])),
+         "a debt nobody measured is a wish"),
+        ("a debt observed in a question the corpus does not have",
+         stored_with(lambda c: first_open(c).__setitem__("observed_in", ["JC-NOWHERE-1"])),
+         "which is not in the corpus"),
+        ("a debt observed in the policy red line",
+         stored_with(lambda c: first_open(c).__setitem__("observed_in", [policy_id])),
+         "the red line is a decision, not a debt"),
+        ("a debt of a class the ledger does not know",
+         stored_with(lambda c: first_open(c).__setitem__("class", "vibes")),
+         "class must be one of"),
+        ("a debt blocking something the ledger does not know",
+         stored_with(lambda c: first_open(c).__setitem__("blocks", "everything")),
+         "blocks must be one of"),
+        ("a debt with a status the ledger does not know",
+         stored_with(lambda c: first_open(c).__setitem__("status", "someday")),
+         "status must be one of"),
+        ("two debts with one id",
+         stored_with(lambda c: c["coverage_debts"].append(dict(first_open(c)))),
+         "id is used more than once"),
+        ("a debt missing its owner",
+         stored_with(lambda c: first_open(c).__setitem__("owner", "  ")),
+         "owner must say what it says"),
+        # The derivation is what keeps a typo and an unwritten template apart:
+        # drop the ledger entry and the question's unknown template is a typo.
+        ("a required template whose debt was removed from the ledger",
+         stored_with(lambda c: c["coverage_debts"].remove(first_open(c))),
+         "must be the same set"),
+    ]
+    for label, candidate, expected in ledger_cases:
+        problems = validate_corpus(candidate)
+        if not problems:
+            failures.append(f"the ledger accepts {label}")
+        elif not any(expected in problem for problem in problems):
+            failures.append(f"{label} was refused, but not by the rule that should have "
+                            f"caught it: {problems[:3]}")
+    if set(DEBT_CLASSES) != {"template", "state_builder", "engine", "source", "policy"}:
+        failures.append("the debt classes are the five the ruling named")
+    if set(DEBT_BLOCKS) != {"answer_contract", "position_conclusion", "source_explanation"}:
+        failures.append("the debt blocks are the three the ruling named")
+    if not any(d["class"] != "template" for d in stored["coverage_debts"]):
+        failures.append("the ledger holds only template debts; the Stun gap is a state_builder "
+                        "debt and must be entered as one")
 
     # Every scope is exercised, or the contract has parts nothing has tried.
     used = {question["expected_answer_contract"]["answer_scope"] for question in corpus["questions"]}
@@ -348,7 +433,11 @@ def main() -> int:
           f"{len(POLICY_ABSTENTIONS)} by policy")
     print(f"answer scopes used: {sorted(used)}; "
           f"template coverage debt: {sorted(declared) or 'none'}")
-    print(f"contract mutations refused: {len(mutations) + len(c_mutations) + len(contract_cases) + 4}")
+    print(f"contract mutations refused: {len(mutations) + len(c_mutations) + len(contract_cases) + 4}; "
+          f"ledger mutations refused: {len(ledger_cases)}")
+    ledger = coverage["coverage_debts"]
+    print(f"coverage debts: {ledger['open']} open, {ledger['closed']} closed; by class {ledger['by_class']}; "
+          f"by blocks {ledger['by_blocks']}; questions blocked {ledger['questions_blocked']}")
     print(f"run against the real consultation command: "
           + ", ".join(f"{value} {key}" for key, value in sorted(counts.items())))
     return 0

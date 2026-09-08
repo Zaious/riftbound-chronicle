@@ -29,9 +29,30 @@ those claims must be bound to, and which claim classes must not appear at all.
   explicit_abstention            the answer declines, for the named reason
 
 The templates named have to exist. Where no template can state a rule, that is
-`template_coverage_debt` — declared on the question, listing exactly what is
-missing — and never a licence to fall back to free text, which this surface has
-no way to accept anyway.
+a coverage debt — and never a licence to fall back to free text, which this
+surface has no way to accept anyway.
+
+Coverage debts
+--------------
+Every gap the corpus measured lives in one ledger, `coverage_debts[]` at the
+top of the corpus, so gaps of different kinds can be counted and ordered
+together instead of one kind sitting in a contract field and another in a
+note:
+
+  id           the debt's name; for class `template`, the template it names
+  class        template | state_builder | engine | source | policy
+  blocks       answer_contract | position_conclusion | source_explanation
+  owner        the module or package that closes it
+  observed_in  the questions that measured it — at least one
+  trigger      the measured event that raised it, in the pipeline's own words
+  status       open | closed
+
+A question's `template_coverage_debt` is derived from this ledger — the open
+template debts that observe the question — and a corpus that stores that
+field is refused, so there is one truth about what is missing. An open
+template debt must name a template the surface does not have; a closed one
+must name a template it has. The tournament-policy red line is a decision,
+not a gap: no debt may observe a question that abstains by policy.
 
 What a question owes
 --------------------
@@ -145,11 +166,20 @@ QUESTION_FIELDS = {"question_id", "family", "language", "question", "expected_ti
 
 CORRECTION_FIELDS = {"observed", "decided", "follow_up"}
 
+DEBT_FIELDS = {"id", "class", "blocks", "owner", "observed_in", "trigger", "status"}
+DEBT_CLASSES = ("template", "state_builder", "engine", "source", "policy")
+DEBT_BLOCKS = ("answer_contract", "position_conclusion", "source_explanation")
+DEBT_STATUSES = ("open", "closed")
+# Derived onto every contract from the ledger, never stored on the question.
+DERIVED_DEBT_FIELD = "template_coverage_debt"
+
 ANSWER_SCOPES = ("full_position_conclusion", "conditional_rule_explanation",
                  "source_boundary_only", "explicit_abstention")
 
-CONTRACT_FIELDS = {"answer_scope", "required_templates", "required_source_locators",
-                   "forbidden_claim_classes", "template_coverage_debt"}
+STORED_CONTRACT_FIELDS = {"answer_scope", "required_templates", "required_source_locators",
+                          "forbidden_claim_classes"}
+# The in-memory contract: the stored fields plus the derived debt list.
+CONTRACT_FIELDS = STORED_CONTRACT_FIELDS | {DERIVED_DEBT_FIELD}
 
 # Which scopes each tier may take. A tier-A answer that only explains a rule has
 # not used the engine verdict it claims to rest on; a tier-C answer that
@@ -354,6 +384,82 @@ def _contract_errors(contract: Any, tier: Any) -> list[str]:
     return errors
 
 
+def validate_debts(corpus: dict[str, Any]) -> list[str]:
+    """Check the coverage-debt ledger: shape, vocabulary, and what it points at."""
+    debts = corpus.get("coverage_debts")
+    if not isinstance(debts, list):
+        return ["coverage_debts must be an array"]
+    question_ids = {q.get("question_id") for q in corpus.get("questions", []) if isinstance(q, dict)}
+    by_policy = {q.get("question_id") for q in corpus.get("questions", []) if isinstance(q, dict)
+                 and q.get("abstention_contract") in POLICY_ABSTENTIONS}
+    known = _known_templates()
+    errors: list[str] = []
+    seen: set[str] = set()
+    for index, debt in enumerate(debts):
+        label = f"coverage_debts[{index}]"
+        if not isinstance(debt, dict) or set(debt) != DEBT_FIELDS:
+            errors.append(f"{label}: a debt carries exactly {sorted(DEBT_FIELDS)}")
+            continue
+        if not _nonempty(debt["id"]):
+            errors.append(f"{label}: id must be a non-empty string")
+            continue
+        label = f"coverage_debts[{debt['id']}]"
+        if debt["id"] in seen:
+            errors.append(f"{label}: id is used more than once")
+        seen.add(debt["id"])
+        if debt["class"] not in DEBT_CLASSES:
+            errors.append(f"{label}: class must be one of {list(DEBT_CLASSES)}")
+        if debt["blocks"] not in DEBT_BLOCKS:
+            errors.append(f"{label}: blocks must be one of {list(DEBT_BLOCKS)}")
+        if debt["status"] not in DEBT_STATUSES:
+            errors.append(f"{label}: status must be one of {list(DEBT_STATUSES)}")
+        for field in ("owner", "trigger"):
+            if not _nonempty(debt[field]):
+                errors.append(f"{label}: {field} must say what it says")
+        observed = debt["observed_in"]
+        if not isinstance(observed, list) or not observed or any(not _nonempty(v) for v in observed):
+            errors.append(f"{label}: observed_in names at least one question; a debt nobody "
+                          f"measured is a wish")
+            observed = []
+        for qid in observed:
+            if qid not in question_ids:
+                errors.append(f"{label}: observed_in names {qid!r}, which is not in the corpus")
+            elif qid in by_policy:
+                errors.append(f"{label}: observed_in names {qid!r}, which abstains by policy; "
+                              f"the red line is a decision, not a debt")
+        if debt["class"] == "template":
+            if debt["status"] == "open" and debt["id"] in known:
+                errors.append(f"{label}: an open template debt names {debt['id']!r}, which the "
+                              f"answer surface has")
+            if debt["status"] == "closed" and debt["id"] not in known:
+                errors.append(f"{label}: a closed template debt names {debt['id']!r}, which the "
+                              f"answer surface does not have")
+    return errors
+
+
+def derived_template_debt(corpus: dict[str, Any], question_id: str) -> list[str]:
+    """The open template debts that observe one question, by template name."""
+    return sorted(d["id"] for d in corpus.get("coverage_debts", []) if isinstance(d, dict)
+                  and d.get("class") == "template" and d.get("status") == "open"
+                  and question_id in (d.get("observed_in") or []))
+
+
+def attach_debts(corpus: dict[str, Any]) -> dict[str, Any]:
+    """The in-memory corpus: every contract carries its derived debt list.
+
+    Recomputed from the ledger every time, so a stale copy cannot survive a
+    change to the ledger. The stored file never carries the field.
+    """
+    out = json.loads(json.dumps(corpus))
+    for question in out.get("questions", []):
+        if not isinstance(question, dict):
+            continue
+        contract = question.get("expected_answer_contract")
+        if isinstance(contract, dict):
+            contract[DERIVED_DEBT_FIELD] = derived_template_debt(out, question.get("question_id"))
+    return out
+
+
 def corpus_coverage(corpus: dict[str, Any]) -> dict[str, Any]:
     """How much of the corpus exists, by family. Nothing here is asserted by hand."""
     present: dict[str, int] = {name: 0 for name in FAMILIES}
@@ -366,16 +472,27 @@ def corpus_coverage(corpus: dict[str, Any]) -> dict[str, Any]:
         for name, spec in FAMILIES.items()
     }
     total_present = sum(present.values())
-    debt = sorted({name for question in corpus.get("questions", [])
-                   if isinstance(question, dict)
-                   for name in (question.get("expected_answer_contract") or {})
-                   .get("template_coverage_debt", [])})
+    debts = [d for d in corpus.get("coverage_debts", []) if isinstance(d, dict)]
+    open_debts = [d for d in debts if d.get("status") == "open"]
+    by_class: dict[str, int] = {}
+    by_blocks: dict[str, int] = {}
+    blocked: set[str] = set()
+    for d in open_debts:
+        by_class[d.get("class")] = by_class.get(d.get("class"), 0) + 1
+        by_blocks[d.get("blocks")] = by_blocks.get(d.get("blocks"), 0) + 1
+        blocked.update(d.get("observed_in") or [])
     return {
         "families": families,
         # Visible in the coverage report rather than buried in a question: a
         # rule the answer surface cannot state is a gap in the service, not a
-        # note on one corpus entry.
-        "template_coverage_debt": debt,
+        # note on one corpus entry. Derived from the ledger, like the contracts.
+        "template_coverage_debt": sorted(d["id"] for d in open_debts if d.get("class") == "template"),
+        "coverage_debts": {
+            "open": len(open_debts), "closed": len(debts) - len(open_debts),
+            "by_class": dict(sorted(by_class.items())),
+            "by_blocks": dict(sorted(by_blocks.items())),
+            "questions_blocked": len(blocked),
+        },
         "total_required": TOTAL_QUOTA,
         "total_present": total_present,
         "total_missing": sum(f["missing"] for f in families.values()),
@@ -383,7 +500,7 @@ def corpus_coverage(corpus: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-REQUIRED_TOP = {"schema_version", "corpus_id", "description", "questions"}
+REQUIRED_TOP = {"schema_version", "corpus_id", "description", "questions", "coverage_debts"}
 
 
 def validate_corpus(corpus: Any) -> list[str]:
@@ -410,8 +527,18 @@ def validate_corpus(corpus: Any) -> list[str]:
     if not isinstance(corpus["questions"], list):
         errors.append("questions must be an array")
         return errors
-    seen: set[str] = set()
+    # The stored form carries no derived field. One truth: the ledger.
     for index, question in enumerate(corpus["questions"]):
+        contract = question.get("expected_answer_contract") if isinstance(question, dict) else None
+        if isinstance(contract, dict) and DERIVED_DEBT_FIELD in contract:
+            errors.append(f"questions[{index}]: {DERIVED_DEBT_FIELD} is derived from "
+                          f"coverage_debts; it is not stored on the question")
+    errors.extend(validate_debts(corpus))
+    if errors:
+        return errors
+    derived = attach_debts(corpus)
+    seen: set[str] = set()
+    for index, question in enumerate(derived["questions"]):
         errors.extend(f"questions[{index}]: {e}" for e in validate_question(question, seen=seen))
     return errors
 

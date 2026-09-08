@@ -525,6 +525,12 @@ TRIGGER_WRAPPERS = {
     "when_i_conquer": ("conquer_triggers", "on-conquer", {"scope": "unit_here"}),
 }
 
+# A Battlefield's own trigger is a different shape from an object's - Core
+# 190.6.a leaves its controller unnamed - so it has its own branch rather than
+# a row above. Named here so the contract check sees a production that can be
+# compiled, which is the whole point of that check.
+BATTLEFIELD_TRIGGER_WRAPPERS = {"when_you_hold_here": ("hold_triggers", "on-hold")}
+
 
 # --------------------------------------------------------------------------
 # DP-86: sequencing, referents and linked prefixes
@@ -833,7 +839,8 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "passive": {"object_fields": fields},
                 "program_effects": inner.get("program_effects", []),
             }
-        if production_id == "when_you_hold_here":
+        if production_id in BATTLEFIELD_TRIGGER_WRAPPERS:
+            field, trigger_id = BATTLEFIELD_TRIGGER_WRAPPERS[production_id]
             # "You may" is the trigger's own optionality at finalization
             # (383.3), not a separate instruction - the engine already carries
             # it on the descriptor.
@@ -848,7 +855,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
                 "params": params, "rule_locators": production["rule_locators"] + inner["rule_locators"],
                 "ast": {"node": "triggered", "on": production_id, "optional": optional, "then": inner["ast"]},
-                "passive": _battlefield_trigger("hold_triggers", "on-hold", optional),
+                "passive": _battlefield_trigger(field, trigger_id, optional),
                 "program_effects": inner.get("program_effects", []),
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
             }
@@ -1258,7 +1265,8 @@ def validate_grammar(grammar: Any) -> list[str]:
         if production_id in seen:
             errors.append(f"{path}.production_id {production_id!r} is duplicated")
         seen.add(production_id)
-        if production_id not in LOWERINGS and production_id not in COMPOSABLE and production_id not in TRIGGER_WRAPPERS:
+        if (production_id not in LOWERINGS and production_id not in COMPOSABLE
+                and production_id not in TRIGGER_WRAPPERS and production_id not in BATTLEFIELD_TRIGGER_WRAPPERS):
             errors.append(f"{path} has no lowering; a production that cannot be compiled is not promoted")
         if not production["rule_locators"] or not isinstance(production["required_capability"], list):
             errors.append(f"{path} must name its locators and list the capability it needs")

@@ -1180,6 +1180,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # ADR-0012 §2 / Core 822.1: Ambush opens a Battlefield where the
             # actor already has Units, and grants Reaction while playing there.
             ambush = paths["ambush"]
+            friendly_units = [o for o in battlefield.get("objects", [])
+                              if effect_state["objects"][o]["kind"] == "unit"
+                              and effect_state["objects"][o].get("controller") == actor]
             if declaration.get("timing_source") == "ambush" and not ambush:
                 raise PlayError("choices", "ambush_location_invalid",
                                 f"{card!r} claims Ambush timing at {location['battlefield']!r}, where {actor} has no Units (822.1, 822.3)",

@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:74619a6bbd597266c7024a7b",
-  "capability_set_id": "sha256:74619a6bbd597266c7024a7b55c4c30db6b80210ba693505e7392204139d9d99",
+  "manifest_id": "capability-manifest:9f50277ec4a048ded3992654",
+  "capability_set_id": "sha256:9f50277ec4a048ded39926545402aa33a577956920683f994d0a91a0fc5ac957",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:ea821f415001210b12f31b2cb69511b1e82d05dcbc140dd462b97cf4f18b5128",
+    "value": "sha256:d76d020c8f0921a0800aba81c3adba0aafc60740a09707f78449f5fde3b1ad0a",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:1e4797adfed9fe0c808fa8cbc77da1778fbd51b59e3775d89367a2973f61f269"
+        "sha256": "sha256:a4c85750e2ff5a2f3abde32a53e046003d0cc766856046dbf61d978d5d4625ef"
       },
       {
         "path": "resolution_bridge.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:f6383e20a7b6f125c1fd49225bf1f39af5233af3a425a4cee844b462290be340"
+        "sha256": "sha256:dbf032135b4e028af908a27dafa4b309764c606ef31a046aa97f0fd64a5bf81f"
       },
       {
         "path": "combat.py",
@@ -254,6 +254,7 @@
         "cost_predicates",
         "engine_decisions",
         "open_battlefield_permission",
+        "occupied_enemy_battlefield_permission",
         "deflect",
         "any_domain_power_allocation",
         "modal_play_choice",
@@ -1235,6 +1236,14 @@
       ]
     },
     {
+      "id": "occupied_enemy_battlefield_permission",
+      "rule_locators": [
+        "Core 355.2.a–355.2.b",
+        "Core 170.11.a",
+        "Core 323.6"
+      ]
+    },
+    {
       "id": "open_battlefield_permission",
       "rule_locators": [
         "Core 355.2.a–355.2.b",
@@ -1374,6 +1383,7 @@
     "Core 144.1–144.4.b",
     "Core 144.4.c–144.4.c.1",
     "Core 149.1",
+    "Core 170.11.a",
     "Core 170.11.c",
     "Core 184–186",
     "Core 185.3.a",

@@ -441,6 +441,19 @@ LITERAL = [
      ["choose a card from it, and recycle that card",
       "choose a non-unit card from their hand, and recycle that card",
       "choose a non-unit card from it"]),
+    ("you_may_play_me_to_an_occupied_enemy_battlefield",
+     r"you may play me to an occupied enemy battlefield",
+     ["Core 355.2.a", "Core 355.2.b", "Core 170.11.a", "Core 323.6"], "passive",
+     ["occupied_enemy_battlefield"],
+     ("A printed permission that widens where this card may enter, and nothing else: 170.11.a makes "
+      "'occupied' a Unit being there, of anyone's, and 'enemy' is the controller relation. It does not "
+      "widen timing. The conditional form ('if an enemy unit is already there') and the granting form "
+      "('friendly units may be played to...') are different clauses and stay unparsed."),
+     ["You may play me to an occupied enemy battlefield."],
+     ["you may play me to an open battlefield",
+      "you may play me to an occupied battlefield",
+      "friendly units may be played to open battlefields",
+      "i can be played to an occupied battlefield if an enemy unit is already there"]),
     ("no_rules_text", r"\(no rules text\)", ["Core 185"], "empty", [],
      "A card with nothing to compile. It is a parsed clause, not an unparsed one.",
      ["(no rules text)"], ["no rules text", "(vanilla)"]),
@@ -484,6 +497,7 @@ CAPABILITY_ALIAS = {
     "card_self_optional_cost": "self_costs",
     "self_card_conditional_fixed_energy_reduction.v1": "evaluated_cost_modifications",
     "timing_permission_v1": "timing_permission_classification",
+    "occupied_enemy_battlefield": "occupied_enemy_battlefield_permission",
 }
 
 

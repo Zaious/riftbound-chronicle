@@ -530,13 +530,28 @@ def _enumerate_play_card(observation, timing_state, effect_state, actor):
         if play_transaction.affordability(resources, total, f"play_{object_kind}")["short"]:
             excluded.append({"object_id": object_id, "reason_code": "cost_unpayable", "check": "cost"})
             continue
+        # DP-95 / Core 355.2: where a Permanent may enter, read through the same
+        # predicate the transaction uses. A candidate offering a destination the
+        # play would refuse - or hiding one it would accept - is worse than no
+        # candidate at all.
+        entry_locations = []
+        if object_kind in {"unit", "gear"}:
+            entry_locations = [{"kind": "base", "player": actor}] + [
+                {"kind": "battlefield", "battlefield": battlefield_id,
+                 "paths": sorted(p for p, ok in play_transaction.battlefield_entry_paths(
+                     effect_state, object_id, actor, battlefield_id).items() if ok)}
+                for battlefield_id in sorted(effect_state.get("battlefields") or {})
+                if play_transaction.battlefield_entry_permitted(effect_state, object_id, actor, battlefield_id)]
         candidates.append({
             "candidate_id": f"play:{object_id}",
             "family": "play_card",
             "action": {"kind": "play_card", "actor": actor, "timing": timing, "object_kind": object_kind,
-                       "card": object_id, "checks": ["timing", "cost"]},
-            "required_facts": [f"hand:{actor}", f"printed_cost:{object_id}", f"resources:{actor}"],
-            "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 357.1"],
+                       "card": object_id, "checks": ["timing", "cost"],
+                       **({"entry_locations": entry_locations} if entry_locations else {})},
+            "required_facts": [f"hand:{actor}", f"printed_cost:{object_id}", f"resources:{actor}"]
+                              + ([f"battlefields:{actor}"] if entry_locations else []),
+            "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 357.1"]
+                             + (["Core 355.2", "Core 355.2.a", "Core 355.2.b"] if entry_locations else []),
         })
     return _enumerated("play_card", [c["candidate_id"] for c in candidates],
                        ["Core 349", "Core 357.1"], excluded), candidates

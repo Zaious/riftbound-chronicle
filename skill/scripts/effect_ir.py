@@ -28,7 +28,10 @@ OPTIONAL_PLAYER_ZONES = {"legend_zone", "champion_zone"}
 # ADR-0007 §3: compiled permissions that widen the valid play locations (355.2.b).
 # ADR-0012 §2: Ambush (822.1) lets a Unit be played to a Battlefield where
 # its controller has Units, with Reaction while it is being played there.
-PLAY_PERMISSIONS = {"open_battlefield", "ambush"}
+# DP-95 / Core 355.2.b: each way a card widens where it may enter, named.
+# occupied_enemy_battlefield reads 170.11.a ("occupied" = a Unit is there) and
+# the controller relation the card's own words already give.
+PLAY_PERMISSIONS = {"open_battlefield", "ambush", "occupied_enemy_battlefield"}
 # ADR-0011 §4: what a restricted Add resource may be spent on ("Spend this Energy only to play spells").
 RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability", "activate_gear_ability")
 # Keywords the state may carry on an object. `deflect` (Core 809) imposes a

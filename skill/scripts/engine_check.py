@@ -52,6 +52,10 @@ FEATURE_RULES = {
     "permanent_entry": ["Core 359.2–359.2.d", "Core 143.4", "Core 124", "Core 190.3.a.1"],
     "play_triggers": ["Core 419.4.a", "Core 355.5.b", "Core 383.2.c"],
     "open_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.c"],
+    # DP-95: one more place a card may enter. "occupied" is 170.11.a - a Unit
+    # is there - and "enemy" is the controller relation; 323.6 is why a
+    # Battlefield whose controller has nothing left is no longer theirs.
+    "occupied_enemy_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.a", "Core 323.6"],
     # C-20 (ADR-0007 §4–5).
     "battlefield_targets": ["Core 355.10.b", "Core 359.3.e.2", "Core 359.3.e.5"],
     "criteria_expansion": ["Core 355.5.a", "Core 355.10.d"],
@@ -164,7 +168,7 @@ KIND_CONFIG = {
     "play": {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
-        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input", "play_sources", "cost_override", "ambush", "play_from_hidden", "evaluated_cost_modifications", "activation_conditions", "spend_costs"],
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "occupied_enemy_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input", "play_sources", "cost_override", "ambush", "play_from_hidden", "evaluated_cost_modifications", "activation_conditions", "spend_costs"],
         "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "legend_activation", "battlefield_control_transfer", "deck_construction", "hidden_legality_enumeration", "complete_game", "complete_legality"],
     },
     # ADR-0007 §8: two turn-boundary procedures, not a turn transition.

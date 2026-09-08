@@ -614,6 +614,60 @@ def card_self_cost_offers(effect_state: dict[str, Any], card_id: str | None) -> 
     return entries, abstentions
 
 
+# --------------------------------------------------------------------------
+# Where a Permanent may enter (Core 355.2) - DP-95
+# --------------------------------------------------------------------------
+
+def battlefield_entry_paths(effect_state: dict[str, Any], card: str, actor: str, battlefield_id: str,
+                            *, same_side_fn=None) -> dict[str, bool]:
+    """Every way this card may enter this Battlefield, as named facts.
+
+    One function, because the enumerator and the transaction disagreeing about
+    where a card may go is the failure that looks like a working engine: the
+    player is offered a destination the play then refuses, or worse, the other
+    way round. Both read this.
+
+    Core 355.2.a gives the default - the actor's own Base or a Battlefield the
+    actor controls. 355.2.b lets a card widen it, and each widening is a named
+    permission on the card:
+
+      open_battlefield            170.11.c: no controller and nothing on it.
+      ambush                      822.1: a Battlefield where the actor already
+                                  has Units. It also grants Reaction timing,
+                                  which is the caller's business, not this
+                                  function's.
+      occupied_enemy_battlefield  170.11.a defines "occupied" as *a Unit is
+                                  there* - any Unit. "Enemy battlefield" is the
+                                  controller relation, and it is already said
+                                  by that half; requiring the Unit to be an
+                                  enemy's as well would add a restriction the
+                                  card text does not write.
+    """
+    from effect_ir import same_side as _same_side
+    same_side_fn = same_side_fn or _same_side
+    battlefield = (effect_state.get("battlefields") or {}).get(battlefield_id) or {}
+    controller = battlefield.get("controller")
+    objects = effect_state.get("objects") or {}
+    present = [o for o in battlefield.get("objects", []) if (objects.get(o) or {}).get("kind") == "unit"]
+    permissions = (objects.get(card) or {}).get("play_permissions", []) or []
+    friendly_units = [o for o in present if (objects.get(o) or {}).get("controller") == actor]
+    return {
+        "controlled": controller == actor,
+        "open_battlefield": ("open_battlefield" in permissions
+                             and controller is None and not battlefield.get("objects")),
+        "ambush": "ambush" in permissions and bool(friendly_units),
+        "occupied_enemy_battlefield": ("occupied_enemy_battlefield" in permissions
+                                       and controller is not None
+                                       and not same_side_fn(effect_state, actor, controller)
+                                       and bool(present)),
+    }
+
+
+def battlefield_entry_permitted(effect_state: dict[str, Any], card: str, actor: str,
+                                battlefield_id: str) -> bool:
+    return any(battlefield_entry_paths(effect_state, card, actor, battlefield_id).values())
+
+
 SELF_REDUCTION_CAPABILITY = "self_card_conditional_fixed_energy_reduction.v1"
 
 
@@ -1119,24 +1173,23 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             battlefield = effect_state["battlefields"].get(location["battlefield"])
             if battlefield is None:
                 raise PlayError("choices", "unknown_battlefield", f"entry_location names battlefield {location['battlefield']!r}, which is not in the state", invalid=True)
-            controlled = battlefield.get("controller") == actor
-            is_open = battlefield.get("controller") is None and not battlefield.get("objects")
-            permissions = effect_state["objects"][card].get("play_permissions", [])
-            permitted = "open_battlefield" in permissions
+            # DP-95: one predicate, read here and by the enumerator.
+            paths = battlefield_entry_paths(effect_state, card, actor, location["battlefield"])
+            controlled, is_open = paths["controlled"], (battlefield.get("controller") is None and not battlefield.get("objects"))
+            permitted = paths["open_battlefield"]
             # ADR-0012 §2 / Core 822.1: Ambush opens a Battlefield where the
             # actor already has Units, and grants Reaction while playing there.
-            friendly_units = [o for o in battlefield.get("objects", [])
-                              if effect_state["objects"][o]["kind"] == "unit" and effect_state["objects"][o].get("controller") == actor]
-            ambush = "ambush" in permissions and bool(friendly_units)
+            ambush = paths["ambush"]
             if declaration.get("timing_source") == "ambush" and not ambush:
                 raise PlayError("choices", "ambush_location_invalid",
                                 f"{card!r} claims Ambush timing at {location['battlefield']!r}, where {actor} has no Units (822.1, 822.3)",
                                 rule_locators=["Core 822.1", "Core 822.3"])
-            if not (controlled or (is_open and permitted) or ambush):
+            if not any(paths.values()):
                 raise PlayError("choices", "entry_location_illegal",
                                 f"{card!r} may enter its controller's Base or a Battlefield {actor} controls (355.2.a); {location['battlefield']!r} is "
-                                + ("open but the card has no permission to enter open Battlefields (355.2.b)" if is_open else "neither controlled nor open"),
-                                rule_locators=["Core 355.2.a", "Core 355.2.b", "Core 170.11.c"])
+                                + ("open but the card has no permission to enter open Battlefields (355.2.b)" if is_open
+                                   else "neither controlled nor open, and the card has no permission that reaches it"),
+                                rule_locators=["Core 355.2.a", "Core 355.2.b", "Core 170.11.a", "Core 170.11.c"])
             ambush_record = {"battlefield": location["battlefield"], "friendly_units": friendly_units} if ambush else None
         # --- 355: choices.
         # Core 805: Accelerate is an optional additional cost the card itself

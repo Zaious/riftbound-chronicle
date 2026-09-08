@@ -102,8 +102,15 @@ def main() -> int:
     if not any(item.get("object_id") == "c2" and item.get("reason_code") == "cost_unpayable" for item in plays["excluded"]):
         errors.append(f"the unaffordable card was not excluded by name: {plays['excluded']}")
     action = next(a for a in result["enumeration"]["actions"] if a["candidate_id"] == "play:c1")
-    if action["action"]["checks"] != ["timing", "cost"] or action["required_facts"] != ["hand:p1", "printed_cost:c1", "resources:p1"]:
+    if action["action"]["checks"] != ["timing", "cost"]             or action["required_facts"] != ["hand:p1", "printed_cost:c1", "resources:p1", "battlefields:p1"]:
         errors.append(f"the candidate does not carry its checks and what it needed: {action}")
+    # DP-95: a Permanent candidate says where it may enter, computed with the
+    # same predicate the transaction uses - so the enumerator cannot offer a
+    # destination the play would refuse, nor hide one it would accept.
+    entries = action["action"].get("entry_locations")
+    if entries != [{"kind": "base", "player": "p1"},
+                   {"kind": "battlefield", "battlefield": "bf1", "paths": ["controlled"]}]:
+        errors.append(f"the play candidate did not carry its legal entry locations: {entries}")
 
     # --- the opponent's hand is never reached for --------------------------------------------
     if any("c4" in candidate["candidate_id"] for candidate in result["candidates"]):

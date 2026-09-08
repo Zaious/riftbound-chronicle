@@ -472,7 +472,18 @@ def _lower_recycle_a_non_unit_from_the_reveal(params):
     }
 
 
+def _lower_occupied_enemy_permission(params):
+    """Core 355.2.b: the card prints one more place it may enter. The engine
+    decides what that place is; the clause only names the permission."""
+    return {
+        "object_fields": {"play_permissions": ["occupied_enemy_battlefield"]},
+        "ast": {"node": "passive", "kind": "play_permission",
+                "params": {"permission": "occupied_enemy_battlefield"}},
+    }
+
+
 LOWERINGS = {
+    "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "choose_an_opponent": _lower_choose_an_opponent,
     "they_reveal_their_hand": _lower_they_reveal_their_hand,
     "choose_a_non_unit_card_from_it_and_recycle_that_card": _lower_recycle_a_non_unit_from_the_reveal,

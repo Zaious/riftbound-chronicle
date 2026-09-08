@@ -32,6 +32,13 @@ OPTIONAL_PLAYER_ZONES = {"legend_zone", "champion_zone"}
 # occupied_enemy_battlefield reads 170.11.a ("occupied" = a Unit is there) and
 # the controller relation the card's own words already give.
 PLAY_PERMISSIONS = {"open_battlefield", "ambush", "occupied_enemy_battlefield"}
+# Which of those a card gets from a *sentence* rather than from a bracketed
+# keyword. [Ambush] is printed on the card and belongs in the keyword
+# catalogue; "You may play me to an open / occupied enemy battlefield" is a
+# sentence the grammar reads, and the permission is the engine's name for what
+# it grants. Every new permission is classified here on purpose - the
+# distinction is about the card frame, which no code fact can answer.
+SENTENCE_PLAY_PERMISSIONS = {"open_battlefield", "occupied_enemy_battlefield"}
 # ADR-0011 §4: what a restricted Add resource may be spent on ("Spend this Energy only to play spells").
 RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability", "activate_gear_ability")
 # Keywords the state may carry on an object. `deflect` (Core 809) imposes a

@@ -97,7 +97,10 @@ def engine_keywords() -> dict[str, dict[str, Any]]:
     literal appears, not by a hand-written list."""
     import effect_ir
     carryable = set(effect_ir.OBJECT_KEYWORDS) | set(effect_ir.GRANTABLE_KEYWORDS)
-    carryable |= {p for p in effect_ir.PLAY_PERMISSIONS if p != "open_battlefield"}
+    # A play permission belongs in the keyword catalogue when it is printed as
+    # a keyword ([Ambush]) and not when a sentence grants it - the engine says
+    # which is which, so a new permission cannot be quietly left out of either.
+    carryable |= effect_ir.PLAY_PERMISSIONS - effect_ir.SENTENCE_PLAY_PERMISSIONS
     carryable |= {"hidden", "unique", "repeat"}
     declarations = ("OBJECT_KEYWORDS", "GRANTABLE_KEYWORDS", "PLAY_PERMISSIONS")
     found: dict[str, dict[str, Any]] = {}

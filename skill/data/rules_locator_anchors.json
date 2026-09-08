@@ -1,0 +1,96 @@
+{
+  "schema_version": "rules-locator-anchors.v1",
+  "source_id": "core-rules-2026-07-16",
+  "note": "Integrity anchors for the local-only locator audit. Each entry is a one-way digest of one rule's normalized chunk text, never the text: a digest cannot be inverted, so this file carries no rules content and is safe in the public repository. The anchors come from the three pages whose printed layout was read directly (30, 36, 37), and each page contributes both a rule whose text fits one line and one whose text wraps, because wrapping is what breaks a two-column pairing. The audit needs the licensed PDF installed locally and is skipped, not failed, where it is absent.",
+  "verified_pages": [
+    30,
+    36,
+    37
+  ],
+  "anchors": [
+    {
+      "locator": "339.1",
+      "page": 37,
+      "shape": "wrapped",
+      "text_sha256": "sha256:735817e97765554344bee39a21ceee866a8c359819d256a9a92a14b463c91620",
+      "length": 121
+    },
+    {
+      "locator": "340.1",
+      "page": 37,
+      "shape": "wrapped",
+      "text_sha256": "sha256:269103022eeb748a9df63982abcd21312cc43621a63399a8bff5d88a0e24d108",
+      "length": 253
+    },
+    {
+      "locator": "345",
+      "page": 37,
+      "shape": "single",
+      "text_sha256": "sha256:bb01d48724dbf2e91002240a0bac4399544f5f63c8757f875abddc86f1608564",
+      "length": 98
+    },
+    {
+      "locator": "312.1.b",
+      "page": 30,
+      "shape": "single",
+      "text_sha256": "sha256:b275545fdf6094000c69bde98f9c6dd6c6ec4da12ca29f85cfd319a015bc67b0",
+      "length": 77
+    },
+    {
+      "locator": "312.1.b.1",
+      "page": 30,
+      "shape": "wrapped",
+      "text_sha256": "sha256:769d83cb4dcf83aa794dfce029fa41491af3ab636d3ec4270537ea31ac48649f",
+      "length": 112
+    },
+    {
+      "locator": "313.3",
+      "page": 30,
+      "shape": "single",
+      "text_sha256": "sha256:c7cd2bec3f94371c566d60b4139615ba251c9e8ae9b64e21caebff1d66840593",
+      "length": 50
+    },
+    {
+      "locator": "313.1.a",
+      "page": 30,
+      "shape": "wrapped",
+      "text_sha256": "sha256:d2824fbc745341f6249455b281544c66d6bdc193d0e52ff442e0854fd3489d4e",
+      "length": 237
+    },
+    {
+      "locator": "313.5",
+      "page": 30,
+      "shape": "single",
+      "text_sha256": "sha256:0d6ae3987b53e23ea5ea8bbd1de65c2618a2ea505b07fc6d752e53bdc1f170a6",
+      "length": 62
+    },
+    {
+      "locator": "337.1.a",
+      "page": 36,
+      "shape": "single",
+      "text_sha256": "sha256:89b06c207a71c22ab1ddca8ad1b1049e18d951b4e3abd0503548a15ea0ee5239",
+      "length": 64
+    },
+    {
+      "locator": "337.2",
+      "page": 36,
+      "shape": "wrapped",
+      "text_sha256": "sha256:bcf40b14f049246f8368692d108ca21ddbb6cbe8914a14370863f6d27bbeba10",
+      "length": 204
+    },
+    {
+      "locator": "338.1.a.1",
+      "page": 36,
+      "shape": "single",
+      "text_sha256": "sha256:2795b2aa59447333682aed2bddabb2dbc576aa3414c2cf93810bf90ad089d382",
+      "length": 93
+    },
+    {
+      "locator": "338.1.a.2",
+      "page": 36,
+      "shape": "wrapped",
+      "text_sha256": "sha256:f7cbb081d65394fcc1344a9929cd8ca6327246e9f1307e88d15c3278f11f2128",
+      "length": 155
+    }
+  ]
+}

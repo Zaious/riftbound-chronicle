@@ -25,7 +25,17 @@ REGISTRY_PATH = SKILL_DIR / "data" / "rules_source_registry.json"
 ALIASES_PATH = SKILL_DIR / "data" / "rules_query_aliases.json"
 DEFAULT_RULES_DIR = SKILL_DIR / ".local" / "rules"
 DEFAULT_INDEX_NAME = "rules-index.sqlite3"
-RULE_START = re.compile(r"(?m)^\s*(\d{3}(?:\.\d+)*(?:\.[a-z])?\.?)\s+(?=\S)", re.IGNORECASE)
+# Locator segments alternate digits and letters to arbitrary depth -
+# 312.1.b.1 and 338.1.a.7 are both real. An older pattern allowed at most one
+# trailing letter, so a rule like 312.1.b.1 was never its own chunk and could
+# not be cited; it folded silently into its parent.
+#
+# One shape, used to find locators in a page and to recognise one on its own.
+# They were separate expressions once and drifted apart, which cost the
+# integrity metric a locator it should have counted.
+LOCATOR_BODY = r"\d{3}(?:\.[0-9a-z]+)*"
+RULE_START = re.compile(rf"(?m)^\s*({LOCATOR_BODY}\.?)\s+(?=\S)", re.IGNORECASE)
+LOCATOR_ONLY = re.compile(rf"^{LOCATOR_BODY}\.?$", re.IGNORECASE)
 WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'.:-]*|[\u3400-\u9fff]+")
 SPACE = re.compile(r"\s+")
 AUTHORITY_WEIGHT = {"official": 4.0, "judge_guidance": 1.0, "community": 0.0}
@@ -82,31 +92,116 @@ class _VisibleHTML(HTMLParser):
             self.parts.append(data)
 
 
-def extract_pages(path: Path) -> list[str]:
+# The rules documents are two-column tables: the locator in the left column,
+# its text in the right. `-layout` preserves the columns but aligns them line by
+# line, so a text cell that wraps consumes two output lines while its locator
+# consumes one, and every row after it drifts. The result is not a slightly
+# messy index; it is an index where a locator names some *other* rule's text.
+#
+# So the mode is not fixed here. Each candidate is run and scored, and the one
+# whose locator/text pairing measures best is kept. What the index records is
+# the mode that won and the score it won with, because a citation index that
+# cannot say how well it paired is not one anything should cite against.
+PDF_TEXT_MODES = ("-table", "-raw", "-layout")
+
+# A misfit rate at or below this counts as paired. `-table` and `-raw` measure
+# 0.000 on the Core Rules; `-layout` measures 0.395 on the same pages. The
+# threshold sits far from both so that it is a floor, not a tuning knob.
+MISFIT_THRESHOLD = 0.05
+
+def pairing_integrity(pages: list[str]) -> dict[str, Any]:
+    """How well locators pair with their own text, without needing the source.
+
+    Two things a drifted two-column extraction produces and a paired one does
+    not: a locator whose chunk carries no text of its own, and a chunk whose
+    text begins mid-sentence, which a rule's own text does not do. Neither
+    needs the document to compare against, which is what makes this usable on a
+    machine that holds no copy of it.
+    """
+    empty = orphan = total = 0
+    for number, page_text in enumerate(pages, 1):
+        for locator, body in split_page(page_text, number):
+            if not LOCATOR_ONLY.match(locator):
+                continue
+            total += 1
+            rest = body[len(locator):] if body.startswith(locator) else body
+            rest = rest.lstrip(". ").strip()
+            if not rest:
+                empty += 1
+                continue
+            if rest.split()[0][:1].islower():
+                orphan += 1
+    return {
+        "locator_chunks": total,
+        "empty_chunks": empty,
+        "orphan_chunks": orphan,
+        # None, not 0.0: a document with no locators has not been measured well,
+        # it has not been measured at all.
+        "misfit_rate": round((empty + orphan) / total, 4) if total else None,
+    }
+
+
+def _pdftotext(executable: str, mode: str, path: Path) -> list[str] | None:
+    result = subprocess.run([executable, mode, "-enc", "UTF-8", str(path), "-"], capture_output=True)
+    if result.returncode != 0:
+        return None
+    pages = result.stdout.decode("utf-8", errors="replace").split("\f")
+    while pages and not pages[-1].strip():
+        pages.pop()
+    return pages
+
+
+def choose_extraction(candidates) -> tuple[list[str], dict[str, Any]] | None:
+    """Pick the candidate extraction whose locators pair best with their text.
+
+    `candidates` yields (mode, pages) lazily, so a candidate after a perfect one
+    is never produced. The rule is only this: the lowest measured misfit rate
+    wins, an unmeasurable candidate loses to any measured one, and ties go to
+    whichever came first. Keeping it here, taking pages rather than a path,
+    is what lets it be tested without a licensed document to extract from.
+    """
+    best: tuple[list[str], dict[str, Any]] | None = None
+    for mode, pages in candidates:
+        if pages is None:
+            continue
+        report = {"mode": mode, **pairing_integrity(pages)}
+        rate = report["misfit_rate"]
+        if best is None or (rate is not None and (best[1]["misfit_rate"] is None
+                                                  or rate < best[1]["misfit_rate"])):
+            best = (pages, report)
+        if rate == 0.0:
+            break
+    return best
+
+
+def extract_pages_scored(path: Path) -> tuple[list[str], dict[str, Any]]:
+    """The document's pages, and a report on how the extraction that produced them paired."""
     if path.suffix.casefold() in {".html", ".htm"}:
         parser = _VisibleHTML()
         parser.feed(path.read_text(encoding="utf-8", errors="replace"))
-        return ["".join(parser.parts)]
+        pages = ["".join(parser.parts)]
+        return pages, {"mode": "html", **pairing_integrity(pages)}
+
     executable = shutil.which("pdftotext")
     if executable:
-        result = subprocess.run(
-            [executable, "-layout", "-enc", "UTF-8", str(path), "-"],
-            capture_output=True,
-        )
-        if result.returncode == 0:
-            text = result.stdout.decode("utf-8", errors="replace")
-            pages = text.split("\f")
-            if pages and not pages[-1].strip():
-                pages.pop()
-            return pages
+        best = choose_extraction((mode, _pdftotext(executable, mode, path))
+                                 for mode in PDF_TEXT_MODES)
+        if best is not None:
+            return best
+
     try:
         from pypdf import PdfReader
     except ImportError as exc:
         raise IndexError("PDF extraction requires pdftotext or the optional pypdf package") from exc
     try:
-        return [(page.extract_text() or "") for page in PdfReader(str(path)).pages]
+        pages = [(page.extract_text() or "") for page in PdfReader(str(path)).pages]
     except Exception as exc:
         raise IndexError(f"cannot extract {path.name}: {exc}") from exc
+    return pages, {"mode": "pypdf", **pairing_integrity(pages)}
+
+
+def extract_pages(path: Path) -> list[str]:
+    return extract_pages_scored(path)[0]
 
 
 def normalize(text: str) -> str:
@@ -162,10 +257,51 @@ def create_schema(connection: sqlite3.Connection) -> None:
           compact_text TEXT NOT NULL,
           FOREIGN KEY(source_id) REFERENCES documents(source_id)
         );
+        CREATE TABLE extractions (
+          source_id TEXT PRIMARY KEY, mode TEXT NOT NULL, locator_chunks INTEGER NOT NULL,
+          empty_chunks INTEGER NOT NULL, orphan_chunks INTEGER NOT NULL, misfit_rate REAL,
+          FOREIGN KEY(source_id) REFERENCES documents(source_id)
+        );
         CREATE INDEX chunks_source_page ON chunks(source_id, page);
         CREATE INDEX chunks_locator ON chunks(locator);
         """
     )
+
+
+def integrity_status(index_path: Path) -> dict[str, Any]:
+    """Whether this index's locators may be cited, and why.
+
+    An index built before extractions were recorded has no rows here, and that
+    is `locator_integrity_unverified` rather than a pass — an index that cannot
+    say how it paired has not said it paired well.
+    """
+    connection = sqlite3.connect(index_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        documents = connection.execute("SELECT COUNT(*) AS n FROM documents").fetchone()["n"]
+        try:
+            rows = connection.execute("SELECT * FROM extractions").fetchall()
+        except sqlite3.OperationalError:
+            rows = []
+    finally:
+        connection.close()
+    measured = [dict(row) for row in rows if row["misfit_rate"] is not None]
+    unmeasured = [dict(row) for row in rows if row["misfit_rate"] is None]
+    failing = [row for row in measured if row["misfit_rate"] > MISFIT_THRESHOLD]
+    if not rows or len(rows) < documents:
+        status, reason = "locator_integrity_unverified", (
+            "this index records no extraction integrity for "
+            f"{documents - len(rows)} of its {documents} documents")
+    elif failing:
+        status, reason = "locator_integrity_failed", (
+            "locator pairing is worse than the threshold in "
+            + ", ".join(f"{row['source_id']} ({row['misfit_rate']})" for row in failing))
+    else:
+        status, reason = "locator_integrity_verified", (
+            f"{len(measured)} document(s) paired at or below {MISFIT_THRESHOLD}; "
+            f"{len(unmeasured)} carried no locators to measure")
+    return {"status": status, "reason": reason, "threshold": MISFIT_THRESHOLD,
+            "documents": documents, "extractions": [dict(row) for row in rows]}
 
 
 def build_index(root: Path, index_path: Path) -> dict[str, Any]:
@@ -191,14 +327,14 @@ def build_index(root: Path, index_path: Path) -> dict[str, Any]:
     try:
         connection = sqlite3.connect(temp)
         create_schema(connection)
-        connection.execute("INSERT INTO metadata VALUES (?, ?)", ("schema_version", "riftbound-rules-index.v1"))
+        connection.execute("INSERT INTO metadata VALUES (?, ?)", ("schema_version", "riftbound-rules-index.v2"))
         connection.execute("INSERT INTO metadata VALUES (?, ?)", ("built_at", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")))
         for document, path in installed:
             source = registry[document["source_id"]]
             digest = sha256(path)
             if document["source_id"] in locked and locked[document["source_id"]].get("sha256") != digest:
                 raise IndexError(f"hash mismatch against rules.lock.json: {document['source_id']}")
-            pages = extract_pages(path)
+            pages, extraction = extract_pages_scored(path)
             connection.execute(
                 "INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
@@ -207,6 +343,11 @@ def build_index(root: Path, index_path: Path) -> dict[str, Any]:
                     source["status"], source["superseded_by"], int(source["controlling_language"]),
                     document["relative_path"], digest, len(pages),
                 ),
+            )
+            connection.execute(
+                "INSERT INTO extractions VALUES (?, ?, ?, ?, ?, ?)",
+                (source["source_id"], extraction["mode"], extraction["locator_chunks"],
+                 extraction["empty_chunks"], extraction["orphan_chunks"], extraction["misfit_rate"]),
             )
             document_count += 1
             for page_number, page_text in enumerate(pages, 1):
@@ -219,12 +360,16 @@ def build_index(root: Path, index_path: Path) -> dict[str, Any]:
         connection.execute("INSERT INTO metadata VALUES (?, ?)", ("document_count", str(document_count)))
         connection.execute("INSERT INTO metadata VALUES (?, ?)", ("chunk_count", str(chunk_count)))
         connection.commit()
+        verdict = integrity_status(temp)
+        connection.execute("INSERT INTO metadata VALUES (?, ?)", ("locator_integrity", verdict["status"]))
+        connection.commit()
         connection.close()
         os.replace(temp, index_path)
     except Exception:
         temp.unlink(missing_ok=True)
         raise
-    return {"index": str(index_path), "documents": document_count, "chunks": chunk_count}
+    return {"index": str(index_path), "documents": document_count, "chunks": chunk_count,
+            "locator_integrity": verdict["status"], "extractions": verdict["extractions"]}
 
 
 def query_concepts(query: str) -> list[list[str]]:
@@ -343,6 +488,65 @@ def search(index_path: Path, query: str, *, limit: int, locale: str | None, regi
     return selected[:limit]
 
 
+ANCHORS_PATH = SKILL_DIR / "data" / "rules_locator_anchors.json"
+
+
+def audit_locators(index_path: Path, anchors_path: Path | None = None) -> dict[str, Any]:
+    """Check that named locators still carry the text they carried when verified.
+
+    This is the half of the integrity story the metric cannot tell.
+    `pairing_integrity` measures shape and needs no source, so it catches a
+    drifted extraction; this compares specific locators against digests taken
+    when their printed pages were read directly, so it also catches a pairing
+    that is wrong self-consistently.
+
+    It needs the licensed document installed, so it is a local audit. Where the
+    index was not built from that document it reports `skipped` — which is
+    neither a pass nor a failure, because nothing was checked.
+    """
+    payload = load_json(anchors_path or ANCHORS_PATH)
+    verdict = integrity_status(index_path)
+    connection = sqlite3.connect(index_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        present = connection.execute(
+            "SELECT COUNT(*) AS n FROM documents WHERE source_id = ?",
+            (payload["source_id"],)).fetchone()["n"]
+        if not present:
+            return {"status": "skipped",
+                    "reason": f"{payload['source_id']} is not in this index; "
+                              f"the audit needs the licensed document installed locally",
+                    "locator_integrity": verdict["status"], "checked": 0, "failures": []}
+        results = []
+        for anchor in payload["anchors"]:
+            row = connection.execute(
+                "SELECT page, text FROM chunks WHERE source_id = ? AND locator = ?",
+                (payload["source_id"], anchor["locator"])).fetchone()
+            base = {key: anchor[key] for key in ("locator", "page", "shape")}
+            if row is None:
+                results.append({**base, "outcome": "missing"})
+                continue
+            body = SPACE.sub(" ", row["text"]).strip()
+            digest = "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+            if row["page"] != anchor["page"]:
+                results.append({**base, "outcome": "moved_page", "found_page": row["page"]})
+            elif digest != anchor["text_sha256"]:
+                results.append({**base, "outcome": "text_changed"})
+            else:
+                results.append({**base, "outcome": "ok"})
+    finally:
+        connection.close()
+    failures = [item for item in results if item["outcome"] != "ok"]
+    return {
+        "status": "failed" if failures else "ok",
+        "locator_integrity": verdict["status"],
+        "checked": len(results),
+        "verified_pages": payload["verified_pages"],
+        "shapes": sorted({item["shape"] for item in results}),
+        "failures": failures,
+    }
+
+
 def audit(root: Path, index_path: Path) -> dict[str, Any]:
     manifest = load_json(MANIFEST_PATH)
     installed = []
@@ -376,6 +580,11 @@ def parser() -> argparse.ArgumentParser:
     query.add_argument("--include-superseded", action="store_true")
     query.add_argument("--json", action="store_true")
     commands.add_parser("audit")
+    locator_audit = commands.add_parser(
+        "audit-locators",
+        help="local-only: check named locators against digests taken from verified pages")
+    locator_audit.add_argument("--anchors", type=Path)
+    commands.add_parser("integrity")
     return root
 
 
@@ -392,6 +601,16 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "audit":
             print(json.dumps(audit(root, index_path), ensure_ascii=False, indent=2))
+        elif args.command == "integrity":
+            verdict = integrity_status(index_path)
+            print(json.dumps(verdict, ensure_ascii=False, indent=2))
+            return 0 if verdict["status"] == "locator_integrity_verified" else 1
+        elif args.command == "audit-locators":
+            report = audit_locators(index_path, args.anchors)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            # A skipped audit is not a pass and not a failure: the document it
+            # needs is licensed and is not on every machine.
+            return 0 if report["status"] in {"ok", "skipped"} else 1
         else:
             results = search(
                 index_path, args.query, limit=max(1, min(args.limit, 50)), locale=args.locale,

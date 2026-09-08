@@ -1335,6 +1335,32 @@
       ]
     },
     {
+      "production_id": "units_cant_move_from_here_to_base",
+      "form": "Units can't move from here to base.",
+      "template": "units can't move from here to base",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 144.4.b",
+        "Core 359.3.e.6",
+        "Core 190.6.a"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "standard_move"
+      ],
+      "boundary": "The one restriction shape this wave reads, printed on a Battlefield. It is not a targeting rule: a Standard Move there is simply not an available action, while a spell may still choose that destination and have its move instruction ignored at resolution (359.3.e.6). A global, a self-only, or a timed restriction is a different clause and stays unparsed.",
+      "golden": [
+        "Units can't move from here to base."
+      ],
+      "negative": [
+        "units can't move to base",
+        "i can't move to base",
+        "they can't move it this turn",
+        "units can't move from here to a battlefield"
+      ]
+    },
+    {
       "production_id": "no_rules_text",
       "form": "(no rules text)",
       "template": "\\(no rules text\\)",

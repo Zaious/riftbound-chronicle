@@ -935,7 +935,7 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
     which adds that permission and nothing else (144.4.c, 810.1.c). The
     relocation itself is the existing Move operation, so Move triggers and
     Cleanup stay one implementation."""
-    from effect_ir import apply_program, has_keyword, perform_lethal_cleanup
+    from effect_ir import apply_program, has_keyword, move_restricted, perform_lethal_cleanup
     from rules_core import validate_timing
     # The declaration is the third input of this procedure: decisions bind to
     # all three, so an envelope made for another Move cannot be replayed here.
@@ -984,6 +984,19 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
                 return _refuse(base, "already_at_base", f"{unit!r} is already at a Base; a Standard Move goes from a Battlefield to the Unit's own Base (144.4.b)", ["Core 144.4.b"])
             routes.append({"unit": unit, "from": f"battlefield:{origin[1]}", "to": f"base:{actor}", "permission": "144.4.b"})
         move_destination = {"kind": "base", "player": actor}
+    # DP-96 / Core 359.3.e.6: a Standard Move is the player's own action, so a
+    # destination a Battlefield forbids is not one of the actions available -
+    # refused by name here, and not offered by the enumerator. That is the
+    # opposite half of the same restriction: an effect-induced Move may still
+    # *choose* this destination and have its instruction ignored at
+    # resolution.
+    for unit in units:
+        restriction = move_restricted(effect_state, unit, move_destination)
+        if restriction is not None:
+            return _refuse(base, restriction["reason_code"],
+                           f"{unit!r} cannot move from {restriction['battlefield']} to a Base "
+                           "(the Battlefield forbids it); a Standard Move there is not an available action",
+                           restriction["rule_locators"])
     # the cost: every selected Unit exhausts, simultaneously (144.2, 144.3.c)
     exhausted = [unit for unit in units if effect_state["objects"][unit].get("exhausted")]
     if exhausted:

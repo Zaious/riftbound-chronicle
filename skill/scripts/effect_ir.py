@@ -464,6 +464,8 @@ def validate_state(state: Any) -> list[str]:
         # ADR-0012 §3 / Core 107.3.b: every Battlefield has one Facedown Zone
         # with a capacity. The zone is public; the cards in it are private to
         # the player who hid them (108.2.b, 128.4).
+        if "move_restrictions" in battlefield:
+            errors.extend(move_restriction_errors(battlefield_id, battlefield["move_restrictions"]))
         facedown = battlefield.get("facedown")
         if facedown is not None:
             if not isinstance(facedown, dict) or set(facedown) - {"capacity", "cards"}:
@@ -1668,6 +1670,65 @@ def same_side(state: dict[str, Any], left: str | None, right: str | None) -> boo
     return left_team is not None and left_team == right_team
 
 
+# --------------------------------------------------------------------------
+# Move restrictions (Core 144, 359.3.e.6) - DP-96
+# --------------------------------------------------------------------------
+
+# The one shape this wave reads: Vilemaw's Lair, "Units can't move from here
+# to base." Printed on the Battlefield, because that is where the restriction
+# is printed. Every field is a closed vocabulary; a restriction this cannot
+# express stays unparsed rather than being approximated.
+MOVE_RESTRICTION_FIELDS = {"source_location", "destination_kind", "affected_kind"}
+MOVE_RESTRICTION_VALUES = {"source_location": {"here"}, "destination_kind": {"base"}, "affected_kind": {"unit"}}
+
+
+def move_restriction_errors(battlefield_id: str, restrictions: Any) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(restrictions, list):
+        return [f"battlefields.{battlefield_id}.move_restrictions must be an array"]
+    for index, entry in enumerate(restrictions):
+        label = f"battlefields.{battlefield_id}.move_restrictions[{index}]"
+        if not isinstance(entry, dict) or set(entry) != MOVE_RESTRICTION_FIELDS:
+            errors.append(f"{label} must carry exactly {sorted(MOVE_RESTRICTION_FIELDS)}")
+            continue
+        for field, allowed in MOVE_RESTRICTION_VALUES.items():
+            if entry[field] not in allowed:
+                errors.append(f"{label}.{field} must be one of {sorted(allowed)}; "
+                              "a restriction this vocabulary cannot express is not approximated")
+    return errors
+
+
+def move_restricted(state: dict[str, Any], object_id: str, destination: dict[str, Any]) -> dict[str, Any] | None:
+    """The restriction that stops this object making this move, or None.
+
+    One predicate, read by both paths, because Core 359.3.e.6 makes them
+    *behave* differently rather than *decide* differently: a Standard Move to a
+    restricted destination is simply not an action the player may take, while a
+    spell may still choose that destination and have the move instruction
+    ignored when it resolves. Two predicates would eventually disagree about
+    which moves are restricted at all, which is a different bug from either
+    behaviour.
+    """
+    obj = (state.get("objects") or {}).get(object_id)
+    if not isinstance(obj, dict):
+        return None
+    location = find_location(state, object_id)
+    if location is None or location[0] != "battlefield":
+        return None
+    battlefield = (state.get("battlefields") or {}).get(location[1]) or {}
+    for entry in battlefield.get("move_restrictions", []) or []:
+        if entry.get("affected_kind") != obj.get("kind"):
+            continue
+        if entry.get("source_location") != "here":
+            continue
+        if entry.get("destination_kind") != (destination or {}).get("kind"):
+            continue
+        return {"reason_code": "move_restricted_by_location", "battlefield": location[1],
+                "restriction": dict(entry), "object_id": object_id,
+                "rule_locators": ["Core 144.4", "Core 359.3.e.6"]}
+    return None
+
+
 def location_token(location: tuple[str, str, str | None] | None) -> str | None:
     """The full name of a board Location, or None for anything off the board."""
     if location is None:
@@ -1689,7 +1750,15 @@ def legal_move_destinations(state: dict[str, Any], object_id: str) -> list[str]:
         return []
     candidates = [f"battlefield:{bf}" for bf in sorted(state.get("battlefields") or {})]
     candidates += [f"base:{player}" for player in sorted(state.get("players") or {})]
-    return [candidate for candidate in candidates if candidate != here]
+    out = []
+    for candidate in candidates:
+        if candidate == here:
+            continue
+        kind, _, name = candidate.partition(":")
+        destination = {"kind": kind, "battlefield": name} if kind == "battlefield" else {"kind": "base", "player": name}
+        if move_restricted(state, object_id, destination) is None:
+            out.append(candidate)
+    return out
 
 
 def find_location(state: dict[str, Any], object_id: str) -> tuple[str, str, str | None] | None:
@@ -2318,6 +2387,18 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                                  f"{entry['value']!r}; the legal Move destinations are {candidates}")
             kind, _, name = entry["value"].partition(":")
             destination = {"kind": kind, "battlefield": name} if kind == "battlefield" else {"kind": "base", "player": name}
+        # Core 359.3.e.6, and the whole of DP-96: a spell may legally *choose*
+        # a destination this Battlefield forbids. The choice stands; it is the
+        # move instruction that cannot be carried out, so this one instruction
+        # is ignored and everything else in the program still runs.
+        restriction = move_restricted(new_state, object_id, destination)
+        if restriction is not None:
+            trace.update({"outcome": "skipped_restricted_move", "completion": "none",
+                          "object_id": object_id, "destination": destination,
+                          "reason": restriction["reason_code"], "restriction": restriction["restriction"],
+                          "restricted_by": restriction["battlefield"],
+                          "rule_locators": list(dict.fromkeys(trace["rule_locators"] + restriction["rule_locators"]))})
+            return new_state, trace
         source = find_location(new_state, object_id)
         if source is None or not (source[0] == "battlefield" or source[2] == "base"):
             raise ValueError("Move applies only between board locations")

@@ -492,7 +492,20 @@ def _lower_occupied_enemy_permission(params):
     }
 
 
+def _lower_move_restriction(params):
+    """Core 359.3.e.6: printed on the Battlefield, and read by both Move paths
+    - the Standard Move it forbids outright, and the effect-induced Move whose
+    instruction it makes impossible at resolution."""
+    return {
+        "battlefield_fields": {"move_restrictions": [
+            {"source_location": "here", "destination_kind": "base", "affected_kind": "unit"}]},
+        "ast": {"node": "passive", "kind": "move_restriction",
+                "params": {"source_location": "here", "destination_kind": "base", "affected_kind": "unit"}},
+    }
+
+
 LOWERINGS = {
+    "units_cant_move_from_here_to_base": _lower_move_restriction,
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "choose_an_opponent": _lower_choose_an_opponent,
     "they_reveal_their_hand": _lower_they_reveal_their_hand,

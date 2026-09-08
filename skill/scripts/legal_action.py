@@ -586,6 +586,16 @@ def _enumerate_standard_move(observation, timing_state, effect_state, actor):
         here = location[1] if location[0] == "battlefield" else None
         destinations = [{"kind": "base", "player": actor}] if here is not None else []
         destinations += [{"kind": "battlefield", "battlefield": bf} for bf in battlefields if bf != here]
+        for destination in list(destinations):
+            # DP-96 / Core 359.3.e.6: a Standard Move the board forbids is not
+            # an action the player has. The same predicate the procedure reads,
+            # so the list and the refusal cannot drift apart.
+            restriction = effect_ir.move_restricted(effect_state, object_id, destination)
+            if restriction is not None:
+                destinations.remove(destination)
+                excluded.append({"object_id": object_id, "destination": destination,
+                                 "reason_code": restriction["reason_code"],
+                                 "battlefield": restriction["battlefield"]})
         for destination in destinations:
             label = destination.get("battlefield") or f"base:{destination['player']}"
             candidates.append({

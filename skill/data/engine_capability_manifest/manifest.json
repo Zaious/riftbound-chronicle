@@ -4,7 +4,7 @@
   "capability_set_id": "sha256:9f50277ec4a048ded39926545402aa33a577956920683f994d0a91a0fc5ac957",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:e994bc837c70094384e600d901bb172869abca04d77312df1cc8fd2678af1bfc",
+    "value": "sha256:ec0e2757ab78dd464fc2629e209ac15eebfea29c7137c75375d2ec2c48f4a072",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:b35b03d85e2d9baf142d69499f1488ebb25fbd43759887a3a13056c971262988"
+        "sha256": "sha256:6d7024b110ad7307dcd163044816cd004047a99d8b556b9d4114fda3a3e5c312"
       },
       {
         "path": "resolution_bridge.py",
@@ -24,7 +24,7 @@
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:6be5a445f4220c318298399e9c167e1874b9f5fa7a871ade8eaf1cc88d41eab1"
+        "sha256": "sha256:ac746ce8b6e4fc73831877b2dfe373d08ae0f2db8de0f4afc79eb40e693a52cb"
       },
       {
         "path": "battlefield_control.py",

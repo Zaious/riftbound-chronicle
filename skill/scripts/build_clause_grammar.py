@@ -454,6 +454,18 @@ LITERAL = [
       "you may play me to an occupied battlefield",
       "friendly units may be played to open battlefields",
       "i can be played to an occupied battlefield if an enemy unit is already there"]),
+    ("units_cant_move_from_here_to_base",
+     r"units can't move from here to base",
+     ["Core 144.4.b", "Core 359.3.e.6", "Core 190.6.a"], "passive", ["move_restriction"],
+     ("The one restriction shape this wave reads, printed on a Battlefield. It is not a targeting rule: "
+      "a Standard Move there is simply not an available action, while a spell may still choose that "
+      "destination and have its move instruction ignored at resolution (359.3.e.6). A global, a "
+      "self-only, or a timed restriction is a different clause and stays unparsed."),
+     ["Units can't move from here to base."],
+     ["units can't move to base",
+      "i can't move to base",
+      "they can't move it this turn",
+      "units can't move from here to a battlefield"]),
     ("no_rules_text", r"\(no rules text\)", ["Core 185"], "empty", [],
      "A card with nothing to compile. It is a parsed clause, not an unparsed one.",
      ["(no rules text)"], ["no rules text", "(vanilla)"]),
@@ -496,6 +508,7 @@ CAPABILITY_ALIAS = {
     "replacement_effects": "bounded_replacement",
     "conquer_triggers": "score_triggers",
     "hold_triggers": "hold_scoring",
+    "move_restriction": "standard_move",
     "end_of_turn_triggers": "ending_step",
     "might_aura": "continuous_effects",
     "domain_power": "typed_cost_payment",

@@ -37,6 +37,7 @@ import effect_ir
 import fact_ledger
 import legal_action
 import rule_consult_command as rcc
+import rule_consult_command as rcc_module
 import state_builder
 import verify_evidence_pack as evidence
 from rule_consult_command import (
@@ -566,6 +567,87 @@ def main() -> int:
         if not template["text"].startswith("Under {locator},"):
             failures.append(f"{template_id} must attribute the rule it states to its locator")
 
+    # --- T-01: the rule families -------------------------------------------
+    # Four families, closed lexicons. What is checked: the six literals they
+    # absorbed are gone (one truth); a lexicon value outside the table, a
+    # number written as a word, and a relation given a number it does not take
+    # are each refused by name; a family claim answers at tier B and renders
+    # the sentence its lexicons say.
+    families = {"rule_action_permission", "rule_role_holder", "rule_step_order", "rule_quantity"}
+    if missing_families := sorted(families - set(CLAIM_TEMPLATES)):
+        failures.append(f"the approved rule families are missing: {missing_families}")
+    for absorbed in ("rule_focus_on_showdown_start", "rule_focus_retained_on_pass",
+                     "rule_no_priority_no_discretionary", "rule_limited_actions_regardless_of_priority",
+                     "rule_no_focus_in_neutral_state", "rule_newest_item_resolves"):
+        if absorbed in CLAIM_TEMPLATES:
+            failures.append(f"{absorbed} was absorbed by a family and must not survive beside it")
+
+    def family_run(binding):
+        return run_consultation(
+            question="What does the rule say?", entry="timing", draft=timing_draft,
+            entry_inputs={"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell",
+                                     "timing": "default"}},
+            claims=[binding], **context)
+
+    good_family = family_run({"template": "rule_role_holder",
+                              "slots": {"locator": "Core 312", "occasion": "when_showdown_begins",
+                                        "role": "focus", "holder": "applied_contested"}})
+    if good_family["status"] != "answered" or good_family["tier"] != "B":
+        failures.append(f"a family claim must answer at tier B; got "
+                        f"{good_family['status']}/{good_family['tier']}/{good_family['detail'][:100]}")
+    elif good_family["claims"][0]["text"] != ("Under Core 312, as a Showdown begins, Focus is held "
+                                              "by the player who applied Contested status to the "
+                                              "Battlefield."):
+        failures.append(f"a family claim renders its lexicons; got {good_family['claims'][0]['text']!r}")
+    elif good_family["claims"][0]["source"] != "official_text:Core 312":
+        failures.append(f"a family claim's source is its locator; got {good_family['claims'][0]['source']!r}")
+
+    family_refusals = [
+        ("a lexicon value outside the table",
+         {"template": "rule_action_permission",
+          "slots": {"locator": "Core 312", "actor": "p1", "modality": "may",
+                    "action": "take_a_discretionary_action", "condition": "unconditionally"}},
+         "not one of this run's rule_actor values"),
+        ("a sentence in a lexicon slot",
+         {"template": "rule_step_order",
+          "slots": {"locator": "Core 312", "first": "assigning_combat_damage",
+                    "relation": "the attacker wins and the defender loses",
+                    "second": "dealing_combat_damage"}},
+         "not one of this run's rule_order_relation values"),
+        ("a number written as a word",
+         {"template": "rule_quantity",
+          "slots": {"locator": "Core 312", "quantity": "victory_score_by_default",
+                    "relation": "is", "value": "eight"}},
+         "not one of this run's rule_value values"),
+        ("a relation that states a number, given none",
+         {"template": "rule_quantity",
+          "slots": {"locator": "Core 312", "quantity": "victory_score_by_default",
+                    "relation": "is", "value": None}},
+         "does not cohere"),
+        ("a relation that takes no number, given one",
+         {"template": "rule_quantity",
+          "slots": {"locator": "Core 312", "quantity": "shield_value_from_several_sources",
+                    "relation": "is_the_sum_of_the_values", "value": 4}},
+         "does not cohere"),
+        ("a boolean where a number goes",
+         {"template": "rule_quantity",
+          "slots": {"locator": "Core 312", "quantity": "victory_score_by_default",
+                    "relation": "is", "value": True}},
+         "not one of this run's rule_value values"),
+    ]
+    for label, binding, expected in family_refusals:
+        refused = family_run(binding)
+        if refused["not_attempted_reason"] != "claim_binding_invalid" or expected not in refused["detail"]:
+            failures.append(f"{label} must be refused as claim_binding_invalid ({expected!r}); got "
+                            f"{refused['status']}/{refused['not_attempted_reason']}: {refused['detail'][:120]}")
+    for name, table in (("RULE_ACTORS", rcc_module.RULE_ACTORS), ("RULE_CONDITIONS", rcc_module.RULE_CONDITIONS),
+                        ("RULE_OCCASIONS", rcc_module.RULE_OCCASIONS), ("RULE_ROLES", rcc_module.RULE_ROLES),
+                        ("RULE_HOLDERS", rcc_module.RULE_HOLDERS), ("RULE_STEPS", rcc_module.RULE_STEPS),
+                        ("RULE_QUANTITIES", rcc_module.RULE_QUANTITIES)):
+        for value, phrase in table.items():
+            if "." in phrase or "." in value:
+                failures.append(f"{name}[{value!r}] would render a second sentence")
+
     # The declined run's coverage statement is derived, so it cannot be dropped.
     dropped = copy.deepcopy(ran["CR-005"])
     dropped["coverage_statement"] = None
@@ -590,7 +672,8 @@ def main() -> int:
           f"no free-text slot type")
     print(f"evidence packs re-run: {sorted(reproduced)}")
     print(f"structural mutations refused: {len(mutations) + 1}; "
-          f"forgeries refused by verify_run: {forgeries}")
+          f"forgeries refused by verify_run: {forgeries}; "
+          f"rule-family bindings refused: {len(family_refusals)}")
     return 0
 
 

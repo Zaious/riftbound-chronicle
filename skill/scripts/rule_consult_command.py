@@ -248,6 +248,144 @@ SLOT_TYPES: dict[str, dict[str, Any]] = {
     },
 }
 
+# --- T-01: the rule families' lexicons ---------------------------------------
+# A conditional rule is a fixed sentence over closed lexicons. Each lexicon
+# maps the id a producer may choose to the phrase the sentence renders it as;
+# a value outside it is refused as free text like any other slot. Adding a
+# rule the surface cannot yet state means adding a lexicon entry here, in
+# review, never a sentence at run time.
+RULE_ACTORS = {
+    "any_player": "a player",
+    "no_player": "no player",
+    "the_turn_player": "the Turn Player",
+    "a_player_other_than_the_turn_player": "a player other than the Turn Player",
+    "a_player_with_focus_but_not_priority": "a player who holds Focus but not Priority",
+}
+RULE_MODALITIES = {"may": "may", "may_not": "may not", "must": "must"}
+RULE_ACTIONS = {
+    "take_a_discretionary_action": "take a Discretionary Action",
+    "take_a_limited_action": "take a Limited Action",
+    "play_a_spell_or_activate_an_ability": "play a spell or activate an ability",
+}
+RULE_CONDITIONS = {
+    "unconditionally": "",
+    "while_no_player_holds_priority": " while no player holds Priority",
+    "when_instructed_regardless_of_priority": " when instructed, regardless of Priority",
+    "if_a_forbidden_action_or_game_state_would_result":
+        " if a forbidden action or game state would result",
+    "at_will": " at will",
+    "when_instructed_or_at_its_occasion_in_the_turn":
+        " when instructed or at its occasion in the turn",
+    "in_a_neutral_open_state": " in a Neutral Open State",
+}
+RULE_OCCASIONS = {
+    "when_showdown_begins": "as a Showdown begins, ",
+    "when_priority_is_passed": "when a player passes Priority, ",
+    "in_a_neutral_state": "while the turn is in a Neutral State, ",
+    "when_the_chain_resolves": "when the chain resolves, ",
+    "when_combat_opens": "when Combat opens, ",
+}
+RULE_ROLES = {
+    "focus": "Focus is held by",
+    "attacker": "the Attacker is",
+    "defender": "the Defender is",
+    "resolving_chain_item": "the Chain Item that resolves is",
+}
+RULE_HOLDERS = {
+    "applied_contested": "the player who applied Contested status to the Battlefield",
+    "did_not_apply_contested": "the player who did not apply Contested status to the Battlefield",
+    "the_passing_player": "the player who passed",
+    "no_player": "no player",
+    "the_attacker": "the Attacker",
+    "newest_finalized_chain_item": "the newest Finalized Chain Item",
+}
+RULE_STEPS = {
+    "assigning_combat_damage": "assigning Combat Damage",
+    "dealing_combat_damage": "dealing Combat Damage",
+    "assigning_all_combat_damage": "assigning all Combat Damage",
+    "dealing_combat_damage_simultaneously": "dealing all of it simultaneously",
+    "assigning_lethal_damage_in_full_to_one_unit": "assigning lethal damage in full to one unit",
+    "assigning_damage_to_another_unit": "assigning damage to a different unit",
+    "exhausting_the_units_that_can_still_be_assigned_damage":
+        "running out of units that can still be assigned damage",
+    "assigning_a_unit_more_than_its_minimum_lethal_damage":
+        "assigning a unit more than the minimum that is lethal to it",
+    "assigning_lethal_damage_to_a_tank_unit": "assigning lethal damage to a unit with Tank",
+    "assigning_damage_to_a_non_tank_unit_of_the_same_controller":
+        "assigning damage to a unit without Tank under the same controller",
+    "scoring_every_battlefield_this_turn": "Scoring every Battlefield this turn",
+    "gaining_the_final_point_by_conquer": "gaining the Final Point through a Conquer",
+}
+RULE_ORDER_RELATIONS = {
+    "is_required_before": "must be complete before",
+    "comes_before": "comes before",
+    "is_distinct_from": "is not the same action as",
+}
+RULE_QUANTITIES = {
+    "scores_per_battlefield_per_turn_per_player":
+        "the number of times a player may Score one Battlefield in a turn",
+    "hold_ability_triggers_per_battlefield_per_turn_per_player":
+        "the number of times a Battlefield's Hold abilities trigger for a player in a turn",
+    "victory_score_by_default": "the Victory Score by default",
+    "a_players_points": "a player's point total",
+    "discretionary_actions_a_player_may_take_in_a_turn":
+        "the number of Discretionary Actions a player may take in a turn",
+    "discretionary_actions_a_player_may_take_in_the_main_phase":
+        "the number of Discretionary Actions a player may take in the Main Phase",
+    "shield_value_when_x_is_omitted": "the Shield Value when X is omitted",
+    "shield_value_from_several_sources":
+        "the Shield Value of a unit granted Shield from more than one source",
+    "tank_instances_in_effect_on_a_unit": "the number of Tank instances that take effect on one unit",
+    "players_whose_units_are_in_one_combat": "the number of players whose units are in one Combat",
+}
+# relation -> (phrase, whether a value follows)
+RULE_QUANTITY_RELATIONS = {
+    "is": ("is", True),
+    "at_least": ("is at least", True),
+    "at_most": ("is at most", True),
+    "exactly": ("is exactly", True),
+    "unbounded": ("is not limited", False),
+    "is_the_sum_of_the_values": ("is the sum of the granted Shield Values", False),
+}
+
+
+def _lexicon(table: dict[str, str]) -> dict[str, Any]:
+    return {
+        "admits": lambda ctx, v: isinstance(v, str) and v in table,
+        "samples": lambda ctx: sorted(table),
+        "render": lambda v: table[v],
+    }
+
+
+SLOT_TYPES.update({
+    "rule_actor": _lexicon(RULE_ACTORS),
+    "rule_modality": _lexicon(RULE_MODALITIES),
+    "rule_action": _lexicon(RULE_ACTIONS),
+    "rule_condition": _lexicon(RULE_CONDITIONS),
+    "rule_occasion": _lexicon(RULE_OCCASIONS),
+    "rule_role": _lexicon(RULE_ROLES),
+    "rule_holder": _lexicon(RULE_HOLDERS),
+    "rule_step": _lexicon(RULE_STEPS),
+    "rule_order_relation": _lexicon(RULE_ORDER_RELATIONS),
+    "rule_quantity": _lexicon(RULE_QUANTITIES),
+    "rule_quantity_relation": _lexicon({k: v[0] for k, v in RULE_QUANTITY_RELATIONS.items()}),
+    # A number or nothing. Not a string: "eight" is prose.
+    "rule_value": {
+        "admits": lambda ctx, v: v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
+        "samples": lambda ctx: [1],
+        "render": lambda v: "" if v is None else f" {v}",
+    },
+})
+
+
+def _quantity_coheres(slots: dict[str, Any]) -> str | None:
+    needs_value = RULE_QUANTITY_RELATIONS[slots["relation"]][1]
+    if needs_value and slots["value"] is None:
+        return f"relation {slots['relation']!r} states a number and none was given"
+    if not needs_value and slots["value"] is not None:
+        return f"relation {slots['relation']!r} takes no number; {slots['value']!r} was given"
+    return None
+
 CLAIM_TEMPLATES: dict[str, dict[str, Any]] = {
     "timing_play_permitted": {
         "class": "position_conclusion",
@@ -305,48 +443,42 @@ CLAIM_TEMPLATES: dict[str, dict[str, Any]] = {
     },
     # --- the B route. Nothing below says what anyone may do. -----------------
     # --- conditional rules: what the text says, never about this position ---
-    "rule_focus_on_showdown_start": {
+    # T-01. Four families, each a fixed sentence over closed lexicons. The
+    # locator slot comes first: it is the claim's source.
+    "rule_action_permission": {
         "class": "conditional_rule",
-        "text": "Under {locator}, the player who applied Contested status to the Battlefield "
-                "gains Focus as a Showdown begins.",
-        "slots": {"locator": "locator"},
+        "text": "Under {locator}, {actor} {modality} {action}{condition}.",
+        "slots": {"locator": "locator", "actor": "rule_actor", "modality": "rule_modality",
+                  "action": "rule_action", "condition": "rule_condition"},
         "basis": {"kind": "official_text"},
     },
-    "rule_focus_retained_on_pass": {
+    "rule_role_holder": {
         "class": "conditional_rule",
-        "text": "Under {locator}, a player who passes Priority retains Focus.",
-        "slots": {"locator": "locator"},
+        "text": "Under {locator}, {occasion}{role} {holder}.",
+        "slots": {"locator": "locator", "occasion": "rule_occasion", "role": "rule_role",
+                  "holder": "rule_holder"},
         "basis": {"kind": "official_text"},
     },
-    "rule_no_priority_no_discretionary": {
+    "rule_step_order": {
         "class": "conditional_rule",
-        "text": "Under {locator}, no player can take a Discretionary Action while no player "
-                "holds Priority.",
-        "slots": {"locator": "locator"},
+        "text": "Under {locator}, {first} {relation} {second}.",
+        "slots": {"locator": "locator", "first": "rule_step", "relation": "rule_order_relation",
+                  "second": "rule_step"},
         "basis": {"kind": "official_text"},
     },
-    "rule_limited_actions_regardless_of_priority": {
+    "rule_quantity": {
         "class": "conditional_rule",
-        "text": "Under {locator}, players may take and make choices for Limited Actions when "
-                "instructed, regardless of Priority.",
-        "slots": {"locator": "locator"},
+        "text": "Under {locator}, {quantity} {relation}{value}.",
+        "slots": {"locator": "locator", "quantity": "rule_quantity",
+                  "relation": "rule_quantity_relation", "value": "rule_value"},
         "basis": {"kind": "official_text"},
+        "coheres": _quantity_coheres,
     },
-    "rule_no_focus_in_neutral_state": {
-        "class": "conditional_rule",
-        "text": "Under {locator}, no player holds Focus while the turn is in a Neutral State.",
-        "slots": {"locator": "locator"},
-        "basis": {"kind": "official_text"},
-    },
+    # Event-consequence rules were not approved as a family (their events do
+    # not recur); this one literal stays until they do.
     "rule_finalizing_does_not_pass_priority": {
         "class": "conditional_rule",
         "text": "Under {locator}, finalizing an item to the chain does not pass Priority.",
-        "slots": {"locator": "locator"},
-        "basis": {"kind": "official_text"},
-    },
-    "rule_newest_item_resolves": {
-        "class": "conditional_rule",
-        "text": "Under {locator}, the newest Finalized Chain Item is the one that resolves.",
         "slots": {"locator": "locator"},
         "basis": {"kind": "official_text"},
     },
@@ -380,7 +512,9 @@ def render(template_id: str, slots: dict[str, str]) -> str:
     template = CLAIM_TEMPLATES[template_id]
     if set(slots) != set(template["slots"]):
         raise ConsultationError(f"{template_id} takes exactly {sorted(template['slots'])}")
-    return template["text"].format(**slots)
+    rendered = {slot: SLOT_TYPES[template["slots"][slot]].get("render", lambda v: v)(value)
+                for slot, value in slots.items()}
+    return template["text"].format(**rendered)
 
 
 def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
@@ -413,6 +547,9 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
                 bad = True
         if bad:
             continue
+        if (incoherent := template.get("coheres", lambda s: None)(slots)) is not None:
+            problems.append(f"{label} does not cohere: {incoherent}")
+            continue
 
         basis = template["basis"]
         if basis["kind"] == "engine":
@@ -435,7 +572,7 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
         else:
             # A source claim's ref is the slot it already filled: the locator,
             # the snapshot, the assumption. There is nothing left to supply.
-            ref = next(iter(slots.values()))
+            ref = slots["locator"] if "locator" in slots else next(iter(slots.values()))
 
         claims.append({
             "claim_id": f"claim-{position + 1}",

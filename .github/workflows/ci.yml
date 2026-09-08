@@ -414,6 +414,8 @@ jobs:
         run: python3 skill/scripts/check_play_destination.py
       - name: move_restriction.v1 (DP-96, Core 359.3.e.6)
         run: python3 skill/scripts/check_move_restriction.py
+      - name: state-assumption.v1 (S-01, the minimum state builder)
+        run: python3 skill/scripts/check_state_builder.py
 
       # Renders every engine-check.v1 outcome through the real viewer in a
       # minimal DOM. `node --check` would pass a viewer that had quietly lost
@@ -539,6 +541,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"
+          python3 "$REPO/skill/scripts/check_state_builder.py"
           python3 "$REPO/skill/scripts/check_engine_check_view.py"
           python3 "$REPO/skill/scripts/check_rule_consult_prototype.py"
           python3 "$REPO/skill/scripts/check_prototype_ui.py"

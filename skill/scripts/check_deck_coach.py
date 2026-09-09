@@ -82,9 +82,23 @@ def main():
         errors.append("environment registry does not route legality to the official Rules Hub")
     if not environments.get("live_check_required_for_real_event"):
         errors.append("environment registry must require live re-check for real events")
+    current = environments.get("current_ban_list")
+    ban_lists = environments.get("ban_lists", {})
+    if current not in ban_lists:
+        # Fourth time this shape has come up (S-01b, I-01, S-01c, here): every
+        # downstream check reads the ban list, so continuing past an unusable
+        # registry reports a traceback instead of the defect. Name it and stop.
+        errors.append(f"current_ban_list {current!r} is not one of the versioned ban lists "
+                      f"{sorted(ban_lists)}; nothing downstream can be checked against it")
+        for error in errors:
+            print(f"  - {error}")
+        print("")
+        print(f"FAILED: {len(errors)} Deck Coach closed-loop regression(s).")
+        return 1
     registry = environments.get("environments", {})
     live = {k for k, v in registry.items() if v.get("kind") == "live"}
-    snapshots = {k for k, v in registry.items() if v.get("kind") == "calibration_snapshot"}
+    snapshots = {k for k, v in registry.items()
+                 if v.get("kind") in ("calibration_snapshot", "service_snapshot")}
     if live != {"global-vendetta", "taiwan-set1-banned"}:
         errors.append("environment registry must expose the two supported live environments")
     if set(registry) - live - snapshots:
@@ -94,10 +108,27 @@ def main():
     # against, so what it is may not drift under that claim. Before its freeze
     # date it says so and carries no hash; on and after it, it carries the hash
     # of what was frozen and is never legal for play.
+    # v2: a live environment carries the ban list in force. Its pool may be
+    # stable while the list under it moves, and that is exactly the drift that
+    # would break a completeness claim bound to a live entry, so the two axes
+    # are checked separately: stale_on_or_after tracks the pool, ban_list_ref
+    # tracks the list.
+    for name in sorted(live):
+        env = registry[name]
+        if env.get("ban_list_ref") != current:
+            errors.append(f"{name}: a live environment carries the ban list in force "
+                          f"({current}); it names {env.get('ban_list_ref')!r}, so it is stale and "
+                          f"must be updated or frozen")
+        if "stale_on_or_after" not in env:
+            errors.append(f"{name}: a live environment states its pool staleness explicitly, "
+                          f"null included")
     for name in sorted(snapshots):
         snap = registry[name]
+        if snap.get("ban_list_ref") not in ban_lists:
+            errors.append(f"{name}: a snapshot pins a ban list version that exists in this file")
         if snap.get("legal_for_play") is not False:
-            errors.append(f"{name}: a calibration snapshot is never legal for play")
+            errors.append(f"{name}: a {snap.get('kind')} is never legal for play; "
+                          f"play legality is the live entry plus a live re-check")
         if snap.get("frozen_from") not in registry:
             errors.append(f"{name}: frozen_from must name an environment in this registry")
         if snap.get("status") == "scheduled_freeze":
@@ -111,12 +142,12 @@ def main():
         else:
             errors.append(f"{name}: status must be scheduled_freeze or frozen")
         if "stale_on_or_after" in snap:
-            errors.append(f"{name}: a calibration snapshot never goes stale; that is the point of it")
-    standard_bans = set(environments["formats"]["1v1 Constructed"]["banned_names"])
+            errors.append(f"{name}: a snapshot never goes stale; that is the point of it")
+    standard_bans = set(ban_lists[current]["formats"]["1v1 Constructed"]["banned_names"])
     expected_bans = {"Called Shot", "Draven - Vanquisher", "Fight or Flight", "Scrapheap", "Stealthy Pursuer", "The Arena's Greatest", "Aspirant's Climb", "The Dreaming Tree", "Obelisk of Power", "Reaver's Row"}
     if standard_bans != expected_bans:
         errors.append(f"1v1 ban snapshot differs from the 2026-07-16 official list: {sorted(standard_bans ^ expected_bans)}")
-    if "Master Yi - Wuju Bladesman" not in environments["formats"]["2v2 Constructed"]["banned_names"]:
+    if "Master Yi - Wuju Bladesman" not in ban_lists[current]["formats"]["2v2 Constructed"]["banned_names"]:
         errors.append("2v2 mask is missing Master Yi - Wuju Bladesman")
 
     for filename, (field, const) in SCHEMAS.items():
@@ -197,7 +228,7 @@ def main():
         if battle_fixture is None:
             battle_fixture = (case, profile, mask, candidate)
 
-    formats = environments["formats"]
+    formats = environments["ban_lists"][environments["current_ban_list"]]["formats"]
     two_v_two_only = set(formats["2v2 Constructed"]["banned_names"]) - set(formats["1v1 Constructed"]["banned_names"])
     if not two_v_two_only:
         errors.append("the two Constructed ban lists no longer differ; the format-scoped legality case has nothing to prove")

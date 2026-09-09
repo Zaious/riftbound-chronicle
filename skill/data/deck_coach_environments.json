@@ -1,41 +1,8 @@
 {
-  "schema_version": "deck-coach-environments.v1",
+  "schema_version": "deck-coach-environments.v2",
   "last_checked": "2026-08-24",
   "official_legality_source": "https://playriftbound.com/en-us/rules-hub/",
-  "ban_list_last_updated": "2026-07-16",
-  "ban_list_effective": "2026-07-24",
   "live_check_required_for_real_event": true,
-  "formats": {
-    "1v1 Constructed": {
-      "banned_names": [
-        "Called Shot",
-        "Draven - Vanquisher",
-        "Fight or Flight",
-        "Scrapheap",
-        "Stealthy Pursuer",
-        "The Arena's Greatest",
-        "Aspirant's Climb",
-        "The Dreaming Tree",
-        "Obelisk of Power",
-        "Reaver's Row"
-      ]
-    },
-    "2v2 Constructed": {
-      "banned_names": [
-        "Master Yi - Wuju Bladesman",
-        "Called Shot",
-        "Draven - Vanquisher",
-        "Fight or Flight",
-        "Scrapheap",
-        "Stealthy Pursuer",
-        "The Arena's Greatest",
-        "Aspirant's Climb",
-        "The Dreaming Tree",
-        "Obelisk of Power",
-        "Reaver's Row"
-      ]
-    }
-  },
   "environments": {
     "global-vendetta": {
       "label": "Global Standard — Vendetta",
@@ -49,9 +16,10 @@
       ],
       "effective_from": "2026-07-31",
       "stale_on_or_after": "2026-10-23",
-      "notes": "ARC/other printings are usable only when the same card name has a legal-set printing; preview-only future sets are excluded.",
+      "notes": "ARC/other printings are usable only when the same card name has a legal-set printing; preview-only future sets are excluded. ban_list_ref names the list in force; stale_on_or_after tracks the pool, which Radiance expands on 2026-10-23.",
       "kind": "live",
-      "legal_for_play": true
+      "legal_for_play": true,
+      "ban_list_ref": "2026-07-24"
     },
     "taiwan-set1-banned": {
       "label": "Taiwan — Set 1 pool with global bans",
@@ -62,9 +30,10 @@
       ],
       "effective_from": "2026-08-07",
       "stale_on_or_after": null,
-      "notes": "Regional physical pool is OGN + OGS. The applicable Constructed ban list is layered on top.",
+      "notes": "Regional physical pool is OGN + OGS and does not move until Taiwan gets later-set product. The ban list layered on top is the global Constructed list and DOES move, which is why this entry names ban_list_ref rather than inheriting silently: when the global list is superseded this environment has changed, even though its card pool has not. Its stale_on_or_after stays null because that field tracks pool staleness; ban-list staleness is the gate's ban_list_ref check. A claim about coverage binds to the service snapshot, never to this live entry.",
       "kind": "live",
-      "legal_for_play": true
+      "legal_for_play": true,
+      "ban_list_ref": "2026-07-24"
     },
     "global-vendetta-2026-10-22": {
       "label": "Global Standard - Vendetta, calibration snapshot",
@@ -80,10 +49,64 @@
         "UNL",
         "VEN"
       ],
-      "ban_list_effective": "2026-07-24",
       "legal_for_play": false,
       "content_hash": null,
-      "notes": "The environment P4 calibrates against: the last day of the Vendetta pool before Radiance (2026-10-23). It is not stale after that date and never becomes stale - it is the historical record the official matchup data for this pool describes. status is scheduled_freeze, not frozen: global-vendetta is still live, and a ban-list change before 2026-10-22 would still move this content. On the freeze date the status becomes frozen and content_hash is filled with the digest of legal_set_ids plus the ban list in force; after that the entry is immutable and a change to it is a gate failure, not an update."
+      "notes": "The environment P4 calibrates against: the last day of the Vendetta pool before Radiance (2026-10-23). It is not stale after that date and never becomes stale - it is the historical record the official matchup data for this pool describes. status is scheduled_freeze, not frozen: global-vendetta is still live, and a ban-list change before 2026-10-22 would still move this content. On the freeze date the status becomes frozen and content_hash is filled with the digest of legal_set_ids plus the ban list in force; after that the entry is immutable and a change to it is a gate failure, not an update.",
+      "ban_list_ref": "2026-07-24"
+    },
+    "taiwan-set1-banlist-2026-07-24": {
+      "label": "Taiwan - Set 1 pool, ban list 2026-07-24, service snapshot",
+      "region": "taiwan",
+      "kind": "service_snapshot",
+      "status": "frozen",
+      "frozen_from": "taiwan-set1-banned",
+      "legal_set_ids": [
+        "OGS",
+        "OGN"
+      ],
+      "ban_list_ref": "2026-07-24",
+      "legal_for_play": false,
+      "content_hash": "sha256:ee96919f2d65e396a34a1e82ebfc800613ab041e408fa63f551a277db5b5eae6",
+      "notes": "The environment P1's completeness claim binds to. Frozen now, not scheduled: both axes are already fixed - the Set 1 pool by physical distribution and the ban list by the 2026-07-24 version this entry names. A later global ban list does not change this snapshot; it produces a new one, and P1's claim then states which snapshot it covered. legal_for_play is false because play legality is always the live entry plus a live re-check, never a frozen record."
     }
-  }
+  },
+  "ban_lists": {
+    "2026-07-24": {
+      "last_updated": "2026-07-16",
+      "effective_from": "2026-07-24",
+      "source": "https://playriftbound.com/en-us/rules-hub/",
+      "formats": {
+        "1v1 Constructed": {
+          "banned_names": [
+            "Called Shot",
+            "Draven - Vanquisher",
+            "Fight or Flight",
+            "Scrapheap",
+            "Stealthy Pursuer",
+            "The Arena's Greatest",
+            "Aspirant's Climb",
+            "The Dreaming Tree",
+            "Obelisk of Power",
+            "Reaver's Row"
+          ]
+        },
+        "2v2 Constructed": {
+          "banned_names": [
+            "Master Yi - Wuju Bladesman",
+            "Called Shot",
+            "Draven - Vanquisher",
+            "Fight or Flight",
+            "Scrapheap",
+            "Stealthy Pursuer",
+            "The Arena's Greatest",
+            "Aspirant's Climb",
+            "The Dreaming Tree",
+            "Obelisk of Power",
+            "Reaver's Row"
+          ]
+        }
+      }
+    }
+  },
+  "current_ban_list": "2026-07-24"
 }

@@ -1084,15 +1084,47 @@ absence. Each row names its gate; a row without one is not a completed row.
   `not_attempted` reasons, all five evidence-pack kinds re-run to an equal
   hash, and nine forged runs each shown to pass structural validation and be
   refused by verification.
-- [ ] **S-04:** judge corpus contract — family quotas, an expected tier per
-  question, locators for A/B questions and an abstention contract for C ones.
-  The contract and its validator, not the questions themselves.
-  (Unblocked by S-03: `evidence-pack.v1` now re-runs all five consultation
-  entries rather than `effect` alone, so a corpus question of any of the five
-  can carry re-runnable evidence, and a B-tier question can carry a retrieved
-  source bound by document version and text hash. `resolution`, `play`,
-  `cleanup`, `turn_step`, `hide_step` and `standard_move` remain outside the
-  verifier and are refused by name.)
+- [x] **S-04:** judge corpus — `judge-corpus.v1`, sixty questions across seven
+  families with quotas that sum to sixty, every locator read off the Core
+  Rules page. Each question carries an expected tier, locators for A and B
+  questions, a named abstention contract for C ones (the vocabulary imported
+  from the modules that abstain; the tournament-policy red line is the one
+  policy exception), and an `expected_answer_contract` whose `required_claims`
+  pin template and every slot value — the same template with another value
+  is a different claim and does not count. Every gap the corpus measured is
+  one ledger, `coverage_debts`, with a closed class, blocks, owner and
+  trigger; a question's template debt and required templates are derived
+  from it, never stored, and closed is measured. Thirty-one debts were
+  raised and all are closed (T-01, T-02, S-01d).
+  **Semantic authority is registry-first and human-reviewed.** B-tier
+  answers state rules through six closed claim families, and a rule claim
+  binds only as a reading `source-semantic-bindings.v1` records for that
+  document, version, locator and text hash, reviewed by a person: runs draft
+  proposed bindings, a private review decides them, a promotion tool writes
+  the approved registry on the private pack paths, and nothing at run time
+  writes one. The public corpus says of itself that its readings are
+  proposed and unreviewed and carry no run-time authority; in public CI every
+  rule question is reported as awaiting its binding. Against the approved
+  registry (48 readings, human-reviewed 2026-09-09) the corpus runs to 52
+  matches and 8 not routable (six by policy, two with no card snapshot), no
+  undeclared difference.
+  Artifacts: `judge_corpus.py`, `judge_corpus.json`, `judge_corpus_runs.json`,
+  `judge_corpus_runner.py`, `source_semantic_bindings.py`,
+  `source_semantic_bindings_fixture.json`.
+  Gates: `check_judge_corpus.py` — completeness is read off the quotas, a
+  stored derived field is refused, a blocked question may be blocked by
+  nothing but its debt, a matching question may carry no correction record,
+  and the semantic-authority state is named; `check_source_semantic_bindings.py`
+  — the registry validator refuses twenty-one mutations, a proposed or fixture
+  registry carries no authority, the draft tool refuses the approved file
+  name, running the corpus changes no registry file, and where an approved
+  registry is present every rule claim is one of its bindings by id, its
+  hashes agree with the page-read anchors, and, where the local index is
+  installed, with the indexed text.
+  (Unblocked by S-03: `evidence-pack.v1` re-runs all five consultation entries
+  rather than `effect` alone. `resolution`, `play`, `cleanup`, `turn_step`,
+  `hide_step` and `standard_move` remain outside the verifier and are refused
+  by name.)
 - [ ] **S-05:** Deck Coach regression corpus, with general primer cases and
   engine-closed cases stored and verified separately, and no win rate, Tier,
   keep-rule or match-simulation claim admissible in either.

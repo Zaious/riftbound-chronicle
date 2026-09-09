@@ -1204,6 +1204,15 @@ def validate_program(program: Any) -> list[str]:
                         errors.extend(f"effects[{index}].units[{j}] {e}" for e in _selector_errors(sel))
                 if effect.get("target") is not None or effect.get("targets") is not None or effect.get("object_id") is not None or effect.get("affected") is not None:
                     errors.append(f"effects[{index}].mutual_damage_current_might carries its two units, not target/targets/object_id/affected")
+                if "amount" in effect:
+                    # The damage IS each Unit's effective Might read at
+                    # resolution (417.6.b.3); there is no authored amount. The
+                    # field was tolerated and never read by this op's own
+                    # branch, but the generic reduce_damage replacement path
+                    # reads `amount` off whatever effect it is applied to, so
+                    # leaving it accepted left a field that looks authoritative
+                    # and is not. Refused rather than ignored.
+                    errors.append(f"effects[{index}].mutual_damage_current_might takes no `amount`: the damage is each Unit's current Might, read at resolution")
             if effect.get("op") == "grant_keyword":
                 if effect.get("keyword") not in GRANTABLE_KEYWORDS:
                     errors.append(f"effects[{index}].grant_keyword.keyword must be one of {sorted(GRANTABLE_KEYWORDS)}")

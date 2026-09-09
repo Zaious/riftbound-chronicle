@@ -56,6 +56,16 @@ contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
 - [x] Page-addressable bilingual SQLite rules index.
 - [x] Default masking of superseded sources.
 - [x] Bundled card snapshot and errata overlay with provenance/freshness checks.
+- [ ] **Errata resolution is a service-layer hard rule (Codex ruling, 2026-09-09).**
+  Before card text is compiled, cited, semantically bound, profiled, or used for
+  deck legality, resolve the current errata overlay against the source snapshot.
+  Record `printed_text_hash`, `effective_text_hash`, overlay version, and source
+  date. A missing, ambiguous, or conflicting errata match blocks engine A-tier
+  use and card-text source claims; output `errata_status: unresolved` rather
+  than using stale printed text.
+  (Measured 2026-09-09: of 63 errata entries, 60 match a snapshot card and 54 of
+  those are stale, so the bundled mirror carries pre-errata wording for most
+  errata'd cards; three errata'd cards are absent from the mirror entirely.)
 - [x] Format/region/set-pool environment registry for Deck Coach.
 - [x] Read-only source refresh planner/capture/reporter with ignored output,
   registry immutability, public-DNS/redirect guards, and offline analysis.

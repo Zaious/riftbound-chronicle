@@ -1321,7 +1321,8 @@ def validate_program(program: Any) -> list[str]:
                 # clause-grammar.v1's own buff_selector output for "Buff a
                 # friendly unit." failed this validator. Still one object: an
                 # `affected` or `targets` form ("Buff all ...") stays refused.
-                has_object = isinstance(effect.get("object_id"), str) and bool(effect.get("object_id"))
+                has_object = ((isinstance(effect.get("object_id"), str) and bool(effect.get("object_id")))
+                              or is_object_ref(effect.get("object_id")))
                 has_target = isinstance(effect.get("target"), dict)
                 if not (has_object or has_target):
                     errors.append(f"effects[{index}].{op_name} needs the object it acts on")
@@ -1434,6 +1435,49 @@ SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zon
 # name match and can never quietly pick a substitute.
 SOURCE_IDENTITY_SENTINEL = "$source_identity"
 
+# selector-group `self` (Codex 2026-09-10). "Give me +3 Might this turn." names
+# the resolving source object and makes no decision at all.
+#
+# It is a TYPED reference, `{"object_ref": "program_source"}`, and deliberately
+# not a magic string. A string sentinel is forgeable by anything that can write
+# a string: a decision artifact, a mapping's expected IR, a hand-edited program.
+# The engine is the only thing that may resolve this shape, and the decision
+# validator refuses it outright, so an artifact cannot inject one.
+OBJECT_REF_KINDS = ("program_source",)
+# Which ops may carry it. Codex's boundary: adoption is proved per op with an
+# executor audit AND a real resolution fixture. `ready` working says nothing
+# about `kill`, so an op is added here only once its fixture exists.
+OBJECT_REF_OPS = {"ready", "buff", "modify_might", "banish"}
+# A Spell is not a permanent; it is not on the board to be acted on when its own
+# program resolves. The default is deliberately narrow (Core 355.4.a: the Board's
+# Locations are the Battlefields and the Bases).
+OBJECT_REF_PERMANENT_KINDS = {"unit", "gear", "rune"}
+
+OBJECT_REF_ABSENT = "object_ref_source_absent"
+OBJECT_REF_IDENTITY_CHANGED = "object_ref_source_identity_changed"
+OBJECT_REF_LEFT_PLAY = "object_ref_source_left_play"
+OBJECT_REF_NOT_SELF = "object_ref_not_self_referential"
+# A separate code from NOT_SELF on purpose: "this op has no reviewed
+# adoption" and "this clause is not talking about itself" are different
+# failures, and one refusal code covering both would hide which happened.
+OBJECT_REF_OP_NOT_ADOPTED = "object_ref_op_not_adopted"
+
+
+def is_object_ref(value: Any) -> bool:
+    return isinstance(value, dict) and set(value) == {"object_ref"}
+
+
+def contains_object_ref(value: Any) -> bool:
+    """Anywhere in a nested structure. Used to keep the shape OUT of decision
+    artifacts: only the engine may create or resolve one."""
+    if is_object_ref(value):
+        return True
+    if isinstance(value, dict):
+        return any(contains_object_ref(v) for v in value.values()) or "object_ref" in value
+    if isinstance(value, list):
+        return any(contains_object_ref(v) for v in value)
+    return False
+
 
 def derive_targeted(selector: dict[str, Any]) -> bool:
     """ADR-0005 §1: target status is compiled from the selector, never set by the caller.
@@ -1442,6 +1486,17 @@ def derive_targeted(selector: dict[str, Any]) -> bool:
     if selector.get("chosen_zone_class") == "board":
         return True
     return selector.get("location") in {"trash", "banishment"}
+
+
+def _object_id_errors(value: Any, label: str) -> list[str]:
+    """A literal id, or the engine's own typed self-reference."""
+    if is_object_ref(value):
+        if value["object_ref"] not in OBJECT_REF_KINDS:
+            return [f"{label}.object_ref must be one of {list(OBJECT_REF_KINDS)}"]
+        return []
+    if not isinstance(value, str) or not value:
+        return [f"{label} must be a non-empty object id or {{object_ref}}"]
+    return []
 
 
 def _selector_errors(selector: Any) -> list[str]:
@@ -4560,6 +4615,64 @@ def _resolve_mode(program: dict[str, Any], decisions: dict[str, Any] | None, con
     return list(option["effects"]), {"decision_id": ref, "option_id": chosen, "options": option_ids, "recorded_at_play": entry is None, "rule_locators": ["Core 402.2", "Core 820.2.a"]}
 
 
+def resolve_object_ref(effect: dict[str, Any], state: dict[str, Any],
+                       program: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Turn `{"object_ref": "program_source"}` into the source object, or refuse.
+
+    Returns (effect with a concrete object_id, meta). Raises
+    SelectionBindingRefused with one of four named codes; the instruction then
+    does not run, and nothing is substituted.
+
+    The reference binds the source's FULL identity, not its id. An id can be
+    reused after the object leaves and returns; the identity token cannot, which
+    is the whole reason the engine tracks one.
+    """
+    ref = effect.get("object_id")
+    if not is_object_ref(ref):
+        return effect, {}
+    if ref["object_ref"] not in OBJECT_REF_KINDS:
+        raise SelectionBindingRefused(
+            f"unknown object_ref {ref['object_ref']!r}; the engine resolves "
+            f"{list(OBJECT_REF_KINDS)}", OBJECT_REF_ABSENT)
+    if effect.get("op") not in OBJECT_REF_OPS:
+        raise SelectionBindingRefused(
+            f"op {effect.get('op')!r} has no reviewed object_ref adoption. Each op needs its own "
+            f"executor audit and a real resolution fixture; one op resolving it proves nothing "
+            f"about another", OBJECT_REF_OP_NOT_ADOPTED)
+    # A clause that also names a target is not talking about itself.
+    for field in ("target", "targets", "affected", "decision_ref"):
+        if effect.get(field) is not None:
+            raise SelectionBindingRefused(
+                f"the instruction carries {field!r} beside a program_source reference; "
+                f"'me' is self-referential and chooses nothing", OBJECT_REF_NOT_SELF)
+
+    source = program.get("source_object")
+    if not isinstance(source, str) or source not in state["objects"]:
+        raise SelectionBindingRefused(
+            f"the program declares source_object {source!r}, which the state does not contain; "
+            f"a self-reference with no source is refused, never guessed", OBJECT_REF_ABSENT)
+
+    now = object_identity(state, source)
+    declared = program.get("source_identity")
+    if declared is not None and declared != now:
+        raise SelectionBindingRefused(
+            f"the program's source was {declared!r} and is now {now!r}; the object at that id is "
+            f"not the one this instruction is about", OBJECT_REF_IDENTITY_CHANGED)
+
+    obj = state["objects"][source]
+    if obj.get("kind") not in OBJECT_REF_PERMANENT_KINDS:
+        raise SelectionBindingRefused(
+            f"the source is a {obj.get('kind')!r}, not a permanent; only a permanent source is "
+            f"wired for a self-reference", OBJECT_REF_LEFT_PLAY)
+    if zone_class(find_location(state, source)) != "board":
+        raise SelectionBindingRefused(
+            f"the source {source!r} is not on the board any more, so it cannot be acted on by "
+            f"its own instruction", OBJECT_REF_LEFT_PLAY)
+
+    return ({**effect, "object_id": source, "subject_identity": now},
+            {"object_ref": "program_source", "resolved_to": source, "bound_identity": now})
+
+
 def _bind_source_exclusion(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
     """Resolve `$source_identity` to the identity the program's own source
     object has right now. A program that excludes its source without naming
@@ -4822,6 +4935,17 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        # selector-group `self`: resolve a typed program_source reference into
+        # the concrete object before anything else looks at object_id.
+        if is_object_ref(effect.get("object_id")):
+            try:
+                effect, object_ref_meta = resolve_object_ref(effect, current, program)
+            except SelectionBindingRefused as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": exc.reason_code, "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+        else:
+            object_ref_meta = {}
         # selection-binding.v1: "Choose a friendly unit." on its own. It runs
         # before selector resolution because it has no selectors of its own -
         # it produces the binding the instructions after it refer to.

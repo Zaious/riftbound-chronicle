@@ -143,6 +143,14 @@ def validate_engine_decisions(value: Any) -> list[str]:
         # instructions refer to carries the binding it was made under, so a
         # changed candidate set, rule, visibility or origin is refused by name
         # instead of being silently reused.
+        # The typed self-reference is engine-internal. An artifact that could
+        # inject one would be naming the source object without the engine ever
+        # checking its identity or its zone, which is the whole point of making
+        # it typed rather than a string.
+        from effect_ir import contains_object_ref
+        if contains_object_ref({k: v for k, v in item.items() if k != "provenance"}):
+            errors.append(f"{label} carries an object_ref; that shape is created and resolved "
+                          f"by the engine alone and may not appear in a decision artifact")
         if "binding" in item:
             from selection_binding import validate_binding_claim
             if kind != "target_selection":

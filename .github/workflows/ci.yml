@@ -349,6 +349,10 @@ jobs:
       # visibility and the origin it was made under, or it is refused by name.
       - name: selection binding holds end to end in the engine
         run: python3 skill/scripts/check_selection_binding_engine.py
+      # Codex 2026-09-10: the selector-group `self` path. A typed reference the
+      # engine alone resolves, never a forgeable magic string.
+      - name: the typed self-reference binds identity and refuses by name
+        run: python3 skill/scripts/check_object_ref_self.py
       # ADR-0013 §6: the Effect Text of attachments in the Ability layer, and copy over modelled traits.
       - name: Effect Text append and copy (C-53)
         run: python3 skill/scripts/check_effect_text_and_copy.py
@@ -545,6 +549,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_buff_decision_target.py"
           python3 "$REPO/skill/scripts/check_mutual_damage_no_amount.py"
           python3 "$REPO/skill/scripts/check_selection_binding_engine.py"
+          python3 "$REPO/skill/scripts/check_object_ref_self.py"
           python3 "$REPO/skill/scripts/check_effect_text_and_copy.py"
           python3 "$REPO/skill/scripts/check_game_events.py"
           python3 "$REPO/skill/scripts/check_watchers.py"

@@ -4371,10 +4371,18 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
         criteria = spec.get("criteria") or {}
         ids = []
         places = [("base", pid, state["players"][pid]["zones"]["base"]) for pid in state["players"]] + [("battlefield", bid, bf["objects"]) for bid, bf in state["battlefields"].items()]
-        for where, _, objects in places:
+        for where, zone_owner, objects in places:
             if criteria.get("location") == "battlefield" and where != "battlefield":
                 continue
             if criteria.get("location") == "base" and where != "base":
+                continue
+            # Whose Base. "in your base" is narrower than location=base, which
+            # admits every player's; without this the phrase would lower to a
+            # wider candidate set than the card describes.
+            owner_relation = criteria.get("zone_owner_relation")
+            if owner_relation == "own" and zone_owner != chooser:
+                continue
+            if owner_relation == "opponent" and zone_owner == chooser:
                 continue
             for object_id in objects:
                 obj = state["objects"][object_id]

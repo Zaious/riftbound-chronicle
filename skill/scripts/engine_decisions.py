@@ -325,8 +325,19 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append("choice.criteria applies to a board or revealed source")
     if "criteria" in spec and spec["from"] == "revealed" and set(spec["criteria"]) - {"excluded_kinds"}:
         errors.append("a revealed choice's criteria carries excluded_kinds and nothing else")
-    if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location"}):
-        errors.append("choice.from board needs criteria {kind?, controller_relation?, location?}")
+    if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location", "zone_owner_relation"}):
+        errors.append("choice.from board needs criteria {kind?, controller_relation?, location?, zone_owner_relation?}")
+    # "in your base" is narrower than location=base, which admits every player's
+    # Base. Without this, lowering that phrase would quietly widen the
+    # candidates. It says whose ZONE, which only a Base has - a Battlefield is
+    # not owned by a player (Core 355.4.a), so the pair is refused there rather
+    # than silently ignored.
+    if isinstance(spec.get("criteria"), dict) and "zone_owner_relation" in spec["criteria"]:
+        if spec["criteria"]["zone_owner_relation"] not in {"own", "opponent"}:
+            errors.append("choice.criteria.zone_owner_relation must be own or opponent")
+        if spec["criteria"].get("location") != "base":
+            errors.append("choice.criteria.zone_owner_relation names whose Base; it applies only "
+                          "with location = base")
     if spec["from"] == "battlefields" and "criteria" in spec:
         errors.append("choice.from battlefields takes no criteria; the Locations themselves are "
                       "the candidates (Core 355.4.a)")

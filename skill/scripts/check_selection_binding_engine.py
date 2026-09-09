@@ -21,7 +21,10 @@ What is held:
   * `program_ancestry` is checked against nested program ids the ENGINE
     generated during this run, never against hand-written strings;
   * everything outside the slice - OPT, private sources, multi-select,
-    ordered permutations - is refused as unsupported, not run half-bound.
+    ordered permutations - is refused as unsupported, not run half-bound;
+  * a location phrase lowers into the choice's own criteria and genuinely
+    narrows the candidates, and a decision taken under one location rule is
+    refused under another.
 
     python skill/scripts/check_selection_binding_engine.py
 """
@@ -201,6 +204,74 @@ def main() -> int:
     decisions["decisions"].append(second)
     expect_refusal("the same selection established twice", run(state, twice, decisions), sb.ALREADY_CONSUMED)
 
+    # ---- Selection-LOC: a location narrows the candidates, and says so --------
+    # Codex 2026-09-10 chose parameterisation over a further split for LOC, on
+    # the condition that it lower to choice.criteria and that a location change
+    # visibly invalidate a decision taken under the old one. `criteria` is inside
+    # candidate_set_hash, so that follows - but "it follows" is exactly the kind
+    # of claim this project has been wrong about, so it is exercised here.
+    # Three friendly Units, two of them in the Base, so every rule below still
+    # leaves a real choice. With one candidate the rules make the choice without
+    # asking (Core 359.3.e) and the binding is never consulted, which would make
+    # these assertions look green while testing nothing.
+    loc_state = state_with_two_friendly_units()
+    loc_state["battlefields"]["bf1"]["objects"].append("u3")
+    loc_state["players"]["p1"]["zones"]["base"].remove("u3")
+    loc_state["objects"]["u6"] = {"owner": "p1", "controller": "p1", "kind": "unit",
+                                  "base_might": 1, "might_modifiers": [], "damage": 0,
+                                  "exhausted": False}
+    loc_state["players"]["p1"]["zones"]["base"].append("u6")
+    anywhere = dict(CHOICE)
+    in_base = dict(CHOICE, criteria={"kind": "unit", "controller_relation": "friendly",
+                                     "location": "base"})
+    your_base = dict(CHOICE, criteria={"kind": "unit", "controller_relation": "friendly",
+                                       "location": "base", "zone_owner_relation": "own"})
+    at_battlefield = dict(CHOICE, criteria={"kind": "unit", "controller_relation": "friendly",
+                                            "location": "battlefield"})
+    seen = {label: effect_ir.choice_candidates(loc_state, spec, "p1")[0]
+            for label, spec in (("anywhere", anywhere), ("in a base", in_base),
+                                ("in your base", your_base), ("at a battlefield", at_battlefield))}
+    if sorted(seen["anywhere"]) != ["u1", "u3", "u6"]:
+        fail("selection LOC", f"the unconstrained choice saw {seen['anywhere']}, not all three Units")
+    if sorted(seen["in a base"]) != ["u1", "u6"] or seen["at a battlefield"] != ["u3"]:
+        fail("selection LOC", f"a location did not narrow the candidates: {seen}")
+    if sorted(seen["in your base"]) != ["u1", "u6"]:
+        fail("selection LOC", f"'in your base' saw {seen['in your base']}")
+    # whose Base is narrower than location=base: a friendly Unit in the OPPONENT'S
+    # Base is a candidate for one and not the other.
+    ally_state = state_with_two_friendly_units()
+    ally_state["objects"]["u5"] = {"owner": "p1", "controller": "p1", "kind": "unit",
+                                   "base_might": 1, "might_modifiers": [], "damage": 0,
+                                   "exhausted": False}
+    ally_state["players"]["p2"]["zones"]["base"].append("u5")
+    wide = effect_ir.choice_candidates(ally_state, in_base, "p1")[0]
+    narrow = effect_ir.choice_candidates(ally_state, your_base, "p1")[0]
+    if "u5" not in wide or "u5" in narrow:
+        fail("selection LOC", f"'in your base' did not exclude the friendly Unit in the "
+                              f"opponent's Base (location=base saw {wide}, your base saw {narrow})")
+    hashes = {label: sb.candidate_set_hash(spec, *effect_ir.choice_candidates(loc_state, spec, "p1"))
+              for label, spec in (("anywhere", anywhere), ("in a base", in_base),
+                                  ("in your base", your_base), ("at a battlefield", at_battlefield))}
+    if len(set(hashes.values())) != len(hashes):
+        fail("selection LOC", f"two different location rules share a candidate_set_hash: {hashes}")
+    # a decision taken with no location is refused once the clause says "in your base"
+    result = run(loc_state, program(choose(choice=your_base), refers("buff")),
+                 envelope(loc_state, ["u1"], choice=anywhere))
+    expect_refusal("a decision taken under a different location rule", result, sb.CANDIDATES_CHANGED)
+    # and the correctly-bound one runs
+    result = run(loc_state, program(choose(choice=your_base), refers("buff")),
+                 envelope(loc_state, ["u1"], choice=your_base))
+    if result.get("committed") is not True:
+        fail("selection LOC", f"a correctly bound 'in your base' choice did not run: "
+                              f"{result.get('reason') or result.get('errors')}")
+    # a Battlefield has no zone owner; pairing the two is refused, not ignored
+    bad_pair = dict(CHOICE, criteria={"kind": "unit", "location": "battlefield",
+                                      "zone_owner_relation": "own"})
+    from engine_decisions import validate_choice_spec  # noqa: E402
+    if not any("location = base" in e for e in validate_choice_spec(bad_pair)):
+        fail("selection LOC", "zone_owner_relation was accepted on a battlefield location; "
+                              "a Battlefield is not owned by a player")
+
     # ---- Battlefields are their own candidate universe ------------------------
     # Codex's 2026-09-10 split ruling: "Choose a battlefield." gets its own
     # source rather than being disguised as a board choice. The first assertion
@@ -343,7 +414,9 @@ def main() -> int:
           f"({refused_at['validator']} by the validator), and program_ancestry resolves "
           f"{len(generated)} engine-generated nested ids ({', '.join(generated)}) to their real "
           f"parent. Battlefields are their own universe: a board choice sees {len(seen_as_board)} "
-          f"of them, the battlefields source sees {len(bf_candidates)}, each with an identity")
+          f"of them, the battlefields source sees {len(bf_candidates)}, each with an identity. "
+          f"{len(hashes)} location rules over one board give {len(set(hashes.values()))} distinct "
+          f"candidate hashes, and a decision taken under the wrong one is refused")
     return 0
 
 

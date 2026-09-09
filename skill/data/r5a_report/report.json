@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:9f50277ec4a048ded3992654",
-    "capability_set_id": "sha256:9f50277ec4a048ded39926545402aa33a577956920683f994d0a91a0fc5ac957",
-    "implementation_identity": "sha256:f57f4888f4c4b78b92e94a5763bbd8c93c9fc3e5c3946540493e35e7cca26115",
+    "manifest_id": "capability-manifest:2e4f6bffff4d81e287e132a9",
+    "capability_set_id": "sha256:2e4f6bffff4d81e287e132a9e02843e3902cfe43c94654c294c98d884c395c4d",
+    "implementation_identity": "sha256:5178c8eea9319e69ecf74f2123fdaa998305b936e976153734cf4e47808d0410",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 289,
+    "declared_locators": 290,
     "exactly_cited_declared_locators": 29,
-    "exact_ratio": 0.1003,
+    "exact_ratio": 0.1,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -258,6 +258,7 @@
       "Core 358.5",
       "Core 359.2.c–359.2.d",
       "Core 359.2–359.2.d",
+      "Core 359.3.e",
       "Core 359.3.e.14",
       "Core 359.3.e.14.a",
       "Core 359.3.e.1–359.3.e.10",
@@ -940,5 +941,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:bdcee3241b490227f41e2afa4a719d5b668b20c6339fe2510c00f108fe99207d"
+  "report_hash": "sha256:e14d19cf83cdac6f8bec1473b2b3b4918f2f80bcc9a98ea12e2112d0702a1e11"
 }

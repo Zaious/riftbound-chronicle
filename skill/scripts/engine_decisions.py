@@ -93,7 +93,7 @@ def validate_engine_decisions(value: Any) -> list[str]:
     seen: set[str] = set()
     for index, item in enumerate(items):
         label = f"decisions[{index}]"
-        if not isinstance(item, dict) or not {"decision_id", "stage", "kind", "controller", "value"} <= set(item) or set(item) - {"decision_id", "stage", "kind", "controller", "value", "selection_identities", "options", "provenance"}:
+        if not isinstance(item, dict) or not {"decision_id", "stage", "kind", "controller", "value"} <= set(item) or set(item) - {"decision_id", "stage", "kind", "controller", "value", "selection_identities", "options", "provenance", "binding"}:
             errors.append(f"{label} has invalid fields")
             continue
         if not isinstance(item["decision_id"], str) or not item["decision_id"] or item["decision_id"] in seen:
@@ -139,6 +139,15 @@ def validate_engine_decisions(value: Any) -> list[str]:
                 errors.append(f"{label}: damage_assignment is a procedure-stage decision")
         elif "selection_identities" in item:
             errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering or damage_assignment")
+        # selection-binding.v1: a decision that ESTABLISHES a selection later
+        # instructions refer to carries the binding it was made under, so a
+        # changed candidate set, rule, visibility or origin is refused by name
+        # instead of being silently reused.
+        if "binding" in item:
+            from selection_binding import validate_binding_claim
+            if kind != "target_selection":
+                errors.append(f"{label}.binding is only valid for target_selection in selection-binding.v1")
+            errors.extend(f"{label}.{problem}" for problem in validate_binding_claim(item["binding"]))
         if kind == "replacement_order" and (not isinstance(val, dict) or any(not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) for ids in val.values())):
             errors.append(f"{label}.value must map event ids to non-empty unique replacement-id arrays")
         if kind == "replacement_choice" and (not isinstance(val, dict) or any(not isinstance(by_event, dict) or any(not isinstance(c, bool) for c in by_event.values()) for by_event in val.values())):

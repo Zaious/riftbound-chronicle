@@ -344,6 +344,11 @@ jobs:
       # each Unit's Might read at resolution, so the op takes no authored `amount`.
       - name: mutual_damage_current_might takes no authored amount
         run: python3 skill/scripts/check_mutual_damage_no_amount.py
+      # selection-binding.v1 (2026-09-10): the engine, not only the reference layer.
+      # A reference to an earlier choice is bound to the candidates, the rule, the
+      # visibility and the origin it was made under, or it is refused by name.
+      - name: selection binding holds end to end in the engine
+        run: python3 skill/scripts/check_selection_binding_engine.py
       # ADR-0013 §6: the Effect Text of attachments in the Ability layer, and copy over modelled traits.
       - name: Effect Text append and copy (C-53)
         run: python3 skill/scripts/check_effect_text_and_copy.py
@@ -539,6 +544,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_empower_xp.py"
           python3 "$REPO/skill/scripts/check_buff_decision_target.py"
           python3 "$REPO/skill/scripts/check_mutual_damage_no_amount.py"
+          python3 "$REPO/skill/scripts/check_selection_binding_engine.py"
           python3 "$REPO/skill/scripts/check_effect_text_and_copy.py"
           python3 "$REPO/skill/scripts/check_game_events.py"
           python3 "$REPO/skill/scripts/check_watchers.py"

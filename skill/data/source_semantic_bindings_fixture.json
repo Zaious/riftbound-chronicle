@@ -1,0 +1,91 @@
+{
+  "schema_version": "source-semantic-bindings.v1",
+  "status": "fixture",
+  "bindings": [
+    {
+      "binding_id": "ssb-d935669d53985e02d7a89ad3",
+      "document_id": "core-rules",
+      "document_version": "2026-07-16",
+      "locator": "Core 312",
+      "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+      "template": "rule_role_holder",
+      "slots": {
+        "locator": "Core 312",
+        "occasion": "when_showdown_begins",
+        "role": "focus",
+        "holder": "applied_contested"
+      },
+      "source_page": 1,
+      "review_status": "human_reviewed",
+      "reviewed_by": "fixture",
+      "reviewed_at": "2026-09-09"
+    },
+    {
+      "binding_id": "ssb-04635fe5fe3e6dc021648e81",
+      "document_id": "core-rules",
+      "document_version": "2026-07-16",
+      "locator": "Core 312",
+      "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+      "template": "rule_event_consequence",
+      "slots": {
+        "locator": "Core 312",
+        "event": "a_chain_item_is_finalized",
+        "consequence": "priority_is_not_passed"
+      },
+      "source_page": 1,
+      "review_status": "human_reviewed",
+      "reviewed_by": "fixture",
+      "reviewed_at": "2026-09-09"
+    },
+    {
+      "binding_id": "ssb-214c425bf89d97ad5c902034",
+      "document_id": "core-rules",
+      "document_version": "2026-07-16",
+      "locator": "Core 312",
+      "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+      "template": "rule_quantity",
+      "slots": {
+        "locator": "Core 312",
+        "quantity": "victory_score_by_default",
+        "relation": "is",
+        "value": 8
+      },
+      "source_page": 1,
+      "review_status": "human_reviewed",
+      "reviewed_by": "fixture",
+      "reviewed_at": "2026-09-09"
+    },
+    {
+      "binding_id": "ssb-18c43e22cda1705b1cccce28",
+      "document_id": "core-rules",
+      "document_version": "2026-07-16",
+      "locator": "Core 312",
+      "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+      "template": "rule_point_source",
+      "slots": {
+        "locator": "Core 312",
+        "source": "holding_a_battlefield"
+      },
+      "source_page": 1,
+      "review_status": "human_reviewed",
+      "reviewed_by": "fixture",
+      "reviewed_at": "2026-09-09"
+    },
+    {
+      "binding_id": "ssb-614333f415fcf94e5b6a343b",
+      "document_id": "core-rules",
+      "document_version": "2026-07-16",
+      "locator": "Core 312",
+      "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
+      "template": "rule_point_source",
+      "slots": {
+        "locator": "Core 312",
+        "source": "conquering_a_battlefield"
+      },
+      "source_page": 1,
+      "review_status": "proposed",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  ]
+}

@@ -1,7 +1,9 @@
 {
   "schema_version": "judge-corpus.v1",
   "corpus_id": "judge-corpus-2026-09-08",
-  "description": "Sixty questions across seven families, each with an expected answer contract whose required_claims pin template and slot values; every locator was read off the Core Rules PDF page itself. Every gap the corpus measured is in coverage_debts, one ledger for template, state-builder, engine, source and policy gaps with a closed owner and trigger; a question's template_coverage_debt and required_templates are derived, never stored. The coverage report is the authority on counts; this description names none.",
+  "semantic_binding_status": "proposed_unreviewed",
+  "runtime_authority": "none",
+  "description": "Sixty questions across seven families, each with an expected answer contract whose required_claims pin template and slot values; every locator was read off the Core Rules PDF page itself. Every gap the corpus measured is in coverage_debts, one ledger for template, state-builder, engine, source and policy gaps with a closed owner and trigger; a question's template_coverage_debt and required_templates are derived, never stored. The coverage report is the authority on counts; this description names none. The readings its contracts state (template and slot values per locator) are proposed and unreviewed here and carry no run-time authority; only an approved source-semantic-bindings registry on the private pack paths supports a B-tier claim.",
   "coverage_debts": [
     {
       "id": "rule_choices_creating_a_combat_of_more_than_two_players_are_invalid",
@@ -9,17 +11,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-CB-004"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_choices_creating_a_combat_of_more_than_two_players_are_invalid"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_final_point_withheld_draws_a_card",
@@ -27,17 +29,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-CS-004"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_final_point_withheld_draws_a_card"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_finalized_permanent_resolves_immediately",
@@ -45,17 +47,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-TPC-011"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_finalized_permanent_resolves_immediately"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_game_ends_when_a_player_wins",
@@ -63,17 +65,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-TSE-007"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_game_ends_when_a_player_wins"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_hold_abilities_trigger_when_a_held_battlefield_is_scored",
@@ -81,17 +83,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-CS-006"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_hold_abilities_trigger_when_a_held_battlefield_is_scored"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_non_conquer_points_unrestricted",
@@ -99,17 +101,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-CS-005"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_non_conquer_points_unrestricted"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_point_loss_at_zero_points_does_nothing",
@@ -117,17 +119,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-TSE-006"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_point_loss_at_zero_points_does_nothing"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_shield_lasts_while_defender",
@@ -135,17 +137,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-CI-007"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_shield_lasts_while_defender"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_victory_score_alterable_by_mode_or_card_effect",
@@ -153,17 +155,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-TSE-004"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_victory_score_alterable_by_mode_or_card_effect"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_victory_tie_continues",
@@ -171,17 +173,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-TSE-005"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_victory_tie_continues"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_ways_to_gain_points",
@@ -189,17 +191,17 @@
       "blocks": "source_explanation",
       "owner": {
         "track": "answer_surface",
-        "package_id": null
+        "package_id": "T-02"
       },
       "observed_in": [
         "JC-CS-007"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "recurrence_at_3"
+        "kind": "template_missing",
+        "threshold_or_condition": "rule_ways_to_gain_points"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     },
     {
       "id": "rule_any_number_of_discretionary_actions",
@@ -549,17 +551,17 @@
       "blocks": "position_conclusion",
       "owner": {
         "track": "state_builder",
-        "package_id": null
+        "package_id": "S-01d"
       },
       "observed_in": [
         "JC-CB-002"
       ],
       "trigger": {
-        "kind": "triage_required",
-        "threshold_or_condition": "review_by_reached"
+        "kind": "slot_missing",
+        "threshold_or_condition": "turn_effects"
       },
-      "status": "open",
-      "review_by": "2026-10-09"
+      "status": "closed",
+      "review_by": null
     }
   ],
   "questions": [
@@ -785,9 +787,11 @@
         "answer_scope": "conditional_rule_explanation",
         "required_claims": [
           {
-            "template": "rule_finalizing_does_not_pass_priority",
+            "template": "rule_event_consequence",
             "slots": {
-              "locator": "Core 337.1.a"
+              "locator": "Core 337.1.a",
+              "event": "a_chain_item_is_finalized",
+              "consequence": "priority_is_not_passed"
             }
           }
         ],
@@ -1104,8 +1108,12 @@
         "answer_scope": "conditional_rule_explanation",
         "required_claims": [
           {
-            "template": "rule_finalized_permanent_resolves_immediately",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 337.2",
+              "event": "a_finalized_chain_item_is_a_unit_gear_or_add_ability",
+              "consequence": "it_resolves_immediately"
+            }
           }
         ],
         "required_source_locators": [
@@ -1283,8 +1291,12 @@
             }
           },
           {
-            "template": "rule_final_point_withheld_draws_a_card",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 471.1.b.1",
+              "event": "the_final_point_by_conquer_is_withheld",
+              "consequence": "the_player_draws_a_card_instead"
+            }
           }
         ],
         "required_source_locators": [
@@ -1315,8 +1327,12 @@
         "answer_scope": "conditional_rule_explanation",
         "required_claims": [
           {
-            "template": "rule_non_conquer_points_unrestricted",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 471.1.a.1",
+              "event": "a_point_is_gained_from_a_source_other_than_conquer",
+              "consequence": "the_final_point_restriction_does_not_apply"
+            }
           }
         ],
         "required_source_locators": [
@@ -1356,8 +1372,12 @@
             }
           },
           {
-            "template": "rule_hold_abilities_trigger_when_a_held_battlefield_is_scored",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 471.2.b",
+              "event": "a_battlefield_is_scored_by_hold",
+              "consequence": "its_hold_abilities_trigger"
+            }
           }
         ],
         "required_source_locators": [
@@ -1379,7 +1399,11 @@
       "question": "In what ways can a player gain points in Riftbound?",
       "expected_tier": "B",
       "locators": [
-        "Core 194.1"
+        "Core 194.1",
+        "Core 194.1.a",
+        "Core 194.1.b",
+        "Core 194.1.c",
+        "Core 194.1.d"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1388,12 +1412,40 @@
         "answer_scope": "conditional_rule_explanation",
         "required_claims": [
           {
-            "template": "rule_ways_to_gain_points",
-            "slots": {}
+            "template": "rule_point_source",
+            "slots": {
+              "locator": "Core 194.1.a",
+              "source": "holding_a_battlefield"
+            }
+          },
+          {
+            "template": "rule_point_source",
+            "slots": {
+              "locator": "Core 194.1.b",
+              "source": "conquering_a_battlefield"
+            }
+          },
+          {
+            "template": "rule_point_source",
+            "slots": {
+              "locator": "Core 194.1.c",
+              "source": "an_effect_that_instructs_it"
+            }
+          },
+          {
+            "template": "rule_point_source",
+            "slots": {
+              "locator": "Core 194.1.d",
+              "source": "an_opponents_burn_out"
+            }
           }
         ],
         "required_source_locators": [
-          "Core 194.1"
+          "Core 194.1",
+          "Core 194.1.a",
+          "Core 194.1.b",
+          "Core 194.1.c",
+          "Core 194.1.d"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1518,8 +1570,12 @@
             }
           },
           {
-            "template": "rule_victory_score_alterable_by_mode_or_card_effect",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 194.3.a",
+              "event": "a_mode_of_play_or_card_effect_alters_the_victory_score",
+              "consequence": "that_victory_score_applies"
+            }
           }
         ],
         "required_source_locators": [
@@ -1551,8 +1607,12 @@
         "answer_scope": "conditional_rule_explanation",
         "required_claims": [
           {
-            "template": "rule_victory_tie_continues",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 194.2.b",
+              "event": "a_cleanup_finds_more_than_one_player_at_or_above_the_victory_score_with_equal_points",
+              "consequence": "play_continues_until_a_cleanup_finds_one_player_ahead"
+            }
           }
         ],
         "required_source_locators": [
@@ -1594,8 +1654,12 @@
             }
           },
           {
-            "template": "rule_point_loss_at_zero_points_does_nothing",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 194.4.a",
+              "event": "a_player_at_zero_points_would_lose_points",
+              "consequence": "nothing_occurs_and_no_point_loss_trigger_fires"
+            }
           }
         ],
         "required_source_locators": [
@@ -1628,8 +1692,20 @@
         "answer_scope": "conditional_rule_explanation",
         "required_claims": [
           {
-            "template": "rule_game_ends_when_a_player_wins",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 194.2",
+              "event": "a_cleanup_finds_one_player_at_or_above_the_victory_score_and_ahead",
+              "consequence": "that_player_wins"
+            }
+          },
+          {
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 196",
+              "event": "a_player_wins",
+              "consequence": "the_game_ends"
+            }
           }
         ],
         "required_source_locators": [
@@ -2140,8 +2216,12 @@
         "answer_scope": "conditional_rule_explanation",
         "required_claims": [
           {
-            "template": "rule_shield_lasts_while_defender",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 814.1.d.1",
+              "event": "a_unit_keeps_its_defender_designation",
+              "consequence": "its_shield_remains_in_effect"
+            }
           }
         ],
         "required_source_locators": [
@@ -2295,20 +2375,33 @@
       "family": "combat",
       "language": "en",
       "question": "The defending unit is Stunned when the Combat Showdown closes. Does it contribute Combat Damage?",
-      "expected_tier": "C",
-      "locators": [],
-      "abstention_contract": "state_not_built",
+      "expected_tier": "A",
+      "locators": [
+        "Core 423.1.b",
+        "Core 465.2.b"
+      ],
+      "abstention_contract": null,
       "consultation_entry": "combat_step",
       "bounded_note": null,
       "expected_answer_contract": {
-        "answer_scope": "explicit_abstention",
-        "required_claims": [],
-        "required_source_locators": [],
+        "answer_scope": "full_position_conclusion",
+        "required_claims": [
+          {
+            "template": "combat_step_completes",
+            "slots": {
+              "step": "assign"
+            }
+          }
+        ],
+        "required_source_locators": [
+          "Core 423.1.b",
+          "Core 465.2.b"
+        ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "423.1.b says a Stunned unit contributes nothing, and the assign path reads that flag. The minimum state cannot state it: under DP-94 a Stun travels with the turn effect that expires it, and S-01b was scoped to the assign path's Combat context, not to turn effects. The draft is refused by name and the question stops here. Coverage debt: a stunned slot for the state builder, owned with turn effects."
+      "notes": "423.1.b: a Stunned unit contributes nothing to Combat Damage. Before S-01d the minimum state could not state a Stun and the builder refused the draft by name; with S-01d the Stun and the turn effect that owns it are stated together (stunned_combat_board), and the assign step runs: measured 2026-09-09, supported, with 423.1.b among the rule locators the engine read."
     },
     {
       "question_id": "JC-CB-003",
@@ -2367,8 +2460,12 @@
             }
           },
           {
-            "template": "rule_choices_creating_a_combat_of_more_than_two_players_are_invalid",
-            "slots": {}
+            "template": "rule_event_consequence",
+            "slots": {
+              "locator": "Core 462.3",
+              "event": "a_choice_would_put_more_than_two_players_in_one_combat",
+              "consequence": "the_choice_is_invalid"
+            }
           }
         ],
         "required_source_locators": [

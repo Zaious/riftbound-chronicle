@@ -29,6 +29,7 @@ from typing import Any
 import judge_corpus
 import legal_action
 import rule_consult_command as rcc
+import source_semantic_bindings as ssb
 import state_builder
 
 
@@ -142,7 +143,7 @@ def _observation(inputs: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_question(question: dict[str, Any], inputs: dict[str, Any],
-                 retriever: rcc.TableRetriever) -> dict[str, Any]:
+                 retriever: rcc.TableRetriever, registry: Any = None) -> dict[str, Any]:
     entry_inputs = dict(inputs["entry_inputs"])
     if entry_inputs.get("observation") == "$build":
         entry_inputs["observation"] = _observation(inputs)
@@ -153,12 +154,17 @@ def run_question(question: dict[str, Any], inputs: dict[str, Any],
         effect_draft=inputs.get("effect_draft"),
         effect_question_kind=inputs.get("effect_question_kind", "unit_damage"),
         entry_inputs=inputs["entry_inputs"], claims=inputs["claims"],
-        source_retriever=retriever)
+        source_retriever=retriever, semantic_bindings=registry)
 
 
 def run_corpus(corpus: dict[str, Any], runs: dict[str, Any]) -> dict[str, Any]:
     corpus = judge_corpus.attach_debts(corpus)
     retriever = build_retriever(runs["sources"])
+    # T-02r: every rule claim binds only as a reviewed reading of the text the
+    # runs' retriever returns. The approved registry lives on the pack paths;
+    # the public seed carries none, and then every rule question is reported
+    # as awaiting its binding rather than as matching or differing.
+    registry = ssb.load_approved()
     inputs_by_id = runs["runs"]
     results = []
     for question in corpus["questions"]:
@@ -173,7 +179,7 @@ def run_corpus(corpus: dict[str, Any], runs: dict[str, Any]) -> dict[str, Any]:
             results.append({"question_id": question["question_id"], "outcome": "no_run_inputs",
                             "reason": "no run inputs are recorded for this question"})
             continue
-        run = run_question(question, inputs, retriever)
+        run = run_question(question, inputs, retriever, registry)
         problems = compare(question, run)
         contract = question["expected_answer_contract"]
         if contract["template_coverage_debt"]:
@@ -181,6 +187,12 @@ def run_corpus(corpus: dict[str, Any], runs: dict[str, Any]) -> dict[str, Any]:
             # the answer it specifies cannot be given yet. That is the debt doing
             # its job, not a disagreement about behaviour.
             outcome = "blocked_by_template_debt"
+        elif registry is None and run["not_attempted_reason"] == "claim_binding_invalid" \
+                and "no semantic-binding registry" in (run["detail"] or ""):
+            # No approved registry on the pack paths: the rule claim could not
+            # be bound to anything reviewed. Not a difference about behaviour
+            # and not a match — the answer is waiting on review.
+            outcome = "awaiting_approved_binding"
         elif not problems:
             outcome = "matches_contract"
         elif question.get("correction_record"):

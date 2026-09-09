@@ -29,6 +29,7 @@ from pathlib import Path
 import fact_ledger
 import judge_corpus_runner
 import rule_consult_command
+import source_semantic_bindings as ssb
 import state_builder
 from judge_corpus import (
     DEBT_BLOCKS,
@@ -340,14 +341,38 @@ def main() -> int:
     # Each mutation of the stored corpus must be refused by the rule that names
     # it. A ledger that could be talked into any of these would be two truths
     # with a tidier shape.
+    # Every template debt is closed now, so the ledger mutations run over a
+    # probe: one copied question that requires a template the surface does
+    # not have, and the open debt that observes it. The probe must validate
+    # on its own, or the refusals below would be refusing the probe.
+    def with_probe(candidate):
+        source = next(q for q in candidate["questions"]
+                      if q["expected_answer_contract"]["answer_scope"] == "conditional_rule_explanation")
+        probe = copy.deepcopy(source)
+        probe["question_id"] = "JC-PROBE-DEBT"
+        probe["expected_answer_contract"]["required_claims"] = [{"template": "rule_probe_unwritten", "slots": {}}]
+        candidate["questions"].append(probe)
+        candidate["coverage_debts"].insert(0, {
+            "id": "rule_probe_unwritten", "class": "template", "blocks": "source_explanation",
+            "owner": {"track": "answer_surface", "package_id": None}, "observed_in": ["JC-PROBE-DEBT"],
+            "trigger": {"kind": "triage_required", "threshold_or_condition": "recurrence_at_3"},
+            "status": "open", "review_by": "2026-10-09"})
+        return candidate
+
+    if problems := validate_corpus(with_probe(copy.deepcopy(stored))):
+        failures.append(f"the probe corpus must validate, or the ledger refusals prove nothing: {problems[:2]}")
+
     def stored_with(mutate):
-        candidate = copy.deepcopy(stored)
+        candidate = with_probe(copy.deepcopy(stored))
         mutate(candidate)
         return candidate
 
     def first_open(candidate, cls="template"):
         return next(d for d in candidate["coverage_debts"]
                     if d["class"] == cls and d["status"] == "open")
+
+    def stun(candidate):
+        return next(d for d in candidate["coverage_debts"] if d["class"] == "state_builder")
 
     def first_scheduled(candidate):
         return next(d for d in candidate["coverage_debts"] if d["owner"]["package_id"] is not None)
@@ -361,6 +386,15 @@ def main() -> int:
          "is derived from coverage_debts; it is not stored"),
         ("a corpus with no ledger",
          stored_with(lambda c: c.pop("coverage_debts")), "missing top-level fields"),
+        # The corpus says what its readings are and are not.
+        ("a corpus that does not say its readings are unreviewed",
+         stored_with(lambda c: c.pop("semantic_binding_status")), "missing top-level fields"),
+        ("a corpus claiming its readings are approved",
+         stored_with(lambda c: c.__setitem__("semantic_binding_status", "approved")),
+         "are not reviewed here"),
+        ("a corpus claiming run-time authority",
+         stored_with(lambda c: c.__setitem__("runtime_authority", "approved_registry")),
+         "only an approved registry does"),
         ("an open template debt the surface already has",
          stored_with(lambda c: first_open(c).__setitem__("id", "official_text_recorded")),
          "which the answer surface has"),
@@ -434,13 +468,13 @@ def main() -> int:
         ("a template debt whose condition is not the template it lacks",
          stored_with(lambda c: first_scheduled(c)["trigger"].__setitem__("threshold_or_condition", "rule_other")),
          "its own id"),
-        ("an open state-builder debt, owned, naming a slot the builder has",
-         stored_with(lambda c: (first_open(c, "state_builder")["owner"].__setitem__("package_id", "S-01c"),
-                                first_open(c, "state_builder").__setitem__("review_by", None),
-                                first_open(c, "state_builder")["trigger"].__setitem__("kind", "slot_missing"),
-                                first_open(c, "state_builder")["trigger"]
-                                .__setitem__("threshold_or_condition", "combat"))),
+        ("an open state-builder debt naming a slot the builder has",
+         stored_with(lambda c: (stun(c).__setitem__("status", "open"),
+                                stun(c)["trigger"].__setitem__("threshold_or_condition", "combat"))),
          "which the builder has"),
+        ("a closed state-builder debt naming a slot the builder lacks",
+         stored_with(lambda c: stun(c)["trigger"].__setitem__("threshold_or_condition", "stunned_context")),
+         "which the builder does not have"),
         ("an open template debt no observed question still requires",
          stored_with(lambda c: c["questions"].__setitem__(
              next(i for i, q in enumerate(c["questions"])
@@ -512,16 +546,39 @@ def main() -> int:
         failures.append(f"every routable question needs run inputs; {missing} have none")
     if len(routable) != sum(counts.get(key, 0) for key in
                             ("matches_contract", "differs", "differs_recorded",
-                             "blocked_by_template_debt", "no_run_inputs")):
+                             "blocked_by_template_debt", "no_run_inputs", "awaiting_approved_binding")):
         failures.append("the run report does not account for every routable question")
     if not counts.get("matches_contract"):
         failures.append("no question matched its contract, so the comparison proves nothing")
 
+    # Semantic authority. With an approved registry on the pack paths every
+    # rule question must match; without one, every question whose contract
+    # requires a rule claim must be reported as awaiting its binding — not
+    # matching, and not differing. The gate says which state it ran in.
+    approved = ssb.approved_registry_paths()
+    rule_questions = {q["question_id"] for q in corpus["questions"]
+                      if any(rule_consult_command.CLAIM_TEMPLATES.get(c["template"], {}).get("class")
+                             == "conditional_rule" for c in q["expected_answer_contract"]["required_claims"])}
+    awaiting = {i["question_id"] for i in report["results"] if i["outcome"] == "awaiting_approved_binding"}
+    if approved:
+        authority = f"closed ({len(approved)} approved registry file(s) on the pack paths)"
+        if awaiting:
+            failures.append(f"an approved registry is present and {sorted(awaiting)} still await a binding")
+    else:
+        authority = "pending (no approved registry on the pack paths; rule questions await review)"
+        if awaiting != rule_questions:
+            failures.append(f"with no approved registry, exactly the rule questions await a binding; "
+                            f"awaiting {sorted(awaiting)}, rule questions {sorted(rule_questions)}")
+
     for debt in closed_template:
         for qid in debt["observed_in"]:
             item = next(i for i in report["results"] if i["question_id"] == qid)
-            if item["outcome"] not in ("matches_contract", "blocked_by_template_debt"):
-                failures.append(f"{debt['id']} is closed, but {qid} runs to {item['outcome']}")
+            # Closed means the question it observed now runs to its contract,
+            # with every required claim matched template and slot for slot —
+            # or, with no approved registry to bind against, awaits exactly that.
+            if item["outcome"] != ("matches_contract" if approved else "awaiting_approved_binding"):
+                failures.append(f"{debt['id']} is closed, but {qid} runs to {item['outcome']}: "
+                                f"{item.get('problems') or item.get('reason')}")
 
     # A recorded difference must actually differ, or the record is describing
     # something that is not happening.
@@ -585,6 +642,7 @@ def main() -> int:
           f"no package yet: {len(parked)} (review by {sorted({d['review_by'] for d in parked}) or '-'})")
     print(f"run against the real consultation command: "
           + ", ".join(f"{value} {key}" for key, value in sorted(counts.items())))
+    print(f"semantic authority: {authority}")
     return 0
 
 

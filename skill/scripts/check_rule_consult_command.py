@@ -107,16 +107,25 @@ def main() -> int:
     # own hashes, so a claim that pairs legal values the text does not say, or
     # reads text whose hash moved, has nothing to bind to.
     fixture_record = lambda loc: payload["sources"]["table"][loc]["record"]  # noqa: E731
-    registry = ssb.BindingRegistry({"schema_version": ssb.SCHEMA_VERSION, "bindings": [
-        {**fixture_record("Core 312"), "template": "rule_role_holder",
-         "slots": {"locator": "Core 312", "occasion": "when_showdown_begins", "role": "focus",
-                   "holder": "applied_contested"}},
-        {**fixture_record("Core 312"), "template": "rule_event_consequence",
-         "slots": {"locator": "Core 312", "event": "a_chain_item_is_finalized",
-                   "consequence": "priority_is_not_passed"}},
-        {**fixture_record("Core 312"), "template": "rule_point_source",
-         "slots": {"locator": "Core 312", "source": "holding_a_battlefield"}},
-    ]})
+
+    def fixture_binding(template, slots, review="human_reviewed"):
+        record = fixture_record(slots["locator"])
+        return {"binding_id": ssb.binding_id(record, template, slots), **record, "template": template,
+                "slots": slots, "source_page": 1, "review_status": review,
+                "reviewed_by": "fixture" if review == "human_reviewed" else None,
+                "reviewed_at": "2026-09-09" if review == "human_reviewed" else None}
+
+    fixture_registry = {"schema_version": ssb.SCHEMA_VERSION, "status": "fixture", "bindings": [
+        fixture_binding("rule_role_holder", {"locator": "Core 312", "occasion": "when_showdown_begins",
+                                             "role": "focus", "holder": "applied_contested"}),
+        fixture_binding("rule_event_consequence", {"locator": "Core 312", "event": "a_chain_item_is_finalized",
+                                                   "consequence": "priority_is_not_passed"}),
+        fixture_binding("rule_point_source", {"locator": "Core 312", "source": "holding_a_battlefield"}),
+        # Registered but not reviewed: carries no authority.
+        fixture_binding("rule_point_source", {"locator": "Core 312", "source": "conquering_a_battlefield"},
+                        review="proposed"),
+    ]}
+    registry = ssb.BindingRegistry(fixture_registry, allow_fixture=True)
     context = {"source_retriever": retriever, "card_snapshots": snapshots, "semantic_bindings": registry}
 
     def resolve(value):
@@ -674,18 +683,43 @@ def main() -> int:
         failures.append(f"the event family renders its lexicons; got {good_event['claims'][0]['text']!r}")
     if verify_run(good_event, **context):
         failures.append("a registered reading must verify against the registry it was bound on")
+    expected_id = ssb.binding_id(fixture_record("Core 312"), "rule_event_consequence", event_ok["slots"])
+    if good_event["claims"][0]["binding_id"] != expected_id:
+        failures.append(f"a rule claim records the reviewed binding it rests on; got "
+                        f"{good_event['claims'][0]['binding_id']!r}")
+    if good_family["claims"][0]["binding_id"] is None or good_family["claims"][1:] and any(
+            c["binding_id"] is not None for c in good_family["claims"][1:]):
+        failures.append("only rule claims carry a binding id")
+    # A registry that is proposed, or a fixture outside its gate, carries no authority.
+    for label, kwargs, status in (("a proposed registry", {}, "proposed"),
+                                  ("a fixture registry outside its gate", {}, "fixture")):
+        try:
+            ssb.BindingRegistry({**fixture_registry, "status": status,
+                                 "bindings": [dict(b, review_status="proposed", reviewed_by=None, reviewed_at=None)
+                                              if status == "proposed" else b
+                                              for b in fixture_registry["bindings"]]}, **kwargs)
+        except ValueError:
+            pass
+        else:
+            failures.append(f"{label} must carry no authority")
+    # A run that bound a reading does not verify with a binding id swapped in.
+    swapped = copy.deepcopy(good_event)
+    swapped["claims"][0]["binding_id"] = "ssb-" + "0" * 24
+    swapped["run_hash"] = rcc_module.canonical_hash({k: v for k, v in swapped.items() if k != "run_hash"})
+    if not any("binding_id" in p for p in verify_run(swapped, **context)):
+        failures.append("a swapped binding id must fail verification by name")
 
     semantic_refusals = [
         ("legal event and legal consequence the text does not pair",
          {"template": "rule_event_consequence",
           "slots": {"locator": "Core 312", "event": "a_player_wins",
                     "consequence": "priority_is_not_passed"}}, context,
-         "not a registered reading"),
+         "not a reviewed reading"),
         ("a T-01 family with the wrong slot pairing for its locator",
          {"template": "rule_role_holder",
           "slots": {"locator": "Core 312", "occasion": "when_showdown_begins", "role": "focus",
                     "holder": "the_attacker"}}, context,
-         "not a registered reading"),
+         "not a reviewed reading"),
         ("a registered reading of a locator the retriever does not have",
          {"template": "rule_event_consequence",
           "slots": {"locator": "Core 999", "event": "a_chain_item_is_finalized",
@@ -694,19 +728,22 @@ def main() -> int:
         ("a rule claim in a run with no registry",
          event_ok, {**context, "semantic_bindings": None},
          "no semantic-binding registry"),
+        ("a registered reading whose review status is not human_reviewed",
+         {"template": "rule_point_source", "slots": {"locator": "Core 312", "source": "conquering_a_battlefield"}},
+         context, "not a reviewed reading"),
     ]
     moved_table = copy.deepcopy(payload["sources"]["table"])
     moved_table["Core 312"]["record"]["text_hash"] = "sha256:" + "e" * 64
     moved = TableRetriever(moved_table, payload["sources"]["surfaced"])
     semantic_refusals.append(
         ("the registered reading, against the same locator whose text hash moved",
-         event_ok, {**context, "source_retriever": moved}, "not a registered reading"))
+         event_ok, {**context, "source_retriever": moved}, "not a reviewed reading"))
     versioned_table = copy.deepcopy(payload["sources"]["table"])
     versioned_table["Core 312"]["record"]["document_version"] = "2027-01-01"
     versioned = TableRetriever(versioned_table, payload["sources"]["surfaced"])
     semantic_refusals.append(
         ("the registered reading, against a later document version",
-         event_ok, {**context, "source_retriever": versioned}, "not a registered reading"))
+         event_ok, {**context, "source_retriever": versioned}, "not a reviewed reading"))
     for label, binding, ctx, expected in semantic_refusals:
         refused = run_consultation(
             question="What does the rule say?", entry="timing", draft=timing_draft,

@@ -177,7 +177,8 @@ DEBT_STATUSES = ("open", "closed")
 # (review_by) and what would force that look sooner (a triage trigger).
 OWNER_FIELDS = {"track", "package_id"}
 DEBT_TRACKS = ("answer_surface", "state_builder", "engine", "rules_index", "policy")
-PACKAGE_IDS = ("S-01", "S-01b", "S-01c", "S-02", "S-03", "S-04", "S-04d", "S-05", "I-01", "T-01")
+PACKAGE_IDS = ("S-01", "S-01b", "S-01c", "S-01d", "S-02", "S-03", "S-04", "S-04d", "S-05", "I-01",
+               "T-01", "T-02")
 TRIAGE_KIND = "triage_required"
 # What would pull an unscheduled debt into triage before its review date:
 # the stop rules the loop already runs on the ledger, plus the date itself.
@@ -667,7 +668,15 @@ def corpus_coverage(corpus: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-REQUIRED_TOP = {"schema_version", "corpus_id", "description", "questions", "coverage_debts"}
+REQUIRED_TOP = {"schema_version", "corpus_id", "description", "questions", "coverage_debts",
+                "semantic_binding_status", "runtime_authority"}
+# The public corpus states readings (template and slot values per locator) as
+# expectations. They are proposed and unreviewed here, and the corpus carries
+# no authority at run time: only an approved registry on the private pack
+# paths can support a B-tier claim. Both are said on the corpus itself, and
+# a corpus that claimed otherwise is refused.
+SEMANTIC_BINDING_STATUSES = ("proposed_unreviewed",)
+RUNTIME_AUTHORITIES = ("none",)
 
 
 def validate_corpus(corpus: Any) -> list[str]:
@@ -691,6 +700,12 @@ def validate_corpus(corpus: Any) -> list[str]:
     for field in ("corpus_id", "description"):
         if not _nonempty(corpus[field]):
             errors.append(f"{field} must be a non-empty string")
+    if corpus["semantic_binding_status"] not in SEMANTIC_BINDING_STATUSES:
+        errors.append(f"semantic_binding_status must be one of {list(SEMANTIC_BINDING_STATUSES)}; the "
+                      f"readings this corpus states are not reviewed here")
+    if corpus["runtime_authority"] not in RUNTIME_AUTHORITIES:
+        errors.append(f"runtime_authority must be one of {list(RUNTIME_AUTHORITIES)}; a corpus supports no "
+                      f"claim at run time, only an approved registry does")
     if not isinstance(corpus["questions"], list):
         errors.append("questions must be an array")
         return errors

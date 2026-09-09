@@ -605,11 +605,14 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
         if (incoherent := template.get("coheres", lambda s: None)(slots)) is not None:
             problems.append(f"{label} does not cohere: {incoherent}")
             continue
+        bound_id = None
         if template["class"] == "conditional_rule":
             # T-02. Closed values can still be paired into a sentence the
-            # text does not say. The claim binds only as a reading the
-            # registry recorded for this exact retrieved text: document,
-            # version, locator and hash all as the retriever returned them.
+            # text does not say. The claim binds only as a reading someone
+            # reviewed for this exact retrieved text: document, version,
+            # locator and hash all as the retriever returned them. The
+            # binding's id is recorded on the claim; the producer never
+            # supplies it.
             retriever, registry = context.get("retriever"), context.get("semantic_bindings")
             if retriever is None or registry is None:
                 problems.append(f"{label} states a rule, and this run has no retriever or no "
@@ -621,11 +624,13 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
                                 f"({retrieval.get('status')!r})")
                 continue
             record = retrieval["record"]
-            if not registry.is_registered(record, template_id, slots):
+            binding = registry.lookup(record, template_id, slots)
+            if binding is None:
                 problems.append(f"{label} reads {template_id} {json.dumps({k: v for k, v in slots.items() if k != 'locator'}, sort_keys=True)} into "
                                 f"{record['locator']} ({record['document_id']}@{record['document_version']}, "
-                                f"{record['text_hash'][:23]}…), which is not a registered reading of that text")
+                                f"{record['text_hash'][:23]}…), which is not a reviewed reading of that text")
                 continue
+            bound_id = binding["binding_id"]
 
         basis = template["basis"]
         if basis["kind"] == "engine":
@@ -657,6 +662,7 @@ def _bind_claims(bindings: Iterable[Any], *, context: dict[str, Any],
             "slots": dict(slots),
             "text": render(template_id, slots),
             "source": f"{basis['kind']}:{ref}",
+            "binding_id": bound_id,
         })
     return claims, problems
 
@@ -867,7 +873,7 @@ REQUIRED_TOP = {"schema_version", "ruleset", "question", "entry", "request", "st
                 "not_attempted_reason", "detail", "tier", "engine_declined", "coverage_statement",
                 "position_statement", "state_assumptions", "retrieved_sources", "engine_check",
                 "evidence_pack", "evidence_verification", "claims", "ledger", "run_hash"}
-CLAIM_FIELDS = {"claim_id", "template", "claim_class", "slots", "text", "source"}
+CLAIM_FIELDS = {"claim_id", "template", "claim_class", "slots", "text", "source", "binding_id"}
 
 
 def validate_run(value: Any) -> list[str]:
@@ -982,6 +988,13 @@ def validate_run(value: Any) -> list[str]:
             errors.append(f"{label} renders more than one sentence")
         if not isinstance(claim["source"], str) or fact_ledger.parse_source(claim["source"]) is None:
             errors.append(f"{label}.source must be one '<kind>:<ref>' source")
+        # A rule claim names the reviewed binding it rests on; nothing else
+        # carries one. The id is checked against context by verify_run.
+        if template["class"] == "conditional_rule":
+            if not isinstance(claim["binding_id"], str) or not claim["binding_id"].startswith("ssb-"):
+                errors.append(f"{label} states a rule and names no reviewed binding")
+        elif claim["binding_id"] is not None:
+            errors.append(f"{label} is not a rule claim and carries a binding id")
 
     if not errors:
         expected_hash = canonical_hash({k: v for k, v in value.items() if k != "run_hash"})
@@ -1022,7 +1035,7 @@ def verify_run(run: Any, *, source_retriever: Any = None,
         errors.append(f"claims claims {len(run['claims'])}; rebuilt {len(rebuilt['claims'])}")
     else:
         for position, (claimed, actual) in enumerate(zip(run["claims"], rebuilt["claims"])):
-            for field in ("template", "claim_class", "slots", "text", "source"):
+            for field in ("template", "claim_class", "slots", "text", "source", "binding_id"):
                 if claimed[field] != actual[field]:
                     errors.append(f"claims[{position}].{field} claims {claimed[field]!r}; "
                                   f"rebuilt {actual[field]!r}")

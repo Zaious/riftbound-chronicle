@@ -8,7 +8,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 312",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+        "text_hash": "sha256:7260888740ad238b11d37ea5db707b9b013eaf5c35d58ac4553f1823a767c771"
       }
     },
     "Core 312.1.a": {
@@ -17,7 +17,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 312.1.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000002"
+        "text_hash": "sha256:4beaddf41abdaa60ff3a000d48ba2e576252e31539f7a4fcb065357c3bf3fce3"
       }
     },
     "Core 312.1.b": {
@@ -26,7 +26,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 312.1.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000003"
+        "text_hash": "sha256:b275545fdf6094000c69bde98f9c6dd6c6ec4da12ca29f85cfd319a015bc67b0"
       }
     },
     "Core 312.1.b.1": {
@@ -35,7 +35,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 312.1.b.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000004"
+        "text_hash": "sha256:769d83cb4dcf83aa794dfce029fa41491af3ab636d3ec4270537ea31ac48649f"
       }
     },
     "Core 313.1.a": {
@@ -44,7 +44,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 313.1.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000005"
+        "text_hash": "sha256:d2824fbc745341f6249455b281544c66d6bdc193d0e52ff442e0854fd3489d4e"
       }
     },
     "Core 313.3": {
@@ -53,7 +53,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 313.3",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000006"
+        "text_hash": "sha256:c7cd2bec3f94371c566d60b4139615ba251c9e8ae9b64e21caebff1d66840593"
       }
     },
     "Core 313.4": {
@@ -62,7 +62,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 313.4",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000007"
+        "text_hash": "sha256:debda7e455d4b353d3368159eed705c97e0de21d42de294082ec2ca56193e5a1"
       }
     },
     "Core 313.5": {
@@ -71,7 +71,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 313.5",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000008"
+        "text_hash": "sha256:0d6ae3987b53e23ea5ea8bbd1de65c2618a2ea505b07fc6d752e53bdc1f170a6"
       }
     },
     "Core 323.6": {
@@ -80,7 +80,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 323.6",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000009"
+        "text_hash": "sha256:2fb3009cd6e7051e3456f61ea5f4da1e507e20abf3a693e4e0f681dcd4e0c32b"
       }
     },
     "Core 337.1.a": {
@@ -89,7 +89,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 337.1.a",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000a"
+        "text_hash": "sha256:89b06c207a71c22ab1ddca8ad1b1049e18d951b4e3abd0503548a15ea0ee5239"
       }
     },
     "Core 337.2": {
@@ -98,7 +98,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 337.2",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000b"
+        "text_hash": "sha256:bcf40b14f049246f8368692d108ca21ddbb6cbe8914a14370863f6d27bbeba10"
       }
     },
     "Core 338.1.a.1": {
@@ -107,7 +107,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 338.1.a.1",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000c"
+        "text_hash": "sha256:2795b2aa59447333682aed2bddabb2dbc576aa3414c2cf93810bf90ad089d382"
       }
     },
     "Core 340.1": {
@@ -116,7 +116,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 340.1",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000d"
+        "text_hash": "sha256:269103022eeb748a9df63982abcd21312cc43621a63399a8bff5d88a0e24d108"
       }
     },
     "Core 345": {
@@ -125,7 +125,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 345",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000e"
+        "text_hash": "sha256:bb01d48724dbf2e91002240a0bac4399544f5f63c8757f875abddc86f1608564"
       }
     },
     "Core 423.1.b": {
@@ -134,7 +134,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 423.1.b",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000f"
+        "text_hash": "sha256:98e2962407167caf57215fd3c9ca522c9b6461d4bbe774513dc55d84b2fa3bb8"
       }
     },
     "Core 194.1": {
@@ -143,7 +143,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000001"
+        "text_hash": "sha256:b0d653fa6dd50fe79a23abb1be3bed989b7cc4646be42cf4e0c283481680ad37"
       }
     },
     "Core 194.2": {
@@ -152,7 +152,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.2",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000002"
+        "text_hash": "sha256:7621a7f42f33ff26c2b8531ea5ac0a4d038518d1214c9385e149a983a41ec6cc"
       }
     },
     "Core 194.2.a": {
@@ -161,7 +161,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.2.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000003"
+        "text_hash": "sha256:3d5e778ce39795558362bc7539cd4c78f1389842ee0f0630265affebd93fec04"
       }
     },
     "Core 194.2.b": {
@@ -170,7 +170,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.2.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000004"
+        "text_hash": "sha256:9b718bb17bd111b9511b058ed2df3aae9b0871662db840c0765c9a978571ede3"
       }
     },
     "Core 194.3": {
@@ -179,7 +179,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.3",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000005"
+        "text_hash": "sha256:3efd87c6f04d5a215a03ed08717ac3065328d854c293f0c30635911b223a272f"
       }
     },
     "Core 194.3.a": {
@@ -188,7 +188,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.3.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000006"
+        "text_hash": "sha256:7957ce6bce53b8f94b24a8224422bd9d95473dc03aafd00aa8f5ded2dd2a45f6"
       }
     },
     "Core 194.4": {
@@ -197,7 +197,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.4",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000007"
+        "text_hash": "sha256:6e58f2794721aaf383b8b36472894b0de664a9305a4d48b4f4c7581e84bf1192"
       }
     },
     "Core 194.4.a": {
@@ -206,7 +206,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.4.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000008"
+        "text_hash": "sha256:812c1d93fc957c6ec391beaab3c54e7dc366bc507360e32161287d7254d30306"
       }
     },
     "Core 194.4.b": {
@@ -215,7 +215,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.4.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000009"
+        "text_hash": "sha256:6f87830785fa5e3c27dead370ca953496061ab0be1082d6662ac73a16f284307"
       }
     },
     "Core 196": {
@@ -224,7 +224,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 196",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000000a"
+        "text_hash": "sha256:bed8f0b3f8ceff543b1d7cc4e35557ff8c50b24ebe75c89e128563cb7f4ab36b"
       }
     },
     "Core 315.2.b.2": {
@@ -233,7 +233,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 315.2.b.2",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000013"
+        "text_hash": "sha256:3f3b345f74e6e8996139ffe1361f12b05fbafaa57950ed6a80cbd71c3d57caf9"
       }
     },
     "Core 316.5.a": {
@@ -242,7 +242,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 316.5.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000014"
+        "text_hash": "sha256:3e9d5515e8c1ae789f91d737c6de28087d9d3b43ff9a2e064256daeb1e8bb684"
       }
     },
     "Core 316.5.b": {
@@ -251,7 +251,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 316.5.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000015"
+        "text_hash": "sha256:b70cd6f8534fea5e7948cdb7d73494fc6e22862acfd83806ca19200c0baa924c"
       }
     },
     "Core 409": {
@@ -260,7 +260,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 409",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000001c"
+        "text_hash": "sha256:68b75823bfe695097d60e4b6822941be77abe4e64e7addc8058ffd8d7db50ccb"
       }
     },
     "Core 410.1.a": {
@@ -269,7 +269,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 410.1.a",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000001d"
+        "text_hash": "sha256:57ac332732be3222cc66879a453c16b30a225e46664841846ea5b8185b9125b7"
       }
     },
     "Core 410.1.b": {
@@ -278,7 +278,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 410.1.b",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000001e"
+        "text_hash": "sha256:892415955290b193bae6cb4e075d1774bbb98f21ebad6ef516b262bf066e2021"
       }
     },
     "Core 410.1.b.3": {
@@ -287,7 +287,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 410.1.b.3",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000001f"
+        "text_hash": "sha256:5d51b2f83432272f8fb303c3dc1d00d78c522905b52528c985cb624b82c89dab"
       }
     },
     "Core 410.2.a": {
@@ -296,7 +296,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 410.2.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000020"
+        "text_hash": "sha256:505b672a4640d7bf9192e7597940743568f4c898cfd83e854745758424c2bc37"
       }
     },
     "Core 410.2.b": {
@@ -305,7 +305,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 410.2.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000021"
+        "text_hash": "sha256:e4029de1bb99a84023ef757f1fb99500a9015daada3d7b35f825c6a012180427"
       }
     },
     "Core 469.2": {
@@ -314,7 +314,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 469.2",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000023"
+        "text_hash": "sha256:b28198c3c099763ff4319c66dd2264c42a0d2e3ea7611fbf15eac7984d5cff20"
       }
     },
     "Core 470": {
@@ -323,7 +323,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 470",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000024"
+        "text_hash": "sha256:2d93d792a808f9be7bbd7d2d31a642b5ccb112b86431a2f6df6c5f3861aba62e"
       }
     },
     "Core 471.1.a.1": {
@@ -332,7 +332,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 471.1.a.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000025"
+        "text_hash": "sha256:6f1de29f51ccb31d1d9853d67fa45e4546da34448c5209cfab8a3e1f7a928588"
       }
     },
     "Core 471.1.b": {
@@ -341,7 +341,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 471.1.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000026"
+        "text_hash": "sha256:b3385cb1063ae0d9167da5cedc6a19b54b4823834206c71edaa664d5305f1680"
       }
     },
     "Core 471.1.b.1": {
@@ -350,7 +350,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 471.1.b.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000027"
+        "text_hash": "sha256:184e20bf888e58ca8628a52123e04a03b41a75fc6a3956cdecaa68e0c40206cf"
       }
     },
     "Core 471.2.b": {
@@ -359,7 +359,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 471.2.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000028"
+        "text_hash": "sha256:cd057aa37ae83feb0953c7641d7f0912c73d56a2b2bdc4f53f55a87ce4e0deb6"
       }
     },
     "Core 471.2.c": {
@@ -368,7 +368,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 471.2.c",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000029"
+        "text_hash": "sha256:2c27660dcb586ec7a40bbe71f67199ebbc8df0d37bc62a318f30b67462a92198"
       }
     },
     "Core 472": {
@@ -377,7 +377,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 472",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000002a"
+        "text_hash": "sha256:6c7dee8bbd0e62c611f7e80fe3d372b3911ed4416e921e7d52961554a72716ca"
       }
     },
     "Core 814.1.b.3": {
@@ -386,7 +386,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 814.1.b.3",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000002b"
+        "text_hash": "sha256:f1ce908bd42fb7dc6dddebe89d7e985ec96243fcc4b3ace810a53ca9f0051d20"
       }
     },
     "Core 814.1.c": {
@@ -395,7 +395,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 814.1.c",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000002c"
+        "text_hash": "sha256:4cb0cacbf1534d8184f6830af81c91729577502c043361ad79cfafd119349c90"
       }
     },
     "Core 814.1.d": {
@@ -404,7 +404,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 814.1.d",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000002d"
+        "text_hash": "sha256:08b61164d630f44268711fa9e5825b39237fe138020b022b7afd3e52e4251ad6"
       }
     },
     "Core 814.1.d.1": {
@@ -413,7 +413,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 814.1.d.1",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000002e"
+        "text_hash": "sha256:874bf25772a7777b302e141745b45321cda464f18ba25df14618cf6b29888420"
       }
     },
     "Core 814.2": {
@@ -422,7 +422,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 814.2",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000002f"
+        "text_hash": "sha256:d18d4b74432017faacfb0a7237080a4a600bea29f86e140c9fea1acca1c1b226"
       }
     },
     "Core 815.1.b": {
@@ -431,7 +431,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 815.1.b",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000030"
+        "text_hash": "sha256:4f4afdf00148b1097ed94c93c4a99c9840c89cac1db8484aa951444d9a876ac2"
       }
     },
     "Core 815.1.c.1": {
@@ -440,7 +440,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 815.1.c.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000031"
+        "text_hash": "sha256:ae1f8661978dbe7e65939a6135f40a576eafd1ac25b8a4575f3f77db185f7bfd"
       }
     },
     "Core 815.2": {
@@ -449,7 +449,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 815.2",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000032"
+        "text_hash": "sha256:9d5546d5e09dde05c29f181da17e66996fecd7b3305230ec7ca7571eec2113a0"
       }
     },
     "Core 194.1.d": {
@@ -458,7 +458,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 194.1.d",
-        "text_hash": "sha256:00000000000000000000000000000000000000000000000000000000000001f6"
+        "text_hash": "sha256:87855952f922e309463a64f28435c33a219fe145eef389da83c47bec2fe603d6"
       }
     },
     "Core 315.4.b.1": {
@@ -467,7 +467,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 315.4.b.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000209"
+        "text_hash": "sha256:19c30c213843d861680dbe825daff29ac2865ee49d9d7006998299d6d1621623"
       }
     },
     "Core 315.4.b.2": {
@@ -476,7 +476,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 315.4.b.2",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000020a"
+        "text_hash": "sha256:2cd9fee731d0128fad1930bf318605d66c8758bb6f4296318a3e2cef9a427f48"
       }
     },
     "Core 431.1.a": {
@@ -485,7 +485,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 431.1.a",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021a"
+        "text_hash": "sha256:3ab983c6cef02ce0ef00cdc3e8cdbc292a444a7da60f7a19ca384256958b4c69"
       }
     },
     "Core 431.2": {
@@ -494,7 +494,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 431.2",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021b"
+        "text_hash": "sha256:4a995e46d2da8f73dc48db391496d69bbbc8ed8d5d78044115f91c4087c345cd"
       }
     },
     "Core 431.2.c": {
@@ -503,7 +503,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 431.2.c",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021c"
+        "text_hash": "sha256:3afdcc91859d4b554a09bdb05a676de9cdbe905a1291dccb801b2ccacfe5ab8d"
       }
     },
     "Core 462": {
@@ -512,7 +512,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 462",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021d"
+        "text_hash": "sha256:27a64d73b919c0c5bf41fae4cb42f114fd3dbfdbe882bca736bf7200704ed87f"
       }
     },
     "Core 462.3": {
@@ -521,7 +521,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 462.3",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021e"
+        "text_hash": "sha256:ad37ac8700f6d16ea7a317b8da104191bbe5df86a8fe554967fb378526aa2429"
       }
     },
     "Core 464.2.c.1": {
@@ -530,7 +530,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 464.2.c.1",
-        "text_hash": "sha256:000000000000000000000000000000000000000000000000000000000000021f"
+        "text_hash": "sha256:0c318c2318410a96351e7fa915569df086589b11c05c6b14dd0d016163de81ff"
       }
     },
     "Core 464.2.c.2": {
@@ -539,7 +539,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 464.2.c.2",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000220"
+        "text_hash": "sha256:c2ee77f327a2b366297c3e153c52fe9575602caaa8e98a429cb242557a235a07"
       }
     },
     "Core 464.2.d": {
@@ -548,7 +548,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 464.2.d",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000221"
+        "text_hash": "sha256:82a28740e6caa5e7afe47ca0da49303098ec1f0b702258a3743de28c62726ab0"
       }
     },
     "Core 465.1": {
@@ -557,7 +557,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 465.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000222"
+        "text_hash": "sha256:1d42752a56790f6ac6f3a4380383dedee922ff881889abe2baf3fb5fb9e00f41"
       }
     },
     "Core 465.2.c.1": {
@@ -566,7 +566,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 465.2.c.1",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000223"
+        "text_hash": "sha256:e4eee325e58eee446f4fd28161381683eec01ee62ea988cf150adf840afe9320"
       }
     },
     "Core 465.2.c.1.a": {
@@ -575,7 +575,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 465.2.c.1.a",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000224"
+        "text_hash": "sha256:bc5f1ae3c81d54795bf53739e5bc2a6c4a81e30d7503c7a3bfed6579b1a05fd6"
       }
     },
     "Core 465.2.c.3": {
@@ -584,7 +584,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 465.2.c.3",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000225"
+        "text_hash": "sha256:0ca451961b8de38a3048428ba4e309f73c6e191a56de79b8f4d6f3a3de3540df"
       }
     },
     "Core 465.2.c.4": {
@@ -593,7 +593,7 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 465.2.c.4",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000226"
+        "text_hash": "sha256:3954dde10f9837335af3fba04f38cc7c98353184b00895d0f6b07c6885188de3"
       }
     },
     "Core 465.2.c.6": {
@@ -602,7 +602,43 @@
         "document_id": "core-rules",
         "document_version": "2026-07-16",
         "locator": "Core 465.2.c.6",
-        "text_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000227"
+        "text_hash": "sha256:73d99ed8cfcde8a31a0c6383f1c95298163b81d5d0de5effaa8f584d7b6606ba"
+      }
+    },
+    "Core 194.1.a": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 194.1.a",
+        "text_hash": "sha256:a8765b40b3f8c5029d56790062bb07e882186610f0c076d45704ae7b5e5d1974"
+      }
+    },
+    "Core 194.1.b": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 194.1.b",
+        "text_hash": "sha256:4c404dc6b705ead4d8dfca37883fbba4a1ea34d6ff66a03171ce403e5e29aa7d"
+      }
+    },
+    "Core 194.1.c": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 194.1.c",
+        "text_hash": "sha256:8447cb7c7226f638e0d936e13c1006aeb096497722783a7194b075162f68f3c3"
+      }
+    },
+    "Core 465.2.b": {
+      "status": "retrieved",
+      "record": {
+        "document_id": "core-rules",
+        "document_version": "2026-07-16",
+        "locator": "Core 465.2.b",
+        "text_hash": "sha256:37292dd8d66f9092cdd0243ea4b75ea3d7c394e4bf9e566af29a5d535819ef89"
       }
     }
   },
@@ -673,7 +709,15 @@
       },
       "claims": [
         {
-          "template": "rule_finalizing_does_not_pass_priority",
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 337.1.a",
+            "event": "a_chain_item_is_finalized",
+            "consequence": "priority_is_not_passed"
+          }
+        },
+        {
+          "template": "official_text_recorded",
           "slots": {
             "locator": "Core 337.1.a"
           }
@@ -1020,6 +1064,14 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 337.2",
+            "event": "a_finalized_chain_item_is_a_unit_gear_or_add_ability",
+            "consequence": "it_resolves_immediately"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -1512,6 +1564,14 @@
           }
         },
         {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 471.1.b.1",
+            "event": "the_final_point_by_conquer_is_withheld",
+            "consequence": "the_player_draws_a_card_instead"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 471.1.b.1"
@@ -1545,6 +1605,14 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 471.1.a.1",
+            "event": "a_point_is_gained_from_a_source_other_than_conquer",
+            "consequence": "the_final_point_restriction_does_not_apply"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -1583,6 +1651,14 @@
           }
         },
         {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 471.2.b",
+            "event": "a_battlefield_is_scored_by_hold",
+            "consequence": "its_hold_abilities_trigger"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 471.2.b"
@@ -1617,9 +1693,61 @@
       },
       "claims": [
         {
+          "template": "rule_point_source",
+          "slots": {
+            "locator": "Core 194.1.a",
+            "source": "holding_a_battlefield"
+          }
+        },
+        {
+          "template": "rule_point_source",
+          "slots": {
+            "locator": "Core 194.1.b",
+            "source": "conquering_a_battlefield"
+          }
+        },
+        {
+          "template": "rule_point_source",
+          "slots": {
+            "locator": "Core 194.1.c",
+            "source": "an_effect_that_instructs_it"
+          }
+        },
+        {
+          "template": "rule_point_source",
+          "slots": {
+            "locator": "Core 194.1.d",
+            "source": "an_opponents_burn_out"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 194.1"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.1.a"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.1.b"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.1.c"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 194.1.d"
           }
         }
       ]
@@ -1875,6 +2003,14 @@
           }
         },
         {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 194.3.a",
+            "event": "a_mode_of_play_or_card_effect_alters_the_victory_score",
+            "consequence": "that_victory_score_applies"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 194.3"
@@ -1908,6 +2044,14 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 194.2.b",
+            "event": "a_cleanup_finds_more_than_one_player_at_or_above_the_victory_score_with_equal_points",
+            "consequence": "play_continues_until_a_cleanup_finds_one_player_ahead"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -1952,6 +2096,14 @@
           }
         },
         {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 194.4.a",
+            "event": "a_player_at_zero_points_would_lose_points",
+            "consequence": "nothing_occurs_and_no_point_loss_trigger_fires"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 194.4"
@@ -1991,6 +2143,22 @@
         }
       },
       "claims": [
+        {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 194.2",
+            "event": "a_cleanup_finds_one_player_at_or_above_the_victory_score_and_ahead",
+            "consequence": "that_player_wins"
+          }
+        },
+        {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 196",
+            "event": "a_player_wins",
+            "consequence": "the_game_ends"
+          }
+        },
         {
           "template": "official_text_recorded",
           "slots": {
@@ -2588,6 +2756,14 @@
       },
       "claims": [
         {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 814.1.d.1",
+            "event": "a_unit_keeps_its_defender_designation",
+            "consequence": "its_shield_remains_in_effect"
+          }
+        },
+        {
           "template": "official_text_recorded",
           "slots": {
             "locator": "Core 814.1.d.1"
@@ -2696,7 +2872,7 @@
     "JC-CB-002": {
       "entry": "combat_step",
       "question_kind": "combat_step",
-      "effect_question_kind": "combat_board",
+      "effect_question_kind": "stunned_combat_board",
       "draft": {
         "players": [
           "p1",
@@ -2752,7 +2928,16 @@
             "combat_id": "combat-1",
             "role": "defender"
           }
-        ]
+        ],
+        "turn_effects": [
+          {
+            "kind": "stunned_unit",
+            "object_id": "u2",
+            "controller": "p2",
+            "turn_id": "turn-1"
+          }
+        ],
+        "turn_id": "turn-1"
       },
       "entry_inputs": {
         "step": "assign"
@@ -2762,6 +2947,18 @@
           "template": "combat_step_completes",
           "slots": {
             "step": "assign"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 423.1.b"
+          }
+        },
+        {
+          "template": "official_text_recorded",
+          "slots": {
+            "locator": "Core 465.2.b"
           }
         }
       ]
@@ -2909,6 +3106,14 @@
             "quantity": "players_whose_units_are_in_one_combat",
             "relation": "exactly",
             "value": 2
+          }
+        },
+        {
+          "template": "rule_event_consequence",
+          "slots": {
+            "locator": "Core 462.3",
+            "event": "a_choice_would_put_more_than_two_players_in_one_combat",
+            "consequence": "the_choice_is_invalid"
           }
         },
         {

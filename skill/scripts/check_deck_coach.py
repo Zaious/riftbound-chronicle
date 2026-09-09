@@ -82,8 +82,36 @@ def main():
         errors.append("environment registry does not route legality to the official Rules Hub")
     if not environments.get("live_check_required_for_real_event"):
         errors.append("environment registry must require live re-check for real events")
-    if set(environments.get("environments", {})) != {"global-vendetta", "taiwan-set1-banned"}:
-        errors.append("environment registry must expose the two supported environments")
+    registry = environments.get("environments", {})
+    live = {k for k, v in registry.items() if v.get("kind") == "live"}
+    snapshots = {k for k, v in registry.items() if v.get("kind") == "calibration_snapshot"}
+    if live != {"global-vendetta", "taiwan-set1-banned"}:
+        errors.append("environment registry must expose the two supported live environments")
+    if set(registry) - live - snapshots:
+        errors.append(f"environment registry carries entries of no known kind: "
+                      f"{sorted(set(registry) - live - snapshots)}")
+    # A calibration snapshot is the environment a validity claim is measured
+    # against, so what it is may not drift under that claim. Before its freeze
+    # date it says so and carries no hash; on and after it, it carries the hash
+    # of what was frozen and is never legal for play.
+    for name in sorted(snapshots):
+        snap = registry[name]
+        if snap.get("legal_for_play") is not False:
+            errors.append(f"{name}: a calibration snapshot is never legal for play")
+        if snap.get("frozen_from") not in registry:
+            errors.append(f"{name}: frozen_from must name an environment in this registry")
+        if snap.get("status") == "scheduled_freeze":
+            if not snap.get("freeze_on"):
+                errors.append(f"{name}: a scheduled freeze names the date it freezes on")
+            if snap.get("content_hash") is not None:
+                errors.append(f"{name}: nothing is frozen yet, so it carries no content hash")
+        elif snap.get("status") == "frozen":
+            if not snap.get("content_hash"):
+                errors.append(f"{name}: a frozen snapshot carries the hash of what was frozen")
+        else:
+            errors.append(f"{name}: status must be scheduled_freeze or frozen")
+        if "stale_on_or_after" in snap:
+            errors.append(f"{name}: a calibration snapshot never goes stale; that is the point of it")
     standard_bans = set(environments["formats"]["1v1 Constructed"]["banned_names"])
     expected_bans = {"Called Shot", "Draven - Vanquisher", "Fight or Flight", "Scrapheap", "Stealthy Pursuer", "The Arena's Greatest", "Aspirant's Climb", "The Dreaming Tree", "Obelisk of Power", "Reaver's Row"}
     if standard_bans != expected_bans:

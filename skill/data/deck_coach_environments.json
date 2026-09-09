@@ -40,18 +40,50 @@
     "global-vendetta": {
       "label": "Global Standard — Vendetta",
       "region": "global",
-      "legal_set_ids": ["OGS", "OGN", "SFD", "UNL", "VEN"],
+      "legal_set_ids": [
+        "OGS",
+        "OGN",
+        "SFD",
+        "UNL",
+        "VEN"
+      ],
       "effective_from": "2026-07-31",
       "stale_on_or_after": "2026-10-23",
-      "notes": "ARC/other printings are usable only when the same card name has a legal-set printing; preview-only future sets are excluded."
+      "notes": "ARC/other printings are usable only when the same card name has a legal-set printing; preview-only future sets are excluded.",
+      "kind": "live",
+      "legal_for_play": true
     },
     "taiwan-set1-banned": {
       "label": "Taiwan — Set 1 pool with global bans",
       "region": "taiwan",
-      "legal_set_ids": ["OGS", "OGN"],
+      "legal_set_ids": [
+        "OGS",
+        "OGN"
+      ],
       "effective_from": "2026-08-07",
       "stale_on_or_after": null,
-      "notes": "Regional physical pool is OGN + OGS. The applicable Constructed ban list is layered on top."
+      "notes": "Regional physical pool is OGN + OGS. The applicable Constructed ban list is layered on top.",
+      "kind": "live",
+      "legal_for_play": true
+    },
+    "global-vendetta-2026-10-22": {
+      "label": "Global Standard - Vendetta, calibration snapshot",
+      "region": "global",
+      "kind": "calibration_snapshot",
+      "status": "scheduled_freeze",
+      "freeze_on": "2026-10-22",
+      "frozen_from": "global-vendetta",
+      "legal_set_ids": [
+        "OGS",
+        "OGN",
+        "SFD",
+        "UNL",
+        "VEN"
+      ],
+      "ban_list_effective": "2026-07-24",
+      "legal_for_play": false,
+      "content_hash": null,
+      "notes": "The environment P4 calibrates against: the last day of the Vendetta pool before Radiance (2026-10-23). It is not stale after that date and never becomes stale - it is the historical record the official matchup data for this pool describes. status is scheduled_freeze, not frozen: global-vendetta is still live, and a ban-list change before 2026-10-22 would still move this content. On the freeze date the status becomes frozen and content_hash is filled with the digest of legal_set_ids plus the ban list in force; after that the entry is immutable and a change to it is a gate failure, not an update."
     }
   }
 }

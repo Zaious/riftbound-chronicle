@@ -336,6 +336,10 @@ jobs:
       # ADR-0013 §5: Empower, Buff and XP as state, with the three costs that spend them.
       - name: Empower, Buff and XP primitives (C-52)
         run: python3 skill/scripts/check_empower_xp.py
+      # P1b 2026-09-09: buff/empower/disempower take the typed decision_ref target the other
+      # single-object ops take; wrong decisions are refused each in its own way; no all-buff.
+      - name: Buff, Empower and Disempower through a decision_ref target
+        run: python3 skill/scripts/check_buff_decision_target.py
       # ADR-0013 §6: the Effect Text of attachments in the Ability layer, and copy over modelled traits.
       - name: Effect Text append and copy (C-53)
         run: python3 skill/scripts/check_effect_text_and_copy.py
@@ -529,6 +533,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_conditions.py"
           python3 "$REPO/skill/scripts/check_keyword_catalog.py"
           python3 "$REPO/skill/scripts/check_empower_xp.py"
+          python3 "$REPO/skill/scripts/check_buff_decision_target.py"
           python3 "$REPO/skill/scripts/check_effect_text_and_copy.py"
           python3 "$REPO/skill/scripts/check_game_events.py"
           python3 "$REPO/skill/scripts/check_watchers.py"

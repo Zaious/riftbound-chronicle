@@ -1262,8 +1262,20 @@ def validate_program(program: Any) -> list[str]:
                 if traits is not None and (not isinstance(traits, list) or not traits or any(not isinstance(t, str) for t in traits)):
                     errors.append(f"effects[{index}].copy_object.traits must be a non-empty array of trait names")
             if op_name in {"empower", "disempower", "buff"}:
-                if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
+                # These act on ONE object, named either literally (`object_id`,
+                # the "Buff me." path) or through the same typed decision_ref
+                # target stun/kill/ready/exhaust accept; resolution then writes
+                # target.object_id onto the effect before _apply_one reads it.
+                # Until 2026-09-09 this branch demanded a literal object_id, so
+                # clause-grammar.v1's own buff_selector output for "Buff a
+                # friendly unit." failed this validator. Still one object: an
+                # `affected` or `targets` form ("Buff all ...") stays refused.
+                has_object = isinstance(effect.get("object_id"), str) and bool(effect.get("object_id"))
+                has_target = isinstance(effect.get("target"), dict)
+                if not (has_object or has_target):
                     errors.append(f"effects[{index}].{op_name} needs the object it acts on")
+                if effect.get("affected") is not None or effect.get("targets") is not None:
+                    errors.append(f"effects[{index}].{op_name} acts on one object; affected/targets are not accepted")
             if op_name == "gain_xp":
                 if not isinstance(effect.get("player"), str) or not effect.get("player"):
                     errors.append(f"effects[{index}].gain_xp needs a player")

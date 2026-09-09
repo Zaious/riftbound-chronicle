@@ -15,6 +15,7 @@
         "role": "focus",
         "holder": "applied_contested"
       },
+      "rendered_text_hash": "sha256:9352b4ee9d7b6be5843669389d39f822e943cc73582c8a79295d0cbba920be11",
       "source_page": 1,
       "review_status": "human_reviewed",
       "reviewed_by": "fixture",
@@ -32,6 +33,7 @@
         "event": "a_chain_item_is_finalized",
         "consequence": "priority_is_not_passed"
       },
+      "rendered_text_hash": "sha256:80264873f484544913bb4a07b60ba755b524da70f68c80c61db3c4e11d2a3db1",
       "source_page": 1,
       "review_status": "human_reviewed",
       "reviewed_by": "fixture",
@@ -50,6 +52,7 @@
         "relation": "is",
         "value": 8
       },
+      "rendered_text_hash": "sha256:a66481ad104b90bd9ea84312947c513ed6f20ec2ea06ce9b4d57d3240a249242",
       "source_page": 1,
       "review_status": "human_reviewed",
       "reviewed_by": "fixture",
@@ -66,6 +69,7 @@
         "locator": "Core 312",
         "source": "holding_a_battlefield"
       },
+      "rendered_text_hash": "sha256:716357467ec403f69bc3b3d0393afe0df7fec033f925df61cab3df743d2f26d1",
       "source_page": 1,
       "review_status": "human_reviewed",
       "reviewed_by": "fixture",
@@ -82,6 +86,7 @@
         "locator": "Core 312",
         "source": "conquering_a_battlefield"
       },
+      "rendered_text_hash": "sha256:69c58bbaee69178598c774131d953099c315841968c9c50aa1e3cf7421876d33",
       "source_page": 1,
       "review_status": "proposed",
       "reviewed_by": null,

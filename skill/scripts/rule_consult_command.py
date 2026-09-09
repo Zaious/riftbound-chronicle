@@ -260,12 +260,16 @@ RULE_ACTORS = {
     "the_turn_player": "the Turn Player",
     "a_player_other_than_the_turn_player": "a player other than the Turn Player",
     "a_player_with_focus_but_not_priority": "a player who holds Focus but not Priority",
+    "only_the_turn_player": "only the Turn Player",
 }
-RULE_MODALITIES = {"may": "may", "may_not": "may not", "must": "must"}
+RULE_MODALITIES = {"may": "may", "may_not": "may not", "must": "must",
+                   # a capability the text grants to one party, not a permission checked per card
+                   "has_the_ability_to": "has the ability to"}
 RULE_ACTIONS = {
     "take_a_discretionary_action": "take a Discretionary Action",
     "take_a_limited_action": "take a Limited Action",
     "play_a_spell_or_activate_an_ability": "play a spell or activate an ability",
+    "play_spells_or_activate_abilities": "play spells or activate abilities",
 }
 RULE_CONDITIONS = {
     "unconditionally": "",
@@ -365,7 +369,7 @@ RULE_EVENTS = {
         "a Mode of Play or a card effect alters the Victory Score",
     "a_cleanup_finds_more_than_one_player_at_or_above_the_victory_score_with_equal_points":
         "a cleanup finds more than one player at or above the Victory Score with the same points",
-    "a_player_at_zero_points_would_lose_points": "a player at 0 points would lose points",
+    "a_player_at_zero_points_would_lose_points": "a player at 0 points would lose one or more points",
     "a_cleanup_finds_one_player_at_or_above_the_victory_score_and_ahead":
         "a cleanup finds a player at or above the Victory Score with more points than any other player",
     "a_player_wins": "a player wins the game",
@@ -382,8 +386,7 @@ RULE_CONSEQUENCES = {
     "that_victory_score_applies": "that Victory Score applies",
     "play_continues_until_a_cleanup_finds_one_player_ahead":
         "play continues until a cleanup finds one player with more points",
-    "nothing_occurs_and_no_point_loss_trigger_fires":
-        "nothing occurs, and effects that trigger on losing points do not trigger",
+    "nothing_occurs": "nothing occurs",
     "that_player_wins": "that player wins the game",
     "the_game_ends": "the game ends",
     "its_shield_remains_in_effect": "its Shield remains in effect",

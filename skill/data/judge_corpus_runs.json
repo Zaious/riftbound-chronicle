@@ -2100,7 +2100,7 @@
           "slots": {
             "locator": "Core 194.4.a",
             "event": "a_player_at_zero_points_would_lose_points",
-            "consequence": "nothing_occurs_and_no_point_loss_trigger_fires"
+            "consequence": "nothing_occurs"
           }
         },
         {
@@ -2437,9 +2437,9 @@
           "template": "rule_action_permission",
           "slots": {
             "locator": "Core 316.5.b",
-            "actor": "the_turn_player",
-            "modality": "may",
-            "action": "play_a_spell_or_activate_an_ability",
+            "actor": "only_the_turn_player",
+            "modality": "has_the_ability_to",
+            "action": "play_spells_or_activate_abilities",
             "condition": "in_a_neutral_open_state"
           }
         },

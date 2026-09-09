@@ -38,6 +38,12 @@ Every approved binding:
   text_hash          sha256 of the normalized chunk text, as the index digests it
   template           a conditional_rule template on the answer surface
   slots              the exact slot values, locator included
+  rendered_text_hash sha256 of the sentence those slots render to. Slot values
+                     are ids that render through lexicons in code; a phrase
+                     edited in a lexicon would change what the reviewer read
+                     without changing any slot, so the approved sentence is
+                     pinned here and a registry whose sentences no longer
+                     render the same is refused
   source_page        the printed page the reviewer read
   review_status      human_reviewed
   reviewed_by        who
@@ -64,7 +70,7 @@ STATUSES = ("approved", "proposed", "fixture")
 REVIEW_STATUSES = ("human_reviewed", "proposed", "rejected")
 AUTHORITATIVE_REVIEW = "human_reviewed"
 BINDING_FIELDS = {"binding_id", "document_id", "document_version", "locator", "text_hash", "template",
-                  "slots", "source_page", "review_status", "reviewed_by", "reviewed_at"}
+                  "slots", "rendered_text_hash", "source_page", "review_status", "reviewed_by", "reviewed_at"}
 RECORD_FIELDS = ("document_id", "document_version", "locator", "text_hash")
 APPROVED_FILENAME = "source_semantic_bindings.json"
 DATE_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -74,6 +80,10 @@ FREE_TEXT_FIELDS = ()  # every field is an id, a digest, a page, a date or a clo
 def text_digest(text: str) -> str:
     """The digest the rules index anchors use: normalized chunk text, sha256."""
     return "sha256:" + hashlib.sha256(normalize(text).encode("utf-8")).hexdigest()
+
+
+def rendered_hash(template: str, slots: dict[str, Any]) -> str:
+    return "sha256:" + hashlib.sha256(rcc.render(template, slots).encode("utf-8")).hexdigest()
 
 
 def _key(record: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -150,6 +160,9 @@ def _entry_errors(entry: Any, label: str, *, status: str) -> list[str]:
     expected = binding_id(entry, entry["template"], slots)
     if entry["binding_id"] != expected:
         errors.append(f"{label}.binding_id is {entry['binding_id']!r}; the binding it carries is {expected!r}")
+    if entry["rendered_text_hash"] != rendered_hash(entry["template"], slots):
+        errors.append(f"{label}: the sentence these slots render to is not the sentence that was "
+                      f"registered; the lexicon moved under a reviewed binding")
     return errors
 
 
@@ -278,6 +291,7 @@ def propose(runs: dict[str, Any], *, pages: dict[str, int] | None = None) -> dic
                 "binding_id": bid,
                 **{k: record[k] for k in RECORD_FIELDS},
                 "template": claim["template"], "slots": dict(claim["slots"]),
+                "rendered_text_hash": rendered_hash(claim["template"], claim["slots"]),
                 "source_page": (pages or {}).get(record["locator"]),
                 "review_status": "proposed", "reviewed_by": None, "reviewed_at": None,
             })

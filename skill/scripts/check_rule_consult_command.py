@@ -111,7 +111,8 @@ def main() -> int:
     def fixture_binding(template, slots, review="human_reviewed"):
         record = fixture_record(slots["locator"])
         return {"binding_id": ssb.binding_id(record, template, slots), **record, "template": template,
-                "slots": slots, "source_page": 1, "review_status": review,
+                "slots": slots, "rendered_text_hash": ssb.rendered_hash(template, slots),
+                "source_page": 1, "review_status": review,
                 "reviewed_by": "fixture" if review == "human_reviewed" else None,
                 "reviewed_at": "2026-09-09" if review == "human_reviewed" else None}
 

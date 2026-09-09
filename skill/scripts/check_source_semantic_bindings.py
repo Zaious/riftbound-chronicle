@@ -75,6 +75,10 @@ def main() -> int:
     def with_slot(b, slot, value):
         b["slots"][slot] = value
         reid(b)
+        try:
+            b["rendered_text_hash"] = ssb.rendered_hash(b["template"], b["slots"])
+        except Exception:  # noqa: BLE001 — an unrenderable value is what the validator must name
+            pass
 
     quantity = next(b for b in fixture["bindings"] if b["template"] == "rule_quantity")
     cases = [
@@ -116,6 +120,9 @@ def main() -> int:
          mutated(lambda b: b[0].__setitem__("document_version", "2027-01-01")), "the binding it carries is"),
         ("a text hash moved under a kept binding id",
          mutated(lambda b: b[0].__setitem__("text_hash", "sha256:" + "e" * 64)), "the binding it carries is"),
+        ("a lexicon phrase edited under a reviewed binding (the sentence no longer renders the same)",
+         mutated(lambda b: b[0].__setitem__("rendered_text_hash", "sha256:" + "c" * 64)),
+         "the lexicon moved under a reviewed binding"),
         ("a review status the schema does not know",
          mutated(lambda b: b[0].__setitem__("review_status", "looks fine")), "review_status must be one of"),
         ("an approved registry holding a binding that is not human_reviewed",

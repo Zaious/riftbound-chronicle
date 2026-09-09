@@ -258,7 +258,12 @@ def target_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict
 # to, and validates the supplied value against the candidates. Private
 # sources are never listed in an engine result.
 SELECTION_KINDS = ("single", "unordered_set", "ordered_permutation")
-CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "players")
+# `battlefields` is its own universe, not a filter over `board`: the board
+# source walks the objects standing AT a Battlefield, so it can never enumerate
+# the Battlefields themselves (Core 355.4.a). Codex's 2026-09-10 ruling on the
+# eff_010 split required this path before "Choose a battlefield." could be
+# mapped, rather than letting it be disguised as a board choice.
+CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "battlefields", "players")
 # Sabotage: "a non-unit card". Stated as an exclusion from a closed list rather
 # than as a negation, so a card kind nobody has thought about is *included* by
 # default and never silently filtered out.
@@ -322,6 +327,9 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append("a revealed choice's criteria carries excluded_kinds and nothing else")
     if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location"}):
         errors.append("choice.from board needs criteria {kind?, controller_relation?, location?}")
+    if spec["from"] == "battlefields" and "criteria" in spec:
+        errors.append("choice.from battlefields takes no criteria; the Locations themselves are "
+                      "the candidates (Core 355.4.a)")
     if "players" in spec and spec["from"] != "players":
         errors.append("choice.players only applies to a players source")
     if spec["from"] == "players" and spec.get("players", "opponents") not in {"opponents", "any"}:
@@ -344,7 +352,10 @@ def choice_decision_kind(spec: dict[str, Any]) -> str:
         return "player_selection"
     if spec["selection_kind"] == "ordered_permutation":
         return "card_ordering"
-    if spec["from"] == "board":
+    # A Battlefield is a target on the board with a bindable identity
+    # (ADR-0007 §4), so choosing one is a target_selection like any other board
+    # choice; what differs is the candidate universe, not the decision kind.
+    if spec["from"] in {"board", "battlefields"}:
         return "target_selection"
     return "card_selection"
 

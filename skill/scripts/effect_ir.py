@@ -179,8 +179,11 @@ CHOICE_OPS = {"recycle_one", "choose_player"}
 # board choice of one object. Every other shape is recognised and refused as
 # unsupported rather than run half-bound.
 SELECTION_BINDING_OPS = {"establish_selection"}
-SELECTION_SLICE = {"selection_kind": "single", "from": "board", "count": {"one": True},
-                   "visibility": "public"}
+# `from` is a set because Codex's eff_010 split gave "Choose a battlefield." its
+# own candidate universe rather than a criteria on `board`; both are single,
+# public choices of one object on the board.
+SELECTION_SLICE = {"selection_kind": "single", "from": {"board", "battlefields"},
+                   "count": {"one": True}, "visibility": "public"}
 # Instructions that resolve their own choice into a set (they may need an order too).
 SELF_RESOLVING_CHOICE_OPS = {"recycle", "banish"}
 
@@ -4329,6 +4332,21 @@ def _resolve_choice_object(state: dict[str, Any], effect: dict[str, Any], progra
     return {**effect, "object_id": chosen[0], "selection_meta": meta}
 
 
+def candidate_identity(state: dict[str, Any], source: str, candidate_id: str) -> str | None:
+    """The identity token a choice binds a candidate to.
+
+    One function so the enumeration and any later re-check cannot disagree.
+    Battlefields keep their own identity (they are not in `state["objects"]`, so
+    object_identity would read None for every one of them and silently defeat
+    identity binding); players have none.
+    """
+    if source == "players":
+        return None
+    if source == "battlefields":
+        return battlefield_identity(state, candidate_id)
+    return object_identity(state, candidate_id)
+
+
 def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str, session: dict[str, Any] | None = None) -> tuple[list[str], dict[str, str | None]]:
     """The ordered candidate list of a choice source and the current identity
     of each candidate (None for players)."""
@@ -4368,11 +4386,18 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
                 if relation == "enemy" and same_side(state, chooser, obj.get("controller")):
                     continue
                 ids.append(object_id)
+    elif source == "battlefields":
+        # Core 355.4.a, ADR-0007 §4: a Battlefield is a Location on the board and
+        # a target with a bindable identity, but it is NOT one of the objects a
+        # `board` choice walks - that source iterates the objects standing AT a
+        # Battlefield, so "Choose a battlefield." can never be answered through
+        # it. This is its own candidate universe.
+        ids = sorted(state["battlefields"])
     elif source == "players":
         ids = [p for p in state["players"] if spec.get("players", "opponents") == "any" or p != chooser]
     else:
         raise ValueError(f"unknown choice source {source!r}")
-    identities = {c: (object_identity(state, c) if source != "players" else None) for c in ids}
+    identities = {c: candidate_identity(state, source, c) for c in ids}
     return ids, identities
 
 
@@ -4429,7 +4454,7 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
     if candidates is None:
         candidates, identities = choice_candidates(state, spec, chooser, session)
     else:
-        identities = {c: object_identity(state, c) for c in candidates}
+        identities = {c: candidate_identity(state, spec["from"], c) for c in candidates}
     forced = ed.forced_choice(spec, candidates)
     summary = ed.choice_summary(spec, chooser, candidates, identities)
     if forced is not None:
@@ -4558,12 +4583,14 @@ def _establish_selection(state: dict[str, Any], effect: dict[str, Any], program:
     actual = {"selection_kind": spec.get("selection_kind"), "from": spec.get("from"),
               "count": spec.get("count", {"one": True} if spec.get("selection_kind") == "single" else None),
               "visibility": ed.choice_visibility(spec)}
-    unwired = {key: value for key, value in actual.items() if value != SELECTION_SLICE[key]}
+    unwired = {key: value for key, value in actual.items()
+               if (value not in SELECTION_SLICE[key] if isinstance(SELECTION_SLICE[key], set)
+                   else value != SELECTION_SLICE[key])}
     if unwired or spec.get("by", "controller") != "controller":
         raise NotImplementedError(
-            f"establish_selection wires a single, public, board choice of one object; "
-            f"{unwired or {'by': spec.get('by')}} is outside the eff_010 slice "
-            f"(unsupported: selection_binding_slice)")
+            f"establish_selection wires a single, public choice of one object from the board "
+            f"or from the Battlefields; {unwired or {'by': spec.get('by')}} is outside the "
+            f"eff_010 slice (unsupported: selection_binding_slice)")
 
     selection_id = effect["selection_id"]
     effect_id = effect.get("effect_id", f"effect-{order_index}")

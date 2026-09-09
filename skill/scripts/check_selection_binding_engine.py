@@ -39,7 +39,7 @@ import effect_ir  # noqa: E402
 import selection_binding as sb  # noqa: E402
 from check_effect_ir import base_state  # noqa: E402
 from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program,  # noqa: E402
-                       hash_value, object_identity, validate_program)
+                       hash_value, validate_program)
 from engine_decisions import DECISIONS_VERSION, validate_engine_decisions  # noqa: E402
 
 CHOICE = {"selection_kind": "single", "from": "board", "count": {"one": True},
@@ -91,7 +91,8 @@ def envelope(state, chosen, *, selection_id="s1", decision_ref="d1", program_id=
         binding = {**binding, **binding_overrides}
     entry = {"decision_id": decision_ref, "stage": "play_declaration", "kind": "target_selection",
              "controller": "p1", "value": list(chosen),
-             "selection_identities": {c: object_identity(state, c) for c in chosen}}
+             "selection_identities": {c: effect_ir.candidate_identity(state, spec["from"], c)
+                                      for c in chosen}}
     if not drop_binding:
         entry["binding"] = binding
     return {"schema_version": DECISIONS_VERSION, "input_hash": hash_value(state), "decisions": [entry]}
@@ -200,6 +201,49 @@ def main() -> int:
     decisions["decisions"].append(second)
     expect_refusal("the same selection established twice", run(state, twice, decisions), sb.ALREADY_CONSUMED)
 
+    # ---- Battlefields are their own candidate universe ------------------------
+    # Codex's 2026-09-10 split ruling: "Choose a battlefield." gets its own
+    # source rather than being disguised as a board choice. The first assertion
+    # is the reason the ruling exists - a board choice provably cannot see a
+    # Battlefield, because that source walks the objects standing AT one.
+    bf_state = state_with_two_friendly_units()
+    bf_state["battlefields"]["bf2"] = {"controller": None, "objects": []}
+    as_board = {"selection_kind": "single", "from": "board", "count": {"one": True},
+                "visibility": "public", "criteria": {"kind": "battlefield"}}
+    seen_as_board, _ = effect_ir.choice_candidates(bf_state, as_board, "p1")
+    if seen_as_board:
+        fail("battlefields", f"a board choice enumerated {seen_as_board} as Battlefields; the "
+                             f"separate source would then be unnecessary")
+    BF_CHOICE = {"selection_kind": "single", "from": "battlefields", "count": {"one": True},
+                 "visibility": "public"}
+    bf_candidates, bf_identities = effect_ir.choice_candidates(bf_state, BF_CHOICE, "p1")
+    if sorted(bf_candidates) != ["bf1", "bf2"]:
+        fail("battlefields", f"the battlefields source enumerated {bf_candidates}, not both Locations")
+    if any(bf_identities.get(b) is None for b in bf_candidates):
+        fail("battlefields", f"a Battlefield candidate carries no identity ({bf_identities}); "
+                             f"identity binding would be silently defeated")
+
+    bf_program = program(choose(choice=BF_CHOICE),
+                         {"op": "move_board_object", "effect_id": "shift", "object_id": "u1",
+                          "destination": {"kind": "battlefield", "battlefield": "bf1"}})
+    result = run(bf_state, bf_program, envelope(bf_state, ["bf1"], choice=BF_CHOICE))
+    if result.get("_schema_problems"):
+        fail("battlefields", f"the fixture did not validate: {result['_schema_problems']}")
+    elif result.get("committed") is not True:
+        fail("battlefields", f"choosing a Battlefield did not run: "
+                             f"{result.get('reason') or result.get('errors')}")
+    else:
+        bound = (result.get("selection_bindings") or {}).get("s1")
+        if not bound or bound.get("value") != ["bf1"]:
+            fail("battlefields", f"the Battlefield selection was not recorded: {bound}")
+        elif bound["selection_identities"].get("bf1") is None:
+            fail("battlefields", "the recorded Battlefield binding carries no identity")
+    # a tampered Battlefield binding is refused by the same named codes
+    result = run(bf_state, bf_program,
+                 envelope(bf_state, ["bf1"], choice=BF_CHOICE,
+                          binding_overrides={"candidate_set_hash": "sha256:" + "0" * 64}))
+    expect_refusal("a tampered Battlefield binding", result, sb.CANDIDATES_CHANGED)
+
     # ---- everything outside the slice is refused, not run half-bound ---------
     outside = [
         ("OPT / up to", {**CHOICE, "selection_kind": "unordered_set", "count": {"up_to": 2}}),
@@ -297,7 +341,9 @@ def main() -> int:
           f"{len(tampers) + 1} tampered artifacts are refused by name, one selection fans out to "
           f"two consumers, {refused_at['resolution']} unwired shapes are refused at resolution "
           f"({refused_at['validator']} by the validator), and program_ancestry resolves "
-          f"{len(generated)} engine-generated nested ids ({', '.join(generated)}) to their real parent")
+          f"{len(generated)} engine-generated nested ids ({', '.join(generated)}) to their real "
+          f"parent. Battlefields are their own universe: a board choice sees {len(seen_as_board)} "
+          f"of them, the battlefields source sees {len(bf_candidates)}, each with an identity")
     return 0
 
 

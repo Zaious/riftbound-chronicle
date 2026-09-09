@@ -122,7 +122,8 @@ def _observation(inputs: dict[str, Any]) -> dict[str, Any]:
         question="observation", question_kind=inputs.get("question_kind", "timing_priority"),
         draft=inputs["draft"])
     effect = state_builder.build_state_assumption(
-        question="observation", question_kind="unit_damage", draft=inputs["effect_draft"])
+        question="observation", question_kind=inputs.get("effect_question_kind", "unit_damage"),
+        draft=inputs["effect_draft"])
     return legal_action.build_observation(
         perspective="player1", source={"kind": "engine_state", "state_seq": 1},
         context={"ruleset_core": "2026-07-16", "faq_as_of": "2026-07-16",
@@ -143,6 +144,7 @@ def run_question(question: dict[str, Any], inputs: dict[str, Any],
         question=question["question"], entry=inputs["entry"], draft=inputs["draft"],
         question_kind=inputs.get("question_kind", "timing_priority"),
         effect_draft=inputs.get("effect_draft"),
+        effect_question_kind=inputs.get("effect_question_kind", "unit_damage"),
         entry_inputs=inputs["entry_inputs"], claims=inputs["claims"],
         source_retriever=retriever)
 

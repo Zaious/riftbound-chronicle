@@ -525,6 +525,8 @@
     },
     "JC-EX-COMBAT-1": {
       "entry": "combat_step",
+      "question_kind": "combat_step",
+      "effect_question_kind": "combat_board",
       "draft": {
         "players": [
           "p1",
@@ -532,7 +534,16 @@
         ],
         "turn_player": "p1",
         "phase": "main",
-        "priority": "p1"
+        "showdown_active": true,
+        "showdown_focus": "p1",
+        "priority": "p1",
+        "combat": {
+          "combat_id": "combat-1",
+          "battlefield": "bf1",
+          "status": "showdown_closed",
+          "attacker": "p1",
+          "defender": "p2"
+        }
       },
       "effect_draft": {
         "players": [
@@ -543,12 +554,35 @@
           {
             "object_id": "u1",
             "controller": "p1",
-            "might": 3
+            "might": 3,
+            "location": "bf1",
+            "keywords": [
+              "backline"
+            ]
           },
           {
             "object_id": "u2",
             "controller": "p2",
-            "might": 2
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": "p1"
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
           }
         ]
       },

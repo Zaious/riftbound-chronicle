@@ -16,7 +16,7 @@
       "consultation_entry": "combat_step",
       "bounded_note": null,
       "zh_hant": null,
-      "notes": "Exemplar.",
+      "notes": "Exemplar. Runs over a closed Combat Showdown built by S-01b: the timing draft states the Combat record, the board states the designated units. First run 2026-09-08 abstained because the minimum state builder had no way to state a Combat; S-01b added that and this question is what it was built to make runnable.",
       "expected_answer_contract": {
         "answer_scope": "full_position_conclusion",
         "required_templates": [
@@ -28,11 +28,7 @@
         "forbidden_claim_classes": [],
         "template_coverage_debt": []
       },
-      "correction_record": {
-        "observed": "Run 2026-09-08: the contract expects a full position conclusion via combat_step_completes, and the pipeline abstained. The engine refused the assign step, which is correct — the position the run builds has no Combat staged, so there is nothing to assign damage in.",
-        "decided": "The engine is right and the pair of contract and run inputs is wrong. Left as a difference rather than fixed by swapping the contract to combat_step_refused, which would change what the question asks about instead of answering it.",
-        "follow_up": "The minimum state builder has no slot for a staged Combat, so this question cannot be run as asked until it does. That is a state-builder coverage gap this corpus surfaced, and it belongs to a state-builder package rather than to S-04."
-      }
+      "correction_record": null
     },
     {
       "question_id": "JC-EX-CONTROL-1",

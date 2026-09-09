@@ -51,8 +51,15 @@
       ],
       "legal_for_play": false,
       "content_hash": null,
-      "notes": "The environment P4 calibrates against: the last day of the Vendetta pool before Radiance (2026-10-23). It is not stale after that date and never becomes stale - it is the historical record the official matchup data for this pool describes. status is scheduled_freeze, not frozen: global-vendetta is still live, and a ban-list change before 2026-10-22 would still move this content. On the freeze date the status becomes frozen and content_hash is filled with the digest of legal_set_ids plus the ban list in force; after that the entry is immutable and a change to it is a gate failure, not an update.",
-      "ban_list_ref": "2026-07-24"
+      "notes": "The environment P4 calibrates against: the last day of the Vendetta pool before Radiance (2026-10-23). It is not stale after that date and never becomes stale - it is the historical record the official matchup data for this pool describes. status is scheduled_freeze, not frozen: global-vendetta is still live, and a ban-list change before 2026-10-22 would still move this content. On the freeze date the status becomes frozen and content_hash is filled with the digest of legal_set_ids plus the ban list in force; after that the entry is immutable and a change to it is a gate failure, not an update. On the freeze date it must also pin errata_overlay_version, errata_overlay_hash, effective_card_text_bundle_hash and ruleset_core_version, for the same reason the Taiwan service snapshot does; freeze_requires names them and the gate enforces it.",
+      "ban_list_ref": "2026-07-24",
+      "freeze_requires": [
+        "content_hash",
+        "errata_overlay_version",
+        "errata_overlay_hash",
+        "effective_card_text_bundle_hash",
+        "ruleset_core_version"
+      ]
     },
     "taiwan-set1-banlist-2026-07-24": {
       "label": "Taiwan - Set 1 pool, ban list 2026-07-24, service snapshot",
@@ -67,7 +74,12 @@
       "ban_list_ref": "2026-07-24",
       "legal_for_play": false,
       "content_hash": "sha256:ee96919f2d65e396a34a1e82ebfc800613ab041e408fa63f551a277db5b5eae6",
-      "notes": "The environment P1's completeness claim binds to. Frozen now, not scheduled: both axes are already fixed - the Set 1 pool by physical distribution and the ban list by the 2026-07-24 version this entry names. A later global ban list does not change this snapshot; it produces a new one, and P1's claim then states which snapshot it covered. legal_for_play is false because play legality is always the live entry plus a live re-check, never a frozen record."
+      "notes": "The environment P1's completeness claim binds to. Frozen now, not scheduled: both axes are already fixed - the Set 1 pool by physical distribution and the ban list by the 2026-07-24 version this entry names. A later global ban list does not change this snapshot; it produces a new one, and P1's claim then states which snapshot it covered. legal_for_play is false because play legality is always the live entry plus a live re-check, never a frozen record. Codex 2026-09-09: a completeness claim also depends on effective card text and the rules baseline, so the snapshot pins the errata overlay version and hash, the digest of every legal card's errata-resolved text, and the Core Rules version. A later erratum or Core Rules update changes one of those hashes and the claim is then visibly about a different snapshot, rather than silently false.",
+      "errata_overlay_version": "2026-07-24+verified-2026-08-17",
+      "errata_overlay_hash": "sha256:1c702e7405fdfb66340151ad55aa5f06a2e711e9e04e04ab16f2a4b09476c694",
+      "effective_card_text_bundle_hash": "sha256:3c8a4a073b2e9220d22621388cd926c7c0e230af08bb8d2311f069c21e6393dd",
+      "effective_card_text_card_count": 356,
+      "ruleset_core_version": "2026-07-16"
     }
   },
   "ban_lists": {

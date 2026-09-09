@@ -82,6 +82,25 @@ def main():
         errors.append("environment registry does not route legality to the official Rules Hub")
     if not environments.get("live_check_required_for_real_event"):
         errors.append("environment registry must require live re-check for real events")
+    # Codex 2026-09-09: a v1 registry must never be read as v2. v1 carried a
+    # single inherited `formats` block and no ban_lists; reading it here would
+    # silently treat "no versioned ban list" as "no bans", which is the exact
+    # class of quiet wrong answer this file exists to prevent.
+    schema = environments.get("schema_version")
+    if schema != "deck-coach-environments.v2":
+        errors.append(f"environment registry is {schema!r}; this build reads "
+                      f"deck-coach-environments.v2 only. Migrate it explicitly "
+                      f"(ban_lists + current_ban_list + per-environment ban_list_ref) "
+                      f"rather than letting a v1 file be read as v2")
+        for error in errors:
+            print(f"  - {error}")
+        print("")
+        print(f"FAILED: {len(errors)} Deck Coach closed-loop regression(s).")
+        return 1
+    if "formats" in environments:
+        errors.append("a v2 registry carries no top-level formats block; the ban list is "
+                      "versioned and referenced, not inherited")
+
     current = environments.get("current_ban_list")
     ban_lists = environments.get("ban_lists", {})
     if current not in ban_lists:
@@ -126,6 +145,25 @@ def main():
         snap = registry[name]
         if snap.get("ban_list_ref") not in ban_lists:
             errors.append(f"{name}: a snapshot pins a ban list version that exists in this file")
+        # Codex 2026-09-09: pool and ban list are not the only axes a
+        # completeness claim rides on. An erratum or a Core Rules update moves
+        # what the cards say without touching either, so a frozen snapshot
+        # pins the text and the baseline too.
+        PINNED = ("errata_overlay_version", "errata_overlay_hash",
+                  "effective_card_text_bundle_hash", "ruleset_core_version")
+        if snap.get("status") == "frozen":
+            for field in PINNED:
+                if not snap.get(field):
+                    errors.append(f"{name}: a frozen snapshot pins {field}; without it an erratum "
+                                  f"or a rules update invalidates the claim silently")
+        elif snap.get("status") == "scheduled_freeze":
+            requires = set(snap.get("freeze_requires") or [])
+            if not set(PINNED) <= requires:
+                errors.append(f"{name}: freeze_requires must name every field the freeze will pin; "
+                              f"missing {sorted(set(PINNED) - requires)}")
+            for field in PINNED:
+                if snap.get(field):
+                    errors.append(f"{name}: nothing is frozen yet, so it pins no {field}")
         if snap.get("legal_for_play") is not False:
             errors.append(f"{name}: a {snap.get('kind')} is never legal for play; "
                           f"play legality is the live entry plus a live re-check")

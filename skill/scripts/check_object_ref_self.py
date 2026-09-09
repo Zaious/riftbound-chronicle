@@ -156,6 +156,24 @@ def main() -> int:
         fail("identity binding", "an object reusing the id at a new generation was accepted; "
                                  "the reference binds the identity, not the id")
 
+    # --- RECORDED GAP: source_identity is optional ----------------------------
+    # Codex, Audit Repair 0.1: the success message claimed the reference binds
+    # the source's full identity. It does so only when the program volunteers
+    # `source_identity`. A program that omits it commits with no identity check
+    # at all, which is an id comparison wearing an identity's name. Reproduced
+    # here so the gap cannot drift unnoticed while semantic work is paused.
+    undeclared = program("ready", state)
+    undeclared.pop("source_identity")
+    swapped = copy.deepcopy(state)
+    swapped["objects"]["u1"]["identity"] = "u1@7"   # a different object, same id
+    result = apply_program(swapped, undeclared)
+    identity_is_optional = result.get("committed") is True
+    if not identity_is_optional:
+        fail("recorded gap: optional source_identity",
+             f"a program that omits source_identity was refused ({result.get('reason_code')}). "
+             f"Either the gap was repaired - rewrite this case and the audit - or the behaviour "
+             f"moved for another reason.")
+
     # --- an artifact may not inject the shape --------------------------------
     envelope = {"schema_version": DECISIONS_VERSION, "input_hash": hash_value(state),
                 "decisions": [{"decision_id": "t", "stage": "play_declaration",
@@ -175,11 +193,17 @@ def main() -> int:
         for problem in errors:
             print(f"  - {problem}")
         return 1
-    print(f"typed self-reference holds: {len(effect_ir.OBJECT_REF_OPS)} adopted op(s) "
-          f"({', '.join(sorted(effect_ir.OBJECT_REF_OPS))}) resolve it and change the state, "
-          f"adoption is refused for every other op by its own code, the reference binds the "
-          f"source's identity rather than its id, five named refusals fire, and a decision "
-          f"artifact carrying the shape is refused")
+    # The message says what is actually held, and names what is not. It used to
+    # say "binds the source's identity rather than its id" without qualification,
+    # which is stronger than the implementation.
+    print(f"typed self-reference: {len(effect_ir.OBJECT_REF_OPS)} adopted op(s) "
+          f"({', '.join(sorted(effect_ir.OBJECT_REF_OPS))}) resolve it and change the state; "
+          f"adoption is refused for every other op by its own code; five named refusals fire; "
+          f"a decision artifact carrying the shape is refused.")
+    print(f"  identity binding is CONDITIONAL: it holds only when the program declares "
+          f"`source_identity`. A program that omits it commits with no identity check "
+          f"({'gap reproduced' if identity_is_optional else 'GAP NO LONGER REPRODUCES'}). "
+          f"Recorded in the audit bundle; not repaired, because semantic work is paused.")
     return 0
 
 

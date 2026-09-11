@@ -256,7 +256,8 @@
         "ogs-017-024"
       ],
       "all_printings": [
-        "ogs-017-024"
+        "ogs-017-024",
+        "opp-017-024"
       ],
       "snapshot_text": "At the end of your turn, ready 2 runes.",
       "current_text": "At the end of your turn, ready up to 2 runes.",
@@ -1184,7 +1185,8 @@
         "ogs-019-024"
       ],
       "all_printings": [
-        "ogs-019-024"
+        "ogs-019-024",
+        "opp-019-024"
       ],
       "snapshot_text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
       "current_text": "While a friendly unit defends alone, it gets +2 :rb_might:.",
@@ -2199,5 +2201,5 @@
       ]
     }
   ],
-  "ledger_hash": "sha256:e9d47df3cb3a960eed78d25555f2691dc4a5345bd3111ffea1d1ac3e40512b7b"
+  "ledger_hash": "sha256:d2eb957ada7fad1a67521da07ce9aa89385f910b55447df317f3f325f3876eb7"
 }

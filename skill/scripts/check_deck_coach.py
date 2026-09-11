@@ -299,6 +299,44 @@ def main():
         if not covered:
             errors.append(f"no case exercises a 2v2-only ban ({sorted(two_v_two_only)}); the ban lists differ and nothing checks it")
 
+    # The snapshot names a Proving Grounds legend "... (Starter)", and the rows
+    # carrying the plain name are OPP printings outside every pool. Decklists
+    # write the card's name, so on 2026-09-11 four of thirteen Taiwan deck
+    # snapshots were refused as not released while the card is in OGS. The
+    # plain name must find the in-pool Starter printing, and a ban on the name
+    # must reach the Starter spelling.
+    taiwan_pool = set(registry["taiwan-set1-banned"]["legal_set_ids"])
+    set_one = next((case for case in load_cases() if case["input"]["environment"] == "taiwan-set1-banned"
+                    and case["input"]["format"] == "1v1 Constructed"), None)
+    starters = [card for card in catalog.cards
+                if card["name"].endswith(" (Starter)") and card["set"]["set_id"] in taiwan_pool]
+    checked = set()
+    for card in starters if set_one else []:
+        plain = card["name"].removesuffix(" (Starter)")
+        checked.add(plain)
+        as_plain = {**set_one["input"], "legend": plain}
+        mask = build_mask(as_plain, build_profile(as_plain, catalog), catalog)
+        legend_check = next(entry for entry in mask["deck_legality"]["checks"] if entry["zone"] == "legend")
+        if not legend_check["allowed"]:
+            errors.append(f"{set_one['case_id']}: {plain!r} is printed in {card['set']['set_id']} as {card['name']!r}, "
+                          f"yet taiwan-set1-banned refuses the plain name: {legend_check['reasons']}")
+        resolved = catalog.resolve(plain, taiwan_pool) or {}
+        if resolved.get("riftbound_id") != card["riftbound_id"]:
+            errors.append(f"{plain!r} resolves to {resolved.get('riftbound_id')!r} under the Taiwan pool, "
+                          f"not to its in-pool printing {card['riftbound_id']!r}")
+        banned_case = next((case for case in load_cases() if case["input"]["format"] == "2v2 Constructed"
+                            and case["input"]["legend"] == plain and plain in two_v_two_only), None)
+        if banned_case:
+            as_starter = {**banned_case["input"], "legend": card["name"]}
+            starter_mask = build_mask(as_starter, build_profile(as_starter, catalog), catalog)
+            starter_check = next(entry for entry in starter_mask["deck_legality"]["checks"] if entry["zone"] == "legend")
+            if "banned_in_format" not in starter_check["reasons"]:
+                errors.append(f"{banned_case['case_id']}: {plain!r} is banned in 2v2, yet spelling it {card['name']!r} "
+                              f"passes the mask: {starter_check['reasons']}")
+    if "Master Yi - Wuju Bladesman" not in checked:
+        errors.append("the Starter-printing check did not reach Master Yi - Wuju Bladesman; it has no Taiwan 1v1 case "
+                      "or no OGS Starter printing to prove anything with")
+
     if len(case_ids) < 3 or len(case_ids) != len(set(case_ids)):
         errors.append("eval suite needs at least three unique executable cases")
     if MASK_REASONS - observed_reasons:

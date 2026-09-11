@@ -40,7 +40,11 @@ UNCERTAINTY_MARKERS = (
     "no verified", "not verified", "unknown", "not established", "requires a live check",
     "hypothesis", "cannot determine", "needs expert", "insufficient",
 )
-VARIANT_SUFFIX = re.compile(r"\s+\((?:alternate art|metal|overnumbered|signature)\)$", re.I)
+# Printing labels, not card names. "Starter" marks the Proving Grounds (OGS)
+# legends, whose plain-named rows are OPP printings outside every pool; the
+# resolver ranks pool membership above variant_rank, so a pool whose only
+# printing carries the label still resolves to it.
+VARIANT_SUFFIX = re.compile(r"\s+\((?:alternate art|metal|overnumbered|signature|starter)\)$", re.I)
 
 
 class PipelineError(ValueError):

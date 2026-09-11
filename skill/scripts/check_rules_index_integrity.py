@@ -9,8 +9,9 @@ retrievable and right ones absent, which is worse for citation than no index.
 
 Everything here runs on synthetic two-column fixtures written in this file. The
 licensed documents are not in the public repository and this gate does not need
-them: what it checks is the pairing logic, the metric that measures pairing, and
-the refusal to call an unmeasured index verified.
+them: what it checks is the pairing logic, the metric that measures pairing, the
+refusal to call an unmeasured index verified, and that a rule running past the
+foot of its page keeps the rest of its text — in the splitter and in a built index.
 
 The half that does need the documents is `rules_index.py audit-locators`, which
 compares named locators against digests taken when their printed pages were read
@@ -20,6 +21,7 @@ absent, and it is exercised here only for its skip path.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import tempfile
@@ -50,6 +52,33 @@ DRIFTED = """101.        Widget Handling
 102.1.      holder.
 """
 
+# Four pages of the same invented rulebook. 201.1 runs past the foot of page 1;
+# 201.2 runs across page 3, which carries no locator at all, and finishes in four
+# words at the top of page 4.
+SPANNING = [
+    "201.        Gadget Handling\n"
+    "201.1.      A Gadget that leaves play while a Widget is attached to it\n",
+    "            returns that Widget to its holder's hand. Example: A Gadget\n"
+    "            destroyed during Cleanup returns its Widget before Tokens are counted.\n"
+    "201.2.      A player may attach a Widget only to a Gadget they control, and\n",
+    "            only while that Gadget is ready. A Gadget that is exhausted\n"
+    "            cannot receive a Widget, and a Widget attached before the Gadget\n"
+    "            exhausted stays attached until the Gadget leaves play\n",
+    "            or is discarded.\n"
+    "202.        Token Handling\n"
+    "202.1.      Tokens are spent when an effect instructs a player to spend them.\n",
+]
+
+TITLE_PAGE = "Invented Widget Rulebook, a title page with no rule on it\n"
+
+# An FAQ whose first page opens a line with the rule it cites. Its second page
+# is a new answer, not the rest of that rule.
+FAQ_PAGES = [
+    "Q: Does a Widget return when its Gadget leaves play?\n"
+    "201.1 says it does, and the Widget goes to its holder's hand.\n",
+    "A second page of answers: a Widget attached to an exhausted Gadget stays attached.\n",
+]
+
 
 def rows(connection, source_id="doc"):
     return connection.execute(
@@ -73,6 +102,46 @@ def index_with(folder: Path, extraction: dict | None, name: str) -> Path:
     connection.commit()
     connection.close()
     return path
+
+
+def build_spanning_index() -> dict:
+    """Build a real index over the spanning fixture and the FAQ, and return its chunks.
+
+    The build reads its manifest, source registry and extractor from module
+    globals. They point at this file's fixtures for the one call and are put
+    back after it, so nothing licensed is read and nothing installed is touched.
+    """
+    documents = {"fixture-rules": ("core_rules", SPANNING), "fixture-faq": ("official_faq", FAQ_PAGES)}
+    saved = (ri.MANIFEST_PATH, ri.REGISTRY_PATH, ri.extract_pages_scored)
+    with tempfile.TemporaryDirectory(prefix="rules-index-spanning-") as folder:
+        root = Path(folder)
+        pages_by_name = {}
+        for source_id, (_, pages) in documents.items():
+            (root / f"{source_id}.pdf").write_bytes(source_id.encode("utf-8"))
+            pages_by_name[f"{source_id}.pdf"] = pages
+        manifest, registry, index = root / "manifest.json", root / "registry.json", root / "index.sqlite3"
+        manifest.write_text(json.dumps({"documents": [
+            {"source_id": source_id, "document_id": source_id, "relative_path": f"{source_id}.pdf"}
+            for source_id in documents]}), encoding="utf-8")
+        registry.write_text(json.dumps({"sources": [
+            {"source_id": source_id, "title": source_id, "version": "fixture", "locale": "en-US",
+             "region": "global", "document_class": document_class, "authority": "official",
+             "status": "active", "superseded_by": None, "controlling_language": True}
+            for source_id, (document_class, _) in documents.items()]}), encoding="utf-8")
+        try:
+            ri.MANIFEST_PATH, ri.REGISTRY_PATH = manifest, registry
+            ri.extract_pages_scored = lambda path: (
+                pages_by_name[path.name],
+                {"mode": "fixture", **ri.pairing_integrity(pages_by_name[path.name])})
+            ri.build_index(root, index)
+        finally:
+            ri.MANIFEST_PATH, ri.REGISTRY_PATH, ri.extract_pages_scored = saved
+        connection = sqlite3.connect(index)
+        try:
+            return {"rows": connection.execute(
+                "SELECT source_id, page, locator, text FROM chunks ORDER BY chunk_id").fetchall()}
+        finally:
+            connection.close()
 
 
 def measure(label, fixture, failures):
@@ -226,6 +295,82 @@ def main() -> int:
         if skipped["locator_integrity"] != "locator_integrity_unverified":
             failures.append("a skipped audit still reports the index's integrity status")
 
+    # --- a page break is not a locator ---------------------------------------
+    # Cut page by page, 201.1 lost everything after its page's foot, page 2 grew
+    # a context chunk nothing can cite, and the four words that finish 201.2 on
+    # page 4 — shorter than a context chunk — vanished outright. A reading
+    # reviewed against such a chunk was reviewed against part of a rule.
+    by_page = {}
+    for page, locator, body in ri.split_document(SPANNING, continuous=True):
+        if locator in by_page:
+            failures.append(f"{locator} is cut into more than one chunk across its pages")
+        by_page[locator] = (page, body)
+    continuations = {
+        "201.1": (1, "Tokens are counted"),    # the rest of the rule on the next page
+        "201.2": (2, "cannot receive a Widget"),  # a whole page with no locator on it
+    }
+    for locator, (page, fragment) in continuations.items():
+        found_page, body = by_page.get(locator, (None, ""))
+        if fragment not in body:
+            failures.append(f"{locator} does not keep its text from the following page: {body!r}")
+        if found_page != page:
+            failures.append(f"{locator} must be cited on the page it starts on ({page}), not {found_page}")
+    if not by_page.get("201.2", (0, ""))[1].endswith("or is discarded."):
+        failures.append("a continuation shorter than a context chunk was dropped from 201.2")
+    if any(locator.startswith("page-") for locator in by_page):
+        failures.append(f"a continuation was left as a page chunk: "
+                        f"{sorted(l for l in by_page if l.startswith('page-'))}")
+    # The property itself: the cut does not depend on where the pages break.
+    whole = [(locator, body) for locator, body in ri.split_page("\n".join(SPANNING), 1)]
+    if [(locator, body) for _, locator, body in ri.split_document(SPANNING, continuous=True)] != whole:
+        failures.append("cutting the document across its pages does not give the chunks the "
+                        "same document gives with no page breaks at all")
+    # And the per-page cut must get it wrong, or the fixture proves nothing.
+    per_page = [(l, b) for n, t in enumerate(SPANNING, 1) for l, b in ri.split_page(t, n)]
+    if any("Tokens are counted" in b for l, b in per_page if l == "201.1") or \
+            any("or is discarded" in b for _, b in per_page):
+        failures.append("the spanning fixture cuts correctly page by page, so it demonstrates nothing")
+
+    # Before any rule opens, the title above the first rule is still its own
+    # context chunk; there is no rule for it to continue.
+    titled = ri.split_document([TITLE_PAGE + SPANNING[0], *SPANNING[1:]], continuous=True)
+    if not titled or titled[0][1] != "page-1-context" or \
+            next((p for p, l, _ in titled if l == "201.1"), None) != 1:
+        failures.append(f"a title above the first rule must stay a context chunk: {titled[:2]}")
+
+    # An FAQ is not carried across pages: its line-opening numbers cite rules.
+    faq = ri.split_document(FAQ_PAGES, continuous=False)
+    if faq != [(n, l, b) for n, t in enumerate(FAQ_PAGES, 1) for l, b in ri.split_page(t, n)]:
+        failures.append("a non-rules document must be cut page by page, as before")
+    if any("second page of answers" in b for _, l, b in faq if not l.startswith("page-2-")):
+        failures.append("an FAQ page was glued onto a rule it merely cites")
+    registry_classes = {s["document_class"] for s in ri.load_json(ri.REGISTRY_PATH)["sources"]}
+    expected_continuous = {c for c in registry_classes if c.endswith("_rules")}
+    if expected_continuous != set(ri.CONTINUOUS_CLASSES):
+        failures.append(f"the rules documents in the source registry are {sorted(expected_continuous)}, "
+                        f"but the index carries rules across pages for {sorted(ri.CONTINUOUS_CLASSES)}")
+
+    # The build must use that cut. Without this, build_index could go back to
+    # cutting page by page and every check above would still pass, because they
+    # call the splitter directly rather than anything the build wrote.
+    try:
+        built = build_spanning_index()
+    except Exception as exc:  # noqa: BLE001 - reporting is the point
+        failures.append(f"building an index over the spanning fixture raised {type(exc).__name__}: {exc}")
+        built = {}
+    core = {locator: (page, text) for source, page, locator, text in built.get("rows", [])
+            if source == "fixture-rules"}
+    if "Tokens are counted" not in core.get("201.1", (0, ""))[1] or core.get("201.1", (0,))[0] != 1:
+        failures.append(f"the built index does not keep 201.1's continuation on its start page: "
+                        f"{core.get('201.1')}")
+    if not core.get("201.2", (0, ""))[1].endswith("or is discarded."):
+        failures.append("the built index dropped 201.2's short continuation")
+    if any(locator.startswith("page-") for locator in core):
+        failures.append("the built index kept a continuation as a page chunk")
+    if not any(locator.startswith("page-2-") for source, _, locator, _ in built.get("rows", [])
+               if source == "fixture-faq"):
+        failures.append("the built index carried an FAQ page across a page break")
+
     # --- the anchors file carries digests, not rules text -------------------
     anchors = ri.load_json(ri.ANCHORS_PATH)
     if not anchors["anchors"]:
@@ -253,6 +398,9 @@ def main() -> int:
     print(f"rules index locator integrity: paired fixture {paired['misfit_rate']}, "
           f"drifted fixture {drifted['misfit_rate']} (threshold {ri.MISFIT_THRESHOLD})")
     print(f"extraction modes tried, best kept: {list(ri.PDF_TEXT_MODES)}")
+    print(f"rules documents ({sorted(ri.CONTINUOUS_CLASSES)}) are cut at locators, not page breaks: "
+          f"a continuation, a locator-less page and a four-word tail stay with their rule, in the "
+          f"splitter and in a built index; an FAQ is still cut page by page")
     print(f"anchors for the local audit: {len(anchors['anchors'])} digests over pages "
           f"{anchors['verified_pages']}, both single-line and wrapped; no rules text in the file")
     print("an index with no extraction record reports locator_integrity_unverified")

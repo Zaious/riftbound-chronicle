@@ -239,6 +239,52 @@ def split_page(text: str, page: int) -> list[tuple[str, str]]:
     return chunks
 
 
+# A rules document is cut at its locators, and a page break is not a locator.
+# Cut page by page, a rule ended at the foot of its page and the rest of it, at
+# the top of the next, became a `page-N-context` chunk nothing cites — or was
+# dropped, when it was shorter than the 40 characters a context chunk needs. A
+# digest of that chunk is a digest of part of a rule, and a reading reviewed
+# against it was reviewed against part of a rule.
+#
+# Only the rules documents are cut this way. An FAQ or an errata sheet has no
+# locators of its own: the numbers that open its lines cite rules, and carrying
+# a page onward from one of those glues whole pages of answers to a citation.
+CONTINUOUS_CLASSES = frozenset({"core_rules", "tournament_rules"})
+
+
+def split_document(pages: list[str], continuous: bool) -> list[tuple[int, str, str]]:
+    """(page, locator, text) for a whole document; each chunk carries the page it starts on.
+
+    With `continuous`, the text before a page's first locator — or a page with
+    no locator at all — belongs to the rule still open from the page before, as
+    it does in print. Without it, and before any rule has opened, a page is cut
+    on its own, exactly as `split_page` cuts it.
+    """
+    if not continuous:
+        return [(number, locator, body) for number, text in enumerate(pages, 1)
+                for locator, body in split_page(text, number)]
+    chunks: list[list[Any]] = []
+    open_rule: list[Any] | None = None
+    for number, text in enumerate(pages, 1):
+        matches = list(RULE_START.finditer(text))
+        head = text[:matches[0].start()] if matches else text
+        if open_rule is not None:
+            if normalize(head):
+                open_rule[2].append(head)
+        elif matches:
+            preface = normalize(head)
+            if len(preface) >= 40:
+                chunks.append([number, f"page-{number}-context", [preface]])
+        else:
+            chunks.extend([number, locator, [body]] for locator, body in split_page(text, number))
+        for index, match in enumerate(matches):
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+            open_rule = [number, match.group(1).rstrip("."), [text[match.start():end]]]
+            chunks.append(open_rule)
+    cut = [(page, locator, normalize(" ".join(parts))) for page, locator, parts in chunks]
+    return [chunk for chunk in cut if chunk[2]]
+
+
 def create_schema(connection: sqlite3.Connection) -> None:
     connection.executescript(
         """
@@ -350,13 +396,13 @@ def build_index(root: Path, index_path: Path) -> dict[str, Any]:
                  extraction["empty_chunks"], extraction["orphan_chunks"], extraction["misfit_rate"]),
             )
             document_count += 1
-            for page_number, page_text in enumerate(pages, 1):
-                for locator, body in split_page(page_text, page_number):
-                    connection.execute(
-                        "INSERT INTO chunks(source_id, page, locator, text, compact_text) VALUES (?, ?, ?, ?, ?)",
-                        (source["source_id"], page_number, locator, body, re.sub(r"\s+", "", body.casefold())),
-                    )
-                    chunk_count += 1
+            continuous = source["document_class"] in CONTINUOUS_CLASSES
+            for page_number, locator, body in split_document(pages, continuous):
+                connection.execute(
+                    "INSERT INTO chunks(source_id, page, locator, text, compact_text) VALUES (?, ?, ?, ?, ?)",
+                    (source["source_id"], page_number, locator, body, re.sub(r"\s+", "", body.casefold())),
+                )
+                chunk_count += 1
         connection.execute("INSERT INTO metadata VALUES (?, ?)", ("document_count", str(document_count)))
         connection.execute("INSERT INTO metadata VALUES (?, ?)", ("chunk_count", str(chunk_count)))
         connection.commit()

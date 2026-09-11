@@ -250,11 +250,21 @@ def main() -> int:
                         continue
                     checked += 1
                     if ssb.text_digest(row[0]) != entry["text_hash"]:
-                        wrong.append(entry["locator"])
+                        # An index that cut rules at page breaks gave some
+                        # readings a digest of the rule's first page only. That
+                        # is a reading signed on part of a rule, and it is named
+                        # as such: it needs re-review, not a new hash.
+                        words = ssb.normalize(row[0]).split(" ")
+                        partial = any(ssb.text_digest(" ".join(words[:n])) == entry["text_hash"]
+                                      for n in range(1, len(words)))
+                        wrong.append((entry["locator"], partial))
             finally:
                 connection.close()
-            for locator in sorted(set(wrong)):
-                failures.append(f"{locator}: the approved hash is not the digest of the indexed text")
+            for locator, partial in sorted(set(wrong)):
+                failures.append(
+                    f"{locator}: approved on a leading part of the indexed text, which continues past "
+                    f"where the reviewed text stops; the reading needs re-review against the whole rule"
+                    if partial else f"{locator}: the approved hash is not the digest of the indexed text")
             audit = f"checked {checked} against the local index"
         reviewers = sorted({b["reviewed_by"] for b in bindings})
         authority = (f"closed: {len(merged)} reviewed bindings in {len(approved_paths)} file(s); corpus rule "

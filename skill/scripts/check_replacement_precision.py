@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Regression gate: a Replacement Effect sees the event the rules describe.
+
+Two ways the engine used to offer a replacement an event the rules do not have.
+
+Core 355.6 - being CHOSEN. A replacement worded "if a spell or ability that
+chooses me would stun me…" only applies when the incoming effect chose that
+object. An effect that reaches it by back-reference - "move an enemy unit, then
+Stun it" - never chose it, and the replacement must not fire. The engine matched
+on the event's op alone, so it fired.
+
+Core 370.1.a - an event is a moment that RESULTS from an action. An action that
+changes nothing leaves no event, so there is nothing to replace: "-1 Might, to a
+minimum of 1" on a 1 Might Unit moves nothing, and a Stun on an already Stunned
+Unit is the no_op of 423.2. The engine offered both.
+
+What must hold:
+  - a replacement with `requires_chosen` applies when the effect says it chose
+    the object, and does not when the effect is silent or says otherwise;
+  - a replacement without `requires_chosen` is unaffected - every existing one
+    keeps working;
+  - a Might change floored to zero offers no replacement, while the same
+    replacement still applies to a change that moves something;
+  - a Stun on an already Stunned Unit offers no replacement.
+
+    python3 skill/scripts/check_replacement_precision.py
+"""
+from __future__ import annotations
+
+import copy
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from check_effect_ir import base_state  # noqa: E402
+import effect_ir as IR  # noqa: E402
+
+for stream in (sys.stdout, sys.stderr):
+    try:
+        stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+def stun_replacement(requires_chosen: bool | None) -> dict:
+    """Gangplank's shape: if a spell or ability that chooses me would stun me,
+    give me +3 Might this turn instead."""
+    spec = {
+        "replacement_id": "gp-stun", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "stun", "optional": False, "uses_remaining": None,
+        "target_object_id": "u1",
+        "replacement_effects": [{"op": "modify_might", "effect_id": "gp-plus", "object_id": "$affected",
+                                 "value": {"amount": 3}, "duration": "this_turn"}],
+    }
+    if requires_chosen is not None:
+        spec[IR.REQUIRES_CHOSEN_FIELD] = requires_chosen
+    return spec
+
+
+def might_replacement() -> dict:
+    return {
+        "replacement_id": "gp-might", "controller": "p1", "source_object": "u1",
+        "mode": "replace_with", "event_op": "modify_might", "optional": False, "uses_remaining": None,
+        "target_object_id": "u1",
+        "replacement_effects": [{"op": "modify_might", "effect_id": "gp-plus", "object_id": "$affected",
+                                 "value": {"amount": 3}, "duration": "this_turn"}],
+    }
+
+
+def main() -> int:
+    failures: list[str] = []
+    base = base_state()
+
+    # --- Core 355.6: chosen, or reached by back-reference -------------------
+    state = copy.deepcopy(base)
+    state["replacement_effects"] = [stun_replacement(True)]
+    chose = {"op": "stun", "effect_id": "s", "object_id": "u1", IR.CHOSEN_FIELD: True}
+    did_not = {"op": "stun", "effect_id": "s", "object_id": "u1"}
+    if not IR._applicable_replacements(state, chose):
+        failures.append("a replacement requiring a choice did not apply when the effect chose the object (355.6)")
+    if IR._applicable_replacements(state, did_not):
+        failures.append("a replacement requiring a choice applied to an effect that never chose the object (355.6)")
+    if IR._applicable_replacements(state, {**did_not, IR.CHOSEN_FIELD: False}):
+        failures.append("an effect that says it did not choose still matched a replacement requiring a choice")
+
+    # A replacement that does not ask about choosing is untouched.
+    plain = copy.deepcopy(base)
+    plain["replacement_effects"] = [stun_replacement(None)]
+    if not IR._applicable_replacements(plain, did_not):
+        failures.append("an existing replacement stopped applying; requires_chosen must be opt-in")
+
+    # --- Core 370.1.a: nothing changes, so there is no event ----------------
+    floored = copy.deepcopy(base)
+    floored["replacement_effects"] = [might_replacement()]
+    floored["objects"]["u1"]["base_might"] = 1
+    minus_one_floored = {"op": "modify_might", "effect_id": "m", "object_id": "u1",
+                         "value": {"amount": -1, "minimum": 1}, "duration": "this_turn"}
+    if IR._applicable_replacements(floored, minus_one_floored):
+        failures.append("a Might change floored to zero still offered a replacement (370.1.a)")
+    moves = {"op": "modify_might", "effect_id": "m", "object_id": "u1",
+             "value": {"amount": -1}, "duration": "this_turn"}
+    if not IR._applicable_replacements(floored, moves):
+        failures.append("a Might change that does move something no longer offers its replacement")
+
+    bigger = copy.deepcopy(floored)
+    bigger["objects"]["u1"]["base_might"] = 5
+    if not IR._applicable_replacements(bigger, minus_one_floored):
+        failures.append("the same floored wording on a 5 Might Unit does move it, and must offer the replacement")
+
+    stunned = copy.deepcopy(base)
+    stunned["replacement_effects"] = [stun_replacement(None)]
+    stunned["objects"]["u1"]["stunned"] = True
+    if IR._applicable_replacements(stunned, did_not):
+        failures.append("a Stun on an already Stunned Unit still offered a replacement (423.2, 370.1.a)")
+
+    print("replacement precision (Core 355.6, 370.1.a, 423.2)")
+    print(f"  fields: {IR.CHOSEN_FIELD} on the effect, {IR.REQUIRES_CHOSEN_FIELD} on the replacement")
+    print("  chosen/not-chosen split=ok; floored Might offers nothing; already-Stunned offers nothing")
+    for failure in failures:
+        print("\nFAILED: " + failure)
+    if failures:
+        return 1
+    print("\nPASSED")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

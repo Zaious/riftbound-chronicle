@@ -31,6 +31,9 @@ jobs:
       - name: Empowered counts where a card's text permits it (Core 441.1.c.1, 442.1)
         run: python3 skill/scripts/check_empower_levels.py
 
+      - name: A replacement sees only the events the rules have (Core 355.6, 370.1.a)
+        run: python3 skill/scripts/check_replacement_precision.py
+
       - name: Broken relative markdown links + fragment anchors
         run: python3 skill/scripts/check_links.py
 

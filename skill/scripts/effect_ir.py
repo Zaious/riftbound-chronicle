@@ -102,6 +102,15 @@ PERFORMED_OUTCOMES = {"applied", "replaced_modified_applied", "augmented_applied
 # Instructions that carry a requested/applied count contract; only these may be
 # referenced by requested_count_not_reached (Codex Round B, point 4).
 COUNT_CONTRACT_OPS = {"channel_rune"}
+# Core 441.1.a: Empowered is binary, and 441.1.b/c stop a second Empower - but
+# 441.1.c.1 lets a card grant permission to be Empowered several times, and a
+# card that does say so ("I can be Empowered up to three times") needs the
+# engine to count. `empowered` stays the binary state those rules describe;
+# `empowered_count` is how many times it has been Empowered and only matters
+# when `empower_limit` is above the default of one.
+EMPOWER_LIMIT_FIELD = "empower_limit"
+EMPOWER_COUNT_FIELD = "empowered_count"
+DEFAULT_EMPOWER_LIMIT = 1
 CONDITIONAL_TRIGGER_KINDS = {"caused_kill"}
 # ADR-0012 §5: a Legend lives in the Legend Zone, which is not a Location.
 OBJECT_KINDS = {"unit", "gear", "spell", "rune", "legend"}
@@ -968,6 +977,19 @@ def validate_state(state: Any) -> list[str]:
         for flag in ("empowered", "buffed"):
             if flag in obj and not isinstance(obj[flag], bool):
                 errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 442.1, 426.1.b)")
+        limit = obj.get(EMPOWER_LIMIT_FIELD, DEFAULT_EMPOWER_LIMIT)
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+            errors.append(f"objects.{object_id}.{EMPOWER_LIMIT_FIELD} must be an integer of at least 1 "
+                          f"when supplied (Core 441.1.c.1)")
+            limit = DEFAULT_EMPOWER_LIMIT
+        count = obj.get(EMPOWER_COUNT_FIELD)
+        if count is not None:
+            if not isinstance(count, int) or isinstance(count, bool) or count < 0 or count > limit:
+                errors.append(f"objects.{object_id}.{EMPOWER_COUNT_FIELD} must be an integer from 0 to "
+                              f"{EMPOWER_LIMIT_FIELD} (Core 441.1.c.1)")
+            elif bool(count) != bool(obj.get("empowered")):
+                errors.append(f"objects.{object_id}.{EMPOWER_COUNT_FIELD} disagrees with .empowered; "
+                              f"a Game Object is Empowered exactly while its count is above zero (Core 441.1.a)")
         if obj.get("buffed") and obj.get("kind") != "unit":
             errors.append(f"objects.{object_id}.buffed applies to Units only (Core 702)")
         if not isinstance(obj.get("hidden", False), bool):
@@ -3167,32 +3189,56 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
     elif op == "empower":
         # Core 441: a binary state for a Game Object on the board (442.1). An
         # object that is already Empowered cannot be Empowered again — nothing
-        # additional happens (441.1.b, 441.1.c.1), so no second event either.
+        # additional happens (441.1.b, 441.1.c) — UNLESS its own text grants the
+        # permission 441.1.c.1 describes, in which case a further level is added
+        # while it has room. Only the first one is the "becomes Empowered" event
+        # of 441.2.a: the object is already Empowered for every level after it.
         object_id = effect.get("object_id")
         if object_id not in new_state["objects"]:
             raise ValueError("empower requires a known object")
         obj = new_state["objects"][object_id]
         if zone_class(find_location(new_state, object_id)) != "board":
             raise IllegalOperation(f"Empowered is a state for objects on the board; {object_id!r} is not on it (442.1)")
-        if obj.get("empowered"):
+        limit = obj.get(EMPOWER_LIMIT_FIELD, DEFAULT_EMPOWER_LIMIT)
+        count = obj.get(EMPOWER_COUNT_FIELD, 1 if obj.get("empowered") else 0)
+        if obj.get("empowered") and count >= limit:
             trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none", "already_empowered": True,
-                          "became_empowered": False, "reason": "an Empowered object cannot be Empowered again (441.1.b, 441.1.c.1)"})
+                          "became_empowered": False, "empowered_count": count, "empower_limit": limit,
+                          "reason": ("an Empowered object cannot be Empowered again (441.1.b, 441.1.c)"
+                                     if limit == DEFAULT_EMPOWER_LIMIT else
+                                     "the permission of 441.1.c.1 is spent: the object is at its limit")})
             return new_state, trace
+        became = not obj.get("empowered")
         obj["empowered"] = True
-        trace.update({"object_id": object_id, "became_empowered": True, "already_empowered": False,
-                      "event_hook": {"kind": "become_empowered", "object_id": object_id, "note": "P5 emits the event (442.2)"}})
+        if limit > DEFAULT_EMPOWER_LIMIT:
+            obj[EMPOWER_COUNT_FIELD] = count + 1
+        trace.update({"object_id": object_id, "became_empowered": became, "already_empowered": not became,
+                      "empowered_count": count + 1, "empower_limit": limit})
+        if became:
+            trace["event_hook"] = {"kind": "become_empowered", "object_id": object_id,
+                                   "note": "P5 emits the event (442.2)"}
 
     elif op == "disempower":
+        # Core 442.1: removes the Empowered status. Where a card was Empowered
+        # several times under 441.1.c.1, one Disempower removes one level: the
+        # object stays Empowered while any level remains.
         object_id = effect.get("object_id")
         if object_id not in new_state["objects"]:
             raise ValueError("disempower requires a known object")
         obj = new_state["objects"][object_id]
         if not obj.get("empowered"):
             trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none",
-                          "reason": "disempowering a card that is not Empowered does nothing (443.2.a)"})
+                          "reason": "disempowering a card that is not Empowered does nothing (442.1.a.1)"})
             return new_state, trace
-        del obj["empowered"]
-        trace.update({"object_id": object_id, "disempowered": True})
+        count = obj.get(EMPOWER_COUNT_FIELD, 1)
+        remaining = count - 1
+        if remaining > 0:
+            obj[EMPOWER_COUNT_FIELD] = remaining
+        else:
+            del obj["empowered"]
+            obj.pop(EMPOWER_COUNT_FIELD, None)
+        trace.update({"object_id": object_id, "disempowered": True, "levels_removed": 1,
+                      "empowered_count": remaining, "still_empowered": remaining > 0})
 
     elif op == "buff":
         # Core 426.1.b: a Unit either has a Buff counter or it does not; a Unit

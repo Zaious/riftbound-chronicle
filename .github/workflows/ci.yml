@@ -28,6 +28,9 @@ jobs:
       - name: Data integrity (errata schema/freshness/residue, raw dataset shape, Domain population vs prose)
         run: python3 skill/scripts/check_data_integrity.py
 
+      - name: Empowered counts where a card's text permits it (Core 441.1.c.1, 442.1)
+        run: python3 skill/scripts/check_empower_levels.py
+
       - name: Broken relative markdown links + fragment anchors
         run: python3 skill/scripts/check_links.py
 

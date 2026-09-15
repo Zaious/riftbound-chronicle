@@ -39,9 +39,9 @@ for stream in (sys.stdout, sys.stderr):
         pass
 
 
-def selector(object_id: str, relation: str) -> dict:
+def selector(object_id: str, relation: str | None = None) -> dict:
     return {"object_id": object_id, "chosen_zone_class": "board", "kind": "unit",
-            "controller_relation": relation}
+            **({"controller_relation": relation} if relation else {})}
 
 
 def two_units(might_a: int, might_b: int) -> dict:
@@ -131,6 +131,12 @@ def main() -> int:
         "units": pair, "duration": "this_turn"}))
     if bad.get("valid") is not False:
         failures.append("swap_might accepted an amount of its own; the change is the difference (Core 477)")
+
+    junk = IR.apply_program(two_units(6, 2), program("swap", {
+        "op": "swap_might", "effect_id": "sw", "source": "kayle", "duration": "this_turn",
+        "units": [selector("u1", "friendly"), {"object_id": "u2", "controller_relation": "hostile"}]}))
+    if junk.get("valid") is not False:
+        failures.append("swap_might accepted a malformed unit selector")
 
     one = IR.apply_program(two_units(6, 2), program("swap", {
         "op": "swap_might", "effect_id": "sw", "source": "kayle",

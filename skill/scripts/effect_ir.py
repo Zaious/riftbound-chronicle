@@ -123,6 +123,12 @@ REQUIRES_CHOSEN_FIELD = "requires_chosen"
 # a buff too. Optional, and only meaningful on a modify_might replacement.
 MIGHT_DIRECTION_FIELD = "event_might_direction"
 MIGHT_DIRECTIONS = {"decrease", "increase"}
+# Core 828.1.b.1 / 828.1.c: "[Empowered][>] [Text]" is short for "While I have
+# the Empowered status, this card gains [Text]", and the Dependent Ability is
+# active only as long as that status lasts. A Replacement Effect written this
+# way is therefore not merely source-backed: losing the status turns it off
+# without the source leaving the board.
+DEPENDENT_ON_EMPOWERED_FIELD = "requires_source_empowered"
 # Core 370.1.a: an event is the singular moment that results from a Game Action
 # or a state change. An action that changes nothing produces no event, so there
 # is nothing for a Replacement Effect to replace: a Might change floored to
@@ -1113,6 +1119,9 @@ def validate_state(state: Any) -> list[str]:
         requires_chosen = replacement.get(REQUIRES_CHOSEN_FIELD)
         if requires_chosen is not None and not isinstance(requires_chosen, bool):
             errors.append(f"{label}.{REQUIRES_CHOSEN_FIELD} must be boolean when supplied (Core 355.6)")
+        dependent = replacement.get(DEPENDENT_ON_EMPOWERED_FIELD)
+        if dependent is not None and not isinstance(dependent, bool):
+            errors.append(f"{label}.{DEPENDENT_ON_EMPOWERED_FIELD} must be boolean when supplied (Core 828.1.c)")
         direction = replacement.get(MIGHT_DIRECTION_FIELD)
         if direction is not None:
             if direction not in MIGHT_DIRECTIONS:
@@ -1286,6 +1295,10 @@ def validate_program(program: Any) -> list[str]:
                 units = effect.get("units")
                 if not isinstance(units, list) or len(units) != 2:
                     errors.append(f"effects[{index}].swap_might needs exactly two unit selectors")
+                else:
+                    for position, selector in enumerate(units):
+                        for problem in _selector_errors(selector):
+                            errors.append(f"effects[{index}].swap_might.units[{position}] {problem}")
                 if {"target", "targets", "object_id", "affected"} & set(effect):
                     errors.append(f"effects[{index}].swap_might carries its two units, not target/targets/object_id/affected")
                 if "amount" in effect or "value" in effect:
@@ -2106,6 +2119,9 @@ def replacement_active(state: dict[str, Any], replacement: dict[str, Any]) -> bo
             return False
         return (target in state["objects"] and zone_class(find_location(state, target)) == "board"
                 and object_identity(state, target) == grant["target_identity"])
+    # Core 828.1.c is deliberately NOT read here: an Empowered Ability that is
+    # switched off is still there, and pruning would delete it for good, so
+    # re-Empowering could never bring it back. The matcher reads the status.
     return zone_class(find_location(state, replacement["source_object"])) == "board"
 
 
@@ -2193,6 +2209,14 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
             continue
         if "granted" in replacement and not replacement_active(state, replacement):
             continue
+        # Core 828.1.b.1, 828.1.c: "[Empowered][>] …" is short for "While I have
+        # the Empowered status, this card gains …", so the ability is switched
+        # off the moment the source is Disempowered - and on again if it is
+        # Empowered anew, which is why this is read here and not at pruning.
+        if replacement.get(DEPENDENT_ON_EMPOWERED_FIELD):
+            source_obj = state["objects"].get(replacement.get("source_object"))
+            if not (source_obj or {}).get("empowered"):
+                continue
         # Core 355.6: it must have been this effect that chose the object.
         if replacement.get(REQUIRES_CHOSEN_FIELD) and effect.get(CHOSEN_FIELD) is not True:
             continue

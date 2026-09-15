@@ -34,6 +34,9 @@ jobs:
       - name: A replacement sees only the events the rules have (Core 355.6, 370.1.a)
         run: python3 skill/scripts/check_replacement_precision.py
 
+      - name: Swapping two Units' Might is two Might changes over one snapshot (Core 477)
+        run: python3 skill/scripts/check_swap_might.py
+
       - name: Broken relative markdown links + fragment anchors
         run: python3 skill/scripts/check_links.py
 

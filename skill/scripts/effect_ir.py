@@ -156,6 +156,12 @@ SUPPORTED_OPS = {
     "grant_keyword",
     # C-29 (ADR-0008 §7): two chosen Units deal their current Might to each other, simultaneously.
     "mutual_damage_current_might",
+    # C-33: "Swap the Might of two units this turn." Riot's own reading is that
+    # the difference is worked out first and then applied as two Might changes -
+    # a decrease on one, an increase on the other - which is why a replacement
+    # that answers to "would give me -Might" can see it. Modelled exactly so:
+    # one snapshot, two ordinary modify_might events.
+    "swap_might",
     # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
     # taking a looked-at card, Recycle as one action, Predict.
     "look_at_top",
@@ -194,7 +200,7 @@ SUPPORTED_OPS = {
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
-COMPOSITE_OPS = {"mutual_damage_current_might"}
+COMPOSITE_OPS = {"mutual_damage_current_might", "swap_might"}
 # ADR-0011 §1: instructions whose single object comes from a typed `choice`.
 CHOICE_OPS = {"recycle_one", "choose_player"}
 # selection-binding.v1: instructions that establish a selection rather than
@@ -374,6 +380,7 @@ OP_RULES = {
     "heal_all_damage": ["Core 418"],
     "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
     "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
+    "swap_might": ["Core 477", "Core 135.2.e.3", "Core 370.1.a", "Core 373.2"],
     "look_at_top": ["Core 128.4", "Core 431.1.c", "Core 431.1.c.1"],
     "reveal": ["Core 424.1", "Core 424.2", "Core 424.2.a", "Core 424.3.a", "Core 431.1.c"],
     "put_back": ["Core 424.2", "Core 436.1.a", "Core 355.10.a"],
@@ -1263,6 +1270,17 @@ def validate_program(program: Any) -> list[str]:
             predicate = effect.get("predicate")
             if predicate is not None:
                 errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt"), seen, {e.get("effect_id", f"effect-{i}"): e for i, e in enumerate(effects[:index]) if isinstance(e, dict)}))
+            if effect.get("op") == "swap_might":
+                units = effect.get("units")
+                if not isinstance(units, list) or len(units) != 2:
+                    errors.append(f"effects[{index}].swap_might needs exactly two unit selectors")
+                if {"target", "targets", "object_id", "affected"} & set(effect):
+                    errors.append(f"effects[{index}].swap_might carries its two units, not target/targets/object_id/affected")
+                if "amount" in effect or "value" in effect:
+                    errors.append(f"effects[{index}].swap_might takes no amount or value: the change is the "
+                                  f"difference between the two Mights, read once at resolution (Core 477)")
+                if effect.get("duration") not in {"this_turn", None}:
+                    errors.append(f"effects[{index}].swap_might may only last this_turn")
             if effect.get("op") == "mutual_damage_current_might":
                 units = effect.get("units")
                 if not isinstance(units, list) or len(units) != 2:
@@ -1281,6 +1299,11 @@ def validate_program(program: Any) -> list[str]:
                     # leaving it accepted left a field that looks authoritative
                     # and is not. Refused rather than ignored.
                     errors.append(f"effects[{index}].mutual_damage_current_might takes no `amount`: the damage is each Unit's current Might, read at resolution")
+            if effect.get("op") == "modify_might":
+                for bound in ("minimum", "maximum"):
+                    value = effect.get(bound)
+                    if value is not None and (not isinstance(value, int) or isinstance(value, bool)):
+                        errors.append(f"effects[{index}].modify_might.{bound} must be an integer when supplied (Core 477)")
             if effect.get("op") == "grant_keyword":
                 if effect.get("keyword") not in GRANTABLE_KEYWORDS:
                     errors.append(f"effects[{index}].grant_keyword.keyword must be one of {sorted(GRANTABLE_KEYWORDS)}")
@@ -2103,19 +2126,29 @@ def _is_zero_magnitude(state: dict[str, Any], effect: dict[str, Any]) -> bool:
     if op == "stun":
         return bool(obj.get("stunned"))
     if op == "modify_might":
-        value = effect.get("value")
-        if not isinstance(value, dict) or not isinstance(value.get("amount"), int):
+        amount = effect.get("amount")
+        if not isinstance(amount, int) or isinstance(amount, bool):
             return False
-        amount = value["amount"]
-        if value.get("mode") == "increase_to":
-            return effective_might(state, object_id) >= amount
-        current = effective_might(state, object_id)
-        if "minimum" in value and current + amount < value["minimum"]:
-            amount = value["minimum"] - current
-        if "maximum" in value and current + amount > value["maximum"]:
-            amount = value["maximum"] - current
-        return amount == 0
+        return _floored_might_amount(effective_might(state, object_id), amount, effect) == 0
     return False
+
+
+def _bound(effect: dict[str, Any], name: str) -> int | None:
+    value = effect.get(name)
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _floored_might_amount(current: int, amount: int, effect: dict[str, Any]) -> int:
+    """How much a Might change actually moves, after the card's own floor or cap.
+
+    "Give a Unit -1 Might, to a minimum of 1" moves nothing on a 1 Might Unit,
+    and Core 370.1.a leaves no event where nothing moved."""
+    minimum, maximum = _bound(effect, "minimum"), _bound(effect, "maximum")
+    if minimum is not None and current + amount < minimum:
+        amount = minimum - current
+    if maximum is not None and current + amount > maximum:
+        amount = maximum - current
+    return amount
 
 
 def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
@@ -2729,20 +2762,40 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("modify_might requires a known object and integer amount")
         if duration not in {"this_turn", "persistent"} or not isinstance(source, str) or not source:
             raise ValueError("modify_might requires duration and source")
+        # Core 477 with the card's own floor: "give a Unit -1 Might, to a minimum
+        # of 1" moves nothing on a 1 Might Unit. The floor is worked out here so
+        # that what gets recorded is what actually happened, and the entry
+        # carries the bounds for the layer code that already reads them.
+        floored = _floored_might_amount(effective_might(new_state, object_id), amount, effect)
+        minimum, maximum = _bound(effect, "minimum"), _bound(effect, "maximum")
+        if floored == 0:
+            # Core 370.1.a: nothing moved, so there is no event. No continuous
+            # effect is recorded either - an entry of +0 would still be an entry
+            # that other rules could read.
+            trace.update({"object_id": object_id, "amount": 0, "requested_amount": amount,
+                          "duration": duration, "outcome": "no_op", "completion": "none",
+                          "floored_by": {"minimum": minimum, "maximum": maximum},
+                          "reason": "the change is floored or capped away; nothing moves, so there is no "
+                                    "event to read (Core 370.1.a)"})
+            return new_state, trace
         # ADR-0013 §1: one canonical continuous effect in the Arithmetic layer.
         turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+        bounds = {name: value for name, value in (("minimum", minimum), ("maximum", maximum)) if value is not None}
         entry = {
             "effect_id": f"might:{source}:{object_id}:{len(canonical_effects(new_state))}", "kind": "might_arithmetic",
             "source": {"object": source if source in new_state["objects"] or source in new_state["battlefields"] else object_id, "identity": None, "name": source},
             "affects": {"scope": "object", "object": object_id, "identity": object_identity(new_state, object_id) or f"{object_id}@0"},
-            "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
-            "timestamp": _next_timestamp(new_state), "value": {"amount": amount, "mode": "delta"},
+            "layer": "arithmetic", "sublayer": "increase" if floored >= 0 else "decrease",
+            "timestamp": _next_timestamp(new_state), "value": {"amount": floored, "mode": "delta", **bounds},
             "duration": {"kind": "this_turn", "turn_id": turn_id} if duration == "this_turn" else {"kind": "permanent"},
             "passive": False,
         }
         new_state.setdefault("continuous_effects", []).append(entry)
-        trace.update({"object_id": object_id, "amount": amount, "duration": duration, "turn_id": turn_id if duration == "this_turn" else None,
+        trace.update({"object_id": object_id, "amount": floored, "requested_amount": amount,
+                      "duration": duration, "turn_id": turn_id if duration == "this_turn" else None,
                       "effect_id": entry["effect_id"], "layer": "arithmetic", "timestamp": entry["timestamp"]})
+        if floored != amount:
+            trace["floored_by"] = {"minimum": minimum, "maximum": maximum}
 
     elif op == "discard":
         player_id, objects = effect.get("player"), effect.get("objects")
@@ -2857,6 +2910,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
 
     elif op == "mutual_damage_current_might":
         raise ValueError("mutual_damage_current_might is resolved by apply_program as two simultaneous Deal events")
+
+    elif op == "swap_might":
+        raise ValueError("swap_might is resolved by apply_program as two Might changes over one snapshot")
 
     elif op == "establish_selection":
         # apply_program runs it before selector resolution, because it produces
@@ -5132,6 +5188,70 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "illegal_operation", "reason": str(exc), "failed_effect_index": index, "trace": trace}
             except ValueError as exc:
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+        if effect.get("op") == "swap_might":
+            # Core 477 with Riot's reading: read both Mights BEFORE either moves,
+            # then run the two changes as ordinary modify_might events. Because
+            # they are ordinary, each passes the replacement machinery on its own
+            # - which is what lets "if a spell would give me -Might" see the
+            # decrease - and because the amounts come from one snapshot, the
+            # second is not computed from a Might the first already changed.
+            try:
+                pair = []
+                for selector in effect["units"]:
+                    resolved, _meta = _resolve_selectors(current, {"target": selector}, program, decisions)
+                    pair.append(resolved[0])
+            except TargetDecisionRequired as exc:
+                return {**base, "valid": True, "committed": False, "target_decision_required": True,
+                        "reason_code": "target_selection_required", "reason": str(exc),
+                        "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                        "failed_effect_index": index, "trace": trace}
+            except IllegalDecision as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": "decision_controller_mismatch", "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+            except ValueError as exc:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                        "errors": [str(exc)], "trace": trace}
+            verdicts = [(sel, *evaluate_target(current, sel, program.get("controller"))) for sel in pair]
+            ids = [sel["object_id"] for sel, _, _ in verdicts]
+            invalid = [{"object_id": sel["object_id"], "reason": reason} for sel, ok, reason in verdicts if not ok]
+            if ids[0] == ids[1] and not invalid:
+                invalid = [{"object_id": ids[0], "reason": "same_unit_twice"}]
+            if invalid:
+                event = {"index": index, "effect_id": effect_id, "op": "swap_might",
+                         "outcome": "ignored_illegal_target", "target_outcome": "skipped_illegal_target",
+                         "completion": "none", "units": ids, "invalid_targets": invalid,
+                         "reason": "a Unit of the pair is not a legal referent; the swap relates to both (359.3.e.5)",
+                         "rule_locators": ["Core 359.3.e.1–359.3.e.5"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            snapshot = {object_id: effective_might(current, object_id) for object_id in ids}
+            delta = snapshot[ids[1]] - snapshot[ids[0]]
+            duration = effect.get("duration", "this_turn")
+            source = effect.get("source") or effect_id
+            expanded = [
+                {"op": "modify_might", "effect_id": f"{effect_id}:a", "object_id": ids[0],
+                 "amount": delta, "duration": duration, "source": source,
+                 CHOSEN_FIELD: effect.get(CHOSEN_FIELD, True), "swap_of": effect_id},
+                {"op": "modify_might", "effect_id": f"{effect_id}:b", "object_id": ids[1],
+                 "amount": -delta, "duration": duration, "source": source,
+                 CHOSEN_FIELD: effect.get(CHOSEN_FIELD, True), "swap_of": effect_id},
+            ]
+            event = {"index": index, "effect_id": effect_id, "op": "swap_might",
+                     "outcome": "expanded" if delta else "no_op",
+                     "completion": "full" if delta else "none",
+                     "units": ids, "might_before": snapshot, "delta": delta,
+                     "expanded_into": [child["effect_id"] for child in expanded],
+                     "reason": None if delta else "both Units already have the same Might, so nothing changes (370.1.a)",
+                     "rule_locators": list(OP_RULES["swap_might"]),
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            if delta:
+                effects_to_run[index + 1:index + 1] = expanded
+            continue
         if effect.get("op") == "mutual_damage_current_might":
             # ADR-0008 §7 (Gentlemen's Duel): both Units are revalidated, both
             # rules-facing Mights are read before either Deal, then the two Deal

@@ -51,7 +51,7 @@ def stun_replacement(requires_chosen: bool | None) -> dict:
         "mode": "replace_with", "event_op": "stun", "optional": False, "uses_remaining": None,
         "target_object_id": "u1",
         "replacement_effects": [{"op": "modify_might", "effect_id": "gp-plus", "object_id": "$affected",
-                                 "value": {"amount": 3}, "duration": "this_turn"}],
+                                 "amount": 3, "duration": "this_turn", "source": "u1"}],
     }
     if requires_chosen is not None:
         spec[IR.REQUIRES_CHOSEN_FIELD] = requires_chosen
@@ -64,7 +64,7 @@ def might_replacement() -> dict:
         "mode": "replace_with", "event_op": "modify_might", "optional": False, "uses_remaining": None,
         "target_object_id": "u1",
         "replacement_effects": [{"op": "modify_might", "effect_id": "gp-plus", "object_id": "$affected",
-                                 "value": {"amount": 3}, "duration": "this_turn"}],
+                                 "amount": 3, "duration": "this_turn", "source": "u1"}],
     }
 
 
@@ -95,11 +95,11 @@ def main() -> int:
     floored["replacement_effects"] = [might_replacement()]
     floored["objects"]["u1"]["base_might"] = 1
     minus_one_floored = {"op": "modify_might", "effect_id": "m", "object_id": "u1",
-                         "value": {"amount": -1, "minimum": 1}, "duration": "this_turn"}
+                         "amount": -1, "minimum": 1, "duration": "this_turn", "source": "stupefy"}
     if IR._applicable_replacements(floored, minus_one_floored):
         failures.append("a Might change floored to zero still offered a replacement (370.1.a)")
     moves = {"op": "modify_might", "effect_id": "m", "object_id": "u1",
-             "value": {"amount": -1}, "duration": "this_turn"}
+             "amount": -1, "duration": "this_turn", "source": "stupefy"}
     if not IR._applicable_replacements(floored, moves):
         failures.append("a Might change that does move something no longer offers its replacement")
 

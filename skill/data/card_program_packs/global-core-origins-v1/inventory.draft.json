@@ -21,7 +21,8 @@
       "canonical_name": "Annie - Dark Child (Starter)",
       "current_text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
       "printing_ids": [
-        "ogs-017-024"
+        "ogs-017-024",
+        "opp-017-024"
       ],
       "behavior_status": "stale",
       "clauses": [
@@ -712,7 +713,8 @@
       "canonical_name": "Master Yi - Wuju Bladesman (Starter)",
       "current_text_hash": "sha256:96ecd8e61bf3f1b2ab53be18cb638aa01522869250250c030da36ee752be96e9",
       "printing_ids": [
-        "ogs-019-024"
+        "ogs-019-024",
+        "opp-019-024"
       ],
       "behavior_status": "unsupported",
       "clauses": [

@@ -82,13 +82,110 @@ def main():
         errors.append("environment registry does not route legality to the official Rules Hub")
     if not environments.get("live_check_required_for_real_event"):
         errors.append("environment registry must require live re-check for real events")
-    if set(environments.get("environments", {})) != {"global-vendetta", "taiwan-set1-banned"}:
-        errors.append("environment registry must expose the two supported environments")
-    standard_bans = set(environments["formats"]["1v1 Constructed"]["banned_names"])
+    # Codex 2026-09-09: a v1 registry must never be read as v2. v1 carried a
+    # single inherited `formats` block and no ban_lists; reading it here would
+    # silently treat "no versioned ban list" as "no bans", which is the exact
+    # class of quiet wrong answer this file exists to prevent.
+    schema = environments.get("schema_version")
+    if schema != "deck-coach-environments.v2":
+        errors.append(f"environment registry is {schema!r}; this build reads "
+                      f"deck-coach-environments.v2 only. Migrate it explicitly "
+                      f"(ban_lists + current_ban_list + per-environment ban_list_ref) "
+                      f"rather than letting a v1 file be read as v2")
+        for error in errors:
+            print(f"  - {error}")
+        print("")
+        print(f"FAILED: {len(errors)} Deck Coach closed-loop regression(s).")
+        return 1
+    if "formats" in environments:
+        errors.append("a v2 registry carries no top-level formats block; the ban list is "
+                      "versioned and referenced, not inherited")
+
+    current = environments.get("current_ban_list")
+    ban_lists = environments.get("ban_lists", {})
+    if current not in ban_lists:
+        # Fourth time this shape has come up (S-01b, I-01, S-01c, here): every
+        # downstream check reads the ban list, so continuing past an unusable
+        # registry reports a traceback instead of the defect. Name it and stop.
+        errors.append(f"current_ban_list {current!r} is not one of the versioned ban lists "
+                      f"{sorted(ban_lists)}; nothing downstream can be checked against it")
+        for error in errors:
+            print(f"  - {error}")
+        print("")
+        print(f"FAILED: {len(errors)} Deck Coach closed-loop regression(s).")
+        return 1
+    registry = environments.get("environments", {})
+    live = {k for k, v in registry.items() if v.get("kind") == "live"}
+    snapshots = {k for k, v in registry.items()
+                 if v.get("kind") in ("calibration_snapshot", "service_snapshot")}
+    if live != {"global-vendetta", "taiwan-set1-banned"}:
+        errors.append("environment registry must expose the two supported live environments")
+    if set(registry) - live - snapshots:
+        errors.append(f"environment registry carries entries of no known kind: "
+                      f"{sorted(set(registry) - live - snapshots)}")
+    # A calibration snapshot is the environment a validity claim is measured
+    # against, so what it is may not drift under that claim. Before its freeze
+    # date it says so and carries no hash; on and after it, it carries the hash
+    # of what was frozen and is never legal for play.
+    # v2: a live environment carries the ban list in force. Its pool may be
+    # stable while the list under it moves, and that is exactly the drift that
+    # would break a completeness claim bound to a live entry, so the two axes
+    # are checked separately: stale_on_or_after tracks the pool, ban_list_ref
+    # tracks the list.
+    for name in sorted(live):
+        env = registry[name]
+        if env.get("ban_list_ref") != current:
+            errors.append(f"{name}: a live environment carries the ban list in force "
+                          f"({current}); it names {env.get('ban_list_ref')!r}, so it is stale and "
+                          f"must be updated or frozen")
+        if "stale_on_or_after" not in env:
+            errors.append(f"{name}: a live environment states its pool staleness explicitly, "
+                          f"null included")
+    for name in sorted(snapshots):
+        snap = registry[name]
+        if snap.get("ban_list_ref") not in ban_lists:
+            errors.append(f"{name}: a snapshot pins a ban list version that exists in this file")
+        # Codex 2026-09-09: pool and ban list are not the only axes a
+        # completeness claim rides on. An erratum or a Core Rules update moves
+        # what the cards say without touching either, so a frozen snapshot
+        # pins the text and the baseline too.
+        PINNED = ("errata_overlay_version", "errata_overlay_hash",
+                  "effective_card_text_bundle_hash", "ruleset_core_version")
+        if snap.get("status") == "frozen":
+            for field in PINNED:
+                if not snap.get(field):
+                    errors.append(f"{name}: a frozen snapshot pins {field}; without it an erratum "
+                                  f"or a rules update invalidates the claim silently")
+        elif snap.get("status") == "scheduled_freeze":
+            requires = set(snap.get("freeze_requires") or [])
+            if not set(PINNED) <= requires:
+                errors.append(f"{name}: freeze_requires must name every field the freeze will pin; "
+                              f"missing {sorted(set(PINNED) - requires)}")
+            for field in PINNED:
+                if snap.get(field):
+                    errors.append(f"{name}: nothing is frozen yet, so it pins no {field}")
+        if snap.get("legal_for_play") is not False:
+            errors.append(f"{name}: a {snap.get('kind')} is never legal for play; "
+                          f"play legality is the live entry plus a live re-check")
+        if snap.get("frozen_from") not in registry:
+            errors.append(f"{name}: frozen_from must name an environment in this registry")
+        if snap.get("status") == "scheduled_freeze":
+            if not snap.get("freeze_on"):
+                errors.append(f"{name}: a scheduled freeze names the date it freezes on")
+            if snap.get("content_hash") is not None:
+                errors.append(f"{name}: nothing is frozen yet, so it carries no content hash")
+        elif snap.get("status") == "frozen":
+            if not snap.get("content_hash"):
+                errors.append(f"{name}: a frozen snapshot carries the hash of what was frozen")
+        else:
+            errors.append(f"{name}: status must be scheduled_freeze or frozen")
+        if "stale_on_or_after" in snap:
+            errors.append(f"{name}: a snapshot never goes stale; that is the point of it")
+    standard_bans = set(ban_lists[current]["formats"]["1v1 Constructed"]["banned_names"])
     expected_bans = {"Called Shot", "Draven - Vanquisher", "Fight or Flight", "Scrapheap", "Stealthy Pursuer", "The Arena's Greatest", "Aspirant's Climb", "The Dreaming Tree", "Obelisk of Power", "Reaver's Row"}
     if standard_bans != expected_bans:
         errors.append(f"1v1 ban snapshot differs from the 2026-07-16 official list: {sorted(standard_bans ^ expected_bans)}")
-    if "Master Yi - Wuju Bladesman" not in environments["formats"]["2v2 Constructed"]["banned_names"]:
+    if "Master Yi - Wuju Bladesman" not in ban_lists[current]["formats"]["2v2 Constructed"]["banned_names"]:
         errors.append("2v2 mask is missing Master Yi - Wuju Bladesman")
 
     for filename, (field, const) in SCHEMAS.items():
@@ -169,7 +266,7 @@ def main():
         if battle_fixture is None:
             battle_fixture = (case, profile, mask, candidate)
 
-    formats = environments["formats"]
+    formats = environments["ban_lists"][environments["current_ban_list"]]["formats"]
     two_v_two_only = set(formats["2v2 Constructed"]["banned_names"]) - set(formats["1v1 Constructed"]["banned_names"])
     if not two_v_two_only:
         errors.append("the two Constructed ban lists no longer differ; the format-scoped legality case has nothing to prove")
@@ -201,6 +298,44 @@ def main():
                                   "legality is being applied without regard to format")
         if not covered:
             errors.append(f"no case exercises a 2v2-only ban ({sorted(two_v_two_only)}); the ban lists differ and nothing checks it")
+
+    # The snapshot names a Proving Grounds legend "... (Starter)", and the rows
+    # carrying the plain name are OPP printings outside every pool. Decklists
+    # write the card's name, so on 2026-09-11 four of thirteen Taiwan deck
+    # snapshots were refused as not released while the card is in OGS. The
+    # plain name must find the in-pool Starter printing, and a ban on the name
+    # must reach the Starter spelling.
+    taiwan_pool = set(registry["taiwan-set1-banned"]["legal_set_ids"])
+    set_one = next((case for case in load_cases() if case["input"]["environment"] == "taiwan-set1-banned"
+                    and case["input"]["format"] == "1v1 Constructed"), None)
+    starters = [card for card in catalog.cards
+                if card["name"].endswith(" (Starter)") and card["set"]["set_id"] in taiwan_pool]
+    checked = set()
+    for card in starters if set_one else []:
+        plain = card["name"].removesuffix(" (Starter)")
+        checked.add(plain)
+        as_plain = {**set_one["input"], "legend": plain}
+        mask = build_mask(as_plain, build_profile(as_plain, catalog), catalog)
+        legend_check = next(entry for entry in mask["deck_legality"]["checks"] if entry["zone"] == "legend")
+        if not legend_check["allowed"]:
+            errors.append(f"{set_one['case_id']}: {plain!r} is printed in {card['set']['set_id']} as {card['name']!r}, "
+                          f"yet taiwan-set1-banned refuses the plain name: {legend_check['reasons']}")
+        resolved = catalog.resolve(plain, taiwan_pool) or {}
+        if resolved.get("riftbound_id") != card["riftbound_id"]:
+            errors.append(f"{plain!r} resolves to {resolved.get('riftbound_id')!r} under the Taiwan pool, "
+                          f"not to its in-pool printing {card['riftbound_id']!r}")
+        banned_case = next((case for case in load_cases() if case["input"]["format"] == "2v2 Constructed"
+                            and case["input"]["legend"] == plain and plain in two_v_two_only), None)
+        if banned_case:
+            as_starter = {**banned_case["input"], "legend": card["name"]}
+            starter_mask = build_mask(as_starter, build_profile(as_starter, catalog), catalog)
+            starter_check = next(entry for entry in starter_mask["deck_legality"]["checks"] if entry["zone"] == "legend")
+            if "banned_in_format" not in starter_check["reasons"]:
+                errors.append(f"{banned_case['case_id']}: {plain!r} is banned in 2v2, yet spelling it {card['name']!r} "
+                              f"passes the mask: {starter_check['reasons']}")
+    if "Master Yi - Wuju Bladesman" not in checked:
+        errors.append("the Starter-printing check did not reach Master Yi - Wuju Bladesman; it has no Taiwan 1v1 case "
+                      "or no OGS Starter printing to prove anything with")
 
     if len(case_ids) < 3 or len(case_ids) != len(set(case_ids)):
         errors.append("eval suite needs at least three unique executable cases")

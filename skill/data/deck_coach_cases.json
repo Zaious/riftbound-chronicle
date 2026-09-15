@@ -214,7 +214,7 @@
         "must_mention_weakness": ["blocked deck entry"],
         "forbidden_claims": ["the same ban list applies to both formats", "Stealthy Pursuer is legal", "this Legend is legal in 2v2 Constructed"],
         "acceptable_uncertainty": ["no verified card-by-card sequence"],
-        "expected_mask_reasons": ["banned_in_format", "not_released_in_environment"],
+        "expected_mask_reasons": ["banned_in_format"],
         "expected_blocked_deck_entries": 1
       },
       "expert_reference": {

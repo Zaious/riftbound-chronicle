@@ -40,7 +40,11 @@ UNCERTAINTY_MARKERS = (
     "no verified", "not verified", "unknown", "not established", "requires a live check",
     "hypothesis", "cannot determine", "needs expert", "insufficient",
 )
-VARIANT_SUFFIX = re.compile(r"\s+\((?:alternate art|metal|overnumbered|signature)\)$", re.I)
+# Printing labels, not card names. "Starter" marks the Proving Grounds (OGS)
+# legends, whose plain-named rows are OPP printings outside every pool; the
+# resolver ranks pool membership above variant_rank, so a pool whose only
+# printing carries the label still resolves to it.
+VARIANT_SUFFIX = re.compile(r"\s+\((?:alternate art|metal|overnumbered|signature|starter)\)$", re.I)
 
 
 class PipelineError(ValueError):
@@ -123,7 +127,12 @@ class CardCatalog:
 
     def environment(self, environment_id: str, format_name: str) -> tuple[dict[str, Any], dict[str, Any]]:
         environment = self.environments.get("environments", {}).get(environment_id)
-        format_config = self.environments.get("formats", {}).get(format_name)
+        # v2: the ban list is versioned, so a format's bans are resolved through
+        # the environment's ban_list_ref rather than a single inherited block.
+        ban_ref = ((environment or {}).get("ban_list_ref")
+                   or self.environments.get("current_ban_list"))
+        ban_list = (self.environments.get("ban_lists", {}) or {}).get(ban_ref, {})
+        format_config = (ban_list.get("formats", {}) or {}).get(format_name)
         if not environment:
             raise PipelineError(f"unknown environment {environment_id!r}")
         if not format_config:
@@ -458,7 +467,9 @@ def build_mask(deck_input: dict[str, Any], profile: dict[str, Any] | None = None
         "live_check": {
             "required_for_real_event": True,
             "registry_last_checked": catalog.environments["last_checked"],
-            "ban_list_last_updated": catalog.environments["ban_list_last_updated"],
+            "ban_list_version": catalog.environments["current_ban_list"],
+            "ban_list_last_updated": catalog.environments["ban_lists"][
+                catalog.environments["current_ban_list"]]["last_updated"],
             "source": catalog.environments["official_legality_source"],
             "registry_stale": registry_stale,
             "status": "needs_live_check" if registry_stale else "provisional_only",

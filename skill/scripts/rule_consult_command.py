@@ -261,6 +261,7 @@ RULE_ACTORS = {
     "a_player_other_than_the_turn_player": "a player other than the Turn Player",
     "a_player_with_focus_but_not_priority": "a player who holds Focus but not Priority",
     "only_the_turn_player": "only the Turn Player",
+    "only_the_player_holding_priority": "only the player who holds Priority",
 }
 RULE_MODALITIES = {"may": "may", "may_not": "may not", "must": "must",
                    # a capability the text grants to one party, not a permission checked per card
@@ -270,6 +271,13 @@ RULE_ACTIONS = {
     "take_a_limited_action": "take a Limited Action",
     "play_a_spell_or_activate_an_ability": "play a spell or activate an ability",
     "play_spells_or_activate_abilities": "play spells or activate abilities",
+    "take_a_standard_move_with_a_unit": "take a Standard Move with a Unit",
+    "move_a_unit_from_its_base_to_a_battlefield_with_a_standard_move":
+        "move a Unit from its Base to a Battlefield with a Standard Move",
+    "move_a_unit_from_a_battlefield_to_its_base_with_a_standard_move":
+        "move a Unit from a Battlefield to its Base with a Standard Move",
+    "move_a_unit_with_ganking_from_battlefield_to_battlefield_with_a_standard_move":
+        "move a Unit with Ganking from one Battlefield to another with a Standard Move",
 }
 RULE_CONDITIONS = {
     "unconditionally": "",
@@ -281,6 +289,9 @@ RULE_CONDITIONS = {
     "when_instructed_or_at_its_occasion_in_the_turn":
         " when instructed or at its occasion in the turn",
     "in_a_neutral_open_state": " in a Neutral Open State",
+    "at_any_time_during_a_players_main_phase": " at any time during a player's Main Phase",
+    "during_a_closed_state": " during a Closed State",
+    "during_a_showdown_or_combat": " during a Showdown or Combat",
 }
 RULE_OCCASIONS = {
     "when_showdown_begins": "as a Showdown begins, ",
@@ -376,6 +387,15 @@ RULE_EVENTS = {
     "a_unit_keeps_its_defender_designation": "a Unit keeps its Defender designation",
     "a_choice_would_put_more_than_two_players_in_one_combat":
         "a choice would put more than two players in one Combat",
+    "a_unit_takes_a_standard_move": "a Unit takes a Standard Move",
+    "a_game_object_is_already_exhausted": "a Game Object is already Exhausted",
+    "a_game_object_is_instructed_to_be_exhausted_while_already_exhausted":
+        "a Game Object is instructed to be Exhausted while it is already Exhausted",
+    "exhausting_is_listed_as_a_cost": "Exhausting is listed as a Cost",
+    "a_unit_has_ganking": "a Unit has Ganking",
+    "a_unit_is_stunned": "a Unit is Stunned",
+    "a_unit_moves_to_or_becomes_present_at_a_battlefield_its_controller_does_not_control":
+        "a Unit moves to or otherwise becomes present at a Battlefield its controller does not control",
 }
 RULE_CONSEQUENCES = {
     "priority_is_not_passed": "Priority is not passed",
@@ -391,6 +411,19 @@ RULE_CONSEQUENCES = {
     "the_game_ends": "the game ends",
     "its_shield_remains_in_effect": "its Shield remains in effect",
     "the_choice_is_invalid": "the choice is invalid and cannot be completed",
+    "exhausting_that_unit_is_the_cost": "Exhausting that Unit is the Cost",
+    "it_cannot_be_exhausted_again": "it cannot be Exhausted again",
+    "nothing_additional_happens": "nothing additional happens",
+    "the_exhaust_must_be_completable_for_the_cost_to_be_paid":
+        "the Exhaust must be able to be completed for the Cost to be paid",
+    "none_of_its_standard_move_options_are_restricted_or_removed":
+        "none of its Standard Move options are restricted or removed",
+    "it_gains_new_standard_move_options_but_no_additional_movement":
+        "it gains new options for its Standard Move but no additional abilities or activations of Movement",
+    "it_does_not_contribute_its_might_to_combat_damage":
+        "it does not contribute its Might to damage in the combat damage step",
+    "contested_status_is_applied_to_that_battlefield":
+        "Contested status is applied to that Battlefield",
 }
 RULE_POINT_SOURCES = {
     "holding_a_battlefield": "Holding a Battlefield",

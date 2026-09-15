@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:762e7c964179920326c38d21",
+  "manifest_id": "manifest:f1b03cc161214c1c316701aa",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -21,7 +21,8 @@
       "canonical_name": "Annie - Dark Child (Starter)",
       "current_text_hash": "sha256:223039b25137d7fb61ada0b65c6c17bfaff4178e8767cbc1c4fbc56fe13b7928",
       "printing_ids": [
-        "ogs-017-024"
+        "ogs-017-024",
+        "opp-017-024"
       ],
       "behavior_status": "stale",
       "clauses": [
@@ -770,7 +771,8 @@
       "canonical_name": "Master Yi - Wuju Bladesman (Starter)",
       "current_text_hash": "sha256:96ecd8e61bf3f1b2ab53be18cb638aa01522869250250c030da36ee752be96e9",
       "printing_ids": [
-        "ogs-019-024"
+        "ogs-019-024",
+        "opp-019-024"
       ],
       "behavior_status": "full",
       "clauses": [

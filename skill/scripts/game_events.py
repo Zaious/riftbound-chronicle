@@ -83,6 +83,12 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # DP-94: only a Stun that actually happened. Stunning an already Stunned
     # Unit is a no_op and emits nothing, so "when you stun" cannot fire twice.
     "stunned": {"about": "object", "rules": ["Core 423", "Core 423.2"]},
+    # selection-binding.v1: "Choose a friendly unit." on its own. Nothing about
+    # the object changes; the event is what the clauses after it read instead
+    # of choosing again, which is the same role player_chosen plays for a
+    # player. A choice with nothing to choose from establishes no selection and
+    # emits nothing.
+    "selection_established": {"about": "object", "rules": ["Core 355.10.a", "Core 359.3.e"]},
     # --- player ----------------------------------------------------------
     # Sabotage: the instruction that only chooses. The event is what every
     # later instruction of the same program reads instead of choosing again.
@@ -128,6 +134,7 @@ OP_PRIMARY: dict[str, str] = {
     "grant_keyword": "keyword_granted",
     "stun": "stunned",
     "choose_player": "player_chosen",
+    "establish_selection": "selection_established",
     "look_at_top": "looked_at",
     "reveal": "revealed",
     "put_back": "cards_put_back",

@@ -102,6 +102,15 @@ PERFORMED_OUTCOMES = {"applied", "replaced_modified_applied", "augmented_applied
 # Instructions that carry a requested/applied count contract; only these may be
 # referenced by requested_count_not_reached (Codex Round B, point 4).
 COUNT_CONTRACT_OPS = {"channel_rune"}
+# Core 441.1.a: Empowered is binary, and 441.1.b/c stop a second Empower - but
+# 441.1.c.1 lets a card grant permission to be Empowered several times, and a
+# card that does say so ("I can be Empowered up to three times") needs the
+# engine to count. `empowered` stays the binary state those rules describe;
+# `empowered_count` is how many times it has been Empowered and only matters
+# when `empower_limit` is above the default of one.
+EMPOWER_LIMIT_FIELD = "empower_limit"
+EMPOWER_COUNT_FIELD = "empowered_count"
+DEFAULT_EMPOWER_LIMIT = 1
 CONDITIONAL_TRIGGER_KINDS = {"caused_kill"}
 # ADR-0012 §5: a Legend lives in the Legend Zone, which is not a Location.
 OBJECT_KINDS = {"unit", "gear", "spell", "rune", "legend"}
@@ -163,12 +172,27 @@ SUPPORTED_OPS = {
     # C-58 (ADR-0015 §2): the Cleanup's step 5 removal of a Hidden card whose
     # Battlefield its controller no longer controls.
     "remove_hidden",
+    # selection-binding.v1: "Choose a friendly unit." on its own. It changes no
+    # game state; it establishes the selection that the clauses after it
+    # ("Buff it.", "Kill it.") refer to, and records the binding they are
+    # checked against.
+    "establish_selection",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
 COMPOSITE_OPS = {"mutual_damage_current_might"}
 # ADR-0011 §1: instructions whose single object comes from a typed `choice`.
 CHOICE_OPS = {"recycle_one", "choose_player"}
+# selection-binding.v1: instructions that establish a selection rather than
+# consume one. The eff_010 slice wires exactly one shape - a single, public,
+# board choice of one object. Every other shape is recognised and refused as
+# unsupported rather than run half-bound.
+SELECTION_BINDING_OPS = {"establish_selection"}
+# `from` is a set because Codex's eff_010 split gave "Choose a battlefield." its
+# own candidate universe rather than a criteria on `board`; both are single,
+# public choices of one object on the board.
+SELECTION_SLICE = {"selection_kind": "single", "from": {"board", "battlefields"},
+                   "count": {"one": True}, "visibility": "public"}
 # Instructions that resolve their own choice into a set (they may need an order too).
 SELF_RESOLVING_CHOICE_OPS = {"recycle", "banish"}
 
@@ -204,6 +228,19 @@ class TargetDecisionRequired(ValueError):
 
 class IllegalDecision(ValueError):
     """A well-formed supplied decision is owned by another controller."""
+
+
+class SelectionBindingRefused(ValueError):
+    """selection-binding.v1: the reference to a selection does not hold.
+
+    It carries one of the contract's four refusal codes. The instruction does
+    not run and nothing is re-chosen: an unbound reference is a refusal, never
+    a licence to pick a substitute.
+    """
+
+    def __init__(self, message: str, reason_code: str):
+        super().__init__(message)
+        self.reason_code = reason_code
 
 
 class ExternalInputRequired(ValueError):
@@ -307,6 +344,7 @@ OP_RULES = {
     "heal_damage": ["Core 418"],
     "stun": ["Core 423", "Core 423.1", "Core 423.1.b", "Core 423.2", "Core 317.2.d"],
     "choose_player": ["Core 355.1", "Core 355.17"],
+    "establish_selection": ["Core 355.10.a", "Core 359.3.e"],
     "ready": ["Core 415"],
     "exhaust": ["Core 414"],
     "add_resource": ["Core 429"],
@@ -939,6 +977,19 @@ def validate_state(state: Any) -> list[str]:
         for flag in ("empowered", "buffed"):
             if flag in obj and not isinstance(obj[flag], bool):
                 errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 442.1, 426.1.b)")
+        limit = obj.get(EMPOWER_LIMIT_FIELD, DEFAULT_EMPOWER_LIMIT)
+        if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+            errors.append(f"objects.{object_id}.{EMPOWER_LIMIT_FIELD} must be an integer of at least 1 "
+                          f"when supplied (Core 441.1.c.1)")
+            limit = DEFAULT_EMPOWER_LIMIT
+        count = obj.get(EMPOWER_COUNT_FIELD)
+        if count is not None:
+            if not isinstance(count, int) or isinstance(count, bool) or count < 0 or count > limit:
+                errors.append(f"objects.{object_id}.{EMPOWER_COUNT_FIELD} must be an integer from 0 to "
+                              f"{EMPOWER_LIMIT_FIELD} (Core 441.1.c.1)")
+            elif bool(count) != bool(obj.get("empowered")):
+                errors.append(f"objects.{object_id}.{EMPOWER_COUNT_FIELD} disagrees with .empowered; "
+                              f"a Game Object is Empowered exactly while its count is above zero (Core 441.1.a)")
         if obj.get("buffed") and obj.get("kind") != "unit":
             errors.append(f"objects.{object_id}.buffed applies to Units only (Core 702)")
         if not isinstance(obj.get("hidden", False), bool):
@@ -1204,6 +1255,15 @@ def validate_program(program: Any) -> list[str]:
                         errors.extend(f"effects[{index}].units[{j}] {e}" for e in _selector_errors(sel))
                 if effect.get("target") is not None or effect.get("targets") is not None or effect.get("object_id") is not None or effect.get("affected") is not None:
                     errors.append(f"effects[{index}].mutual_damage_current_might carries its two units, not target/targets/object_id/affected")
+                if "amount" in effect:
+                    # The damage IS each Unit's effective Might read at
+                    # resolution (417.6.b.3); there is no authored amount. The
+                    # field was tolerated and never read by this op's own
+                    # branch, but the generic reduce_damage replacement path
+                    # reads `amount` off whatever effect it is applied to, so
+                    # leaving it accepted left a field that looks authoritative
+                    # and is not. Refused rather than ignored.
+                    errors.append(f"effects[{index}].mutual_damage_current_might takes no `amount`: the damage is each Unit's current Might, read at resolution")
             if effect.get("op") == "grant_keyword":
                 if effect.get("keyword") not in GRANTABLE_KEYWORDS:
                     errors.append(f"effects[{index}].grant_keyword.keyword must be one of {sorted(GRANTABLE_KEYWORDS)}")
@@ -1244,13 +1304,26 @@ def validate_program(program: Any) -> list[str]:
             if choice is not None:
                 import engine_decisions as ed
                 errors.extend(f"effects[{index}].choice {e}" for e in ed.validate_choice_spec(choice))
-                if effect.get("op") not in CHOICE_OPS | SELF_RESOLVING_CHOICE_OPS:
+                if effect.get("op") not in CHOICE_OPS | SELF_RESOLVING_CHOICE_OPS | SELECTION_BINDING_OPS:
                     errors.append(f"effects[{index}].choice is not supported for {effect.get('op')!r}")
                 elif effect.get("op") in {"recycle_one"} and not errors and (choice["selection_kind"] != "single" or choice["from"] not in {"trash", "hand"}):
                     errors.append(f"effects[{index}].{effect.get('op')} chooses a single card from trash or hand")
                 if effect.get("object_id") is not None or effect.get("target") is not None or effect.get("targets") is not None:
                     errors.append(f"effects[{index}].choice excludes object_id, target and targets")
             op_name = effect.get("op")
+            if op_name == "establish_selection":
+                # It names the selection later instructions refer to, and the
+                # decision that answers it. Whether the SHAPE of the choice is
+                # wired is a resolution-time question (`unsupported`), not a
+                # malformed-program one.
+                if not isinstance(effect.get("selection_id"), str) or not effect.get("selection_id"):
+                    errors.append(f"effects[{index}].establish_selection needs the selection_id later instructions refer to")
+                if not isinstance(effect.get("choice"), dict):
+                    errors.append(f"effects[{index}].establish_selection needs the typed choice it establishes")
+                if not isinstance(effect.get("decision_ref"), str) or not effect.get("decision_ref"):
+                    errors.append(f"effects[{index}].establish_selection needs the decision_ref that answers it")
+                if effect.get("affected") is not None:
+                    errors.append(f"effects[{index}].establish_selection establishes one selection; affected is not accepted")
             if op_name == "copy_object":
                 if not isinstance(effect.get("source_object"), str) or not effect.get("source_object"):
                     errors.append(f"effects[{index}].copy_object needs the object it copies")
@@ -1262,8 +1335,21 @@ def validate_program(program: Any) -> list[str]:
                 if traits is not None and (not isinstance(traits, list) or not traits or any(not isinstance(t, str) for t in traits)):
                     errors.append(f"effects[{index}].copy_object.traits must be a non-empty array of trait names")
             if op_name in {"empower", "disempower", "buff"}:
-                if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
+                # These act on ONE object, named either literally (`object_id`,
+                # the "Buff me." path) or through the same typed decision_ref
+                # target stun/kill/ready/exhaust accept; resolution then writes
+                # target.object_id onto the effect before _apply_one reads it.
+                # Until 2026-09-09 this branch demanded a literal object_id, so
+                # clause-grammar.v1's own buff_selector output for "Buff a
+                # friendly unit." failed this validator. Still one object: an
+                # `affected` or `targets` form ("Buff all ...") stays refused.
+                has_object = ((isinstance(effect.get("object_id"), str) and bool(effect.get("object_id")))
+                              or is_object_ref(effect.get("object_id")))
+                has_target = isinstance(effect.get("target"), dict)
+                if not (has_object or has_target):
                     errors.append(f"effects[{index}].{op_name} needs the object it acts on")
+                if effect.get("affected") is not None or effect.get("targets") is not None:
+                    errors.append(f"effects[{index}].{op_name} acts on one object; affected/targets are not accepted")
             if op_name == "gain_xp":
                 if not isinstance(effect.get("player"), str) or not effect.get("player"):
                     errors.append(f"effects[{index}].gain_xp needs a player")
@@ -1364,12 +1450,55 @@ def validate_program(program: Any) -> list[str]:
 
 
 MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref"}
 # Round H: "another unit" is *this* unit excluded, by identity. The clause
 # writes the sentinel; the engine resolves it from the program's own
 # source_object when the selection is made, so the exclusion can never be a
 # name match and can never quietly pick a substitute.
 SOURCE_IDENTITY_SENTINEL = "$source_identity"
+
+# selector-group `self` (Codex 2026-09-10). "Give me +3 Might this turn." names
+# the resolving source object and makes no decision at all.
+#
+# It is a TYPED reference, `{"object_ref": "program_source"}`, and deliberately
+# not a magic string. A string sentinel is forgeable by anything that can write
+# a string: a decision artifact, a mapping's expected IR, a hand-edited program.
+# The engine is the only thing that may resolve this shape, and the decision
+# validator refuses it outright, so an artifact cannot inject one.
+OBJECT_REF_KINDS = ("program_source",)
+# Which ops may carry it. Codex's boundary: adoption is proved per op with an
+# executor audit AND a real resolution fixture. `ready` working says nothing
+# about `kill`, so an op is added here only once its fixture exists.
+OBJECT_REF_OPS = {"ready", "buff", "modify_might", "banish"}
+# A Spell is not a permanent; it is not on the board to be acted on when its own
+# program resolves. The default is deliberately narrow (Core 355.4.a: the Board's
+# Locations are the Battlefields and the Bases).
+OBJECT_REF_PERMANENT_KINDS = {"unit", "gear", "rune"}
+
+OBJECT_REF_ABSENT = "object_ref_source_absent"
+OBJECT_REF_IDENTITY_CHANGED = "object_ref_source_identity_changed"
+OBJECT_REF_LEFT_PLAY = "object_ref_source_left_play"
+OBJECT_REF_NOT_SELF = "object_ref_not_self_referential"
+# A separate code from NOT_SELF on purpose: "this op has no reviewed
+# adoption" and "this clause is not talking about itself" are different
+# failures, and one refusal code covering both would hide which happened.
+OBJECT_REF_OP_NOT_ADOPTED = "object_ref_op_not_adopted"
+
+
+def is_object_ref(value: Any) -> bool:
+    return isinstance(value, dict) and set(value) == {"object_ref"}
+
+
+def contains_object_ref(value: Any) -> bool:
+    """Anywhere in a nested structure. Used to keep the shape OUT of decision
+    artifacts: only the engine may create or resolve one."""
+    if is_object_ref(value):
+        return True
+    if isinstance(value, dict):
+        return any(contains_object_ref(v) for v in value.values()) or "object_ref" in value
+    if isinstance(value, list):
+        return any(contains_object_ref(v) for v in value)
+    return False
 
 
 def derive_targeted(selector: dict[str, Any]) -> bool:
@@ -1381,17 +1510,35 @@ def derive_targeted(selector: dict[str, Any]) -> bool:
     return selector.get("location") in {"trash", "banishment"}
 
 
+def _object_id_errors(value: Any, label: str) -> list[str]:
+    """A literal id, or the engine's own typed self-reference."""
+    if is_object_ref(value):
+        if value["object_ref"] not in OBJECT_REF_KINDS:
+            return [f"{label}.object_ref must be one of {list(OBJECT_REF_KINDS)}"]
+        return []
+    if not isinstance(value, str) or not value:
+        return [f"{label} must be a non-empty object id or {{object_ref}}"]
+    return []
+
+
 def _selector_errors(selector: Any) -> list[str]:
     if not isinstance(selector, dict):
         return ["must be an object"]
     errors = []
     if set(selector) - SELECTOR_FIELDS:
         errors.append(f"has unsupported fields {sorted(set(selector) - SELECTOR_FIELDS)}")
+    if "decision_ref" in selector and "selection_ref" in selector:
+        errors.append("carries both decision_ref and selection_ref; a reference names one or the other")
     if "decision_ref" in selector:
         if not isinstance(selector["decision_ref"], str) or not selector["decision_ref"]:
             errors.append("decision_ref must be non-empty")
+    elif "selection_ref" in selector:
+        # selection-binding.v1: it refers to a selection an EARLIER instruction
+        # of this program established, not to a decision id it may read by name.
+        if not isinstance(selector["selection_ref"], str) or not selector["selection_ref"]:
+            errors.append("selection_ref must be non-empty")
     elif not isinstance(selector.get("object_id"), str) or not selector.get("object_id"):
-        errors.append("must identify an object or defer to a decision_ref")
+        errors.append("must identify an object, defer to a decision_ref, or refer to a selection_ref")
     if selector.get("chosen_zone_class") not in {"board", "non_board"}:
         errors.append("chosen_zone_class is required")
     if "location" in selector and selector["location"] not in {"board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck", "chain"}:
@@ -2656,6 +2803,13 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
     elif op == "mutual_damage_current_might":
         raise ValueError("mutual_damage_current_might is resolved by apply_program as two simultaneous Deal events")
 
+    elif op == "establish_selection":
+        # apply_program runs it before selector resolution, because it produces
+        # the binding later selectors read. Reaching here means that ordering
+        # broke, and a silent fall-through would establish nothing while the
+        # clauses after it went looking for a selection.
+        raise ValueError("establish_selection is resolved by apply_program before selectors; it changes no state")
+
     elif op in {"deal_damage", "heal_damage"}:
         object_id, amount = effect.get("object_id"), effect.get("amount")
         if object_id not in new_state["objects"] or not isinstance(amount, int) or amount < 1:
@@ -3035,32 +3189,56 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
     elif op == "empower":
         # Core 441: a binary state for a Game Object on the board (442.1). An
         # object that is already Empowered cannot be Empowered again — nothing
-        # additional happens (441.1.b, 441.1.c.1), so no second event either.
+        # additional happens (441.1.b, 441.1.c) — UNLESS its own text grants the
+        # permission 441.1.c.1 describes, in which case a further level is added
+        # while it has room. Only the first one is the "becomes Empowered" event
+        # of 441.2.a: the object is already Empowered for every level after it.
         object_id = effect.get("object_id")
         if object_id not in new_state["objects"]:
             raise ValueError("empower requires a known object")
         obj = new_state["objects"][object_id]
         if zone_class(find_location(new_state, object_id)) != "board":
             raise IllegalOperation(f"Empowered is a state for objects on the board; {object_id!r} is not on it (442.1)")
-        if obj.get("empowered"):
+        limit = obj.get(EMPOWER_LIMIT_FIELD, DEFAULT_EMPOWER_LIMIT)
+        count = obj.get(EMPOWER_COUNT_FIELD, 1 if obj.get("empowered") else 0)
+        if obj.get("empowered") and count >= limit:
             trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none", "already_empowered": True,
-                          "became_empowered": False, "reason": "an Empowered object cannot be Empowered again (441.1.b, 441.1.c.1)"})
+                          "became_empowered": False, "empowered_count": count, "empower_limit": limit,
+                          "reason": ("an Empowered object cannot be Empowered again (441.1.b, 441.1.c)"
+                                     if limit == DEFAULT_EMPOWER_LIMIT else
+                                     "the permission of 441.1.c.1 is spent: the object is at its limit")})
             return new_state, trace
+        became = not obj.get("empowered")
         obj["empowered"] = True
-        trace.update({"object_id": object_id, "became_empowered": True, "already_empowered": False,
-                      "event_hook": {"kind": "become_empowered", "object_id": object_id, "note": "P5 emits the event (442.2)"}})
+        if limit > DEFAULT_EMPOWER_LIMIT:
+            obj[EMPOWER_COUNT_FIELD] = count + 1
+        trace.update({"object_id": object_id, "became_empowered": became, "already_empowered": not became,
+                      "empowered_count": count + 1, "empower_limit": limit})
+        if became:
+            trace["event_hook"] = {"kind": "become_empowered", "object_id": object_id,
+                                   "note": "P5 emits the event (442.2)"}
 
     elif op == "disempower":
+        # Core 442.1: removes the Empowered status. Where a card was Empowered
+        # several times under 441.1.c.1, one Disempower removes one level: the
+        # object stays Empowered while any level remains.
         object_id = effect.get("object_id")
         if object_id not in new_state["objects"]:
             raise ValueError("disempower requires a known object")
         obj = new_state["objects"][object_id]
         if not obj.get("empowered"):
             trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none",
-                          "reason": "disempowering a card that is not Empowered does nothing (443.2.a)"})
+                          "reason": "disempowering a card that is not Empowered does nothing (442.1.a.1)"})
             return new_state, trace
-        del obj["empowered"]
-        trace.update({"object_id": object_id, "disempowered": True})
+        count = obj.get(EMPOWER_COUNT_FIELD, 1)
+        remaining = count - 1
+        if remaining > 0:
+            obj[EMPOWER_COUNT_FIELD] = remaining
+        else:
+            del obj["empowered"]
+            obj.pop(EMPOWER_COUNT_FIELD, None)
+        trace.update({"object_id": object_id, "disempowered": True, "levels_removed": 1,
+                      "empowered_count": remaining, "still_empowered": remaining > 0})
 
     elif op == "buff":
         # Core 426.1.b: a Unit either has a Buff counter or it does not; a Unit
@@ -4255,6 +4433,21 @@ def _resolve_choice_object(state: dict[str, Any], effect: dict[str, Any], progra
     return {**effect, "object_id": chosen[0], "selection_meta": meta}
 
 
+def candidate_identity(state: dict[str, Any], source: str, candidate_id: str) -> str | None:
+    """The identity token a choice binds a candidate to.
+
+    One function so the enumeration and any later re-check cannot disagree.
+    Battlefields keep their own identity (they are not in `state["objects"]`, so
+    object_identity would read None for every one of them and silently defeat
+    identity binding); players have none.
+    """
+    if source == "players":
+        return None
+    if source == "battlefields":
+        return battlefield_identity(state, candidate_id)
+    return object_identity(state, candidate_id)
+
+
 def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str, session: dict[str, Any] | None = None) -> tuple[list[str], dict[str, str | None]]:
     """The ordered candidate list of a choice source and the current identity
     of each candidate (None for players)."""
@@ -4279,10 +4472,18 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
         criteria = spec.get("criteria") or {}
         ids = []
         places = [("base", pid, state["players"][pid]["zones"]["base"]) for pid in state["players"]] + [("battlefield", bid, bf["objects"]) for bid, bf in state["battlefields"].items()]
-        for where, _, objects in places:
+        for where, zone_owner, objects in places:
             if criteria.get("location") == "battlefield" and where != "battlefield":
                 continue
             if criteria.get("location") == "base" and where != "base":
+                continue
+            # Whose Base. "in your base" is narrower than location=base, which
+            # admits every player's; without this the phrase would lower to a
+            # wider candidate set than the card describes.
+            owner_relation = criteria.get("zone_owner_relation")
+            if owner_relation == "own" and zone_owner != chooser:
+                continue
+            if owner_relation == "opponent" and zone_owner == chooser:
                 continue
             for object_id in objects:
                 obj = state["objects"][object_id]
@@ -4294,11 +4495,18 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
                 if relation == "enemy" and same_side(state, chooser, obj.get("controller")):
                     continue
                 ids.append(object_id)
+    elif source == "battlefields":
+        # Core 355.4.a, ADR-0007 §4: a Battlefield is a Location on the board and
+        # a target with a bindable identity, but it is NOT one of the objects a
+        # `board` choice walks - that source iterates the objects standing AT a
+        # Battlefield, so "Choose a battlefield." can never be answered through
+        # it. This is its own candidate universe.
+        ids = sorted(state["battlefields"])
     elif source == "players":
         ids = [p for p in state["players"] if spec.get("players", "opponents") == "any" or p != chooser]
     else:
         raise ValueError(f"unknown choice source {source!r}")
-    identities = {c: (object_identity(state, c) if source != "players" else None) for c in ids}
+    identities = {c: candidate_identity(state, source, c) for c in ids}
     return ids, identities
 
 
@@ -4355,7 +4563,7 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
     if candidates is None:
         candidates, identities = choice_candidates(state, spec, chooser, session)
     else:
-        identities = {c: object_identity(state, c) for c in candidates}
+        identities = {c: candidate_identity(state, spec["from"], c) for c in candidates}
     forced = ed.forced_choice(spec, candidates)
     summary = ed.choice_summary(spec, chooser, candidates, identities)
     if forced is not None:
@@ -4453,6 +4661,64 @@ def _resolve_mode(program: dict[str, Any], decisions: dict[str, Any] | None, con
     return list(option["effects"]), {"decision_id": ref, "option_id": chosen, "options": option_ids, "recorded_at_play": entry is None, "rule_locators": ["Core 402.2", "Core 820.2.a"]}
 
 
+def resolve_object_ref(effect: dict[str, Any], state: dict[str, Any],
+                       program: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Turn `{"object_ref": "program_source"}` into the source object, or refuse.
+
+    Returns (effect with a concrete object_id, meta). Raises
+    SelectionBindingRefused with one of four named codes; the instruction then
+    does not run, and nothing is substituted.
+
+    The reference binds the source's FULL identity, not its id. An id can be
+    reused after the object leaves and returns; the identity token cannot, which
+    is the whole reason the engine tracks one.
+    """
+    ref = effect.get("object_id")
+    if not is_object_ref(ref):
+        return effect, {}
+    if ref["object_ref"] not in OBJECT_REF_KINDS:
+        raise SelectionBindingRefused(
+            f"unknown object_ref {ref['object_ref']!r}; the engine resolves "
+            f"{list(OBJECT_REF_KINDS)}", OBJECT_REF_ABSENT)
+    if effect.get("op") not in OBJECT_REF_OPS:
+        raise SelectionBindingRefused(
+            f"op {effect.get('op')!r} has no reviewed object_ref adoption. Each op needs its own "
+            f"executor audit and a real resolution fixture; one op resolving it proves nothing "
+            f"about another", OBJECT_REF_OP_NOT_ADOPTED)
+    # A clause that also names a target is not talking about itself.
+    for field in ("target", "targets", "affected", "decision_ref"):
+        if effect.get(field) is not None:
+            raise SelectionBindingRefused(
+                f"the instruction carries {field!r} beside a program_source reference; "
+                f"'me' is self-referential and chooses nothing", OBJECT_REF_NOT_SELF)
+
+    source = program.get("source_object")
+    if not isinstance(source, str) or source not in state["objects"]:
+        raise SelectionBindingRefused(
+            f"the program declares source_object {source!r}, which the state does not contain; "
+            f"a self-reference with no source is refused, never guessed", OBJECT_REF_ABSENT)
+
+    now = object_identity(state, source)
+    declared = program.get("source_identity")
+    if declared is not None and declared != now:
+        raise SelectionBindingRefused(
+            f"the program's source was {declared!r} and is now {now!r}; the object at that id is "
+            f"not the one this instruction is about", OBJECT_REF_IDENTITY_CHANGED)
+
+    obj = state["objects"][source]
+    if obj.get("kind") not in OBJECT_REF_PERMANENT_KINDS:
+        raise SelectionBindingRefused(
+            f"the source is a {obj.get('kind')!r}, not a permanent; only a permanent source is "
+            f"wired for a self-reference", OBJECT_REF_LEFT_PLAY)
+    if zone_class(find_location(state, source)) != "board":
+        raise SelectionBindingRefused(
+            f"the source {source!r} is not on the board any more, so it cannot be acted on by "
+            f"its own instruction", OBJECT_REF_LEFT_PLAY)
+
+    return ({**effect, "object_id": source, "subject_identity": now},
+            {"object_ref": "program_source", "resolved_to": source, "bound_identity": now})
+
+
 def _bind_source_exclusion(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
     """Resolve `$source_identity` to the identity the program's own source
     object has right now. A program that excludes its source without naming
@@ -4465,16 +4731,124 @@ def _bind_source_exclusion(selector: dict[str, Any], state: dict[str, Any], prog
     return {**selector, "exclude_source_identity": object_identity(state, source)}
 
 
-def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _establish_selection(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any],
+                         decisions: dict[str, Any] | None, order_index: int,
+                         bindings: dict[str, Any]) -> dict[str, Any]:
+    """selection-binding.v1: run "Choose a friendly unit." and record what the
+    clauses after it are allowed to refer to.
+
+    It changes no game state. What it produces is the binding: the selected
+    objects with their identities, the hash of the candidate set AND the rule
+    that selected them, the visibility, and the origin - which program and
+    instruction made the choice. A supplied decision must carry that same
+    binding, and a mismatch is refused by name instead of quietly reused.
+    """
+    import engine_decisions as ed
+    import selection_binding as sb
+
+    spec = effect["choice"]
+    actual = {"selection_kind": spec.get("selection_kind"), "from": spec.get("from"),
+              "count": spec.get("count", {"one": True} if spec.get("selection_kind") == "single" else None),
+              "visibility": ed.choice_visibility(spec)}
+    unwired = {key: value for key, value in actual.items()
+               if (value not in SELECTION_SLICE[key] if isinstance(SELECTION_SLICE[key], set)
+                   else value != SELECTION_SLICE[key])}
+    if unwired or spec.get("by", "controller") != "controller":
+        raise NotImplementedError(
+            f"establish_selection wires a single, public choice of one object from the board "
+            f"or from the Battlefields; {unwired or {'by': spec.get('by')}} is outside the "
+            f"eff_010 slice (unsupported: selection_binding_slice)")
+
+    selection_id = effect["selection_id"]
+    effect_id = effect.get("effect_id", f"effect-{order_index}")
+    program_id = program.get("program_id") or ""
+    chooser = program.get("controller")
+    candidates, identities = choice_candidates(state, spec, chooser)
+    visibility = ed.choice_visibility(spec)
+
+    chosen, meta = resolve_choice(state, spec, decision_ref=effect["decision_ref"],
+                                  decisions=decisions, controller=chooser, candidates=candidates)
+    if not chosen:
+        # 359.3.e: nothing to choose from. No selection is established, so every
+        # later reference to it is refused as unbound rather than left dangling.
+        return {"op": "establish_selection", "outcome": "no_op", "completion": "none",
+                "selection_id": selection_id, "rule_locators": OP_RULES["establish_selection"],
+                "reason": "there is nothing to choose from; no selection is established (Core 359.3.e)",
+                "selection": meta.get("choice")}
+
+    if selection_id in bindings:
+        raise SelectionBindingRefused(
+            f"selection {selection_id!r} is already established; a later instruction must "
+            f"reference its result, not make the selection a second time", sb.ALREADY_CONSUMED)
+
+    claim = None
+    if not meta.get("forced"):
+        entry = ed.decision_entry(decisions, effect["decision_ref"]) or {}
+        claim = entry.get("binding")
+        if claim is None:
+            raise SelectionBindingRefused(
+                f"decision {effect['decision_ref']!r} establishes selection {selection_id!r} but "
+                f"carries no binding; an unbound selection cannot be referred to later",
+                sb.ORIGIN_UNBOUND)
+        refusal, message = sb.check_claim(
+            claim, spec=spec, candidates=candidates, identities=identities, visibility=visibility,
+            program_id=program_id, effect_id=effect_id, selection_id=selection_id,
+            established=set(bindings))
+        if refusal is not None:
+            raise SelectionBindingRefused(message, refusal)
+
+    record = {
+        "selection_id": selection_id,
+        "selection_result_ref": sb.result_ref(selection_id),
+        "value": list(chosen),
+        "selection_identities": {object_id: identities.get(object_id) for object_id in chosen},
+        "candidate_set_hash": sb.candidate_set_hash(spec, candidates, identities),
+        "visibility": visibility,
+        "origin": {"program_id": program_id, "effect_id": effect_id},
+        "order_index": order_index,
+        "decision_id": meta.get("decision_id"),
+        "forced": bool(meta.get("forced")),
+    }
+    bindings[selection_id] = record
+    return {"op": "establish_selection", "outcome": "applied", "completion": "full",
+            "selection_id": selection_id, "objects": list(chosen),
+            "rule_locators": OP_RULES["establish_selection"],
+            "selection_binding": copy.deepcopy(record), "selection": meta.get("choice")}
+
+
+def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None,
+                       *, bindings: dict[str, Any] | None = None, order_index: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Turn `targets` (or a decision_ref on `target`) into concrete selectors,
     consuming a target_selection decision when the program defers to one.
-    Returns (selectors, meta) where meta says which decision was used."""
+    Returns (selectors, meta) where meta says which decision was used.
+
+    `bindings` are the selections earlier instructions of this program have
+    established (selection-binding.v1); `order_index` is this instruction's
+    position, so a reference can only look backwards.
+    """
     import engine_decisions as ed  # local import keeps effect_ir importable on its own
     controller = program.get("controller")
     targets = effect.get("targets")
     template = {k: v for k, v in (targets or {}).get("restrictions", {}).items()} if targets else {}
     if targets is None:
         target = effect.get("target")
+        # selection-binding.v1: a reference to a selection an earlier
+        # instruction established. Reading it is NOT consuming it - "Buff it."
+        # and "Kill it." both read the same immutable result.
+        if target is not None and "selection_ref" in target:
+            import selection_binding as sb
+            bound, refusal, message = sb.check_reference(
+                target["selection_ref"], bindings or {}, program_id=program.get("program_id") or "",
+                order_index=order_index, referencing_visibility=target.get("visibility", "public"))
+            if refusal is not None:
+                raise SelectionBindingRefused(message, refusal)
+            concrete = {k: v for k, v in target.items() if k not in {"selection_ref", "visibility"}}
+            concrete["object_id"] = bound["value"][0]
+            concrete.setdefault("bound_identity", bound["selection_identities"][concrete["object_id"]])
+            return [_bind_source_exclusion(concrete, state, program)], {
+                "selection_result_ref": bound["selection_result_ref"],
+                "selection_id": target["selection_ref"],
+                "decision_id": bound.get("decision_id")}
         if target is not None and "decision_ref" in target:
             entry = ed.target_selection(decisions, target["decision_ref"])
             if entry is None:
@@ -4546,6 +4920,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     import game_events
     snapshots: list[dict[str, Any]] = []
     outcomes: dict[str, str] = {}
+    # selection-binding.v1: the selections this program has established, in the
+    # order they were made. It is per-program and ephemeral: it is not state,
+    # and a nested program is given only what it may legitimately read.
+    selection_bindings: dict[str, Any] = {}
     terminal: dict[str, Any] | None = None
     try:
         effects_to_run, mode, repeat_meta = _resolve_executions(program, decisions, context)
@@ -4603,11 +4981,66 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        # selector-group `self`: resolve a typed program_source reference into
+        # the concrete object before anything else looks at object_id.
+        if is_object_ref(effect.get("object_id")):
+            try:
+                effect, object_ref_meta = resolve_object_ref(effect, current, program)
+            except SelectionBindingRefused as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": exc.reason_code, "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+        else:
+            object_ref_meta = {}
+        # selection-binding.v1: "Choose a friendly unit." on its own. It runs
+        # before selector resolution because it has no selectors of its own -
+        # it produces the binding the instructions after it refer to.
+        if effect.get("op") == "establish_selection":
+            try:
+                event = _establish_selection(current, effect, program, decisions, index, selection_bindings)
+            except ChoiceRequired as exc:
+                return {
+                    **base, "valid": True, "committed": False, "choice_required": True,
+                    f"{exc.summary['decision_kind']}_required": True,
+                    "reason_code": exc.reason_code, "reason": str(exc), "choice": exc.summary,
+                    "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                    "failed_effect_index": index, "trace": trace,
+                }
+            except SelectionBindingRefused as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": exc.reason_code, "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+            except IllegalDecision as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": "decision_controller_mismatch", "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+            except IllegalOperation as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": "illegal_operation", "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+            except NotImplementedError as exc:
+                return {**base, "valid": True, "committed": False, "unsupported": True,
+                        "failed_effect_index": index, "reason": str(exc), "trace": trace}
+            except ValueError as exc:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                        "errors": [str(exc)], "trace": trace}
+            event = {"index": index, "effect_id": effect_id, **event,
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         # ADR-0005 §1–3: resolve selectors (possibly from a decision), then either
         # run the legacy single-target path unchanged or expand a multi-target
         # instruction into per-object applications with a typed instruction outcome.
         try:
-            selectors, selector_meta = _resolve_selectors(current, effect, program, decisions)
+            selectors, selector_meta = _resolve_selectors(current, effect, program, decisions,
+                                                          bindings=selection_bindings, order_index=index)
+        except SelectionBindingRefused as exc:
+            return {
+                **base, "valid": True, "committed": False, "applied": False,
+                "reason_code": exc.reason_code, "reason": str(exc),
+                "failed_effect_index": index, "trace": trace,
+            }
         except TargetDecisionRequired as exc:
             return {
                 **base, "valid": True, "committed": False, "target_decision_required": True,
@@ -5304,6 +5737,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         **({"mode": mode} if mode is not None else {}),
         **({"repeat": repeat_meta} if repeat_meta is not None else {}),
         **({"reveals_ended": reveals_ended} if reveals_ended else {}),
+        # selection-binding.v1: what this program's later clauses were allowed
+        # to refer to, in the artifact rather than only in the engine's head.
+        **({"selection_bindings": copy.deepcopy(selection_bindings)} if selection_bindings else {}),
         **({"countered_chain_items": [i for e in trace for i in e.get("countered_chain_items", [])]} if any(e.get("countered_chain_items") for e in trace) else {}),
         "next_state": current,
         "next_state_hash": hash_value(current),

@@ -93,7 +93,7 @@ def validate_engine_decisions(value: Any) -> list[str]:
     seen: set[str] = set()
     for index, item in enumerate(items):
         label = f"decisions[{index}]"
-        if not isinstance(item, dict) or not {"decision_id", "stage", "kind", "controller", "value"} <= set(item) or set(item) - {"decision_id", "stage", "kind", "controller", "value", "selection_identities", "options", "provenance"}:
+        if not isinstance(item, dict) or not {"decision_id", "stage", "kind", "controller", "value"} <= set(item) or set(item) - {"decision_id", "stage", "kind", "controller", "value", "selection_identities", "options", "provenance", "binding"}:
             errors.append(f"{label} has invalid fields")
             continue
         if not isinstance(item["decision_id"], str) or not item["decision_id"] or item["decision_id"] in seen:
@@ -139,6 +139,23 @@ def validate_engine_decisions(value: Any) -> list[str]:
                 errors.append(f"{label}: damage_assignment is a procedure-stage decision")
         elif "selection_identities" in item:
             errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering or damage_assignment")
+        # selection-binding.v1: a decision that ESTABLISHES a selection later
+        # instructions refer to carries the binding it was made under, so a
+        # changed candidate set, rule, visibility or origin is refused by name
+        # instead of being silently reused.
+        # The typed self-reference is engine-internal. An artifact that could
+        # inject one would be naming the source object without the engine ever
+        # checking its identity or its zone, which is the whole point of making
+        # it typed rather than a string.
+        from effect_ir import contains_object_ref
+        if contains_object_ref({k: v for k, v in item.items() if k != "provenance"}):
+            errors.append(f"{label} carries an object_ref; that shape is created and resolved "
+                          f"by the engine alone and may not appear in a decision artifact")
+        if "binding" in item:
+            from selection_binding import validate_binding_claim
+            if kind != "target_selection":
+                errors.append(f"{label}.binding is only valid for target_selection in selection-binding.v1")
+            errors.extend(f"{label}.{problem}" for problem in validate_binding_claim(item["binding"]))
         if kind == "replacement_order" and (not isinstance(val, dict) or any(not isinstance(ids, list) or not ids or len(ids) != len(set(ids)) for ids in val.values())):
             errors.append(f"{label}.value must map event ids to non-empty unique replacement-id arrays")
         if kind == "replacement_choice" and (not isinstance(val, dict) or any(not isinstance(by_event, dict) or any(not isinstance(c, bool) for c in by_event.values()) for by_event in val.values())):
@@ -249,7 +266,12 @@ def target_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict
 # to, and validates the supplied value against the candidates. Private
 # sources are never listed in an engine result.
 SELECTION_KINDS = ("single", "unordered_set", "ordered_permutation")
-CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "players")
+# `battlefields` is its own universe, not a filter over `board`: the board
+# source walks the objects standing AT a Battlefield, so it can never enumerate
+# the Battlefields themselves (Core 355.4.a). Codex's 2026-09-10 ruling on the
+# eff_010 split required this path before "Choose a battlefield." could be
+# mapped, rather than letting it be disguised as a board choice.
+CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "battlefields", "players")
 # Sabotage: "a non-unit card". Stated as an exclusion from a closed list rather
 # than as a negation, so a card kind nobody has thought about is *included* by
 # default and never silently filtered out.
@@ -311,8 +333,22 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append("choice.criteria applies to a board or revealed source")
     if "criteria" in spec and spec["from"] == "revealed" and set(spec["criteria"]) - {"excluded_kinds"}:
         errors.append("a revealed choice's criteria carries excluded_kinds and nothing else")
-    if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location"}):
-        errors.append("choice.from board needs criteria {kind?, controller_relation?, location?}")
+    if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location", "zone_owner_relation"}):
+        errors.append("choice.from board needs criteria {kind?, controller_relation?, location?, zone_owner_relation?}")
+    # "in your base" is narrower than location=base, which admits every player's
+    # Base. Without this, lowering that phrase would quietly widen the
+    # candidates. It says whose ZONE, which only a Base has - a Battlefield is
+    # not owned by a player (Core 355.4.a), so the pair is refused there rather
+    # than silently ignored.
+    if isinstance(spec.get("criteria"), dict) and "zone_owner_relation" in spec["criteria"]:
+        if spec["criteria"]["zone_owner_relation"] not in {"own", "opponent"}:
+            errors.append("choice.criteria.zone_owner_relation must be own or opponent")
+        if spec["criteria"].get("location") != "base":
+            errors.append("choice.criteria.zone_owner_relation names whose Base; it applies only "
+                          "with location = base")
+    if spec["from"] == "battlefields" and "criteria" in spec:
+        errors.append("choice.from battlefields takes no criteria; the Locations themselves are "
+                      "the candidates (Core 355.4.a)")
     if "players" in spec and spec["from"] != "players":
         errors.append("choice.players only applies to a players source")
     if spec["from"] == "players" and spec.get("players", "opponents") not in {"opponents", "any"}:
@@ -335,7 +371,10 @@ def choice_decision_kind(spec: dict[str, Any]) -> str:
         return "player_selection"
     if spec["selection_kind"] == "ordered_permutation":
         return "card_ordering"
-    if spec["from"] == "board":
+    # A Battlefield is a target on the board with a bindable identity
+    # (ADR-0007 §4), so choosing one is a target_selection like any other board
+    # choice; what differs is the candidate universe, not the decision kind.
+    if spec["from"] in {"board", "battlefields"}:
         return "target_selection"
     return "card_selection"
 

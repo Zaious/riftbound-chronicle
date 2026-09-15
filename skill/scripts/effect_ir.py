@@ -2813,8 +2813,13 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # of 1" moves nothing on a 1 Might Unit. The floor is worked out here so
         # that what gets recorded is what actually happened, and the entry
         # carries the bounds for the layer code that already reads them.
+        # Read plainly, not through a helper: an executor audit that scans for
+        # what a branch reads off `effect` must be able to SEE these two, or a
+        # contract claiming they are existing fields could not be re-verified.
+        minimum, maximum = effect.get("minimum"), effect.get("maximum")
         floored = _floored_might_amount(effective_might(new_state, object_id), amount, effect)
-        minimum, maximum = _bound(effect, "minimum"), _bound(effect, "maximum")
+        minimum = minimum if isinstance(minimum, int) and not isinstance(minimum, bool) else None
+        maximum = maximum if isinstance(maximum, int) and not isinstance(maximum, bool) else None
         if floored == 0:
             # Core 370.1.a: nothing moved, so there is no event. No continuous
             # effect is recorded either - an entry of +0 would still be an entry

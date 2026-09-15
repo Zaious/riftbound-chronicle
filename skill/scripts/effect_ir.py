@@ -108,6 +108,20 @@ COUNT_CONTRACT_OPS = {"channel_rune"}
 # engine to count. `empowered` stays the binary state those rules describe;
 # `empowered_count` is how many times it has been Empowered and only matters
 # when `empower_limit` is above the default of one.
+# Core 355.6: a replacement worded "a spell or ability that CHOOSES me" must
+# know whether the incoming effect chose this object at all. An effect that
+# reaches an object through a back-reference - "move an enemy unit … then stun
+# IT" - never chose it, so such a replacement does not apply. The field is
+# explicit rather than guessed from the presence of a target: a program that
+# does not say is treated as not having chosen, which is the fail-closed side.
+CHOSEN_FIELD = "chosen"
+# The replacement's side of the same question.
+REQUIRES_CHOSEN_FIELD = "requires_chosen"
+# Core 370.1.a: an event is the singular moment that results from a Game Action
+# or a state change. An action that changes nothing produces no event, so there
+# is nothing for a Replacement Effect to replace: a Might change floored to
+# zero, or a Stun on a Unit that is already Stunned.
+ZERO_MAGNITUDE_OPS = {"modify_might"}
 EMPOWER_LIMIT_FIELD = "empower_limit"
 EMPOWER_COUNT_FIELD = "empowered_count"
 DEFAULT_EMPOWER_LIMIT = 1
@@ -1083,6 +1097,9 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.event_op is unsupported")
         if not isinstance(replacement.get("optional"), bool):
             errors.append(f"{label}.optional must be boolean")
+        requires_chosen = replacement.get(REQUIRES_CHOSEN_FIELD)
+        if requires_chosen is not None and not isinstance(requires_chosen, bool):
+            errors.append(f"{label}.{REQUIRES_CHOSEN_FIELD} must be boolean when supplied (Core 355.6)")
         uses = replacement.get("uses_remaining")
         if uses is not None and (not isinstance(uses, int) or uses < 0):
             errors.append(f"{label}.uses_remaining must be null or non-negative integer")
@@ -2069,6 +2086,38 @@ def _prune_inactive_replacements(state: dict[str, Any]) -> list[str]:
     return removed
 
 
+def _is_zero_magnitude(state: dict[str, Any], effect: dict[str, Any]) -> bool:
+    """Whether this effect would change nothing at all, so that Core 370.1.a
+    leaves no event behind. Two cases the rules name:
+
+      * a Might change whose amount is floored or capped away - Stupefy's
+        "-1 Might, to a minimum of 1" on a 1 Might Unit moves nothing;
+      * a Stun on a Unit that is already Stunned (423.2), which the stun op
+        itself already reports as a no_op.
+    """
+    op = effect.get("op")
+    object_id = effect.get("object_id")
+    obj = state["objects"].get(object_id) if object_id is not None else None
+    if obj is None:
+        return False
+    if op == "stun":
+        return bool(obj.get("stunned"))
+    if op == "modify_might":
+        value = effect.get("value")
+        if not isinstance(value, dict) or not isinstance(value.get("amount"), int):
+            return False
+        amount = value["amount"]
+        if value.get("mode") == "increase_to":
+            return effective_might(state, object_id) >= amount
+        current = effective_might(state, object_id)
+        if "minimum" in value and current + amount < value["minimum"]:
+            amount = value["minimum"] - current
+        if "maximum" in value and current + amount > value["maximum"]:
+            amount = value["maximum"] - current
+        return amount == 0
+    return False
+
+
 def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
                              applied: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
     """`applied` is the sequence memory of Core 370.2: a Replacement Effect can
@@ -2098,6 +2147,12 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
         if replacement["mode"] == "reduce_damage" and replacement.get("prevent_remaining", 0) <= 0:
             continue
         if "granted" in replacement and not replacement_active(state, replacement):
+            continue
+        # Core 355.6: it must have been this effect that chose the object.
+        if replacement.get(REQUIRES_CHOSEN_FIELD) and effect.get(CHOSEN_FIELD) is not True:
+            continue
+        # Core 370.1.a: no change, no event, nothing to replace.
+        if _is_zero_magnitude(state, effect):
             continue
         required_object = replacement.get("target_object_id")
         if required_object is not None and required_object != object_id:

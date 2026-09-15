@@ -117,6 +117,12 @@ COUNT_CONTRACT_OPS = {"channel_rune"}
 CHOSEN_FIELD = "chosen"
 # The replacement's side of the same question.
 REQUIRES_CHOSEN_FIELD = "requires_chosen"
+# Core 477: a Might change is a decrease or an increase, and a card may answer
+# to only one of them - "if a spell or ability would give me -Might". The op is
+# the same either way, so a replacement that matched on the op alone fired on
+# a buff too. Optional, and only meaningful on a modify_might replacement.
+MIGHT_DIRECTION_FIELD = "event_might_direction"
+MIGHT_DIRECTIONS = {"decrease", "increase"}
 # Core 370.1.a: an event is the singular moment that results from a Game Action
 # or a state change. An action that changes nothing produces no event, so there
 # is nothing for a Replacement Effect to replace: a Might change floored to
@@ -1107,6 +1113,12 @@ def validate_state(state: Any) -> list[str]:
         requires_chosen = replacement.get(REQUIRES_CHOSEN_FIELD)
         if requires_chosen is not None and not isinstance(requires_chosen, bool):
             errors.append(f"{label}.{REQUIRES_CHOSEN_FIELD} must be boolean when supplied (Core 355.6)")
+        direction = replacement.get(MIGHT_DIRECTION_FIELD)
+        if direction is not None:
+            if direction not in MIGHT_DIRECTIONS:
+                errors.append(f"{label}.{MIGHT_DIRECTION_FIELD} must be decrease or increase (Core 477)")
+            if replacement.get("event_op") != "modify_might":
+                errors.append(f"{label}.{MIGHT_DIRECTION_FIELD} only means something on a modify_might replacement (Core 477)")
         uses = replacement.get("uses_remaining")
         if uses is not None and (not isinstance(uses, int) or uses < 0):
             errors.append(f"{label}.uses_remaining must be null or non-negative integer")
@@ -2187,6 +2199,17 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
         # Core 370.1.a: no change, no event, nothing to replace.
         if _is_zero_magnitude(state, effect):
             continue
+        # Core 477: "would give me -Might" answers to a decrease, not to every
+        # Might change. The sign that counts is the one after the card's own
+        # floor, since that is what actually moves.
+        direction = replacement.get(MIGHT_DIRECTION_FIELD)
+        if direction is not None:
+            amount = effect.get("amount")
+            if not isinstance(amount, int) or isinstance(amount, bool) or obj is None:
+                continue
+            moved = _floored_might_amount(effective_might(state, object_id), amount, effect)
+            if (moved < 0) != (direction == "decrease"):
+                continue
         required_object = replacement.get("target_object_id")
         if required_object is not None and required_object != object_id:
             continue

@@ -21,6 +21,8 @@ What must hold:
     keeps working;
   - a Might change floored to zero offers no replacement, while the same
     replacement still applies to a change that moves something;
+  - a replacement that answers to "-Might" sees a decrease and not an increase,
+    and the sign that counts is the one left after the card's own floor;
   - a Stun on an already Stunned Unit offers no replacement.
 
     python3 skill/scripts/check_replacement_precision.py
@@ -108,6 +110,21 @@ def main() -> int:
     if not IR._applicable_replacements(bigger, minus_one_floored):
         failures.append("the same floored wording on a 5 Might Unit does move it, and must offer the replacement")
 
+    # --- Core 477: "-Might" is a decrease, not every Might change -----------
+    signed = copy.deepcopy(base)
+    signed["objects"]["u1"]["base_might"] = 5
+    signed["replacement_effects"] = [{**might_replacement(), IR.MIGHT_DIRECTION_FIELD: "decrease"}]
+    down = {"op": "modify_might", "effect_id": "m", "object_id": "u1",
+            "amount": -1, "duration": "this_turn", "source": "stupefy"}
+    up = {**down, "amount": 1}
+    if not IR._applicable_replacements(signed, down):
+        failures.append("a replacement worded '-Might' did not see a decrease (477)")
+    if IR._applicable_replacements(signed, up):
+        failures.append("a replacement worded '-Might' fired on a buff (477)")
+    # A decrease the card's own floor turns into an increase is an increase.
+    if IR._applicable_replacements(signed, {**down, "amount": -9, "minimum": 7}):
+        failures.append("the direction was read before the floor, not after (477, 370.1.a)")
+
     stunned = copy.deepcopy(base)
     stunned["replacement_effects"] = [stun_replacement(None)]
     stunned["objects"]["u1"]["stunned"] = True
@@ -117,6 +134,7 @@ def main() -> int:
     print("replacement precision (Core 355.6, 370.1.a, 423.2)")
     print(f"  fields: {IR.CHOSEN_FIELD} on the effect, {IR.REQUIRES_CHOSEN_FIELD} on the replacement")
     print("  chosen/not-chosen split=ok; floored Might offers nothing; already-Stunned offers nothing")
+    print(f"  {IR.MIGHT_DIRECTION_FIELD}: a '-Might' replacement sees the decrease only, after the floor")
     for failure in failures:
         print("\nFAILED: " + failure)
     if failures:

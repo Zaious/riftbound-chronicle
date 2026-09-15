@@ -23,7 +23,9 @@ What must hold:
     replacement still applies to a change that moves something;
   - a replacement that answers to "-Might" sees a decrease and not an increase,
     and the sign that counts is the one left after the card's own floor;
-  - a Stun on an already Stunned Unit offers no replacement.
+  - a Stun on an already Stunned Unit offers no replacement;
+  - an "[Empowered][>] …" replacement is off while its source is not Empowered,
+    and comes back when it is Empowered again (Core 828.1.c).
 
     python3 skill/scripts/check_replacement_precision.py
 """
@@ -131,10 +133,26 @@ def main() -> int:
     if IR._applicable_replacements(stunned, did_not):
         failures.append("a Stun on an already Stunned Unit still offered a replacement (423.2, 370.1.a)")
 
+    # --- Core 828.1.c: an Empowered Ability lasts as long as the status ------
+    dependent = copy.deepcopy(base)
+    dependent["replacement_effects"] = [{**stun_replacement(None), IR.DEPENDENT_ON_EMPOWERED_FIELD: True}]
+    if IR._applicable_replacements(dependent, did_not):
+        failures.append("an Empowered Ability applied while its source was not Empowered (828.1.c)")
+    dependent["objects"]["u1"]["empowered"] = True
+    if not IR._applicable_replacements(dependent, did_not):
+        failures.append("an Empowered Ability did not apply while its source was Empowered (828.1.c)")
+    # Switched off is not gone: pruning must leave it in place.
+    off = copy.deepcopy(dependent)
+    off["objects"]["u1"]["empowered"] = False
+    IR._prune_inactive_replacements(off)
+    if not off["replacement_effects"]:
+        failures.append("a Disempowered source's Empowered Ability was pruned away; re-Empowering could never restore it")
+
     print("replacement precision (Core 355.6, 370.1.a, 423.2)")
     print(f"  fields: {IR.CHOSEN_FIELD} on the effect, {IR.REQUIRES_CHOSEN_FIELD} on the replacement")
     print("  chosen/not-chosen split=ok; floored Might offers nothing; already-Stunned offers nothing")
     print(f"  {IR.MIGHT_DIRECTION_FIELD}: a '-Might' replacement sees the decrease only, after the floor")
+    print(f"  {IR.DEPENDENT_ON_EMPOWERED_FIELD}: an Empowered Ability is off without the status, and not pruned")
     for failure in failures:
         print("\nFAILED: " + failure)
     if failures:

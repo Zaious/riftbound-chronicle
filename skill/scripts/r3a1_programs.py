@@ -93,7 +93,11 @@ SYMBOLS = ("$controller", "$opponent", "$card", "$chain_item", "$source_object",
 # $granted_target at grant time; a selector's $source_identity is bound from
 # the program's own source_object when the selection is made), never by a
 # scenario.
-ENGINE_SYMBOLS = {"$granted_target", "$source_identity"}
+# A Replacement Effect's own instructions say "it" and "me": effect_ir binds
+# $affected, $source and $affected_identity when the replaced event is known
+# (ADR-0014 §3). A scenario that bound them would be answering a question only
+# the engine can answer.
+ENGINE_SYMBOLS = {"$granted_target", "$source_identity", "$affected", "$source", "$affected_identity"}
 COMBAT_RUNS = {"combat_open", "combat_step", "standard_move"}
 RUNS = {"play", "resolution", "effect", "play_entry"} | COMBAT_RUNS
 _SYMBOL_TOKEN = re.compile(r"\$([a-z_]+)")

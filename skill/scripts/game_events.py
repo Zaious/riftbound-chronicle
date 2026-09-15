@@ -117,6 +117,10 @@ OP_PRIMARY: dict[str, str] = {
     "modify_might": "might_modified",
     "deal_damage": "damaged",
     "mutual_damage_current_might": "damaged",
+    # Composite: apply_program expands it into two ordinary Might changes, and
+    # each of those emits its own might_modified. The mapping is here so the
+    # op is never `event_kind_unknown` (Core 477).
+    "swap_might": "might_modified",
     "heal_damage": "healed",
     "heal_all_damage": "healed",
     "ready": "readied",

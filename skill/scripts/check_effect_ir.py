@@ -8,10 +8,12 @@ import sys
 
 from effect_ir import (
     CORE_RULESET,
+    SUPPORTED_OPS,
     FAQ_AS_OF,
     PROGRAM_VERSION,
     STATE_VERSION,
     effects_for,
+    effective_might,
     apply_program,
     hash_value,
     perform_lethal_cleanup,
@@ -74,6 +76,18 @@ def main() -> int:
         ("recycle", program("recycle", {"op": "recycle_one", "object_id": "c3"}), lambda s: s["players"]["p1"]["zones"]["main_deck"][-1] == "c3"),
         ("move", program("move", {"op": "move_board_object", "object_id": "u1", "destination": {"kind": "battlefield", "battlefield": "bf1"}}), lambda s: s["battlefields"]["bf1"]["objects"] == ["u1"]),
         ("might", program("might", {"op": "modify_might", "object_id": "u1", "amount": 2, "duration": "this_turn", "source": "fixture"}), lambda s: [e["value"]["amount"] for e in effects_for(s, "u1", "might_arithmetic")] == [2]),
+        # Core 477 + 370.1.a: a card's own floor is part of the change, and a
+        # change floored to nothing leaves no continuous effect to read.
+        # u1 is a 3 Might Unit, so a floor of 3 leaves nothing to do at all.
+        ("might-floored-away",
+         program("might-floor", {"op": "modify_might", "object_id": "u1", "amount": -9, "minimum": 3,
+                                 "duration": "this_turn", "source": "fixture"}),
+         lambda s: effects_for(s, "u1", "might_arithmetic") == [] and effective_might(s, "u1") == 3),
+        # A floor of 1 still lets it fall two, and that is what gets recorded.
+        ("might-floor-partly-bites",
+         program("might-floor", {"op": "modify_might", "object_id": "u1", "amount": -9, "minimum": 1,
+                                 "duration": "this_turn", "source": "fixture"}),
+         lambda s: [e["value"]["amount"] for e in effects_for(s, "u1", "might_arithmetic")] == [-2] and effective_might(s, "u1") == 1),
         ("damage", program("damage", {"op": "deal_damage", "object_id": "u1", "amount": 3}), lambda s: s["objects"]["u1"]["damage"] == 4),
         ("heal", program("heal", {"op": "heal_damage", "object_id": "u1", "amount": 8}), lambda s: s["objects"]["u1"]["damage"] == 0),
         ("exhaust", program("exhaust", {"op": "exhaust", "object_id": "u1"}), lambda s: s["objects"]["u1"]["exhausted"] is True),
@@ -569,7 +583,7 @@ def main() -> int:
     if not inapplicable.get("committed") or inapplicable["next_state"]["players"]["p1"]["zones"]["hand"] != ["c1"] or "ignored-token" in inapplicable["next_state"]["objects"]:
         failures.append("inapplicable Core 375 token modifiers were not ignored on a draw replacement")
 
-    print(f"[info] typed effect IR: {len(cases) + 2} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, replacements, unsupported, Burn Out, and state invariants.")
+    print(f"[info] typed effect IR: {len(SUPPORTED_OPS)} supported operations plus sequence, targets, linked effects, lethal cleanup, trigger emission, replacements, unsupported, Burn Out, and state invariants.")
     if failures:
         print("\n".join(f"FAILED: {failure}" for failure in failures))
         return 1

@@ -371,7 +371,7 @@ OP_RULES = {
     "draw": ["Core 413"],
     "recycle_one": ["Core 416"],
     "move_board_object": ["Core 420", "Core 445"],
-    "modify_might": ["Core 135.2.e.3", "Core 477"],
+    "modify_might": ["Core 135.2.e.3", "Core 477.3.a", "Core 477.3.b", "Core 143.2.b"],
     "deal_damage": ["Core 417"],
     "heal_damage": ["Core 418"],
     "stun": ["Core 423", "Core 423.1", "Core 423.1.b", "Core 423.2", "Core 317.2.d"],
@@ -392,7 +392,8 @@ OP_RULES = {
     "heal_all_damage": ["Core 418"],
     "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
     "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
-    "swap_might": ["Core 477", "Core 135.2.e.3", "Core 370.1.a", "Core 373.2"],
+    "swap_might": ["Core 477.3.a", "Core 477.3.e.1.a", "Core 477.3.e.2.a", "Core 135.2.e.3",
+                   "Core 370.1.a", "Core 373.2"],
     "look_at_top": ["Core 128.4", "Core 431.1.c", "Core 431.1.c.1"],
     "reveal": ["Core 424.1", "Core 424.2", "Core 424.2.a", "Core 424.3.a", "Core 431.1.c"],
     "put_back": ["Core 424.2", "Core 436.1.a", "Core 355.10.a"],
@@ -765,8 +766,16 @@ def validate_state(state: Any) -> list[str]:
             value = effect["value"]
             kind = effect["kind"]
             if kind in {"might_set", "might_arithmetic"}:
-                if not isinstance(value, dict) or set(value) - {"amount", "mode", "minimum", "maximum"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool):
-                    errors.append(f"{label}.value must be {{amount, mode?, minimum?, maximum?}}")
+                if not isinstance(value, dict) or set(value) - {"amount", "mode", "minimum", "maximum", "snapshot_amount"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool):
+                    errors.append(f"{label}.value must be {{amount, mode?, minimum?, maximum?, snapshot_amount?}}")
+                elif "snapshot_amount" in value and (not isinstance(value["snapshot_amount"], int) or isinstance(value["snapshot_amount"], bool)):
+                    errors.append(f"{label}.value.snapshot_amount must be an integer (Core 477.3.b)")
+                elif "snapshot_amount" in value and effect.get("passive", False):
+                    errors.append(f"{label} is passive and carries a snapshot_amount; a passive "
+                                  f"ability's limitation is not snapshotted (Core 477.3.b)")
+                elif "snapshot_amount" in value and not {"minimum", "maximum"} & set(value):
+                    errors.append(f"{label}.value.snapshot_amount without a minimum or maximum; "
+                                  f"there is no limitation to snapshot (Core 477.3.b)")
                 elif value.get("mode", "delta") not in MIGHT_MODES:
                     errors.append(f"{label}.value.mode must be one of {sorted(MIGHT_MODES)}")
                 elif kind == "might_arithmetic" and effect.get("sublayer") not in {"increase", "decrease"}:
@@ -2832,13 +2841,20 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             return new_state, trace
         # ADR-0013 §1: one canonical continuous effect in the Arithmetic layer.
         turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+        # Core 477.3.b: this op's source is never a passive ability - a passive
+        # contributes through might_auras and conditional entries, not through
+        # an instruction - so the limit it took is snapshotted. The raw amount
+        # and the bounds stay on the entry as the record of what the card said;
+        # `snapshot_amount` is what it actually contributes from here on.
         bounds = {name: value for name, value in (("minimum", minimum), ("maximum", maximum)) if value is not None}
+        if bounds:
+            bounds["snapshot_amount"] = floored
         entry = {
             "effect_id": f"might:{source}:{object_id}:{len(canonical_effects(new_state))}", "kind": "might_arithmetic",
             "source": {"object": source if source in new_state["objects"] or source in new_state["battlefields"] else object_id, "identity": None, "name": source},
             "affects": {"scope": "object", "object": object_id, "identity": object_identity(new_state, object_id) or f"{object_id}@0"},
-            "layer": "arithmetic", "sublayer": "increase" if floored >= 0 else "decrease",
-            "timestamp": _next_timestamp(new_state), "value": {"amount": floored, "mode": "delta", **bounds},
+            "layer": "arithmetic", "sublayer": "increase" if floored >= 0 else "decrease",  # what it contributes, not what was asked
+            "timestamp": _next_timestamp(new_state), "value": {"amount": amount, "mode": "delta", **bounds},
             "duration": {"kind": "this_turn", "turn_id": turn_id} if duration == "this_turn" else {"kind": "permanent"},
             "passive": False,
         }
@@ -3757,10 +3773,25 @@ def _condition_holds(state: dict[str, Any], effect: dict[str, Any], object_id: s
 
 def _applied_amount(effect: dict[str, Any], current: int) -> int:
     """Core 477.3: a delta, or an 'increased to N' that computes what it adds
-    now; a player never increases by a negative amount (477.3.c)."""
+    now; a player never increases by a negative amount (477.3.c).
+
+    477.3.b is the subtle half. A limited arithmetic effect whose source is NOT
+    a passive ability "is limited at the time of its application, and is
+    'remembered' at that limited level for the duration of its effect" - Riot
+    calls this snapshotting. So once such an effect has a `snapshot_amount`,
+    that is what it contributes, and the board moving afterwards cannot change
+    it. Recomputing the bound on every evaluation is a different game: a Unit
+    that was at 5 when "-4 to a minimum of 1" hit it keeps the whole -4 when a
+    buff later falls off, and ends at -2 (read as 0 by 143.2.b), not at 1.
+
+    A PASSIVE source does not snapshot, so its bounds are applied fresh every
+    time - which is why 479.1's example can have two limited effects each
+    altering what the other applies."""
     value = effect["value"]
     if value.get("mode", "delta") == "increase_to":
         return max(0, value["amount"] - current)
+    if "snapshot_amount" in value:
+        return value["snapshot_amount"]
     amount = value["amount"]
     if "minimum" in value and current + amount < value["minimum"]:
         amount = value["minimum"] - current
@@ -3985,8 +4016,15 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
                 elif effect["kind"] == "might_arithmetic":
                     amount = _applied_amount(effect, result["might"])
                     result["might"] += amount
+                    # Only a stored snapshot is reported as one. The field used to
+                    # carry whatever the bound produced on this pass, which read
+                    # as a record of 477.3.b while being the opposite of it.
+                    limited = {"minimum", "maximum"} & set(effect["value"])
                     result["applied"].append({"effect_id": effect["effect_id"], "layer": layer, "amount": amount,
-                                              **({"snapshot": amount} if not effect.get("passive", False) and {"minimum", "maximum"} & set(effect["value"]) else {})})
+                                              **({"snapshot": effect["value"]["snapshot_amount"]}
+                                                 if "snapshot_amount" in effect["value"] else {}),
+                                              **({"recomputed_limit": True}
+                                                 if limited and "snapshot_amount" not in effect["value"] else {})})
                     applied.add(effect["effect_id"])
                     changed = True
                     continue

@@ -37,6 +37,9 @@ jobs:
       - name: Swapping two Units' Might is two Might changes over one snapshot (Core 477)
         run: python3 skill/scripts/check_swap_might.py
 
+      - name: A limited Might change is remembered, not recomputed (Core 477.3.b)
+        run: python3 skill/scripts/check_might_limit_snapshot.py
+
       - name: Broken relative markdown links + fragment anchors
         run: python3 skill/scripts/check_links.py
 

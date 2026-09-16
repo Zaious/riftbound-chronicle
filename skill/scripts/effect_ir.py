@@ -199,6 +199,16 @@ SUPPORTED_OPS = {
     "disempower",
     "buff",
     "gain_xp",
+    # "you score 1 point" on a card. Core 471.1 has a Score do two things - the
+    # player Gains up to one Point, and Score abilities trigger at the
+    # Battlefield that Scored - and these cards have no Battlefield: "When I
+    # hold, you score 1 point" is an ADDITIONAL point beside the one the Hold
+    # already scored. So what the card does is the first half only, and
+    # 471.1.a.1 says the restrictions on the Final Point do not reach it:
+    # "points Gained from sources that are not Conquer are not beholden to
+    # these restrictions". Named for what it does rather than for the word on
+    # the card, so that nobody reads it as running 471.2.
+    "gain_point",
     # C-55 (ADR-0014 §2): a resolving effect creates a trigger that waits.
     "create_delayed_trigger",
     # C-58 (ADR-0015 §2): the Cleanup's step 5 removal of a Hidden card whose
@@ -409,6 +419,7 @@ OP_RULES = {
     "disempower": ["Core 443.1.b", "Core 443.2", "Core 443.2.a"],
     "buff": ["Core 426.1", "Core 426.1.b", "Core 426.1.c", "Core 702"],
     "gain_xp": ["Core 730.1", "Core 730.2"],
+    "gain_point": ["Core 471.1", "Core 471.1.a.1", "Core 471.2"],
     "attach": ["Core 434.1", "Core 434.2.a", "Core 434.2.b", "Core 434.4", "Core 434.5.a", "Core 136.2.c"],
     "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
     "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
@@ -1429,6 +1440,15 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].gain_xp needs a player")
                 if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1:
                     errors.append(f"effects[{index}].gain_xp needs a positive amount")
+            if op_name == "gain_point":
+                if not isinstance(effect.get("player"), str) or not effect.get("player"):
+                    errors.append(f"effects[{index}].gain_point needs a player")
+                if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1:
+                    errors.append(f"effects[{index}].gain_point needs a positive amount")
+                if effect.get("battlefield") is not None:
+                    errors.append(f"effects[{index}].gain_point names a battlefield; a point "
+                                  f"gained from a card is not a Battlefield being Scored, and "
+                                  f"naming one would read as running 471.2's Score triggers")
             if op_name in {"attach", "detach"}:
                 if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
                     errors.append(f"effects[{index}].{op_name} needs the object it links or unlinks")
@@ -3434,6 +3454,28 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             return new_state, trace
         obj["buffed"] = True
         trace.update({"object_id": object_id, "was_buffed": True, "already_buffed": False})
+
+    elif op == "gain_point":
+        # Core 471.1: a Score has the player Gain up to one Point. This op is
+        # the Gain alone: the card names no Battlefield, so 471.2's Score
+        # abilities have nothing to trigger at, and 470's once-per-Battlefield
+        # limit has no Battlefield to count. 471.1.a.1 puts it beyond the Final
+        # Point restrictions of 471.1.b, which reach Conquer only.
+        #
+        # Whether the new total ends the game is the victory procedure's
+        # business (Core 196): this records the points and says what they are
+        # now, and does not decide a winner from inside an effect.
+        player_id, amount = effect.get("player"), effect.get("amount")
+        if player_id not in new_state["players"] or not isinstance(amount, int) or isinstance(amount, bool) or amount < 1:
+            raise ValueError("gain_point requires a known player and a positive amount")
+        before = int(new_state["players"][player_id].get("points", 0))
+        new_state["players"][player_id]["points"] = before + amount
+        trace.update({"player": player_id, "amount": amount, "before": before,
+                      "after": before + amount, "source_is_conquer": False,
+                      "scored_a_battlefield": False,
+                      "note": "a point Gained from a source that is not Conquer (471.1.a.1); no "
+                              "Battlefield was Scored, so no Score ability triggers (471.2) and "
+                              "the once-per-Battlefield limit of 470 does not apply"})
 
     elif op == "gain_xp":
         player_id, amount = effect.get("player"), effect.get("amount")

@@ -95,6 +95,10 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "player_chosen": {"about": "player", "rules": ["Core 355.1", "Core 355.17"]},
     "resource_added": {"about": "player", "rules": ["Core 446", "Core 447"]},
     "xp_gained": {"about": "player", "rules": ["Core 730"]},
+    # Core 471.1: a player Gains a Point. The event is the gain itself, not a
+    # Battlefield being Scored - a card that says "you score 1 point" names no
+    # Battlefield, so 471.2's Score abilities have nothing to trigger at.
+    "point_gained": {"about": "player", "rules": ["Core 471.1", "Core 471.1.a.1"]},
     "burned_out": {"about": "player", "rules": ["Core 431.2"]},
     "cards_put_back": {"about": "player", "rules": ["Core 424.3"]},
     "predicted": {"about": "player", "rules": ["Core 432"]},
@@ -154,6 +158,7 @@ OP_PRIMARY: dict[str, str] = {
     "disempower": "disempowered",
     "buff": "buffed",
     "gain_xp": "xp_gained",
+    "gain_point": "point_gained",
     "hide_card": "hidden_away",
     "create_delayed_trigger": "delayed_trigger_created",
     "remove_hidden": "hidden_removed",

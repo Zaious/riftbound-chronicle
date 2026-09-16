@@ -43,6 +43,9 @@ jobs:
       - name: A Buff counter contributes its +1 Might (Core 703)
         run: python3 skill/scripts/check_buff_contributes_might.py
 
+      - name: A card that says you score a point gains it and Scores no Battlefield (Core 471.1)
+        run: python3 skill/scripts/check_gain_point.py
+
       - name: Broken relative markdown links + fragment anchors
         run: python3 skill/scripts/check_links.py
 

@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:dc84e6185e85dbb95ab13177",
-  "capability_set_id": "sha256:dc84e6185e85dbb95ab13177c3ea71fc59453bf91ca309762b4f427b9ad2d19e",
+  "manifest_id": "capability-manifest:dfaf9debc41bafbc0ebf071e",
+  "capability_set_id": "sha256:dfaf9debc41bafbc0ebf071e69859d7b52a83e3442b10e7df6b33af0f76e6a8e",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:ea09c283901288982ce47190c15bcecf1ba72f2943890165505c65293cf11da3",
+    "value": "sha256:8c299df2dc8ed6e9c483e8fa50d804ffc8e858c14a8e97f2c3f08ff0a6479b9a",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:c0a9d6e12924fe7e6dee93c52bf258523f0429a47dbfb12d5049efdc0a65e747"
+        "sha256": "sha256:d8b15e501b242db2e76057c423b9ee2374a1c53233d0968299faf210f16b049b"
       },
       {
         "path": "resolution_bridge.py",
@@ -546,6 +546,14 @@
       "id": "exhaust",
       "rule_locators": [
         "Core 414"
+      ]
+    },
+    {
+      "id": "gain_point",
+      "rule_locators": [
+        "Core 471.1",
+        "Core 471.1.a.1",
+        "Core 471.2"
       ]
     },
     {
@@ -1651,9 +1659,11 @@
     "Core 469.1",
     "Core 469.2",
     "Core 470",
+    "Core 471.1",
     "Core 471.1.a.1",
     "Core 471.1.b.1",
     "Core 471.1–471.1.b.1",
+    "Core 471.2",
     "Core 471.2.b",
     "Core 471.2–471.2.c",
     "Core 472",

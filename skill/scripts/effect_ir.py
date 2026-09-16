@@ -4001,8 +4001,26 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     an order it cannot justify is refused rather than guessed."""
     obj = state["objects"][object_id]
     effects = [e for e in canonical_effects(state) if _effect_applies_to(state, e, object_id) and _effect_active(state, e)[0]]
-    result = {"might": obj["base_might"], "keywords": {k: (obj.get("shield_value") or 1) if k == "shield" else None for k in (obj.get("keywords") or [])},
-              "kind": obj.get("kind"), "triggers": {}, "applied": [], "passes": 0}
+    # Core 703: "Each Buff individually contributes +1 Might to a Unit." A Buff
+    # is a counter, not a continuous effect, so it is not in the effect list at
+    # all - it has to be added here or it contributes nothing. 476.3's own
+    # example is exactly this: a buffed Fiora, Victorious is 4 printed + 1 = 5,
+    # and 5 is what makes her Mighty, which turns on Deflect, Ganking and
+    # Shield. Miss the +1 and three keywords silently stay off.
+    #
+    # 702.3 allows a Unit only one Buff at a time, so the state carries a
+    # boolean and the contribution is +1. 426.1.b.2 lets a card grant
+    # permission to be Buffed several times; no card in the pinned corpus does,
+    # and when one appears this needs a count the way Empower needed
+    # empowered_count, not a second boolean.
+    buffs = 1 if obj.get("buffed") else 0
+    result = {"might": obj["base_might"] + buffs,
+              "keywords": {k: (obj.get("shield_value") or 1) if k == "shield" else None for k in (obj.get("keywords") or [])},
+              "kind": obj.get("kind"), "triggers": {}, "applied": [], "passes": 0,
+              "buff_might": buffs}
+    if buffs:
+        result["applied"].append({"effect_id": f"buff:{object_id}", "layer": "arithmetic",
+                                  "amount": buffs, "rule_locators": ["Core 703", "Core 476.3"]})
     pending = {e["effect_id"]: e for e in effects}
     applied: set[str] = set()
     for _ in range(len(effects) + 1):

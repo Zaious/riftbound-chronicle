@@ -40,6 +40,9 @@ jobs:
       - name: A limited Might change is remembered, not recomputed (Core 477.3.b)
         run: python3 skill/scripts/check_might_limit_snapshot.py
 
+      - name: A Buff counter contributes its +1 Might (Core 703)
+        run: python3 skill/scripts/check_buff_contributes_might.py
+
       - name: Broken relative markdown links + fragment anchors
         run: python3 skill/scripts/check_links.py
 

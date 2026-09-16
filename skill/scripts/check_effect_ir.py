@@ -83,11 +83,15 @@ def main() -> int:
          program("might-floor", {"op": "modify_might", "object_id": "u1", "amount": -9, "minimum": 3,
                                  "duration": "this_turn", "source": "fixture"}),
          lambda s: effects_for(s, "u1", "might_arithmetic") == [] and effective_might(s, "u1") == 3),
-        # A floor of 1 still lets it fall two, and that is what gets recorded.
+        # A floor of 1 still lets it fall two. The entry keeps what the card
+        # SAID (-9) beside what it contributes (-2); Core 477.3.b snapshots the
+        # second, and check_might_limit_snapshot.py holds it there.
         ("might-floor-partly-bites",
          program("might-floor", {"op": "modify_might", "object_id": "u1", "amount": -9, "minimum": 1,
                                  "duration": "this_turn", "source": "fixture"}),
-         lambda s: [e["value"]["amount"] for e in effects_for(s, "u1", "might_arithmetic")] == [-2] and effective_might(s, "u1") == 1),
+         lambda s: [(e["value"]["amount"], e["value"]["snapshot_amount"])
+                    for e in effects_for(s, "u1", "might_arithmetic")] == [(-9, -2)]
+                   and effective_might(s, "u1") == 1),
         ("damage", program("damage", {"op": "deal_damage", "object_id": "u1", "amount": 3}), lambda s: s["objects"]["u1"]["damage"] == 4),
         ("heal", program("heal", {"op": "heal_damage", "object_id": "u1", "amount": 8}), lambda s: s["objects"]["u1"]["damage"] == 0),
         ("exhaust", program("exhaust", {"op": "exhaust", "object_id": "u1"}), lambda s: s["objects"]["u1"]["exhausted"] is True),

@@ -5149,6 +5149,12 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
     return selectors, {"decision_id": entry["decision_id"]}
 
 
+def sb_module():
+    """selection_binding, imported lazily so this module stays import-cycle free."""
+    import selection_binding as sb
+    return sb
+
+
 def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: dict[str, Any] | None = None, context: dict[str, Any] | None = None, _replacement_depth: int = 0, _applied_replacements: frozenset[str] = frozenset()) -> dict[str, Any]:
     """`context` carries facts only a procedure knows — today the Combat in
     progress ({"combat": {"combat_id", "battlefield"}}) that a 'this combat'
@@ -5185,6 +5191,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     # order they were made. It is per-program and ephemeral: it is not state,
     # and a nested program is given only what it may legitimately read.
     selection_bindings: dict[str, Any] = {}
+    # Selections an establish_selection in THIS program attempted and found
+    # empty. A reference to one of these is a game event, not a bad artifact.
+    empty_selections: set[str] = set()
     terminal: dict[str, Any] | None = None
     try:
         effects_to_run, mode, repeat_meta = _resolve_executions(program, decisions, context)
@@ -5287,6 +5296,12 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                         "errors": [str(exc)], "trace": trace}
             event = {"index": index, "effect_id": effect_id, **event,
                      "before_state_hash": before_hash, "after_state_hash": before_hash}
+            # 359.3.e: the choice had nothing to choose from. That is a game
+            # event, not a malformed program, and the instructions that refer
+            # to this selection have to be ignored one by one rather than
+            # taking the whole card down with them (359.3.e.6, 359.3.e.10).
+            if event.get("outcome") == "no_op" and event.get("selection_id"):
+                empty_selections.add(event["selection_id"])
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
@@ -5297,6 +5312,27 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             selectors, selector_meta = _resolve_selectors(current, effect, program, decisions,
                                                           bindings=selection_bindings, order_index=index)
         except SelectionBindingRefused as exc:
+            # Narrow, and only here: the selection this instruction refers to is
+            # one THIS program tried to establish and could not, because there
+            # was nothing to choose from (359.3.e). Then 359.3.e.6 ignores this
+            # instruction and 359.3.e.10 lets the rest of the card run. Every
+            # other unbound reference - an artifact naming another program,
+            # another effect, a candidate set taken under a different rule - is
+            # still refused whole, because a lying artifact is not a game event.
+            referenced = (effect.get("target") or {}).get("selection_ref")
+            if exc.reason_code == sb_module().ORIGIN_UNBOUND and referenced in empty_selections:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"],
+                         "outcome": "ignored_illegal_target",
+                         "target_outcome": "skipped_illegal_target", "completion": "none",
+                         "selection_id": referenced,
+                         "reason": f"the selection {referenced!r} was never established - there "
+                                   f"was nothing to choose from - so this instruction is "
+                                   f"ignored (359.3.e, 359.3.e.6)",
+                         "rule_locators": ["Core 359.3.e", "Core 359.3.e.6", "Core 359.3.e.10"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
             return {
                 **base, "valid": True, "committed": False, "applied": False,
                 "reason_code": exc.reason_code, "reason": str(exc),

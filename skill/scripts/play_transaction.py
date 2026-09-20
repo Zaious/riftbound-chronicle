@@ -50,7 +50,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
-    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bump_identity, apply_program, derive_targeted, evaluate_target,
+    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_source_exclusion, _bump_identity, apply_program, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
     suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
@@ -980,11 +980,17 @@ def _play_mode(actor: str, program: dict[str, Any], decisions: dict[str, Any] | 
     return list(option["effects"]), {"decision_id": ref, "option_id": option["option_id"]}
 
 
-def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[str, Any], decisions: dict[str, Any] | None, effects: list[dict[str, Any]] | None = None) -> list[str]:
+def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[str, Any], decisions: dict[str, Any] | None, effects: list[dict[str, Any]] | None = None, stage: str = "play_declaration") -> list[str]:
     """Core 355.5 / 355.9: every selector that targets is chosen and legal at
     play — concrete selectors and decision-supplied ones alike. A supplied
     decision must be for this stage, owned by the actor, and bound to the
-    objects' current identities."""
+    objects' current identities.
+
+    `stage` is `play_declaration` for a card being played and
+    `trigger_finalization` for a triggered ability: Core 355.5.b keeps a
+    permanent's triggered-ability choices out of the permanent's own play, and
+    Core 383.3 / 337.1 have them made as the ability is finalized on the Chain.
+    The legality test is the same one; only the moment differs."""
     chosen_objects: list[str] = []  # every time an object is chosen as a target (Deflect counts each, 809.1.c)
     for index, effect in enumerate(program.get("effects", []) if effects is None else effects):
         candidates: list[tuple[dict[str, Any], str | None]] = []
@@ -1011,9 +1017,9 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 continue
             entry = ed.target_selection(decisions, ref)
             if entry is None:
-                raise PlayError("choices", "target_selection_required", f"target selection {ref!r} is made at play (Core 355.5) and was not supplied", decision_ids=[ref], decision_controller=actor, rule_locators=["Core 355.5"])
-            if entry["stage"] != "play_declaration":
-                raise PlayError("choices", "decision_stage_mismatch", f"target selection {ref!r} was supplied for stage {entry['stage']!r}, not play_declaration", invalid=True)
+                raise PlayError("choices", "target_selection_required", f"target selection {ref!r} is made at {stage} (Core 355.5) and was not supplied", decision_ids=[ref], decision_controller=actor, rule_locators=["Core 355.5"])
+            if entry["stage"] != stage:
+                raise PlayError("choices", "decision_stage_mismatch", f"target selection {ref!r} was supplied for stage {entry['stage']!r}, not {stage}", invalid=True)
             if entry["controller"] != actor:
                 raise PlayError("choices", "decision_controller_mismatch", f"target selection {ref!r} was made by {entry['controller']!r}, not the card's controller", rule_locators=["Core 355.5"])
             identities = entry.get("selection_identities") or {}
@@ -1023,6 +1029,12 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                     raise PlayError("choices", "selection_identity_mismatch", f"target selection {ref!r} was bound to {identities[object_id]!r}; the entity is now {entity_identity(effect_state, object_id)!r}", invalid=True)
                 selector = {k: v for k, v in template.items() if k not in {"decision_ref", "object_id"}}
                 selector["object_id"] = object_id
+                # "another unit": the exclusion is by the identity of the program's own
+                # source, which resolution binds (_bind_source_exclusion). Checked here
+                # unbound, the sentinel made every such target illegal at the moment it
+                # is chosen - found when a permanent's play trigger first had its target
+                # bound at finalization rather than compiled in by a harness.
+                selector = _bind_source_exclusion(selector, effect_state, program) if program.get("source_object") in effect_state["objects"] else selector
                 selector.setdefault("chosen_zone_class", "board" if template.get("kind") == "battlefield" else (zone_class(find_location(effect_state, object_id)) or "non_board"))
                 if derive_targeted(selector):
                     ok, reason = evaluate_target(effect_state, selector, actor)

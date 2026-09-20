@@ -938,6 +938,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid source/controller")
                 elif not isinstance(trigger.get("effect_program_id"), str) or not trigger.get("effect_program_id") or not isinstance(trigger.get("optional_at_finalize"), bool):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}] has invalid program/optional binding")
+                elif "effect_program_hash" in trigger and not (isinstance(trigger["effect_program_hash"], str) and trigger["effect_program_hash"].startswith("sha256:")):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].effect_program_hash must be a sha256 content hash")
                 elif "condition" in trigger and (not isinstance(trigger["condition"], dict) or trigger["condition"].get("kind") not in TRIGGER_CONDITION_KINDS):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
                 elif "scope" in trigger and trigger_field in {"conquer_triggers", "hold_triggers"} and trigger["scope"] not in {"unit_here", "controller"}:

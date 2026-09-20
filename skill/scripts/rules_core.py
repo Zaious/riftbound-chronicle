@@ -389,6 +389,12 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.effect_program_id is required for triggered items")
             if not isinstance(item.get("optional_at_finalize"), bool):
                 errors.append(f"{label}.optional_at_finalize is required for triggered items")
+            if "effect_program_hash" in item and not (isinstance(item["effect_program_hash"], str) and item["effect_program_hash"].startswith("sha256:")):
+                errors.append(f"{label}.effect_program_hash must be a sha256 content hash")
+            if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") == "target_selection" for e in item["finalized_targets"])):
+                errors.append(f"{label}.finalized_targets must be trigger_finalization target selections")
+            if "finalized_targets" in item and item.get("status") != "finalized":
+                errors.append(f"{label}.finalized_targets on an item that is not finalized")
             if item.get("trigger_kind") not in {"triggered", "self_death", "reflexive"}:
                 errors.append(f"{label}.trigger_kind is invalid")
             if not isinstance(item.get("batch_sequence"), int) or item.get("batch_sequence", -1) < 0:
@@ -1025,6 +1031,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             descriptor_errors.append(f"descriptor {index} must bind effect_program_id")
         if not isinstance(descriptor.get("optional_at_finalize", False), bool):
             descriptor_errors.append(f"descriptor {index}.optional_at_finalize must be boolean")
+        if "effect_program_hash" in descriptor and not (isinstance(descriptor["effect_program_hash"], str) and descriptor["effect_program_hash"].startswith("sha256:")):
+            descriptor_errors.append(f"descriptor {index}.effect_program_hash must be a sha256 content hash")
         batch_sequence = descriptor.get("batch_sequence", 0)
         batch_id = descriptor.get("batch_id", f"batch-{batch_sequence}")
         if not isinstance(batch_sequence, int) or batch_sequence < 0 or not isinstance(batch_id, str) or not batch_id:
@@ -1073,6 +1081,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             "ability_kind": "standard",
             "source_object": descriptor["source_object"],
             "effect_program_id": descriptor.get("effect_program_id"),
+            # The ID says WHICH program; the hash says it is still that program.
+            **({"effect_program_hash": descriptor["effect_program_hash"]} if descriptor.get("effect_program_hash") else {}),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),
             "trigger_kind": descriptor.get("trigger_kind", "triggered"),
             "batch_sequence": descriptor["batch_sequence"],

@@ -208,6 +208,16 @@ jobs:
       - name: Permanent entry, play triggers, open-Battlefield permission
         run: python3 skill/scripts/check_permanent_play.py
 
+      # A triggered ability's targets are bound when it is finalized and recorded on
+      # the chain item; resolution uses the record and never re-chooses. Its program is
+      # dispatched by ID and refused if the content under that ID changed.
+      - name: Trigger finalization binds targets and dispatches the program by content
+        run: python3 skill/scripts/check_trigger_finalization.py
+
+      # An empty selection costs the instruction that consumes it, not the whole card.
+      - name: Selection granularity, an empty choice ignores its consumer only
+        run: python3 skill/scripts/check_selection_granularity.py
+
       # ADR-0007 C-20: the Battlefield is the target, affected units are not;
       # Bonus Damage is summed once and added before Prevent sees the amount.
       - name: Battlefield targets, criteria expansion, Bonus Damage
@@ -532,6 +542,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_r3a1_programs.py"
           python3 "$REPO/skill/scripts/check_op_dispatch.py"
           python3 "$REPO/skill/scripts/check_permanent_play.py"
+          python3 "$REPO/skill/scripts/check_trigger_finalization.py"
+          python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_turn_steps.py"
           python3 "$REPO/skill/scripts/check_conditions_and_discard.py"

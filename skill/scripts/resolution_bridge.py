@@ -43,6 +43,113 @@ def validate_cleanup_decisions(value: Any) -> list[str]:
     return []
 
 
+def program_hash(program: dict[str, Any]) -> str:
+    """The content of a program: its instructions. The ID names a program; this says
+    whether what is about to run is still the program that was named."""
+    return hash_value(program.get("effects") or [])
+
+
+def dispatch_program(registry: dict[str, Any], chain_item: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """The registered program a chain item is bound to, or why there is none.
+
+    A chain item binds `effect_program_id`, and - when its trigger descriptor carried
+    one - `effect_program_hash`. The caller does not get to choose the program: it is
+    looked up by the ID the engine put on the Chain, and refused if its content is not
+    the content the descriptor named."""
+    program_id = chain_item.get("effect_program_id")
+    program = (registry or {}).get(program_id) if isinstance(program_id, str) else None
+    if not isinstance(program, dict):
+        return None, {"reason": "effect_program_not_registered", "expected_program_id": program_id}
+    if program.get("program_id") != program_id:
+        return None, {"reason": "effect_program_id_mismatch", "expected_program_id": program_id, "received_program_id": program.get("program_id")}
+    bound_hash = chain_item.get("effect_program_hash")
+    if bound_hash is not None and program_hash(program) != bound_hash:
+        return None, {"reason": "effect_program_hash_mismatch", "expected_program_hash": bound_hash, "received_program_hash": program_hash(program)}
+    return program, None
+
+
+def _target_refs(program: dict[str, Any]) -> list[str]:
+    refs = []
+    for effect in program.get("effects") or []:
+        for field in ("target", "targets"):
+            selector = effect.get(field)
+            if isinstance(selector, dict) and isinstance(selector.get("decision_ref"), str):
+                refs.append(selector["decision_ref"])
+        for unit in effect.get("units") or []:
+            if isinstance(unit, dict) and isinstance(unit.get("decision_ref"), str):
+                refs.append(unit["decision_ref"])
+    return refs
+
+
+def finalize_trigger(
+    timing_state: dict[str, Any],
+    effect_state: dict[str, Any],
+    registry: dict[str, Any],
+    engine_decisions: dict[str, Any] | None = None,
+    *,
+    perform_optional_trigger: bool | None = None,
+) -> dict[str, Any]:
+    """Finalize the oldest Pending triggered ability: dispatch its program, bind its targets.
+
+    Core 355.5.b keeps a permanent's triggered-ability choices out of the permanent's
+    own play; Core 383.3 puts the ability on the Chain like an activated one; Core
+    337.1 has its controller complete the steps of playing it until it is Finalized,
+    and Core 355.5 is one of those steps. So this is where a target is chosen, and it
+    is the only place: the selection is recorded on the chain item, and resolution
+    uses the record (Core 359.3.e - a target illegal by then is mistargeted, never
+    re-chosen)."""
+    from play_transaction import PlayError, _check_play_targets  # late: play_transaction imports effect_ir too
+    from rules_core import finalize_oldest_pending, next_procedure
+    base = {"schema_version": "riftbound-trigger-finalization-result.v1",
+            "input_timing_state_hash": state_hash(timing_state), "input_effect_state_hash": hash_value(effect_state)}
+    locators = ["Core 337.1", "Core 355.5", "Core 355.5.b", "Core 383.3"]
+    step = next_procedure(timing_state)
+    if step.get("procedure") != "finalize_oldest_pending":
+        return {**base, "valid": True, "committed": False, "stage": "timing", "reason": "finalize_not_next", "next_procedure": step}
+    item = next(i for i in timing_state["chain"]["items"] if i["status"] == "pending")
+    if item.get("timing") != "triggered":
+        return {**base, "valid": True, "committed": False, "stage": "timing", "reason": "pending_item_is_not_a_triggered_ability", "item_id": item["id"]}
+    program, refusal = dispatch_program(registry, item)
+    if refusal is not None:
+        return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], **refusal}
+    if program.get("controller") is not None and program["controller"] != item.get("controller"):
+        return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], "reason": "effect_program_controller_mismatch"}
+    if program.get("source_object") is not None and program["source_object"] != item.get("source_object"):
+        return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], "reason": "effect_program_source_mismatch"}
+    if decision_errors := _ed.validate_engine_decisions(engine_decisions):
+        return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": decision_errors, "reason": "; ".join(decision_errors)}
+    if engine_decisions is not None and engine_decisions.get("input_hash") != hash_value(effect_state):
+        return {**base, "valid": False, "committed": False, "stage": "engine_decision", "reason": "stale decision envelope"}
+    declining = item.get("optional_at_finalize") is True and perform_optional_trigger is False
+    recorded: list[dict[str, Any]] = []
+    if not declining:
+        try:
+            _check_play_targets(effect_state, item["controller"], program, engine_decisions, stage="trigger_finalization")
+        except PlayError as error:
+            return {**base, "valid": not error.extra.get("invalid", False), "committed": False, "stage": "target_binding",
+                    "item_id": item["id"], "reason": error.reason_code, "message": str(error),
+                    "decision_ids": error.extra.get("decision_ids"), "rule_locators": locators}
+        for ref in _target_refs(program):
+            entry = _ed.target_selection(engine_decisions, ref)
+            if entry is None:   # the check above already refuses this; never record a hole
+                return {**base, "valid": True, "committed": False, "stage": "target_binding", "item_id": item["id"],
+                        "reason": "target_selection_required", "decision_ids": [ref], "rule_locators": locators}
+            recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
+    timing_result = finalize_oldest_pending(timing_state, perform_optional_trigger=perform_optional_trigger)
+    if timing_result.get("applied") is not True:
+        return {**base, "valid": timing_result.get("valid", True), "committed": False, "stage": "timing",
+                "reason": timing_result.get("reason_code", "finalize_failed"), "timing_result": timing_result}
+    next_timing = timing_result["next_state"]
+    for candidate in next_timing["chain"]["items"]:
+        if candidate["id"] == item["id"]:
+            candidate["finalized_targets"] = recorded
+            candidate.setdefault("effect_program_hash", program_hash(program))
+    return {**base, "valid": True, "committed": True, "item_id": item["id"], "next_timing_state": next_timing,
+            "next_timing_state_hash": state_hash(next_timing), "finalized_targets": recorded,
+            "effect_program_id": item["effect_program_id"], "effect_program_hash": program_hash(program),
+            "transition": timing_result.get("transition"), "rule_locators": locators}
+
+
 def resolve_with_program(
     timing_state: dict[str, Any],
     item_id: str,
@@ -79,6 +186,12 @@ def resolve_with_program(
             "expected_program_id": bound_program,
             "received_program_id": program.get("program_id"),
         }
+    # The ID names the program; a bound hash says it must still BE that program. A
+    # body swapped under a correct ID is refused here rather than run.
+    bound_hash = chain_item.get("effect_program_hash")
+    if bound_hash is not None and program and program_hash(program) != bound_hash:
+        return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_hash_mismatch",
+                "expected_program_hash": bound_hash, "received_program_hash": program_hash(program)}
     if program.get("controller") is not None and program.get("controller") != chain_item.get("controller"):
         return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_controller_mismatch"}
     if program.get("source_object") is not None and chain_item.get("source_object") is not None and program.get("source_object") != chain_item.get("source_object"):
@@ -110,6 +223,23 @@ def resolve_with_program(
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": ["engine_decisions.input_hash does not match the effect state"], "reason": "stale decision envelope"}
     if engine_decisions is not None and engine_decisions.get("chain_item_id") not in (None, item_id):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": ["engine_decisions.chain_item_id does not match the resolving item"], "reason": "decision envelope for another chain item"}
+    # Targets bound at trigger finalization are the targets. Core 359.3.e: one that is
+    # illegal by now is mistargeted and its instruction ignored - it is never re-chosen.
+    # So a target selection supplied at resolution must BE the recorded one, and when
+    # none is supplied the record is what the program runs with.
+    finalized = chain_item.get("finalized_targets")
+    if finalized is not None:
+        recorded = {entry["decision_id"]: entry for entry in finalized}
+        supplied = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") == "target_selection"]
+        for entry in supplied:
+            kept = recorded.get(entry.get("decision_id"))
+            if kept is None or entry.get("value") != kept.get("value") or (entry.get("selection_identities") or {}) != (kept.get("selection_identities") or {}):
+                return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_finalization",
+                        "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 359.3.e.2", "Core 359.3.e.9"]}
+        others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"]
+        if finalized or others:
+            engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
+                                "decisions": [copy.deepcopy(entry) for entry in finalized] + others}
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
     # ADR-0008 §5: a 'this combat' grant binds to the Combat in progress, which
     # only the timing state knows.

@@ -536,6 +536,9 @@ TRIGGER_WRAPPERS = {
     # scored. That is the engine's default scope for a conquer trigger; the
     # clause states it rather than relying on the default.
     "when_i_conquer": ("conquer_triggers", "on-conquer", {"scope": "unit_here"}),
+    # Core 383.4.d.2.a: a Unit's own Hold Effect fires when that Unit is at the Battlefield
+    # its controller Holds - the same unit_here scope the Scoring Step already reads.
+    "when_i_hold": ("hold_triggers", "on-hold", {"scope": "unit_here"}),
 }
 
 # A Battlefield's own trigger is a different shape from an object's - Core

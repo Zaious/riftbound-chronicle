@@ -15,7 +15,10 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(r"P:\MyOpenSource\riftbound-chronicle-claude-16")
+# The checkout this script lives in. It was a hard-coded absolute path to one
+# delegation worktree, so running it from any other checkout rewrote THAT worktree's
+# grammar and left this one stale (found 2026-09-22).
+ROOT = Path(__file__).resolve().parent.parent.parent
 OUT = ROOT / "skill" / "data" / "clause_grammar" / "clause_grammar.json"
 CATALOGUE = ROOT / "skill" / "data" / "keyword_catalog" / "keyword_catalog.json"
 sys.path.insert(0, str(ROOT / "skill" / "scripts"))
@@ -485,6 +488,11 @@ WRAPPERS = [
      ["Core 469.2", "Core 190.6.a", "Core 383.3"], ["hold_triggers"],
      ["When you hold here, draw 1.", "When you hold here, you may channel 1 rune exhausted."],
      ["when you conquer here, draw 1", "when i hold, draw 1", "when you hold here, summon a dragon"]),
+    # A Unit's own Hold Effect (Core 383.4.d): it goes on the Chain after the Unit is present
+    # at a Battlefield its controller Holds and scores from (383.4.d.2.a) - the Scoring Step's
+    # unit_here scope. Distinct from the Battlefield's own "When you hold here".
+    ("when_i_hold", r"when i hold, (?P<inner>.+)", ["Core 469.2", "Core 383.4.d", "Core 383.4.d.2.a"], ["hold_triggers"],
+     ["When I hold, draw 1."], ["when you hold here, draw 1", "when i conquer, draw 1", "when i move, draw 1"]),
     ("when_i_conquer", r"when i conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.1"], ["conquer_triggers"],
      ["When I conquer, draw 1."], ["when you conquer, draw 1", "when i hold, draw 1", "when i move, draw 1"]),
     ("at_the_end_of_your_turn", r"at the end of your turn, (?P<inner>.+)", ["Core 317.1", "Core 383.1"],

@@ -1479,6 +1479,31 @@
       ]
     },
     {
+      "production_id": "when_i_hold",
+      "form": "When I hold, draw 1.",
+      "template": "when i hold, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 469.2",
+        "Core 383.4.d",
+        "Core 383.4.d.2.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "hold_scoring"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I hold, draw 1."
+      ],
+      "negative": [
+        "when you hold here, draw 1",
+        "when i conquer, draw 1",
+        "when i move, draw 1"
+      ]
+    },
+    {
       "production_id": "when_i_conquer",
       "form": "When I conquer, draw 1.",
       "template": "when i conquer, (?P<inner>.+)",

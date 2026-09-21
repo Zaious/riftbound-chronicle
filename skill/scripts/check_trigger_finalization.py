@@ -21,6 +21,10 @@ item bound only the ID of its program. Held here:
                     resolution is refused, not honoured
   another unit      the source exclusion is bound when the target is chosen: the ability's
                     own source is refused, a different friendly unit is accepted
+  battlefield       a Battlefield's own Hold trigger (no controller on the descriptor, Core
+                    190.6.a) is scheduled by the Scoring Step with its program hash,
+                    finalized, dispatched and resolved the same way; a malformed hash on its
+                    descriptor does not validate, a swapped body is refused
   program identity  an unregistered ID, a registry body swapped under the right ID, and
                     a swapped program handed straight to resolution are each refused
 """
@@ -39,6 +43,7 @@ from effect_ir import hash_value, object_identity, validate_state  # noqa: E402
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
 from resolution_bridge import dispatch_program, finalize_trigger, program_hash, resolve_with_program  # noqa: E402
 from rules_core import CORE_RULESET, FAQ_AS_OF, next_procedure, pass_priority  # noqa: E402
+from battlefield_control import SCORING_TASK, run_scoring_step  # noqa: E402
 
 TRIGGER, PROGRAM_ID = "c1-on-play", "c1-on-play-effects"
 RULESET = {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}
@@ -192,6 +197,47 @@ def main() -> int:
     other_unit = finalize_trigger(timing_a, state_a, {PROGRAM_ID: another}, choose(state_a, "u1"))
     if not other_unit.get("committed"):
         errors.append(f"'another unit' refused a different friendly unit: {other_unit.get('reason')} {other_unit.get('message')}")
+
+    # --- a Battlefield's own trigger: "When you hold here" (Core 190.6.a, 469.2, 383.4.d) --------
+    # Its descriptor names no controller (the Battlefield's controller when it triggers) and
+    # lives on the Battlefield, not an object; the Scoring Step schedules it. It is finalized
+    # and dispatched exactly like an object's trigger, and its program hash binds the same way.
+    hold_id, hold_program_id = "bf1-on-hold", "bf1-on-hold-effects"
+    hold_program = {"schema_version": "riftbound-effect-program.v1", "ruleset": RULESET, "program_id": hold_program_id,
+                    "controller": "p1", "source_object": "bf1",
+                    "effects": [{"op": "draw", "effect_id": "dr", "player": "p1", "count": 1}]}
+    grove = base_state()
+    grove["mode"] = {"victory_score": 8}
+    grove["battlefields"]["bf1"]["controller"] = "p1"
+    grove["battlefields"]["bf1"]["hold_triggers"] = [{"trigger_id": hold_id, "controller_order": 0, "effect_program_id": hold_program_id,
+                                                    "optional_at_finalize": False, "effect_program_hash": program_hash(hold_program)}]
+    if validate_state(grove):
+        errors.append(f"a hashed Battlefield trigger descriptor did not validate: {validate_state(grove)[:2]}")
+    bad_hash = copy.deepcopy(grove)
+    bad_hash["battlefields"]["bf1"]["hold_triggers"][0]["effect_program_hash"] = "not-a-hash"
+    if not validate_state(bad_hash):
+        errors.append("a Battlefield trigger descriptor with a malformed program hash validated")
+    beginning = {**fixture(tasks=[SCORING_TASK]), "phase": "beginning", "priority": None}
+    held = run_scoring_step(beginning, grove)
+    held_items = [(i["id"], i["status"], i.get("source_object"), i.get("effect_program_hash")) for i in held.get("next_timing_state", {}).get("chain", {}).get("items", [])]
+    if not held.get("committed") or held_items != [(hold_id, "pending", "bf1", program_hash(hold_program))]:
+        errors.append(f"the Hold did not schedule the Battlefield's trigger with its program hash: {held.get('reason_code')} {held_items}")
+    else:
+        hold_registry = {hold_program_id: hold_program}
+        bound = finalize_trigger(held["next_timing_state"], held["next_effect_state"], hold_registry, None)
+        swapped_hold = finalize_trigger(held["next_timing_state"], held["next_effect_state"],
+                                        {hold_program_id: {**hold_program, "effects": [{"op": "draw", "effect_id": "dr", "player": "p1", "count": 5}]}}, None)
+        if swapped_hold.get("committed") or swapped_hold.get("reason") != "effect_program_hash_mismatch":
+            errors.append(f"a swapped Battlefield trigger program was finalized: {swapped_hold.get('reason')}")
+        if not bound.get("committed"):
+            errors.append(f"the Battlefield's Hold trigger was not finalized: {bound.get('stage')} {bound.get('reason')}")
+        else:
+            ready_hold = to_resolution(bound["next_timing_state"])
+            hold_program_found, hold_refusal = dispatch_program(hold_registry, ready_hold["chain"]["items"][0])
+            drew = resolve_with_program(ready_hold, hold_id, held["next_effect_state"], hold_program_found) if hold_refusal is None else {}
+            before_hand = len(held["next_effect_state"]["players"]["p1"]["zones"]["hand"])
+            if not drew.get("committed") or len(drew["next_effect_state"]["players"]["p1"]["zones"]["hand"]) != before_hand + 1:
+                errors.append(f"the Battlefield's Hold trigger did not resolve and draw 1: {hold_refusal} {drew.get('reason')}")
 
     if errors:
         print("FAILED: trigger finalization" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))

@@ -543,7 +543,13 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"battlefields.{battlefield_id}.{trigger_field} must be an array")
                 continue
             for trigger_index, trigger in enumerate(triggers):
-                if (not isinstance(trigger, dict) or set(trigger) != {"trigger_id", "controller_order", "effect_program_id", "optional_at_finalize"}
+                # effect_program_hash is optional, as on an object's descriptor: the ID names
+                # the program, the hash says it is still that program (resolution_bridge).
+                if isinstance(trigger, dict) and "effect_program_hash" in trigger and not (
+                        isinstance(trigger["effect_program_hash"], str) and trigger["effect_program_hash"].startswith("sha256:")):
+                    errors.append(f"battlefields.{battlefield_id}.{trigger_field}[{trigger_index}].effect_program_hash must be a sha256 content hash")
+                    continue
+                if (not isinstance(trigger, dict) or set(trigger) - {"effect_program_hash"} != {"trigger_id", "controller_order", "effect_program_id", "optional_at_finalize"}
                         or not isinstance(trigger["trigger_id"], str) or not trigger["trigger_id"] or not isinstance(trigger["controller_order"], int) or trigger["controller_order"] < 0
                         or not isinstance(trigger["effect_program_id"], str) or not trigger["effect_program_id"] or not isinstance(trigger["optional_at_finalize"], bool)):
                     errors.append(f"battlefields.{battlefield_id}.{trigger_field}[{trigger_index}] must carry trigger_id, controller_order, effect_program_id, optional_at_finalize (the controller is the Battlefield's, 190.6.a)")

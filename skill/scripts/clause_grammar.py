@@ -545,7 +545,8 @@ TRIGGER_WRAPPERS = {
 # 190.6.a leaves its controller unnamed - so it has its own branch rather than
 # a row above. Named here so the contract check sees a production that can be
 # compiled, which is the whole point of that check.
-BATTLEFIELD_TRIGGER_WRAPPERS = {"when_you_hold_here": ("hold_triggers", "on-hold")}
+BATTLEFIELD_TRIGGER_WRAPPERS = {"when_you_hold_here": ("hold_triggers", "on-hold"),
+                                "when_you_conquer_here": ("conquer_triggers", "on-conquer")}
 
 
 # --------------------------------------------------------------------------

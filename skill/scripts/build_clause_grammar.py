@@ -488,6 +488,13 @@ WRAPPERS = [
      ["Core 469.2", "Core 190.6.a", "Core 383.3"], ["hold_triggers"],
      ["When you hold here, draw 1.", "When you hold here, you may channel 1 rune exhausted."],
      ["when you conquer here, draw 1", "when i hold, draw 1", "when you hold here, summon a dragon"]),
+    # A Battlefield's own Conquer trigger: its controller - the player who just established
+    # control there and Conquered (Core 348.2.a, 469.1) - controls it (190.6.a); it goes on
+    # the Chain with the Score's other triggers (471.2). Distinct from a Unit's "When I conquer".
+    ("when_you_conquer_here", r"when you conquer here, (?P<optional>you may )?(?P<inner>.+)",
+     ["Core 469.1", "Core 471.2", "Core 190.6.a", "Core 383.3"], ["conquer_triggers"],
+     ["When you conquer here, draw 1.", "When you conquer here, you may channel 1 rune exhausted."],
+     ["when you hold here, draw 1", "when i conquer, draw 1", "when you conquer, draw 1"]),
     # A Unit's own Hold Effect (Core 383.4.d): it goes on the Chain after the Unit is present
     # at a Battlefield its controller Holds and scores from (383.4.d.2.a) - the Scoring Step's
     # unit_here scope. Distinct from the Battlefield's own "When you hold here".

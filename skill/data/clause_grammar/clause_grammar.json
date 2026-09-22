@@ -1479,6 +1479,33 @@
       ]
     },
     {
+      "production_id": "when_you_conquer_here",
+      "form": "When you conquer here, draw 1.",
+      "template": "when you conquer here, (?P<optional>you may )?(?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 469.1",
+        "Core 471.2",
+        "Core 190.6.a",
+        "Core 383.3"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you conquer here, draw 1.",
+        "When you conquer here, you may channel 1 rune exhausted."
+      ],
+      "negative": [
+        "when you hold here, draw 1",
+        "when i conquer, draw 1",
+        "when you conquer, draw 1"
+      ]
+    },
+    {
       "production_id": "when_i_hold",
       "form": "When I hold, draw 1.",
       "template": "when i hold, (?P<inner>.+)",

@@ -40,7 +40,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import effect_ir  # noqa: E402
 import selection_binding as sb  # noqa: E402
-from check_effect_ir import base_state  # noqa: E402
+from check_effect_ir import base_state, settle_contested  # noqa: E402
 from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program,  # noqa: E402
                        hash_value, validate_program)
 from engine_decisions import DECISIONS_VERSION, validate_engine_decisions  # noqa: E402
@@ -221,6 +221,7 @@ def main() -> int:
                                   "base_might": 1, "might_modifiers": [], "damage": 0,
                                   "exhausted": False}
     loc_state["players"]["p1"]["zones"]["base"].append("u6")
+    settle_contested(loc_state)
     anywhere = dict(CHOICE)
     in_base = dict(CHOICE, criteria={"kind": "unit", "controller_relation": "friendly",
                                      "location": "base"})
@@ -375,6 +376,7 @@ def main() -> int:
             on_battlefield["players"]["p1"]["zones"]["base"].remove(unit)
             on_battlefield["battlefields"]["bf1"]["objects"].append(unit)
             on_battlefield["objects"][unit]["exhausted"] = True
+        settle_contested(on_battlefield)
         recording(on_battlefield, program(
             {"op": "ready", "effect_id": "wake",
              "affected": {"criteria": {"location": "any_battlefield", "kind": "unit"}}},

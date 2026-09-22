@@ -37,7 +37,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from effect_ir import (  # noqa: E402
     _applicable_replacements,
     apply_program,
@@ -110,7 +110,7 @@ def soraka_state():
          "target_object_id": "u1",
          "replacement_effects": [{"op": "kill", "effect_id": "kill-ga", "object_id": "ga"}] + copy.deepcopy(saved)},
     ]
-    return state
+    return settle_contested(state)
 
 
 def location_of(state, object_id):

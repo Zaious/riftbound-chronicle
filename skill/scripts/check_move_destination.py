@@ -35,7 +35,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import clause_grammar as cg  # noqa: E402
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from effect_ir import apply_program, hash_value, legal_move_destinations  # noqa: E402
 
 
@@ -45,7 +45,7 @@ def board_state():
     state["battlefields"]["bf2"] = {"controller": None, "objects": []}
     state["players"]["p2"]["zones"]["base"] = []
     state["battlefields"]["bf1"]["objects"] = ["u2"]
-    return state
+    return settle_contested(state)
 
 
 def move_program():

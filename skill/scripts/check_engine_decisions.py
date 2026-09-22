@@ -39,7 +39,7 @@ SKILL_DIR = SCRIPT_DIR.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import engine_decisions as ed  # noqa: E402
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
 from effect_ir import apply_program, derive_targeted, evaluate_target, hash_value, object_identity, validate_program, validate_state  # noqa: E402
 from engine_check import build_engine_check, validate_engine_check  # noqa: E402
@@ -173,7 +173,7 @@ def main() -> int:
 
     # --- decisions supply a deferred selector ------------------------------------
     deferred = program("flash", {"op": "move_board_object", "destination": {"kind": "base", "player": "p1"}, "targets": {"min": 0, "max": 2, "decision_ref": "d-flash", "restrictions": {"controller_relation": "friendly"}}})
-    on_bf = copy.deepcopy(state); on_bf["players"]["p1"]["zones"]["base"].remove("u1"); on_bf["battlefields"]["bf1"]["objects"].append("u1")
+    on_bf = copy.deepcopy(state); on_bf["players"]["p1"]["zones"]["base"].remove("u1"); on_bf["battlefields"]["bf1"]["objects"].append("u1"); settle_contested(on_bf)
     missing = apply_program(on_bf, deferred)
     if missing.get("committed") or missing.get("reason_code") != "target_selection_required" or missing.get("decision_ids") != ["d-flash"] or missing.get("decision_controller") != "p1":
         errors.append(f"missing target decision did not return decision_required naming it: {missing.get('reason_code')}")

@@ -31,7 +31,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
 from effect_ir import apply_program, hash_value, validate_program, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
@@ -55,6 +55,7 @@ def main() -> int:
     # both units at bf1; u1 friendly to p1 (3 Might, 1 damage), u2 enemy (4 Might)
     state["players"]["p1"]["zones"]["base"].remove("u1"); state["players"]["p2"]["zones"]["base"].remove("u2")
     state["battlefields"]["bf1"]["objects"] += ["u1", "u2"]
+    settle_contested(state)
     snapshot = copy.deepcopy(state)
 
     def ev(result):

@@ -26,7 +26,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
 from effect_ir import apply_program, object_identity, validate_state  # noqa: E402
 from resolution_bridge import run_expiration_step  # noqa: E402
@@ -40,6 +40,7 @@ def main() -> int:
     errors: list[str] = []
     state = base_state(); state["turn_id"] = "turn-7"
     state["players"]["p1"]["zones"]["base"].remove("u1"); state["battlefields"]["bf1"]["objects"].append("u1")  # u1 at bf1 with 1 damage
+    settle_contested(state)
 
     def ev(result, i=0):
         return result["trace"][i] if result.get("committed") else {}

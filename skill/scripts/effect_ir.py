@@ -546,6 +546,16 @@ def validate_state(state: Any) -> list[str]:
             if enemies:
                 errors.append(f"battlefields.{battlefield_id} is controlled by {bf_controller} with enemy Unit(s) "
                               f"{enemies} present but not contested (Core 190.3.a)")
+        # An uncontrolled Battlefield is one nobody controls, so ANY Unit there applied
+        # Contested when it arrived (190.3.a.1), and it stays until control is established
+        # (190.3.b) or its applier is gone and Cleanup removes it (323.11, 323.11.a).
+        if bf_controller is None and not battlefield.get("contested"):
+            present = [o for o in battlefield.get("objects", []) or []
+                       if isinstance(state.get("objects", {}).get(o), dict)
+                       and state["objects"][o].get("kind") == "unit"]
+            if present:
+                errors.append(f"battlefields.{battlefield_id} is uncontrolled with Unit(s) {present} present "
+                              f"but not contested (Core 190.3.a)")
         identity = battlefield.get("identity")
         if identity is not None and (not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit()):
             errors.append(f"battlefields.{battlefield_id}.identity must look like '<id>@<generation>' when supplied")
@@ -1937,19 +1947,36 @@ def same_side(state: dict[str, Any], left: str | None, right: str | None) -> boo
     return left_team is not None and left_team == right_team
 
 
+class TeamContestUnsupported(NotImplementedError):
+    """A Unit arrived at a Battlefield, or Contested would change, in a state with
+    teams. Team contest and scoring are not modelled, so the engine stops rather than
+    continuing on a guess (GPT, capability 006 ruling)."""
+
+
+def team_state(state: dict[str, Any]) -> bool:
+    """A state with teams: any player carries a team_id, or the Mode of Play names teams."""
+    return (any(isinstance(p, dict) and p.get("team_id") is not None for p in state.get("players", {}).values())
+            or bool((state.get("mode") or {}).get("teams")))
+
+
 def apply_arrival_contested(state: dict[str, Any], battlefield_id: str, object_id: str) -> str | None:
     """Core 190.3.a / 190.3.a.1: a Unit moving or played to a Battlefield applies
     Contested if the Battlefield is not already Contested and the Unit's controller
     does not control it. An uncontrolled Battlefield is one its controller does not
-    control. A teammate's Battlefield (same team_id) is left alone: the team rules
-    are not modelled here and the engine does not guess them. Returns the applier."""
+    control. In a team state this raises TeamContestUnsupported: the team rules are
+    not modelled and a teammate's arrival is not silently skipped. Returns the applier."""
     obj = state["objects"].get(object_id) or {}
     battlefield = state["battlefields"][battlefield_id]
     controller = obj.get("controller")
-    if obj.get("kind") != "unit" or controller is None or battlefield.get("contested"):
+    if obj.get("kind") != "unit" or controller is None:
         return None
-    owner_of_bf = battlefield.get("controller")
-    if owner_of_bf == controller or same_side(state, controller, owner_of_bf):
+    if team_state(state):
+        raise TeamContestUnsupported(
+            f"team_contest_unsupported: {object_id} arrived at {battlefield_id} in a state with teams; "
+            f"team contest and scoring are not modelled (Core 190.3.a.1)")
+    if battlefield.get("contested"):
+        return None
+    if battlefield.get("controller") == controller:
         return None
     battlefield["contested"] = True
     battlefield["contested_by"] = controller

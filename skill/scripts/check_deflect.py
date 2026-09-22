@@ -25,7 +25,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
 from cost_receipt import validate_cost_receipt  # noqa: E402
 from effect_ir import hash_value, validate_state  # noqa: E402
@@ -45,7 +45,7 @@ def scene(power, *, deflect_value=None, own=False):
     state["players"]["p2"]["zones"]["base"].remove("u2"); state["battlefields"]["bf1"]["objects"].append("u2")
     if own:
         state["players"]["p1"]["zones"]["base"].remove("u1"); state["battlefields"]["bf1"]["objects"].append("u1")
-    return state
+    return settle_contested(state)
 
 
 def bolt(target="u2", count=1):

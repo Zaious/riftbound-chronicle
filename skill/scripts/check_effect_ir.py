@@ -55,6 +55,24 @@ def base_state():
     }
 
 
+def settle_contested(state):
+    """Fixture helper: mark each Battlefield Contested the way the arrivals that built it
+    would have (Core 190.3.a.1). A fixture that places Units by hand skips those arrivals,
+    and the validator refuses a Battlefield with a Unit whose controller does not control
+    it and no Contested mark. The applier is the first such Unit in the Battlefield's own
+    object order - the fixture's arrival order. A Battlefield already marked is left
+    alone. Returns the state, changed in place."""
+    for battlefield in state.get("battlefields", {}).values():
+        if battlefield.get("contested"):
+            continue
+        for object_id in battlefield.get("objects", []):
+            obj = state["objects"].get(object_id) or {}
+            if obj.get("kind") == "unit" and obj.get("controller") not in (None, battlefield.get("controller")):
+                battlefield["contested"], battlefield["contested_by"] = True, obj["controller"]
+                break
+    return state
+
+
 def program(program_id, *effects):
     return {
         "schema_version": PROGRAM_VERSION,

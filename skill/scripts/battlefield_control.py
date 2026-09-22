@@ -25,7 +25,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import engine_decisions as _ed  # noqa: E402
 from combat import IN_PROGRESS as COMBAT_IN_PROGRESS, _base as _combat_base, _commit, _invalid, _refuse, _unsupported, _validate_both, combined_input_hash, units_at  # noqa: E402
-from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, PlayerSelectionRequired, _bump_identity, battlefield_identity, find_location, hash_value, object_identity, perform_draw, same_side, zone_class  # noqa: E402
+from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, PlayerSelectionRequired, _bump_identity, battlefield_identity, find_location, hash_value, object_identity, perform_draw, same_side, team_state, zone_class  # noqa: E402
 from rules_core import apply_terminal_event, schedule_triggered_items, state_hash  # noqa: E402
 
 CONTROL_STEP_VERSION = "riftbound-control-step-result.v1"
@@ -193,6 +193,10 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
         return _refuse(base, "combat_chain_unfinished", "the chain and outstanding tasks must be finished first (466.4, 466.6)", ["Core 466.4", "Core 466.6"])
     if battlefield_id not in effect_state["battlefields"]:
         return _invalid(base, [f"battlefield {battlefield_id!r} is not in the state"])
+    if team_state(effect_state):
+        return _unsupported(base, "team_contest_unsupported",
+                            f"control of {battlefield_id} would be resolved and Contested removed in a state with teams; "
+                            "team contest and scoring are not modelled", ["Core 190.3.b", "Core 348.2", "Core 466.5"])
     present = units_at(effect_state, battlefield_id)
     remaining = sorted(present)
     battlefield = effect_state["battlefields"][battlefield_id]
@@ -488,6 +492,10 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
         battlefield = next_effect["battlefields"][battlefield_id]
         present = units_at(next_effect, battlefield_id)
         applier = battlefield.get("contested_by")
+        if battlefield.get("contested") and applier not in present and team_state(next_effect):
+            return _unsupported(base, "team_contest_unsupported",
+                                f"Contested at {battlefield_id} would change in a state with teams; team contest is not modelled",
+                                ["Core 323.11", "Core 323.11.a"], battlefield=battlefield_id)
         if battlefield.get("contested") and applier not in present:
             battlefield["contested"] = False
             battlefield["contested_by"] = None

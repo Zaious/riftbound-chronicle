@@ -37,7 +37,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import clause_grammar as cg  # noqa: E402
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from combat import available_combat_damage  # noqa: E402
 from effect_ir import apply_program, effective_might, validate_state  # noqa: E402
 
@@ -51,7 +51,7 @@ def board_state():
     state["players"]["p2"]["zones"]["base"] = []
     state["battlefields"]["bf1"]["objects"] = ["u1", "u2"]
     state["objects"]["u1"]["damage"] = 0
-    return state
+    return settle_contested(state)
 
 
 def stun_program(object_id="u2"):

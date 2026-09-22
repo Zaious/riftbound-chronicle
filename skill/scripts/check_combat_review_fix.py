@@ -36,7 +36,7 @@ from check_combat_area_and_mutual import DUEL  # noqa: E402
 from check_combat_characteristics import opened  # noqa: E402
 from check_combat_damage_assignment import add_unit, closed_combat  # noqa: E402
 from check_combat_staging import contested_board  # noqa: E402
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
 from check_standard_move import declare  # noqa: E402
 from combat import assign_combat_damage, close_combat, combat_cleanup, deal_combat_damage, determine_combat_result, standard_move  # noqa: E402
@@ -125,7 +125,7 @@ def main() -> int:
     state = base_state()
     state["players"]["p3"] = {"zones": {"main_deck": [], "hand": [], "trash": [], "banishment": [], "base": [], "rune_deck": []}, "resources": {"energy": 0, "power": {}}, "team_id": "A"}
     state["players"]["p1"]["team_id"] = "A"
-    add_unit(state, "m1", "p3", "bf1", might=2)
+    add_unit(state, "m1", "p3", "bf1", might=2); settle_contested(state)
     timing3 = fixture(); timing3["players"] = ["p1", "p2", "p3"]; timing3["turn_order"] = ["p1", "p2", "p3"]
     mate = standard_move(timing3, state, declare(["u1"], {"kind": "battlefield", "battlefield": "bf1"}))
     if mate.get("committed") or mate.get("reason_code") != "destination_has_teammate_units":

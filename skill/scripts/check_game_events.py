@@ -40,7 +40,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import game_events as ge  # noqa: E402
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from effect_ir import SUPPORTED_OPS, apply_program  # noqa: E402
 from pack_locator import pack_files  # noqa: E402
 
@@ -203,6 +203,7 @@ def main() -> int:
     at_battlefield = base_state()
     at_battlefield["players"]["p1"]["zones"]["base"].remove("u1")
     at_battlefield["battlefields"]["bf1"]["objects"].append("u1")
+    settle_contested(at_battlefield)
     returned = run(at_battlefield, {"op": "return_to_hand", "effect_id": "r", "object_id": "u1"}, program_id="rh")
     if any(e["visibility"]["identity"] != "public" for e in returned["events"]):
         errors.append("a Unit returned from the board to hand was hidden from the opponent who watched it leave")

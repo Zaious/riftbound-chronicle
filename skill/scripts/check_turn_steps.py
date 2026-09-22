@@ -177,10 +177,11 @@ def main() -> int:
     unmet = begin_ending_step(main_open, conditional)
     if not unmet.get("committed") or unmet["next_timing_state"]["chain"]["items"]:
         errors.append("an unmet at_battlefield trigger condition still scheduled the trigger (383.2.a.1)")
-    conditional["players"]["p1"]["zones"]["base"].remove("u1"); conditional["battlefields"]["bf1"]["objects"].append("u1")
+    # u1 has conquered bf1 by the Ending Step: it holds the Battlefield, which is not contested (Core 190.3.a)
+    conditional["players"]["p1"]["zones"]["base"].remove("u1"); conditional["battlefields"]["bf1"]["objects"].append("u1"); conditional["battlefields"]["bf1"]["controller"] = "p1"
     met = begin_ending_step(main_open, conditional)
     if not met.get("committed") or [i["id"] for i in met["next_timing_state"]["chain"]["items"]] != ["u1-eot"]:
-        errors.append("a met at_battlefield trigger condition did not schedule the trigger")
+        errors.append(f"a met at_battlefield trigger condition did not schedule the trigger: {met.get('reason')}")
     busy = fixture(priority="p2", items=[item("spell-1", "p1", "spell", "default")])
     if begin_ending_step(busy, board).get("committed") or begin_ending_step(busy, board).get("reason_code") != "turn_not_quiet":
         errors.append("begin_ending_step ran with a chain open")

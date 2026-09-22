@@ -35,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import effect_ir  # noqa: E402
 import selection_binding as sb  # noqa: E402
+from check_effect_ir import settle_contested  # noqa: E402
 
 for stream in (sys.stdout, sys.stderr):
     try:
@@ -50,8 +51,9 @@ def fail(label: str, detail: str) -> None:
 
 
 def state() -> dict:
-    """Two friendly Units at a battlefield, cards in hand and deck, no gear."""
-    return {
+    """Two friendly Units at a battlefield, cards in hand and deck, no gear. The Units
+    arrived at an uncontrolled battlefield, so it is Contested (Core 190.3.a.1)."""
+    return settle_contested({
         "schema_version": "riftbound-effect-state.v1",
         "ruleset": {"core": effect_ir.CORE_RULESET, "faq_as_of": effect_ir.FAQ_AS_OF},
         "turn_id": "T1",
@@ -77,7 +79,7 @@ def state() -> dict:
                    "might_modifiers": [], "damage": 0, "exhausted": False},
         },
         "replacement_effects": [],
-    }
+    })
 
 
 def program(effects: list[dict], program_id: str = "granularity") -> dict:

@@ -26,7 +26,7 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from battlefield_control import victory_check  # noqa: E402
+from battlefield_control import _ongoing_at, units_at, victory_check  # noqa: E402
 from effect_ir import _bump_identity, _remove_from_location, find_location  # noqa: E402
 from combat import _base as _combat_base, _commit, _invalid, _refuse, _unsupported, _validate_both  # noqa: E402
 from rules_core import DECLARED_TERMINAL_REASONS, TERMINAL_LOCATORS, apply_terminal_event, terminal_event, terminal_record  # noqa: E402,F401
@@ -189,6 +189,29 @@ def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_d
     for item_id in countered:
         next_effect.get("chain_items", {}).pop(item_id, None)
     del next_effect["players"][player]
+    # A Battlefield the removed player had Contested: they control no Units there any
+    # more (their cards left the game), so Contested comes off as Cleanup would take it
+    # off (Core 190.3.b.1, 323.11), and a remaining non-controller re-applies it
+    # (323.11.a). It is done here because the applier no longer exists to be named;
+    # anything the engine cannot decide stops as unsupported.
+    contest_changes = []
+    for battlefield_id in sorted(next_effect["battlefields"]):
+        battlefield = next_effect["battlefields"][battlefield_id]
+        if battlefield.get("contested_by") != player:
+            continue
+        if _ongoing_at(timing_state, battlefield_id) is not None:
+            return _unsupported(base, "contest_applier_removed_mid_procedure",
+                                f"{player} applied Contested at {battlefield_id}, where a Showdown or Combat is ongoing; "
+                                "who holds it after their removal is not modelled", ["Core 190.3.b", "Core 652"])
+        others = sorted(p for p in units_at(next_effect, battlefield_id) if p != battlefield.get("controller"))
+        if len(others) > 1:
+            return _unsupported(base, "contested_reapplication_ambiguous",
+                                f"after {player}'s removal Units of {others} are at {battlefield_id}; 323.11.a names one "
+                                "applier and the engine does not choose", ["Core 323.11.a"])
+        battlefield["contested"], battlefield["contested_by"] = bool(others), (others[0] if others else None)
+        contest_changes.append({"battlefield": battlefield_id, "removed_applier": player,
+                                "reapplied_by": others[0] if others else None,
+                                "rule_locators": ["Core 190.3.b.1", "Core 323.11", "Core 323.11.a"]})
     for entry in next_effect.get("continuous_effects", []) or []:
         pass  # a source that left the game is pruned on read (ADR-0013 §1)
     next_effect["continuous_effects"] = [e for e in next_effect.get("continuous_effects", []) or []
@@ -220,7 +243,7 @@ def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_d
     trace = {"outcome": "removed", "removed": player, "remaining": order, "banished": banished,
              "cards_removed_from_game": removed_cards, "battlefields_replaced": replaced,
              "countered_chain_items": countered, "turn_player_after": next_timing["turn_player"],
-             "focus_moved_to": focus_moved, "winner": None,
+             "focus_moved_to": focus_moved, "winner": None, "contested_changes": contest_changes,
              "note": "the game continues; no winner is derived from a concession (651.4)"}
     return _commit(base, next_timing, next_effect, trace=trace, locators=REMOVAL_LOCATORS)
 

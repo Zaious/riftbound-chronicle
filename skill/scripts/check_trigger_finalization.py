@@ -37,7 +37,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state  # noqa: E402
+from check_effect_ir import base_state, settle_contested  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
 from effect_ir import hash_value, object_identity, validate_state  # noqa: E402
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
@@ -151,6 +151,7 @@ def main() -> int:
     moved = copy.deepcopy(state)
     moved["players"]["p2"]["zones"]["base"].remove("u2")
     moved["battlefields"]["bf1"]["objects"].append("u2")        # no longer "in its base"
+    settle_contested(moved)
     if validate_state(moved):
         errors.append(f"the mistarget board does not validate: {validate_state(moved)[:2]}")
     miss = resolve_with_program(ready, TRIGGER, moved, dispatched)

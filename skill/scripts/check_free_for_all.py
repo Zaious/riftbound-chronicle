@@ -36,7 +36,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state  # noqa: E402
+from check_effect_ir import base_state, settle_contested  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
 from effect_ir import find_location, validate_state  # noqa: E402
 from engine_check import KIND_CONFIG  # noqa: E402
@@ -89,7 +89,7 @@ def effects(players=PLAYERS):
                                   "might_modifiers": [], "damage": 0, "exhausted": False}
     state["chain_items"] = {"spell-p3": {"controller": "p3", "card": "s3"},
                             "spell-p2": {"controller": "p2", "card": "s2"}}
-    return state
+    return settle_contested(state)
 
 
 def main() -> int:
@@ -137,6 +137,13 @@ def main() -> int:
                       f"{result['trace']['cards_removed_from_game']}")
     if result["trace"]["countered_chain_items"] != ["spell-p3"] or "spell-p2" not in next_e["chain_items"]:
         errors.append(f"the wrong chain items were Countered: {result['trace']['countered_chain_items']}")
+
+    # bf1 was Contested by p3 (u9's arrival); with p3 gone and u9 Banished nothing is
+    # left there, so Contested comes off rather than naming a seat that no longer exists
+    changed = [c["battlefield"] for c in result["trace"].get("contested_changes", [])]
+    if next_e["battlefields"]["bf1"].get("contested_by") is not None or changed != ["bf1"]:
+        errors.append(f"Contested applied by the removed player was not taken off (190.3.b.1, 323.11): "
+                      f"{next_e['battlefields']['bf1']} {result['trace'].get('contested_changes')}")
 
     # the Battlefield they contributed becomes a token with no abilities, and
     # what stands there does not move

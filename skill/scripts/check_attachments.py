@@ -38,7 +38,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from capability_manifest import build_manifest  # noqa: E402
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from effect_ir import OP_RULES, apply_program, attachments, effective_might, find_location, validate_program, validate_state  # noqa: E402
 from engine_check import KIND_CONFIG  # noqa: E402
 
@@ -55,7 +55,7 @@ def equipped_state():
     state["objects"]["g1"] = {"owner": "p1", "controller": "p1", "kind": "gear", "base_might": 0, "might_modifiers": [],
                               "damage": 0, "exhausted": True, "might_bonus": 2}
     state["players"]["p1"]["zones"]["base"].append("g1")
-    return state
+    return settle_contested(state)
 
 
 def main() -> int:

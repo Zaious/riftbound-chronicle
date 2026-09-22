@@ -34,7 +34,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from effect_ir import apply_program, characteristics, object_triggers, validate_state  # noqa: E402
 from engine_check import KIND_CONFIG  # noqa: E402
 
@@ -54,7 +54,7 @@ def equipped():
                               "damage": 0, "exhausted": False, "might_bonus": 1,
                               "effect_text": {"death_triggers": [trigger("appended", "g1")]}}
     state["players"]["p1"]["zones"]["base"].append("g1")
-    return state
+    return settle_contested(state)
 
 
 def main() -> int:

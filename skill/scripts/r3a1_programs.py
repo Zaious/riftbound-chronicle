@@ -221,6 +221,14 @@ def _place(state: dict[str, Any], object_id: str, dest: str) -> None:
         state["players"][player]["zones"].setdefault(zone, []).append(object_id)
     else:
         state["battlefields"][dest]["objects"].append(object_id)
+        # a fixture's arrival is an arrival: it applies Contested as a real one would
+        # (Core 190.3.a.1). In a team state the engine refuses to decide; the fixture
+        # is left as written and the validator judges it.
+        from effect_ir import TeamContestUnsupported, apply_arrival_contested
+        try:
+            apply_arrival_contested(state, dest, object_id)
+        except TeamContestUnsupported:
+            pass
 
 
 def _new_object(owner: str, **fields: Any) -> dict[str, Any]:

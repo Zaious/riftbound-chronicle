@@ -34,7 +34,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_combat_staging import contested_board, trigger  # noqa: E402
-from check_effect_ir import base_state  # noqa: E402
+from check_effect_ir import base_state, settle_contested  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
 from combat import STANDARD_MOVE_DECLARATION_VERSION, stage_combat, standard_move  # noqa: E402
 from effect_ir import hash_value, validate_state  # noqa: E402
@@ -95,7 +95,7 @@ def main() -> int:
     if standard_move(quiet, state, declare(["u2"], to_bf1)).get("reason_code") != "unit_not_controlled_board_unit":
         errors.append("the opponent's Unit was moved")
     # from a Battlefield: own Base yes, another Battlefield only with Ganking
-    at_bf = copy.deepcopy(state); at_bf["players"]["p1"]["zones"]["base"].remove("u1"); at_bf["battlefields"]["bf1"]["objects"].append("u1")
+    at_bf = copy.deepcopy(state); at_bf["players"]["p1"]["zones"]["base"].remove("u1"); at_bf["battlefields"]["bf1"]["objects"].append("u1"); settle_contested(at_bf)
     home = standard_move(quiet, at_bf, declare(["u1"], {"kind": "base"}))
     if not home.get("committed") or "u1" not in home["next_effect_state"]["players"]["p1"]["zones"]["base"] or not home["next_effect_state"]["objects"]["u1"]["exhausted"]:
         errors.append(f"Battlefield→own Base was refused: {home.get('reason_code')} {home.get('errors')}")
@@ -125,7 +125,7 @@ def main() -> int:
     crowded = copy.deepcopy(state)
     crowded["players"]["p3"] = {"zones": {"main_deck": [], "hand": [], "trash": [], "banishment": [], "base": [], "rune_deck": []}, "resources": {"energy": 0, "power": {}}}
     crowded["objects"]["u5"] = {"owner": "p3", "controller": "p3", "kind": "unit", "base_might": 1, "might_modifiers": [], "damage": 0, "exhausted": False}
-    crowded["players"]["p2"]["zones"]["base"].remove("u2"); crowded["battlefields"]["bf1"]["objects"] += ["u2", "u5"]
+    crowded["players"]["p2"]["zones"]["base"].remove("u2"); crowded["battlefields"]["bf1"]["objects"] += ["u2", "u5"]; settle_contested(crowded)
     timing3 = fixture(); timing3["players"] = ["p1", "p2", "p3"]; timing3["turn_order"] = ["p1", "p2", "p3"]
     if standard_move(timing3, crowded, declare(["u1"], to_bf1)).get("reason_code") != "destination_has_two_other_players":
         errors.append("a Battlefield with two other players' Units was a valid destination (144.4.a.1)")

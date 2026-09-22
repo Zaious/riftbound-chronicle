@@ -49,7 +49,7 @@ SKILL_DIR = SCRIPT_DIR.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import engine_decisions as ed  # noqa: E402
-from check_effect_ir import program  # noqa: E402
+from check_effect_ir import program, settle_contested  # noqa: E402
 from check_play_transaction import CLOSED, effect_state  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
 from cost_receipt import PAYMENT_EVENT_KINDS  # noqa: E402
@@ -241,7 +241,7 @@ def main() -> int:
                 errors.append(f"resolving an ability trashed a card or left the entry: {resolved['trace']['chain_card']}")
     at_bf = copy.deepcopy(plain)
     at_bf["players"]["p1"]["zones"]["base"].remove("u1")
-    at_bf["battlefields"]["bf1"]["objects"].append("u1")
+    at_bf["battlefields"]["bf1"]["objects"].append("u1"); settle_contested(at_bf)
     recall_cost = {"base": {"energy": 0, "power": {}}, "additional": [{"cost_id": "self", "mandatory": True, "payment": {"kind": "recall_self"}}]}
     recalled = play_card(timing, at_bf, ability_declaration(cost=recall_cost))
     if not recalled.get("committed") or "u1" not in recalled["next_effect_state"]["players"]["p1"]["zones"]["base"] or not event(recalled, "pay_recall_self"):

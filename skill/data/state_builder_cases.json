@@ -1813,6 +1813,57 @@
           "turn_effects"
         ]
       }
+    },
+    {
+      "case_id": "SB-054",
+      "question": "Both players' units are at a battlefield nobody controls. Who wins the combat?",
+      "question_kind": "combat_board",
+      "draft": {
+        "players": [
+          "p1",
+          "p2"
+        ],
+        "units": [
+          {
+            "object_id": "u1",
+            "controller": "p1",
+            "might": 3,
+            "location": "bf1"
+          },
+          {
+            "object_id": "u2",
+            "controller": "p2",
+            "might": 2,
+            "location": "bf1"
+          }
+        ],
+        "battlefields": [
+          {
+            "battlefield_id": "bf1",
+            "controller": null
+          }
+        ],
+        "combat_designations": [
+          {
+            "object_id": "u1",
+            "combat_id": "combat-1",
+            "role": "attacker"
+          },
+          {
+            "object_id": "u2",
+            "combat_id": "combat-1",
+            "role": "defender"
+          }
+        ]
+      },
+      "expected": {
+        "buildable": false,
+        "tier": "B",
+        "reason": "contested_applier_undetermined",
+        "rejected_fields": [
+          "battlefields"
+        ]
+      }
     }
   ]
 }

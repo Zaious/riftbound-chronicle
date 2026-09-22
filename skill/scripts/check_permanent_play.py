@@ -37,7 +37,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from check_effect_ir import base_state  # noqa: E402
+from check_effect_ir import base_state, settle_contested  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
 from effect_ir import hash_value, object_identity, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
@@ -147,9 +147,10 @@ def main() -> int:
         bf = res.get("next_effect_state", {}).get("battlefields", {}).get("bf1", {})
         if not res.get("committed") or "c1" not in bf.get("objects", []) or bf.get("contested") is not True or bf.get("contested_by") != "p1" or bf.get("controller") is not None:
             errors.append(f"entering an open battlefield did not record contested_by without transferring control: {bf} {res.get('reason')}")
-    occupied = unit_in_hand(permissions=["open_battlefield"]); occupied["players"]["p2"]["zones"]["base"].remove("u2"); occupied["battlefields"]["bf1"]["objects"].append("u2")
-    if play_card(open_timing, occupied, declaration({"kind": "battlefield", "battlefield": "bf1"})).get("reason_code") != "entry_location_illegal":
-        errors.append("an occupied battlefield was accepted as open")
+    occupied = unit_in_hand(permissions=["open_battlefield"]); occupied["players"]["p2"]["zones"]["base"].remove("u2"); occupied["battlefields"]["bf1"]["objects"].append("u2"); settle_contested(occupied)
+    occupied_play = play_card(open_timing, occupied, declaration({"kind": "battlefield", "battlefield": "bf1"}))
+    if occupied_play.get("reason_code") != "entry_location_illegal":
+        errors.append(f"an occupied battlefield was accepted as open: {occupied_play.get('reason_code')} {occupied_play.get('reason') or occupied_play.get('errors')}")
     controlled = unit_in_hand(); controlled["battlefields"]["bf1"]["controller"] = "p1"
     ctrl_play = play_card(open_timing, controlled, declaration({"kind": "battlefield", "battlefield": "bf1"}))
     if not ctrl_play.get("committed"):

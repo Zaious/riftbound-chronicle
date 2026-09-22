@@ -296,6 +296,9 @@ def resolve_with_program(
                 "decision_controller": entry_trace["decision_controller"],
                 "effect_result": effect_result,
             }
+        if entry_trace.get("unsupported"):
+            return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "permanent_entry",
+                    "reason_code": entry_trace["reason_code"], "reason": entry_trace["reason"], "effect_result": effect_result}
         if entry_trace.get("error"):
             return {**base, "valid": False, "committed": False, "stage": "permanent_entry", "errors": [entry_trace["error"]], "reason": entry_trace["error"], "effect_result": effect_result}
         chain_card_trace.append(entry_trace)
@@ -614,8 +617,12 @@ def complete_permanent_play(
         trace["destination"] = f"battlefield:{location['battlefield']}"
         trace["rule_locators"].append("Core 359.2.c")
         # Core 190.3.a.1: only if not already Contested - the first applier stays recorded
-        from effect_ir import apply_arrival_contested
-        if applier := apply_arrival_contested(working, location["battlefield"], card):
+        from effect_ir import TeamContestUnsupported, apply_arrival_contested
+        try:
+            applier = apply_arrival_contested(working, location["battlefield"], card)
+        except TeamContestUnsupported as exc:
+            return state, {"unsupported": True, "reason_code": "team_contest_unsupported", "reason": str(exc)}, []
+        if applier:
             trace["contested"] = {"battlefield": location["battlefield"], "contested_by": applier}
             trace["rule_locators"].append("Core 190.3.a.1")
     else:

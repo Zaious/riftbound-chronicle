@@ -37,7 +37,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from battlefield_control import run_board_cleanup  # noqa: E402
-from check_effect_ir import base_state  # noqa: E402
+from check_effect_ir import base_state, settle_contested  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
 from effect_ir import find_location, object_identity, validate_state  # noqa: E402
 from engine_check import KIND_CONFIG  # noqa: E402
@@ -142,6 +142,8 @@ def main() -> int:
     # the Battlefield losing its controller makes every Hidden card there leave
     uncontrolled = copy.deepcopy(board())
     uncontrolled["battlefields"]["bf1"]["controller"] = None
+    # Core 190.3.a: u1 is still there, so an Uncontrolled bf1 is Contested by it
+    settle_contested(uncontrolled)
     both_gone = step_five(uncontrolled)
     if sorted(item["object_id"] for item in both_gone["trace"]["step_five"]["removed_hidden"]) != ["h_intruder", "h_owner"]:
         errors.append("an Uncontrolled Battlefield did not remove every Hidden card on it")

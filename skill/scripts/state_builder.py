@@ -80,6 +80,9 @@ DOWNGRADE_TIERS = {
     "missing_required_slot": "B",
     "slot_value_out_of_scope": "B",
     "engine_rejected_state": "B",
+    # Core 190.3.a.1: more than one player could have applied Contested at a Battlefield
+    # and the draft does not say who arrived first. Refused by name, not guessed.
+    "contested_applier_undetermined": "B",
 }
 DOWNGRADE_REASONS = frozenset(DOWNGRADE_TIERS)
 NAMES_MISSING = {"missing_required_slot"}
@@ -472,11 +475,12 @@ DERIVED_SLOTS = {
     "combat_triggered_identities": "No Attack or Defend trigger has fired in this Combat yet.",
     "turn_effect_ids": "Each turn effect is identified the way the kernel names it: kind, unit and turn.",
     "showdown_at_combat_battlefield": "The open Showdown is the Combat Showdown at the Combat's Battlefield.",
-    # Core 190.3.a: a controlled Battlefield with an opposing Unit at it is Contested,
-    # and the validator refuses one that is not. Derived only when exactly one
-    # opposing player has Units there; with two, who contested it first is a fact
-    # the draft did not state, so nothing is derived and the board is refused.
-    "battlefield_contested": "A controlled Battlefield with an opposing Unit at it is Contested by that Unit's controller.",
+    # Core 190.3.a: a Battlefield with a Unit whose controller does not control it -
+    # any Unit, at an uncontrolled one - is Contested, and the validator refuses one
+    # that is not. Derived only when exactly one player can have applied it; with more,
+    # who arrived first is a fact the draft did not state, and the draft is refused by
+    # name (contested_applier_undetermined).
+    "battlefield_contested": "A Battlefield with a Unit whose controller does not control it is Contested by that Unit's controller.",
 }
 
 ORIGINS = {"stated", "default", "derived"}
@@ -557,19 +561,23 @@ def _materialize_timing(values: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
-def _contested(values: dict[str, Any]) -> dict[str, str]:
-    """{battlefield: contesting player} for every controlled Battlefield at which
-    Units of exactly one opposing player stand (Core 190.3.a)."""
-    found: dict[str, str] = {}
+def _appliers(values: dict[str, Any]) -> dict[str, list[str]]:
+    """{battlefield: every player who could have applied Contested there} - the
+    controllers of Units at it who do not control it (Core 190.3.a.1). An uncontrolled
+    Battlefield's controller is nobody, so any Unit's controller counts."""
+    found: dict[str, list[str]] = {}
     for entry in values.get("battlefields") or []:
         controller = entry.get("controller")
-        if controller is None:
-            continue
-        opposing = sorted({unit["controller"] for unit in values.get("units") or []
-                           if unit.get("location") == entry["battlefield_id"] and unit["controller"] != controller})
-        if len(opposing) == 1:
-            found[entry["battlefield_id"]] = opposing[0]
+        players = sorted({unit["controller"] for unit in values.get("units") or []
+                          if unit.get("location") == entry["battlefield_id"] and unit["controller"] != controller})
+        if players:
+            found[entry["battlefield_id"]] = players
     return found
+
+
+def _contested(values: dict[str, Any]) -> dict[str, str]:
+    """{battlefield: contesting player} where exactly one player can have applied it."""
+    return {bf: players[0] for bf, players in _appliers(values).items() if len(players) == 1}
 
 
 def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
@@ -876,6 +884,15 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
         values[slot] = value
         assumptions.append({"slot": slot, "origin": "default", "value": value,
                             "material": SLOTS[slot]["material"], "text": SLOTS[slot]["text"](value)})
+
+    undetermined = {bf: players for bf, players in _appliers(values).items() if len(players) > 1} \
+        if family == "effect" else {}
+    if undetermined:
+        artifact["downgrade"] = _downgrade(
+            "contested_applier_undetermined", rejected=["battlefields"],
+            detail="; ".join(f"{bf}: Units of {players} none of whom controls it; which of them applied "
+                             f"Contested (Core 190.3.a.1) is not stated" for bf, players in sorted(undetermined.items())))
+        return artifact
 
     if family == "timing":
         state = _materialize_timing(values)

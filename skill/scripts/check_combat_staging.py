@@ -9,7 +9,8 @@ Must hold:
     location_selection (never the first key), refused from another player,
     invalid on an unknown Battlefield or a stale input hash; a Battlefield
     with three controllers is unsupported, never reduced to a pair; two
-    teammates or a Battlefield without Contested is no candidate;
+    teammates is no candidate; a Battlefield with opposing Units and no
+    Contested is refused as an unreachable board (190.3.a);
   - open_combat: attacker is contested_by, defender the other participant;
     a new Combat Showdown gives the attacker Focus; an existing Showdown at
     that Battlefield keeps its Focus; a Showdown elsewhere blocks; missing or
@@ -123,8 +124,12 @@ def main() -> int:
     if stage_combat(quiet, team).get("trace", {}).get("outcome") != "no_staged_combat":
         errors.append("two teammates at a Battlefield staged a Combat")
     uncontested = contested_board(); uncontested["battlefields"]["bf1"].pop("contested"); uncontested["battlefields"]["bf1"].pop("contested_by")
-    if stage_combat(quiet, uncontested).get("trace", {}).get("outcome") != "no_staged_combat":
-        errors.append("a Battlefield without Contested staged a Combat (323.9)")
+    # two opposing players' Units at a Battlefield without Contested is not a reachable board
+    # (the arrival applies Contested, 190.3.a.1): the validator refuses it and staging refuses
+    # it as invalid input, so such a board never stages a Combat (323.9)
+    refused_uncontested = stage_combat(quiet, uncontested)
+    if not any("not contested (Core 190.3.a)" in e for e in validate_state(uncontested)) or refused_uncontested.get("committed") or refused_uncontested.get("valid") is not False:
+        errors.append(f"a Battlefield without Contested was not refused before staging (190.3.a, 323.9): {refused_uncontested.get('reason')}")
     busy = fixture(priority="p2", items=[item("spell-0", "p2", "spell", "default")])
     if stage_combat(busy, board).get("reason_code") != "combat_requires_quiet_cleanup_boundary":
         errors.append("staging ran with a chain open")

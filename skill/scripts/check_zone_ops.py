@@ -33,7 +33,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from capability_manifest import build_manifest  # noqa: E402
-from check_effect_ir import base_state, program  # noqa: E402
+from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from effect_ir import OP_RULES, SUPPORTED_OPS, apply_program, effects_for, hash_value, migrate_legacy_effects, object_identity, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 
@@ -87,7 +87,7 @@ def main() -> int:
     if not gone.get("committed") or "t1" in gone["next_state"]["objects"] or ev(gone).get("destination") != "ceased_to_exist":
         errors.append("a returned token did not cease to exist")
     # Gust: "a unit at a battlefield with 3 Might or less"
-    bf = copy.deepcopy(state); bf["players"]["p1"]["zones"]["base"].remove("u1"); bf["battlefields"]["bf1"]["objects"].append("u1")  # might 3+2=5
+    bf = copy.deepcopy(state); bf["players"]["p1"]["zones"]["base"].remove("u1"); bf["battlefields"]["bf1"]["objects"].append("u1"); settle_contested(bf)  # might 3+2=5
     gust = program("gust", {"op": "return_to_hand", "object_id": "u1", "target": {"object_id": "u1", "chosen_zone_class": "board", "location": "battlefield", "max_might": 3}})
     too_big = apply_program(bf, gust)
     if not too_big.get("committed") or ev(too_big).get("outcome") != "ignored_illegal_target":
@@ -106,6 +106,7 @@ def main() -> int:
 
     # --- recall ------------------------------------------------------------------------
     bf2 = copy.deepcopy(state); bf2["players"]["p1"]["zones"]["base"].remove("u1"); bf2["battlefields"]["bf1"]["objects"].append("u1")
+    unsettled_bf2 = copy.deepcopy(bf2); settle_contested(bf2)
     recalled = apply_program(bf2, program("rc", {"op": "recall", "object_id": "u1"}))
     e = ev(recalled)
     if not recalled.get("committed") or "u1" not in recalled["next_state"]["players"]["p1"]["zones"]["base"]:
@@ -117,7 +118,7 @@ def main() -> int:
         if e.get("not_a_move") is not True or e.get("pending_triggers") or e.get("completion") != "full" or "Core 456.1" not in e.get("rule_locators", []):
             errors.append(f"recall recorded as a move or incomplete: {e}")
     # controlled by the opponent: goes to the controller's base, not the owner's
-    stolen = copy.deepcopy(bf2); stolen["objects"]["u1"]["controller"] = "p2"
+    stolen = copy.deepcopy(unsettled_bf2); stolen["objects"]["u1"]["controller"] = "p2"; settle_contested(stolen)
     to_p2 = apply_program(stolen, program("rc2", {"op": "recall", "object_id": "u1"}))
     if not to_p2.get("committed") or "u1" not in to_p2["next_state"]["players"]["p2"]["zones"]["base"]:
         errors.append("recall of an opponent-controlled unit did not go to the controller's base")

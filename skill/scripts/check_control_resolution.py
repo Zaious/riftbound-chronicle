@@ -21,7 +21,8 @@ Must hold:
     loser's Units and a Unit at another Battlefield do not, the Battlefield's
     own trigger belongs to the new controller; close_combat waits for that
     chain;
-  - a missing mode or any team_id is unsupported; a both-remain restage and
+  - a missing mode is unsupported; any team_id is unsupported as
+    team_contest_unsupported (team contest is not modelled); a both-remain restage and
     an undecided Combat refuse; victory facts name threshold_met,
     strict_leader and tied_at_threshold and enact nothing;
   - determinism, purity, engine-check wrapping, CLI off-cwd.
@@ -42,6 +43,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from battlefield_control import resolve_battlefield_control, victory_check  # noqa: E402
 from check_combat_damage_assignment import add_unit, closed_combat  # noqa: E402
 from check_combat_staging import trigger  # noqa: E402
+from check_effect_ir import settle_contested  # noqa: E402
 from combat import assign_combat_damage, close_combat, combat_cleanup, deal_combat_damage, determine_combat_result  # noqa: E402
 from effect_ir import hash_value, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
@@ -57,6 +59,7 @@ def decided_combat(*, victory_score=8, points=0, extra=None, defender_might=3):
     e["players"]["p1"]["points"] = points
     if extra:
         extra(e)
+    settle_contested(e)  # a Unit an extra placed by hand gets the Contested its arrival would have applied
     a = assign_combat_damage(t, e); d = deal_combat_damage(a["next_timing_state"], a["next_effect_state"]); c = combat_cleanup(d["next_timing_state"], d["next_effect_state"])
     r = determine_combat_result(c["next_timing_state"], c["next_effect_state"])
     assert r.get("committed"), r.get("reason") or r.get("errors")
@@ -183,8 +186,11 @@ def main() -> int:
     if resolve_battlefield_control(t, no_mode).get("reason_code") != "mode_unknown" or resolve_battlefield_control(t, no_mode).get("unsupported") is not True:
         errors.append("scoring without a Mode of Play guessed a Victory Score")
     team = copy.deepcopy(e); team["players"]["p1"]["team_id"] = "A"
-    if resolve_battlefield_control(t, team).get("reason_code") != "team_scoring":
-        errors.append("team scoring was attempted")
+    # a team state stops at the control step itself: team contest is not modelled, so the
+    # refusal comes before scoring is reached (team_scoring stays behind it as a second guard)
+    team_refused = resolve_battlefield_control(t, team)
+    if team_refused.get("committed") or team_refused.get("unsupported") is not True or team_refused.get("reason_code") != "team_contest_unsupported":
+        errors.append(f"control resolution or team scoring was attempted with teams: {team_refused.get('reason_code')}")
     undecided = copy.deepcopy(t); undecided["combat"]["status"] = "cleanup_done"
     if resolve_battlefield_control(undecided, e).get("reason_code") != "control_resolution_not_pending":
         errors.append("control was resolved before the result")

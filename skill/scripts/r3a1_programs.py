@@ -236,6 +236,16 @@ def _new_object(owner: str, **fields: Any) -> dict[str, Any]:
             "might_modifiers": [], "damage": fields.pop("damage", 0), "exhausted": fields.pop("exhausted", False), **fields}
 
 
+def _printed_timing(state: dict[str, Any], declaration: dict[str, Any]) -> None:
+    """The pack declares a card's play at [Action] / [Reaction] timing because the card (or
+    the probe spell standing in for one) prints it. The played object carries that printed
+    timing, which play_card checks the declaration against (Core 806.1, 813.1)."""
+    declared = (declaration.get("chain_item") or {}).get("timing")
+    card = declaration.get("card")
+    if declared in {"action", "reaction"} and card in state.get("objects", {}):
+        state["objects"][card]["play_timing"] = declared
+
+
 def materialise(setup: list[dict[str, Any]]) -> dict[str, Any]:
     return apply_edits(base_state(), setup)
 
@@ -499,8 +509,9 @@ def _execute(clause: dict[str, Any], fixture: dict[str, Any], receipts: dict[str
         # the permanent itself.
         timing = mirror(_timing(fixture.get("timing", "open")))
         state = scenario()
-        decisions = _decisions(fixture, state, bindings)
         declaration = _declaration(clause, fixture, None, bindings)
+        _printed_timing(state, declaration)
+        decisions = _decisions(fixture, state, bindings)
         played = play_card(timing, state, declaration, engine_decisions=decisions)
         if not played.get("committed"):
             check = build_engine_check("play", played, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(state), "play_declaration": canonical_hash(declaration)})
@@ -513,9 +524,10 @@ def _execute(clause: dict[str, Any], fixture: dict[str, Any], receipts: dict[str
     if run == "play" or fixture.get("timing") not in (None, "resolution"):
         timing = mirror(_timing(fixture["timing"]))
         state = scenario()
-        decisions = _decisions(fixture, state, bindings)
         program = _program(template, bindings) if template else None
         declaration = _declaration(clause, fixture, program_id, bindings)
+        _printed_timing(state, declaration)
+        decisions = _decisions(fixture, state, bindings)
         result = play_card(timing, state, declaration, engine_decisions=decisions, effect_program=program)
         check = build_engine_check("play", result, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(state), "play_declaration": canonical_hash(declaration)})
         if result.get("committed") and not mirrored:

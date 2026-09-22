@@ -52,8 +52,9 @@ def state_with(*, points=5, amount=2, condition=CONDITION, energy=4, pool=4):
     modification = {"modification_id": "own-text", "kind": "energy_reduction", "amount": amount}
     if condition is not None:
         modification["condition"] = copy.deepcopy(condition)
+    # the declaration plays it at [Action] timing, so the synthetic card prints it (806.1)
     state["objects"]["c1"].update({"kind": "spell", "printed_cost": {"energy": energy, "power": {}},
-                                   "printed_cost_modifications": [modification]})
+                                   "printed_cost_modifications": [modification], "play_timing": "action"})
     return state
 
 

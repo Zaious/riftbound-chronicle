@@ -1403,6 +1403,23 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if state_errors:
             raise PlayError("payment", "invalid_working_state", "; ".join(state_errors), invalid=True)
 
+        # --- 806 / 813: the declared timing must be one the card prints. A card is played
+        # at default timing; [Action] adds showdowns (806.1), [Reaction] adds closed
+        # states too (813.1); Ambush (822.1) and a Hidden card played from facedown
+        # (811.6) grant Reaction. Declaring a wider timing than that is not a play the
+        # rules allow - the kernel alone checks the timing against the state, not
+        # against the card (found 2026-09-22, round-1 engine support measurement).
+        if not is_ability:
+            declared = declaration["chain_item"]["timing"]
+            printed = effect_state["objects"][card].get("play_timing", "default")
+            granted = "reaction" if declaration.get("timing_source") in {"ambush", "hidden"} else None
+            widest = max((printed, granted or "default"), key=["default", "action", "reaction"].index)
+            if ["default", "action", "reaction"].index(declared) > ["default", "action", "reaction"].index(widest):
+                raise PlayError("legality", "timing_not_printed",
+                                f"{card!r} is declared at {declared!r} timing but prints {printed!r}"
+                                + (f" (granted {granted!r})" if granted else "") + " (Core 806.1, 813.1)",
+                                rule_locators=["Core 806.1", "Core 813.1", "Core 822.1", "Core 811.6"])
+
         # --- 358: legality and chain insertion through the timing kernel.
         item = {**declaration["chain_item"], "ability_kind": declaration["chain_item"].get("ability_kind")}
         if declaration.get("effect_program_id"):

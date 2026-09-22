@@ -418,6 +418,24 @@ def main() -> int:
         if run3.returncode != 0 or json.loads(run3.stdout).get("committed") is not True:
             errors.append(f"play_transaction.py CLI failed off-cwd: {run3.stderr.strip()}")
 
+    # 806.1 / 813.1: the declared timing must be one the card prints. The timing kernel
+    # checks a timing against the state; this checks it against the card (found
+    # 2026-09-22: any card could be declared a reaction).
+    def timed(printed, declared, timing):
+        state = effect_state()
+        if printed is not None:
+            state["objects"]["c1"]["play_timing"] = printed
+        decl = declaration(chain_item={"id": "spell-1", "object_kind": "spell", "timing": declared})
+        return play_card(timing, state, decl)
+    closed = fixture(items=[item("spell-9", "p2", "spell", "default")], priority="p1")
+    for printed, declared, timing, allowed in ((None, "reaction", closed, False), ("action", "reaction", closed, False),
+                                               ("reaction", "reaction", closed, True), (None, "default", fixture(), True),
+                                               ("action", "default", fixture(), True)):
+        got = timed(printed, declared, timing)
+        if bool(got.get("committed")) is not allowed or (not allowed and got.get("reason_code") != "timing_not_printed"):
+            errors.append(f"a card printing {printed or 'default'} declared {declared}: committed={got.get('committed')} "
+                          f"{got.get('reason_code')} (expected {'allowed' if allowed else 'timing_not_printed'})")
+
     if errors:
         print("FAILED: play transaction checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1

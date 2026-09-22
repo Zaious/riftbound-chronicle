@@ -1173,6 +1173,20 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 raise PlayError("choices", "activation_source_not_on_board", f"{card!r} is at {where}; activated abilities are activated from the Board (Core 377.4)", rule_locators=["Core 377.4", "Core 377"])
             if source.get("controller") != actor:
                 raise PlayError("choices", "activation_source_not_controlled", f"{card!r} is controlled by {source.get('controller')!r}, not {actor}", rule_locators=["Core 377.3", "Core 377.4"])
+            # GPT 2026-09-22 (Legion, option b): an ability gated by a Dependent Keyword
+            # does not exist while its condition fails, so it is refused here - before
+            # any cost is paid or anything is exhausted, never paid for and left empty.
+            gate = (source.get("ability_conditions") or {}).get((declaration.get("activation") or {}).get("ability_id"))
+            if gate is not None:
+                try:
+                    exists = evaluate_condition(effect_state, gate, controller=actor, object_id=card)
+                except ConditionUnsupported as exc:
+                    raise PlayError("choices", "activation_condition_unsupported", str(exc), unsupported=True, rule_locators=["Core 727.1"])
+                if not exists:
+                    raise PlayError("choices", "activation_condition_not_met",
+                                    f"{card!r}'s ability {declaration['activation']['ability_id']!r} is a Dependent ability whose condition "
+                                    f"{gate['kind']} does not hold, so the ability does not exist (Core 727.1, 812.1.b.1)",
+                                    rule_locators=["Core 727.1", "Core 812.1.b.1", "Core 812.1.c"])
             # ADR-0013 §3 / Core 377.2.b: the activation's own condition is a
             # typed condition.v1 the engine evaluates against this state.
             for index, condition in enumerate(declaration.get("activation_conditions") or []):

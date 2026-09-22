@@ -12,6 +12,8 @@ enter_beginning_phase), trigger finalization and resolution:
   - entering p1's Beginning Phase schedules one Temporary trigger for p1's Temporary
     Unit, with the Scoring Step still outstanding behind it (before scoring);
   - resolving it with the engine's program kills that Unit (it goes to its owner's trash);
+    if the Unit left the Board before the trigger resolved, the instruction is ignored
+    (no_op, bound_object_left_board - it is a new object, 124), not refused;
   - negatives: p2's Temporary Unit does not trigger in p1's Beginning Phase; a Unit
     without Temporary does not trigger; a program with the Temporary id but other
     content is refused by dispatch;
@@ -31,7 +33,8 @@ import clause_grammar as CG  # noqa: E402
 import effect_ir as IR  # noqa: E402
 import rules_core as RC  # noqa: E402
 from check_turn_cycle import duel_board, handled, setup_timing  # noqa: E402
-from effect_ir import find_location, has_keyword  # noqa: E402
+from check_effect_ir import program as make_program  # noqa: E402
+from effect_ir import apply_program, find_location, has_keyword  # noqa: E402
 from resolution_bridge import dispatch_program, finalize_trigger, resolve_with_program  # noqa: E402
 from turn_cycle import begin_turn, enter_beginning_phase, run_awaken_step  # noqa: E402
 
@@ -83,6 +86,16 @@ def main() -> int:
             errors.append(f"resolving Temporary did not kill the Unit: {done.get('reason_code')} {done.get('reason')}")
         elif find_location(done["next_effect_state"], "u2") == ("player", "p2", "trash"):
             errors.append("p2's Temporary Unit died in p1's Beginning Phase")
+
+    # the permanent left the Board before the trigger resolved: the instruction is ignored
+    if finalized.get("committed"):
+        gone_first = apply_program(state, make_program("k", {"op": "kill", "effect_id": "k", "object_id": "u1"}))
+        left = gone_first["next_state"] if gone_first.get("committed") else None
+        ignored = resolve_with_program(t, chain_item["id"], left, dispatched) if left is not None else {}
+        if not ignored.get("committed"):
+            errors.append(f"Temporary resolving after its permanent left the Board was refused, not ignored: {ignored.get('reason_code')} {ignored.get('reason')}")
+        elif find_location(ignored["next_effect_state"], "u1") != ("player", "p1", "trash") or "bound_object_left_board" not in str(ignored.get("trace")):
+            errors.append("Temporary acted on a permanent that had already left the Board, or did not say it was ignored")
 
     plain = duel_board()
     quiet = beginning(plain)

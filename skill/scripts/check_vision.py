@@ -15,7 +15,9 @@ Must hold, through the real play transaction, play completion and resolution:
   - "[Vision]" lowered by the engine grammar is the keyword;
   - negatives: the same Unit without Vision schedules nothing; a program with the
     Vision id but other content is refused by dispatch; a Vision Unit already on the
-    board is a valid state (placement is no play, so it goes through no play completion);
+    board is a valid state. Scope: only a played permanent's entry is modelled; whether a
+    permanent put onto the Board without being played triggers is NOT asserted either
+    way here - it is an exception awaiting a more direct source (GPT 2026-09-22);
   - mutation: without the Vision production no trigger is scheduled.
 """
 from __future__ import annotations

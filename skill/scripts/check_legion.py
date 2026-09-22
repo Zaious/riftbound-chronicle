@@ -20,6 +20,9 @@ Must hold, through the real play transaction and the real play completion:
   - "[Legion][>] When you play me, ..." lowered by the engine grammar: the trigger is
     scheduled at play completion only if another card was Finalized this turn;
   - a Legion condition is refused on any trigger but a play trigger;
+  - an activated ability gated by Legion (GPT 2026-09-22, option b) does not exist while
+    the condition fails: activation_condition_not_met before anything is paid or
+    exhausted; after another card it activates; the gate is the source's, per ability;
   - mutation: without the ledger no Legion is ever active.
 """
 from __future__ import annotations
@@ -170,6 +173,37 @@ def main() -> int:
         errors.append(f"the Legion play trigger did not fire after another card: {loud.get('reason')} {[i.get('id') for i in items]}")
     if IR.has_keyword(primed | {"objects": {**primed["objects"], "c2": {**primed["objects"]["c2"], "keywords": ["legion"]}}}, "c2", "legion") is not True:
         errors.append("Legion is not a characteristic other effects can read (812.3)")
+
+    # --- Legion over an activated ability (GPT 2026-09-22, option b) ------------------------------
+    # the ability does not exist while the condition fails: refused before anything is paid
+    def gated_legend():
+        state = LA.legend_board()
+        state["turn_id"] = "turn-3"
+        state["objects"]["l1"].update({"keywords": ["legion"], "ability_conditions": {"l1:a1": dict(LEGION)}})
+        state["players"]["p1"]["zones"]["main_deck"].remove("c1")
+        state["players"]["p1"]["zones"]["hand"].append("c1")
+        return state
+    closed = gated_legend()
+    if validate_state(closed):
+        errors.append(f"a Legion-gated ability is not a valid state: {validate_state(closed)}")
+    refused = PT.play_card(fixture(), closed, LA.activation(), engine_decisions=LA.target(closed), effect_program=LA.BUFF)
+    if refused.get("committed") or refused.get("reason_code") != "activation_condition_not_met":
+        errors.append(f"a Legion-gated ability was activated with no other card played: {refused.get('reason_code')}")
+    elif any(step.get("stage") == "payment" for step in refused.get("trace", [])) or refused.get("next_effect_state_hash") != refused.get("input_effect_state_hash"):
+        errors.append("the refused Legion ability paid or exhausted something first; it must not exist, not be paid for and left empty")
+    opened = gated_legend()
+    spelled = PT.play_card(fixture(), opened, spell())
+    after = copy.deepcopy(spelled["next_effect_state"])
+    after["chain_items"].pop("spell-0")
+    if not after["chain_items"]:
+        del after["chain_items"]
+    after["players"]["p1"]["zones"]["trash"].append("c1")
+    allowed = PT.play_card(fixture(), after, LA.activation(), engine_decisions=LA.target(after), effect_program=LA.BUFF)
+    if not allowed.get("committed"):
+        errors.append(f"a Legion-gated ability was refused after another card was played: {allowed.get('reason_code')} {allowed.get('reason')}")
+    forged = gated_legend(); forged["objects"]["l1"]["ability_conditions"] = {"l1:a1": {"kind": "nonesuch"}}
+    if not validate_state(forged):
+        errors.append("an ability condition that is no condition.v1 was accepted")
 
     # --- a Legion condition belongs on a play trigger only -----------------------------------------
     wrong = board()

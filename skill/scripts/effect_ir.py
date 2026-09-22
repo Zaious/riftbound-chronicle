@@ -949,6 +949,16 @@ def validate_state(state: Any) -> list[str]:
         # Round H: a fixed Energy reduction the card's own text declares, gated
         # by a condition.v1 leaf. Deliberately narrow: no X, no value read off
         # the board, no Power or Domain, and no source but this card.
+        # GPT 2026-09-22 (Legion, option b): an activated ability gated by a Dependent
+        # Keyword does not exist while its condition fails (812.1.b.1). The condition is
+        # the source's, per ability id, so a declaration cannot leave it out.
+        ability_conditions = obj.get("ability_conditions")
+        if ability_conditions is not None:
+            if not isinstance(ability_conditions, dict) or any(not isinstance(k, str) or not k for k in ability_conditions):
+                errors.append(f"objects.{object_id}.ability_conditions must map ability ids to condition.v1")
+            else:
+                for ability_id, condition in ability_conditions.items():
+                    errors.extend(f"objects.{object_id}.ability_conditions[{ability_id}] {e}" for e in validate_condition(condition, "condition"))
         for m_index, modification in enumerate(obj.get("printed_cost_modifications", []) or []):
             label = f"objects.{object_id}.printed_cost_modifications[{m_index}]"
             if not isinstance(modification, dict) or set(modification) - {"modification_id", "kind", "amount", "condition", "per_each"} \
@@ -3233,6 +3243,16 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             **({"token_id": effect["token_id"]} if effect.get("token_id") else {}),
         })
 
+    elif op == "kill" and effect.get("if_identity") is not None and (
+            effect.get("object_id") not in new_state["objects"]
+            or object_identity(new_state, effect["object_id"]) != effect["if_identity"]
+            or zone_class(find_location(new_state, effect["object_id"])) != "board"):
+        # "Kill this." bound to the permanent as it was when the instruction was made:
+        # once it has left the Board it is a new object (124), and the instruction has
+        # nothing to act on - ignored, not refused (Temporary, GPT 2026-09-22)
+        trace.update({"outcome": "no_op", "object_id": effect.get("object_id"), "reason": "bound_object_left_board",
+                      "rule_locators": ["Core 124", "Core 816.1.b"]})
+
     elif op == "kill":
         object_id = effect.get("object_id")
         if object_id not in new_state["objects"]:
@@ -4374,13 +4394,17 @@ def vision_program(state: dict[str, Any], object_id: str, controller: str) -> di
 
 
 def vision_triggers(state: dict[str, Any], object_id: str, controller: str) -> list[dict[str, Any]]:
-    """Core 817.1.c: the trigger is the permanent entering the Board as it is played;
-    read from the computed characteristics, so a granted Vision counts too. The
+    """Core 817.1.c: the trigger is the permanent entering the Board; the engine
+    models the entry of a PLAYED permanent only (see below). Read from the computed
+    characteristics, so a granted Vision counts too. The
     descriptor binds the program's content hash, so dispatch refuses any other
     program under the same id. 817.2 (several instances trigger separately) is
     not modelled: the keyword list carries Vision once."""
     if not has_keyword(state, object_id, "vision"):
         return []
+    # Scope (GPT 2026-09-22): only a permanent entering the Board by being played is
+    # modelled. Whether one put onto the Board without being played triggers is NOT
+    # decided here - that case is an exception awaiting a more direct source.
     program = vision_program(state, object_id, controller)
     return [{"trigger_id": f"{object_id}:vision", "controller": controller, "source_object": object_id, "controller_order": 0,
              "effect_program_id": program["program_id"], "effect_program_hash": hash_value(program["effects"]),
@@ -4396,7 +4420,8 @@ def temporary_program(state: dict[str, Any], object_id: str, controller: str) ->
     engine's: the keyword is the whole ability."""
     return {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
             "program_id": f"{TEMPORARY_PROGRAM_PREFIX}:{object_id}", "controller": controller, "source_object": object_id,
-            "effects": [{"op": "kill", "effect_id": "temporary", "object_id": object_id}]}
+            "effects": [{"op": "kill", "effect_id": "temporary", "object_id": object_id,
+                         "if_identity": object_identity(state, object_id) or f"{object_id}@0"}]}
 
 
 def temporary_triggers(state: dict[str, Any], object_id: str, controller: str) -> list[dict[str, Any]]:

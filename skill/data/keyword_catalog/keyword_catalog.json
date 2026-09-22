@@ -466,11 +466,11 @@
         "module": "effect_ir",
         "symbol": "vision_triggers",
         "layer": "ability",
-        "note": "817.1.b makes Vision short for \"When this is played, predict.\": as a permanent with Vision completes its play and enters the Board (817.1.c), the play completion schedules one trigger whose program is the engine's Predict 1 (436.1), bound by content hash; read from the computed characteristics, so a granted Vision counts. Several instances (817.2) are not modelled"
+        "note": "817.1.b makes Vision short for \"When this is played, predict.\": as a permanent with Vision completes its play and enters the Board, the play completion schedules one trigger whose program is the engine's Predict 1 (436.1), bound by content hash; read from the computed characteristics, so a granted Vision counts. Scope: only a played permanent's entry is modelled; whether a permanent put onto the Board without being played triggers is not decided and is an exception awaiting a more direct source. Several instances (817.2) are not modelled"
       },
       "active_zone": "board",
       "boundary": {
-        "identity": "the permanent entering the Board by being played",
+        "identity": "the permanent entering the Board by being played (other entries: an exception, undecided)",
         "duration": "one trigger at play completion"
       },
       "review": {

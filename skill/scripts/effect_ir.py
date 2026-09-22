@@ -75,7 +75,11 @@ MIGHT_MODES = {"delta", "increase_to"}
 # ADR-0010 §6 / Core 484-489: the Modes of Play the state may name. One set,
 # read here and by the state builder; a caller that restated it would drift.
 SANCTIONED_MODES = frozenset({"duel", "match", "skirmish", "war", "magma_chamber"})
-LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers")
+LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers", "dynamic_might")
+# "My Might is increased by your points." (Draven - Showboat): the amounts a passive
+# arithmetic effect may read off the board each time it is computed (477.3.b: a
+# passive source is not snapshotted). One quantity so far.
+MIGHT_PER_KINDS = {"controller_points"}
 COMBAT_ROLES = {"attacker", "defender"}
 # ADR-0007 §6–8.
 # DP-94 / Core 423: a Stun lasts the turn, so the Expiration Step is what
@@ -817,8 +821,12 @@ def validate_state(state: Any) -> list[str]:
             value = effect["value"]
             kind = effect["kind"]
             if kind in {"might_set", "might_arithmetic"}:
-                if not isinstance(value, dict) or set(value) - {"amount", "mode", "minimum", "maximum", "snapshot_amount"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool):
-                    errors.append(f"{label}.value must be {{amount, mode?, minimum?, maximum?, snapshot_amount?}}")
+                if not isinstance(value, dict) or set(value) - {"amount", "mode", "minimum", "maximum", "snapshot_amount", "per"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool):
+                    errors.append(f"{label}.value must be {{amount, mode?, minimum?, maximum?, snapshot_amount?, per?}}")
+                elif "per" in value and (not isinstance(value["per"], dict) or set(value["per"]) != {"kind"}
+                                         or value["per"]["kind"] not in MIGHT_PER_KINDS or not effect.get("passive", False)
+                                         or kind != "might_arithmetic" or value.get("mode", "delta") != "delta" or "snapshot_amount" in value):
+                    errors.append(f"{label}.value.per must be one of {sorted(MIGHT_PER_KINDS)} on a passive delta arithmetic effect (Core 477.3.b)")
                 elif "snapshot_amount" in value and (not isinstance(value["snapshot_amount"], int) or isinstance(value["snapshot_amount"], bool)):
                     errors.append(f"{label}.value.snapshot_amount must be an integer (Core 477.3.b)")
                 elif "snapshot_amount" in value and effect.get("passive", False):
@@ -943,10 +951,14 @@ def validate_state(state: Any) -> list[str]:
         # the board, no Power or Domain, and no source but this card.
         for m_index, modification in enumerate(obj.get("printed_cost_modifications", []) or []):
             label = f"objects.{object_id}.printed_cost_modifications[{m_index}]"
-            if not isinstance(modification, dict) or set(modification) - {"modification_id", "kind", "amount", "condition"} \
+            if not isinstance(modification, dict) or set(modification) - {"modification_id", "kind", "amount", "condition", "per_each"} \
                     or not {"modification_id", "kind", "amount"} <= set(modification):
-                errors.append(f"{label} must be {{modification_id, kind, amount, condition?}}")
+                errors.append(f"{label} must be {{modification_id, kind, amount, condition?, per_each?}}")
                 continue
+            per_each = modification.get("per_each")
+            if per_each is not None and (not isinstance(per_each, dict) or per_each.get("kind") != "zone_count_at_least"
+                                         or set(per_each) - {"kind", "zone", "player"} or per_each.get("zone") not in PUBLIC_COUNT_ZONES):
+                errors.append(f"{label}.per_each must count a public zone of the controller ({sorted(PUBLIC_COUNT_ZONES)}) (Core 356.4)")
             if modification["kind"] != "energy_reduction":
                 errors.append(f"{label}.kind must be energy_reduction; nothing else is modelled (Round H)")
             if not isinstance(modification["amount"], int) or isinstance(modification["amount"], bool) or modification["amount"] < 1:
@@ -1005,6 +1017,12 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.entry_replacements[{r_index}].replacement_id is invalid or duplicated")
             elif "replacement_id" in replacement:
                 entry_ids.add(replacement["replacement_id"])
+        for d_index, dynamic in enumerate(obj.get("dynamic_might", []) or []):
+            label = f"objects.{object_id}.dynamic_might[{d_index}]"
+            if (not isinstance(dynamic, dict) or set(dynamic) != {"modifier_id", "amount", "per"} or not isinstance(dynamic["modifier_id"], str)
+                    or not isinstance(dynamic["amount"], int) or isinstance(dynamic["amount"], bool) or dynamic["amount"] < 1
+                    or not isinstance(dynamic["per"], dict) or set(dynamic["per"]) != {"kind"} or dynamic["per"]["kind"] not in MIGHT_PER_KINDS):
+                errors.append(f"{label} must be {{modifier_id, amount >= 1, per: {{kind in {sorted(MIGHT_PER_KINDS)}}}}}")
         seen_conditional: set[str] = set()
         for c_index, conditional in enumerate(obj.get("conditional_might", []) or []):
             label = f"objects.{object_id}.conditional_might[{c_index}]"
@@ -3764,6 +3782,15 @@ def migrate_legacy_effects(state: dict[str, Any]) -> dict[str, Any]:
                 "timestamp": _legacy_timestamp(1, position), "value": {"amount": amount, "mode": "delta"},
                 "condition": copy.deepcopy(conditional["condition"]), "duration": {"kind": "while_source_active"}, "passive": True,
             })
+        for position, dynamic in enumerate(obj.get("dynamic_might", []) or []):
+            effects.append({
+                "effect_id": f"legacy:dynamic:{object_id}:{dynamic['modifier_id']}", "kind": "might_arithmetic",
+                "source": {"object": object_id, "identity": identity},
+                "affects": {"scope": "object", "object": object_id, "identity": identity},
+                "layer": "arithmetic", "sublayer": "increase",
+                "timestamp": _legacy_timestamp(5, position), "value": {"amount": dynamic["amount"], "mode": "delta", "per": dict(dynamic["per"])},
+                "duration": {"kind": "while_source_active"}, "passive": True,
+            })
         for position, modifier in enumerate(obj.get("keyword_modifiers", []) or []):
             duration = ({"kind": "this_combat", "combat_id": modifier["combat_id"]}
                         if modifier["duration"] == "this_combat" else {"kind": "this_turn", "turn_id": modifier.get("turn_id", turn_id)})
@@ -3801,7 +3828,7 @@ def migrate_legacy_effects(state: dict[str, Any]) -> dict[str, Any]:
         return state
     migrated = copy.deepcopy(state)
     for object_id in migrated["objects"]:
-        for field in ("conditional_might", "keyword_modifiers"):
+        for field in ("conditional_might", "keyword_modifiers", "dynamic_might"):
             migrated["objects"][object_id].pop(field, None)
         migrated["objects"][object_id]["might_modifiers"] = []  # the schema still requires the list; it stays empty
     for field in ("might_auras", "damage_modifiers"):
@@ -3902,6 +3929,19 @@ def _condition_holds(state: dict[str, Any], effect: dict[str, Any], object_id: s
     return evaluate_condition(state, condition, controller=state["objects"][object_id]["controller"], object_id=object_id)
 
 
+def _read_per(state: dict[str, Any], effect: dict[str, Any]) -> dict[str, Any]:
+    """A passive "increased by <quantity>" effect with its amount as the board has it
+    now (477.3.b: no snapshot). controller_points: the points of the source's
+    controller (Draven - Showboat, "your points")."""
+    value = effect["value"]
+    per = value.get("per")
+    if per is None:
+        return effect
+    source = (state["objects"].get(effect["source"]["object"]) or {})
+    points = int((state["players"].get(source.get("controller")) or {}).get("points", 0))
+    return {**effect, "value": {k: v for k, v in value.items() if k != "per"} | {"amount": value["amount"] * points}}
+
+
 def _applied_amount(effect: dict[str, Any], current: int) -> int:
     """Core 477.3: a delta, or an 'increased to N' that computes what it adds
     now; a player never increases by a negative amount (477.3.c).
@@ -3967,6 +4007,9 @@ CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, 
                       "might_less_than": {"than"}, "object_kind": {"value"},
                       "score_within_of_victory": {"count"}}
 PRIVATE_ZONES = {"hand", "main_deck", "rune_deck"}
+# "for each card in your trash" (Rhasa the Sunderer): the zones a printed per-each
+# reduction may count - public ones, so no perspective is needed to count them.
+PUBLIC_COUNT_ZONES = {"trash"}
 
 
 class ConditionUnsupported(NotImplementedError):
@@ -4153,6 +4196,14 @@ def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, An
         problems = validate_condition({**per_each, "count": 0} if "count" not in per_each else per_each)
         if problems:
             raise ValueError("; ".join(problems))
+        if per_each.get("kind") == "zone_count_at_least" and per_each.get("zone") in PUBLIC_COUNT_ZONES:
+            # a public zone is counted outright; 356.6 keeps the total at 0 or above
+            player = per_each.get("player", actor)
+            count = len((state["players"].get(player) or {}).get("zones", {}).get(per_each["zone"], []))
+            result["per_each_count"] = count
+            result["amount"] = modification.get("amount", 0) * count
+            result["applies"] = count > 0
+            return result
         if per_each.get("kind") != "controls_units":
             raise ConditionUnsupported(f"per-each over {per_each.get('kind')!r} is not counted by this slice (unsupported: cost_modification_per_each_scope)")
         count = 0
@@ -4204,7 +4255,7 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
                 if effect["kind"] == "might_set":
                     result["might"] = effect["value"]["amount"]
                 elif effect["kind"] == "might_arithmetic":
-                    amount = _applied_amount(effect, result["might"])
+                    amount = _applied_amount(_read_per(state, effect), result["might"])
                     result["might"] += amount
                     # Only a stored snapshot is reported as one. The field used to
                     # carry whatever the bound produced on this pass, which read
@@ -4264,6 +4315,7 @@ def _layer_order(state: dict[str, Any], effects: list[dict[str, Any]], object_id
     # 478: A depends on B when applying B changes what A applies.
     def altered_by(a: dict[str, Any], b: dict[str, Any]) -> bool:
         base = result["might"]
+        a, b = _read_per(state, a), _read_per(state, b)
         return _applied_amount(a, base) != _applied_amount(a, base + _applied_amount(b, base))
 
     depends: dict[str, set[str]] = {e["effect_id"]: set() for e in ordered}

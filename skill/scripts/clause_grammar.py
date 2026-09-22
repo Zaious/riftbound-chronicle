@@ -341,6 +341,23 @@ def _lower_self_cost_reduction_fixed(params):
             "ast": {"node": "self_cost_reduction", "amount": amount}}
 
 
+def _lower_might_by_points(params):
+    """"My Might is increased by your points." - a passive increase of the card's own
+    Might by its controller's points, read each time Might is computed (477.3.b)."""
+    return {"object_fields": {"dynamic_might": [{"modifier_id": "own-text", "amount": 1, "per": {"kind": "controller_points"}}]},
+            "ast": {"node": "dynamic_might", "per": "controller_points", "amount": 1}}
+
+
+def _lower_self_cost_reduction_per_trash(params):
+    """"I cost N less for each card in your trash." - the card's own text, a fixed
+    Energy amount per card in its controller's trash (356.4; 356.6 keeps it at 0)."""
+    amount = int(params["amount"])
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
+                "per_each": {"kind": "zone_count_at_least", "zone": "trash"}}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "per_each": {"zone": "trash"}}}
+
+
 def _lower_empty(params):
     return {"ast": {"node": "empty"}}
 
@@ -558,6 +575,8 @@ LOWERINGS = {
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
     "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,
+    "my_might_is_increased_by_your_points": _lower_might_by_points,
+    "self_cost_reduction_per_trash_card": _lower_self_cost_reduction_per_trash,
 }
 
 # Productions that wrap another clause: "When you play me, <inner>."

@@ -1201,6 +1201,54 @@
       ]
     },
     {
+      "production_id": "my_might_is_increased_by_your_points",
+      "form": "My Might is increased by your points.",
+      "template": "my might is increased by your points",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 477.3",
+        "Core 477.3.b",
+        "Core 364.3"
+      ],
+      "ast_node": "dynamic_might",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "A passive increase of the card's own Might by its controller's points, computed fresh each time (477.3.b). Another quantity, or another object's Might, is a different clause.",
+      "golden": [
+        "My Might is increased by your points."
+      ],
+      "negative": [
+        "my might is increased by your opponent's points",
+        "your units' might is increased by your points",
+        "my might is doubled"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_per_trash_card",
+      "form": "I cost :rb_energy_1: less for each card in your trash.",
+      "template": "i cost \\[e(?P<amount>\\d+)\\] less for each card in your trash",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.6"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text, a fixed Energy amount per card in its controller's trash; 356.6 keeps the Energy cost at 0 or above. Another zone, or a count of something else, is a different clause.",
+      "golden": [
+        "I cost :rb_energy_1: less for each card in your trash."
+      ],
+      "negative": [
+        "i cost :rb_energy_1: less for each card in your hand",
+        "i cost :rb_energy_1: less for each unit you control"
+      ]
+    },
+    {
       "production_id": "you_may_pay_own_domain_power_as_additional_cost_to_play_me",
       "form": "You may pay [C] as additional cost to play me.",
       "template": "you may pay \\[c\\] as additional cost to play me",

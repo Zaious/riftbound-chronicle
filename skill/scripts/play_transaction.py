@@ -710,6 +710,8 @@ def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> l
             "source": {"kind": "self_card_text", "object": card_id, "capability": SELF_REDUCTION_CAPABILITY},
             "self_card": True,
         }
+        if "per_each" in modification:
+            entry["per_each"] = copy.deepcopy(modification["per_each"])
         if "condition" in modification:
             entry["condition"] = copy.deepcopy(modification["condition"])
             if entry["condition"].get("kind") == "another_card_finalized_this_turn":

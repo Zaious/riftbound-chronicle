@@ -281,6 +281,34 @@
       }
     },
     {
+      "keyword_id": "legion",
+      "name": "Legion",
+      "locators": [
+        "Core 727.1",
+        "Core 812.1.b.1",
+        "Core 812.1.c",
+        "Core 812.2",
+        "Core 419.4.b"
+      ],
+      "production": {
+        "module": "effect_ir",
+        "symbol": "legion_active",
+        "layer": "ability",
+        "note": "a Dependent Keyword (727.1): the ability after it exists while its controller has Finalized another card this turn (812.1.c); the play transaction records each Finalized card (419.4.b), and the grammar reads the condition on \"When you play me\" and on \"I cost N less\" only"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the card with the Legion ability; any other card its controller Finalized this turn",
+        "duration": "this turn (the ledger is per turn id)"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-22",
+        "source": "Core Rules 2026-07-16 812, 727.1, 419.4.b; the production was verified against the live engine (check_legion.py)"
+      },
+      "fixture": "check_legion.py"
+    },
+    {
       "keyword_id": "level",
       "name": "Level",
       "locators": [

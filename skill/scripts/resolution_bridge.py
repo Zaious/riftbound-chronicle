@@ -631,12 +631,24 @@ def complete_permanent_play(
         trace["rule_locators"].append("Core 359.2.c" if obj["kind"] == "unit" else "Core 359.2.d")
     trace["identity_after"] = _bump_identity(working, card)
     triggers = []
+    inactive = []
     for descriptor in object_triggers(working, card, "play_triggers"):
+        condition = descriptor.get("condition")
+        if condition is not None and condition.get("kind") == "another_card_finalized_this_turn":
+            # Core 812.1.c: the Legion text exists only while another card this
+            # player Finalized this turn is on record; read as the play completes (419.4.a).
+            from effect_ir import evaluate_condition
+            if not evaluate_condition(working, condition, controller=controller, object_id=card):
+                inactive.append({"trigger_id": descriptor["trigger_id"], "reason": "legion_not_active", "rule_locators": ["Core 812.1.c"]})
+                continue
+            descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
         copied = copy.deepcopy(descriptor)
         copied.setdefault("trigger_kind", "triggered")
         copied["play_completion"] = item_id
         triggers.append(copied)
     trace["play_triggers"] = [t["trigger_id"] for t in triggers]
+    if inactive:
+        trace["play_triggers_inactive"] = inactive
     trace["rule_locators"] += ["Core 419.4.a"] if triggers else []
     return working, trace, triggers
 

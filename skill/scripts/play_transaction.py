@@ -52,7 +52,7 @@ from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_source_exclusion, _bump_identity, apply_program, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
-    suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
+    record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
 from effect_ir import ConditionUnsupported  # noqa: E402
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
@@ -712,6 +712,9 @@ def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> l
         }
         if "condition" in modification:
             entry["condition"] = copy.deepcopy(modification["condition"])
+            if entry["condition"].get("kind") == "another_card_finalized_this_turn":
+                # Legion (812.1.c): "another" card is one other than this card
+                entry["condition"].setdefault("object", card_id)
         reductions.append(entry)
     return reductions
 
@@ -1439,6 +1442,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 accelerate_entry_replacement(card, item_id))
         working.setdefault("chain_items", {})[item_id] = entry
         identity_after = _bump_identity(working, card) if not is_ability else object_identity(working, card)
+        if not is_ability:
+            # Core 419.4.b / 812.1.c: this card is Finalized by this play; a
+            # Legion reads that, even if the card is later countered.
+            record_finalized_card(working, actor, card)
         state_errors = validate_state(working)
         if state_errors:
             raise PlayError("payment", "invalid_working_state", "; ".join(state_errors), invalid=True)

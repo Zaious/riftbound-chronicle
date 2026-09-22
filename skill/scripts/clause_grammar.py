@@ -332,6 +332,15 @@ def _lower_self_cost_reduction(params):
     }
 
 
+def _lower_self_cost_reduction_fixed(params):
+    """"I cost N less." - the card's own text, a fixed Energy amount, no
+    condition of its own. It is the ability a Legion gates (Noxus Hopeful)."""
+    amount = int(params["amount"])
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount}}
+
+
 def _lower_empty(params):
     return {"ast": {"node": "empty"}}
 
@@ -341,6 +350,26 @@ def _lower_empty(params):
 # trigger condition, the inner clause is the effect. Only the keywords the
 # engine implements as a trigger get a program; the rest are known_unsupported.
 KEYWORDED_TRIGGERS = {"deathknell": ("death_triggers", "deathknell")}
+# Core 727.1 / 812.1.b.1: a Dependent Keyword is a condition on the ability after it.
+# Legion's condition is a condition.v1 leaf; the ability it gates must be one of the
+# two forms the engine reads that condition on. Anything else is known_unsupported.
+DEPENDENT_KEYWORDS = {"legion": {"kind": "another_card_finalized_this_turn"}}
+
+
+def _lower_dependent_keyword(name: str, inner: dict[str, Any]) -> dict[str, Any] | None:
+    condition = DEPENDENT_KEYWORDS[name]
+    passive = copy.deepcopy((inner.get("passive") or {}).get("object_fields") or {})
+    if inner.get("production_id") == "when_you_play_me" and set(passive) == {"play_triggers"}:
+        for trigger in passive["play_triggers"]:
+            trigger["condition"] = dict(condition)
+        return {"object_fields": passive, "program_effects": inner.get("program_effects", []),
+                "ast": {"node": "dependent_keyword", "keyword": name, "condition": dict(condition), "then": inner["ast"]}}
+    if inner.get("production_id") == "self_cost_reduction_fixed" and set(passive) == {"printed_cost_modifications"}:
+        for modification in passive["printed_cost_modifications"]:
+            modification["condition"] = dict(condition)
+        return {"object_fields": passive, "program_effects": [],
+                "ast": {"node": "dependent_keyword", "keyword": name, "condition": dict(condition), "then": inner["ast"]}}
+    return None
 
 
 def _lower_keyworded_ability(params, slots):
@@ -528,6 +557,7 @@ LOWERINGS = {
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
+    "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,
 }
 
 # Productions that wrap another clause: "When you play me, <inner>."
@@ -837,6 +867,25 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
         slots = resolve_slots(grammar, production, match)
         params = {k: v for k, v in match.groupdict().items() if v is not None and "__" not in k}
         production_id = production["production_id"]
+        if production_id == "keyworded_ability" and slots["keyword"]["keyword"] in DEPENDENT_KEYWORDS:
+            name = slots["keyword"]["keyword"]
+            inner = compile_clause(match.group("inner"), grammar, previous=previous)
+            dependent = None if inner.get("unsupported") else _lower_dependent_keyword(name, inner)
+            if dependent is None:
+                return {"production_id": production_id, "unsupported": True, "reason_code": "dependent_ability_form_unsupported",
+                        "text": text, "normalized": normalized, "slots": slots, "inner_text": match.group("inner"),
+                        "rule_locators": list(production["rule_locators"]) + ["Core 727.1", "Core 812.1.b.1"],
+                        "reason": f"[{name}] gates {match.group('inner')!r}; the engine reads its condition only on "
+                                  "\"When you play me\" and on \"I cost N less\""}
+            return {
+                "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
+                "params": {}, "slots": slots,
+                "rule_locators": list(production["rule_locators"]) + ["Core 727.1", "Core 812.1.b.1", "Core 812.1.c"] + inner["rule_locators"],
+                "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"]) | {"legion_condition"}),
+                "ast": dependent["ast"],
+                "passive": {"object_fields": {**dependent["object_fields"], "keywords": [name]}},
+                "program_effects": dependent["program_effects"],
+            }
         if production_id == "keyworded_ability":
             lowered = _lower_keyworded_ability(match.groupdict(), slots)
             if lowered.pop("known_unsupported", None) is not None:

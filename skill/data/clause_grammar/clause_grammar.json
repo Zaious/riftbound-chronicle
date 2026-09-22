@@ -201,6 +201,13 @@
             "implemented": false
           }
         },
+        "legion": {
+          "pattern": "\\[legion(?: (?P<legion_value>\\d+))?\\]",
+          "value": {
+            "keyword": "legion",
+            "implemented": true
+          }
+        },
         "level": {
           "pattern": "\\[level(?: (?P<level_value>\\d+))?\\]",
           "value": {
@@ -814,6 +821,7 @@
           "ganking",
           "hidden",
           "hunt",
+          "legion",
           "level",
           "repeat",
           "shield",
@@ -846,6 +854,7 @@
         "[Ganking][>] Draw 1.",
         "[Hidden][>] Draw 1.",
         "[Hunt][>] Draw 1.",
+        "[Legion][>] When you play me, draw 1.",
         "[Level][>] Draw 1.",
         "[Repeat][>] Draw 1.",
         "[Shield][>] Draw 1.",
@@ -877,6 +886,7 @@
           "ganking",
           "hidden",
           "hunt",
+          "legion",
           "level",
           "repeat",
           "shield",
@@ -909,6 +919,7 @@
         "[Ganking]",
         "[Hidden]",
         "[Hunt]",
+        "[Legion]",
         "[Level]",
         "[Repeat]",
         "[Shield]",
@@ -1164,6 +1175,29 @@
         "if an opponent's score is within 3 points of the victory score, this costs :rb_rune_rainbow: less",
         "this spell's energy cost is reduced by the highest might among units you control",
         "i cost :rb_energy_2: less"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_fixed",
+      "form": "I cost :rb_energy_2: less.",
+      "template": "i cost \\[e(?P<amount>\\d+)\\] less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text and a fixed Energy amount. It is the ability a [Legion] gates (812.1.b.1); a variable amount, Power, or a value read off the board is a different clause.",
+      "golden": [
+        "I cost :rb_energy_2: less."
+      ],
+      "negative": [
+        "i cost :rb_rune_rainbow: less",
+        "i cost [e] less",
+        "units cost :rb_energy_2: less"
       ]
     },
     {

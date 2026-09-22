@@ -321,7 +321,9 @@ PRODUCTIONS = [
         "ast_node": "keyworded_ability",
         "required_capability": ["keyword_catalogue_v1"],
         "boundary": "The binder makes the keyword the ability's trigger condition. Only a keyword the engine implements as a trigger compiles; the rest are known_unsupported, and an ability the grammar cannot read makes the whole clause unparsed.",
-        "golden": [f"[{name.title()}][>] Draw 1." for name in sorted(keyword_alternatives())],
+        # a Dependent Keyword (727.1) gates an ability form, not an instruction
+        "golden": [f"[{name.title()}][>] " + ("When you play me, draw 1." if name == "legion" else "Draw 1.")
+                   for name in sorted(keyword_alternatives())],
         "negative": ["[Nonesuch][>] Draw 1.", "[Deathknell] Draw 1.", "[Deathknell][>] Summon a dragon."],
     },
     {
@@ -390,6 +392,11 @@ LITERAL = [
      ["if an opponent's score is within 3 points of the victory score, this costs :rb_rune_rainbow: less",
       "this spell's energy cost is reduced by the highest might among units you control",
       "i cost :rb_energy_2: less"]),
+    ("self_cost_reduction_fixed", r"i cost \[e(?P<amount>\d+)\] less",
+     ["Core 356.4"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
+     "The card's own text and a fixed Energy amount. It is the ability a [Legion] gates (812.1.b.1); a variable amount, Power, or a value read off the board is a different clause.",
+     ["I cost :rb_energy_2: less."],
+     ["i cost :rb_rune_rainbow: less", "i cost [e] less", "units cost :rb_energy_2: less"]),
     ("you_may_pay_own_domain_power_as_additional_cost_to_play_me",
      r"you may pay \[c\] as additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"], "passive", ["card_self_optional_cost", "domain_power"],

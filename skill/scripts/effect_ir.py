@@ -50,7 +50,7 @@ RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability"
 # like any other keyword; its behaviour is the object's death triggers.
 # Core 805 (last lines) does the same for Accelerate: it is a characteristic
 # that may be checked, even though it only has a function while playing.
-OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell", "accelerate", "assault"}
+OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell", "accelerate", "assault", "legion"}
 # Keywords with a value summed across sources: Shield (814.1.b, 814.2) and Assault
 # (807.1.b, 807.2). An omitted X is 1 for both.
 VALUED_KEYWORDS = {"shield", "assault"}
@@ -89,7 +89,9 @@ CONDITION_KINDS = {"runes_at_least", "attacking_or_defending_alone"}
 AURA_CONDITION_KINDS = {"friendly_unit_defends_alone"}
 GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline"}
 KEYWORD_MODIFIER_DURATIONS = {"this_combat", "this_turn"}
-TRIGGER_CONDITION_KINDS = {"at_battlefield"}
+# Core 812.1.c: a Legion ability is active once its controller has Finalized another card
+# this turn. On a trigger it is only read where "When you play me" triggers are collected.
+TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn"}
 DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
@@ -520,6 +522,10 @@ def validate_state(state: Any) -> list[str]:
         ledger = player.get("scored_this_turn")
         if ledger is not None and (not isinstance(ledger, dict) or any(not isinstance(k, str) or not k or not isinstance(v, list) or len(v) != len(set(v)) or any(b not in battlefields for b in v) for k, v in ledger.items())):
             errors.append(f"players.{player_id}.scored_this_turn must map turn ids to unique known battlefield ids")
+        # Core 419.4.b / 812.1.c: the cards this player Finalized, per turn.
+        finalized = player.get("cards_finalized_this_turn")
+        if finalized is not None and (not isinstance(finalized, dict) or any(not isinstance(k, str) or not k or not isinstance(v, list) or len(v) != len(set(v)) or any(o not in objects for o in v) for k, v in finalized.items())):
+            errors.append(f"players.{player_id}.cards_finalized_this_turn must map turn ids to unique known object ids")
 
     for battlefield_id, battlefield in battlefields.items():
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
@@ -978,6 +984,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].effect_program_hash must be a sha256 content hash")
                 elif "condition" in trigger and (not isinstance(trigger["condition"], dict) or trigger["condition"].get("kind") not in TRIGGER_CONDITION_KINDS):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
+                elif "condition" in trigger and trigger["condition"].get("kind") == "another_card_finalized_this_turn" and (trigger_field != "play_triggers" or set(trigger["condition"]) != {"kind"}):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: a Legion condition is read only on a play trigger, as {{kind}} (Core 812.1.c)")
                 elif "scope" in trigger and trigger_field in {"conquer_triggers", "hold_triggers"} and trigger["scope"] not in {"unit_here", "controller"}:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope must be unit_here or controller on a Score trigger (Core 383.4.c.2)")
                 elif "scope" in trigger and trigger_field in {"beginning_phase_triggers", "main_phase_triggers"} and trigger["scope"] not in {"your_beginning_phase", "your_main_phase"}:
@@ -3949,6 +3957,9 @@ CONDITION_LEAVES = {
     # Round H: the first leaf of the narrow self-card cost reduction. Every
     # fact it needs is on the state the play is being judged against.
     "score_within_of_victory": {"count", "who"},
+    # Legion (Core 812.1.b.1, 812.1.c): "if you have played another card this turn" -
+    # a card other than `object` Finalized by `player` this turn (419.4.b).
+    "another_card_finalized_this_turn": {"object", "player"},
 }
 CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
                       "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
@@ -4037,6 +4048,11 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
             raise ConditionUnsupported(f"{len(opponents)} opponents; which one's score counts is not decided here")
         points = int(state["players"][opponents[0]].get("points", 0))
         return victory - points <= condition["count"]
+    if kind == "another_card_finalized_this_turn":
+        player = condition.get("player", controller)
+        if player is None:
+            raise ConditionUnsupported("another_card_finalized_this_turn needs to know whose plays to read")
+        return legion_active(state, player, subject)
     if kind == "object_kind":
         return subject is not None and characteristics(state, subject).get("kind") == condition["value"]
     if kind == "same_location_as":
@@ -4088,6 +4104,39 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
                 "(unsupported: condition_needs_hidden_information)")
         return len(state["players"].get(player, {}).get("zones", {}).get(zone, [])) >= condition["count"]
     raise ConditionUnsupported(f"condition leaf {kind!r} is recognised but not evaluated (unsupported: condition_kind_unknown)")
+
+
+def cards_finalized_this_turn(state: dict[str, Any], player: str) -> list[str]:
+    """Core 419.4.b: the cards `player` has Finalized this turn, in order. A
+    countered card still counts - it was Finalized; an activated ability is not
+    a card and never appears here."""
+    ledger = (state["players"].get(player) or {}).get("cards_finalized_this_turn") or {}
+    return list(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), []))
+
+
+def another_card_finalized_this_turn(state: dict[str, Any], player: str, card: str | None) -> bool:
+    """Core 812.1.c: Legion is active once a card different from the one with
+    the Legion ability has been Finalized by its controller this turn. 812.2:
+    one such card satisfies every Legion that player controls."""
+    return any(other != card for other in cards_finalized_this_turn(state, player))
+
+
+def legion_active(state: dict[str, Any], player: str, card: str | None) -> bool:
+    """Core 812.1.c on the card that has Legion (812.3: Legion is a
+    characteristic of that card). A card named here must still have the
+    keyword; the condition is asked with no card only by a caller that has
+    none to name, and then reads the ledger alone."""
+    if card is not None and card in state["objects"] and not has_keyword(state, card, "legion"):
+        return False
+    return another_card_finalized_this_turn(state, player, card)
+
+
+def record_finalized_card(state: dict[str, Any], player: str, card: str) -> None:
+    """Called once, when a card play is Finalized (358.4). Only this turn's
+    entry is kept: the ledger is read for "this turn" and nothing else."""
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    ledger = (state["players"][player].get("cards_finalized_this_turn") or {}).get(turn_id, [])
+    state["players"][player]["cards_finalized_this_turn"] = {turn_id: ledger + ([card] if card not in ledger else [])}
 
 
 def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, Any], actor: str) -> dict[str, Any]:

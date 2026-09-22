@@ -237,6 +237,10 @@ jobs:
       - name: Legend activation
         run: python3 skill/scripts/check_legend_activation.py
 
+      # Core 812: Legion is active once another card its controller Finalized this turn is on record.
+      - name: Legion
+        run: python3 skill/scripts/check_legion.py
+
       # ADR-0007 C-20: the Battlefield is the target, affected units are not;
       # Bonus Damage is summed once and added before Prevent sees the amount.
       - name: Battlefield targets, criteria expansion, Bonus Damage
@@ -567,6 +571,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_contested_invariant.py"
           python3 "$REPO/skill/scripts/check_assault.py"
           python3 "$REPO/skill/scripts/check_legend_activation.py"
+          python3 "$REPO/skill/scripts/check_legion.py"
           python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_turn_steps.py"
           python3 "$REPO/skill/scripts/check_conditions_and_discard.py"

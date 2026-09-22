@@ -1517,6 +1517,34 @@
       ]
     },
     {
+      "production_id": "when_you_defend_here",
+      "form": "When you defend here, draw 1.",
+      "template": "when you defend here, (?P<optional>you may )?(?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.4.f",
+        "Core 190.6.a",
+        "Core 190.6.d",
+        "Core 464.2.e.1",
+        "Core 383.3"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "battlefield_defend_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you defend here, draw 1.",
+        "When you defend here, you may channel 1 rune exhausted."
+      ],
+      "negative": [
+        "when you attack here, draw 1",
+        "when i defend, draw 1",
+        "when you conquer here, draw 1"
+      ]
+    },
+    {
       "production_id": "when_i_hold",
       "form": "When I hold, draw 1.",
       "template": "when i hold, (?P<inner>.+)",

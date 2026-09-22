@@ -436,6 +436,23 @@ def main() -> int:
             errors.append(f"a card printing {printed or 'default'} declared {declared}: committed={got.get('committed')} "
                           f"{got.get('reason_code')} (expected {'allowed' if allowed else 'timing_not_printed'})")
 
+    # "Choose a unit. It ...": the second instruction reads the first one's selection
+    # (selection_ref). That is not a target chosen at play, and the play-time target check
+    # once crashed on it (KeyError 'object_id', found 2026-09-22 compiling Fortified Position).
+    referring = program("spell-1-effects",
+                        {"op": "establish_selection", "effect_id": "ch", "selection_id": "ch", "decision_ref": "ch",
+                         "choice": {"selection_kind": "single", "from": "board", "count": {"one": True},
+                                    "visibility": "public", "criteria": {"kind": "unit"}}},
+                        {"op": "exhaust", "effect_id": "ex", "target": {"selection_ref": "ch", "chosen_zone_class": "board", "kind": "unit"}})
+    try:
+        referred = play_card(fixture(), effect_state(), declaration(effect_program_id="spell-1-effects"), effect_program=referring)
+    except KeyError as crash:
+        errors.append(f"a program whose instruction reads an earlier selection crashed the play-time target check: {crash!r}")
+    else:
+        if not referred.get("committed"):
+            errors.append(f"a program whose instruction reads an earlier selection could not be played: "
+                          f"{referred.get('reason_code')} {referred.get('reason')}")
+
     if errors:
         print("FAILED: play transaction checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1

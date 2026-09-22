@@ -495,6 +495,13 @@ WRAPPERS = [
      ["Core 469.1", "Core 471.2", "Core 190.6.a", "Core 383.3"], ["conquer_triggers"],
      ["When you conquer here, draw 1.", "When you conquer here, you may channel 1 rune exhausted."],
      ["when you hold here, draw 1", "when i conquer, draw 1", "when you conquer, draw 1"]),
+    # A Battlefield's own Defend trigger: it triggers when its controller gains the Defender
+    # designation in a Combat there (Core 383.4.f, 190.6.a, 190.6.d); open_combat schedules
+    # it after the Attack triggers (464.2.e.1). Distinct from a Unit's "When I defend".
+    ("when_you_defend_here", r"when you defend here, (?P<optional>you may )?(?P<inner>.+)",
+     ["Core 383.4.f", "Core 190.6.a", "Core 190.6.d", "Core 464.2.e.1", "Core 383.3"], ["defend_triggers"],
+     ["When you defend here, draw 1.", "When you defend here, you may channel 1 rune exhausted."],
+     ["when you attack here, draw 1", "when i defend, draw 1", "when you conquer here, draw 1"]),
     # A Unit's own Hold Effect (Core 383.4.d): it goes on the Chain after the Unit is present
     # at a Battlefield its controller Holds and scores from (383.4.d.2.a) - the Scoring Step's
     # unit_here scope. Distinct from the Battlefield's own "When you hold here".
@@ -523,6 +530,7 @@ CAPABILITY_ALIAS = {
     "replacement_effects": "bounded_replacement",
     "conquer_triggers": "score_triggers",
     "hold_triggers": "hold_scoring",
+    "defend_triggers": "battlefield_defend_triggers",
     "move_restriction": "standard_move",
     "end_of_turn_triggers": "ending_step",
     "might_aura": "continuous_effects",

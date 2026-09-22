@@ -1007,6 +1007,11 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 if isinstance(sel, dict):
                     candidates.append((sel, sel.get("decision_ref")))
         for template, ref in candidates:
+            if "selection_ref" in template:
+                # selection-binding.v1: a reference to what an earlier instruction of this
+                # program selects. Nothing is chosen at this stage; the reference is checked
+                # where it is read, at resolution.
+                continue
             if ref is None:
                 if derive_targeted(template):
                     ok, reason = evaluate_target(effect_state, template, actor)

@@ -536,10 +536,7 @@
     "normalization_baseline": "split_clauses:6d017083475686bc",
     "reclassified": [],
     "added": [],
-    "repaid": [
-      "mystic poro#f4a07c4d",
-      "sai scout#f4a07c4d"
-    ],
+    "repaid": [],
     "normalization_reclassification": []
   }
 }

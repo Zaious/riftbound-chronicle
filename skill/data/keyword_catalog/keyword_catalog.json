@@ -413,19 +413,26 @@
       "locators": [
         "Core 816.1.b",
         "Core 816.1.c",
-        "Core 816.2"
+        "Core 816.2.a",
+        "Core 315.2.a"
       ],
-      "production": null,
+      "production": {
+        "module": "effect_ir",
+        "symbol": "temporary_triggers",
+        "layer": "ability",
+        "note": "816.1.b makes Temporary short for \"At the start of this permanent's controller's Beginning Phase, before scoring, kill this.\": entering that Beginning Phase schedules one trigger per Temporary permanent (816.2.a) with the Beginning Step's triggers, before the Scoring Step; its program is the engine's Kill of that permanent, bound by content hash; read from the computed characteristics, so a granted Temporary counts"
+      },
       "active_zone": "board",
       "boundary": {
-        "identity": "the permanent that has it",
+        "identity": "the permanent that has it, on its controller's board",
         "duration": "until its controller's next Beginning Phase"
       },
       "review": {
         "reviewer": "claude",
-        "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
-      }
+        "date": "2026-09-22",
+        "source": "Core Rules 2026-07-16 816 and 315.2; the production was verified against the live engine (check_temporary.py)"
+      },
+      "fixture": "check_temporary.py"
     },
     {
       "keyword_id": "unique",

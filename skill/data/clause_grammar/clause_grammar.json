@@ -240,7 +240,7 @@
           "pattern": "\\[temporary(?: (?P<temporary_value>\\d+))?\\]",
           "value": {
             "keyword": "temporary",
-            "implemented": false
+            "implemented": true
           }
         },
         "unique": {

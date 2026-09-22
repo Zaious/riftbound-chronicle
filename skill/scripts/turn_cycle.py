@@ -241,6 +241,15 @@ def _phase_triggers(effect_state: dict[str, Any], player: str, phase: str) -> tu
             descriptors.append(copied)
             record["scheduled"] = True
             evaluated.append(record)
+        # Core 816.1.b-c: a Temporary permanent's own trigger, once (816.2.a), with the
+        # Beginning Step's other triggers - so before the Scoring Step (315.2.b)
+        if phase == "beginning" and obj.get("controller") == player and zone_class(find_location(effect_state, object_id)) == "board":
+            from effect_ir import temporary_triggers
+            for descriptor in temporary_triggers(effect_state, object_id, player):
+                descriptors.append({**descriptor, "trigger_kind": "triggered", "batch_sequence": 0, "batch_id": f"{phase}:{turn_id}",
+                                    "scope": scope, "source_identity": object_identity(effect_state, object_id) or f"{object_id}@0"})
+                evaluated.append({"trigger_id": descriptor["trigger_id"], "source_object": object_id, "controller": player,
+                                  "scheduled": True, "rule_locators": ["Core 816.1.b", "Core 816.1.c", "Core 816.2.a"]})
     return descriptors, evaluated
 
 

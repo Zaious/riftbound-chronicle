@@ -245,6 +245,10 @@ jobs:
       - name: Vision
         run: python3 skill/scripts/check_vision.py
 
+      # Core 816: a Temporary permanent is killed at the start of its controller's Beginning Phase, before scoring.
+      - name: Temporary
+        run: python3 skill/scripts/check_temporary.py
+
       # ADR-0007 C-20: the Battlefield is the target, affected units are not;
       # Bonus Damage is summed once and added before Prevent sees the amount.
       - name: Battlefield targets, criteria expansion, Bonus Damage
@@ -577,6 +581,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_legend_activation.py"
           python3 "$REPO/skill/scripts/check_legion.py"
           python3 "$REPO/skill/scripts/check_vision.py"
+          python3 "$REPO/skill/scripts/check_temporary.py"
           python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_turn_steps.py"
           python3 "$REPO/skill/scripts/check_conditions_and_discard.py"

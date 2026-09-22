@@ -4335,6 +4335,31 @@ def vision_triggers(state: dict[str, Any], object_id: str, controller: str) -> l
              "optional_at_finalize": False}]
 
 
+TEMPORARY_PROGRAM_PREFIX = "keyword:temporary"
+
+
+def temporary_program(state: dict[str, Any], object_id: str, controller: str) -> dict[str, Any]:
+    """Core 816.1.b: Temporary is short for "At the start of this permanent's
+    controller's Beginning Phase, before scoring, kill this." The program is the
+    engine's: the keyword is the whole ability."""
+    return {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+            "program_id": f"{TEMPORARY_PROGRAM_PREFIX}:{object_id}", "controller": controller, "source_object": object_id,
+            "effects": [{"op": "kill", "effect_id": "temporary", "object_id": object_id}]}
+
+
+def temporary_triggers(state: dict[str, Any], object_id: str, controller: str) -> list[dict[str, Any]]:
+    """Core 816.1.c: the trigger condition is its controller's Beginning Phase
+    starting; 816.2.a: however many instances, it triggers once. Read from the
+    computed characteristics, so a granted Temporary counts. The descriptor binds
+    the program's content hash."""
+    if not has_keyword(state, object_id, "temporary"):
+        return []
+    program = temporary_program(state, object_id, controller)
+    return [{"trigger_id": f"{object_id}:temporary", "controller": controller, "source_object": object_id, "controller_order": 0,
+             "effect_program_id": program["program_id"], "effect_program_hash": hash_value(program["effects"]),
+             "optional_at_finalize": False}]
+
+
 def keyword_values(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     return characteristics(state, object_id)["keywords"]
 

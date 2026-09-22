@@ -74,7 +74,7 @@ def main() -> int:
         errors.append(f"negative mutation failed: removing {acted[0]}'s production was not caught")
     invented = copy.deepcopy(catalog)
     for entry in invented["entries"]:
-        if entry["keyword_id"] == "temporary":
+        if entry["keyword_id"] == "unique":
             entry["production"] = {"module": "effect_ir", "symbol": "has_keyword", "layer": "ability"}
     if not any("not implemented by being spellable" in p for p in verify(invented)):
         errors.append("a production claimed for a keyword nothing reads was accepted")
@@ -89,11 +89,11 @@ def main() -> int:
     if not any("does not exist" in p for p in verify(broken)):
         errors.append("a production naming a symbol the engine does not have was accepted")
 
-    # --- temporary is vocabulary, not behaviour -----------------------------------------------------
-    temporary = next(e for e in catalog["entries"] if e["keyword_id"] == "temporary")
-    if temporary["production"] is not None:
-        errors.append("Temporary claims a production; the engine only lets the word be written (816 is not implemented)")
-    supported, note = keyword_supported(catalog, "temporary")
+    # --- level is vocabulary, not behaviour ---------------------------------------------------------
+    level = next(e for e in catalog["entries"] if e["keyword_id"] == "level")
+    if level["production"] is not None:
+        errors.append("Level claims a production; the engine only lets the word be written (824 is not implemented)")
+    supported, note = keyword_supported(catalog, "level")
     if supported or "keyword_not_implemented" not in note:
         errors.append(f"an unimplemented keyword did not answer keyword_not_implemented: {note}")
     supported, note = keyword_supported(catalog, "shield")

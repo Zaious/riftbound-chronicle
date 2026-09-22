@@ -168,6 +168,24 @@ def split_clauses(text: str) -> list[dict[str, str]]:
     the snapshot carries some as `&gt;` and `&quot;`, and a clause that keeps
     them is not the printed text.
     """
+    clauses, _spans, _body = _split_clauses_with_spans(text)
+    return clauses
+
+
+def clause_spans(text: str) -> list[dict[str, object]]:
+    """split_clauses's own clauses, each with the [start, end) it occupies in the
+    reminder-stripped working text (not the raw one - a reminder can sit anywhere and is
+    lifted out before any boundary is found, exactly as split_clauses does it). A caller
+    that needs to slice the card's OWN text from one clause onward, rather than guess by
+    searching for a substring that a repeated phrase could match twice, uses `start`
+    against the SAME reminder-stripped text this function returns as `body` on each row
+    (identical across rows; carried per-row so a caller never has to also call the
+    private helper)."""
+    clauses, spans, body = _split_clauses_with_spans(text)
+    return [{**c, "start": s, "end": e, "body": body} for c, (s, e) in zip(clauses, spans)]
+
+
+def _split_clauses_with_spans(text: str) -> tuple[list[dict[str, str]], list[tuple[int, int]], str]:
     text = " ".join(html.unescape(text).split())
     chunks: list[str] = []
     reminders: list[tuple[int, str]] = []
@@ -218,7 +236,8 @@ def split_clauses(text: str) -> list[dict[str, str]]:
         clauses[target]["reminder"] = f"{existing} {reminder}".strip() if existing else reminder
     if not clauses:
         clauses.append({"text": "", "reminder": ""})
-    return clauses
+        spans.append((0, len(body)))
+    return clauses, spans, body
 
 
 def classify(clause_text: str, is_vanilla: bool) -> tuple[list[str], list[str], str]:

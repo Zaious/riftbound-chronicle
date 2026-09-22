@@ -514,6 +514,21 @@ ACCELERATE_POWER = 1
 ACCELERATE_COST_ID = "accelerate"
 
 
+def legend_activation_source(effect_state: dict[str, Any], card: str | None) -> bool:
+    """A Legend (Core 174.8) in a Legend Zone - the only thing activated from there."""
+    obj = (effect_state.get("objects") or {}).get(card or "") or {}
+    where = find_location(effect_state, card) if card else None
+    return obj.get("kind") == "legend" and where is not None and where[0] == "player" and where[2] == "legend_zone"
+
+
+def _legend_exhausts_itself(state: dict[str, Any], declaration: dict[str, Any], object_id: str | None, actor: str) -> bool:
+    activation = declaration.get("activation") or {}
+    return (declaration.get("chain_item", {}).get("object_kind") == "ability"
+            and activation.get("source_object") == object_id == declaration.get("card")
+            and legend_activation_source(state, object_id)
+            and find_location(state, object_id) == ("player", actor, "legend_zone"))
+
+
 def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple[dict[str, Any] | None, str | None]:
     """The optional additional cost a card's Accelerate offers, or why not.
 
@@ -925,6 +940,22 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             comp["payment_refs"].append({"event_id": event_id})
             comp["paid"] = True
             continue
+        if comp["kind"] == "exhaust" and _legend_exhausts_itself(working, declaration, comp["object_id"], actor):
+            # Core 174.8 / 414.1: a Legend's own ":rb_exhaust:" cost, paid from its Legend Zone.
+            # Only this path: the activation's own source, a Legend, in its controller's
+            # Legend Zone. It never goes through a board selector (ADR-0012 keeps a Legend
+            # out of that universe), and an already exhausted Legend cannot pay.
+            object_id = comp["object_id"]
+            if working["objects"][object_id].get("exhausted"):
+                raise PlayError("payment", "cost_unpayable", f"{object_id!r} is already exhausted and cannot pay its exhaust cost (414.1)",
+                                rule_locators=["Core 414.1", "Core 204.3"])
+            working["objects"][object_id]["exhausted"] = True
+            events.append({"event_id": event_id, "kind": "pay_exhaust", "cost_id": comp["cost_id"], "object_id": object_id,
+                           "outcome": "applied", "legend_zone": True,
+                           "rule_locators": ["Core 357.2", "Core 174.8", "Core 414.1", "Core 204.2"]})
+            comp["payment_refs"].append({"event_id": event_id})
+            comp["paid"] = True
+            continue
         op = SUPPORTED_NON_STANDARD[comp["kind"]]
         object_id = comp["object_id"]
         selector = {"object_id": object_id, "chosen_zone_class": "board", "controller_relation": "friendly",
@@ -1129,6 +1160,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 raise PlayError("declaration", "unknown_activation_source", f"activation source {card!r} is not in the state", invalid=True)
             where = find_location(effect_state, card)
             on_board = where is not None and (where[0] == "battlefield" or (where[0] == "player" and where[2] == "base"))
+            # Core 174.8: a Legend has activated abilities. Its Legend Zone stays non-board and
+            # is no Location (107.4.b, ADR-0012); this admits exactly one thing - a Legend
+            # activating from its controller's Legend Zone - and nothing else from there
+            on_board = on_board or (legend_activation_source(effect_state, card) and where == ("player", actor, "legend_zone"))
             if not on_board:
                 raise PlayError("choices", "activation_source_not_on_board", f"{card!r} is at {where}; activated abilities are activated from the Board (Core 377.4)", rule_locators=["Core 377.4", "Core 377"])
             if source.get("controller") != actor:

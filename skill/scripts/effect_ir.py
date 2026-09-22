@@ -531,6 +531,21 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"battlefields.{battlefield_id}.contested_by must be a player or null")
         if battlefield.get("contested") and battlefield.get("contested_by") is None:
             errors.append(f"battlefields.{battlefield_id} is contested without contested_by")
+        # Core 190.3.a / 190.3.a.1: a Unit whose controller does not control this
+        # Battlefield applies Contested the moment it becomes present there. A Battlefield
+        # controlled by one player with an enemy Unit on it and no Contested status is
+        # therefore not a state the rules produce, and nothing - scoring least of all -
+        # may take it as valid input.
+        bf_controller = battlefield.get("controller")
+        if bf_controller in players and not battlefield.get("contested"):
+            enemies = [o for o in battlefield.get("objects", []) or []
+                       if isinstance(state.get("objects", {}).get(o), dict)
+                       and state["objects"][o].get("kind") == "unit"
+                       and state["objects"][o].get("controller") in players
+                       and not same_side(state, state["objects"][o]["controller"], bf_controller)]
+            if enemies:
+                errors.append(f"battlefields.{battlefield_id} is controlled by {bf_controller} with enemy Unit(s) "
+                              f"{enemies} present but not contested (Core 190.3.a)")
         identity = battlefield.get("identity")
         if identity is not None and (not isinstance(identity, str) or "@" not in identity or not identity.rsplit("@", 1)[1].isdigit()):
             errors.append(f"battlefields.{battlefield_id}.identity must look like '<id>@<generation>' when supplied")
@@ -1922,6 +1937,25 @@ def same_side(state: dict[str, Any], left: str | None, right: str | None) -> boo
     return left_team is not None and left_team == right_team
 
 
+def apply_arrival_contested(state: dict[str, Any], battlefield_id: str, object_id: str) -> str | None:
+    """Core 190.3.a / 190.3.a.1: a Unit moving or played to a Battlefield applies
+    Contested if the Battlefield is not already Contested and the Unit's controller
+    does not control it. An uncontrolled Battlefield is one its controller does not
+    control. A teammate's Battlefield (same team_id) is left alone: the team rules
+    are not modelled here and the engine does not guess them. Returns the applier."""
+    obj = state["objects"].get(object_id) or {}
+    battlefield = state["battlefields"][battlefield_id]
+    controller = obj.get("controller")
+    if obj.get("kind") != "unit" or controller is None or battlefield.get("contested"):
+        return None
+    owner_of_bf = battlefield.get("controller")
+    if owner_of_bf == controller or same_side(state, controller, owner_of_bf):
+        return None
+    battlefield["contested"] = True
+    battlefield["contested_by"] = controller
+    return controller
+
+
 # --------------------------------------------------------------------------
 # Move restrictions (Core 144, 359.3.e.6) - DP-96
 # --------------------------------------------------------------------------
@@ -2731,12 +2765,16 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # 355.4.a valid Location), not the spell controller's; resolved per
             # object so a 2v2 teammate's unit goes home, not to the caster.
             destination["player"] = new_state["objects"][object_id]["controller"]
+        trace_contested = None
         if destination.get("kind") == "base" and destination.get("player") in new_state["players"]:
             new_state["players"][destination["player"]]["zones"]["base"].append(object_id)
             target = f"base:{destination['player']}"
         elif destination.get("kind") == "battlefield" and destination.get("battlefield") in new_state["battlefields"]:
             new_state["battlefields"][destination["battlefield"]]["objects"].append(object_id)
             target = f"battlefield:{destination['battlefield']}"
+            if applier := apply_arrival_contested(new_state, destination["battlefield"], object_id):
+                trace_contested = {"battlefield": destination["battlefield"], "applied_by": applier,
+                                   "rule_locators": ["Core 190.3.a", "Core 190.3.a.1"]}
         else:
             raise ValueError("unknown board destination")
         carried = []
@@ -2746,7 +2784,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             _remove_from_location(new_state, attached_id)
             _place_on_board(new_state, attached_id, {"kind": "battlefield", "battlefield": destination["battlefield"]} if destination.get("kind") == "battlefield" else {"kind": "base", "player": destination["player"]})
             carried.append(attached_id)
-        trace.update({"object_id": object_id, "from": source, "to": target, **({"carried_attachments": carried} if carried else {})})
+        trace.update({"object_id": object_id, "from": source, "to": target, **({"carried_attachments": carried} if carried else {}),
+                      **({"contested_applied": trace_contested} if trace_contested else {})})
         # ADR-0007 §10: only a completed Move raises "When I move" (383.1, 319.8);
         # Recall, return to hand and board entry are not Moves.
         moved = new_state["objects"][object_id]
@@ -3120,6 +3159,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         elif destination.get("kind") == "battlefield" and destination.get("battlefield") in new_state["battlefields"]:
             new_state["battlefields"][destination["battlefield"]]["objects"].append(object_id)
             destination_label = f"battlefield:{destination['battlefield']}"
+            apply_arrival_contested(new_state, destination["battlefield"], object_id)
         else:
             raise ValueError("play_token destination is unknown")
         trace.update({

@@ -82,6 +82,8 @@ def effects(players=PLAYERS):
                               "might_modifiers": [], "damage": 0, "exhausted": False}
     state["battlefields"]["bf3"]["objects"].append("u8")
     state["battlefields"]["bf3"]["controller"] = "p3"
+    # Core 190.3.a: p2's Unit at p3's Battlefield has it Contested
+    state["battlefields"]["bf3"].update({"contested": True, "contested_by": "p2"})
     for card, owner in (("s3", "p3"), ("s2", "p2")):
         state["objects"][card] = {"owner": owner, "controller": owner, "kind": "spell", "base_might": 0,
                                   "might_modifiers": [], "damage": 0, "exhausted": False}

@@ -196,6 +196,8 @@ def main() -> int:
     at_battlefield = copy.deepcopy(targeting)
     at_battlefield["players"]["p2"]["zones"]["base"].remove("u2")
     at_battlefield["battlefields"]["bf1"]["objects"].append("u2")
+    # Core 190.3.a: p2's Unit arriving at p1's Battlefield contests it
+    at_battlefield["battlefields"]["bf1"].update({"contested": True, "contested_by": "p2"})
     if not play_card(timing, at_battlefield, declaration(source={"kind": "facedown", "battlefield": "bf1"}, cost_override={"kind": "ignore_base_cost", "source": "hidden"},
                                                           payment_context=None, effect_program_id="spell-1-effects"), effect_program=target_program).get("committed"):
         errors.append("a hidden play choosing at its own Battlefield was refused")

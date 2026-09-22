@@ -613,10 +613,10 @@ def complete_permanent_play(
         battlefield["objects"].append(card)
         trace["destination"] = f"battlefield:{location['battlefield']}"
         trace["rule_locators"].append("Core 359.2.c")
-        if battlefield.get("controller") != controller:
-            battlefield["contested"] = True
-            battlefield["contested_by"] = controller
-            trace["contested"] = {"battlefield": location["battlefield"], "contested_by": controller}
+        # Core 190.3.a.1: only if not already Contested - the first applier stays recorded
+        from effect_ir import apply_arrival_contested
+        if applier := apply_arrival_contested(working, location["battlefield"], card):
+            trace["contested"] = {"battlefield": location["battlefield"], "contested_by": applier}
             trace["rule_locators"].append("Core 190.3.a.1")
     else:
         working["players"][controller]["zones"]["base"].append(card)

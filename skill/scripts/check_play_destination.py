@@ -62,6 +62,13 @@ def board(*, controller, units, permissions=("occupied_enemy_battlefield",)):
                                    "printed_cost": {"energy": 1, "power": {}},
                                    "play_permissions": list(permissions)})
     state["battlefields"]["bf1"] = {"controller": controller, "objects": list(units)}
+    # Core 190.3.a: a Unit whose controller does not control bf1 made it Contested when it
+    # arrived; the validator refuses the board otherwise.
+    intruders = [state["objects"][u]["controller"] for u in units
+                 if u in state["objects"] and state["objects"][u].get("kind") == "unit"
+                 and state["objects"][u]["controller"] != controller]
+    if controller is not None and intruders:
+        state["battlefields"]["bf1"].update({"contested": True, "contested_by": intruders[0]})
     # every unit not on bf1 goes home, so the state stays well formed
     state["players"]["p1"]["zones"]["base"] = [] if "u1" in units else ["u1"]
     state["players"]["p2"]["zones"]["base"] = [] if "u2" in units else ["u2"]

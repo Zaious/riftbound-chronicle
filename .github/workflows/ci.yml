@@ -223,6 +223,11 @@ jobs:
       - name: Grammar builder writes only its own checkout
         run: python3 skill/scripts/check_grammar_builder_paths.py
 
+      # Core 190.3.a: an opposing Unit at a controlled Battlefield means Contested; a
+      # board without it is refused, and the engine's own arrivals apply it (190.3.a.1).
+      - name: Contested invariant and arrival
+        run: python3 skill/scripts/check_contested_invariant.py
+
       # ADR-0007 C-20: the Battlefield is the target, affected units are not;
       # Bonus Damage is summed once and added before Prevent sees the amount.
       - name: Battlefield targets, criteria expansion, Bonus Damage
@@ -550,6 +555,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"
+          python3 "$REPO/skill/scripts/check_contested_invariant.py"
           python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_turn_steps.py"
           python3 "$REPO/skill/scripts/check_conditions_and_discard.py"

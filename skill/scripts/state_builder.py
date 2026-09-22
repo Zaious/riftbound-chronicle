@@ -472,6 +472,11 @@ DERIVED_SLOTS = {
     "combat_triggered_identities": "No Attack or Defend trigger has fired in this Combat yet.",
     "turn_effect_ids": "Each turn effect is identified the way the kernel names it: kind, unit and turn.",
     "showdown_at_combat_battlefield": "The open Showdown is the Combat Showdown at the Combat's Battlefield.",
+    # Core 190.3.a: a controlled Battlefield with an opposing Unit at it is Contested,
+    # and the validator refuses one that is not. Derived only when exactly one
+    # opposing player has Units there; with two, who contested it first is a fact
+    # the draft did not state, so nothing is derived and the board is refused.
+    "battlefield_contested": "A controlled Battlefield with an opposing Unit at it is Contested by that Unit's controller.",
 }
 
 ORIGINS = {"stated", "default", "derived"}
@@ -552,6 +557,21 @@ def _materialize_timing(values: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
+def _contested(values: dict[str, Any]) -> dict[str, str]:
+    """{battlefield: contesting player} for every controlled Battlefield at which
+    Units of exactly one opposing player stand (Core 190.3.a)."""
+    found: dict[str, str] = {}
+    for entry in values.get("battlefields") or []:
+        controller = entry.get("controller")
+        if controller is None:
+            continue
+        opposing = sorted({unit["controller"] for unit in values.get("units") or []
+                           if unit.get("location") == entry["battlefield_id"] and unit["controller"] != controller})
+        if len(opposing) == 1:
+            found[entry["battlefield_id"]] = opposing[0]
+    return found
+
+
 def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
     players = list(values["players"])
     battlefields = {entry["battlefield_id"]: {"controller": entry.get("controller"), "objects": []}
@@ -579,6 +599,8 @@ def _materialize_effect(values: dict[str, Any]) -> dict[str, Any]:
             base[controller].append(object_id)
         else:
             battlefields[location]["objects"].append(object_id)
+    for battlefield_id, contester in _contested(values).items():
+        battlefields[battlefield_id].update({"contested": True, "contested_by": contester})
     for entry in values.get("combat_designations") or []:
         objects[entry["object_id"]]["combat_designation"] = {"combat_id": entry["combat_id"],
                                                              "role": entry["role"]}
@@ -643,6 +665,8 @@ def _derived_for(family: str, values: dict[str, Any]) -> list[dict[str, Any]]:
         if values.get("turn_effects"):
             entries.append(("turn_effect_ids",
                             [f"stunned:{e['object_id']}:{e['turn_id']}" for e in values["turn_effects"]]))
+        if contested := _contested(values):
+            entries.append(("battlefield_contested", contested))
     return [{"slot": name, "origin": "derived", "value": value, "material": True,
              "text": DERIVED_SLOTS[name]} for name, value in entries]
 

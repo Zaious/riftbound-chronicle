@@ -123,6 +123,8 @@ def main() -> int:
     board["battlefields"]["bf1"]["controller"] = "p2"
     board["players"]["p1"]["zones"]["base"].remove("u1")
     board["battlefields"]["bf1"]["objects"].append("u1")  # a friendly Unit is there
+    # Core 190.3.a: p1's Unit on p2's Battlefield made it Contested when it arrived
+    board["battlefields"]["bf1"].update({"contested": True, "contested_by": "p1"})
     unit_decl = declaration(chain_item={"id": "unit-1", "object_kind": "unit", "timing": "default"}, entry_location={"kind": "battlefield", "battlefield": "bf1"})
     ambushed = play_card(timing, board, unit_decl)
     if not ambushed.get("committed"):
@@ -137,6 +139,7 @@ def main() -> int:
     alone = copy.deepcopy(board)
     alone["battlefields"]["bf1"]["objects"].remove("u1")
     alone["players"]["p1"]["zones"]["base"].append("u1")
+    alone["battlefields"]["bf1"].update({"contested": False, "contested_by": None})
     no_units = play_card(timing, alone, unit_decl)
     if no_units.get("reason_code") != "entry_location_illegal":
         errors.append(f"Ambush was allowed without a friendly Unit there: {no_units.get('reason_code')}")

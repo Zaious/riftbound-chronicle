@@ -5,5 +5,32 @@
     "faq_as_of": "2026-08-14"
   },
   "status": "draft",
-  "entries": []
+  "entries": [
+    {
+      "token_id": "sprite",
+      "name": "Sprite",
+      "kind": "unit",
+      "base_might": 3,
+      "keywords": [
+        "temporary"
+      ],
+      "text": "[Temporary] (Kill me at the start of your Beginning Phase, before scoring.)",
+      "source_cards": [
+        {
+          "name": "Sprite Mother",
+          "locator": "ogn-106-298"
+        },
+        {
+          "name": "Sprite Call",
+          "locator": "ogn-094-298"
+        }
+      ],
+      "review": {
+        "reviewer": "GPT",
+        "date": "2026-09-22",
+        "source": "riftcodex raw card data: token card ogn-274-298 (supertype Token, Unit, Might 3); Set 1 producers Sprite Mother ogn-106-298, Sprite Call ogn-094-298; re-derived by scripts/check_token_entries.py"
+      },
+      "text_sha256": "sha256:1cdaa7f40351a423b30ec9d5504502549634cccb1679c8e13c812484d157a50f"
+    }
+  ]
 }

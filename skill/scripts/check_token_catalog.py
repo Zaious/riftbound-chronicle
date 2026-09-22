@@ -12,6 +12,9 @@ Must hold:
     (negative mutation: the same entry with a review record does get in);
   - an entry whose text is edited afterwards fails validation, so an errata
     cannot slip in unreviewed;
+  - a review date must be a real YYYY-MM-DD date, not a same-shaped placeholder
+    (found 2026-09-22: "YYYY-MM-DD" has the right length and dash positions and
+    was accepted; validate_catalog now requires digits);
   - `play_token` carries the `token_id` it was compiled from: a pack whose
     play_token names an uncatalogued token fails verify-pack, one naming a
     catalogued token passes, and one naming none fails;
@@ -95,6 +98,16 @@ def main() -> int:
     edited["entries"][0]["text"] = edited["entries"][0]["text"] + " (errata)"
     if not any("text_sha256" in e for e in validate_catalog(edited)):
         errors.append("an entry edited after its review passed validation; the hash must catch it")
+    placeholder_date = copy.deepcopy(promoted)
+    placeholder_date["entries"][0]["review"]["date"] = "YYYY-MM-DD"
+    if not any("review.date" in e for e in validate_catalog(placeholder_date)):
+        errors.append("a placeholder review date ('YYYY-MM-DD') passed validation")
+    # "" is refused earlier (non-empty-string check) with a different message; not retested here
+    for bad_date in ("2026-13-40", "09/22/2026", "2026-9-22"):
+        wrong_date = copy.deepcopy(promoted)
+        wrong_date["entries"][0]["review"]["date"] = bad_date
+        if not any("review.date" in e for e in validate_catalog(wrong_date)):
+            errors.append(f"review.date {bad_date!r} passed validation")
 
     # --- packs name catalogued tokens ------------------------------------------------------------------
     token_effect = {"op": "play_token", "effect_id": "t", "object_id": "t1", "owner": "p1", "controller": "p1", "token_kind": "unit",

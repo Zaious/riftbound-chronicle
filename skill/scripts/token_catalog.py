@@ -23,8 +23,10 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -39,6 +41,18 @@ SCHEMA_PATH = SKILL_DIR / "schemas" / "token-catalog.schema.json"
 REQUIRED_ENTRY = {"token_id", "name", "kind", "base_might", "keywords", "text", "text_sha256", "source_cards", "review"}
 OPTIONAL_ENTRY = {"effect_program_id"}
 KINDS = {"unit", "gear", "battlefield"}
+
+
+def is_real_date(value: Any) -> bool:
+    """True only for a real YYYY-MM-DD calendar date - not a same-shaped placeholder
+    ("YYYY-MM-DD"), and not a shape a regex alone would accept (2026-13-40)."""
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return False
+    try:
+        datetime.date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
 
 
 def text_hash(text: str) -> str:
@@ -93,8 +107,10 @@ def validate_catalog(value: Any) -> list[str]:
             errors.append(f"{label}.review must carry reviewer, date and source (note optional)")
         elif not all(isinstance(review[k], str) and review[k] for k in ("reviewer", "date", "source")):
             errors.append(f"{label}.review fields must be non-empty strings")
-        elif len(review["date"]) != 10 or review["date"][4] != "-" or review["date"][7] != "-":
-            errors.append(f"{label}.review.date must be YYYY-MM-DD")
+        elif not is_real_date(review["date"]):
+            # a placeholder like "YYYY-MM-DD" has the right length and dashes but is not a
+            # date; it slipped past a check that only looked at those two things
+            errors.append(f"{label}.review.date must be an actual YYYY-MM-DD calendar date, not a placeholder")
     return errors
 
 

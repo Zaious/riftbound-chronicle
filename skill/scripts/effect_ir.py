@@ -50,7 +50,7 @@ RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability"
 # like any other keyword; its behaviour is the object's death triggers.
 # Core 805 (last lines) does the same for Accelerate: it is a characteristic
 # that may be checked, even though it only has a function while playing.
-OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell", "accelerate", "assault", "legion"}
+OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell", "accelerate", "assault", "legion", "vision"}
 # Keywords with a value summed across sources: Shield (814.1.b, 814.2) and Assault
 # (807.1.b, 807.2). An omitted X is 1 for both.
 VALUED_KEYWORDS = {"shield", "assault"}
@@ -4307,6 +4307,32 @@ def deathknell_instances(state: dict[str, Any], object_id: str) -> list[dict[str
     if not has_keyword(state, object_id, "deathknell"):
         return []
     return [dict(trigger) for trigger in object_triggers(state, object_id, "death_triggers")]
+
+
+VISION_PROGRAM_PREFIX = "keyword:vision"
+
+
+def vision_program(state: dict[str, Any], object_id: str, controller: str) -> dict[str, Any]:
+    """Core 817.1.b: Vision is short for "When this is played, predict." - Predict
+    with no number is Predict 1 (436.1). The program is the engine's, not a card's:
+    the keyword is the whole ability."""
+    return {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+            "program_id": f"{VISION_PROGRAM_PREFIX}:{object_id}", "controller": controller, "source_object": object_id,
+            "effects": [{"op": "predict", "effect_id": "vision", "player": controller, "count": 1}]}
+
+
+def vision_triggers(state: dict[str, Any], object_id: str, controller: str) -> list[dict[str, Any]]:
+    """Core 817.1.c: the trigger is the permanent entering the Board as it is played;
+    read from the computed characteristics, so a granted Vision counts too. The
+    descriptor binds the program's content hash, so dispatch refuses any other
+    program under the same id. 817.2 (several instances trigger separately) is
+    not modelled: the keyword list carries Vision once."""
+    if not has_keyword(state, object_id, "vision"):
+        return []
+    program = vision_program(state, object_id, controller)
+    return [{"trigger_id": f"{object_id}:vision", "controller": controller, "source_object": object_id, "controller_order": 0,
+             "effect_program_id": program["program_id"], "effect_program_hash": hash_value(program["effects"]),
+             "optional_at_finalize": False}]
 
 
 def keyword_values(state: dict[str, Any], object_id: str) -> dict[str, Any]:

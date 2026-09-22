@@ -254,7 +254,7 @@
           "pattern": "\\[vision(?: (?P<vision_value>\\d+))?\\]",
           "value": {
             "keyword": "vision",
-            "implemented": false
+            "implemented": true
           }
         }
       }

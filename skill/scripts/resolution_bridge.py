@@ -646,6 +646,11 @@ def complete_permanent_play(
         copied.setdefault("trigger_kind", "triggered")
         copied["play_completion"] = item_id
         triggers.append(copied)
+    # Core 817.1.c: Vision triggers as the permanent enters the Board by being played
+    from effect_ir import vision_triggers
+    for descriptor in vision_triggers(working, card, controller):
+        triggers.append({**descriptor, "trigger_kind": "triggered", "play_completion": item_id})
+        trace.setdefault("rule_locators", []).append("Core 817.1.c")
     trace["play_triggers"] = [t["trigger_id"] for t in triggers]
     if inactive:
         trace["play_triggers_inactive"] = inactive

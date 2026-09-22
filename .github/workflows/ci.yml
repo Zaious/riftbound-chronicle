@@ -218,6 +218,11 @@ jobs:
       - name: Selection granularity, an empty choice ignores its consumer only
         run: python3 skill/scripts/check_selection_granularity.py
 
+      # The grammar builder once wrote to a hard-coded sibling worktree. Run from a
+      # second checkout, it must write only that checkout's grammar.
+      - name: Grammar builder writes only its own checkout
+        run: python3 skill/scripts/check_grammar_builder_paths.py
+
       # ADR-0007 C-20: the Battlefield is the target, affected units are not;
       # Bonus Damage is summed once and added before Prevent sees the amount.
       - name: Battlefield targets, criteria expansion, Bonus Damage
@@ -544,6 +549,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
+          python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"
           python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_turn_steps.py"
           python3 "$REPO/skill/scripts/check_conditions_and_discard.py"

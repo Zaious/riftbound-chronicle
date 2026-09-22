@@ -138,6 +138,13 @@
             "implemented": true
           }
         },
+        "assault": {
+          "pattern": "\\[assault(?: (?P<assault_value>\\d+))?\\]",
+          "value": {
+            "keyword": "assault",
+            "implemented": true
+          }
+        },
         "backline": {
           "pattern": "\\[backline(?: (?P<backline_value>\\d+))?\\]",
           "value": {
@@ -798,6 +805,7 @@
         "keyword": [
           "accelerate",
           "ambush",
+          "assault",
           "backline",
           "deathknell",
           "deflect",
@@ -829,6 +837,7 @@
       "golden": [
         "[Accelerate][>] Draw 1.",
         "[Ambush][>] Draw 1.",
+        "[Assault][>] Draw 1.",
         "[Backline][>] Draw 1.",
         "[Deathknell][>] Draw 1.",
         "[Deflect][>] Draw 1.",
@@ -859,6 +868,7 @@
         "keyword": [
           "accelerate",
           "ambush",
+          "assault",
           "backline",
           "deathknell",
           "deflect",
@@ -890,6 +900,7 @@
       "golden": [
         "[Accelerate]",
         "[Ambush]",
+        "[Assault]",
         "[Backline]",
         "[Deathknell]",
         "[Deflect]",

@@ -58,6 +58,32 @@
       "fixture": "check_play_sources.py"
     },
     {
+      "keyword_id": "assault",
+      "name": "Assault",
+      "locators": [
+        "Core 807.1.b",
+        "Core 807.1.c",
+        "Core 807.2"
+      ],
+      "production": {
+        "module": "effect_ir",
+        "symbol": "assault_total",
+        "layer": "ability",
+        "note": "printed or granted in the Ability layer and summed; it adds to Might only while the Unit is an Attacker (807.1.c)"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "bound to the object identity it was granted to (124)",
+        "duration": "printed, or this turn / this combat when granted"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-09-22",
+        "source": "Core Rules 2026-07-16 807; the production was verified against the live engine (check_assault.py)"
+      },
+      "fixture": "check_assault.py"
+    },
+    {
       "keyword_id": "backline",
       "name": "Backline",
       "locators": [

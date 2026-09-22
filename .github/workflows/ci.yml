@@ -228,6 +228,10 @@ jobs:
       - name: Contested invariant and arrival
         run: python3 skill/scripts/check_contested_invariant.py
 
+      # Core 807: Assault adds its summed value to Might only while the Unit is the Attacker.
+      - name: Assault
+        run: python3 skill/scripts/check_assault.py
+
       # ADR-0007 C-20: the Battlefield is the target, affected units are not;
       # Bonus Damage is summed once and added before Prevent sees the amount.
       - name: Battlefield targets, criteria expansion, Bonus Damage
@@ -556,6 +560,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"
           python3 "$REPO/skill/scripts/check_contested_invariant.py"
+          python3 "$REPO/skill/scripts/check_assault.py"
           python3 "$REPO/skill/scripts/check_area_and_bonus.py"
           python3 "$REPO/skill/scripts/check_turn_steps.py"
           python3 "$REPO/skill/scripts/check_conditions_and_discard.py"

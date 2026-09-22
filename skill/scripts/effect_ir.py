@@ -50,7 +50,10 @@ RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability"
 # like any other keyword; its behaviour is the object's death triggers.
 # Core 805 (last lines) does the same for Accelerate: it is a characteristic
 # that may be checked, even though it only has a function while playing.
-OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell", "accelerate"}
+OBJECT_KEYWORDS = {"temporary", "deflect", "shield", "tank", "ganking", "backline", "deathknell", "accelerate", "assault"}
+# Keywords with a value summed across sources: Shield (814.1.b, 814.2) and Assault
+# (807.1.b, 807.2). An omitted X is 1 for both.
+VALUED_KEYWORDS = {"shield", "assault"}
 # ADR-0013 §1-2: one canonical representation for every continuous effect, and
 # the Core 476-480 layer engine over it. The six legacy families are translated
 # by `migrate_legacy_effects` at the input boundary; nothing at runtime reads
@@ -954,6 +957,8 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.printed_cost must be {{energy: non-negative int, power: {{domain: non-negative int}}}}")
         if "shield_value" in obj and (not isinstance(obj["shield_value"], int) or isinstance(obj["shield_value"], bool) or obj["shield_value"] < 1):
             errors.append(f"objects.{object_id}.shield_value must be a positive integer (Core 814.1.b)")
+        if "assault_value" in obj and (not isinstance(obj["assault_value"], int) or isinstance(obj["assault_value"], bool) or obj["assault_value"] < 1):
+            errors.append(f"objects.{object_id}.assault_value must be a positive integer (Core 807.1.b)")
         # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1),
         # end of turn (317.1), attack / defend (383.4.e–f).
         for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers"):
@@ -3033,7 +3038,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if new_state["objects"][object_id].get("kind") != "unit" or zone_class(find_location(new_state, object_id)) != "board":
             raise IllegalOperation(f"grant_keyword applies only to a Unit on the board; {object_id!r} is not one")
         value = effect.get("value")
-        if keyword != "shield" and value is not None:
+        if keyword not in VALUED_KEYWORDS and value is not None:
             raise ValueError(f"{keyword} carries no value")
         # ADR-0013 §1: a granted characteristic is an Ability-layer effect
         # bound to the identity it was granted to (Core 477.2, 124).
@@ -3050,13 +3055,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             "source": {"object": effect.get("source") if effect.get("source") in new_state["objects"] else object_id, "identity": None, "name": effect.get("source")},
             "affects": {"scope": "object", "object": object_id, "identity": object_identity(new_state, object_id) or f"{object_id}@0"},
             "layer": "ability", "timestamp": _next_timestamp(new_state),
-            "value": {"keyword": keyword, **({"value": value if value is not None else 1} if keyword == "shield" else {})},
+            "value": {"keyword": keyword, **({"value": value if value is not None else 1} if keyword in VALUED_KEYWORDS else {})},
             "duration": effect_duration, "passive": False,
         }
         new_state.setdefault("continuous_effects", []).append(entry)
         trace.update({"object_id": object_id, "keyword": keyword, "value": entry["value"].get("value"), "duration": duration,
                       "combat_id": effect_duration.get("combat_id"), "turn_id": effect_duration.get("turn_id"), "modifier_id": effect_id,
-                      "shield_total": shield_total(new_state, object_id) if keyword == "shield" else None})
+                      "shield_total": shield_total(new_state, object_id) if keyword == "shield" else None,
+                      **({"assault_total": assault_total(new_state, object_id)} if keyword == "assault" else {})})
 
     elif op == "grant_turn_effect":
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
@@ -4132,7 +4138,7 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     # empowered_count, not a second boolean.
     buffs = 1 if obj.get("buffed") else 0
     result = {"might": obj["base_might"] + buffs,
-              "keywords": {k: (obj.get("shield_value") or 1) if k == "shield" else None for k in (obj.get("keywords") or [])},
+              "keywords": {k: (obj.get(f"{k}_value") or 1) if k in VALUED_KEYWORDS else None for k in (obj.get("keywords") or [])},
               "kind": obj.get("kind"), "triggers": {}, "applied": [], "passes": 0,
               "buff_might": buffs}
     if buffs:
@@ -4180,8 +4186,8 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
                                 result["triggers"].setdefault(field, []).extend(copy.deepcopy(descriptors))
                 elif effect["kind"] == "keyword_grant":
                     keyword = effect["value"]["keyword"]
-                    if keyword == "shield":
-                        result["keywords"]["shield"] = (result["keywords"].get("shield") or 0) + (effect["value"].get("value") or 1)
+                    if keyword in VALUED_KEYWORDS:
+                        result["keywords"][keyword] = (result["keywords"].get(keyword) or 0) + (effect["value"].get("value") or 1)
                     else:
                         result["keywords"].setdefault(keyword, None)
                 elif effect["kind"] == "keyword_remove":
@@ -4263,6 +4269,12 @@ def has_keyword(state: dict[str, Any], object_id: str, keyword: str) -> bool:
     return keyword in characteristics(state, object_id)["keywords"]
 
 
+def assault_total(state: dict[str, Any], object_id: str) -> int:
+    """Core 807.2: every Assault value the Unit has or was granted, summed; an omitted
+    X is 1 (807.1.b.3). It adds to Might only while the Unit is an Attacker (807.1.c)."""
+    return characteristics(state, object_id)["keywords"].get("assault") or 0
+
+
 def shield_total(state: dict[str, Any], object_id: str) -> int:
     """Core 814.2: every Shield value the Unit has or was granted, summed; an
     omitted X is 1 (814.1.b.3)."""
@@ -4317,6 +4329,10 @@ def combat_might_contributions(state: dict[str, Any], object_id: str) -> list[di
         shield = shield_total(state, object_id)
         if shield:
             parts.append({"kind": "shield", "amount": shield, "rule_locators": ["Core 814.1.c", "Core 814.2"]})
+    if designation is not None and designation.get("role") == "attacker":
+        assault = assault_total(state, object_id)
+        if assault:
+            parts.append({"kind": "assault", "amount": assault, "rule_locators": ["Core 807.1.c", "Core 807.2"]})
     computed = characteristics(state, object_id)
     by_id = {e["effect_id"]: e for e in canonical_effects(state)}
     for record in computed["applied"]:
@@ -4342,6 +4358,8 @@ def effective_might(state: dict[str, Any], object_id: str) -> int:
     designation = state["objects"][object_id].get("combat_designation")
     if designation is not None and designation.get("role") == "defender":
         might += shield_total(state, object_id)
+    if designation is not None and designation.get("role") == "attacker":
+        might += assault_total(state, object_id)     # Core 807.1.c
     might += sum(state["objects"][attached].get("might_bonus", 0) for attached in attachments(state, object_id))
     return max(0, might)
 

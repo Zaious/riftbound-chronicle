@@ -110,6 +110,23 @@ def main() -> int:
     if load_catalog(DEFAULT_PATH) != catalog or verify(catalog) != found:
         errors.append("the catalogue or its verification is not deterministic")
 
+    # --- a keyword's value lands in that keyword's own field ------------------------------------------
+    # [Deflect 2] once lowered to shield_value, so the engine's Deflect cost read the default 1.
+    import clause_grammar as cg
+    import play_transaction as pt
+    from check_effect_ir import base_state
+    grammar = cg.load_grammar()
+    for text, field, value in (("[Deflect 2]", "deflect_value", 2), ("[Shield 3]", "shield_value", 3)):
+        fields = (cg.compile_clause(text, grammar).get("passive") or {}).get("object_fields") or {}
+        others = {k for k in fields if k.endswith("_value")} - {field}
+        if fields.get(field) != value or others:
+            errors.append(f"{text} lowered to {fields}; its value belongs in {field} alone")
+    deflected = base_state()
+    deflected["objects"]["u2"].update(cg.compile_clause("[Deflect 2]", grammar)["passive"]["object_fields"])
+    owed = pt.deflect_costs(deflected, "p1", ["u2"])
+    if sum(entry["payment"]["amount"] for entry in owed) != 2:
+        errors.append(f"a lowered [Deflect 2] did not cost 2 to choose (Core 809.1.b): {owed}")
+
     if errors:
         print("FAILED: keyword catalogue checks")
         for error in errors:

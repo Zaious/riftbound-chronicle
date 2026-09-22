@@ -232,7 +232,10 @@ def _lower_object_keyword(params, slots):
         return {"ast": ast, "known_unsupported": "keyword_not_implemented"}
     fields: dict[str, Any] = {"keywords": [keyword["keyword"]]}
     if value is not None:
-        fields["shield_value"] = int(value)
+        # the value belongs to its own keyword: [Shield 3] -> shield_value (Core 814.1.b.2),
+        # [Deflect 2] -> deflect_value (809.1.b). Writing every value to shield_value made
+        # [Deflect 2] cost 1 (found 2026-09-22, round-1 engine support measurement).
+        fields[f"{keyword['keyword']}_value"] = int(value)
     return {"passive": {"object_fields": fields}, "ast": ast}
 
 

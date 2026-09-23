@@ -23,7 +23,21 @@ here narrows or widens the capability_gap_ledger; that stays a separate,
 per-production act (mapping review + signature), same as
 modifier_ir_contract.v2.2 / widen_might_floor_scope.py's own precedent.
 
-Required, each proven for real through apply_program, not asserted:
+What each case exercises, stated exactly (GPT 2026-09-23 corrected an earlier
+claim that all of them ran through apply_program - they do not):
+
+  full apply_program, bulk affected.criteria path only:
+      positive, moved, left play, enemy stays put, no auto-widen
+  resolve_location_ref() called directly (resolver unit tests):
+      positive, moved, left play, identity changed, identity missing
+  choice_candidates() called directly (candidate set only):
+      establish_selection's board choice at the source's battlefield
+
+The single-target path is NOT proven end to end here: nothing runs a selection
+established at one moment and consumed by a later instruction after the source
+has moved, and the general target selector (SELECTOR_FIELDS) does not carry
+location_ref at all. That vertical slice is separate work.
+
   positive         stays at the original Battlefield: resolves there, fires
   moved            moved to a DIFFERENT Battlefield: resolves there fresh, not
                    the one recorded when the descriptor was made
@@ -282,8 +296,8 @@ def main() -> int:
         return 1
     print("relational location_ref: resolves fresh at instruction execution (positive, moved-to-another-battlefield); "
           "named refusals for Base/off-board, changed identity, and missing identity (mandatory, unlike "
-          "resolve_object_ref's own optional one); proven through real apply_program on both wired paths "
-          "(the 'affected' bulk mechanism and establish_selection's board choice); controller_relation stays bound "
+          "resolve_object_ref's own optional one); full apply_program runs on the bulk 'affected' path only - "
+          "establish_selection's board choice is checked at the candidate set, not end to end; controller_relation stays bound "
           "to the program's own controller through a source controller change; an ordinary location value is "
           "untouched; the vocabulary stays exactly one kind, no auto-widening toward a 359.3.f.3 (Lillia/there) shape.")
     return 0

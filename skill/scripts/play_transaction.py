@@ -50,7 +50,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
-    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_source_exclusion, _bump_identity, apply_program, derive_targeted, evaluate_target,
+    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
     record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
@@ -1076,6 +1076,9 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 # is chosen - found when a permanent's play trigger first had its target
                 # bound at finalization rather than compiled in by a harness.
                 selector = _bind_source_exclusion(selector, effect_state, program) if program.get("source_object") in effect_state["objects"] else selector
+                # "here": the target must be at the source's current Battlefield when it is
+                # chosen; an unbindable source makes it illegal by name (_bind_location_ref)
+                selector = _bind_location_ref(selector, effect_state, program)
                 selector.setdefault("chosen_zone_class", "board" if template.get("kind") == "battlefield" else (zone_class(find_location(effect_state, object_id)) or "non_board"))
                 if derive_targeted(selector):
                     ok, reason = evaluate_target(effect_state, selector, actor)

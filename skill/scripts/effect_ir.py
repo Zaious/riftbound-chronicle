@@ -1633,7 +1633,7 @@ def validate_program(program: Any) -> list[str]:
 
 
 MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref"}
 # Round H: "another unit" is *this* unit excluded, by identity. The clause
 # writes the sentinel; the engine resolves it from the program's own
 # source_object when the selection is made, so the exclusion can never be a
@@ -1754,6 +1754,16 @@ def _selector_errors(selector: Any) -> list[str]:
         errors.append("chosen_zone_class is required")
     if "location" in selector and selector["location"] not in {"board", "battlefield", "base", "non_board", "main_deck", "hand", "trash", "banishment", "rune_deck", "chain"}:
         errors.append("location is invalid")
+    if "location_ref" in selector:
+        # the single-target "an enemy unit here" (Crackshot Corsair's shape): the
+        # target must be at the source's CURRENT Battlefield, bound from the program
+        # when the target is chosen and checked again when it is used (Core 359.3.f.2)
+        if not is_location_ref(selector["location_ref"]):
+            errors.append(f"location_ref must be {{kind}} with kind in {list(LOCATION_REF_KINDS)}")
+        if "location" in selector:
+            errors.append("carries both location and location_ref; a selector names one or the other")
+        if selector.get("kind") == "battlefield":
+            errors.append("location_ref narrows where an object is; a Battlefield target has no location")
     if "controller_relation" in selector and selector["controller_relation"] not in {"friendly", "enemy"}:
         errors.append("controller_relation is invalid")
     if "zone_owner_relation" in selector and selector["zone_owner_relation"] not in {"own", "opponent"}:
@@ -2262,6 +2272,16 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
             return False, f"target_cost_not_observed:{verdict['reason']}"
         if verdict["holds"] is False:
             return False, f"target_cost_over_limit:{verdict['reason']}"
+    # "here" on a target (location_ref): bound from the program by _bind_location_ref
+    # into `location_battlefield` (not an authorable field), or into the named reason
+    # it could not be bound. Reaching the check unbound is refused, never read as "anywhere".
+    if "location_ref" in target:
+        return False, "target_location_ref_unresolved"
+    if target.get("location_ref_refused"):
+        return False, target["location_ref_refused"]
+    at = target.get("location_battlefield")
+    if at is not None and (location is None or location[0] != "battlefield" or location[1] != at):
+        return False, "target_not_at_source_battlefield"
     exclude = target.get("exclude_source_identity")
     if exclude == SOURCE_IDENTITY_SENTINEL:
         # The sentinel reached the check unresolved: nobody bound it to a
@@ -5347,6 +5367,29 @@ def resolve_location_ref(ref: dict[str, Any], state: dict[str, Any], program: di
     return location[1]
 
 
+def _bind_location_ref(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
+    """Resolve a target's `location_ref` against the program's source NOW - at the
+    moment the target is chosen, and again every time it is checked, so a source that
+    has since moved makes the target illegal and the instruction mistargets (Core
+    359.3.f.2) rather than following a Battlefield recorded earlier. The result is a
+    Battlefield id in `location_battlefield`, or the named reason in
+    `location_ref_refused`; neither is an authorable selector field."""
+    if "location_ref" not in selector:
+        return selector
+    concrete = {k: v for k, v in selector.items() if k != "location_ref"}
+    try:
+        concrete["location_battlefield"] = resolve_location_ref(selector["location_ref"], state, program)
+    except SelectionBindingRefused as refusal:
+        concrete["location_ref_refused"] = refusal.reason_code
+    return concrete
+
+
+def bind_program_context(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
+    """Everything a selector reads from its own program: the source it excludes
+    ("another"), and the source's current Battlefield ("here")."""
+    return _bind_location_ref(_bind_source_exclusion(selector, state, program), state, program)
+
+
 def _bind_source_exclusion(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
     """Resolve `$source_identity` to the identity the program's own source
     object has right now. A program that excludes its source without naming
@@ -5473,7 +5516,7 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
             concrete = {k: v for k, v in target.items() if k not in {"selection_ref", "visibility"}}
             concrete["object_id"] = bound["value"][0]
             concrete.setdefault("bound_identity", bound["selection_identities"][concrete["object_id"]])
-            return [_bind_source_exclusion(concrete, state, program)], {
+            return [bind_program_context(concrete, state, program)], {
                 "selection_result_ref": bound["selection_result_ref"],
                 "selection_id": target["selection_ref"],
                 "decision_id": bound.get("decision_id")}
@@ -5492,10 +5535,10 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
             concrete.setdefault("bound_identity", entry["selection_identities"][concrete["object_id"]])
             if concrete.get("kind") == "battlefield":
                 concrete.setdefault("chosen_zone_class", "board")
-            return [_bind_source_exclusion(concrete, state, program)], {"decision_id": entry["decision_id"]}
-        return ([_bind_source_exclusion(target, state, program)] if target is not None else []), {}
+            return [bind_program_context(concrete, state, program)], {"decision_id": entry["decision_id"]}
+        return ([bind_program_context(target, state, program)] if target is not None else []), {}
     if "selectors" in targets:
-        return [_bind_source_exclusion(dict(sel), state, program) for sel in targets["selectors"]], {}
+        return [bind_program_context(dict(sel), state, program) for sel in targets["selectors"]], {}
     entry = ed.target_selection(decisions, targets["decision_ref"])
     if entry is None:
         raise TargetDecisionRequired(f"target selection {targets['decision_ref']!r} is required", [targets["decision_ref"]], controller)
@@ -5512,7 +5555,7 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
         sel["object_id"] = object_id
         sel.setdefault("chosen_zone_class", zone_class(find_location(state, object_id)) or "non_board")
         sel.setdefault("bound_identity", entry["selection_identities"][object_id])
-        selectors.append(_bind_source_exclusion(sel, state, program))
+        selectors.append(bind_program_context(sel, state, program))
     return selectors, {"decision_id": entry["decision_id"]}
 
 

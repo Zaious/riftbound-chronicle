@@ -32,11 +32,17 @@ claim that all of them ran through apply_program - they do not):
       positive, moved, left play, identity changed, identity missing
   choice_candidates() called directly (candidate set only):
       establish_selection's board choice at the source's battlefield
-
-The single-target path is NOT proven end to end here: nothing runs a selection
-established at one moment and consumed by a later instruction after the source
-has moved, and the general target selector (SELECTOR_FIELDS) does not carry
-location_ref at all. That vertical slice is separate work.
+  the TARGETED single-target path, end to end through schedule ->
+  finalize_trigger -> resolve_with_program (2026-09-23, the vertical slice):
+      a target selector carrying location_ref, for each op the cards in scope
+      reach (deal_damage, stun, modify_might with a floor): an enemy at the
+      source's battlefield is hit; one at another battlefield is refused at
+      finalization; a source that moved to another battlefield or to Base
+      before resolution makes the recorded target illegal and the instruction
+      MISTARGETS (committed, ignored_illegal_target, reason named - Core
+      359.3.f.2), never re-chosen; no recorded source identity is refused at
+      finalization; location with location_ref, the bound field authored by
+      hand, and an unbound location_ref reaching the check are each refused.
 
   positive         stays at the original Battlefield: resolves there, fires
   moved            moved to a DIFFERENT Battlefield: resolves there fresh, not
@@ -289,6 +295,124 @@ def main() -> int:
         fail("capability stays narrow", f"LOCATION_REF_KINDS is {LOCATION_REF_KINDS}; GPT 2026-09-23 approved exactly "
                                         f"one kind for this first cut, not a general relational-locator capability")
 
+    # --- the single-target, TARGETED path (Crackshot Corsair's shape: "deal 1 to an
+    # enemy unit here"), end to end through schedule -> finalize_trigger -> resolve.
+    # The target is chosen at finalization and must be at the source's Battlefield
+    # then; it is checked again at resolution, so a source that moved makes it
+    # illegal and the instruction mistargets (Core 359.3.f.2) - never re-chosen.
+    import check_trigger_source_identity as TS
+    from resolution_bridge import finalize_trigger, program_hash, resolve_with_program
+    from rules_core import pass_priority, schedule_triggered_items
+    from check_rules_core import fixture
+
+    HERE_TARGET = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
+                   "controller_relation": "enemy", "location_ref": dict(HERE)}
+    # the three ops "an enemy unit here" reaches on the cards in scope: Crackshot Corsair
+    # (deal_damage), Leona - Determined (stun), Ahri - Inquisitive (modify_might with a floor)
+    OPS = {
+        "deal_damage": ({"op": "deal_damage", "effect_id": "dmg", "amount": 1},
+                        lambda s: s["objects"]["u2"].get("damage", 0) == 1),
+        "stun": ({"op": "stun", "effect_id": "st"},
+                 lambda s: s["objects"]["u2"].get("stunned") is True),
+        "modify_might": ({"op": "modify_might", "effect_id": "mm", "amount": -2, "minimum": 1,
+                          "duration": "this_turn", "source": TS.TRIGGER},
+                         lambda s: effect_ir.effective_might(s, "u2") == max(1, effect_ir.effective_might(TS.board(), "u2") - 2)),
+    }
+    current_op = {"name": "deal_damage"}
+
+    def targeted_program():
+        doc = TS.program()
+        doc["effects"] = [{**OPS[current_op["name"]][0], "target": dict(HERE_TARGET)}]
+        return doc
+
+    def pick(board, object_id):
+        return {"schema_version": "engine-decisions.v1", "input_hash": effect_ir.hash_value(board),
+                "decisions": [{"decision_id": "t", "stage": "trigger_finalization", "kind": "target_selection",
+                               "controller": "p1", "value": [object_id],
+                               "selection_identities": {object_id: object_identity(board, object_id)}}]}
+
+    def targeted(board, chosen, *, identity="own", before_resolution=None):
+        entry = TS.descriptor(board, identity=identity)
+        entry["effect_program_hash"] = program_hash(targeted_program())
+        timing = schedule_triggered_items(fixture(), [entry])["next_state"]
+        finalized = finalize_trigger(timing, board, {TS.PROGRAM_ID: targeted_program()}, pick(board, chosen))
+        if not finalized.get("committed"):
+            return {"stage": "finalize", "result": finalized}
+        timing = finalized["next_timing_state"]
+        for actor in ("p1", "p2"):
+            timing = pass_priority(timing, actor).get("next_state") or timing
+        after = copy.deepcopy(board)
+        if before_resolution is not None:
+            before_resolution(after)
+        return {"stage": "resolve", "result": resolve_with_program(timing, TS.TRIGGER, after, targeted_program()),
+                "board": after}
+
+    def damage(done, object_id):
+        return (done["result"].get("next_effect_state") or {}).get("objects", {}).get(object_id, {}).get("damage", 0)
+
+    board = TS.board()
+    for name, (_, landed) in OPS.items():
+        current_op["name"] = name
+        done = targeted(board, "u2")
+        after = done["result"].get("next_effect_state") if done["stage"] == "resolve" else None
+        if not (after and done["result"].get("committed") and landed(after)):
+            fail(f"targeted {name}: enemy at the source's battlefield", f"stage {done['stage']}, committed "
+                 f"{done['result'].get('committed')}, effect landed {bool(after and landed(after))} "
+                 f"({done['result'].get('reason')})")
+        moved = targeted(board, "u2", before_resolution=lambda s: (s["battlefields"]["bf1"]["objects"].remove("u1"),
+                                                                    s["battlefields"]["bf2"]["objects"].append("u1")))
+        steps = ((moved["result"].get("trace") or {}).get("effect") or []) if moved["stage"] == "resolve" else []
+        step = next((e for e in steps if e.get("op") == name), {})
+        if moved["result"].get("committed") is not True or step.get("outcome") != "ignored_illegal_target":
+            fail(f"targeted {name}: source moved before resolution", f"expected a committed mistarget, got "
+                 f"committed={moved['result'].get('committed')} outcome={step.get('outcome')} {moved['result'].get('reason')}")
+    current_op["name"] = "deal_damage"
+
+    done = targeted(board, "e3")
+    if done["stage"] != "finalize" or "target_not_at_source_battlefield" not in str(done["result"].get("message") or done["result"].get("reason")):
+        fail("targeted: enemy at ANOTHER battlefield refused at finalization",
+             f"stage {done['stage']}: {done['result'].get('reason')} {done['result'].get('message')}")
+
+    def source_to(where_to):
+        def move(s):
+            s["battlefields"]["bf1"]["objects"].remove("u1")
+            if where_to == "base":
+                s["players"]["p1"]["zones"]["base"].append("u1")
+            else:
+                s["battlefields"][where_to]["objects"].append("u1")
+        return move
+
+    # a mistarget is a COMMITTED resolution whose instruction is ignored for an illegal
+    # target, with the reason named - not a refused program, and not a hit
+    for label, where_to, reason in (
+            ("source moved to another battlefield", "bf2", "target_not_at_source_battlefield"),
+            ("source moved to Base (Core 359.3.f.2)", "base", effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD)):
+        done = targeted(board, "u2", before_resolution=source_to(where_to))
+        steps = ((done["result"].get("trace") or {}).get("effect") or []) if done["stage"] == "resolve" else []
+        step = next((e for e in steps if e.get("op") == "deal_damage"), {})
+        if done["stage"] != "resolve" or done["result"].get("committed") is not True:
+            fail(f"targeted: {label}", f"expected a committed mistarget, got stage {done['stage']} "
+                                       f"committed={done['result'].get('committed')} {done['result'].get('reason')}")
+        elif (step.get("outcome"), step.get("reason")) != ("ignored_illegal_target", reason) or damage(done, "u2") or damage(done, "e3"):
+            fail(f"targeted: {label}", f"expected ignored_illegal_target / {reason} with nothing hit, got "
+                                       f"{step.get('outcome')} / {step.get('reason')} (u2 {damage(done, 'u2')}, e3 {damage(done, 'e3')})")
+
+    done = targeted(board, "u2", identity=None)
+    if done["stage"] != "finalize" or effect_ir.LOCATION_REF_ABSENT not in str(done["result"].get("message") or ""):
+        fail("targeted: no recorded source identity", f"expected a refusal naming {effect_ir.LOCATION_REF_ABSENT} "
+                                                      f"at finalization, got stage {done['stage']}: {done['result'].get('message')}")
+
+    both = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "location": "battlefield", "location_ref": dict(HERE)}
+    if not any("both location and location_ref" in e for e in effect_ir._selector_errors(both)):
+        fail("targeted: location and location_ref together", "the selector validated")
+    forged = {"object_id": "u2", "chosen_zone_class": "board", "kind": "unit", "location_battlefield": "bf1"}
+    if not effect_ir._selector_errors(forged):
+        fail("targeted: the bound field is not authorable", "a selector carrying location_battlefield validated")
+    ok, reason = effect_ir.evaluate_target(board, {"object_id": "u2", "chosen_zone_class": "board", "kind": "unit",
+                                                   "location_ref": dict(HERE)}, "p1")
+    if ok or reason != "target_location_ref_unresolved":
+        fail("targeted: an unbound location_ref", f"evaluate_target said {ok}, {reason!r}")
+
     if errors:
         print("FAILED: relational location_ref (here)")
         for problem in errors:
@@ -296,8 +420,10 @@ def main() -> int:
         return 1
     print("relational location_ref: resolves fresh at instruction execution (positive, moved-to-another-battlefield); "
           "named refusals for Base/off-board, changed identity, and missing identity (mandatory, unlike "
-          "resolve_object_ref's own optional one); full apply_program runs on the bulk 'affected' path only - "
-          "establish_selection's board choice is checked at the candidate set, not end to end; controller_relation stays bound "
+          "resolve_object_ref's own optional one); full apply_program on the bulk 'affected' path; the targeted "
+          "single-target path end to end for deal_damage, stun and modify_might (hit at the source's battlefield, "
+          "refused elsewhere at finalization, a committed mistarget after the source moves); establish_selection's "
+          "board choice is checked at the candidate set, not end to end; controller_relation stays bound "
           "to the program's own controller through a source controller change; an ordinary location value is "
           "untouched; the vocabulary stays exactly one kind, no auto-widening toward a 359.3.f.3 (Lillia/there) shape.")
     return 0

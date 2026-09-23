@@ -1036,6 +1036,92 @@
       ]
     },
     {
+      "production_id": "deal_n_to_an_enemy_unit_here",
+      "form": "Deal 1 to an enemy unit here.",
+      "template": "deal (?P<amount>\\d+) to an enemy unit here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 437",
+        "Core 355.9",
+        "Core 359.3.f.1",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or damage to all enemy Units here is a different production.",
+      "golden": [
+        "Deal 1 to an enemy unit here."
+      ],
+      "negative": [
+        "deal 1 to an enemy unit at a battlefield",
+        "deal 1 to all enemy units here",
+        "deal 1 to an enemy unit here for each card with [hidden]"
+      ]
+    },
+    {
+      "production_id": "stun_an_enemy_unit_here",
+      "form": "Stun an enemy unit here.",
+      "template": "stun an enemy unit here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 423",
+        "Core 423.1",
+        "Core 355.9",
+        "Core 359.3.f.1",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "stun",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen enemy Unit at the source's current Battlefield becomes Stunned.",
+      "golden": [
+        "Stun an enemy unit here."
+      ],
+      "negative": [
+        "stun an enemy unit",
+        "stun all enemy units here",
+        "stun a unit here"
+      ]
+    },
+    {
+      "production_id": "give_an_enemy_unit_here_might_this_turn",
+      "form": "Give an enemy unit here -2 [M] this turn, to a minimum of 1 [M].",
+      "template": "give an enemy unit here (?P<sign>[+-])(?P<amount>\\d+) \\[m\\] this turn(?:, to a minimum of (?P<floor>\\d+) \\[m\\])?",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 476",
+        "Core 479",
+        "Core 317.2",
+        "Core 355.9",
+        "Core 359.3.f.1",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "modify_might",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen enemy Unit at the source's current Battlefield, a signed Might change this turn, with the floor the text states.",
+      "golden": [
+        "Give an enemy unit here -2 [M] this turn, to a minimum of 1 [M].",
+        "Give an enemy unit here -1 [M] this turn.",
+        "Give an enemy unit here +1 [M] this turn."
+      ],
+      "negative": [
+        "give an enemy unit -2 [m] this turn",
+        "give enemy units here -2 [m] this turn",
+        "give an enemy unit here -2 [m] this combat"
+      ]
+    },
+    {
       "production_id": "deal_n_to_all_enemy_units_in_combat",
       "form": "Deal 2 to all enemy units in combat.",
       "template": "deal (?P<amount>\\d+) to all enemy units in combat",

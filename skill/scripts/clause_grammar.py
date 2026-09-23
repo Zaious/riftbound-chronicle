@@ -277,6 +277,40 @@ def _lower_deal_all_enemy_here(params):
                                                               "location_ref": {"kind": "program_source_current_battlefield"}}}}}
 
 
+_HERE = {"kind": "program_source_current_battlefield"}
+
+
+def _here_target():
+    return {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
+            "controller_relation": "enemy", "location_ref": dict(_HERE)}
+
+
+def _lower_deal_enemy_unit_here(params):
+    amount = int(params["amount"])
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": amount, "target": _here_target()}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount": amount, "target": {"kind": "unit", "controller_relation": "enemy",
+                                                            "location_ref": dict(_HERE)}}}}
+
+
+def _lower_stun_enemy_unit_here(params):
+    return {"program_effects": [{"op": "stun", "effect_id": "st", "target": _here_target()}],
+            "ast": {"node": "instruction", "op": "stun",
+                    "params": {"target": {"kind": "unit", "controller_relation": "enemy", "location_ref": dict(_HERE)}}}}
+
+
+def _lower_give_enemy_unit_here_might(params):
+    amount = int(params["amount"]) * (-1 if params["sign"] == "-" else 1)
+    effect = {"op": "modify_might", "effect_id": "mm", "amount": amount, "duration": "this_turn",
+              "source": "$chain_item", "target": _here_target()}
+    if params.get("floor") is not None:
+        effect["minimum"] = int(params["floor"])
+    return {"program_effects": [effect],
+            "ast": {"node": "instruction", "op": "modify_might",
+                    "params": {"amount": amount, "duration": "this_turn", "minimum": effect.get("minimum"),
+                               "target": {"kind": "unit", "controller_relation": "enemy", "location_ref": dict(_HERE)}}}}
+
+
 def _lower_deal_all_enemy_in_combat(params):
     amount = int(params["amount"])
     return {"program_effects": [{"op": "deal_damage", "effect_id": "barrage", "amount": amount,
@@ -577,6 +611,9 @@ LOWERINGS = {
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
+    "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
+    "stun_an_enemy_unit_here": _lower_stun_enemy_unit_here,
+    "give_an_enemy_unit_here_might_this_turn": _lower_give_enemy_unit_here_might,
     "deal_n_to_all_enemy_units_in_combat": _lower_deal_all_enemy_in_combat,
     "deal_n_to_all_units_at_battlefields": _lower_deal_all_units_at_battlefields,
     "channel_n_rune_exhausted": _lower_channel_exhausted,

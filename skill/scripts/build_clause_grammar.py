@@ -365,6 +365,34 @@ LITERAL = [
      "The resolving program's own source's current Battlefield, read fresh at execution - not a decision.",
      ["Deal 3 to all enemy units here."],
      ["deal 3 to all enemy units at a battlefield", "deal 3 to all units here"]),
+    # 2026-09-23, the single-target "here": ONE chosen enemy Unit, which must be at the
+    # resolving program's own source's current Battlefield when it is chosen and when it
+    # is used (Core 359.3.f.1, 359.3.f.2) - a target selector carrying location_ref.
+    # Literal rows, not a selector alternative: the selector table is pinned by the
+    # signed binding specs, and "here" is not a selector phrase in every production.
+    # Crackshot Corsair, Leona - Determined and Ahri - Inquisitive are the real cards.
+    ("deal_n_to_an_enemy_unit_here", r"deal (?P<amount>\d+) to an enemy unit here",
+     ["Core 437", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
+     "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or "
+     "damage to all enemy Units here is a different production.",
+     ["Deal 1 to an enemy unit here."],
+     ["deal 1 to an enemy unit at a battlefield", "deal 1 to all enemy units here",
+      "deal 1 to an enemy unit here for each card with [hidden]"]),
+    ("stun_an_enemy_unit_here", r"stun an enemy unit here",
+     ["Core 423", "Core 423.1", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["stun", "targeting"],
+     "One chosen enemy Unit at the source's current Battlefield becomes Stunned.",
+     ["Stun an enemy unit here."],
+     ["stun an enemy unit", "stun all enemy units here", "stun a unit here"]),
+    ("give_an_enemy_unit_here_might_this_turn",
+     r"give an enemy unit here (?P<sign>[+-])(?P<amount>\d+) \[m\] this turn(?:, to a minimum of (?P<floor>\d+) \[m\])?",
+     ["Core 476", "Core 479", "Core 317.2", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
+     ["modify_might", "targeting"],
+     "One chosen enemy Unit at the source's current Battlefield, a signed Might change this turn, with "
+     "the floor the text states.",
+     ["Give an enemy unit here -2 [M] this turn, to a minimum of 1 [M].", "Give an enemy unit here -1 [M] this turn.",
+      "Give an enemy unit here +1 [M] this turn."],
+     ["give an enemy unit -2 [m] this turn", "give enemy units here -2 [m] this turn",
+      "give an enemy unit here -2 [m] this combat"]),
     ("deal_n_to_all_enemy_units_in_combat", r"deal (?P<amount>\d+) to all enemy units in combat",
      ["Core 437", "Core 715.2", "Core 460"], "instruction", ["deal_damage", "criteria_expansion", "combat_state"],
      "The Combat in progress. Outside one the instruction finds nothing.",

@@ -214,6 +214,19 @@ jobs:
       - name: Trigger finalization binds targets and dispatches the program by content
         run: python3 skill/scripts/check_trigger_finalization.py
 
+      # A triggered ability's program runs with the identity its source had when it
+      # triggered, recorded on the chain item; the relational "here" (location_ref)
+      # resolves fresh at execution and refuses by name when the source left, changed
+      # or was never recorded.
+      - name: Relational location_ref (here)
+        run: python3 skill/scripts/check_location_ref.py
+      - name: Trigger source identity reaches the program
+        run: python3 skill/scripts/check_trigger_source_identity.py
+
+      # Every engine check is listed in this workflow; one that is not has never run.
+      - name: CI lists every engine check
+        run: python3 skill/scripts/check_ci_lists_every_check.py
+
       # An empty selection costs the instruction that consumes it, not the whole card.
       - name: Selection granularity, an empty choice ignores its consumer only
         run: python3 skill/scripts/check_selection_granularity.py
@@ -578,6 +591,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_op_dispatch.py"
           python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
+          python3 "$REPO/skill/scripts/check_location_ref.py"
+          python3 "$REPO/skill/scripts/check_trigger_source_identity.py"
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"
           python3 "$REPO/skill/scripts/check_contested_invariant.py"

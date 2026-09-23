@@ -68,6 +68,27 @@ def dispatch_program(registry: dict[str, Any], chain_item: dict[str, Any]) -> tu
     return program, None
 
 
+def bind_source_identity(program: dict[str, Any], chain_item: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """The program as it runs for this chain item: carrying the identity its source had
+    when the trigger condition was met, which the chain item recorded.
+
+    A registered program is a template - it cannot know which generation of its source
+    will trigger it - so a relational "here" (location_ref, whose identity check is
+    mandatory, GPT 2026-09-23) could never resolve on a triggered ability. The engine
+    supplies it from its own record. A template that declares a DIFFERENT identity is
+    refused rather than silently overridden; with no record, the program is unchanged
+    and "here" stays refused by name. Not part of the content hash (program_hash reads
+    the instructions only)."""
+    recorded = chain_item.get("source_identity")
+    if recorded is None:
+        return program, None
+    declared = program.get("source_identity")
+    if declared is not None and declared != recorded:
+        return None, {"reason": "effect_program_source_identity_mismatch",
+                      "expected_source_identity": recorded, "received_source_identity": declared}
+    return {**program, "source_identity": recorded}, None
+
+
 def _target_refs(program: dict[str, Any]) -> list[str]:
     refs = []
     for effect in program.get("effects") or []:
@@ -116,6 +137,10 @@ def finalize_trigger(
         return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], "reason": "effect_program_controller_mismatch"}
     if program.get("source_object") is not None and program["source_object"] != item.get("source_object"):
         return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], "reason": "effect_program_source_mismatch"}
+    registered = program
+    program, refusal = bind_source_identity(program, item)
+    if refusal is not None:
+        return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], **refusal}
     if decision_errors := _ed.validate_engine_decisions(engine_decisions):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": decision_errors, "reason": "; ".join(decision_errors)}
     if engine_decisions is not None and engine_decisions.get("input_hash") != hash_value(effect_state):
@@ -143,7 +168,7 @@ def finalize_trigger(
     for candidate in next_timing["chain"]["items"]:
         if candidate["id"] == item["id"]:
             candidate["finalized_targets"] = recorded
-            candidate.setdefault("effect_program_hash", program_hash(program))
+            candidate.setdefault("effect_program_hash", program_hash(registered))
     return {**base, "valid": True, "committed": True, "item_id": item["id"], "next_timing_state": next_timing,
             "next_timing_state_hash": state_hash(next_timing), "finalized_targets": recorded,
             "effect_program_id": item["effect_program_id"], "effect_program_hash": program_hash(program),
@@ -196,6 +221,10 @@ def resolve_with_program(
         return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_controller_mismatch"}
     if program.get("source_object") is not None and chain_item.get("source_object") is not None and program.get("source_object") != chain_item.get("source_object"):
         return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_source_mismatch"}
+    if program:
+        program, refusal = bind_source_identity(program, chain_item)
+        if refusal is not None:
+            return {**base, "valid": True, "committed": False, "stage": "program_binding", **refusal}
     # Both components are pure. Probe timing first so an effect program is never
     # exposed as committed for an item that is not next to resolve.
     timing_result = complete_resolution(timing_state, item_id, effect_execution_confirmed=True)

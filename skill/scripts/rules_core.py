@@ -391,6 +391,8 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.optional_at_finalize is required for triggered items")
             if "effect_program_hash" in item and not (isinstance(item["effect_program_hash"], str) and item["effect_program_hash"].startswith("sha256:")):
                 errors.append(f"{label}.effect_program_hash must be a sha256 content hash")
+            if "source_identity" in item and not (isinstance(item["source_identity"], str) and item["source_identity"]):
+                errors.append(f"{label}.source_identity must be a non-empty identity token")
             if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") == "target_selection" for e in item["finalized_targets"])):
                 errors.append(f"{label}.finalized_targets must be trigger_finalization target selections")
             if "finalized_targets" in item and item.get("status") != "finalized":
@@ -1033,6 +1035,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             descriptor_errors.append(f"descriptor {index}.optional_at_finalize must be boolean")
         if "effect_program_hash" in descriptor and not (isinstance(descriptor["effect_program_hash"], str) and descriptor["effect_program_hash"].startswith("sha256:")):
             descriptor_errors.append(f"descriptor {index}.effect_program_hash must be a sha256 content hash")
+        if "source_identity" in descriptor and not (isinstance(descriptor["source_identity"], str) and descriptor["source_identity"]):
+            descriptor_errors.append(f"descriptor {index}.source_identity must be a non-empty identity token")
         batch_sequence = descriptor.get("batch_sequence", 0)
         batch_id = descriptor.get("batch_id", f"batch-{batch_sequence}")
         if not isinstance(batch_sequence, int) or batch_sequence < 0 or not isinstance(batch_id, str) or not batch_id:
@@ -1083,6 +1087,12 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             "effect_program_id": descriptor.get("effect_program_id"),
             # The ID says WHICH program; the hash says it is still that program.
             **({"effect_program_hash": descriptor["effect_program_hash"]} if descriptor.get("effect_program_hash") else {}),
+            # The identity the source had when the trigger condition was met (the
+            # descriptor's, recorded by whoever raised it - combat.open_combat for an
+            # Attack/Defend trigger). Resolution hands it to the program, so a
+            # relational "here" (location_ref) can check the source is still that
+            # object; the registered template never carries it.
+            **({"source_identity": descriptor["source_identity"]} if descriptor.get("source_identity") else {}),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),
             "trigger_kind": descriptor.get("trigger_kind", "triggered"),
             "batch_sequence": descriptor["batch_sequence"],

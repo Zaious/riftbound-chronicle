@@ -333,8 +333,18 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append("choice.criteria applies to a board or revealed source")
     if "criteria" in spec and spec["from"] == "revealed" and set(spec["criteria"]) - {"excluded_kinds"}:
         errors.append("a revealed choice's criteria carries excluded_kinds and nothing else")
-    if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict) or set(spec["criteria"]) - {"kind", "controller_relation", "location", "zone_owner_relation"}):
-        errors.append("choice.from board needs criteria {kind?, controller_relation?, location?, zone_owner_relation?}")
+    if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict)
+                                    or set(spec["criteria"]) - {"kind", "controller_relation", "location", "location_ref", "zone_owner_relation"}):
+        errors.append("choice.from board needs criteria {kind?, controller_relation?, location? or location_ref?, zone_owner_relation?}")
+    # GPT 2026-09-23: `location_ref` ("here" - the resolving program's own
+    # source's current Battlefield) is a typed reference, never a bare string
+    # like `location`'s vocabulary - the two never both name a card's spot.
+    if isinstance(spec.get("criteria"), dict) and "location_ref" in spec["criteria"]:
+        import effect_ir as ir
+        if "location" in spec["criteria"]:
+            errors.append("choice.criteria carries both location and location_ref; a card's spot is named one way")
+        if not ir.is_location_ref(spec["criteria"]["location_ref"]):
+            errors.append(f"choice.criteria.location_ref must be {{kind}} with kind in {list(ir.LOCATION_REF_KINDS)}")
     # "in your base" is narrower than location=base, which admits every player's
     # Base. Without this, lowering that phrase would quietly widen the
     # candidates. It says whose ZONE, which only a Base has - a Battlefield is

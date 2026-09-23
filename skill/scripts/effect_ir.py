@@ -1575,8 +1575,23 @@ def validate_program(program: Any) -> list[str]:
             affected = effect.get("affected")
             if affected is not None:
                 criteria = affected.get("criteria") if isinstance(affected, dict) else None
-                if not isinstance(affected, dict) or set(affected) != {"criteria"} or not isinstance(criteria, dict) or set(criteria) - {"kind", "controller_relation", "location"} or "location" not in criteria:
-                    errors.append(f"effects[{index}].affected must be {{criteria: {{location, kind?, controller_relation?}}}}")
+                has_location = isinstance(criteria, dict) and "location" in criteria
+                has_location_ref = isinstance(criteria, dict) and "location_ref" in criteria
+                if (not isinstance(affected, dict) or set(affected) != {"criteria"} or not isinstance(criteria, dict)
+                        or set(criteria) - {"kind", "controller_relation", "location", "location_ref"}
+                        or has_location == has_location_ref):
+                    errors.append(f"effects[{index}].affected must be {{criteria: {{location, kind?, controller_relation?}}}} "
+                                  "or {{criteria: {{location_ref, kind?, controller_relation?}}}}, never both, never neither")
+                elif has_location_ref:
+                    ref = criteria["location_ref"]
+                    if not is_location_ref(ref):
+                        errors.append(f"effects[{index}].affected.criteria.location_ref must be {{kind}} with kind in {list(LOCATION_REF_KINDS)}")
+                    if target is not None:
+                        errors.append(f"effects[{index}].affected over location_ref targets nothing (Core 355.10.b, 355.10.d)")
+                    if "kind" in criteria and criteria["kind"] not in {"unit", "gear"}:
+                        errors.append(f"effects[{index}].affected.criteria.kind is invalid")
+                    if "controller_relation" in criteria and criteria["controller_relation"] not in {"friendly", "enemy"}:
+                        errors.append(f"effects[{index}].affected.criteria.controller_relation is invalid")
                 else:
                     if criteria["location"] not in {"target_battlefield", "any_battlefield", "active_combat"}:
                         errors.append(f"effects[{index}].affected.criteria.location is invalid")
@@ -1652,9 +1667,37 @@ OBJECT_REF_NOT_SELF = "object_ref_not_self_referential"
 # failures, and one refusal code covering both would hide which happened.
 OBJECT_REF_OP_NOT_ADOPTED = "object_ref_op_not_adopted"
 
+# GPT 2026-09-23: the relational locator "here" (Core 359.3.f.1: read from the
+# ability's own SOURCE, alongside "my"/"its") is deliberately NOT a value of the
+# existing literal `location` vocabulary above - that vocabulary names classes the
+# engine independently enforces against an EARLIER target choice ("at a
+# battlefield", 355.10.d) or a fixed context ("active_combat"); "here" names
+# neither. It is a first, narrow cut: ONLY "the resolving program's source's
+# current Battlefield," checked at INSTRUCTION EXECUTION (Core 359.3.f.2's own
+# worked example - Yasuo, Remorseful moved back to Base after his attack trigger
+# is scheduled, and "here" mistargets because it is no longer a Battlefield, not
+# because the old one is remembered and gone). This is NOT the trigger CONDITION
+# kind of relational reference (Core 359.3.f.3, Lillia Fae Fawn's "there" - a
+# location captured once, when the trigger's condition is fulfilled, immune to
+# a later move): that is a separate referent this capability does not resolve,
+# and no production may be widened to use this one for a 359.3.f.3 shape.
+LOCATION_REF_KINDS = ("program_source_current_battlefield",)
+
+LOCATION_REF_ABSENT = "location_ref_source_absent"
+LOCATION_REF_IDENTITY_CHANGED = "location_ref_source_identity_changed"
+# Deliberately its own code, not OBJECT_REF_LEFT_PLAY's "board" (battlefield OR
+# base, Core 355.4.a): "here" (Core 053.3) names a Battlefield specifically. A
+# source sitting in Base is still on the board, but it is not "at" anything -
+# 359.3.f.2's own example is exactly a source moved to Base, mistargeting.
+LOCATION_REF_NOT_AT_BATTLEFIELD = "location_ref_source_not_at_battlefield"
+
 
 def is_object_ref(value: Any) -> bool:
     return isinstance(value, dict) and set(value) == {"object_ref"}
+
+
+def is_location_ref(value: Any) -> bool:
+    return isinstance(value, dict) and set(value) == {"kind"} and value.get("kind") in LOCATION_REF_KINDS
 
 
 def contains_object_ref(value: Any) -> bool:
@@ -4979,9 +5022,16 @@ def candidate_identity(state: dict[str, Any], source: str, candidate_id: str) ->
     return object_identity(state, candidate_id)
 
 
-def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str, session: dict[str, Any] | None = None) -> tuple[list[str], dict[str, str | None]]:
+def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str, session: dict[str, Any] | None = None,
+                      program: dict[str, Any] | None = None) -> tuple[list[str], dict[str, str | None]]:
     """The ordered candidate list of a choice source and the current identity
-    of each candidate (None for players)."""
+    of each candidate (None for players).
+
+    `program` is needed only when the choice's criteria carries a
+    `location_ref` ("here") - GPT 2026-09-23. A caller with no program in
+    scope simply cannot resolve that shape, which SelectionBindingRefused
+    (raised by resolve_location_ref, propagated to the caller) makes explicit
+    rather than silently returning an empty or unfiltered candidate set."""
     source = spec["from"]
     if source == "hand":
         ids = list(state["players"][chooser]["zones"]["hand"])
@@ -5001,9 +5051,14 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
                    if state["objects"].get(object_id, {}).get("kind") not in excluded]
     elif source == "board":
         criteria = spec.get("criteria") or {}
+        resolved_battlefield = None
+        if criteria.get("location_ref") is not None:
+            resolved_battlefield = resolve_location_ref(criteria["location_ref"], state, program or {})
         ids = []
         places = [("base", pid, state["players"][pid]["zones"]["base"]) for pid in state["players"]] + [("battlefield", bid, bf["objects"]) for bid, bf in state["battlefields"].items()]
         for where, zone_owner, objects in places:
+            if resolved_battlefield is not None and (where != "battlefield" or zone_owner != resolved_battlefield):
+                continue
             if criteria.get("location") == "battlefield" and where != "battlefield":
                 continue
             if criteria.get("location") == "base" and where != "base":
@@ -5250,6 +5305,48 @@ def resolve_object_ref(effect: dict[str, Any], state: dict[str, Any],
             {"object_ref": "program_source", "resolved_to": source, "bound_identity": now})
 
 
+def resolve_location_ref(ref: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> str:
+    """Turn `{"kind": "program_source_current_battlefield"}` into a concrete
+    Battlefield id, read fresh from the state at INSTRUCTION EXECUTION (Core
+    359.3.f.1, 359.3.f.2) - never bound earlier and reused. Raises
+    SelectionBindingRefused with one of three named codes; nothing is
+    substituted, exactly resolve_object_ref's contract for the same class of
+    self-referential problem (a typed reference, never a magic string, that
+    only the engine may create or resolve).
+
+    Identity is MANDATORY, unlike resolve_object_ref's own `source_identity`
+    (a recorded, still-open gap: optional there, so a program that omits it
+    commits with no identity check at all). GPT 2026-09-23 requires this
+    capability not repeat that gap: a program with no declared source_identity
+    cannot resolve "here" at all, and one that declared it is refused the
+    moment the object at that id is no longer that object - never resolved
+    against whatever sits there now (Core 355.7's own principle - a reference
+    does not silently retarget to a substitute)."""
+    source = program.get("source_object")
+    if not isinstance(source, str) or source not in state["objects"]:
+        raise SelectionBindingRefused(
+            f"the program declares source_object {source!r}, which the state does not contain; "
+            f"'here' with no source is refused, never guessed", LOCATION_REF_ABSENT)
+    declared = program.get("source_identity")
+    if not isinstance(declared, str) or not declared:
+        raise SelectionBindingRefused(
+            f"the program declares no source_identity; 'here' requires one, unlike "
+            f"resolve_object_ref's own optional one", LOCATION_REF_ABSENT)
+    now = object_identity(state, source)
+    if declared != now:
+        raise SelectionBindingRefused(
+            f"the program's source was {declared!r} and is now {now!r}; 'here' is not about "
+            f"whatever object now sits at that id", LOCATION_REF_IDENTITY_CHANGED)
+    location = find_location(state, source)
+    if location is None or location[0] != "battlefield":
+        raise SelectionBindingRefused(
+            f"the source {source!r} is not at a Battlefield right now ({location}); 'here' (Core "
+            f"053.3) names a Battlefield specifically - Base or anywhere else the source could be "
+            f"is not a Battlefield to mean (Core 359.3.f.2's own worked example)",
+            LOCATION_REF_NOT_AT_BATTLEFIELD)
+    return location[1]
+
+
 def _bind_source_exclusion(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
     """Resolve `$source_identity` to the identity the program's own source
     object has right now. A program that excludes its source without naming
@@ -5294,7 +5391,7 @@ def _establish_selection(state: dict[str, Any], effect: dict[str, Any], program:
     effect_id = effect.get("effect_id", f"effect-{order_index}")
     program_id = program.get("program_id") or ""
     chooser = program.get("controller")
-    candidates, identities = choice_candidates(state, spec, chooser)
+    candidates, identities = choice_candidates(state, spec, chooser, program=program)
     visibility = ed.choice_visibility(spec)
 
     chosen, meta = resolve_choice(state, spec, decision_ref=effect["decision_ref"],
@@ -5810,7 +5907,17 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             battlefield_ids: list[str] = []
             targeted_battlefield = None
             active_combat = None
-            if criteria["location"] == "active_combat":
+            if criteria.get("location_ref") is not None:
+                # GPT 2026-09-23: "here" - the resolving program's own source's
+                # current Battlefield, read fresh right now (Core 359.3.f.1,
+                # 359.3.f.2), never bound earlier and reused.
+                try:
+                    battlefield_ids = [resolve_location_ref(criteria["location_ref"], current, program)]
+                except SelectionBindingRefused as exc:
+                    return {**base, "valid": True, "committed": False, "applied": False,
+                            "reason_code": exc.reason_code, "reason": str(exc),
+                            "failed_effect_index": index, "trace": trace}
+            elif criteria["location"] == "active_combat":
                 # ADR-0008 §7 (Cannon Barrage): Units at the Combat Battlefield that
                 # carry that Combat's designation (740.2.c). No Combat in progress
                 # is an empty set — a supported no-op; a claimed Combat whose
@@ -5888,7 +5995,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "completion": "full" if (applied == len(affected_ids)) else ("partial" if applied else "none") if affected_ids else "full",
                 "targeted_battlefield": targeted_battlefield, "affected_objects": affected_ids, "affected_are_targets": False,
                 "criteria": dict(criteria), "criteria_snapshot_hash": snapshot_hash, "expansion_trace": sub_trace,
-                **({"active_combat": dict(active_combat) if active_combat else None} if criteria["location"] == "active_combat" else {}),
+                **({"active_combat": dict(active_combat) if active_combat else None} if criteria.get("location") == "active_combat" else {}),
                 "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
                 "rule_locators": list(dict.fromkeys(["Core 355.5.a", "Core 355.10.b", "Core 355.10.d"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                 "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,

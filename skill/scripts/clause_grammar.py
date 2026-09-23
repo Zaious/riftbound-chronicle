@@ -591,6 +591,11 @@ TRIGGER_WRAPPERS = {
     # Core 383.4.d.2.a: a Unit's own Hold Effect fires when that Unit is at the Battlefield
     # its controller Holds - the same unit_here scope the Scoring Step already reads.
     "when_i_hold": ("hold_triggers", "on-hold", {"scope": "unit_here"}),
+    # Core 383.4.e: a Unit's own Attack Trigger. Unlike conquer/hold, this descriptor is
+    # never read by a shared scoring pass across the whole board - open_combat's own
+    # _designation_triggers reads it straight off the Unit that just gained the Attacker
+    # designation, so there is no separate scope to state (same shape as when_i_move).
+    "when_i_attack": ("attack_triggers", "on-attack", None),
 }
 
 # A Battlefield's own trigger is a different shape from an object's - Core

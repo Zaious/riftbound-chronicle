@@ -1676,6 +1676,34 @@
       ]
     },
     {
+      "production_id": "when_i_attack",
+      "form": "When I attack, draw 1.",
+      "template": "when i attack, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.4.e",
+        "Core 383.4.e.1",
+        "Core 383.4.e.2",
+        "Core 383.4.e.2.a",
+        "Core 464.2.e",
+        "Core 464.2.e.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "attack_defend_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I attack, draw 1."
+      ],
+      "negative": [
+        "when you attack, draw 1",
+        "when i defend, draw 1",
+        "when i conquer, draw 1"
+      ]
+    },
+    {
       "production_id": "at_the_end_of_your_turn",
       "form": "At the end of your turn, draw 1.",
       "template": "at the end of your turn, (?P<inner>.+)",

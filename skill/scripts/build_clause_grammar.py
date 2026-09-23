@@ -571,6 +571,14 @@ WRAPPERS = [
      ["Core 383.4.e", "Core 383.4.e.1", "Core 383.4.e.2", "Core 383.4.e.2.a", "Core 464.2.e", "Core 464.2.e.1"],
      ["attack_triggers"],
      ["When I attack, draw 1."], ["when you attack, draw 1", "when i defend, draw 1", "when i conquer, draw 1"]),
+    # One Unit ability with two trigger conditions (Core 383.4.e, 383.4.f): it goes on the
+    # Chain when the Unit gains the Attacker designation, or the Defender designation, for
+    # the first time this Combat - never both, since a Unit holds one per Combat.
+    ("when_i_attack_or_defend", r"when i attack or defend, (?P<inner>.+)",
+     ["Core 383.4.e", "Core 383.4.e.2.a", "Core 383.4.f", "Core 383.4.f.2.a", "Core 464.2.e", "Core 464.2.e.1"],
+     ["attack_triggers"],
+     ["When I attack or defend, draw 1."],
+     ["when i attack, draw 1", "when i defend, draw 1", "when you attack or defend, draw 1"]),
     ("at_the_end_of_your_turn", r"at the end of your turn, (?P<inner>.+)", ["Core 317.1", "Core 383.1"],
      ["end_of_turn_triggers"], ["At the end of your turn, draw 1."],
      ["at the end of each turn, draw 1", "at the beginning of your turn, draw 1"]),

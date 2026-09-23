@@ -104,11 +104,17 @@ def _battlefield_trigger(field: str, trigger_id: str, optional: bool = False) ->
                                             "optional_at_finalize": optional}]}}
 
 
-def _trigger(field: str, trigger_id: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {"object_fields": {field: [{"trigger_id": trigger_id, "controller": "$controller",
-                                       "source_object": "$source_object", "controller_order": 0,
-                                       "effect_program_id": "$clause_id", "optional_at_finalize": False,
-                                       **(extra or {})}]}}
+def _trigger(field: str | tuple[str, ...], trigger_id: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The object fields a triggered ability lives in. A tuple of fields is ONE ability
+    with more than one trigger condition ("When I attack or defend", Core 383.4.e,
+    383.4.f): the same descriptor - the same trigger_id - in each field, so whichever
+    condition is met schedules it, and one event can never schedule it twice."""
+    descriptor = {"trigger_id": trigger_id, "controller": "$controller",
+                  "source_object": "$source_object", "controller_order": 0,
+                  "effect_program_id": "$clause_id", "optional_at_finalize": False,
+                  **(extra or {})}
+    fields = (field,) if isinstance(field, str) else tuple(field)
+    return {"object_fields": {name: [dict(descriptor)] for name in fields}}
 
 
 
@@ -644,6 +650,11 @@ TRIGGER_WRAPPERS = {
     # _designation_triggers reads it straight off the Unit that just gained the Attacker
     # designation, so there is no separate scope to state (same shape as when_i_move).
     "when_i_attack": ("attack_triggers", "on-attack", None),
+    # Core 383.4.e / 383.4.f: one ability, two trigger conditions - the Unit gaining the
+    # Attacker OR the Defender designation. A Unit holds one designation per Combat, and
+    # both fields carry the same trigger_id, so it goes on the Chain at most once per
+    # Combat (383.4.e.2.a, 383.4.f.2.a).
+    "when_i_attack_or_defend": (("attack_triggers", "defend_triggers"), "on-attack-or-defend", None),
 }
 
 # A Battlefield's own trigger is a different shape from an object's - Core

@@ -1009,6 +1009,33 @@
       ]
     },
     {
+      "production_id": "deal_n_to_all_enemy_units_here",
+      "form": "Deal 3 to all enemy units here.",
+      "template": "deal (?P<amount>\\d+) to all enemy units here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 437",
+        "Core 355.10.b",
+        "Core 715.2",
+        "Core 359.3.f.1",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "criteria_expansion",
+        "deal_damage"
+      ],
+      "boundary": "The resolving program's own source's current Battlefield, read fresh at execution - not a decision.",
+      "golden": [
+        "Deal 3 to all enemy units here."
+      ],
+      "negative": [
+        "deal 3 to all enemy units at a battlefield",
+        "deal 3 to all units here"
+      ]
+    },
+    {
       "production_id": "deal_n_to_all_enemy_units_in_combat",
       "form": "Deal 2 to all enemy units in combat.",
       "template": "deal (?P<amount>\\d+) to all enemy units in combat",

@@ -267,6 +267,16 @@ def _lower_deal_all_enemy_at_battlefield(params):
                                             "location": "target_battlefield"}}}}
 
 
+def _lower_deal_all_enemy_here(params):
+    amount = int(params["amount"])
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": amount,
+                                 "affected": {"criteria": {"kind": "unit", "controller_relation": "enemy",
+                                                           "location_ref": {"kind": "program_source_current_battlefield"}}}}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount": amount, "affected": {"kind": "unit", "controller_relation": "enemy",
+                                                              "location_ref": {"kind": "program_source_current_battlefield"}}}}}
+
+
 def _lower_deal_all_enemy_in_combat(params):
     amount = int(params["amount"])
     return {"program_effects": [{"op": "deal_damage", "effect_id": "barrage", "amount": amount,
@@ -566,6 +576,7 @@ LOWERINGS = {
     "draw_n": _lower_draw,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
+    "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_all_enemy_units_in_combat": _lower_deal_all_enemy_in_combat,
     "deal_n_to_all_units_at_battlefields": _lower_deal_all_units_at_battlefields,
     "channel_n_rune_exhausted": _lower_channel_exhausted,

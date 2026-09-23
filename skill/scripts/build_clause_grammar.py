@@ -355,6 +355,16 @@ LITERAL = [
      "One chosen Battlefield, then every enemy Unit there.",
      ["Deal 3 to all enemy units at a battlefield."],
      ["deal 3 to all units at a battlefield", "deal 3 to all enemy units in combat"]),
+    # GPT 2026-09-23: "here" - the resolving program's own source's current
+    # Battlefield (Core 359.3.f.1, 359.3.f.2) - takes no decision at all,
+    # unlike "at a battlefield"'s own Battlefield choice above. Anivia - Primal
+    # is this production's real card (round 2 / D, when i attack).
+    ("deal_n_to_all_enemy_units_here", r"deal (?P<amount>\d+) to all enemy units here",
+     ["Core 437", "Core 355.10.b", "Core 715.2", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
+     ["deal_damage", "criteria_expansion"],
+     "The resolving program's own source's current Battlefield, read fresh at execution - not a decision.",
+     ["Deal 3 to all enemy units here."],
+     ["deal 3 to all enemy units at a battlefield", "deal 3 to all units here"]),
     ("deal_n_to_all_enemy_units_in_combat", r"deal (?P<amount>\d+) to all enemy units in combat",
      ["Core 437", "Core 715.2", "Core 460"], "instruction", ["deal_damage", "criteria_expansion", "combat_state"],
      "The Combat in progress. Outside one the instruction finds nothing.",

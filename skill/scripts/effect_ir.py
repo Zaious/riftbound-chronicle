@@ -1418,6 +1418,15 @@ def validate_program(program: Any) -> list[str]:
                     # leaving it accepted left a field that looks authoritative
                     # and is not. Refused rather than ignored.
                     errors.append(f"effects[{index}].mutual_damage_current_might takes no `amount`: the damage is each Unit's current Might, read at resolution")
+            if "amount_ref" in effect:
+                if not is_amount_ref(effect["amount_ref"]):
+                    errors.append(f"effects[{index}].amount_ref must be {{kind}} with kind in {list(AMOUNT_REF_KINDS)}")
+                if effect.get("op") != "deal_damage":
+                    errors.append(f"effects[{index}].amount_ref is read by deal_damage only")
+                if "amount" in effect:
+                    errors.append(f"effects[{index}] carries both amount and amount_ref; the amount is one or the other")
+                if effect.get("affected") is not None or effect.get("targets") is not None:
+                    errors.append(f"effects[{index}].amount_ref: one chosen object only (affected/targets are not accepted)")
             if effect.get("op") == "modify_might":
                 for bound in ("minimum", "maximum"):
                     value = effect.get(bound)
@@ -1691,6 +1700,14 @@ LOCATION_REF_IDENTITY_CHANGED = "location_ref_source_identity_changed"
 # 359.3.f.2's own example is exactly a source moved to Base, mistargeting.
 LOCATION_REF_NOT_AT_BATTLEFIELD = "location_ref_source_not_at_battlefield"
 
+# "deal damage equal to my Might" (Yasuo, Remorseful): a typed reference to a number the
+# program's own source carries, read on EXECUTION of the instruction - Core 359.3.f.2's
+# own example: Stupefied in reaction, Yasuo's attack trigger deals damage equal to his
+# current Might. One kind; identity mandatory, exactly as location_ref.
+AMOUNT_REF_KINDS = ("program_source_current_might",)
+AMOUNT_REF_ABSENT = "amount_ref_source_absent"
+AMOUNT_REF_IDENTITY_CHANGED = "amount_ref_source_identity_changed"
+
 
 def is_object_ref(value: Any) -> bool:
     return isinstance(value, dict) and set(value) == {"object_ref"}
@@ -1698,6 +1715,10 @@ def is_object_ref(value: Any) -> bool:
 
 def is_location_ref(value: Any) -> bool:
     return isinstance(value, dict) and set(value) == {"kind"} and value.get("kind") in LOCATION_REF_KINDS
+
+
+def is_amount_ref(value: Any) -> bool:
+    return isinstance(value, dict) and set(value) == {"kind"} and value.get("kind") in AMOUNT_REF_KINDS
 
 
 def contains_object_ref(value: Any) -> bool:
@@ -5325,6 +5346,27 @@ def resolve_object_ref(effect: dict[str, Any], state: dict[str, Any],
             {"object_ref": "program_source", "resolved_to": source, "bound_identity": now})
 
 
+def resolve_amount_ref(ref: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> tuple[int, str]:
+    """(amount, source) for `{"kind": "program_source_current_might"}`: the source's
+    effective Might NOW, at execution (Core 359.3.f.2) - after any change made in
+    response. Identity is mandatory; a source that is gone or is a new object is refused
+    by name, never read off whatever holds that id now."""
+    source = program.get("source_object")
+    if not isinstance(source, str) or source not in state["objects"]:
+        raise SelectionBindingRefused(
+            f"the program declares source_object {source!r}, which the state does not contain; "
+            f"'my Might' with no source is refused, never guessed", AMOUNT_REF_ABSENT)
+    declared = program.get("source_identity")
+    if not isinstance(declared, str) or not declared:
+        raise SelectionBindingRefused("the program declares no source_identity; 'my Might' requires one",
+                                      AMOUNT_REF_ABSENT)
+    if object_identity(state, source) != declared:
+        raise SelectionBindingRefused(
+            f"the program's source was {declared!r} and is now {object_identity(state, source)!r}; "
+            f"'my Might' is not read off a different object", AMOUNT_REF_IDENTITY_CHANGED)
+    return effective_might(state, source), source
+
+
 def resolve_location_ref(ref: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> str:
     """Turn `{"kind": "program_source_current_battlefield"}` into a concrete
     Battlefield id, read fresh from the state at INSTRUCTION EXECUTION (Core
@@ -6155,6 +6197,26 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "errors": ["effect object_id must match target.object_id"],
                     "trace": trace,
                 }
+        # "equal to my Might": read now, on execution, once the target is known legal
+        # (Core 359.3.f.2); an illegal target was already skipped above, unread
+        if effect.get("amount_ref") is not None:
+            try:
+                read, read_from = resolve_amount_ref(effect["amount_ref"], current, program)
+            except SelectionBindingRefused as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": exc.reason_code, "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+            effect = {k: v for k, v in effect.items() if k != "amount_ref"}
+            if read < 1:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "amount_ref_not_positive", "amount_read": read,
+                         "amount_read_from": read_from, "rule_locators": ["Core 359.3.f.2"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            effect["amount"] = read
+            effect["amount_read_from"] = {"kind": "program_source_current_might", "object_id": read_from, "might": read}
         affected_before_damage = current["objects"].get(effect.get("object_id"), {}).get("damage")
         # ADR-0007 §5: Bonus Damage is a property of the Deal action — added
         # once the Deal is known to happen with a non-zero base (715.4), before

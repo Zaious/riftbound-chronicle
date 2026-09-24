@@ -378,6 +378,17 @@ LITERAL = [
      ["Deal 1 to an enemy unit here."],
      ["deal 1 to an enemy unit at a battlefield", "deal 1 to all enemy units here",
       "deal 1 to an enemy unit here for each card with [hidden]"]),
+    # "equal to my Might": the amount is the source's current Might, read on execution
+    # (Core 359.3.f.2's own Yasuo, Remorseful example, Stupefied in response); the target
+    # is "an enemy unit here" as above.
+    ("deal_damage_equal_to_my_might_to_an_enemy_unit_here", r"deal damage equal to my might to an enemy unit here",
+     ["Core 437", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2", "Core 359.3.f.4"], "instruction",
+     ["deal_damage", "targeting"],
+     "One chosen enemy Unit at the source's current Battlefield takes damage equal to the source's Might "
+     "as it is when the instruction executes.",
+     ["Deal damage equal to my Might to an enemy unit here."],
+     ["deal damage equal to my might to an enemy unit", "deal 3 to an enemy unit here",
+      "deal damage equal to its might to an enemy unit here"]),
     ("stun_an_enemy_unit_here", r"stun an enemy unit here",
      ["Core 423", "Core 423.1", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["stun", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield becomes Stunned.",

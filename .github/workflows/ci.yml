@@ -224,6 +224,8 @@ jobs:
         run: python3 skill/scripts/check_trigger_source_identity.py
       - name: When I attack or defend - one ability, two trigger conditions
         run: python3 skill/scripts/check_attack_or_defend_trigger.py
+      - name: Equal to my Might - an amount read on execution
+        run: python3 skill/scripts/check_amount_ref.py
 
       # Every engine check is listed in this workflow; one that is not has never run.
       - name: CI lists every engine check

@@ -299,6 +299,14 @@ def _lower_deal_enemy_unit_here(params):
                                                             "location_ref": dict(_HERE)}}}}
 
 
+def _lower_deal_my_might_to_enemy_unit_here(params):
+    ref = {"kind": "program_source_current_might"}
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount_ref": dict(ref), "target": _here_target()}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount_ref": dict(ref), "target": {"kind": "unit", "controller_relation": "enemy",
+                                                                   "location_ref": dict(_HERE)}}}}
+
+
 def _lower_stun_enemy_unit_here(params):
     return {"program_effects": [{"op": "stun", "effect_id": "st", "target": _here_target()}],
             "ast": {"node": "instruction", "op": "stun",
@@ -619,6 +627,7 @@ LOWERINGS = {
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
     "stun_an_enemy_unit_here": _lower_stun_enemy_unit_here,
+    "deal_damage_equal_to_my_might_to_an_enemy_unit_here": _lower_deal_my_might_to_enemy_unit_here,
     "give_an_enemy_unit_here_might_this_turn": _lower_give_enemy_unit_here_might,
     "deal_n_to_all_enemy_units_in_combat": _lower_deal_all_enemy_in_combat,
     "deal_n_to_all_units_at_battlefields": _lower_deal_all_units_at_battlefields,

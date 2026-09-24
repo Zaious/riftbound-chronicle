@@ -32,7 +32,40 @@ from __future__ import annotations
 
 from typing import Any
 
-WATCH_SCOPES = {"self", "controller", "location", "any"}
+# "actor": the player who performed the event - "When YOU stun ..." is about who stunned,
+# not whose unit was stunned (2026-09-24; "controller" compares the affected object's side)
+WATCH_SCOPES = {"self", "controller", "location", "any", "actor"}
+# 2026-09-24: typed facts of the EVENT a watch may require, each named, none guessed.
+#   object_kind              the object the event is about is a spell / unit / gear
+#   object_controller_relation   that object is the watcher controller's (friendly) or not (enemy)
+#   exclude_source           the object is not the watcher's own source ("another unit")
+#   on_opponents_turn        the event happened on a turn that is not the controller's
+#   from_hidden              a card played from a facedown zone (Core 811)
+#   object_was_buffed        the object had a buff when the event happened (a death reads the
+#                            object as it was, Core 417 - not the card in the trash)
+#   destination_zone         the zone it went to (a recycle to the Main Deck)
+#   destination_kind         the kind of Location it went to (a move to a Battlefield)
+#   printed_energy_at_least  the object's PRINTED Energy cost is at least N - "a spell that costs
+#                            [5] or more"; Core 206: an effect that needs a card's cost for any
+#                            purpose uses its printed (or copied) cost, never what was paid
+WATCH_FILTERS = {
+    "object_kind": {"spell", "unit", "gear"},
+    "object_controller_relation": {"friendly", "enemy"},
+    "exclude_source": {True},
+    "on_opponents_turn": {True},
+    "from_hidden": {True},
+    "object_was_buffed": {True},
+    "destination_zone": {"main_deck"},
+    "destination_kind": {"battlefield"},
+    "printed_energy_at_least": set(range(1, 21)),
+}
+# "each": one trigger per matching event (Core 383.3.a); "one_or_more": one per batch of
+# simultaneous events however many match ("When you stun one or more enemy units").
+WATCH_GROUPINGS = {"each", "one_or_more"}
+# "first_each_turn": only the first matching event of the turn triggers it ("The first time a
+# friendly unit dies each turn") - counted whether or not the trigger was performed, unlike
+# per_turn_limit (383.3.e), which counts performances.
+WATCH_OCCURRENCES = {"first_each_turn"}
 WAIT_KINDS = {"event", "turn"}
 TURN_MOMENTS = {"end_of_turn", "beginning_of_turn"}
 # A multiplier applies to the trigger the game generated, never to a copy it
@@ -40,7 +73,7 @@ TURN_MOMENTS = {"end_of_turn", "beginning_of_turn"}
 MAX_CAUSAL_DEPTH = 1
 
 DESCRIPTOR_FIELDS = {"trigger_id", "controller", "source_object", "controller_order", "effect_program_id",
-                     "optional_at_finalize", "watch", "per_turn_limit", "ability_id"}
+                     "optional_at_finalize", "watch", "per_turn_limit", "ability_id", "effect_program_hash"}
 DELAYED_FIELDS = {"delayed_id", "controller", "source_object", "source_identity", "target_object", "target_identity",
                   "waits_for", "effect_program_id", "optional_at_finalize", "controller_order", "snapshot",
                   "created_turn"}
@@ -64,8 +97,23 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
     from effect_ir import validate_condition
     from game_events import EVENT_KINDS
 
-    if not isinstance(watch, dict) or set(watch) - {"kinds", "scope", "condition"}:
-        return [f"{path} must be {{kinds, scope, condition?}}"]
+    if not isinstance(watch, dict) or set(watch) - {"kinds", "scope", "condition", "filter", "grouping", "occurrence"}:
+        return [f"{path} must be {{kinds, scope, condition?, filter?, grouping?, occurrence?}}"]
+    problems: list[str] = []
+    event_filter = watch.get("filter")
+    if event_filter is not None:
+        if not isinstance(event_filter, dict) or not event_filter:
+            problems.append(f"{path}.filter must be a non-empty object")
+        else:
+            for key, value in event_filter.items():
+                if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key]:
+                    problems.append(f"{path}.filter.{key} = {value!r} is not a named event fact")
+    if watch.get("grouping", "each") not in WATCH_GROUPINGS:
+        problems.append(f"{path}.grouping must be one of {sorted(WATCH_GROUPINGS)}")
+    if "occurrence" in watch and watch["occurrence"] not in WATCH_OCCURRENCES:
+        problems.append(f"{path}.occurrence must be one of {sorted(WATCH_OCCURRENCES)}")
+    if problems:
+        return problems
     errors: list[str] = []
     kinds = watch.get("kinds")
     if not isinstance(kinds, list) or not kinds:
@@ -147,6 +195,10 @@ def validate_watch_state(state: dict[str, Any]) -> list[str]:
     uses = state.get("trigger_uses", {})
     if not isinstance(uses, dict) or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 for v in uses.values()):
         errors.append("trigger_uses must map a use key to a non-negative count")
+    seen_events = state.get("watch_occurrences", {})
+    if not isinstance(seen_events, dict) or any(not isinstance(v, int) or isinstance(v, bool) or v < 0
+                                                for v in seen_events.values()):
+        errors.append("watch_occurrences must map a use key to a non-negative count")
 
     multipliers = state.get("trigger_multipliers", [])
     if not isinstance(multipliers, list):
@@ -203,6 +255,9 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
     elif scope == "controller":
         if (event.get("controller") or event.get("player")) != controller:
             return False
+    elif scope == "actor":
+        if event.get("actor") != controller:
+            return False
     elif scope == "location":
         # The event's Location, before or after: a Unit that died at my
         # Battlefield died there even though it now sits in the Trash.
@@ -210,6 +265,8 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
                 or (event.get("location_before") is not None
                     and event["location_before"] == _location_of(state, source_object))):
             return False
+    if not _filter_holds(state, watch.get("filter") or {}, event, source_object=source_object, controller=controller):
+        return False
     condition = watch.get("condition")
     if condition is None:
         return True
@@ -218,6 +275,63 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
             f"a watcher controlled by {controller!r} cannot test a condition on a card it may not see "
             f"(event {event.get('event_id')!r}, ADR-0013 §3)", "watch_beyond_visibility")
     return evaluate_condition(state, condition, controller=controller, object_id=subject, perspective=controller)
+
+
+def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: dict[str, Any], *,
+                  source_object: str | None, controller: str | None) -> bool:
+    """Every named fact the watch requires holds for this event (WATCH_FILTERS)."""
+    subject = event.get("object")
+    obj = (state.get("objects") or {}).get(subject) or {}
+    for key, wanted in event_filter.items():
+        if key == "object_kind":
+            if (event.get("object_kind") or obj.get("kind")) != wanted:
+                return False
+        elif key == "object_controller_relation":
+            side = event.get("controller") or obj.get("controller")
+            if (side == controller) != (wanted == "friendly"):
+                return False
+        elif key == "exclude_source":
+            if subject == source_object:
+                return False
+        elif key == "on_opponents_turn":
+            if event.get("turn_player") in (None, controller):
+                return False
+        elif key == "from_hidden":
+            if event.get("from_hidden") is not True:
+                return False
+        elif key == "object_was_buffed":
+            if event.get("was_buffed") is not True:
+                return False
+        elif key == "destination_zone":
+            after = event.get("location_after") or {}
+            if after.get("kind") != "player_zone" or after.get("zone") != wanted:
+                return False
+        elif key == "destination_kind":
+            if (event.get("location_after") or {}).get("kind") != wanted:
+                return False
+        elif key == "printed_energy_at_least":
+            printed = (obj.get("printed_cost") or {}).get("energy")
+            if not isinstance(printed, int):
+                raise WatchUnsupported(f"{subject!r} carries no printed Energy cost to compare (Core 206)",
+                                       "printed_cost_unknown")
+            if printed < wanted:
+                return False
+        else:
+            return False
+    return True
+
+
+def source_active(state: dict[str, Any], source_object: str | None) -> bool:
+    """A watcher listens only while its source is where its abilities work: on the board
+    (a Base or a Battlefield) or in its controller's Legend Zone. A card in a hand, a deck
+    or a trash has no triggered abilities working (2026-09-24)."""
+    from effect_ir import find_location, zone_class
+
+    if source_object not in (state.get("objects") or {}):
+        return False
+    location = find_location(state, source_object)
+    return zone_class(location) == "board" or (location is not None and location[0] == "player"
+                                               and location[2] == "legend_zone")
 
 
 def _location_of(state: dict[str, Any], object_id: str | None) -> dict[str, Any] | None:
@@ -335,6 +449,54 @@ def schedule_watchers(state: dict[str, Any], events: list[dict[str, Any]], *, tu
                     continue
                 scheduled.append(_scheduled(descriptor, event, trigger_kind="watched"))
     return scheduled
+
+
+def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_id: str,
+                  batch_label: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """The watchers one batch of events wakes in real play (2026-09-24). Returns (the
+    trigger descriptors to schedule, the state with this batch's occurrences counted).
+
+    Unlike schedule_watchers (the scheduling rule on its own), this is what the resolution
+    bridge and the play transaction call: a watcher listens only while its source is on the
+    board or in its Legend Zone; "one_or_more" wakes once per batch; "first_each_turn" wakes
+    only on the turn's first matching event, counted whether or not it was performed; each
+    scheduled trigger gets its own id, carries the program hash its descriptor names, and is
+    bound to its source's identity now (Core 124)."""
+    import copy
+    from effect_ir import object_identity
+
+    scheduled: list[dict[str, Any]] = []
+    counted = copy.deepcopy(state)
+    occurrences = counted.setdefault("watch_occurrences", {})
+    for object_id in sorted(state.get("objects") or {}):
+        for descriptor in state["objects"][object_id].get("event_triggers", []) or []:
+            if not source_active(state, descriptor["source_object"]):
+                continue
+            watch = descriptor["watch"]
+            matched = [event for event in events
+                       if watch_matches(state, watch, event, source_object=descriptor["source_object"],
+                                        controller=descriptor["controller"])]
+            if not matched:
+                continue
+            key = use_key(state, descriptor, turn_id)
+            if watch.get("occurrence") == "first_each_turn":
+                earlier = occurrences.get(key, 0)
+                occurrences[key] = earlier + len(matched)
+                matched = matched[:1] if earlier == 0 else []
+            if watch.get("grouping") == "one_or_more":
+                matched = matched[:1]
+            if at_limit(state, descriptor, turn_id):
+                continue
+            for index, event in enumerate(matched):
+                entry = _scheduled(descriptor, event, trigger_kind="watched")
+                entry["trigger_id"] = f"{descriptor['trigger_id']}@{batch_label}" + (f"#{index}" if index else "")
+                entry["source_identity"] = object_identity(state, descriptor["source_object"])
+                if descriptor.get("effect_program_hash"):
+                    entry["effect_program_hash"] = descriptor["effect_program_hash"]
+                scheduled.append(entry)
+    if not occurrences:
+        counted.pop("watch_occurrences", None)
+    return scheduled, counted
 
 
 def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None = None, *, turn_id: str,

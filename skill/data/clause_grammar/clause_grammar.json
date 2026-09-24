@@ -1390,6 +1390,87 @@
       ]
     },
     {
+      "production_id": "other_friendly_units_have_might_here",
+      "form": "Other friendly units have +1 :rb_might: here.",
+      "template": "other friendly units have \\+(?P<amount>\\d+) \\[m\\] here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 476",
+        "Core 477.3",
+        "Core 479"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "A printed aura: +N Might to every other friendly Unit at the Battlefield where the source is, while the source is on the board. Not a target, not snapshotted. A keyword instead of Might, a whole-board aura, or an aura on enemy units is a different clause.",
+      "golden": [
+        "Other friendly units have +1 :rb_might: here."
+      ],
+      "negative": [
+        "other friendly units have +2 :rb_might:",
+        "other friendly units here have [assault]",
+        "friendly units have +1 :rb_might: here",
+        "stunned enemy units here have -8 :rb_might:"
+      ]
+    },
+    {
+      "production_id": "other_buffed_friendly_units_at_my_battlefield_have_might",
+      "form": "Other buffed friendly units at my battlefield have +2 :rb_might:.",
+      "template": "other buffed friendly units at my battlefield have \\+(?P<amount>\\d+) \\[m\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 476",
+        "Core 477.3",
+        "Core 479",
+        "Core 426.1.b"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "The same aura restricted to Units with a Buff counter: a Unit that loses its Buff stops receiving it at once. An unbuffed or a whole-board variant is a different clause.",
+      "golden": [
+        "Other buffed friendly units at my battlefield have +2 :rb_might:."
+      ],
+      "negative": [
+        "other friendly units at my battlefield have +2 :rb_might:",
+        "buffed friendly units have +2 :rb_might:",
+        "other buffed friendly units have [deflect]"
+      ]
+    },
+    {
+      "production_id": "units_here_have_might",
+      "form": "Units here have +1 :rb_might:.",
+      "template": "units here have \\+(?P<amount>\\d+) \\[m\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 190.6",
+        "Core 476",
+        "Core 477.3",
+        "Core 479"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "A Battlefield's printed aura: +N Might to every Unit at it, whoever controls it, while the Battlefield is in play. A keyword instead of Might, or 'friendly' / 'enemy' units, is a different clause.",
+      "golden": [
+        "Units here have +1 :rb_might:."
+      ],
+      "negative": [
+        "units here have [ganking]",
+        "friendly units here have +1 :rb_might:",
+        "units have +1 :rb_might:"
+      ]
+    },
+    {
       "production_id": "you_may_pay_own_domain_power_as_additional_cost_to_play_me",
       "form": "You may pay [C] as additional cost to play me.",
       "template": "you may pay \\[c\\] as additional cost to play me",
@@ -1569,6 +1650,31 @@
       ]
     },
     {
+      "production_id": "you_may_play_me_to_an_open_battlefield",
+      "form": "You may play me to an open battlefield.",
+      "template": "you may play me to an open battlefield",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.2.a",
+        "Core 355.2.b",
+        "Core 170.11.c"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "open_battlefield_permission"
+      ],
+      "boundary": "A printed permission that widens where this card may enter, and nothing else: 170.11.c makes 'open' a Battlefield no one controls with nothing on it. It does not widen timing. The granting form ('friendly units may be played to open battlefields') is a different clause and stays unparsed.",
+      "golden": [
+        "You may play me to an open battlefield."
+      ],
+      "negative": [
+        "you may play me to an occupied enemy battlefield",
+        "friendly units may be played to open battlefields",
+        "you may play a unit to an open battlefield"
+      ]
+    },
+    {
       "production_id": "units_cant_move_from_here_to_base",
       "form": "Units can't move from here to base.",
       "template": "units can't move from here to base",
@@ -1684,6 +1790,30 @@
       "negative": [
         "when a unit moves, draw 1",
         "when you play me, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_i_move_to_a_battlefield",
+      "form": "When I move to a battlefield, draw 1.",
+      "template": "when i move to a battlefield, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 428"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "move_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I move to a battlefield, draw 1."
+      ],
+      "negative": [
+        "when i move, draw 1",
+        "when i move to base, draw 1",
+        "when a unit moves to a battlefield, draw 1"
       ]
     },
     {
@@ -1893,6 +2023,243 @@
       "negative": [
         "at the end of each turn, draw 1",
         "at the beginning of your turn, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_a_spell",
+      "form": "When you play a spell, draw 1.",
+      "template": "when you play a spell, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a spell, draw 1."
+      ],
+      "negative": [
+        "when you play a spell that costs 5 or more, draw 1",
+        "when you play me, draw 1",
+        "when you play a gear, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_a_spell_that_costs_n_or_more",
+      "form": "When you play a spell that costs :rb_energy_5: or more, draw 1.",
+      "template": "when you play a spell that costs \\[e(?P<cost>\\d+)\\] or more, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a",
+        "Core 206"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a spell that costs :rb_energy_5: or more, draw 1."
+      ],
+      "negative": [
+        "when you play a spell, draw 1",
+        "when you play a spell that costs :rb_energy_5: or less, draw 1",
+        "when you play a unit that costs :rb_energy_5: or more, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_a_gear",
+      "form": "When you play a gear, draw 1.",
+      "template": "when you play a gear, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a gear, draw 1."
+      ],
+      "negative": [
+        "when you play a spell, draw 1",
+        "when you play me, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_another_unit",
+      "form": "When you play another unit, draw 1.",
+      "template": "when you play another unit, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play another unit, draw 1."
+      ],
+      "negative": [
+        "when you play a unit, draw 1",
+        "when you play me, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_a_card_on_an_opponents_turn",
+      "form": "When you play a card on an opponent's turn, draw 1.",
+      "template": "when you play a card on an opponent's turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a card on an opponent's turn, draw 1."
+      ],
+      "negative": [
+        "when you play a card, draw 1",
+        "when an opponent plays a card, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_a_card_from_hidden",
+      "form": "When you play a card from [Hidden], draw 1.",
+      "template": "when you play a card from \\[hidden\\], (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a",
+        "Core 811.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a card from [Hidden], draw 1."
+      ],
+      "negative": [
+        "when you play a card, draw 1",
+        "when you hide a card, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_stun_one_or_more_enemy_units",
+      "form": "When you stun one or more enemy units, draw 1.",
+      "template": "when you stun one or more enemy units, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 423",
+        "Core 383.3.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you stun one or more enemy units, draw 1."
+      ],
+      "negative": [
+        "when you stun an enemy unit, draw 1",
+        "when a unit is stunned, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_recycle_one_or_more_cards_to_your_main_deck",
+      "form": "When you recycle one or more cards to your Main Deck, draw 1.",
+      "template": "when you recycle one or more cards to your main deck, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 420"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you recycle one or more cards to your Main Deck, draw 1."
+      ],
+      "negative": [
+        "when you recycle a card, draw 1",
+        "when a card is recycled, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_a_buffed_friendly_unit_dies",
+      "form": "When a buffed friendly unit dies, draw 1.",
+      "template": "when a buffed friendly unit dies, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 417",
+        "Core 426"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When a buffed friendly unit dies, draw 1."
+      ],
+      "negative": [
+        "when a friendly unit dies, draw 1",
+        "when a buffed enemy unit dies, draw 1"
+      ]
+    },
+    {
+      "production_id": "the_first_time_a_friendly_unit_dies_each_turn",
+      "form": "The first time a friendly unit dies each turn, draw 1.",
+      "template": "the first time a friendly unit dies each turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 417",
+        "Core 383.3.e"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "The first time a friendly unit dies each turn, draw 1."
+      ],
+      "negative": [
+        "when a friendly unit dies, draw 1",
+        "the first time an enemy unit dies each turn, draw 1"
       ]
     }
   ]

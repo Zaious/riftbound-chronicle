@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:dfaf9debc41bafbc0ebf071e",
-  "capability_set_id": "sha256:dfaf9debc41bafbc0ebf071e69859d7b52a83e3442b10e7df6b33af0f76e6a8e",
+  "manifest_id": "capability-manifest:cbf1a797070afc5ec7c00586",
+  "capability_set_id": "sha256:cbf1a797070afc5ec7c005863153c0b834f61c41fb1af4ffb6876d8ab373c041",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:d99b1415825bf8a42dcdce28a55bbdb6104d095e3b02e85fd73046dde55f9c8e",
+    "value": "sha256:96a909face4c604a7be8060d258d3a460cc3e99dbf8b85dcae68f2ad9431623a",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,15 +12,15 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:420e55d1bce7c760f8b2b0e7f6cfb18c2f3e848d83f678b2ad46867a86602d74"
+        "sha256": "sha256:9d7ad05fcf7c7a92b36e38c4c78e2e9de8d8d5fd8c3843e35e866f93d752e628"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:7e08a3bdbc59bcee66b2c1749c73264ffd134962f654e5e97dd8330c022e2ca3"
+        "sha256": "sha256:4cf54d31aa5caeeac75bef61d2abe6e5729f682c1d0d5185ab93ca8b21ff5d9a"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:dbf032135b4e028af908a27dafa4b309764c606ef31a046aa97f0fd64a5bf81f"
+        "sha256": "sha256:82ee57105efc76a5699ac1d41ab5ea525390657856be71a59b54c7d693ce2852"
       },
       {
         "path": "combat.py",
@@ -297,6 +297,7 @@
         "engine_decisions",
         "permanent_entry",
         "play_triggers",
+        "watched_triggers",
         "burn_out_draw",
         "terminal_event_bridge",
         "counter_chain_removal"
@@ -1390,6 +1391,15 @@
         "Core 472",
         "Core 323.1"
       ]
+    },
+    {
+      "id": "watched_triggers",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.3.a",
+        "Core 383.3.e",
+        "Core 419.4.a"
+      ]
     }
   ],
   "clauses": [
@@ -1534,8 +1544,10 @@
     "Core 383.2.a.1",
     "Core 383.2.c",
     "Core 383.3",
+    "Core 383.3.a",
     "Core 383.3.a–383.3.a.3",
     "Core 383.3.c–383.3.d.1",
+    "Core 383.3.e",
     "Core 383.4.c–383.4.d",
     "Core 383.4.e–383.4.f.3",
     "Core 383.4.f",

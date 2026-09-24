@@ -236,6 +236,12 @@ def _lower_object_keyword(params, slots):
         # DP-85: the catalogue names it, the engine does not implement it.
         # That is a known boundary, not a parse - it never becomes a program.
         return {"ast": ast, "known_unsupported": "keyword_not_implemented"}
+    if keyword["keyword"] == "hidden":
+        # [Hidden] is not an object keyword to the engine: it is the card's permission to be
+        # hidden (Core 811), read by hidden.hide_card as `hidden: true` (effect_ir validates
+        # the flag, and OBJECT_KEYWORDS has no "hidden"). Lowering it to keywords made every
+        # Hidden card an invalid state (found 2026-09-24).
+        return {"passive": {"object_fields": {"hidden": True}}, "ast": ast}
     fields: dict[str, Any] = {"keywords": [keyword["keyword"]]}
     if value is not None:
         # the value belongs to its own keyword: [Shield 3] -> shield_value (Core 814.1.b.2),
@@ -599,6 +605,42 @@ def _lower_occupied_enemy_permission(params):
     }
 
 
+def _lower_open_permission(params):
+    """Core 355.2.b, 170.11.c: the card prints that it may enter an open Battlefield."""
+    return {
+        "object_fields": {"play_permissions": ["open_battlefield"]},
+        "ast": {"node": "passive", "kind": "play_permission", "params": {"permission": "open_battlefield"}},
+    }
+
+
+AURA_HERE = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True, "at_source_battlefield": True}
+
+
+def _lower_aura_here(params):
+    """Core 365.1, 476-479: a printed aura over the other friendly Units at the source's
+    Battlefield, read by effect_ir.printed_aura_effects while the source is on the board."""
+    amount = int(params["amount"])
+    return {"object_fields": {"static_auras": [{"aura_id": "here", "amount": amount, "criteria": dict(AURA_HERE)}]},
+            "ast": {"node": "passive", "kind": "static_aura", "params": {"amount": amount, "criteria": dict(AURA_HERE)}}}
+
+
+def _lower_buffed_aura_here(params):
+    """The same aura, only over Units with a Buff counter (426.1.b)."""
+    amount = int(params["amount"])
+    criteria = {**AURA_HERE, "buffed": True}
+    return {"object_fields": {"static_auras": [{"aura_id": "buffed-here", "amount": amount, "criteria": criteria}]},
+            "ast": {"node": "passive", "kind": "static_aura", "params": {"amount": amount, "criteria": dict(criteria)}}}
+
+
+def _lower_battlefield_aura(params):
+    """Core 365.1, 190.6: a Battlefield's printed aura over every Unit at it (effect_ir
+    printed_aura_effects reads a Battlefield's static_auras)."""
+    amount = int(params["amount"])
+    return {"battlefield_fields": {"static_auras": [{"aura_id": "here", "amount": amount, "criteria": {"kind": "unit"}}]},
+            "ast": {"node": "passive", "kind": "static_aura", "params": {"amount": amount, "criteria": {"kind": "unit"},
+                                                                         "on": "battlefield"}}}
+
+
 def _lower_move_restriction(params):
     """Core 359.3.e.6: printed on the Battlefield, and read by both Move paths
     - the Standard Move it forbids outright, and the effect-induced Move whose
@@ -614,6 +656,10 @@ def _lower_move_restriction(params):
 LOWERINGS = {
     "units_cant_move_from_here_to_base": _lower_move_restriction,
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
+    "you_may_play_me_to_an_open_battlefield": _lower_open_permission,
+    "other_friendly_units_have_might_here": _lower_aura_here,
+    "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
+    "units_here_have_might": _lower_battlefield_aura,
     "choose_an_opponent": _lower_choose_an_opponent,
     "they_reveal_their_hand": _lower_they_reveal_their_hand,
     "choose_a_non_unit_card_from_it_and_recycle_that_card": _lower_recycle_a_non_unit_from_the_reveal,
@@ -646,6 +692,7 @@ LOWERINGS = {
 TRIGGER_WRAPPERS = {
     "when_you_play_me": ("play_triggers", "on-play", None),
     "when_i_move": ("move_triggers", "on-move", None),
+    "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
     # Core 469.1: the unit conquering is the one at the Battlefield being
     # scored. That is the engine's default scope for a conquer trigger; the
@@ -664,6 +711,35 @@ TRIGGER_WRAPPERS = {
     # both fields carry the same trigger_id, so it goes on the Chain at most once per
     # Combat (383.4.e.2.a, 383.4.f.2.a).
     "when_i_attack_or_defend": (("attack_triggers", "defend_triggers"), "on-attack-or-defend", None),
+    # 2026-09-24: watched triggers - a typed watch over the semantic events (watchers.py),
+    # woken by the play transaction's "played" and by every resolution's events. The player
+    # "you" is the event's actor; each fact the text names is a named filter, nothing else.
+    "when_you_play_a_spell": ("event_triggers", "on-play-spell", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "spell"}}}),
+    # Core 206: "costs [5] or more" compares the spell's PRINTED Energy cost
+    "when_you_play_a_spell_that_costs_n_or_more": ("event_triggers", "on-play-costly-spell", lambda params: {"watch": {
+        "kinds": ["played"], "scope": "actor",
+        "filter": {"object_kind": "spell", "printed_energy_at_least": int(params["cost"])}}}),
+    "when_you_play_a_gear": ("event_triggers", "on-play-gear", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "gear"}}}),
+    "when_you_play_another_unit": ("event_triggers", "on-play-another-unit", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit", "exclude_source": True}}}),
+    "when_you_play_a_card_on_an_opponents_turn": ("event_triggers", "on-play-opponents-turn", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"on_opponents_turn": True}}}),
+    "when_you_play_a_card_from_hidden": ("event_triggers", "on-play-from-hidden", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"from_hidden": True}}}),
+    "when_you_stun_one_or_more_enemy_units": ("event_triggers", "on-stun-enemies", {"watch": {
+        "kinds": ["stunned"], "scope": "actor", "filter": {"object_controller_relation": "enemy"},
+        "grouping": "one_or_more"}}),
+    "when_you_recycle_one_or_more_cards_to_your_main_deck": ("event_triggers", "on-recycle", {"watch": {
+        "kinds": ["recycled"], "scope": "actor", "filter": {"destination_zone": "main_deck"},
+        "grouping": "one_or_more"}}),
+    "when_a_buffed_friendly_unit_dies": ("event_triggers", "on-buffed-friendly-death", {"watch": {
+        "kinds": ["died"], "scope": "any",
+        "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "object_was_buffed": True}}}),
+    "the_first_time_a_friendly_unit_dies_each_turn": ("event_triggers", "on-first-friendly-death", {"watch": {
+        "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
+        "occurrence": "first_each_turn"}}),
 }
 
 # A Battlefield's own trigger is a different shape from an object's - Core
@@ -753,6 +829,7 @@ LINK_PREFIXES = {
     "if you can't, ": "requested_count_not_reached",
     "otherwise, ": "action_not_performed",
 }
+COUNTED_CHANNEL_LINK = re.compile(r"^if you couldn't channel (\d+) runes? this way, ")
 # The one prefix that reads a *cost* receipt instead of an operation receipt.
 # It is bound to an offer an earlier clause of the same card declared, so it
 # can never read another card's payment (Codex's three-way binding).
@@ -922,6 +999,22 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
             "program_effects": effects,
         }
 
+    # Core 430.5's own example (Catalyst of Aeons): "If you couldn't channel 2 runes this
+    # way" is "if you can't" with the count spelled out. It reads the SAME receipt - the
+    # previous instruction's - and the words must describe that instruction: a Channel of
+    # exactly that many runes. Anything else abstains rather than reading another receipt.
+    counted = COUNTED_CHANNEL_LINK.match(normalized)
+    if counted:
+        before = (previous or {}).get("program_effects") or []
+        last = before[-1] if before and not (previous or {}).get("unsupported") else None
+        if last is None or last.get("op") != "channel_rune" or last.get("count") != int(counted.group(1)):
+            return {"production_id": "linked_prefix", "unsupported": True,
+                    "reason_code": "link_antecedent_not_that_channel", "text": text, "normalized": normalized,
+                    "link": "requested_count_not_reached",
+                    "reason": f"{counted.group(0).strip()!r} names a Channel of {counted.group(1)}; the previous "
+                              f"instruction is {(last or {}).get('op')!r} of {(last or {}).get('count')!r}"}
+        normalized = "if you can't, " + normalized[counted.end():]
+
     for prefix, link in LINK_PREFIXES.items():
         if not normalized.startswith(prefix):
             continue
@@ -1023,6 +1116,9 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
             }
         if production_id in TRIGGER_WRAPPERS:
             field, trigger_id, trigger_extra = TRIGGER_WRAPPERS[production_id]
+            if callable(trigger_extra):
+                # a wrapper with its own parameter ("costs [5] or more") builds its extra from it
+                trigger_extra = trigger_extra(params)
             inner = compile_clause(params["inner"], grammar, previous=previous)
             if inner.get("unsupported"):
                 # The wrapper keeps the inner clause's own reason. "The

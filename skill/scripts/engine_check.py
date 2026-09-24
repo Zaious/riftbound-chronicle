@@ -51,6 +51,8 @@ FEATURE_RULES = {
     # C-19 (ADR-0007 §1–3).
     "permanent_entry": ["Core 359.2–359.2.d", "Core 143.4", "Core 124", "Core 190.3.a.1"],
     "play_triggers": ["Core 419.4.a", "Core 355.5.b", "Core 383.2.c"],
+    # 2026-09-24: triggers woken by what happened to anything - a play, a stun, a death
+    "watched_triggers": ["Core 383.1", "Core 383.3.a", "Core 383.3.e", "Core 419.4.a"],
     "open_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.c"],
     # DP-95: one more place a card may enter. "occupied" is 170.11.a - a Unit
     # is there - and "enemy" is the controller relation; 323.6 is why a
@@ -148,7 +150,7 @@ KIND_CONFIG = {
     "resolution": {
         "component": ("resolution_bridge", "riftbound-resolution-bridge-result.v1"),
         "coverage": "combined_resolution_v1",
-        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions", "permanent_entry", "play_triggers", "burn_out_draw", "terminal_event_bridge", "counter_chain_removal"],
+        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions", "permanent_entry", "play_triggers", "watched_triggers", "burn_out_draw", "terminal_event_bridge", "counter_chain_removal"],
         "unsupported": ["arbitrary_card_text", "burn_out_non_draw", "complete_game", "complete_legality"],
     },
     "cleanup": {

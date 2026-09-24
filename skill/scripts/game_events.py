@@ -89,6 +89,9 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # player. A choice with nothing to choose from establishes no selection and
     # emits nothing.
     "selection_established": {"about": "object", "rules": ["Core 355.10.a", "Core 359.3.e"]},
+    # 2026-09-24: a card played - Finalized by its play (Core 419.4.a). Emitted by the play
+    # transaction, not by an effect program, so no op names it (PLAY_EVENT_KINDS).
+    "played": {"about": "object", "rules": ["Core 419.4.a"]},
     # --- player ----------------------------------------------------------
     # Sabotage: the instruction that only chooses. The event is what every
     # later instruction of the same program reads instead of choosing again.
@@ -168,6 +171,21 @@ OP_PRIMARY: dict[str, str] = {
 # effect_ir.SUPPORTED_OPS: Hide is a Discretionary Action of the play
 # transaction (Core 811.1), not an instruction of a resolving effect.
 NON_PROGRAM_OPS = {"hide_card"}
+# Events no op emits at all: the play transaction's own (2026-09-24).
+PLAY_EVENT_KINDS = {"played"}
+
+
+def played_event(*, play_id: str, card: str, actor: str, object_kind: str, identity_before: str | None,
+                 identity_after: str | None, from_hidden: bool, turn_player: str | None) -> dict[str, Any]:
+    """The event a card's play emits once the play has Finalized it (Core 419.4.a) - what
+    "When you play a spell / a gear / another unit / a card from [Hidden] / a card on an
+    opponent's turn" reads. Public: a played card is on the Chain for all to see."""
+    return {"schema_version": EVENT_VERSION, "event_id": f"play:{play_id}#played", "action_id": f"play:{play_id}",
+            "kind": "played", "source": {"object": card, "kind": "object"}, "actor": actor, "controller": actor,
+            "object": card, "player": actor, "identity_before": identity_before, "identity_after": identity_after,
+            "location_before": None, "location_after": None, "causal_parent": None,
+            "visibility": {"fact": "public", "identity": "public"}, "rule_locators": list(EVENT_KINDS["played"]["rules"]),
+            "object_kind": object_kind, "from_hidden": from_hidden, "turn_player": turn_player}
 
 # Structural events that no single op names: they hang under a primary event.
 STRUCTURAL_KINDS = {"left_location", "entered_location", "ceased_to_exist", "replacement_applied", "burned_out"}
@@ -219,6 +237,8 @@ def snapshot(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
         record["identity"] = obj.get("identity", f"{object_id}@0")
         record["owner"] = obj.get("owner")
         record["controller"] = obj.get("controller")
+        # whether it had a buff (Core 426) - what "a buffed unit dies" reads, as it was
+        record["buffed"] = bool(obj.get("buffed"))
         record["exists"] = True
     for record in out.values():
         record.setdefault("location", None)
@@ -337,6 +357,10 @@ class EventLog:
             },
             "rule_locators": list(EVENT_KINDS[kind]["rules"]),
         }
+        if kind == "died":
+            # a death is read off the object as it was (Core 417): "When a buffed friendly unit
+            # dies" asks about the buff it had, not the card now in the trash (2026-09-24)
+            event["was_buffed"] = bool(before.get("buffed"))
         if extra:
             event.update(extra)
         self.events.append(event)

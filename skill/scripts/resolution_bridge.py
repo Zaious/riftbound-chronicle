@@ -470,7 +470,26 @@ def resolve_with_program(
             descriptor.update({"trigger_kind": "reflexive", "batch_sequence": batch_sequence, "batch_id": batch_id,
                                "condition": dict(ct["condition"]), "killed_objects": killed})
             conditional_triggers.append(descriptor)
-    pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers
+    # 2026-09-24: watchers ("When you stun one or more enemy units", "When a buffed friendly
+    # unit dies", ...) wake on what this resolution actually did - the program's events and
+    # its Cleanup's - once Cleanup has run, as the batch after its death triggers.
+    import watchers
+    watched_events = list(effect_result.get("events") or []) + list(cleanup_result.get("events") or [])
+    watch_triggers: list[dict[str, Any]] = []
+    if watched_events:
+        try:
+            watch_triggers, final_effect_state = watchers.schedule_live(
+                final_effect_state, watched_events, turn_id=final_effect_state.get("turn_id", "turn-0"),
+                batch_label=f"resolve:{item_id}")
+        except watchers.WatchUnsupported as exc:
+            return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",
+                    "reason": str(exc), "reason_code": exc.reason_code}
+        watch_batch = max((t.get("batch_sequence", -1) for t in effect_triggers + cleanup_triggers + conditional_triggers),
+                          default=-1) + 1
+        for trigger in watch_triggers:
+            trigger["batch_sequence"] = watch_batch
+            trigger["batch_id"] = f"watch:{item_id}"
+    pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers + watch_triggers
     # Core 383.3.d.1: when one controller has several abilities triggered at
     # once, that controller orders them. The engine never picks: a missing or
     # colliding controller_order inside one batch is a decision_required
@@ -674,6 +693,10 @@ def complete_permanent_play(
         copied = copy.deepcopy(descriptor)
         copied.setdefault("trigger_kind", "triggered")
         copied["play_completion"] = item_id
+        # the entered object's identity, as the attack path records it (combat.py): a program
+        # that reads "here" or "me" is bound to THIS object, never to whatever sits at the id
+        # later (2026-09-24, "When you play me, play a ... token here.")
+        copied["source_identity"] = trace["identity_after"]
         triggers.append(copied)
     # Core 817.1.c: Vision triggers as the permanent enters the Board by being played
     from effect_ir import vision_triggers

@@ -226,6 +226,15 @@ jobs:
         run: python3 skill/scripts/check_attack_or_defend_trigger.py
       - name: Equal to my Might - an amount read on execution
         run: python3 skill/scripts/check_amount_ref.py
+      - name: Tokens a program cannot name - minted at execution, "here" read at execution
+        run: python3 skill/scripts/check_token_minting.py
+      - name: Watchers wired into play and resolution
+        run: python3 skill/scripts/check_watch_wiring.py
+      - name: A Might change over every unit of a side, Base and Battlefield
+        run: python3 skill/scripts/check_bulk_might.py
+
+      - name: Printed static auras - a unit's over the other friendly units at its Battlefield, a Battlefield's over the units at it
+        run: python3 skill/scripts/check_static_auras.py
 
       # Every engine check is listed in this workflow; one that is not has never run.
       - name: CI lists every engine check
@@ -596,6 +605,10 @@ jobs:
           python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
           python3 "$REPO/skill/scripts/check_location_ref.py"
+          python3 "$REPO/skill/scripts/check_token_minting.py"
+          python3 "$REPO/skill/scripts/check_watch_wiring.py"
+          python3 "$REPO/skill/scripts/check_bulk_might.py"
+          python3 "$REPO/skill/scripts/check_static_auras.py"
           python3 "$REPO/skill/scripts/check_trigger_source_identity.py"
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"

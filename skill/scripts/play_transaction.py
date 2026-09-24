@@ -1535,12 +1535,47 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         working["chain_items"][item_id] = {**working["chain_items"][item_id],
                                            "cost_receipt": copy.deepcopy(receipt)}
     next_timing = insertion["next_state"]
+    # 2026-09-24: the play Finalized a card (419.4.a); the watchers that listen for a play
+    # ("When you play a spell", "... a gear", "... another unit", "... a card from [Hidden]",
+    # "... a card on an opponent's turn") wake now, and their triggers go on the Chain above it.
+    watch_trace = None
+    if not is_ability:
+        import game_events
+        import watchers
+        from rules_core import schedule_triggered_items
+        event = game_events.played_event(
+            play_id=declaration["play_id"], card=card, actor=actor,
+            object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
+            identity_after=identity_after, from_hidden=source_kind == "facedown",
+            turn_player=timing_state.get("turn_player"))
+        try:
+            woken, working = watchers.schedule_live(working, [event], turn_id=working.get("turn_id", "turn-0"),
+                                                    batch_label=f"play:{declaration['play_id']}")
+        except watchers.WatchUnsupported as exc:
+            return {**base, "valid": True, "committed": False, "unsupported": True, "rolled_back": True,
+                    "stage": "watchers", "reason_code": exc.reason_code, "reason": str(exc),
+                    "next_timing_state_hash": base["input_timing_state_hash"],
+                    "next_effect_state_hash": base["input_effect_state_hash"]}
+        if woken:
+            for trigger in woken:
+                trigger.update({"batch_sequence": 0, "batch_id": f"played:{declaration['play_id']}"})
+            scheduled = schedule_triggered_items(next_timing, woken)
+            if scheduled.get("applied") is not True:
+                return {**base, "valid": True, "committed": False, "unsupported": False, "rolled_back": True,
+                        "stage": "watchers", "reason_code": scheduled.get("reason_code") or "trigger_schedule_failed",
+                        "reason": "; ".join(scheduled.get("errors", [])),
+                        "next_timing_state_hash": base["input_timing_state_hash"],
+                        "next_effect_state_hash": base["input_effect_state_hash"]}
+            next_timing = scheduled["next_state"]
+        watch_trace = {"stage": "watchers", "outcome": "applied", "event": event["event_id"],
+                       "scheduled": [t["trigger_id"] for t in woken], "rule_locators": ["Core 419.4.a", "Core 383.1"]}
     result = {
         **base, "valid": True, "committed": True, "unsupported": False, "rolled_back": False, "stage": "commit", "reason_code": "ok",
         "chain_item_id": item_id, "cost_receipt": receipt,
         "next_timing_state": next_timing, "next_timing_state_hash": state_hash(next_timing),
         "next_effect_state": working, "next_effect_state_hash": hash_value(working),
-        "trace": trace + [{"stage": "commit", "outcome": "applied", "rule_locators": ["Core 358.4"]}],
+        "trace": trace + ([watch_trace] if watch_trace and watch_trace["scheduled"] else [])
+                 + [{"stage": "commit", "outcome": "applied", "rule_locators": ["Core 358.4"]}],
         "rule_locators": list(dict.fromkeys(locators)),
     }
     problems = validate_play_result(result)

@@ -45,11 +45,17 @@ def corpus_clauses():
 
 
 def target_of(execution):
+    # A play fixture declares SOME timing for the card it plays; "default" is the absence of a
+    # printed marker, which no clause prints (the grammar only ever lowers [Action] / [Reaction]
+    # to play_timing - "the card's own declaration is not a clause's business"). Comparing it
+    # made a permission clause on a default-timing card disagree with its own fixture
+    # (2026-09-24, "You may play me to an open battlefield.").
+    timing = ((execution.get("declaration") or {}).get("chain_item", {}).get("timing")
+              if execution.get("kind") == "play" else None)
     return {
         "program_effects": (execution.get("program") or {}).get("effects", []),
         "passive": execution.get("passive"),
-        "play_timing": (execution.get("declaration") or {}).get("chain_item", {}).get("timing")
-        if execution.get("kind") == "play" else None,
+        "play_timing": None if timing == "default" else timing,
     }
 
 

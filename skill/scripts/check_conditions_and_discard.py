@@ -11,6 +11,9 @@ Must hold:
     never illegal;
   - a completed move_board_object raises the moved object's move_triggers
     as Pending items; recall, return_to_hand and board entry raise none;
+  - "When I move to a battlefield" (condition moved_to_battlefield): raised by a Move to a
+    Battlefield, carrying the mover's identity, never by a Move to a Base; refused on a
+    play trigger;
   - discard: a whole-hand discard proceeds without a decision; a larger hand
     stops for card_selection naming the player and never listing the hand;
     a valid selection discards those cards to the trash as new objects; a
@@ -42,7 +45,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture, item  # noqa: E402
-from effect_ir import apply_program, effects_for, hash_value, object_identity, validate_program  # noqa: E402
+from effect_ir import apply_program, effects_for, hash_value, object_identity, validate_program, validate_state  # noqa: E402
 from engine_check import build_engine_check  # noqa: E402
 from resolution_bridge import resolve_with_program  # noqa: E402
 
@@ -98,6 +101,26 @@ def main() -> int:
     scheduled = resolve_with_program(timing, "spell-1", merchant, program("spell-1-effects", {"op": "move_board_object", "object_id": "u1", "destination": {"kind": "battlefield", "battlefield": "bf1"}}))
     if not scheduled.get("committed") or [i["id"] for i in scheduled["next_timing_state"]["chain"]["items"]] != ["u1-on-move"]:
         errors.append(f"the move trigger was not scheduled as a Pending item: {scheduled.get('reason')} {[i.get('id') for i in scheduled.get('next_timing_state', {}).get('chain', {}).get('items', [])]}")
+
+    # "When I move to a battlefield" (2026-09-24): the same trigger, met only by a Move whose
+    # destination is a Battlefield; it carries the mover's identity; the condition is refused
+    # on any other trigger field
+    drummer = copy.deepcopy(merchant)
+    drummer["objects"]["u1"]["move_triggers"][0]["condition"] = {"kind": "moved_to_battlefield"}
+    to_bf = apply_program(drummer, program("mv", {"op": "move_board_object", "object_id": "u1", "destination": {"kind": "battlefield", "battlefield": "bf1"}}))
+    raised = to_bf.get("pending_triggers") or []
+    if not to_bf.get("committed") or [t["trigger_id"] for t in raised] != ["u1-on-move"] or "condition" in raised[0] \
+            or raised[0].get("source_identity") != object_identity(to_bf["next_state"], "u1"):
+        errors.append(f"a Move to a Battlefield did not raise 'when I move to a battlefield' with the mover's identity: {raised}")
+    back = copy.deepcopy(drummer); back["players"]["p1"]["zones"]["base"].remove("u1"); back["battlefields"]["bf1"]["objects"].append("u1")
+    back["battlefields"]["bf1"]["controller"] = "p1"
+    home = apply_program(back, program("mv", {"op": "move_board_object", "object_id": "u1", "destination": {"kind": "base", "player": "p1"}}))
+    if not home.get("committed") or home.get("pending_triggers"):
+        errors.append(f"a Move to a Base raised 'when I move to a battlefield': {home.get('pending_triggers')} {home.get('reason')}")
+    misfiled = copy.deepcopy(state)
+    misfiled["objects"]["u1"]["play_triggers"] = [{**drummer["objects"]["u1"]["move_triggers"][0], "trigger_id": "u1-play"}]
+    if not validate_state(misfiled):
+        errors.append("'moved_to_battlefield' was accepted on a play trigger")
 
     # --- discard ----------------------------------------------------------------------------
     hand2 = copy.deepcopy(state)

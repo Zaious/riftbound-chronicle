@@ -12,12 +12,12 @@
   "quota": null,
   "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
   "counts": {
-    "clauses_parsed": 32,
-    "clauses_in_debt": 24,
+    "clauses_parsed": 34,
+    "clauses_in_debt": 22,
     "promotion": {
-      "grammar_reproduced": 29,
-      "hand_written": 19,
-      "in_debt_but_claimed": 19
+      "grammar_reproduced": 31,
+      "hand_written": 17,
+      "in_debt_but_claimed": 17
     },
     "by_rule_family": {
       "attacking_defending_alone": 1,
@@ -34,10 +34,9 @@
       "linked_instruction": 1,
       "mutual_damage_equal_might": 1,
       "next_death_replacement": 1,
-      "open_battlefield_play": 2,
       "optional_additional_cost": 1,
       "play_and_move_triggers": 4,
-      "play_lifecycle": 4,
+      "play_lifecycle": 2,
       "recall": 1,
       "return_board_to_hand": 1,
       "return_trash_to_hand": 1,
@@ -47,7 +46,7 @@
     },
     "by_risk": {
       "always_in_play": 4,
-      "main_deck": 20,
+      "main_deck": 18,
       "unknown": 0
     }
   },
@@ -429,46 +428,6 @@
       "reason_code": "link_antecedent_not_available"
     },
     {
-      "clause_id": "sai scout#0ede37d4",
-      "card_key": "sai scout",
-      "card": "Sai Scout",
-      "text": "You may play me to an open battlefield.",
-      "pack": "global-core-origins-v1",
-      "deck_slots": 0,
-      "deck_count": 1,
-      "decks": [
-        "proving-grounds-annie"
-      ],
-      "risk": "main_deck",
-      "rule_family": [
-        "open_battlefield_play",
-        "play_lifecycle"
-      ],
-      "missing_capability": "R3-A2-play-conditions-continuous",
-      "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
-    },
-    {
-      "clause_id": "sneaky deckhand#0ede37d4",
-      "card_key": "sneaky deckhand",
-      "card": "Sneaky Deckhand",
-      "text": "You may play me to an open battlefield.",
-      "pack": "global-core-origins-v1",
-      "deck_slots": 0,
-      "deck_count": 1,
-      "decks": [
-        "proving-grounds-annie"
-      ],
-      "risk": "main_deck",
-      "rule_family": [
-        "open_battlefield_play",
-        "play_lifecycle"
-      ],
-      "missing_capability": "R3-A2-play-conditions-continuous",
-      "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
-    },
-    {
       "clause_id": "traveling merchant#92d985e1",
       "card_key": "traveling merchant",
       "card": "Traveling Merchant",
@@ -533,11 +492,13 @@
   ],
   "delta": {
     "baseline": "2026-09-08.1",
-    "normalization_baseline": "split_clauses:6d017083475686bc",
+    "normalization_baseline": "split_clauses:af6d79ecdf43bc4b",
     "reclassified": [],
     "added": [],
-    "repaid": [],
-    "normalization_reclassification": [],
-    "note": "the clause splitter changed, so every id-level difference is a normalisation reclassification, not a repayment; compare against a build on this splitter for the next real delta"
+    "repaid": [
+      "sai scout#0ede37d4",
+      "sneaky deckhand#0ede37d4"
+    ],
+    "normalization_reclassification": []
   }
 }

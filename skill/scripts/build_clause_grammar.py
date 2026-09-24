@@ -456,6 +456,33 @@ LITERAL = [
      "The card's own text, a fixed Energy amount per card in its controller's trash; 356.6 keeps the Energy cost at 0 or above. Another zone, or a count of something else, is a different clause.",
      ["I cost :rb_energy_1: less for each card in your trash."],
      ["i cost :rb_energy_1: less for each card in your hand", "i cost :rb_energy_1: less for each unit you control"]),
+    # 2026-09-24: a unit's printed static aura - a continuous Might effect over the other
+    # friendly units at its own Battlefield, read live off the object while it is on the
+    # board (effect_ir.printed_aura_effects; check_static_auras.py).
+    ("other_friendly_units_have_might_here",
+     r"other friendly units have \+(?P<amount>\d+) \[m\] here",
+     ["Core 365.1", "Core 476", "Core 477.3", "Core 479"], "passive", ["might_aura"],
+     ("A printed aura: +N Might to every other friendly Unit at the Battlefield where the source is, while the "
+      "source is on the board. Not a target, not snapshotted. A keyword instead of Might, a whole-board aura, "
+      "or an aura on enemy units is a different clause."),
+     ["Other friendly units have +1 :rb_might: here."],
+     ["other friendly units have +2 :rb_might:", "other friendly units here have [assault]",
+      "friendly units have +1 :rb_might: here", "stunned enemy units here have -8 :rb_might:"]),
+    ("other_buffed_friendly_units_at_my_battlefield_have_might",
+     r"other buffed friendly units at my battlefield have \+(?P<amount>\d+) \[m\]",
+     ["Core 365.1", "Core 476", "Core 477.3", "Core 479", "Core 426.1.b"], "passive", ["might_aura"],
+     ("The same aura restricted to Units with a Buff counter: a Unit that loses its Buff stops receiving it at "
+      "once. An unbuffed or a whole-board variant is a different clause."),
+     ["Other buffed friendly units at my battlefield have +2 :rb_might:."],
+     ["other friendly units at my battlefield have +2 :rb_might:", "buffed friendly units have +2 :rb_might:",
+      "other buffed friendly units have [deflect]"]),
+    ("units_here_have_might",
+     r"units here have \+(?P<amount>\d+) \[m\]",
+     ["Core 365.1", "Core 190.6", "Core 476", "Core 477.3", "Core 479"], "passive", ["might_aura"],
+     ("A Battlefield's printed aura: +N Might to every Unit at it, whoever controls it, while the Battlefield is "
+      "in play. A keyword instead of Might, or 'friendly' / 'enemy' units, is a different clause."),
+     ["Units here have +1 :rb_might:."],
+     ["units here have [ganking]", "friendly units here have +1 :rb_might:", "units have +1 :rb_might:"]),
     ("you_may_pay_own_domain_power_as_additional_cost_to_play_me",
      r"you may pay \[c\] as additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"], "passive", ["card_self_optional_cost", "domain_power"],
@@ -523,6 +550,20 @@ LITERAL = [
       "you may play me to an occupied battlefield",
       "friendly units may be played to open battlefields",
       "i can be played to an occupied battlefield if an enemy unit is already there"]),
+    # 2026-09-24: the open-battlefield sibling - 170.11.c makes "open" no controller and
+    # nothing on it; the engine's play path already honours the permission
+    # (check_permanent_play.py). The granting form stays a different clause.
+    ("you_may_play_me_to_an_open_battlefield",
+     r"you may play me to an open battlefield",
+     ["Core 355.2.a", "Core 355.2.b", "Core 170.11.c"], "passive",
+     ["open_battlefield"],
+     ("A printed permission that widens where this card may enter, and nothing else: 170.11.c makes "
+      "'open' a Battlefield no one controls with nothing on it. It does not widen timing. The granting "
+      "form ('friendly units may be played to open battlefields') is a different clause and stays unparsed."),
+     ["You may play me to an open battlefield."],
+     ["you may play me to an occupied enemy battlefield",
+      "friendly units may be played to open battlefields",
+      "you may play a unit to an open battlefield"]),
     ("units_cant_move_from_here_to_base",
      r"units can't move from here to base",
      ["Core 144.4.b", "Core 359.3.e.6", "Core 190.6.a"], "passive", ["move_restriction"],
@@ -550,6 +591,11 @@ WRAPPERS = [
      ["when you play a unit, draw 1", "when i move, draw 1"]),
     ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 428"], ["move_triggers"],
      ["When I move, draw 1."], ["when a unit moves, draw 1", "when you play me, draw 1"]),
+    # 2026-09-24: the same Move trigger, met only when the completed Move's destination is a
+    # Battlefield (effect_ir: condition moved_to_battlefield, read on move_triggers only)
+    ("when_i_move_to_a_battlefield", r"when i move to a battlefield, (?P<inner>.+)", ["Core 383.1", "Core 428"],
+     ["move_triggers"], ["When I move to a battlefield, draw 1."],
+     ["when i move, draw 1", "when i move to base, draw 1", "when a unit moves to a battlefield, draw 1"]),
     ("when_you_hold_here", r"when you hold here, (?P<optional>you may )?(?P<inner>.+)",
      ["Core 469.2", "Core 190.6.a", "Core 383.3"], ["hold_triggers"],
      ["When you hold here, draw 1.", "When you hold here, you may channel 1 rune exhausted."],
@@ -593,6 +639,41 @@ WRAPPERS = [
     ("at_the_end_of_your_turn", r"at the end of your turn, (?P<inner>.+)", ["Core 317.1", "Core 383.1"],
      ["end_of_turn_triggers"], ["At the end of your turn, draw 1."],
      ["at the end of each turn, draw 1", "at the beginning of your turn, draw 1"]),
+    # 2026-09-24: triggers that watch what happens to ANYTHING, not to the card itself - an
+    # event_triggers descriptor with a typed watch (watchers.py), woken by the play
+    # transaction ("played") and by every resolution's events. Each row states its watch.
+    ("when_you_play_a_spell", r"when you play a spell, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
+     ["event_triggers"], ["When you play a spell, draw 1."],
+     ["when you play a spell that costs 5 or more, draw 1", "when you play me, draw 1", "when you play a gear, draw 1"]),
+    ("when_you_play_a_spell_that_costs_n_or_more",
+     r"when you play a spell that costs \[e(?P<cost>\d+)\] or more, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a", "Core 206"],
+     ["event_triggers"], ["When you play a spell that costs :rb_energy_5: or more, draw 1."],
+     ["when you play a spell, draw 1", "when you play a spell that costs :rb_energy_5: or less, draw 1",
+      "when you play a unit that costs :rb_energy_5: or more, draw 1"]),
+    ("when_you_play_a_gear", r"when you play a gear, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
+     ["event_triggers"], ["When you play a gear, draw 1."], ["when you play a spell, draw 1", "when you play me, draw 1"]),
+    ("when_you_play_another_unit", r"when you play another unit, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
+     ["event_triggers"], ["When you play another unit, draw 1."], ["when you play a unit, draw 1", "when you play me, draw 1"]),
+    ("when_you_play_a_card_on_an_opponents_turn", r"when you play a card on an opponent's turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 419.4.a"], ["event_triggers"], ["When you play a card on an opponent's turn, draw 1."],
+     ["when you play a card, draw 1", "when an opponent plays a card, draw 1"]),
+    ("when_you_play_a_card_from_hidden", r"when you play a card from \[hidden\], (?P<inner>.+)",
+     ["Core 383.1", "Core 419.4.a", "Core 811.1"], ["event_triggers"], ["When you play a card from [Hidden], draw 1."],
+     ["when you play a card, draw 1", "when you hide a card, draw 1"]),
+    ("when_you_stun_one_or_more_enemy_units", r"when you stun one or more enemy units, (?P<inner>.+)",
+     ["Core 383.1", "Core 423", "Core 383.3.a"], ["event_triggers"], ["When you stun one or more enemy units, draw 1."],
+     ["when you stun an enemy unit, draw 1", "when a unit is stunned, draw 1"]),
+    ("when_you_recycle_one_or_more_cards_to_your_main_deck",
+     r"when you recycle one or more cards to your main deck, (?P<inner>.+)", ["Core 383.1", "Core 420"],
+     ["event_triggers"], ["When you recycle one or more cards to your Main Deck, draw 1."],
+     ["when you recycle a card, draw 1", "when a card is recycled, draw 1"]),
+    ("when_a_buffed_friendly_unit_dies", r"when a buffed friendly unit dies, (?P<inner>.+)",
+     ["Core 383.1", "Core 417", "Core 426"], ["event_triggers"], ["When a buffed friendly unit dies, draw 1."],
+     ["when a friendly unit dies, draw 1", "when a buffed enemy unit dies, draw 1"]),
+    ("the_first_time_a_friendly_unit_dies_each_turn", r"the first time a friendly unit dies each turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 417", "Core 383.3.e"], ["event_triggers"],
+     ["The first time a friendly unit dies each turn, draw 1."],
+     ["when a friendly unit dies, draw 1", "the first time an enemy unit dies each turn, draw 1"]),
 ]
 
 
@@ -621,6 +702,8 @@ CAPABILITY_ALIAS = {
     "self_card_conditional_fixed_energy_reduction.v1": "evaluated_cost_modifications",
     "timing_permission_v1": "timing_permission_classification",
     "occupied_enemy_battlefield": "occupied_enemy_battlefield_permission",
+    "open_battlefield": "open_battlefield_permission",
+    "event_triggers": "watched_triggers",
 }
 
 

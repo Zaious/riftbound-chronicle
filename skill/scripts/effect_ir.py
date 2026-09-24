@@ -67,7 +67,7 @@ KIND_LAYER = {"might_set": "trait", "keyword_grant": "ability", "keyword_remove"
 # append to another object. These are exactly the printed trigger lists.
 APPENDABLE_TRIGGER_FIELDS = ("death_triggers", "play_triggers", "move_triggers", "attack_triggers", "defend_triggers",
                              "conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers",
-                             "end_of_turn_triggers")
+                             "end_of_turn_triggers", "event_triggers")
 COPYABLE_TRAITS = {"type", "rules_text"}
 
 CONTINUOUS_DURATIONS = {"permanent", "this_turn", "this_combat", "while_source_active", "until_detached"}
@@ -95,7 +95,9 @@ GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline"}
 KEYWORD_MODIFIER_DURATIONS = {"this_combat", "this_turn"}
 # Core 812.1.c: a Legion ability is active once its controller has Finalized another card
 # this turn. On a trigger it is only read where "When you play me" triggers are collected.
-TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn"}
+# "moved_to_battlefield" (2026-09-24, "When I move to a battlefield"): read only on a move
+# trigger, against the completed Move's destination
+TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn", "moved_to_battlefield"}
 DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
@@ -544,6 +546,13 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"battlefields.{battlefield_id}.contested_by must be a player or null")
         if battlefield.get("contested") and battlefield.get("contested_by") is None:
             errors.append(f"battlefields.{battlefield_id} is contested without contested_by")
+        for a_index, aura in enumerate(battlefield.get("static_auras", []) or []):
+            if not isinstance(aura, dict) or set(aura) - {"aura_id", "amount", "criteria"} \
+                    or not isinstance(aura.get("amount"), int) or isinstance(aura.get("amount"), bool) or aura.get("amount") == 0 \
+                    or not isinstance(aura.get("criteria"), dict) or set(aura["criteria"]) - BATTLEFIELD_AURA_CRITERIA \
+                    or aura["criteria"].get("kind", "unit") != "unit":
+                errors.append(f"battlefields.{battlefield_id}.static_auras[{a_index}] must be {{aura_id, amount != 0, "
+                              f"criteria over {sorted(BATTLEFIELD_AURA_CRITERIA)}}}")
         # Core 190.3.a / 190.3.a.1: a Unit whose controller does not control this
         # Battlefield applies Contested the moment it becomes present there. A Battlefield
         # controlled by one player with an enemy Unit on it and no Contested status is
@@ -1008,6 +1017,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "another_card_finalized_this_turn" and (trigger_field != "play_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: a Legion condition is read only on a play trigger, as {{kind}} (Core 812.1.c)")
+                elif "condition" in trigger and trigger["condition"].get("kind") == "moved_to_battlefield" and (trigger_field != "move_triggers" or set(trigger["condition"]) != {"kind"}):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'to a battlefield' is read only on a move trigger, as {{kind}} (Core 383.1, 428)")
                 elif "scope" in trigger and trigger_field in {"conquer_triggers", "hold_triggers"} and trigger["scope"] not in {"unit_here", "controller"}:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope must be unit_here or controller on a Score trigger (Core 383.4.c.2)")
                 elif "scope" in trigger and trigger_field in {"beginning_phase_triggers", "main_phase_triggers"} and trigger["scope"] not in {"your_beginning_phase", "your_main_phase"}:
@@ -1033,6 +1044,16 @@ def validate_state(state: Any) -> list[str]:
                     or not isinstance(dynamic["amount"], int) or isinstance(dynamic["amount"], bool) or dynamic["amount"] < 1
                     or not isinstance(dynamic["per"], dict) or set(dynamic["per"]) != {"kind"} or dynamic["per"]["kind"] not in MIGHT_PER_KINDS):
                 errors.append(f"{label} must be {{modifier_id, amount >= 1, per: {{kind in {sorted(MIGHT_PER_KINDS)}}}}}")
+        for a_index, aura in enumerate(obj.get("static_auras", []) or []):
+            label = f"objects.{object_id}.static_auras[{a_index}]"
+            criteria = aura.get("criteria") if isinstance(aura, dict) else None
+            if (not isinstance(aura, dict) or set(aura) != {"aura_id", "amount", "criteria"} or not isinstance(aura["aura_id"], str)
+                    or not isinstance(aura["amount"], int) or isinstance(aura["amount"], bool) or aura["amount"] == 0
+                    or not isinstance(criteria, dict) or set(criteria) - STATIC_AURA_CRITERIA
+                    or criteria.get("kind", "unit") not in {"unit", "gear"}
+                    or criteria.get("controller_relation", "friendly") not in {"friendly", "enemy"}
+                    or any(criteria.get(k) not in (None, True) for k in ("exclude_source", "at_source_battlefield", "buffed"))):
+                errors.append(f"{label} must be {{aura_id, amount != 0, criteria over {sorted(STATIC_AURA_CRITERIA)}}}")
         seen_conditional: set[str] = set()
         for c_index, conditional in enumerate(obj.get("conditional_might", []) or []):
             label = f"objects.{object_id}.conditional_might[{c_index}]"
@@ -1564,8 +1585,21 @@ def validate_program(program: Any) -> list[str]:
                 if "token_id" in effect and (not isinstance(effect["token_id"], str) or not effect["token_id"]):
                     errors.append(f"effects[{index}].play_token.token_id must be a non-empty catalogue id (ADR-0012 §6)")
                 destination = effect.get("destination")
-                if not isinstance(effect.get("object_id"), str) or not effect.get("object_id"):
+                # 2026-09-24: a card program cannot name its token's id - it resolves once per
+                # copy and per replay. object_id_ref {kind: fresh} has the engine mint one at
+                # execution (Core 124: every token is a new object), deterministically.
+                fresh = effect.get("object_id_ref") == {"kind": "fresh"}
+                if effect.get("object_id_ref") is not None and not fresh:
+                    errors.append(f"effects[{index}].play_token.object_id_ref must be {{kind: fresh}}")
+                if fresh and effect.get("object_id") is not None:
+                    errors.append(f"effects[{index}].play_token carries both object_id and object_id_ref")
+                if not fresh and (not isinstance(effect.get("object_id"), str) or not effect.get("object_id")):
                     errors.append(f"effects[{index}].play_token requires object_id")
+                if isinstance(destination, dict) and "location_ref" in destination and (
+                        destination.get("kind") != "battlefield" or "battlefield" in destination
+                        or not is_location_ref(destination["location_ref"])):
+                    errors.append(f"effects[{index}].play_token destination location_ref must be a battlefield "
+                                  f"with a location_ref and no literal battlefield")
                 if not isinstance(effect.get("owner"), str) or not effect.get("owner"):
                     errors.append(f"effects[{index}].play_token requires owner")
                 if not isinstance(effect.get("controller"), str) or effect.get("token_kind") not in {"unit", "gear"}:
@@ -1602,8 +1636,10 @@ def validate_program(program: Any) -> list[str]:
                     if "controller_relation" in criteria and criteria["controller_relation"] not in {"friendly", "enemy"}:
                         errors.append(f"effects[{index}].affected.criteria.controller_relation is invalid")
                 else:
-                    if criteria["location"] not in {"target_battlefield", "any_battlefield", "active_combat"}:
+                    if criteria["location"] not in {"target_battlefield", "any_battlefield", "active_combat", "board"}:
                         errors.append(f"effects[{index}].affected.criteria.location is invalid")
+                    if criteria["location"] == "board" and target is not None:
+                        errors.append(f"effects[{index}].affected over the whole board targets nothing (Core 355.10.b)")
                     if criteria["location"] == "active_combat" and target is not None:
                         errors.append(f"effects[{index}].affected over active_combat targets nothing (Core 355.10.d, 740.2.c)")
                     if "kind" in criteria and criteria["kind"] not in {"unit", "gear"}:
@@ -2943,9 +2979,15 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         moved = new_state["objects"][object_id]
         move_triggers = []
         for descriptor in object_triggers(new_state, object_id, "move_triggers"):
+            if (descriptor.get("condition") or {}).get("kind") == "moved_to_battlefield" and destination.get("kind") != "battlefield":
+                continue        # "When I move to a battlefield": a Move to a Base does not meet it
             copied = copy.deepcopy(descriptor)
+            copied.pop("condition", None)
             copied.setdefault("trigger_kind", "triggered")
             copied["move"] = {"from": source, "to": target}
+            # the mover's identity (a Move keeps it), so a program reading "here" or "me" is
+            # bound to THIS object, as a play trigger's is (2026-09-24, Noxian Drummer)
+            copied["source_identity"] = object_identity(new_state, object_id) or f"{object_id}@0"
             move_triggers.append(copied)
         if move_triggers:
             trace["pending_triggers"] = move_triggers
@@ -3305,6 +3347,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             "exhausted": entry_state == "exhausted",
             "keywords": copy.deepcopy(keywords),
             "identity": f"{object_id}@0",
+            # which catalogued token this is, on the object itself (ADR-0012 §6), so a later
+            # rule can ask what the token is - not only the trace of its making
+            **({"token_id": effect["token_id"]} if effect.get("token_id") else {}),
         }
         if destination.get("kind") == "base" and destination.get("player") in new_state["players"]:
             new_state["players"][destination["player"]]["zones"]["base"].append(object_id)
@@ -4014,11 +4059,82 @@ def _effect_active(state: dict[str, Any], effect: dict[str, Any]) -> tuple[bool,
     return True, "active"
 
 
+def printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
+    """A card's printed static aura ("Other friendly units have +1 [M] here.") as the
+    continuous effect it is while its source is on the board (Core 365.1, 476-480), read
+    live from the object - never stored, so an aura that entered after the state's legacy
+    fields were migrated is still read, and one that left stops at once (2026-09-24)."""
+    effects = []
+    for object_id in sorted(state.get("objects") or {}):
+        obj = state["objects"][object_id]
+        for position, aura in enumerate(obj.get("static_auras", []) or []):
+            amount = aura["amount"]
+            effects.append({
+                "effect_id": f"printed:aura:{object_id}:{aura.get('aura_id', position)}", "kind": "might_arithmetic",
+                "source": {"object": object_id, "identity": obj.get("identity") or f"{object_id}@0"},
+                "affects": {"scope": "criteria", "criteria": {**copy.deepcopy(aura["criteria"]), "printed_aura_source": object_id,
+                                                              "aura_controller": obj.get("controller")}},
+                "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
+                "timestamp": _legacy_timestamp(6, position), "value": {"amount": amount, "mode": "delta"},
+                "duration": {"kind": "while_source_active"}, "passive": True,
+            })
+    # a Battlefield's own printed aura ("Units here have +1 [M]."): every Unit at it, either side
+    for battlefield_id in sorted(state.get("battlefields") or {}):
+        for position, aura in enumerate(state["battlefields"][battlefield_id].get("static_auras", []) or []):
+            amount = aura["amount"]
+            effects.append({
+                "effect_id": f"printed:aura:{battlefield_id}:{aura.get('aura_id', position)}", "kind": "might_arithmetic",
+                "source": {"object": battlefield_id, "identity": f"{battlefield_id}@0"},
+                "affects": {"scope": "criteria", "criteria": {**copy.deepcopy(aura["criteria"]), "printed_aura_battlefield": battlefield_id}},
+                "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
+                "timestamp": _legacy_timestamp(7, position), "value": {"amount": amount, "mode": "delta"},
+                "duration": {"kind": "while_source_active"}, "passive": True,
+            })
+    return effects
+
+
+STATIC_AURA_CRITERIA = {"kind", "controller_relation", "exclude_source", "at_source_battlefield", "buffed"}
+BATTLEFIELD_AURA_CRITERIA = {"kind"}
+
+
+def _battlefield_aura_applies(state: dict[str, Any], criteria: dict[str, Any], object_id: str) -> bool:
+    where = find_location(state, object_id)
+    if where is None or where[0] != "battlefield" or where[1] != criteria["printed_aura_battlefield"]:
+        return False
+    return "kind" not in criteria or (state["objects"].get(object_id) or {}).get("kind") == criteria["kind"]
+
+
+def _printed_aura_applies(state: dict[str, Any], criteria: dict[str, Any], object_id: str) -> bool:
+    source = criteria["printed_aura_source"]
+    obj = state["objects"].get(object_id) or {}
+    where = find_location(state, object_id)
+    if zone_class(where) != "board":
+        return False
+    if "kind" in criteria and obj.get("kind") != criteria["kind"]:
+        return False
+    relation = criteria.get("controller_relation")
+    if relation is not None and same_side(state, criteria["aura_controller"], obj.get("controller")) != (relation == "friendly"):
+        return False
+    if criteria.get("exclude_source") and object_id == source:
+        return False
+    if criteria.get("at_source_battlefield"):
+        at = find_location(state, source)
+        if at is None or at[0] != "battlefield" or where[0] != "battlefield" or where[1] != at[1]:
+            return False
+    if criteria.get("buffed") and not obj.get("buffed"):
+        return False
+    return True
+
+
 def _effect_applies_to(state: dict[str, Any], effect: dict[str, Any], object_id: str) -> bool:
     affects = effect["affects"]
     if affects["scope"] == "object":
         return affects["object"] == object_id
     criteria = affects.get("criteria") or {}
+    if "printed_aura_source" in criteria:
+        return _printed_aura_applies(state, criteria, object_id)
+    if "printed_aura_battlefield" in criteria:
+        return _battlefield_aura_applies(state, criteria, object_id)
     if "aura_controller" in criteria:
         return same_side(state, criteria["aura_controller"], state["objects"][object_id].get("controller"))
     return False
@@ -4327,7 +4443,8 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     engine derives dependencies (478) and falls back to timestamp order (480);
     an order it cannot justify is refused rather than guessed."""
     obj = state["objects"][object_id]
-    effects = [e for e in canonical_effects(state) if _effect_applies_to(state, e, object_id) and _effect_active(state, e)[0]]
+    effects = [e for e in canonical_effects(state) + printed_aura_effects(state)
+               if _effect_applies_to(state, e, object_id) and _effect_active(state, e)[0]]
     # Core 703: "Each Buff individually contributes +1 Might to a Unit." A Buff
     # is a counter, not a continuous effect, so it is not in the effect list at
     # all - it has to be added here or it contributes nothing. 476.3's own
@@ -6032,9 +6149,16 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 battlefield_ids = [targeted_battlefield]
             else:
                 battlefield_ids = sorted(current["battlefields"])
+            candidates = [o for battlefield_id in battlefield_ids for o in current["battlefields"][battlefield_id]["objects"]]
+            if criteria.get("location") == "board":
+                # "Give friendly units +2 Might this turn": every such unit on the Board - the
+                # Bases as well as the Battlefields (Core 105), not only the Battlefields
+                # (2026-09-24; the clause grammar has always emitted this location)
+                for player_id in sorted(current["players"]):
+                    candidates += list(current["players"][player_id]["zones"].get("base") or [])
             affected_ids: list[str] = []
-            for battlefield_id in battlefield_ids:
-                for candidate in current["battlefields"][battlefield_id]["objects"]:
+            for battlefield_id in [None]:
+                for candidate in candidates:
                     obj = current["objects"][candidate]
                     if "kind" in criteria and obj["kind"] != criteria["kind"]:
                         continue
@@ -6217,6 +6341,31 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 continue
             effect["amount"] = read
             effect["amount_read_from"] = {"kind": "program_source_current_might", "object_id": read_from, "might": read}
+        # A token the program cannot name: a fresh id, minted now (Core 124), and "here" as
+        # where it enters - the source's current Battlefield, read now (Core 359.3.f.2); a
+        # source that is not at a Battlefield plays no token (2026-09-24)
+        if effect.get("op") == "play_token" and (effect.get("object_id_ref") is not None
+                                                  or isinstance((effect.get("destination") or {}).get("location_ref"), dict)):
+            effect = dict(effect)
+            if effect.pop("object_id_ref", None) is not None:
+                stem = f"token:{effect.get('token_id') or 'token'}"
+                serial = 1
+                while f"{stem}:{serial}" in current["objects"]:
+                    serial += 1
+                effect["object_id"] = f"{stem}:{serial}"
+            destination = effect.get("destination") or {}
+            if isinstance(destination.get("location_ref"), dict):
+                try:
+                    here = resolve_location_ref(destination["location_ref"], current, program)
+                except SelectionBindingRefused as exc:
+                    event = {"index": index, "effect_id": effect_id, "op": "play_token", "outcome": "no_op",
+                             "completion": "none", "reason": exc.reason_code,
+                             "rule_locators": ["Core 359.3.f.1", "Core 359.3.f.2"],
+                             "before_state_hash": before_hash, "after_state_hash": before_hash}
+                    trace.append(event)
+                    outcomes[effect_id] = event["outcome"]
+                    continue
+                effect["destination"] = {"kind": "battlefield", "battlefield": here}
         affected_before_damage = current["objects"].get(effect.get("object_id"), {}).get("damage")
         # ADR-0007 §5: Bonus Damage is a property of the Deal action — added
         # once the Deal is known to happen with a non-zero base (715.4), before

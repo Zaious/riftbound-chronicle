@@ -84,6 +84,56 @@ def main() -> int:
     if outcome(subset, 1) != "applied":
         errors.append(f"a multi-target subset did not satisfy requested_count_not_reached: {outcome(subset, 0)} / {outcome(subset, 1)}")
 
+    # --- Catalyst of Aeons (Core 430.5's own example) through the grammar ---------------------------
+    # "If you couldn't channel 2 runes this way, draw 1." reads THAT Channel's receipt:
+    # 2 channelled -> no draw, 1 -> draw 1, 0 -> draw 1 (GPT 2026-09-24).
+    import json as _json
+    from clause_grammar import compile_card, load_grammar
+    grammar = load_grammar()
+
+    def card_program(*clauses):
+        compiled = compile_card([{"text": c} for c in clauses], grammar)
+        return compiled, _json.loads(_json.dumps(compiled["program_effects"]).replace('"$controller"', '"p1"'))
+
+    def with_rune_deck(n):
+        s = copy.deepcopy(state)
+        for old in s["players"]["p1"]["zones"]["rune_deck"]:
+            s["objects"].pop(old, None)
+        s["players"]["p1"]["zones"]["rune_deck"] = []
+        for i in range(n):
+            s["objects"][f"cr{i}"] = {"owner": "p1", "controller": "p1", "kind": "rune", "base_might": 0,
+                                      "might_modifiers": [], "damage": 0, "exhausted": False}
+            s["players"]["p1"]["zones"]["rune_deck"].append(f"cr{i}")
+        return s
+
+    catalyst_text = ("Channel 2 runes exhausted.", "If you couldn't channel 2 runes this way, draw 1.")
+    compiled, catalyst = card_program(*catalyst_text)
+    if compiled.get("unsupported_clauses") or [e.get("predicate") for e in catalyst] != [
+            None, {"kind": "requested_count_not_reached", "effect_id": catalyst[0]["effect_id"]}]:
+        errors.append(f"Catalyst's second sentence did not bind to its own Channel: {catalyst}")
+    else:
+        for runes, draws in ((2, False), (1, True), (0, True), (3, False)):
+            ran = apply_program(with_rune_deck(runes), program(f"cat{runes}", *catalyst))
+            drew = ran.get("committed") and ran["trace"][1].get("outcome") == "applied"
+            if not ran.get("committed") or drew != draws:
+                errors.append(f"Catalyst with {runes} rune(s) in the deck: drew={drew}, expected {draws} "
+                              f"({outcome(ran, 0)} / {outcome(ran, 1)})")
+    # the receipt is THAT Channel's, never another one's: deck of 2, a full Channel of 1 then a
+    # short Channel of 2 - bound to the short one the draw happens, bound to the full one it
+    # does not, so which receipt is read decides the result
+    first = {"op": "channel_rune", "player": "p1", "count": 1, "entry_state": "exhausted", "effect_id": "ch-a"}
+    second = {"op": "channel_rune", "player": "p1", "count": 2, "entry_state": "exhausted", "effect_id": "ch-b"}
+    for bound, draws in (("ch-b", True), ("ch-a", False)):
+        ran = apply_program(with_rune_deck(2), program(f"two-{bound}", first, second, gated_draw("requested_count_not_reached", bound)))
+        drew = ran.get("committed") and ran["trace"][2].get("outcome") == "applied"
+        if not ran.get("committed") or drew != draws:
+            errors.append(f"bound to {bound}: drew={drew}, expected {draws} ({outcome(ran, 1)} / {outcome(ran, 2)})")
+    for words in (("Channel 1 rune exhausted.", "If you couldn't channel 2 runes this way, draw 1."),
+                  ("Draw 1.", "If you couldn't channel 2 runes this way, draw 1.")):
+        compiled, _ = card_program(*words)
+        if not compiled.get("unsupported_clauses"):
+            errors.append(f"a counted link over the wrong instruction was compiled: {words}")
+
     # --- invalid / unsupported ---------------------------------------------------------------------
     if not any("earlier instruction" in e for e in validate_program(program("h", deal, gated_draw("action_performed", "nope")))):
         errors.append("an unknown predicate effect_id was accepted")

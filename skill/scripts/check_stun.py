@@ -171,8 +171,15 @@ def main() -> int:
     compiled = cg.compile_clause("Stun a unit.", grammar)
     if compiled.get("unsupported") or compiled["program_effects"][0]["op"] != "stun":
         errors.append(f"Rune Prison's clause did not compile: {compiled}")
+    # 2026-09-24: the stun TRIGGER is now compiled on purpose - a watch over "stunned" events,
+    # by you, of enemy units, one or more at once firing once (check_watch_wiring.py runs it)
+    watched = cg.compile_clause("When you stun one or more enemy units, buff a friendly unit.", grammar)
+    watch = ((watched.get("passive") or {}).get("object_fields", {}).get("event_triggers") or [{}])[0].get("watch")
+    if watched.get("unsupported") or watch != {"kinds": ["stunned"], "scope": "actor",
+                                               "filter": {"object_controller_relation": "enemy"},
+                                               "grouping": "one_or_more"}:
+        errors.append(f"the stun trigger did not compile to its typed watch: {watch}")
     for text, family in (
-        ("When you stun one or more enemy units, buff a friendly unit.", "stun_trigger"),
         ("While there's a stunned enemy unit here, I have +2 :rb_might:.", "stun_state_condition"),
         ("Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:.", "stun_aura"),
         ("If a spell or ability that chooses me would stun me, give me -2 :rb_might: instead.", "stun_replacement"),
@@ -188,7 +195,7 @@ def main() -> int:
         return 1
     print("stun checks passed: the status is owned by a turn effect and cleared at Expiration 3d, a "
           "Stunned Unit contributes no Combat Damage while keeping its Might and its lethal threshold, "
-          "stunning again is a legal no-op with no event, and the five other Stun shapes stay unparsed")
+          "stunning again is a legal no-op with no event, and the the stun trigger compiles to its watch, and the four other Stun shapes stay unparsed")
     return 0
 
 

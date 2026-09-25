@@ -4,7 +4,7 @@
   "capability_set_id": "sha256:cbf1a797070afc5ec7c005863153c0b834f61c41fb1af4ffb6876d8ab373c041",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:96a909face4c604a7be8060d258d3a460cc3e99dbf8b85dcae68f2ad9431623a",
+    "value": "sha256:de3b24ecf6be5aab8267151bee8fbe128d630852deb2edfaf67dcecb46c1e557",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:9d7ad05fcf7c7a92b36e38c4c78e2e9de8d8d5fd8c3843e35e866f93d752e628"
+        "sha256": "sha256:833940a1bee9ff88e5d896c247899b53333e8e439ed13cf61582a09da5308fd8"
       },
       {
         "path": "resolution_bridge.py",

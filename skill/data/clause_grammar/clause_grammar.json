@@ -959,6 +959,32 @@
       ]
     },
     {
+      "production_id": "discard_n",
+      "form": "Discard 1.",
+      "template": "discard (?P<count>\\d+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 422.1",
+        "Core 422.1.a",
+        "Core 422.4"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "private_discard"
+      ],
+      "boundary": "The controller discards from their own hand. Discarding at random, or another player's discard, is a different production.",
+      "golden": [
+        "Discard 1.",
+        "Discard 2."
+      ],
+      "negative": [
+        "discard 2 at random",
+        "each player discards 1",
+        "discard your hand"
+      ]
+    },
+    {
       "production_id": "deal_n_to_a_unit_at_a_battlefield",
       "form": "Deal 2 to a unit at a battlefield.",
       "template": "deal (?P<amount>\\d+) to a unit at (?:a )?battlefield",

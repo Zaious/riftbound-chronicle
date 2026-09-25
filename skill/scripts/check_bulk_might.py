@@ -25,7 +25,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state, program  # noqa: E402
-from effect_ir import apply_program, effective_might, find_location, validate_program  # noqa: E402
+from effect_ir import apply_program, effective_might, find_location, validate_program, validate_state  # noqa: E402
 
 
 def board():
@@ -78,6 +78,35 @@ def main() -> int:
         if where != {"g1": ("player", "p1", "trash"), "g2": ("player", "p2", "trash"), "u1": ("player", "p1", "base"),
                      "u5": ("battlefield", "bf1", None), "e5": ("player", "p2", "base")}:
             errors.append(f"'kill all gear' did not kill exactly every gear on the board: {where}")
+    # 2026-09-25 (GPT's counterexample): an ATTACHED gear on the same board. After "Kill all
+    # gear" it is in its owner's trash, no longer attached; its host has lost the Might Bonus
+    # (Core 435.1.e); the state is valid; the unattached gear is in the trash too
+    armed = board()
+    armed["objects"]["g3"] = {"owner": "p1", "controller": "p1", "kind": "gear", "base_might": 0, "might_modifiers": [],
+                              "damage": 0, "exhausted": False, "attached_to": "u1", "might_bonus": 2}
+    armed["players"]["p1"]["zones"]["base"].append("g3")
+    if validate_state(armed):
+        errors.append(f"the armed board was invalid: {validate_state(armed)}")
+    printed = armed["objects"]["u1"]["base_might"]
+    if effective_might(armed, "u1") != printed + 2:
+        errors.append("the attached gear's Might Bonus did not reach its host before the kill")
+    swept = apply_program(armed, program("gear", {"op": "kill", "effect_id": "k",
+                                                  "affected": {"criteria": {"kind": "gear", "location": "board"}}}))
+    if not swept.get("committed"):
+        errors.append(f"killing all gear with one attached was refused: {swept.get('reason') or swept.get('errors')}")
+    else:
+        after = swept["next_state"]
+        if find_location(after, "g3") != ("player", "p1", "trash") or find_location(after, "g1") != ("player", "p1", "trash") \
+                or "attached_to" in after["objects"]["g3"] or effective_might(after, "u1") != printed or validate_state(after):
+            errors.append(f"after 'kill all gear' the attached gear kept its link or its bonus: g3 at {find_location(after, 'g3')}, "
+                          f"attached_to {after['objects']['g3'].get('attached_to')}, u1 Might {effective_might(after, 'u1')}, "
+                          f"valid {validate_state(after)}")
+    stale = board()
+    stale["objects"]["g3"] = {"owner": "p1", "controller": "p1", "kind": "gear", "base_might": 0, "might_modifiers": [],
+                              "damage": 0, "exhausted": False, "attached_to": "u1", "might_bonus": 2}
+    stale["players"]["p1"]["zones"]["trash"].append("g3")
+    if not validate_state(stale):
+        errors.append("a gear in the trash still attached to a unit was a valid state")
     targeted = bulk(2, "friendly", target={"object_id": "u1", "chosen_zone_class": "board"})
     if not validate_program(program("bad", targeted)):
         errors.append("a whole-board instruction that names a target validated")

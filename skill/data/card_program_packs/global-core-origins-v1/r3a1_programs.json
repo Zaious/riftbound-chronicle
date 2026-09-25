@@ -10498,17 +10498,15 @@
                   "effect_id": "d",
                   "player": "$controller",
                   "count": 1,
-                  "decision_ref": "pick"
+                  "decision_ref": "pick",
+                  "order": 0
                 },
                 {
                   "op": "draw",
                   "effect_id": "then",
                   "player": "$controller",
                   "count": 1,
-                  "predicate": {
-                    "kind": "action_performed",
-                    "effect_id": "d"
-                  }
+                  "order": 1
                 }
               ]
             }
@@ -10715,20 +10713,19 @@
                 "outcome": "supported",
                 "trace_outcomes": [
                   "no_op",
-                  "skipped_linked_dependency"
+                  "applied"
                 ],
                 "assert": [
                   {
                     "hand_size": "p1",
-                    "equals": 0
+                    "equals": 1
                   }
                 ],
                 "rule_locators": [
-                  "Core 422.4",
-                  "Core 430.5"
+                  "Core 422.4"
                 ]
               },
-              "why": "an empty hand discards nothing (422.4: as many as possible), so 'then draw 1' — dependent on the discard having happened — does not draw.",
+              "why": "an empty hand discards nothing (422.4: as many as possible), and 'then' is order, not a condition: the draw happens regardless (422.4's own example; corrected 2026-09-25, GPT).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",

@@ -166,7 +166,26 @@ def verify_pack(pack: Any, catalog: dict[str, Any]) -> list[str]:
         entry = entry_of(catalog, token_id)
         if entry is None:
             errors.append(f"{path}: token {token_id!r} is not in the catalogue (unsupported: token_not_in_catalogue)")
+            continue
+        # the characteristics the program applies must be the entry's (2026-09-25, GPT: an id
+        # alone let "sprite, 999 Might" through): kind, printed Might, printed keywords
+        node = _node_at(pack, path)
+        printed = sorted((node.get("event_modifiers") or {}).get("result_keywords") or [])
+        if node.get("token_kind") != entry["kind"]:
+            errors.append(f"{path}: token {token_id!r} is a {entry['kind']}, the program plays a {node.get('token_kind')!r}")
+        if node.get("base_might") != entry["base_might"]:
+            errors.append(f"{path}: token {token_id!r} has {entry['base_might']} Might, the program plays {node.get('base_might')!r}")
+        if printed != sorted(entry["keywords"]):
+            errors.append(f"{path}: token {token_id!r} has keywords {sorted(entry['keywords'])}, the program plays {printed}")
     return errors
+
+
+def _node_at(value: Any, path: str) -> dict[str, Any]:
+    """The play_token node program_token_ids found at `path`."""
+    node = value
+    for key, index in re.findall(r"/([^/\[]+)|\[(\d+)\]", path):
+        node = node[int(index)] if index else node[key]
+    return node
 
 
 def main(argv: list[str] | None = None) -> int:

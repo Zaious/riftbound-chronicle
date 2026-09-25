@@ -218,9 +218,30 @@ def main() -> int:
     if then.get("unsupported"):
         errors.append(f"'then' did not compile: {then}")
     else:
+        # GPT 2026-09-25: ", then" is order, not a condition - no predicate on the later part
         second = then["program_effects"][1]
-        if second.get("predicate", {}).get("kind") != "action_performed" or                 second["predicate"]["effect_id"] != then["program_effects"][0]["effect_id"]:
-            errors.append(f"'then' did not gate the second instruction on the first's receipt: {second}")
+        if "predicate" in second:
+            errors.append(f"'then' made the second instruction depend on the first: {second}")
+    # Core 422.4's own example: "Discard 2, then draw 2." with an empty hand ignores the
+    # discard and still draws 2
+    import copy as _copy
+    from check_effect_ir import base_state as _base_state
+    from effect_ir import PROGRAM_VERSION as _PROGRAM_VERSION, apply_program as _apply
+    empty = cg.compile_clause("Discard 2, then draw 2.", grammar)
+    if empty.get("unsupported") or any("predicate" in e for e in empty.get("program_effects", [])):
+        errors.append(f"'Discard 2, then draw 2.' did not compile to an unconditional sequence: {empty}")
+    else:
+        state = _base_state()
+        state["players"]["p1"]["zones"]["hand"] = []
+        state["players"]["p1"]["zones"]["main_deck"] = ["c1", "c2"]
+        effects = [{k: v for k, v in _copy.deepcopy(e).items() if k != "order"} for e in empty["program_effects"]]
+        for e in effects:
+            e["player"] = "p1"
+        ran = _apply(state, {"schema_version": _PROGRAM_VERSION, "ruleset": state["ruleset"],
+                             "program_id": "discard-then-draw", "controller": "p1", "effects": effects})
+        if not ran.get("committed") or len(ran["next_state"]["players"]["p1"]["zones"]["hand"]) != 2:
+            errors.append(f"Core 422.4: an empty hand's 'Discard 2, then draw 2' did not draw 2: "
+                          f"{ran.get('reason') or ran.get('errors')} {ran.get('trace')}")
     # a connective outside the white-list joins nothing
     for text in ("Draw 1 and summon a dragon.", "Draw 1 while you have 2 runes."):
         if not cg.compile_clause(text, grammar).get("unsupported"):

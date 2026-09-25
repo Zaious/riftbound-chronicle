@@ -345,6 +345,13 @@ LITERAL = [
     ("draw_n", r"draw (?P<count>\d+)", ["Core 413", "Core 431"], "instruction", ["draw"],
      "The controller draws. 'Each player draws' and 'draw until' are not this production.",
      ["Draw 1.", "Draw 2."], ["each player draws 1", "draw 1, then discard 1"]),
+    # 2026-09-25: the controller discards N from their own hand, chosen privately (Core 422.1);
+    # a hand shorter than N discards what it has, an empty hand ignores it (422.4). Returned
+    # now that ", then" no longer makes the next instruction depend on it (GPT 2026-09-25).
+    ("discard_n", r"discard (?P<count>\d+)", ["Core 422.1", "Core 422.1.a", "Core 422.4"], "instruction",
+     ["private_discard"],
+     "The controller discards from their own hand. Discarding at random, or another player's discard, is a different production.",
+     ["Discard 1.", "Discard 2."], ["discard 2 at random", "each player discards 1", "discard your hand"]),
     ("deal_n_to_a_unit_at_a_battlefield", r"deal (?P<amount>\d+) to a unit at (?:a )?battlefield",
      ["Core 437", "Core 355.9"], "instruction", ["deal_damage", "targeting"],
      "One chosen Unit at a Battlefield. A Might restriction on the target is a different production.",

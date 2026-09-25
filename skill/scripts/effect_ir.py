@@ -1109,6 +1109,10 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.attached_to must name another object in this state")
             elif objects[host_id].get("attached_to") is not None:
                 errors.append(f"objects.{object_id}.attached_to names {host_id!r}, which is itself attached; nested attachments are outside this slice")
+            elif zone_class(find_location(state, object_id)) != "board":
+                # 2026-09-25 (GPT): an attached card that left the board kept its link and
+                # kept buffing its host; attaching links two cards ON the board (434.1.a)
+                errors.append(f"objects.{object_id} is attached to {host_id!r} but is not on the board (Core 434.1.a, 435.1.b)")
         if "might_bonus" in obj and (not isinstance(obj["might_bonus"], int) or isinstance(obj["might_bonus"], bool) or obj["might_bonus"] < 0):
             errors.append(f"objects.{object_id}.might_bonus must be a non-negative integer (Core 159.1)")
         recall = obj.get("pending_recall")
@@ -2760,6 +2764,22 @@ def detach_records(state: dict[str, Any], host_id: str, host_location: dict[str,
     Battlefield is Recalled by the next Cleanup (435.4.a) — recorded, not moved
     early, because that Cleanup step is not modelled yet."""
     records: list[dict[str, Any]] = []
+    # 2026-09-25 (GPT): the leaving object may itself be an ATTACHED card (a Gear killed by
+    # "Kill all gear"). Every op that sends a board object to a non-board zone calls this for
+    # that object, so the link is cut here, once: it ceases to be attached (435.1.b), its Top-
+    # Most card loses its appended Effect Text (435.1.d) and its Might Bonus (435.1.e - read
+    # through attachments(), which no longer lists it). It stays where the op sends it.
+    leaving = state["objects"].get(host_id) or {}
+    if host_left_board and leaving.get("attached_to") is not None:
+        former = leaving.pop("attached_to")
+        leaving.pop("pending_recall", None)
+        own = {"object_id": host_id, "detached_from": former, "attached_card_left_board": True,
+               "rule_locators": ["Core 435.1.b", "Core 435.1.d", "Core 435.1.e"]}
+        appended_id = f"effect_text:{host_id}:{former}"
+        if any(e["effect_id"] == appended_id for e in state.get("continuous_effects", []) or []):
+            state["continuous_effects"] = [e for e in state["continuous_effects"] if e["effect_id"] != appended_id]
+            own["removed_effect_text"] = appended_id
+        records.append(own)
     for attached_id in attachments(state, host_id):
         obj = state["objects"][attached_id]
         record = {"object_id": attached_id, "detached_from": host_id, "host_left_board": host_left_board}

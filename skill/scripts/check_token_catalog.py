@@ -17,7 +17,9 @@ Must hold:
     was accepted; validate_catalog now requires digits);
   - `play_token` carries the `token_id` it was compiled from: a pack whose
     play_token names an uncatalogued token fails verify-pack, one naming a
-    catalogued token passes, and one naming none fails;
+    catalogued token passes, and one naming none fails; one naming a catalogued
+    token with other characteristics (999 Might, another kind, a missing printed
+    keyword) fails too;
   - the committed card packs pass verify-pack against the committed
     catalogue;
   - the effect scope names the boundary (token_not_in_catalogue) and
@@ -122,6 +124,20 @@ def main() -> int:
     anonymous = program("tok", {k: v for k, v in token_effect.items() if k != "token_id"})
     if not verify_pack(anonymous, promoted):
         errors.append("a play_token naming no token was accepted")
+    # 2026-09-25 (GPT): the id is not enough - the characteristics the program applies must be
+    # the entry's. A catalogued sprite played at 999 Might, as a gear, or without its printed
+    # [Temporary] fails; the catalogued sprite as catalogued passes
+    sprite = entry_of(catalog, "sprite")
+    faithful = {"op": "play_token", "effect_id": "s", "object_id": "s1", "owner": "p1", "controller": "p1",
+                "token_kind": sprite["kind"], "base_might": sprite["base_might"], "token_id": "sprite",
+                "destination": {"kind": "base", "player": "p1"},
+                "event_modifiers": {"entry_state": "ready", "result_keywords": list(sprite["keywords"])}}
+    if verify_pack(program("sprite", faithful), catalog):
+        errors.append(f"the catalogued sprite, as catalogued, failed: {verify_pack(program('sprite', faithful), catalog)}")
+    for label, forged in (("999 Might", {**faithful, "base_might": 999}), ("a gear", {**faithful, "token_kind": "gear"}),
+                          ("no [Temporary]", {**faithful, "event_modifiers": {"entry_state": "ready"}})):
+        if not verify_pack(program("sprite", forged), catalog):
+            errors.append(f"a catalogued sprite played as {label} passed verify-pack")
     played = apply_program(base_state(), catalogued)
     if not played.get("committed") or played["trace"][0].get("token_id") != "sand-soldier":
         errors.append(f"play_token did not record the catalogue provenance: {played.get('reason') or played.get('errors')}")

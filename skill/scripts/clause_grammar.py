@@ -258,6 +258,15 @@ def _lower_draw(params):
             "ast": {"node": "instruction", "op": "draw", "params": {"count": count, "player": "$controller"}}}
 
 
+def _lower_discard(params):
+    """Core 422.1: the controller discards N from their own hand, chosen privately; 422.4: a
+    shorter hand discards what it has, an empty one ignores the instruction."""
+    count = int(params["count"])
+    return {"program_effects": [{"op": "discard", "effect_id": "dc", "player": "$controller", "count": count,
+                                 "decision_ref": "discard"}],
+            "ast": {"node": "instruction", "op": "discard", "params": {"count": count, "player": "$controller"}}}
+
+
 def _lower_deal_unit_at_battlefield(params):
     amount = int(params["amount"])
     return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": amount,
@@ -668,6 +677,7 @@ LOWERINGS = {
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
+    "discard_n": _lower_discard,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
@@ -1217,7 +1227,10 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
             return {"production_id": "sequence", "unsupported": True, "reason_code": "clause_unparsed",
                     "text": text, "normalized": normalized,
                     "reason": f"a connective joined an instruction the grammar cannot read: {failed!r}"}
-        sequential = ", then " in normalized
+        # ", then " is ORDER, not a condition (GPT 2026-09-25; Core 422.4's own example: with
+        # no cards in hand the discard is ignored and the draw still happens). Only a written
+        # "If you do" makes a later instruction depend on an earlier one (359.3.e.14), and
+        # that is the linked-prefix path (LINK_PREFIXES), not this one.
         effects: list[dict[str, Any]] = []
         for index, entry in enumerate(compiled):
             part_effects = copy.deepcopy(entry.get("program_effects", []))
@@ -1229,10 +1242,6 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 # order written. Carrying the order in the program keeps a
                 # consumer from treating the list as a set.
                 effect["order"] = len(effects) + position
-            if index and sequential and part_effects and effects:
-                # "then": the later instruction happens only if the earlier one
-                # did, read off its receipt rather than recomputed (359.3.e.14).
-                part_effects[0]["predicate"] = {"kind": "action_performed", "effect_id": effects[-1]["effect_id"]}
             effects.extend(part_effects)
         passive: dict[str, Any] = {}
         for entry in compiled:

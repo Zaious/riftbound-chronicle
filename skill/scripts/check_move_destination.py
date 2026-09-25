@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression gate for a Move whose destination is chosen (Charm; Core 428).
+"""Regression gate for a Move whose destination is chosen (Charm; Core 420, 355.4, 355.4.a).
 
 "Move an enemy unit." names the object and not the destination. The
 destination is the effect controller's choice, made while the effect resolves,
@@ -194,6 +194,24 @@ def main() -> int:
             if got.get("committed") and got["next_state"] != home and \
                     any(t.get("outcome") == "applied" for t in got.get("trace") or []):
                 errors.append(f"'a friendly unit at a battlefield' accepted {why}: {got.get('trace')}")
+
+    # --- the rule locators a Move emits (GPT 2026-09-25: Core 428 is Kill; Move is 420 / 445,
+    # the destination 355.4 / 355.4.a) - read from the actual output, not the prose -------------
+    grammar = cg.load_grammar()
+    for sentence in ("Move an enemy unit.", "Move a friendly unit to or from its base.",
+                     "Move a friendly unit at a battlefield to its base."):
+        locators = cg.compile_clause(sentence, grammar).get("rule_locators") or []
+        if "Core 428" in locators or "Core 420" not in locators or "Core 355.4" not in locators:
+            errors.append(f"{sentence!r} emits {locators}; a Move is Core 420 with its destination in 355.4")
+    if moved.get("committed"):
+        trace_locators = [loc for ev in moved.get("trace") or [] for loc in ev.get("rule_locators") or []]
+        if "Core 428" in trace_locators or "Core 420" not in trace_locators:
+            errors.append(f"a committed Move's trace cites {trace_locators}, not Core 420")
+    if "Core 428" in (undecided.get("reason") or "") or "Core 355.4" not in (undecided.get("reason") or ""):
+        errors.append(f"the missing-destination refusal cites the wrong rule: {undecided.get('reason')!r}")
+    import game_events
+    if game_events.EVENT_KINDS["moved"]["rules"] != ["Core 420", "Core 445"]:
+        errors.append("the 'moved' game event does not cite Core 420 / 445")
 
     if errors:
         print("FAILED: move destination checks")

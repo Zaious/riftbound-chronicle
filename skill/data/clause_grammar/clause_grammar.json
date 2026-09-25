@@ -606,7 +606,8 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 428",
+        "Core 420",
+        "Core 355.4",
         "Core 355.4.a",
         "Core 355.9"
       ],
@@ -643,7 +644,8 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 428",
+        "Core 420",
+        "Core 355.4",
         "Core 355.4.a",
         "Core 355.9"
       ],
@@ -996,7 +998,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 413",
-        "Core 359.3"
+        "Core 359.3.d"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -1046,7 +1048,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 437",
+        "Core 417",
         "Core 355.9"
       ],
       "ast_node": "instruction",
@@ -1071,7 +1073,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 428",
+        "Core 420",
+        "Core 355.4",
         "Core 355.4.a",
         "Core 355.9"
       ],
@@ -1097,7 +1100,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 437",
+        "Core 417",
         "Core 355.10.b",
         "Core 715.2"
       ],
@@ -1122,7 +1125,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 437",
+        "Core 417",
         "Core 355.10.b",
         "Core 715.2",
         "Core 359.3.f.1",
@@ -1149,7 +1152,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 437",
+        "Core 417",
         "Core 355.9",
         "Core 359.3.f.1",
         "Core 359.3.f.2"
@@ -1176,7 +1179,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 437",
+        "Core 417",
         "Core 355.9",
         "Core 359.3.f.1",
         "Core 359.3.f.2",
@@ -1263,7 +1266,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 437",
+        "Core 417",
         "Core 715.2",
         "Core 460"
       ],
@@ -1289,7 +1292,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 437",
+        "Core 417",
         "Core 355.10.b"
       ],
       "ast_node": "instruction",
@@ -1884,7 +1887,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 428"
+        "Core 420"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -1907,7 +1910,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 428"
+        "Core 420"
       ],
       "ast_node": "triggered",
       "required_capability": [

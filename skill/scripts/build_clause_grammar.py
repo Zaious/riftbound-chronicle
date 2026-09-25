@@ -238,7 +238,7 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 428", "Core 355.4.a", "Core 355.9"],
+        "rule_locators": ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["move_board_object", "targeting"],
         "boundary": ("One chosen object moves to a board Location its controller's opponent does not "
@@ -256,7 +256,7 @@ PRODUCTIONS = [
         "template": r"move {selector} to or from its base",
         "slots": {"selector": ["a_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 428", "Core 355.4.a", "Core 355.9"],
+        "rule_locators": ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["move_board_object", "targeting"],
         "boundary": ("One chosen friendly unit moves: from a Battlefield only to its own Base, from its Base "
@@ -365,7 +365,7 @@ LITERAL = [
     # as the instruction executes (effect_ir predicate state_holds)
     ("draw_n_if_you_have_one_or_fewer_cards_in_your_hand",
      r"draw (?P<count>\d+) if you have one or fewer cards in your hand",
-     ["Core 413", "Core 359.3"], "instruction", ["draw", "condition_v1"],
+     ["Core 413", "Core 359.3.d"], "instruction", ["draw", "condition_v1"],
      "A draw that happens only if the controller holds at most one card when it executes. Another count or zone is a different clause.",
      ["Draw 1 if you have one or fewer cards in your hand."],
      ["draw 1 if you have two or fewer cards in your hand", "draw 1 if an opponent has one or fewer cards in their hand", "draw 1"]),
@@ -377,20 +377,20 @@ LITERAL = [
      "The controller discards from their own hand. Discarding at random, or another player's discard, is a different production.",
      ["Discard 1.", "Discard 2."], ["discard 2 at random", "each player discards 1", "discard your hand"]),
     ("deal_n_to_a_unit_at_a_battlefield", r"deal (?P<amount>\d+) to a unit at (?:a )?battlefield",
-     ["Core 437", "Core 355.9"], "instruction", ["deal_damage", "targeting"],
+     ["Core 417", "Core 355.9"], "instruction", ["deal_damage", "targeting"],
      "One chosen Unit at a Battlefield. A Might restriction on the target is a different production.",
      ["Deal 2 to a unit at a battlefield.", "Deal 3 to a unit at battlefield."],
      ["deal 2 to a unit at a battlefield with 3 [m] or less", "deal 2 to all units at a battlefield"]),
     # 2026-09-25 (The Syren): a chosen friendly Unit at a Battlefield goes to its own Base
     ("move_a_friendly_unit_at_a_battlefield_to_its_base", r"move a friendly unit at (?:a )?battlefield to its base",
-     ["Core 428", "Core 355.4.a", "Core 355.9"], "instruction", ["move_board_object", "targeting"],
+     ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9"], "instruction", ["move_board_object", "targeting"],
      "One chosen friendly Unit at a Battlefield moves to its own Base. A Unit in a Base, an enemy Unit, or "
      "'to or from its base' is a different production.",
      ["Move a friendly unit at a battlefield to its base."],
      ["move a friendly unit to its base", "move an enemy unit at a battlefield to its base",
       "move a friendly unit to or from its base"]),
     ("deal_n_to_all_enemy_units_at_a_battlefield", r"deal (?P<amount>\d+) to all enemy units at a battlefield",
-     ["Core 437", "Core 355.10.b", "Core 715.2"], "instruction", ["deal_damage", "criteria_expansion"],
+     ["Core 417", "Core 355.10.b", "Core 715.2"], "instruction", ["deal_damage", "criteria_expansion"],
      "One chosen Battlefield, then every enemy Unit there.",
      ["Deal 3 to all enemy units at a battlefield."],
      ["deal 3 to all units at a battlefield", "deal 3 to all enemy units in combat"]),
@@ -399,7 +399,7 @@ LITERAL = [
     # unlike "at a battlefield"'s own Battlefield choice above. Anivia - Primal
     # is this production's real card (round 2 / D, when i attack).
     ("deal_n_to_all_enemy_units_here", r"deal (?P<amount>\d+) to all enemy units here",
-     ["Core 437", "Core 355.10.b", "Core 715.2", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
+     ["Core 417", "Core 355.10.b", "Core 715.2", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
      ["deal_damage", "criteria_expansion"],
      "The resolving program's own source's current Battlefield, read fresh at execution - not a decision.",
      ["Deal 3 to all enemy units here."],
@@ -411,7 +411,7 @@ LITERAL = [
     # signed binding specs, and "here" is not a selector phrase in every production.
     # Crackshot Corsair, Leona - Determined and Ahri - Inquisitive are the real cards.
     ("deal_n_to_an_enemy_unit_here", r"deal (?P<amount>\d+) to an enemy unit here",
-     ["Core 437", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
+     ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or "
      "damage to all enemy Units here is a different production.",
      ["Deal 1 to an enemy unit here."],
@@ -421,7 +421,7 @@ LITERAL = [
     # (Core 359.3.f.2's own Yasuo, Remorseful example, Stupefied in response); the target
     # is "an enemy unit here" as above.
     ("deal_damage_equal_to_my_might_to_an_enemy_unit_here", r"deal damage equal to my might to an enemy unit here",
-     ["Core 437", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2", "Core 359.3.f.4"], "instruction",
+     ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2", "Core 359.3.f.4"], "instruction",
      ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield takes damage equal to the source's Might "
      "as it is when the instruction executes.",
@@ -444,12 +444,12 @@ LITERAL = [
      ["give an enemy unit -2 [m] this turn", "give enemy units here -2 [m] this turn",
       "give an enemy unit here -2 [m] this combat"]),
     ("deal_n_to_all_enemy_units_in_combat", r"deal (?P<amount>\d+) to all enemy units in combat",
-     ["Core 437", "Core 715.2", "Core 460"], "instruction", ["deal_damage", "criteria_expansion", "combat_state"],
+     ["Core 417", "Core 715.2", "Core 460"], "instruction", ["deal_damage", "criteria_expansion", "combat_state"],
      "The Combat in progress. Outside one the instruction finds nothing.",
      ["Deal 2 to all enemy units in combat."],
      ["deal 2 to all enemy units at a battlefield", "deal 2 to all units in combat"]),
     ("deal_n_to_all_units_at_battlefields", r"deal (?P<amount>\d+) to all units at battlefields",
-     ["Core 437", "Core 355.10.b"], "instruction", ["deal_damage", "criteria_expansion"],
+     ["Core 417", "Core 355.10.b"], "instruction", ["deal_damage", "criteria_expansion"],
      "Every Unit at every Battlefield, and none in a Base.",
      ["Deal 3 to all units at battlefields."],
      ["deal 3 to all enemy units at a battlefield", "deal 3 to all units at a battlefield"]),
@@ -628,11 +628,11 @@ WRAPPERS = [
     ("when_you_play_me", r"when you play me, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
      ["When you play me, channel 1 rune exhausted.", "When you play me, draw 1."],
      ["when you play a unit, draw 1", "when i move, draw 1"]),
-    ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 428"], ["move_triggers"],
+    ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 420"], ["move_triggers"],
      ["When I move, draw 1."], ["when a unit moves, draw 1", "when you play me, draw 1"]),
     # 2026-09-24: the same Move trigger, met only when the completed Move's destination is a
     # Battlefield (effect_ir: condition moved_to_battlefield, read on move_triggers only)
-    ("when_i_move_to_a_battlefield", r"when i move to a battlefield, (?P<inner>.+)", ["Core 383.1", "Core 428"],
+    ("when_i_move_to_a_battlefield", r"when i move to a battlefield, (?P<inner>.+)", ["Core 383.1", "Core 420"],
      ["move_triggers"], ["When I move to a battlefield, draw 1."],
      ["when i move, draw 1", "when i move to base, draw 1", "when a unit moves to a battlefield, draw 1"]),
     ("when_you_hold_here", r"when you hold here, (?P<optional>you may )?(?P<inner>.+)",

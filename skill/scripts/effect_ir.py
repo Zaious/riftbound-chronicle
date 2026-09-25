@@ -334,7 +334,7 @@ class ChoiceRequired(ValueError):
 
 
 class LocationSelectionRequired(ValueError):
-    """Core 428: a Move whose destination the controller has not chosen. The
+    """Core 420 / 355.4: a Move whose destination the controller has not chosen. The
     candidates travel with it, generated from the board, so a caller never has
     to guess what the legal destinations were."""
 
@@ -2046,7 +2046,7 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
         # read now, as the instruction executes, from the controller's own perspective (a
         # condition on a zone that player may not see is refused by evaluate_condition)
         return evaluate_condition(state or {}, predicate["condition"], controller=controller,
-                                  perspective=controller), ["Core 359.3"]
+                                  perspective=controller), ["Core 359.3.d"]
     event = (events or {}).get(predicate["effect_id"])
     if event is None:
         return False, ["Core 359.3.e.14.a"]
@@ -2248,7 +2248,7 @@ def token_play_locations(state: dict[str, Any], controller: str, token_kind: str
 
 
 def legal_move_destinations(state: dict[str, Any], object_id: str) -> list[str]:
-    """Core 428 / 355.4.a: a Move goes from one board Location to *another*.
+    """Core 420.1 / 355.4.a: a Move goes from one board Location to *another*.
     The candidates are every Battlefield and every Base except the one the
     object is already at - generated from the state, never supplied, so a
     decision cannot name a destination the board does not have."""
@@ -2978,7 +2978,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             candidates = legal_move_destinations(new_state, object_id)
             if destination.get("restriction") == "to_or_from_own_base":
                 # "Move a friendly unit to or from its base." (2026-09-25): from a Battlefield the
-                # only destination is its own Base; from its Base, a Battlefield (Core 428)
+                # only destination is its own Base; from its Base, a Battlefield (Core 355.4.a, 144.4.b)
                 own_base = f"base:{new_state['objects'][object_id]['owner']}"
                 at = location_token(find_location(new_state, object_id))
                 candidates = ([c for c in candidates if c == own_base] if at != own_base
@@ -2987,7 +2987,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                           if e["decision_id"] == destination["decision_ref"]), None)
             if entry is None:
                 raise LocationSelectionRequired(
-                    f"a Move destination for {object_id!r} is required (Core 428)",
+                    f"a Move destination for {object_id!r} is required (Core 355.4)",
                     [destination["decision_ref"]], controller, candidates)
             if entry["controller"] != controller:
                 raise IllegalDecision(f"location selection {destination['decision_ref']!r} was made by "

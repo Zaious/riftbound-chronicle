@@ -7,6 +7,75 @@
   "status": "draft",
   "entries": [
     {
+      "token_id": "recruit",
+      "name": "Recruit",
+      "kind": "unit",
+      "base_might": 1,
+      "keywords": [],
+      "text": "",
+      "source_cards": [
+        {
+          "name": "Altar to Unity",
+          "locator": "ogn-275-298"
+        },
+        {
+          "name": "Faithful Manufactor",
+          "locator": "ogn-211-298"
+        },
+        {
+          "name": "Forge of the Future",
+          "locator": "ogn-212-298"
+        },
+        {
+          "name": "Machine Evangel",
+          "locator": "ogn-239-298"
+        },
+        {
+          "name": "Noxian Drummer",
+          "locator": "ogn-222-298"
+        },
+        {
+          "name": "Vanguard Captain",
+          "locator": "ogn-218-298"
+        },
+        {
+          "name": "Viktor - Herald of the Arcane",
+          "locator": "ogn-265-298"
+        },
+        {
+          "name": "Viktor - Herald of the Arcane (Overnumbered)",
+          "locator": "ogn-308-298"
+        },
+        {
+          "name": "Viktor - Herald of the Arcane (Signature)",
+          "locator": "ogn-308*-298"
+        },
+        {
+          "name": "Viktor - Innovator",
+          "locator": "ogn-117-298"
+        },
+        {
+          "name": "Viktor - Innovator (Alternate Art)",
+          "locator": "ogn-117a-298"
+        },
+        {
+          "name": "Viktor - Leader",
+          "locator": "ogn-246-298"
+        },
+        {
+          "name": "Viktor - Leader (Alternate Art)",
+          "locator": "ogn-246a-298"
+        }
+      ],
+      "review": {
+        "reviewer": "GPT",
+        "date": "2026-09-25",
+        "source": "riftcodex raw card data: token cards ogn-271/272/273-298 (supertype Token, Unit, Might 1, no rules text); the thirteen Set 1 producers above; re-derived by scripts/check_token_entries.py",
+        "note": "Approved for owner promotion in the first-set big package review (2026-09-25): Unit, Might 1, empty text, 13 producers, re-derivable by the source gate."
+      },
+      "text_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
       "token_id": "sprite",
       "name": "Sprite",
       "kind": "unit",

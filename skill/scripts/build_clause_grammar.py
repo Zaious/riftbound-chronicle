@@ -250,6 +250,22 @@ PRODUCTIONS = [
         "negative": ["Move a unit to your base.", "Move all enemy units.", "Move up to 2 units."],
     },
     {
+        # 2026-09-25 (Yasuo - Unforgiven): the chosen Move narrowed by "to or from its base"
+        "production_id": "move_selector_to_or_from_its_base",
+        "form": "Move <selector> to or from its base.",
+        "template": r"move {selector} to or from its base",
+        "slots": {"selector": ["a_friendly_unit"]},
+        "normalization": N,
+        "rule_locators": ["Core 428", "Core 355.4.a", "Core 355.9"],
+        "ast_node": "instruction",
+        "required_capability": ["move_board_object", "targeting"],
+        "boundary": ("One chosen friendly unit moves: from a Battlefield only to its own Base, from its Base "
+                     "only to a Battlefield; where exactly is its controller's resolution-stage choice. 'Move it "
+                     "to your base' or an unnarrowed Move is a different production."),
+        "golden": ["Move a friendly unit to or from its base."],
+        "negative": ["Move a friendly unit to its base.", "Move a friendly unit.", "Move an enemy unit to or from its base."],
+    },
+    {
         "production_id": "heal_selector",
         "form": "Heal <selector>.",
         "template": r"heal {selector}",
@@ -345,6 +361,14 @@ LITERAL = [
     ("draw_n", r"draw (?P<count>\d+)", ["Core 413", "Core 431"], "instruction", ["draw"],
      "The controller draws. 'Each player draws' and 'draw until' are not this production.",
      ["Draw 1.", "Draw 2."], ["each player draws 1", "draw 1, then discard 1"]),
+    # 2026-09-25 (Jinx - Loose Cannon): a draw conditioned on the controller's own hand size, read
+    # as the instruction executes (effect_ir predicate state_holds)
+    ("draw_n_if_you_have_one_or_fewer_cards_in_your_hand",
+     r"draw (?P<count>\d+) if you have one or fewer cards in your hand",
+     ["Core 413", "Core 359.3"], "instruction", ["draw", "condition_v1"],
+     "A draw that happens only if the controller holds at most one card when it executes. Another count or zone is a different clause.",
+     ["Draw 1 if you have one or fewer cards in your hand."],
+     ["draw 1 if you have two or fewer cards in your hand", "draw 1 if an opponent has one or fewer cards in their hand", "draw 1"]),
     # 2026-09-25: the controller discards N from their own hand, chosen privately (Core 422.1);
     # a hand shorter than N discards what it has, an empty hand ignores it (422.4). Returned
     # now that ", then" no longer makes the next instruction depend on it (GPT 2026-09-25).
@@ -357,6 +381,14 @@ LITERAL = [
      "One chosen Unit at a Battlefield. A Might restriction on the target is a different production.",
      ["Deal 2 to a unit at a battlefield.", "Deal 3 to a unit at battlefield."],
      ["deal 2 to a unit at a battlefield with 3 [m] or less", "deal 2 to all units at a battlefield"]),
+    # 2026-09-25 (The Syren): a chosen friendly Unit at a Battlefield goes to its own Base
+    ("move_a_friendly_unit_at_a_battlefield_to_its_base", r"move a friendly unit at (?:a )?battlefield to its base",
+     ["Core 428", "Core 355.4.a", "Core 355.9"], "instruction", ["move_board_object", "targeting"],
+     "One chosen friendly Unit at a Battlefield moves to its own Base. A Unit in a Base, an enemy Unit, or "
+     "'to or from its base' is a different production.",
+     ["Move a friendly unit at a battlefield to its base."],
+     ["move a friendly unit to its base", "move an enemy unit at a battlefield to its base",
+      "move a friendly unit to or from its base"]),
     ("deal_n_to_all_enemy_units_at_a_battlefield", r"deal (?P<amount>\d+) to all enemy units at a battlefield",
      ["Core 437", "Core 355.10.b", "Core 715.2"], "instruction", ["deal_damage", "criteria_expansion"],
      "One chosen Battlefield, then every enemy Unit there.",
@@ -643,6 +675,12 @@ WRAPPERS = [
      ["attack_triggers"],
      ["When I attack or defend, draw 1."],
      ["when i attack, draw 1", "when i defend, draw 1", "when you attack or defend, draw 1"]),
+    # 2026-09-25 (Jinx - Loose Cannon): a Beginning Phase trigger (turn_cycle schedules it with
+    # the Beginning Step's other effects, Core 315.2.a); both printed spellings
+    ("at_the_start_of_your_beginning_phase", r"at (?:the )?start of your beginning phase, (?P<inner>.+)",
+     ["Core 315.2.a", "Core 315.2.a.1", "Core 383.1"], ["beginning_phase_triggers"],
+     ["At the start of your Beginning Phase, draw 1.", "At start of your Beginning Phase, draw 1."],
+     ["at the start of each player's beginning phase, draw 1", "at the end of your turn, draw 1"]),
     ("at_the_end_of_your_turn", r"at the end of your turn, (?P<inner>.+)", ["Core 317.1", "Core 383.1"],
      ["end_of_turn_triggers"], ["At the end of your turn, draw 1."],
      ["at the end of each turn, draw 1", "at the beginning of your turn, draw 1"]),

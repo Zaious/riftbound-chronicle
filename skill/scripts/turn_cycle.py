@@ -224,8 +224,13 @@ def _phase_triggers(effect_state: dict[str, Any], player: str, phase: str) -> tu
         obj = effect_state["objects"][object_id]
         for descriptor in obj.get(field, []) or []:
             record = {"trigger_id": descriptor["trigger_id"], "source_object": object_id, "controller": descriptor["controller"], "scheduled": False}
-            if obj.get("controller") != player or zone_class(find_location(effect_state, object_id)) != "board":
-                record["reason"] = "not the turn player's board object"
+            # a board object, or a Legend in its controller's Legend Zone - where a Legend's abilities
+            # work (Core 107.4.d, 174.8; effect_ir.source_active) (2026-09-25, Jinx - Loose Cannon)
+            location = find_location(effect_state, object_id)
+            active = zone_class(location) == "board" or (location is not None and location[0] == "player"
+                                                         and location[2] == "legend_zone" and obj.get("kind") == "legend")
+            if obj.get("controller") != player or not active:
+                record["reason"] = "not the turn player's board object or Legend"
                 evaluated.append(record); continue
             if descriptor.get("scope", scope) != scope:
                 record["reason"] = f"scope {descriptor.get('scope')!r} is not {scope}"

@@ -120,6 +120,33 @@ def main() -> int:
     if wrong_player.get("committed") or wrong_player.get("reason_code") != "decision_controller_mismatch":
         errors.append(f"the opponent chose where a Move went: {wrong_player.get('reason_code')}")
 
+    # --- "to or from its base" (2026-09-25, Yasuo - Unforgiven) --------------------------------------
+    # from a Battlefield the only destination is the unit's own Base; from its Base, a Battlefield
+    def to_or_from(object_id):
+        prog = program("yasuo", {"op": "move_board_object", "effect_id": "mv", "object_id": object_id,
+                                 "destination": {"decision_ref": "dest", "restriction": "to_or_from_own_base"}})
+        prog["source_object"] = "u1"
+        return prog
+    at_bf = apply_program(state, to_or_from("u2"))
+    if at_bf.get("location_candidates") != ["base:p2"]:
+        errors.append(f"from a Battlefield, 'to or from its base' offered {at_bf.get('location_candidates')}, not its Base")
+    home = board_state()
+    home["battlefields"]["bf1"]["objects"] = []
+    home["players"]["p2"]["zones"]["base"] = ["u2"]
+    home = settle_contested(home)
+    in_base = apply_program(home, to_or_from("u2"))
+    if sorted(in_base.get("location_candidates") or []) != ["battlefield:bf1", "battlefield:bf2"]:
+        errors.append(f"from its Base, 'to or from its base' offered {in_base.get('location_candidates')}, not the Battlefields")
+    for value in ("base:p1", "battlefield:bf2"):
+        if apply_program(state, to_or_from("u2"), decisions=decisions(state, value)).get("committed"):
+            errors.append(f"from a Battlefield, 'to or from its base' moved the unit to {value}")
+    if not apply_program(home, to_or_from("u2"), decisions=decisions(home, "battlefield:bf2")).get("committed"):
+        errors.append("from its Base, 'to or from its base' refused a Battlefield")
+    from effect_ir import validate_program
+    if not validate_program(program("bad", {"op": "move_board_object", "effect_id": "mv", "object_id": "u2",
+                                            "destination": {"decision_ref": "dest", "restriction": "anywhere"}})):
+        errors.append("an unknown destination restriction validated")
+
     # --- the clause compiles to exactly this --------------------------------------------------------
     compiled = cg.compile_clause("Move an enemy unit.", cg.load_grammar())
     if compiled.get("unsupported") or compiled.get("production_id") != "move_selector":
@@ -130,6 +157,43 @@ def main() -> int:
             errors.append(f"the clause named a destination instead of deferring to a choice: {effect}")
         if effect.get("target", {}).get("controller_relation") != "enemy":
             errors.append(f"'an enemy unit' lost its controller restriction: {effect}")
+
+    # --- "to its base" (The Syren, 2026-09-25): a named destination, the unit's own Base -------------
+    syren = cg.compile_clause("Move a friendly unit at a battlefield to its base.", cg.load_grammar())
+    if syren.get("unsupported") or syren.get("production_id") != "move_a_friendly_unit_at_a_battlefield_to_its_base":
+        errors.append(f"The Syren's clause did not compile: {syren}")
+    else:
+        from effect_ir import object_identity
+        home = base_state()
+        for player in home["players"].values():
+            for zone in player["zones"].values():
+                for unit in ("u1", "u2"):
+                    if unit in zone:
+                        zone.remove(unit)
+        home["battlefields"]["bf1"]["objects"] = ["u1", "u2"]
+        home = settle_contested(home)
+        home["objects"]["u5"] = {**home["objects"]["u1"], "exhausted": False}
+        home["players"]["p1"]["zones"]["base"].append("u5")
+
+        def run_syren(chosen):
+            prog = program("syren", *[dict(e) for e in syren["program_effects"]])
+            picked = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(home),
+                      "decisions": [{"decision_id": "t", "stage": "play_declaration", "kind": "target_selection",
+                                     "controller": "p1", "value": [chosen],
+                                     "selection_identities": {chosen: object_identity(home, chosen) or f"{chosen}@0"}}]}
+            return apply_program(home, prog, decisions=picked)
+
+        went = run_syren("u1")
+        where = went.get("next_state", {})
+        if not went.get("committed") or "u1" not in where["players"]["p1"]["zones"]["base"] \
+                or "u1" in where["battlefields"]["bf1"]["objects"]:
+            errors.append(f"'to its base' did not put the friendly unit at a battlefield in its own Base: "
+                          f"{went.get('reason') or went.get('errors') or went.get('trace')}")
+        for wrong, why in (("u2", "an enemy unit"), ("u5", "a friendly unit already in its Base")):
+            got = run_syren(wrong)
+            if got.get("committed") and got["next_state"] != home and \
+                    any(t.get("outcome") == "applied" for t in got.get("trace") or []):
+                errors.append(f"'a friendly unit at a battlefield' accepted {why}: {got.get('trace')}")
 
     if errors:
         print("FAILED: move destination checks")

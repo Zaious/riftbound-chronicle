@@ -122,6 +122,27 @@ def main() -> int:
     if not validate_state(misfiled):
         errors.append("'moved_to_battlefield' was accepted on a play trigger")
 
+    # --- "draw 1 if you have one or fewer cards in your hand" (2026-09-25, state_holds) -------
+    # a typed condition read as the instruction executes, from its controller's perspective
+    few = {"kind": "not", "of": {"kind": "zone_count_at_least", "zone": "hand", "count": 2}}
+    gated_draw = {"op": "draw", "effect_id": "d", "player": "p1", "count": 1, "predicate": {"kind": "state_holds", "condition": few}}
+    for in_hand, draws in ((0, True), (1, True), (2, False)):
+        board = copy.deepcopy(state)
+        zones = board["players"]["p1"]["zones"]
+        moved = zones["main_deck"][:in_hand]
+        zones["main_deck"] = zones["main_deck"][in_hand:] + ["c3"]
+        zones["trash"].remove("c3")
+        zones["hand"] = moved
+        ran = apply_program(board, program("jinx", gated_draw))
+        drew = ran.get("committed") and len(ran["next_state"]["players"]["p1"]["zones"]["hand"]) == in_hand + 1
+        if not ran.get("committed") or bool(drew) != draws:
+            errors.append(f"'draw 1 if you have one or fewer cards in your hand' with {in_hand} in hand: drew {bool(drew)} "
+                          f"({(ran.get('trace') or [{}])[0].get('outcome')} {ran.get('reason') or ran.get('errors')})")
+    if not validate_program(program("bad", {**gated_draw, "predicate": {"kind": "state_holds", "condition": {"kind": "nonesuch"}}})):
+        errors.append("a state_holds predicate with no condition.v1 validated")
+    if not validate_program(program("bad", {**gated_draw, "predicate": {"kind": "state_holds", "condition": few, "effect_id": "x"}})):
+        errors.append("a state_holds predicate with extra fields validated")
+
     # --- discard ----------------------------------------------------------------------------
     hand2 = copy.deepcopy(state)
     for c in ("c1", "c2"):

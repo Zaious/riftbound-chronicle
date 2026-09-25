@@ -16,6 +16,10 @@ Must hold:
   - "here" plays the token at the source's Battlefield; a source in its Base plays no token
     (no_op, location_ref_source_not_at_battlefield); a source whose identity changed plays
     none either;
+  - a token placed nowhere (destination {decision_ref}, Core 185.2.a): execution asks its
+    controller with the legal places (the Base and each Battlefield it controls); four tokens
+    each go where their own decision says; an opponent's Battlefield, or a decision by the
+    other player, is refused; a gear token is offered its Base only;
   - invalid: an object_id_ref other than {kind: fresh}; both object_id and object_id_ref;
     a location_ref destination that also names a Battlefield, or is not a Battlefield.
 """
@@ -84,6 +88,44 @@ def main() -> int:
     stale = apply_program(at_bf, moved)
     if tokens(stale.get("next_state") or {"objects": {}}) or (stale.get("trace") or [{}])[0].get("outcome") != "no_op":
         errors.append(f"a source whose identity changed still played a token 'here': {(stale.get('trace') or [{}])[0]}")
+
+    # --- a token placed nowhere: its controller's choice (Core 185.2.a; GPT 2026-09-25) --------
+    # each token its own decision, no default place; the candidates are the Base and every
+    # Battlefield the controller controls, from the board
+    import engine_decisions  # noqa: F401
+    from effect_ir import hash_value
+    owned = base_state()
+    owned["battlefields"]["bf1"]["controller"] = "p1"
+    owned["battlefields"]["bf2"] = {"controller": "p2", "objects": []}
+    four = program("four", *[fresh(f"t{i}", {"decision_ref": f"place-{i}"}) for i in range(4)])
+    if validate_program(four):
+        errors.append(f"tokens whose place is a decision did not validate: {validate_program(four)}")
+    asked = apply_program(owned, four)
+    if asked.get("committed") or asked.get("reason_code") != "location_selection_required" \
+            or asked.get("location_candidates") != ["base:p1", "battlefield:bf1"] or asked.get("decision_controller") != "p1":
+        errors.append(f"an unplaced token did not ask its controller with the legal places: {asked.get('reason_code')} "
+                      f"{asked.get('location_candidates')}")
+
+    def decided(values, *, by="p1"):
+        return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(owned), "decisions": [
+            {"decision_id": f"place-{i}", "kind": "location_selection", "stage": "resolution", "controller": by, "value": v}
+            for i, v in enumerate(values)]}
+    split = apply_program(owned, four, decisions=decided(["battlefield:bf1", "base:p1", "battlefield:bf1", "base:p1"]))
+    if not split.get("committed"):
+        errors.append(f"four tokens each with its own place were refused: {split.get('reason')}")
+    else:
+        placed = [token in split["next_state"]["battlefields"]["bf1"]["objects"] for token in tokens(split["next_state"])]
+        if placed != [True, False, True, False]:
+            errors.append(f"the four tokens did not each go where their own decision said: {placed}")
+    for label, values, by in (("an opponent's Battlefield", ["battlefield:bf2"] * 4, "p1"),
+                              ("a decision by the other player", ["base:p1"] * 4, "p2")):
+        wrong = apply_program(owned, four, decisions=decided(values, by=by))
+        if wrong.get("committed"):
+            errors.append(f"a token was placed by {label}")
+    gear = {**fresh("g", {"decision_ref": "gear-place"}), "token_kind": "gear", "base_might": 0}
+    gear_asked = apply_program(owned, program("gear", gear))
+    if gear_asked.get("location_candidates") != ["base:p1"]:
+        errors.append(f"a gear token was offered more than its Base: {gear_asked.get('location_candidates')}")
 
     # --- invalid --------------------------------------------------------------------------------
     for label, effect in (

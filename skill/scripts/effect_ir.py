@@ -101,8 +101,11 @@ TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn",
 DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
-PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill", "sole_controlled_unit_at_referent_location")
-IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "sole_controlled_unit_at_referent_location"}
+# "state_holds" (2026-09-25, Jinx - Loose Cannon: "draw 1 if you have one or fewer cards in your
+# hand"): a typed condition.v1 read from the state when the instruction executes, from its
+# controller's perspective - not a link to an earlier instruction
+PREDICATE_KINDS = ("cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "caused_kill", "sole_controlled_unit_at_referent_location", "state_holds")
+IMPLEMENTED_PREDICATES = {"cost_paid", "cost_not_paid", "action_performed", "action_not_performed", "requested_count_not_reached", "sole_controlled_unit_at_referent_location", "state_holds"}
 # Outcomes in which the *original* game action happened. A partly prevented
 # deal still happened (359.3.e.14.c); a wholly prevented or replaced one did
 # not (359.3.e.14.b, 205). `caused_kill` is not an in-program predicate: a
@@ -1585,6 +1588,12 @@ def validate_program(program: Any) -> list[str]:
                     result_keywords = modifiers.get("result_keywords", [])
                     if not isinstance(result_keywords, list) or len(result_keywords) != len(set(result_keywords)) or any(keyword not in {"temporary"} for keyword in result_keywords):
                         errors.append(f"effects[{index}].event_modifiers.result_keywords is invalid")
+            if effect.get("op") == "move_board_object" and isinstance(effect.get("destination"), dict) \
+                    and "restriction" in effect["destination"] and (
+                        effect["destination"]["restriction"] not in MOVE_DESTINATION_RESTRICTIONS
+                        or "decision_ref" not in effect["destination"]):
+                errors.append(f"effects[{index}].move_board_object destination restriction must be one of "
+                              f"{sorted(MOVE_DESTINATION_RESTRICTIONS)}, on a chosen destination (decision_ref)")
             if effect.get("op") == "play_token":
                 if "token_id" in effect and (not isinstance(effect["token_id"], str) or not effect["token_id"]):
                     errors.append(f"effects[{index}].play_token.token_id must be a non-empty catalogue id (ADR-0012 §6)")
@@ -1610,8 +1619,13 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].play_token requires controller and unit/gear token_kind")
                 if not isinstance(effect.get("base_might"), int) or effect.get("base_might", -1) < 0:
                     errors.append(f"effects[{index}].play_token requires non-negative base_might")
-                if not isinstance(destination, dict) or destination.get("kind") not in {"base", "battlefield"}:
-                    errors.append(f"effects[{index}].play_token requires a base or battlefield destination")
+                chosen_place = isinstance(destination, dict) and set(destination) == {"decision_ref"} \
+                    and isinstance(destination["decision_ref"], str) and bool(destination["decision_ref"])
+                if chosen_place:
+                    pass   # the controller's location_selection at execution (token_play_locations)
+                elif not isinstance(destination, dict) or destination.get("kind") not in {"base", "battlefield"}:
+                    errors.append(f"effects[{index}].play_token requires a base or battlefield destination, "
+                                  f"or {{decision_ref}} for its controller's choice")
                 elif effect.get("token_kind") == "gear" and destination.get("kind") != "base":
                     errors.append(f"effects[{index}].non-Unit Gear token must enter a Base")
                 elif destination.get("kind") == "base" and destination.get("player") != effect.get("controller"):
@@ -1858,6 +1872,10 @@ def _predicate_errors(predicate: Any, receipt: Any, earlier: set[str] | None = N
     action predicate must name an earlier instruction; an unknown id is
     invalid_input. Recognized-but-unimplemented kinds validate here and
     answer `unsupported` at execution."""
+    if isinstance(predicate, dict) and predicate.get("kind") == "state_holds":
+        if set(predicate) != {"kind", "condition"}:
+            return ["state_holds must carry exactly {kind, condition}"]
+        return [f"condition {e}" for e in validate_condition(predicate["condition"])]
     if not isinstance(predicate, dict) or predicate.get("kind") not in PREDICATE_KINDS or set(predicate) - {"kind", "cost_id", "effect_id", "cost_offer_id"}:
         return ["must carry a known kind"]
     if "cost_offer_id" in predicate and predicate["kind"] not in {"cost_paid", "cost_not_paid"}:
@@ -2024,6 +2042,11 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
             return (kind == "cost_not_paid"), ["Core 356.4.f.1", "Core 820.1"]
         paid = bool(component["paid"])
         return (paid if kind == "cost_paid" else not paid), ["Core 356.4.f.1", "Core 356.2.b.1"]
+    if kind == "state_holds":
+        # read now, as the instruction executes, from the controller's own perspective (a
+        # condition on a zone that player may not see is refused by evaluate_condition)
+        return evaluate_condition(state or {}, predicate["condition"], controller=controller,
+                                  perspective=controller), ["Core 359.3"]
     event = (events or {}).get(predicate["effect_id"])
     if event is None:
         return False, ["Core 359.3.e.14.a"]
@@ -2206,6 +2229,22 @@ def location_token(location: tuple[str, str, str | None] | None) -> str | None:
     if location[0] == "player" and location[2] == "base":
         return f"base:{location[1]}"
     return None
+
+
+# "to or from its base" (2026-09-25, Yasuo - Unforgiven): a chosen Move destination narrowed to
+# the unit's own Base when it is at a Battlefield, and to a Battlefield when it is in its Base
+MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base"}
+
+
+def token_play_locations(state: dict[str, Any], controller: str, token_kind: str) -> list[str]:
+    """Core 185.2.a, 355.2.a: where a token with no stated place may be played - as its card
+    type would be: its controller's Base, and for a Unit each Battlefield that player controls.
+    Generated from the board, never supplied."""
+    locations = [f"base:{controller}"]
+    if token_kind == "unit":
+        locations += [f"battlefield:{bf}" for bf, battlefield in sorted((state.get("battlefields") or {}).items())
+                      if battlefield.get("controller") == controller]
+    return locations
 
 
 def legal_move_destinations(state: dict[str, Any], object_id: str) -> list[str]:
@@ -2937,6 +2976,13 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # destinations this board actually offers.
             import engine_decisions as _ed
             candidates = legal_move_destinations(new_state, object_id)
+            if destination.get("restriction") == "to_or_from_own_base":
+                # "Move a friendly unit to or from its base." (2026-09-25): from a Battlefield the
+                # only destination is its own Base; from its Base, a Battlefield (Core 428)
+                own_base = f"base:{new_state['objects'][object_id]['owner']}"
+                at = location_token(find_location(new_state, object_id))
+                candidates = ([c for c in candidates if c == own_base] if at != own_base
+                              else [c for c in candidates if c.startswith("battlefield:")])
             entry = next((e for e in _ed.entries(decisions, kind="location_selection")
                           if e["decision_id"] == destination["decision_ref"]), None)
             if entry is None:
@@ -3348,6 +3394,27 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("play_token requires a supported kind and non-negative base_might")
         if not isinstance(destination, dict):
             raise ValueError("play_token requires a destination")
+        if "decision_ref" in destination:
+            # 2026-09-25 (GPT): a token the card places nowhere is played as its card type is
+            # (Core 185.2.a): its controller chooses among the locations legal right now - its
+            # Base, or a Battlefield it controls for a Unit (355.2.a) - each token on its own
+            # decision, no default. The candidates travel with the request, from the board.
+            import engine_decisions as _ed
+            candidates = token_play_locations(new_state, controller, token_kind)
+            entry = next((e for e in _ed.entries(decisions, kind="location_selection")
+                          if e["decision_id"] == destination["decision_ref"]), None)
+            if entry is None:
+                raise LocationSelectionRequired(
+                    f"where the token {object_id!r} is played is its controller's choice (Core 185.2.a, 355.2.a)",
+                    [destination["decision_ref"]], controller, candidates)
+            if entry["controller"] != controller:
+                raise IllegalDecision(f"location selection {destination['decision_ref']!r} was made by "
+                                      f"{entry['controller']!r}, not the token's controller {controller!r}")
+            if entry["value"] not in candidates:
+                raise ValueError(f"location selection {destination['decision_ref']!r} names {entry['value']!r}; "
+                                 f"the token may be played to {candidates}")
+            kind, _, name = entry["value"].partition(":")
+            destination = {"kind": "battlefield", "battlefield": name} if kind == "battlefield" else {"kind": "base", "player": name}
         if token_kind == "gear" and destination.get("kind") != "base":
             raise ValueError("non-Unit Gear token must enter a Base")
         if destination.get("kind") == "base" and destination.get("player") != controller:

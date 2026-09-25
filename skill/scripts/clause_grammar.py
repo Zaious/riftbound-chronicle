@@ -258,6 +258,16 @@ def _lower_draw(params):
             "ast": {"node": "instruction", "op": "draw", "params": {"count": count, "player": "$controller"}}}
 
 
+def _lower_draw_if_few_in_hand(params):
+    """Core 413: draw N - only if the controller holds at most one card as it executes."""
+    count = int(params["count"])
+    condition = {"kind": "not", "of": {"kind": "zone_count_at_least", "zone": "hand", "count": 2}}
+    return {"program_effects": [{"op": "draw", "effect_id": "dr", "player": "$controller", "count": count,
+                                 "predicate": {"kind": "state_holds", "condition": condition}}],
+            "ast": {"node": "instruction", "op": "draw", "params": {"count": count, "player": "$controller"},
+                    "if": condition}}
+
+
 def _lower_discard(params):
     """Core 422.1: the controller discards N from their own hand, chosen privately; 422.4: a
     shorter hand discards what it has, an empty one ignores the instruction."""
@@ -274,6 +284,18 @@ def _lower_deal_unit_at_battlefield(params):
                                             "location": "battlefield"}}],
             "ast": {"node": "instruction", "op": "deal_damage",
                     "params": {"amount": amount, "target": {"kind": "unit", "location": "battlefield"}}}}
+
+
+def _lower_move_friendly_at_battlefield_to_its_base(params):
+    # 2026-09-25 (The Syren): a named destination - the moved unit's own Base, resolved per
+    # object as its controller's (Core 355.4.a; effect_ir player_relation object_controller)
+    return {"program_effects": [{"op": "move_board_object", "effect_id": "mv",
+                                 "destination": {"kind": "base", "player_relation": "object_controller"},
+                                 "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
+                                            "controller_relation": "friendly", "location": "battlefield"}}],
+            "ast": {"node": "instruction", "op": "move_board_object",
+                    "params": {"target": {"kind": "unit", "controller_relation": "friendly", "location": "battlefield"},
+                               "destination": "its_base"}}}
 
 
 def _lower_deal_all_enemy_at_battlefield(params):
@@ -509,6 +531,11 @@ COMPOSABLE = {
     "stun_selector": _lower_single_target_op("stun", "st", "stun"),
     "move_selector": _lower_single_target_op("move_board_object", "mv", "move_board_object",
                                             extra={"destination": {"decision_ref": "dest"}}),
+    # 2026-09-25 (Yasuo - Unforgiven): the same chosen Move, narrowed to the unit's own Base when
+    # it is at a Battlefield and to a Battlefield when it is in its Base (effect_ir restriction)
+    "move_selector_to_or_from_its_base": _lower_single_target_op(
+        "move_board_object", "mv", "move_board_object",
+        extra={"destination": {"decision_ref": "dest", "restriction": "to_or_from_own_base"}}),
     "heal_selector": _lower_single_target_op("heal_all_damage", "hl", "heal_all_damage"),
     "exhaust_selector": _lower_single_target_op("exhaust", "ex", "exhaust"),
     "recall_selector": _lower_single_target_op("recall", "rc", "recall"),
@@ -678,7 +705,9 @@ LOWERINGS = {
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "discard_n": _lower_discard,
+    "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
+    "move_a_friendly_unit_at_a_battlefield_to_its_base": _lower_move_friendly_at_battlefield_to_its_base,
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
@@ -704,6 +733,7 @@ TRIGGER_WRAPPERS = {
     "when_i_move": ("move_triggers", "on-move", None),
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
+    "at_the_start_of_your_beginning_phase": ("beginning_phase_triggers", "on-beginning", {"scope": "your_beginning_phase"}),
     # Core 469.1: the unit conquering is the one at the Battlefield being
     # scored. That is the engine's default scope for a conquer trigger; the
     # clause states it rather than relying on the default.

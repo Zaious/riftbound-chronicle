@@ -633,6 +633,36 @@
       ]
     },
     {
+      "production_id": "move_selector_to_or_from_its_base",
+      "form": "Move <selector> to or from its base.",
+      "template": "move {selector} to or from its base",
+      "slots": {
+        "selector": [
+          "a_friendly_unit"
+        ]
+      },
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 428",
+        "Core 355.4.a",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "move_board_object",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen friendly unit moves: from a Battlefield only to its own Base, from its Base only to a Battlefield; where exactly is its controller's resolution-stage choice. 'Move it to your base' or an unnarrowed Move is a different production.",
+      "golden": [
+        "Move a friendly unit to or from its base."
+      ],
+      "negative": [
+        "Move a friendly unit to its base.",
+        "Move a friendly unit.",
+        "Move an enemy unit to or from its base."
+      ]
+    },
+    {
       "production_id": "heal_selector",
       "form": "Heal <selector>.",
       "template": "heal {selector}",
@@ -959,6 +989,31 @@
       ]
     },
     {
+      "production_id": "draw_n_if_you_have_one_or_fewer_cards_in_your_hand",
+      "form": "Draw 1 if you have one or fewer cards in your hand.",
+      "template": "draw (?P<count>\\d+) if you have one or fewer cards in your hand",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 413",
+        "Core 359.3"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "draw",
+        "typed_conditions"
+      ],
+      "boundary": "A draw that happens only if the controller holds at most one card when it executes. Another count or zone is a different clause.",
+      "golden": [
+        "Draw 1 if you have one or fewer cards in your hand."
+      ],
+      "negative": [
+        "draw 1 if you have two or fewer cards in your hand",
+        "draw 1 if an opponent has one or fewer cards in their hand",
+        "draw 1"
+      ]
+    },
+    {
       "production_id": "discard_n",
       "form": "Discard 1.",
       "template": "discard (?P<count>\\d+)",
@@ -1007,6 +1062,32 @@
       "negative": [
         "deal 2 to a unit at a battlefield with 3 [m] or less",
         "deal 2 to all units at a battlefield"
+      ]
+    },
+    {
+      "production_id": "move_a_friendly_unit_at_a_battlefield_to_its_base",
+      "form": "Move a friendly unit at a battlefield to its base.",
+      "template": "move a friendly unit at (?:a )?battlefield to its base",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 428",
+        "Core 355.4.a",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "move_board_object",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen friendly Unit at a Battlefield moves to its own Base. A Unit in a Base, an enemy Unit, or 'to or from its base' is a different production.",
+      "golden": [
+        "Move a friendly unit at a battlefield to its base."
+      ],
+      "negative": [
+        "move a friendly unit to its base",
+        "move an enemy unit at a battlefield to its base",
+        "move a friendly unit to or from its base"
       ]
     },
     {
@@ -2026,6 +2107,31 @@
         "when i attack, draw 1",
         "when i defend, draw 1",
         "when you attack or defend, draw 1"
+      ]
+    },
+    {
+      "production_id": "at_the_start_of_your_beginning_phase",
+      "form": "At the start of your Beginning Phase, draw 1.",
+      "template": "at (?:the )?start of your beginning phase, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 315.2.a",
+        "Core 315.2.a.1",
+        "Core 383.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "beginning_phase_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "At the start of your Beginning Phase, draw 1.",
+        "At start of your Beginning Phase, draw 1."
+      ],
+      "negative": [
+        "at the start of each player's beginning phase, draw 1",
+        "at the end of your turn, draw 1"
       ]
     },
     {

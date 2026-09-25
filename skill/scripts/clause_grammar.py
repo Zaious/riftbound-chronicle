@@ -771,6 +771,13 @@ TRIGGER_WRAPPERS = {
     "when_you_stun_one_or_more_enemy_units": ("event_triggers", "on-stun-enemies", {"watch": {
         "kinds": ["stunned"], "scope": "actor", "filter": {"object_controller_relation": "enemy"},
         "grouping": "one_or_more"}}),
+    # 2026-09-26 package 3: "an enemy unit" is one trigger per stunned enemy unit (Core 383.3.a),
+    # where "one or more" above is one per batch
+    "when_you_stun_an_enemy_unit": ("event_triggers", "on-stun-enemy", {"watch": {
+        "kinds": ["stunned"], "scope": "actor", "filter": {"object_controller_relation": "enemy"}}}),
+    # "you discard": the discarding player is the event's actor; one trigger per batch
+    "when_you_discard_one_or_more_cards": ("event_triggers", "on-discard", {"watch": {
+        "kinds": ["discarded"], "scope": "actor", "grouping": "one_or_more"}}),
     "when_you_recycle_one_or_more_cards_to_your_main_deck": ("event_triggers", "on-recycle", {"watch": {
         "kinds": ["recycled"], "scope": "actor", "filter": {"destination_zone": "main_deck"},
         "grouping": "one_or_more"}}),

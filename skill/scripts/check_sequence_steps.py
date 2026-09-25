@@ -103,6 +103,39 @@ def main() -> int:
             errors.append(f"{sentence!r}: with an empty Rune Deck the channel did not stop at no_op while the draw "
                           f"still happened: {outcomes}")
 
+    # --- "Ready me and give me +1 :rb_might: this turn." (2026-09-26, Eclipse Herald / Jinx - Rebel):
+    # two steps on the program's own source, written as the typed self-reference the signed
+    # mappings use ({object_ref: program_source}); an exhausted source is readied and +1, an
+    # already-ready one is a ready no_op and still +1 - the second step never waits on the first
+    import effect_ir as IR
+    out = cg.compile_clause("Ready me and give me +1 :rb_might: this turn.", grammar)
+    if out.get("unsupported") or [e["op"] for e in out.get("program_effects", [])] != ["ready", "modify_might"] \
+            or any("predicate" in e for e in out.get("program_effects", [])):
+        errors.append(f"'Ready me and give me +1 :rb_might: this turn.' is not two unconditional steps: {out}")
+    else:
+        effects = [{k: v for k, v in copy.deepcopy(e).items() if k != "order"} for e in out["program_effects"]]
+        for e in effects:
+            e["object_id"] = {"object_ref": "program_source"}
+            if e.get("source") == "$chain_item":
+                e["source"] = "u1"
+        for exhausted, ready_outcome in ((True, "applied"), (False, "no_op")):
+            state = base_state()
+            state["objects"]["u1"]["exhausted"] = exhausted
+            might = IR.effective_might(state, "u1")
+            ran = apply_program(state, {"schema_version": PROGRAM_VERSION, "ruleset": state["ruleset"],
+                                        "program_id": "ready-and-pump", "controller": "p1", "source_object": "u1",
+                                        "effects": effects})
+            if not ran.get("committed"):
+                errors.append(f"ready-and-pump did not commit (exhausted={exhausted}): {ran.get('reason') or ran.get('errors')}")
+                continue
+            after = ran["next_state"]
+            outcomes = [t.get("outcome") for t in ran["trace"]]
+            if after["objects"]["u1"].get("exhausted") or IR.effective_might(after, "u1") != might + 1 \
+                    or outcomes[0] != ready_outcome or outcomes[1] != "applied":
+                errors.append(f"ready-and-pump on a source exhausted={exhausted}: exhausted "
+                              f"{after['objects']['u1'].get('exhausted')}, Might {might} -> "
+                              f"{IR.effective_might(after, 'u1')}, outcomes {outcomes}")
+
     if errors:
         print("FAILED: sequence steps" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1

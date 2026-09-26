@@ -6264,7 +6264,7 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
 
 
 # The Repeat execution an instruction belongs to ("#1", ...), stamped on a copy by
-# suffix_decision_refs. Engine-internal: never authored, read only by execution_suffix.
+# _resolve_executions. Engine-internal: never authored, read only by execution_suffix.
 EXECUTION_FIELD = "_execution"
 
 
@@ -6311,9 +6311,6 @@ def suffix_decision_refs(effects: list[dict[str, Any]], suffix: str) -> list[dic
             player["object_player"]["effect_id"] += suffix
         elif isinstance(player, dict) and isinstance(player.get("decision_ref"), str):
             player["decision_ref"] += suffix
-        # a choice with no decision_ref of its own is answered under a default ref (resolve_choice,
-        # discard): the copy's default carries the suffix too (execution_suffix)
-        copied[EXECUTION_FIELD] = suffix
         amount_ref = copied.get("amount_ref")
         if isinstance(amount_ref, dict) and amount_ref.get("kind") in LINKED_AMOUNT_REF_KINDS \
                 and isinstance(amount_ref.get("effect_id"), str):
@@ -6340,7 +6337,14 @@ def _resolve_executions(program: dict[str, Any], decisions: dict[str, Any] | Non
         if suffix and repeat.get("modes"):
             context_k = {**(context or {}), "mode_selection": repeat["modes"][k]}
         effects, mode = _resolve_mode(program_k, decisions, context_k)
-        effects_to_run.extend(suffix_decision_refs(effects, suffix) if suffix else list(effects))
+        if suffix:
+            # a choice with no decision_ref of its own is answered under a default ref (resolve_choice,
+            # discard): the copy's default carries the suffix too (execution_suffix). Stamped here, on
+            # the executions only - suffix_decision_refs also composes a card's parts (overlay), whose
+            # programs must not carry an engine-internal field
+            effects_to_run.extend({**effect, EXECUTION_FIELD: suffix} for effect in suffix_decision_refs(effects, suffix))
+        else:
+            effects_to_run.extend(effects)
         modes.append(mode)
     repeat_meta = {"executions": executions, "modes": modes, "rule_locators": ["Core 820.1.d", "Core 820.2.a"]} if executions > 1 else None
     return effects_to_run, modes[0], repeat_meta

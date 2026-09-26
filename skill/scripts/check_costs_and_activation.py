@@ -351,6 +351,12 @@ def main() -> int:
     if not recycle_twice.get("committed") or recycle_twice["next_state"]["players"]["p1"]["zones"]["main_deck"][-2:] != ["t1", "t2"]:
         errors.append(f"'recycle a card from your trash' repeated with no decision_ref: t1 then t2 should be recycled: "
                       f"{recycle_twice.get('reason_code')} {recycle_twice.get('reason') or recycle_twice.get('errors')}")
+    # the execution mark is engine-internal: suffix_decision_refs also composes a card's parts (the
+    # overlay's compile_card_program), and a composed program must not carry it
+    from effect_ir import suffix_decision_refs
+    composed = suffix_decision_refs([{"op": "discard", "effect_id": "d", "player": "p1", "count": 1}], "-1")
+    if any(key.startswith("_") for effect in composed for key in effect):
+        errors.append(f"suffix_decision_refs wrote an engine-internal field into a composed program: {composed}")
     # a kill replaced with a draw, repeated once: the replacement's draw happens once per execution
     replacing = copy.deepcopy(augmenting)
     for n in range(4):

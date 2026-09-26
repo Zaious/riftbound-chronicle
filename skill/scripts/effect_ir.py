@@ -1792,9 +1792,13 @@ def validate_program(program: Any) -> list[str]:
                 has_object = ((isinstance(effect.get("object_id"), str) and bool(effect.get("object_id")))
                               or is_object_ref(effect.get("object_id")))
                 has_target = isinstance(effect.get("target"), dict)
-                if not (has_object or has_target):
+                # 2026-09-27 package 6: a buff over a bounded set of Targets or a set found by criteria
+                # (MULTI_TARGET_OPS) is expanded into one single-object buff per object, each exactly
+                # the one-object form above; empower and disempower still act on one object only
+                many = op_name == "buff" and (effect.get("affected") is not None or effect.get("targets") is not None)
+                if not (has_object or has_target or many):
                     errors.append(f"effects[{index}].{op_name} needs the object it acts on")
-                if effect.get("affected") is not None or effect.get("targets") is not None:
+                if not many and (effect.get("affected") is not None or effect.get("targets") is not None):
                     errors.append(f"effects[{index}].{op_name} acts on one object; affected/targets are not accepted")
             if op_name == "gain_xp":
                 if not isinstance(effect.get("player"), str) or not effect.get("player"):
@@ -1889,10 +1893,16 @@ def validate_program(program: Any) -> list[str]:
                 has_location = isinstance(criteria, dict) and "location" in criteria
                 has_location_ref = isinstance(criteria, dict) and "location_ref" in criteria
                 if (not isinstance(affected, dict) or set(affected) != {"criteria"} or not isinstance(criteria, dict)
-                        or set(criteria) - {"kind", "controller_relation", "location", "location_ref"}
+                        or set(criteria) - {"kind", "controller_relation", "location", "location_ref", *AFFECTED_NARROWING_FIELDS}
                         or has_location == has_location_ref):
                     errors.append(f"effects[{index}].affected must be {{criteria: {{location, kind?, controller_relation?}}}} "
                                   "or {{criteria: {{location_ref, kind?, controller_relation?}}}}, never both, never neither")
+                elif any(field in criteria and not isinstance(criteria[field], bool) for field in SELECTOR_STATE_FIELDS) \
+                        or criteria.get("exclude_source_identity", SOURCE_IDENTITY_SENTINEL) != SOURCE_IDENTITY_SENTINEL:
+                    # 2026-09-27 package 6: "all damaged enemy units here", "all other friendly units there" -
+                    # a state is true or false; "other" names the program's own source, by the sentinel only
+                    errors.append(f"effects[{index}].affected.criteria: exhausted / damaged are true or false, and "
+                                  f"exclude_source_identity is {SOURCE_IDENTITY_SENTINEL!r}")
                 elif has_location_ref:
                     ref = criteria["location_ref"]
                     if not is_location_ref(ref):
@@ -1971,8 +1981,19 @@ def validate_program(program: Any) -> list[str]:
     return errors
 
 
-MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref", "any_of"}
+# 2026-09-27 package 6: `buff` joins - "buff up to two other friendly units" (a bounded set of
+# Targets, Core 355.13) and "buff all friendly units" (a set found by criteria, Core 355.10.b) each
+# buff every object one at a time, exactly as a single "Buff a unit." does (Core 426.1.b-c, 702.3)
+MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword", "buff"}
+# 2026-09-27 package 6: `exhausted` / `damaged` - a STATE the chosen object must be in, read off the
+# board when it is chosen and again when it is used: "an exhausted friendly unit" (exhausted: true,
+# Core 414.2), "a ready unit" (exhausted: false, Core 415.2), "a damaged unit" (damaged: true -
+# damage marked on it, Core 142). Only objects on the board have these states.
+SELECTOR_STATE_FIELDS = ("exhausted", "damaged")
+# ... and the same states narrow a set found by criteria ("kill all damaged enemy units here"), as
+# does "other" - the program's own source left out ("buff all other friendly units there")
+AFFECTED_NARROWING_FIELDS = (*SELECTOR_STATE_FIELDS, "exclude_source_identity")
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref", "any_of", *SELECTOR_STATE_FIELDS}
 # 2026-09-27 (Fading Memories, "a unit at a battlefield or a gear"): one chosen object that fits ONE of
 # the alternatives; each names a kind and may narrow the location and the controller relation
 ANY_OF_FIELDS = {"kind", "location", "controller_relation"}
@@ -2239,6 +2260,9 @@ def _selector_errors(selector: Any) -> list[str]:
         errors.append("bound_identity must be an identity token")
     if "max_might" in selector and (not isinstance(selector["max_might"], int) or selector["max_might"] < 0):
         errors.append("max_might must be a non-negative integer")
+    for state_field in SELECTOR_STATE_FIELDS:
+        if state_field in selector and (not isinstance(selector[state_field], bool) or selector.get("chosen_zone_class") != "board"):
+            errors.append(f"{state_field} is true or false, on an object chosen on the board (Core 414.2, 415.2, 142)")
     exclude = selector.get("exclude_source_identity")
     if "exclude_source_identity" in selector and (not isinstance(exclude, str)
                                                   or (exclude != SOURCE_IDENTITY_SENTINEL and "@" not in exclude)):
@@ -2413,8 +2437,10 @@ def sole_controlled_unit_at_referent_location(state: dict[str, Any], controller:
     return holds, {"referent": referent, "location": location, "controlled_units_there": controlled}
 
 
-def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None, events: dict[str, dict[str, Any]] | None = None, state: dict[str, Any] | None = None, controller: str | None = None) -> tuple[bool | None, list[str]]:
-    """Returns (holds, locators); holds is None when the kind is not implemented."""
+def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None, events: dict[str, dict[str, Any]] | None = None, state: dict[str, Any] | None = None, controller: str | None = None, source: str | None = None) -> tuple[bool | None, list[str]]:
+    """Returns (holds, locators); holds is None when the kind is not implemented. `source` is the
+    program's own source object: a state_holds condition about an object it does not name is about
+    that source (2026-09-27 package 6: "if I am at a battlefield", "a ready enemy unit here")."""
     kind = predicate["kind"]
     if kind not in IMPLEMENTED_PREDICATES:
         return None, []
@@ -2436,7 +2462,7 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
         # read now, as the instruction executes, from the controller's own perspective (a
         # condition on a zone that player may not see is refused by evaluate_condition)
         return evaluate_condition(state or {}, predicate["condition"], controller=controller,
-                                  perspective=controller), ["Core 359.3.d"]
+                                  object_id=source, perspective=controller), ["Core 359.3.d"]
     event = (events or {}).get(predicate["effect_id"])
     if event is None:
         return False, ["Core 359.3.e.14.a"]
@@ -2770,6 +2796,17 @@ def zone_class(location: tuple[str, str, str | None] | None) -> str | None:
     return "non_board"
 
 
+def object_state_holds(obj: dict[str, Any], wanted: dict[str, Any]) -> bool:
+    """2026-09-27 package 6: the states a selector, a criteria set or a condition may ask of an
+    object on the board - `exhausted` (true: Exhausted, Core 414.2; false: Ready, 415.2) and
+    `damaged` (true: damage is marked on it, Core 142). A field that is absent asks nothing."""
+    if "exhausted" in wanted and bool(obj.get("exhausted")) != wanted["exhausted"]:
+        return False
+    if "damaged" in wanted and ((obj.get("damage") or 0) > 0) != wanted["damaged"]:
+        return False
+    return True
+
+
 def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: str | None) -> tuple[bool, str]:
     object_id = target["object_id"]
     if target.get("kind") == "battlefield":
@@ -2803,6 +2840,11 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
     required_kind = target.get("kind")
     if required_kind is not None and obj.get("kind") != required_kind:
         return False, "target_kind_requirement_failed"
+    if not object_state_holds(obj, target):
+        # 2026-09-27 package 6: "an exhausted friendly unit", "something ... that's exhausted" -
+        # the state is read now, so an object readied since it was chosen is no longer a legal
+        # target when the instruction is used (Core 359.3.e.2)
+        return False, "target_state_requirement_failed"
     required_location = target.get("location")
     if required_location == "battlefield" and (location is None or location[0] != "battlefield"):
         return False, "target_location_requirement_failed"
@@ -4884,7 +4926,13 @@ CONDITION_LEAVES = {
     "runes_at_least": {"count"},
     "attacking_or_defending_alone": set(),
     "friendly_unit_defends_alone": set(),
-    "controls_units": {"count", "location", "controller_relation"},
+    # 2026-09-27 package 6: "if there is a ready enemy unit here" - the units counted may be narrowed
+    # by a state (exhausted / damaged, Core 414.2, 415.2, 142) and located "here": at the Battlefield
+    # where the condition's object - by default the program's own source - stands now (Core 359.3.f.2)
+    "controls_units": {"count", "location", "controller_relation", "exhausted", "damaged"},
+    # 2026-09-27 package 6: "if I am at a battlefield" - the object (default: the program's source)
+    # stands at a Battlefield now, not in a Base or off the board (Core 107.2.b)
+    "at_a_battlefield": {"object"},
     "might_at_least": {"count", "object"},
     "has_keyword": {"keyword", "object"},
     "is_empowered": {"object"},
@@ -4963,8 +5011,11 @@ def validate_condition(condition: Any, path: str = "condition") -> list[str]:
             return [f"{path}.{field} must be a non-negative integer"]
     if "controller_relation" in condition and condition["controller_relation"] not in {"friendly", "enemy"}:
         return [f"{path}.controller_relation must be friendly or enemy"]
-    if "location" in condition and condition["location"] not in {"board", "battlefield", "base"}:
-        return [f"{path}.location must be board, battlefield or base"]
+    if "location" in condition and condition["location"] not in {"board", "battlefield", "base", "here"}:
+        return [f"{path}.location must be board, battlefield, base or here"]
+    if kind == "controls_units" and any(
+            field in condition and not isinstance(condition[field], bool) for field in ("exhausted", "damaged")):
+        return [f"{path}.exhausted / damaged must be true or false"]
     if "zone" in condition and condition["zone"] not in PLAYER_ZONES:
         return [f"{path}.zone must be one of {sorted(PLAYER_ZONES)}"]
     return []
@@ -5064,9 +5115,22 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
         holder = state["battlefields"].get(condition["battlefield"], {}).get("controller")
         relation = condition.get("controller_relation", "friendly")
         return same_side(state, controller, holder) if relation == "friendly" else (holder is not None and not same_side(state, controller, holder))
+    if kind == "at_a_battlefield":
+        # 2026-09-27 package 6: "if I am at a battlefield" - read now (Core 359.3.f.2); an object
+        # in a Base, off the board, or unknown is not at one
+        where = find_location(state, subject) if subject in state["objects"] else None
+        return where is not None and where[0] == "battlefield"
     if kind == "controls_units":
         location = condition.get("location", "board")
         relation = condition.get("controller_relation", "friendly")
+        here = None
+        if location == "here":
+            # 2026-09-27 package 6: the Battlefield the condition's object stands at NOW (Core
+            # 359.3.f.2); an object not at one has no "here", and no unit is there (359.3.e.12)
+            at = find_location(state, subject) if subject in state["objects"] else None
+            if at is None or at[0] != "battlefield":
+                return 0 >= condition["count"]
+            here = at[1]
         count = 0
         for object_id_, obj in state["objects"].items():
             if obj.get("kind") != "unit":
@@ -5077,6 +5141,10 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
             if location == "battlefield" and where[0] != "battlefield":
                 continue
             if location == "base" and where[0] != "player":
+                continue
+            if here is not None and (where[0] != "battlefield" or where[1] != here):
+                continue
+            if not object_state_holds(obj, condition):
                 continue
             friendly = same_side(state, controller, obj.get("controller"))
             if (relation == "friendly") != friendly:
@@ -6837,7 +6905,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         predicate = effect.get("predicate")
         if predicate is not None:
             try:
-                holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"), {e.get("effect_id"): e for e in trace}, current, program.get("controller"))
+                holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"), {e.get("effect_id"): e for e in trace}, current, program.get("controller"),
+                                                              source=program.get("source_object") if isinstance(program.get("source_object"), str) else None)
             except ValueError as exc:
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
             if holds is None:
@@ -7321,10 +7390,25 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 for player_id in sorted(current["players"]):
                     candidates += list(current["players"][player_id]["zones"].get("base") or [])
             affected_ids: list[str] = []
+            # 2026-09-27 package 6: "other" - the program's own source, as it is now, is left out
+            # (the sentinel is the only value validate_program admits here)
+            excluded_identity = None
+            if criteria.get("exclude_source_identity") == SOURCE_IDENTITY_SENTINEL:
+                source = program.get("source_object")
+                if not isinstance(source, str) or source not in current["objects"]:
+                    return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                            "errors": ["affected.criteria.exclude_source_identity needs the program's source_object to be a known object"],
+                            "trace": trace}
+                excluded_identity = object_identity(current, source)
             for battlefield_id in [None]:
                 for candidate in candidates:
                     obj = current["objects"][candidate]
                     if "kind" in criteria and obj["kind"] != criteria["kind"]:
+                        continue
+                    # 2026-09-27 package 6: a state the set is narrowed by, read now (Core 414.2, 415.2, 142)
+                    if not object_state_holds(obj, criteria):
+                        continue
+                    if excluded_identity is not None and object_identity(current, candidate) == excluded_identity:
                         continue
                     if active_combat is not None and (obj.get("combat_designation") or {}).get("combat_id") != active_combat.get("combat_id"):
                         continue  # present but not yet designated: not "in combat" (740.2.c)

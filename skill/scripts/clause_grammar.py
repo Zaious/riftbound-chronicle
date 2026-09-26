@@ -403,6 +403,90 @@ def _lower_give_enemy_unit_here_might(params):
                                "target": {"kind": "unit", "controller_relation": "enemy", "location_ref": dict(_HERE)}}}}
 
 
+# --- 2026-09-27 package 6: a state a chosen object or a set must be in, bounded and criteria buffs,
+# and the conditions "if there is a ready enemy unit here" / "if I am at a battlefield". Each is a
+# literal row: the selector table is pinned by the signed binding specs, and none of these phrases
+# is a selector alternative there.
+_SELF = {"object_ref": "program_source"}
+
+
+def _lower_buff_exhausted_friendly_unit(params):
+    """"Buff an exhausted friendly unit." - one chosen friendly Unit that is Exhausted when it is
+    chosen and when the buff is placed (Core 414.2, 426.1, 359.3.e.2)."""
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly",
+              "exhausted": True}
+    return {"program_effects": [{"op": "buff", "effect_id": "bf", "target": dict(target)}],
+            "ast": {"node": "instruction", "op": "buff", "params": {"target": {k: v for k, v in target.items()
+                                                                              if k not in ("decision_ref",)}}}}
+
+
+def _lower_ready_something_else_exhausted(params):
+    """"Ready something else that's exhausted." - one chosen object of any type on the board, not the
+    source, Exhausted when chosen and when readied (Core 415.1, 414.2)."""
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "exhausted": True,
+              "exclude_source_identity": "$source_identity"}
+    return {"program_effects": [{"op": "ready", "effect_id": "rd", "target": dict(target)}],
+            "ast": {"node": "instruction", "op": "ready", "params": {"target": {"exhausted": True, "other": True}}}}
+
+
+def _lower_give_me_might_if_ready_enemy_here(params):
+    """"Give me +2 [M] this turn if there is a ready enemy unit here." - the source's Might this turn,
+    only if, as the instruction executes, an enemy Unit that is Ready stands at the Battlefield the
+    source stands at (Core 383.2.a.1: an "if" not right after the trigger condition is the effect's;
+    415.2; 359.3.f.2)."""
+    amount = int(params["amount"]) * (-1 if params["sign"] == "-" else 1)
+    condition = {"kind": "controls_units", "count": 1, "controller_relation": "enemy", "location": "here",
+                 "exhausted": False}
+    return {"program_effects": [{"op": "modify_might", "effect_id": "mm", "object_id": dict(_SELF), "amount": amount,
+                                 "duration": "this_turn", "source": "$chain_item",
+                                 "predicate": {"kind": "state_holds", "condition": dict(condition)}}],
+            "ast": {"node": "instruction", "op": "modify_might",
+                    "params": {"amount": amount, "duration": "this_turn", "object": "source"}, "if": dict(condition)}}
+
+
+def _lower_buff_up_to_two_other_friendly_units(params):
+    """"Buff up to two other friendly units." - one choice of zero to two friendly Units, the source
+    not among them (Core 355.13, 426.1); each chosen one is buffed on its own (426.1.b-c)."""
+    restrictions = {"chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly",
+                    "exclude_source_identity": "$source_identity"}
+    return {"program_effects": [{"op": "buff", "effect_id": "bf",
+                                 "targets": {"decision_ref": "t", "min": 0, "max": 2, "restrictions": dict(restrictions)}}],
+            "ast": {"node": "instruction", "op": "buff",
+                    "params": {"targets": {"min": 0, "max": 2, "restrictions": {"kind": "unit", "controller_relation": "friendly",
+                                                                               "other": True}}}}}
+
+
+def _lower_buff_all_friendly_units(params):
+    """"Buff all friendly units." - every friendly Unit on the board, found by criteria and not targeted
+    (Core 355.10.d, 426.1); one that already has a Buff is not buffed again (426.1.b.1)."""
+    criteria = {"kind": "unit", "controller_relation": "friendly", "location": "board"}
+    return {"program_effects": [{"op": "buff", "effect_id": "bf", "affected": {"criteria": dict(criteria)}}],
+            "ast": {"node": "instruction", "op": "buff", "params": {"affected": dict(criteria)}}}
+
+
+def _lower_if_at_battlefield_buff_all_other_friendly_units_there(params):
+    """"If I am at a battlefield, buff all other friendly units there." - only if the source stands at a
+    Battlefield as the instruction executes; then every other friendly Unit at that Battlefield (Core
+    359.3.f.2, 355.10.d, 426.1). The "if" is not right after a trigger condition, so it is the
+    effect's (Core 383.2.a.1)."""
+    criteria = {"kind": "unit", "controller_relation": "friendly", "location_ref": dict(_HERE),
+                "exclude_source_identity": "$source_identity"}
+    condition = {"kind": "at_a_battlefield"}
+    return {"program_effects": [{"op": "buff", "effect_id": "bf", "affected": {"criteria": dict(criteria)},
+                                 "predicate": {"kind": "state_holds", "condition": dict(condition)}}],
+            "ast": {"node": "instruction", "op": "buff",
+                    "params": {"affected": {"kind": "unit", "controller_relation": "friendly", "location_ref": dict(_HERE),
+                                            "other": True}}, "if": dict(condition)}}
+
+
+def _lower_kill_all_damaged_enemy_units_here(params):
+    """"Kill all damaged enemy units here." - every enemy Unit at the source's current Battlefield
+    with damage marked on it as the instruction executes (Core 428, 142, 355.10.d, 359.3.f.2)."""
+    criteria = {"kind": "unit", "controller_relation": "enemy", "location_ref": dict(_HERE), "damaged": True}
+    return {"program_effects": [{"op": "kill", "effect_id": "kl", "affected": {"criteria": dict(criteria)}}],
+            "ast": {"node": "instruction", "op": "kill", "params": {"affected": dict(criteria)}}}
+
+
 def _lower_deal_all_enemy_in_combat(params):
     amount = int(params["amount"])
     return {"program_effects": [{"op": "deal_damage", "effect_id": "barrage", "amount": amount,
@@ -948,6 +1032,14 @@ LOWERINGS = {
     "deal_damage_equal_to_my_might_to_an_enemy_unit_here": _lower_deal_my_might_to_enemy_unit_here,
     "give_an_enemy_unit_here_might_this_turn": _lower_give_enemy_unit_here_might,
     "deal_n_to_all_enemy_units_in_combat": _lower_deal_all_enemy_in_combat,
+    # 2026-09-27 package 6
+    "buff_an_exhausted_friendly_unit": _lower_buff_exhausted_friendly_unit,
+    "ready_something_else_thats_exhausted": _lower_ready_something_else_exhausted,
+    "give_me_might_this_turn_if_there_is_a_ready_enemy_unit_here": _lower_give_me_might_if_ready_enemy_here,
+    "buff_up_to_two_other_friendly_units": _lower_buff_up_to_two_other_friendly_units,
+    "buff_all_friendly_units": _lower_buff_all_friendly_units,
+    "if_i_am_at_a_battlefield_buff_all_other_friendly_units_there": _lower_if_at_battlefield_buff_all_other_friendly_units_there,
+    "kill_all_damaged_enemy_units_here": _lower_kill_all_damaged_enemy_units_here,
     "deal_n_to_all_units_at_battlefields": _lower_deal_all_units_at_battlefields,
     "channel_n_rune_exhausted": _lower_channel_exhausted,
     "return_a_unit_from_your_trash_to_your_hand": _lower_return_from_trash,

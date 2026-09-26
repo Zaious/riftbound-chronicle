@@ -2501,6 +2501,208 @@
       ]
     },
     {
+      "production_id": "buff_an_exhausted_friendly_unit",
+      "form": "Buff an exhausted friendly unit.",
+      "template": "buff an exhausted friendly unit",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 426.1",
+        "Core 702.2.a",
+        "Core 414.2",
+        "Core 355.9",
+        "Core 359.3.e.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "buff",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen friendly Unit that is Exhausted when chosen and when buffed. Any friendly unit, an enemy unit, a Ready unit, or every exhausted unit is a different clause.",
+      "golden": [
+        "Buff an exhausted friendly unit."
+      ],
+      "negative": [
+        "buff a friendly unit",
+        "buff an exhausted enemy unit",
+        "buff a ready friendly unit",
+        "buff all exhausted friendly units"
+      ]
+    },
+    {
+      "production_id": "ready_something_else_thats_exhausted",
+      "form": "Ready something else that's exhausted.",
+      "template": "ready something else that's exhausted",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 415.1",
+        "Core 414.2",
+        "Core 355.9.a",
+        "Core 359.3.e.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "ready",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen object of any type on the board, not the source itself, that is Exhausted when chosen and when readied. The source included, a Ready object, or one type only is a different clause.",
+      "golden": [
+        "Ready something else that's exhausted."
+      ],
+      "negative": [
+        "ready something that's exhausted",
+        "ready another unit",
+        "ready something else",
+        "ready a unit that's exhausted"
+      ]
+    },
+    {
+      "production_id": "give_me_might_this_turn_if_there_is_a_ready_enemy_unit_here",
+      "form": "Give me +2 [M] this turn if there is a ready enemy unit here.",
+      "template": "give me (?P<sign>[+-])(?P<amount>\\d+) \\[m\\] this turn if there is a ready enemy unit here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 476",
+        "Core 479",
+        "Core 317.2",
+        "Core 383.2.a.1",
+        "Core 415.2",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "modify_might",
+        "typed_conditions"
+      ],
+      "boundary": "The source's own Might this turn, only if an enemy Unit that is Ready stands at the source's Battlefield as the instruction executes. Any enemy unit, an exhausted one, or a condition right after the trigger condition is a different clause.",
+      "golden": [
+        "Give me +2 [M] this turn if there is a ready enemy unit here."
+      ],
+      "negative": [
+        "give me +2 [m] this turn if there is an enemy unit here",
+        "give me +2 [m] this turn",
+        "give me +2 [m] this turn if there is an exhausted enemy unit here",
+        "give me +2 [m] this turn if there is a ready friendly unit here"
+      ]
+    },
+    {
+      "production_id": "buff_up_to_two_other_friendly_units",
+      "form": "Buff up to two other friendly units.",
+      "template": "buff up to two other friendly units",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 426.1",
+        "Core 355.13",
+        "Core 355.8",
+        "Core 359.3.e.8"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "buff",
+        "typed_selectors"
+      ],
+      "boundary": "One choice of zero to two friendly Units, the source not among them, each buffed on its own. The source allowed, exactly two, or every friendly unit is a different clause.",
+      "golden": [
+        "Buff up to two other friendly units."
+      ],
+      "negative": [
+        "buff up to two friendly units",
+        "buff two other friendly units",
+        "buff all other friendly units",
+        "buff up to three other friendly units"
+      ]
+    },
+    {
+      "production_id": "buff_all_friendly_units",
+      "form": "Buff all friendly units.",
+      "template": "(?:then )?buff all friendly units",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 426.1",
+        "Core 426.1.b.1",
+        "Core 355.10.d"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "buff",
+        "criteria_expansion"
+      ],
+      "boundary": "Every friendly Unit on the board - Bases and Battlefields - found by criteria, not targeted. Other friendly units, enemy units, or friendly units at one place is a different clause.",
+      "golden": [
+        "Buff all friendly units.",
+        "Then buff all friendly units."
+      ],
+      "negative": [
+        "buff all other friendly units",
+        "buff all enemy units",
+        "buff all friendly units here",
+        "buff a friendly unit"
+      ]
+    },
+    {
+      "production_id": "if_i_am_at_a_battlefield_buff_all_other_friendly_units_there",
+      "form": "If I am at a battlefield, buff all other friendly units there.",
+      "template": "(?:then, )?if i am at (?:a )?battlefield, buff all other friendly units there",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 426.1",
+        "Core 355.10.d",
+        "Core 359.3.f.2",
+        "Core 383.2.a.1",
+        "Core 107.2.b"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "buff",
+        "criteria_expansion",
+        "typed_conditions"
+      ],
+      "boundary": "Only if the source stands at a Battlefield as the instruction executes: every friendly Unit at that Battlefield but the source. The source included, every friendly unit, or a condition right after the trigger condition is a different clause.",
+      "golden": [
+        "If I am at a battlefield, buff all other friendly units there.",
+        "Then, if I am at a battlefield, buff all other friendly units there."
+      ],
+      "negative": [
+        "if i am at a battlefield, buff all friendly units there",
+        "buff all other friendly units there",
+        "if i am at a battlefield, buff all other friendly units",
+        "if i am in my base, buff all other friendly units there"
+      ]
+    },
+    {
+      "production_id": "kill_all_damaged_enemy_units_here",
+      "form": "Kill all damaged enemy units here.",
+      "template": "kill all damaged enemy units here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 428",
+        "Core 142",
+        "Core 355.10.d",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "criteria_expansion",
+        "kill"
+      ],
+      "boundary": "Every enemy Unit at the source's current Battlefield with damage marked on it as the instruction executes. Undamaged units, friendly units, or units at another place is a different clause.",
+      "golden": [
+        "Kill all damaged enemy units here."
+      ],
+      "negative": [
+        "kill all enemy units here",
+        "kill all damaged units here",
+        "kill all damaged enemy units",
+        "kill a damaged enemy unit here"
+      ]
+    },
+    {
       "production_id": "no_rules_text",
       "form": "(no rules text)",
       "template": "\\(no rules text\\)",

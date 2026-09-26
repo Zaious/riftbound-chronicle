@@ -12,12 +12,12 @@
   "quota": null,
   "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
   "counts": {
-    "clauses_parsed": 35,
-    "clauses_in_debt": 21,
+    "clauses_parsed": 36,
+    "clauses_in_debt": 20,
     "promotion": {
-      "grammar_reproduced": 32,
-      "hand_written": 16,
-      "in_debt_but_claimed": 16
+      "grammar_reproduced": 33,
+      "hand_written": 15,
+      "in_debt_but_claimed": 15
     },
     "by_rule_family": {
       "attacking_defending_alone": 1,
@@ -34,18 +34,18 @@
       "mutual_damage_equal_might": 1,
       "next_death_replacement": 1,
       "optional_additional_cost": 1,
-      "play_and_move_triggers": 3,
-      "play_lifecycle": 2,
+      "play_and_move_triggers": 2,
+      "play_lifecycle": 1,
       "recall": 1,
       "return_board_to_hand": 1,
       "return_trash_to_hand": 1,
       "shield": 1,
-      "target_choice": 9,
+      "target_choice": 8,
       "unclassified": 2
     },
     "by_risk": {
       "always_in_play": 4,
-      "main_deck": 17,
+      "main_deck": 16,
       "unknown": 0
     }
   },
@@ -367,27 +367,6 @@
       "reason_code": "clause_unparsed"
     },
     {
-      "clause_id": "maddened marauder#8815ca64",
-      "card_key": "maddened marauder",
-      "card": "Maddened Marauder",
-      "text": "When you play me, move a unit from a battlefield to its base.",
-      "pack": "global-core-origins-v1",
-      "deck_slots": 0,
-      "deck_count": 1,
-      "decks": [
-        "proving-grounds-annie"
-      ],
-      "risk": "main_deck",
-      "rule_family": [
-        "play_and_move_triggers",
-        "play_lifecycle",
-        "target_choice"
-      ],
-      "missing_capability": "R3-A2-play-conditions-continuous",
-      "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
-    },
-    {
       "clause_id": "master yi - honed#0be72750",
       "card_key": "master yi - honed",
       "card": "Master Yi - Honed",
@@ -474,7 +453,9 @@
     "normalization_baseline": "split_clauses:af6d79ecdf43bc4b",
     "reclassified": [],
     "added": [],
-    "repaid": [],
+    "repaid": [
+      "maddened marauder#8815ca64"
+    ],
     "normalization_reclassification": []
   }
 }

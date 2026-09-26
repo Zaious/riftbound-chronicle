@@ -92,6 +92,10 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # 2026-09-24: a card played - Finalized by its play (Core 419.4.a). Emitted by the play
     # transaction, not by an effect program, so no op names it (PLAY_EVENT_KINDS).
     "played": {"about": "object", "rules": ["Core 419.4.a"]},
+    # 2026-09-28 (package 6): an effect-driven play's step 1 - the card moved to the Chain as a
+    # Pending item while the effect resolves (Core 354, 419.3). Not "played": the play is complete
+    # only when its steps are, and the play transaction emits that event then (419.4.a).
+    "play_started": {"about": "object", "rules": ["Core 354", "Core 419.3"]},
     # --- player ----------------------------------------------------------
     # Sabotage: the instruction that only chooses. The event is what every
     # later instruction of the same program reads instead of choosing again.
@@ -170,6 +174,7 @@ OP_PRIMARY: dict[str, str] = {
     "create_delayed_trigger": "delayed_trigger_created",
     "remove_hidden": "hidden_removed",
     "trigger_base_cost": "trigger_cost_paid",
+    "limited_play": "play_started",
 }
 
 # Actions performed outside an effect program, so their op is not in

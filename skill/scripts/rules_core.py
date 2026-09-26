@@ -98,6 +98,12 @@ SUPPORTED_PROCEDURES = {
     "schedule_triggered_items": [
         "Core 383.3", "Core 383.3.c–383.3.d.1", "Core 428.1.a.1.b",
     ],
+    # 2026-09-28 (package 6): the cards an effect's resolution played (Core 419.3), each put on the
+    # Chain as a Pending item by the play's step 1 (354, 354.2) whatever the state and Priority -
+    # a Limited Action, taken when instructed (419.3.a, 312.1.b.1, 410.2.b)
+    "add_limited_play_items": [
+        "Core 354", "Core 354.2", "Core 354.3", "Core 419.3", "Core 419.3.a", "Core 312.1.b.1",
+    ],
 }
 
 
@@ -382,6 +388,12 @@ def validate_state(state: dict[str, Any]) -> list[str]:
             errors.append(f"{label}.status is invalid")
         if item.get("ability_kind") not in ABILITY_KINDS:
             errors.append(f"{label}.ability_kind is invalid")
+        if "limited_play" in item and (item["limited_play"] is not True or item.get("object_kind") not in {"unit", "gear", "spell"}
+                                       or item.get("timing") != "default"):
+            # 2026-09-28 (package 6, Core 419.3): a card an effect's resolution is playing
+            errors.append(f"{label}.limited_play marks a card an effect plays (true, a unit, gear or spell, default timing)")
+        if "limited_play_steps" in item and (item["limited_play_steps"] != "taken" or item.get("limited_play") is not True):
+            errors.append(f"{label}.limited_play_steps is 'taken', on a limited play whose steps 2 to 5 the play transaction took")
         if item.get("timing") == "triggered":
             if not isinstance(item.get("source_object"), str) or not item.get("source_object"):
                 errors.append(f"{label}.source_object is required for triggered items")
@@ -737,6 +749,11 @@ def finalize_oldest_pending(state: dict[str, Any], *, perform_optional_trigger: 
     if next_step.get("procedure") != "finalize_oldest_pending":
         return _result(state, valid=True, applied=False, reason_code="finalize_not_next", next_procedure=next_step)
     original_item = next(item for item in state["chain"]["items"] if item["status"] == "pending")
+    if original_item.get("limited_play") is True and original_item.get("limited_play_steps") != "taken":
+        # 2026-09-28 (package 6, Core 419.3.b): a card an effect played is finalized by the play's own
+        # steps (resolution_bridge.finalize_limited_play), never marked Finalized without them
+        return _result(state, valid=True, applied=False, reason_code="limited_play_steps_required", subject=original_item["id"],
+                       rule_locators=["Core 419.3.b", "Core 337.1"])
     optional_trigger = original_item.get("timing") == "triggered" and original_item.get("optional_at_finalize") is True
     if optional_trigger and perform_optional_trigger is None:
         return _result(
@@ -835,6 +852,50 @@ def add_pending_item(state: dict[str, Any], proposal: dict[str, Any]) -> dict[st
         transition={"type": "pending_chain_item_added", "item_id": candidate["id"], "controller": candidate["controller"]},
         next_procedure=next_procedure(probe),
         rule_locators=["Core 328–330", "Core 334–337", "Core 358.4"],
+    )
+
+
+def add_limited_play_items(state: dict[str, Any], plays: list[dict[str, Any]]) -> dict[str, Any]:
+    """2026-09-28 (package 6): the cards an effect played as it resolved (Core 419.3). Each play's step
+    1 moved its card to the Chain as a Pending item (Core 354, 354.2); the timing Chain gets that item
+    here, in the order the plays began, after the items already on it. A Limited Action is taken when
+    an effect instructs it, whatever the state and whoever has Priority (419.3.a, 312.1.b.1, 410.2.b),
+    so no timing permission is asked. The play's remaining steps wait until the effect that played it
+    has finished resolving (354.3): this is called once it has (resolution_bridge)."""
+    errors = validate_state(state)
+    if errors:
+        return _result(state, valid=False, errors=errors)
+    if is_terminal(state):
+        return _game_over(state)
+    if not plays:
+        return _result(state, valid=True, applied=True, next_state=copy.deepcopy(state), next_state_hash=state_hash(state),
+                       transition={"type": "no_limited_plays"})
+    new_state = copy.deepcopy(state)
+    was_empty = not new_state["chain"]["items"]
+    for play in plays:
+        if not isinstance(play, dict) or set(play) != {"chain_item_id", "card", "controller", "object_kind"}:
+            return _result(state, valid=False, errors=["a limited play is {chain_item_id, card, controller, object_kind}"])
+        if play["controller"] not in new_state["players"]:
+            return _result(state, valid=False, errors=[f"limited play {play['chain_item_id']!r} names an unknown controller"])
+        new_state["chain"]["items"].append({"id": play["chain_item_id"], "controller": play["controller"],
+                                            "object_kind": play["object_kind"], "timing": "default", "status": "pending",
+                                            "ability_kind": None, "limited_play": True})
+    if was_empty:
+        new_state["chain"]["initiated_by"] = "played_card"
+    new_state["chain"]["consecutive_passes"] = []
+    if new_state["showdown"]["active"]:
+        new_state["showdown"]["focus_passes"] = []  # 347.2.a: a play breaks the sequence of passes
+    if found := validate_state(new_state):
+        return _result(state, valid=True, applied=False, reason_code="invalid_chain_item", errors=found)
+    return _result(
+        state,
+        valid=True,
+        applied=True,
+        next_state=new_state,
+        next_state_hash=state_hash(new_state),
+        transition={"type": "limited_play_items_added", "item_ids": [p["chain_item_id"] for p in plays]},
+        next_procedure=next_procedure(new_state),
+        rule_locators=SUPPORTED_PROCEDURES["add_limited_play_items"],
     )
 
 

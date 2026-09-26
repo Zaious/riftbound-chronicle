@@ -74,6 +74,14 @@ PERMISSION_REQUIRED_SOURCES = {"trash"}
 # ADR-0012 §3: playing a hidden card needs no separate permission — the
 # Hidden keyword itself grants it from the next turn (811.1).
 HIDDEN_TARGETING = {"restricted", "free_by_restriction"}
+# How a declaration may replace or zero the base cost before Core 356 runs (ADR-0012 §1): "for [Cost]"
+# (356.1.a), "ignoring its cost" (356.1.b.1), and - 2026-09-28, package 6 - "ignoring its Energy cost" /
+# "ignoring its Power cost" (356.1.b.2), which an effect-driven play needs.
+COST_OVERRIDE_KINDS = {"ignore_base_cost", "for_cost", "ignore_energy", "ignore_power"}
+OVERRIDE_MODIFICATION = {"ignore_base_cost": "ignore_all", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power"}
+# 2026-09-28 (package 6): an effect-driven play's cost basis (effect_ir.LIMITED_PLAY_COST_BASES) as the
+# cost_override its play transaction declares
+LIMITED_PLAY_OVERRIDE = {"ignore_all": "ignore_base_cost", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power"}
 # ADR-0011 §4: costs paid by the payer's card choice at play stage.
 CHOICE_COSTS = {"discard", "recycle_trash"}
 # Costs whose sources live in P4 (XP, Buff, Empower): typed, refused by name.
@@ -127,14 +135,17 @@ def validate_declaration(value: Any) -> list[str]:
         errors.append("source_permission must be {granted_by: non-empty string}")
     override = value.get("cost_override")
     if override is not None:
-        if not isinstance(override, dict) or set(override) - {"kind", "cost", "source"} or override.get("kind") not in {"ignore_base_cost", "for_cost"} or not isinstance(override.get("source"), str) or not override.get("source"):
-            errors.append("cost_override must be {kind: ignore_base_cost | for_cost, cost?, source}")
+        if not isinstance(override, dict) or set(override) - {"kind", "cost", "source"} or override.get("kind") not in COST_OVERRIDE_KINDS or not isinstance(override.get("source"), str) or not override.get("source"):
+            errors.append(f"cost_override must be {{kind: {' | '.join(sorted(COST_OVERRIDE_KINDS))}, cost?, source}}")
         elif override["kind"] == "for_cost" and not _is_resource_cost(override.get("cost")):
             errors.append("cost_override.for_cost needs a resource cost")
-        elif override["kind"] == "ignore_base_cost" and "cost" in override:
-            errors.append("cost_override.ignore_base_cost carries no cost")
-    if "timing_source" in value and value["timing_source"] not in {"ambush", "hidden"}:
-        errors.append("timing_source may only name ambush (Core 822.1) or hidden (Core 811.1)")
+        elif override["kind"] != "for_cost" and "cost" in override:
+            errors.append(f"cost_override.{override['kind']} carries no cost")
+    if "timing_source" in value and value["timing_source"] not in {"ambush", "hidden", "limited_play"}:
+        errors.append("timing_source may only name ambush (Core 822.1), hidden (Core 811.1) or limited_play (Core 419.3)")
+    if value.get("timing_source") == "limited_play" and (not isinstance(value.get("chain_item"), dict)
+                                                         or value["chain_item"].get("object_kind") == "ability"):
+        errors.append("a limited play plays a card (Core 419.3); an ability is not played")
     if isinstance(source, dict) and source.get("kind") == "facedown" and (not isinstance(source.get("battlefield"), str) or not source["battlefield"]):
         errors.append("a facedown source names the battlefield the card was hidden at (Core 811.1)")
     if "hidden_targeting" in value and value["hidden_targeting"] not in HIDDEN_TARGETING:
@@ -1151,6 +1162,20 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                     ok, reason = evaluate_target(effect_state, selector, actor)
                     if not ok:
                         raise PlayError("choices", "target_illegal_at_play", f"effects[{index}] target {object_id!r}: {reason}", rule_locators=["Core 355.9"])
+                    if effect.get("op") == "limited_play" and isinstance(effect.get("cost_basis"), dict):
+                        # 2026-09-28 (package 6, Core 355.16; GPT 2026-09-25): a card the effect will play is not
+                        # chosen when its cost can be known now never to be payable
+                        why = limited_play_unobtainable(effect_state, actor, object_id, effect["cost_basis"])
+                        if why == "printed_cost_not_observed":
+                            raise PlayError("choices", "limited_play_cost_not_observed",
+                                            f"effects[{index}] target {object_id!r}: its printed cost is not observed, so whether "
+                                            f"its play can be paid is not known (Core 206, 355.16)", unsupported=True,
+                                            rule_locators=["Core 206", "Core 355.16"])
+                        if why is not None:
+                            raise PlayError("choices", "limited_play_cost_unobtainable",
+                                            f"effects[{index}] target {object_id!r}: its play could never be paid ({why}), so it "
+                                            f"may not be chosen (Core 355.16)",
+                                            rule_locators=["Core 355.16", "Core 164.2.a", "Core 164.2.b", "Core 357.1"])
                     if selector.get("kind") != "battlefield" and object_id in effect_state["objects"]:
                         chosen_objects.append(object_id)
         _check_target_bounds(effect, index, decisions, effect_state)
@@ -1253,6 +1278,83 @@ def deflect_costs(state: dict[str, Any], actor: str, chosen_objects: list[str]) 
     return costs
 
 
+# ------------------------------------------------------- effect-driven play --
+
+def _limited_play_checks(timing_state: dict[str, Any], effect_state: dict[str, Any],
+                         declaration: dict[str, Any]) -> dict[str, Any]:
+    """2026-09-28 (package 6, Core 419.3): an effect-driven play's declaration must be the play the
+    effect started, and nothing more. Its card is on the Chain under the declared id with the effect's
+    record (step 1, Core 354), that item is the oldest Pending one (337.1), and the source, permission
+    and cost change are the record's, the base cost the card's printed one (Core 206) - a declaration
+    that says otherwise is refused as malformed, never played on its own terms. Returns the record."""
+    item_id, actor, card = declaration["chain_item"]["id"], declaration["actor"], declaration["card"]
+    entry = (effect_state.get("chain_items") or {}).get(item_id) or {}
+    record = entry.get("limited_play")
+    if not isinstance(record, dict) or entry.get("card") != card or entry.get("controller") != actor:
+        raise PlayError("declaration", "limited_play_not_started",
+                        f"{card!r} is not on the Chain as {item_id!r} by an effect {actor} controls (Core 354, 419.3)", invalid=True)
+    timing_item = next((i for i in timing_state.get("chain", {}).get("items", []) if i.get("id") == item_id), None)
+    if (not isinstance(timing_item, dict) or timing_item.get("limited_play") is not True or timing_item.get("status") != "pending"
+            or timing_item.get("controller") != actor or timing_item.get("object_kind") != declaration["chain_item"]["object_kind"]):
+        raise PlayError("declaration", "limited_play_not_pending",
+                        f"the timing Chain holds no Pending limited play {item_id!r} of {actor}'s (Core 354.2)", invalid=True)
+    from rules_core import next_procedure
+    step = next_procedure(timing_state)
+    if step.get("procedure") != "finalize_oldest_pending" or step.get("subject") != item_id:
+        raise PlayError("legality", "limited_play_not_next",
+                        f"{item_id!r} is not the oldest Pending item; the next procedure is {step.get('procedure')!r} "
+                        f"for {step.get('subject')!r} (Core 337.1, 337.1.b)", rule_locators=["Core 337.1", "Core 337.1.b"])
+    printed = (effect_state["objects"].get(card) or {}).get("printed_cost")
+    wanted = {"kind": LIMITED_PLAY_OVERRIDE[record["cost_basis"]["kind"]], "source": record["granted_by"]}
+    problems = []
+    if (declaration.get("source") or {}).get("kind") != record["source_zone"]:
+        problems.append(f"source {declaration.get('source')} is not the zone the effect took the card from ({record['source_zone']})")
+    if (declaration.get("source_permission") or {}).get("granted_by") != record["granted_by"]:
+        problems.append(f"source_permission {declaration.get('source_permission')} is not the effect's ({record['granted_by']})")
+    if declaration.get("cost_override") != wanted:
+        problems.append(f"cost_override {declaration.get('cost_override')} is not the effect's {wanted}")
+    if declaration["cost"].get("base") != printed:
+        problems.append(f"cost.base {declaration['cost'].get('base')} is not the card's printed cost {printed} (Core 206)")
+    if declaration["chain_item"].get("timing") != "default":
+        problems.append("an effect-driven play declares default timing; the effect's instruction is its permission (Core 419.3.a)")
+    if problems:
+        raise PlayError("declaration", "limited_play_declaration_mismatch", "; ".join(problems), invalid=True)
+    return record
+
+
+def limited_play_unobtainable(state: dict[str, Any], actor: str, object_id: str, cost_basis: dict[str, Any]) -> str | None:
+    """2026-09-28 (package 6, Core 355.16; GPT 2026-09-25): why choosing `object_id` for an effect-driven
+    play is certain to leave a cost that cannot be paid, or None. What the play would still cost - its
+    printed cost (Core 206) less what the effect ignores (356.1.b) - is set against the most the actor
+    could have: the pool, restricted resources usable for that play (446.3), and each Rune they control
+    on the Board, which can add 1 Energy while ready and 1 Power of its Domain by recycling itself
+    (164.2.a, 164.2.b; a Rune whose Domain the state does not carry may be any). Add abilities of other
+    permanents are not in the effect state, so this bound counts only the pool and the Runes."""
+    obj = state["objects"].get(object_id) or {}
+    printed = obj.get("printed_cost")
+    if not isinstance(printed, dict):
+        return "printed_cost_not_observed"
+    kind = cost_basis.get("kind")
+    energy = 0 if kind in {"ignore_energy", "ignore_all"} else printed["energy"]
+    power = {} if kind in {"ignore_power", "ignore_all"} else {d: n for d, n in printed["power"].items() if n}
+    if not energy and not power:
+        return None
+    resources = state["players"][actor]["resources"]
+    use = f"play_{obj.get('kind')}"
+    runes = [o for o, rune in state["objects"].items() if rune.get("kind") == "rune" and rune.get("controller") == actor
+             and zone_class(find_location(state, o)) == "board"]
+    most_energy = (resources["energy"] + sum(r["amount"] for r in _restricted_entries(resources, use, "energy"))
+                   + sum(1 for o in runes if not state["objects"][o].get("exhausted")))
+    if energy > most_energy:
+        return f"energy: {energy} due, at most {most_energy} obtainable"
+    for domain, amount in sorted(power.items()):
+        most = (resources["power"].get(domain, 0) + sum(r["amount"] for r in _restricted_entries(resources, use, "power", domain))
+                + sum(1 for o in runes if state["objects"][o].get("domains") in (None, [domain])))
+        if amount > most:
+            return f"power {domain}: {amount} due, at most {most} obtainable"
+    return None
+
+
 # ---------------------------------------------------------------- transaction --
 
 def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any], *,
@@ -1294,8 +1396,12 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         item_id = declaration["chain_item"]["id"]
         if actor not in effect_state["players"]:
             raise PlayError("declaration", "unknown_actor", f"{actor!r} is not a player in the effect state", invalid=True)
-        if item_id in (effect_state.get("chain_items") or {}) or any(i.get("id") == item_id for i in timing_state.get("chain", {}).get("items", [])):
+        # 2026-09-28 (package 6): an effect-driven play (Core 419.3) finishes a play whose step 1 the
+        # effect already took - its card is on the Chain under this id, Pending (Core 354)
+        limited = declaration.get("timing_source") == "limited_play"
+        if not limited and (item_id in (effect_state.get("chain_items") or {}) or any(i.get("id") == item_id for i in timing_state.get("chain", {}).get("items", []))):
             raise PlayError("declaration", "chain_item_id_collision", f"chain item {item_id!r} already exists", invalid=True)
+        limited_record = _limited_play_checks(timing_state, effect_state, declaration) if limited else None
         source_kind = (declaration.get("source") or {}).get("kind", "hand")
         is_ability = declaration["chain_item"]["object_kind"] == "ability"
         if is_ability:
@@ -1343,9 +1449,13 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                                     f"{card!r} may be activated only while {condition['kind']} holds (377.2.b)", rule_locators=["Core 377.2.b", "Core 404"])
         else:
             zone_of = find_location(effect_state, card)
-            if source_kind == "hand" and zone_of != ("player", actor, "hand"):
+            if not limited and source_kind == "hand" and zone_of != ("player", actor, "hand"):
                 raise PlayError("choices", "card_not_in_hand", f"{card!r} is not in {actor}'s hand", rule_locators=["Core 354"])
-            if source_kind == "facedown":
+            if limited:
+                # step 1 moved the card from its zone to the Chain; where it came from, and the
+                # permission, are the effect's record (_limited_play_checks), not a zone to look in
+                pass
+            elif source_kind == "facedown":
                 # ADR-0012 §3 / Core 811: playable from the turn after it was
                 # hidden, at the Battlefield it was hidden at, ignoring its base
                 # cost — the declaration states the override, this checks the
@@ -1494,7 +1604,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # ADR-0012 §1: an override replaces the base cost before 356 runs
             # (811: "ignoring its base cost"); the receipt shows it as a base
             # modification, so the arithmetic stays one implementation.
-            modification = {"kind": "ignore_all", "source": override["source"]} if override["kind"] == "ignore_base_cost" else {"kind": "for_cost", "cost": copy.deepcopy(override["cost"]), "source": override["source"]}
+            modification = ({"kind": "for_cost", "cost": copy.deepcopy(override["cost"]), "source": override["source"]}
+                            if override["kind"] == "for_cost"
+                            else {"kind": OVERRIDE_MODIFICATION[override["kind"]], "source": override["source"]})
             cost["base_modifications"] = [modification] + list(cost.get("base_modifications", []) or [])
         if deflect:
             cost["additional"] = list(cost.get("additional", []) or []) + deflect
@@ -1599,6 +1711,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # program to the timing item.
         if is_ability:
             entry = {"source_object": card, "ability_id": declaration["activation"]["ability_id"], "controller": actor}
+        elif limited:
+            # the card left its zone at step 1 (Core 354) and is already this chain entry
+            entry = copy.deepcopy(working["chain_items"][item_id])
         elif source_kind == "facedown":
             zone = working["battlefields"][declaration["source"]["battlefield"]]["facedown"]
             zone["cards"] = [c for c in zone["cards"] if c["object_id"] != card]
@@ -1625,7 +1740,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             working["objects"][card].setdefault("entry_replacements", []).append(
                 accelerate_entry_replacement(card, item_id))
         working.setdefault("chain_items", {})[item_id] = entry
-        identity_after = _bump_identity(working, card) if not is_ability else object_identity(working, card)
+        # (an effect-driven play's card became a new object when step 1 moved it, Core 124)
+        identity_after = _bump_identity(working, card) if not (is_ability or limited) else object_identity(working, card)
         if not is_ability:
             # Core 419.4.b / 812.1.c: this card is Finalized by this play; a
             # Legion reads that, even if the card is later countered.
@@ -1672,8 +1788,17 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         item = {**declaration["chain_item"], "ability_kind": declaration["chain_item"].get("ability_kind")}
         if declaration.get("effect_program_id"):
             item["effect_program_id"] = declaration["effect_program_id"]
-        insertion = add_pending_item(timing_state, {"actor": actor, "kind": "activate_ability" if is_ability else "play_card", "item": item,
-                                                    "initiated_by": ("add_ability" if item.get("ability_kind") == "add" else "activated_ability") if is_ability else "played_card"})
+        if limited:
+            # 2026-09-28 (package 6): the Pending item step 1 put on the Chain is this play's; a Limited
+            # Action asks no timing permission (Core 419.3.a, 312.1.b.1) - _limited_play_checks has
+            # already found it the oldest Pending item (337.1)
+            insertion = {"applied": True, "next_state": copy.deepcopy(timing_state)}
+            for pending in insertion["next_state"]["chain"]["items"]:
+                if pending.get("id") == item_id:
+                    pending["limited_play_steps"] = "taken"
+        else:
+            insertion = add_pending_item(timing_state, {"actor": actor, "kind": "activate_ability" if is_ability else "play_card", "item": item,
+                                                        "initiated_by": ("add_ability" if item.get("ability_kind") == "add" else "activated_ability") if is_ability else "played_card"})
         if insertion.get("valid") is False:
             raise PlayError("legality", "invalid_timing_state", "; ".join(insertion.get("errors", [])), invalid=True)
         if insertion.get("applied") is not True:

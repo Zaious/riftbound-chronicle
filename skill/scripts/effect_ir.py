@@ -297,6 +297,13 @@ SUPPORTED_OPS = {
     # instruction so the content hash covers it; it changes nothing as the ability resolves -
     # apply_program only checks that the chain item's receipt says it was paid.
     "trigger_base_cost",
+    # 2026-09-28 (package 6): "Play a unit from your trash, ignoring its Energy cost." - a card
+    # played as part of an effect's resolution (Core 419.3), a Limited Action (419.3.a) whose
+    # steps are the normal ones except as the effect notes (419.3.b). The instruction performs
+    # step 1 only: the card moves to the Chain as a Pending item (Core 354); the rest waits
+    # until the resolving effect is done (354.3) and runs through the play transaction
+    # (resolution_bridge.finalize_limited_play). It never puts a card on the board itself.
+    "limited_play",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -517,7 +524,21 @@ OP_RULES = {
     "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
     "remove_hidden": ["Core 323.7", "Core 811", "Core 124"],
     "trigger_base_cost": ["Core 204.3.a", "Core 383.3.b", "Core 383.3.b.1", "Core 403.1.b.1", "Core 404.2", "Core 740.4.a.2"],
+    "limited_play": ["Core 419.3", "Core 419.3.a", "Core 419.3.b", "Core 354", "Core 354.3", "Core 124"],
 }
+# 2026-09-28 (package 6): what an effect-driven play changes about the card's cost (Core 356.1):
+# "ignoring its Energy cost" / "ignoring its Power cost" set that base cost to zero and leave the
+# other (356.1.b.2); "ignoring its cost" sets both to zero (356.1.b.1). Each is a base cost
+# modification the play transaction applies before Core 356 runs.
+LIMITED_PLAY_COST_BASES = {"ignore_energy": "Core 356.1.b.2", "ignore_power": "Core 356.1.b.2",
+                           "ignore_all": "Core 356.1.b.1"}
+# where an effect-driven play may take a card from: a public zone, so the card is a target chosen as
+# the effect is played or finalized (GPT 2026-09-25; Core 355.10.a, 355.9.a). A private zone (the
+# hand) is a choice made as the effect resolves, which this instruction does not model yet.
+LIMITED_PLAY_ZONES = {"trash"}
+LIMITED_PLAY_KINDS = {"unit", "gear", "spell"}
+LIMITED_PLAY_RECORD_FIELDS = {"granted_by", "program_id", "effect_id", "source_zone", "zone_owner", "zone_index",
+                              "identity_before", "controller_before", "cost_basis"}
 # The payments a triggered ability's base cost is made of (trigger_cost.py pays them): Energy
 # and Power, exhausting the ability's own source, spending a buff from a unit its controller
 # controls (Core 702.2.b), and recycling the ability's own source from its owner's trash (Core
@@ -766,7 +787,8 @@ def validate_state(state: Any) -> list[str]:
         # a cost comparison can read what that spell actually cost rather than
         # only what is printed on it.
         allowed = ({"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable", "cost_receipt", "played_targets"} if is_ability
-                   else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt", "played_targets"})
+                   else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt", "played_targets",
+                         "limited_play"})
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
@@ -781,6 +803,12 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"chain_items.{item_id}.played_targets must be the play_declaration target selections it was played with")
         if "cost_receipt" in entry:
             errors.extend(f"chain_items.{item_id}.cost_receipt {e}" for e in _receipt_errors(entry["cost_receipt"]))
+        if "limited_play" in entry:
+            # 2026-09-28 (package 6, Core 419.3, 354): a card an effect's resolution moved to the Chain -
+            # who granted the play, where the card came from (to undo step 1 if the play is cancelled,
+            # Core 358.5), and what the effect changes about its cost (356.1.b)
+            errors.extend(f"chain_items.{item_id}.limited_play {e}"
+                          for e in _limited_play_record_errors(entry["limited_play"], players))
         repeat = entry.get("repeat")
         if repeat is not None and (not isinstance(repeat, dict) or set(repeat) - {"executions", "modes"} or not isinstance(repeat.get("executions"), int) or isinstance(repeat.get("executions"), bool) or repeat["executions"] < 1
                                    or ("modes" in repeat and (not isinstance(repeat["modes"], list) or len(repeat["modes"]) != repeat["executions"] or any(not isinstance(m, dict) or set(m) != {"decision_id", "option_id"} for m in repeat["modes"])))):
@@ -1529,6 +1557,57 @@ def _trigger_base_cost_errors(effect: dict[str, Any], index: int, count: int) ->
     return errors
 
 
+def _limited_play_cost_basis_errors(value: Any) -> list[str]:
+    if not isinstance(value, dict) or set(value) != {"kind"} or value.get("kind") not in LIMITED_PLAY_COST_BASES:
+        return [f"cost_basis must be {{kind}} with kind in {sorted(LIMITED_PLAY_COST_BASES)} (Core 356.1.b)"]
+    return []
+
+
+def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
+    """The shape of an effect-driven play (Core 419.3): one target in a public zone of its
+    controller's, chosen as the effect is played or finalized (GPT 2026-09-25), and what the effect
+    changes about the card's cost. Nothing else - an entry location is chosen as the play itself is
+    finalized (Core 355.2), and a card chosen from a private zone is not this instruction."""
+    errors: list[str] = []
+    extra = set(effect) - {"op", "effect_id", "target", "cost_basis", "depends_on", "dependency_mode", "predicate",
+                           "_execution"}
+    if extra:
+        errors.append(f"carries only its target and cost_basis, not {sorted(extra)}")
+    errors.extend(_limited_play_cost_basis_errors(effect.get("cost_basis")))
+    target = effect.get("target")
+    if not isinstance(target, dict):
+        return errors + ["needs a target: the card to play, chosen in a public zone (Core 355.10.a)"]
+    if target.get("location") not in LIMITED_PLAY_ZONES or target.get("chosen_zone_class") != "non_board":
+        errors.append(f"target.location must be one of {sorted(LIMITED_PLAY_ZONES)}, chosen_zone_class non_board: a "
+                      f"card the effect plays from a public zone (Core 355.9.a, 355.10.a)")
+    if target.get("zone_owner_relation") != "own":
+        errors.append("target.zone_owner_relation must be own: the effect's controller plays from their own zone")
+    if "kind" in target and target["kind"] not in LIMITED_PLAY_KINDS:
+        errors.append(f"target.kind must be one of {sorted(LIMITED_PLAY_KINDS)}")
+    if "controller_relation" in target:
+        errors.append("target.controller_relation does not apply to a card in a zone; zone_owner_relation says whose")
+    return errors
+
+
+def _limited_play_record_errors(record: Any, players: dict[str, Any]) -> list[str]:
+    if not isinstance(record, dict) or set(record) != LIMITED_PLAY_RECORD_FIELDS:
+        return [f"must carry exactly {sorted(LIMITED_PLAY_RECORD_FIELDS)}"]
+    errors: list[str] = []
+    for key in ("granted_by", "program_id", "effect_id"):
+        if not isinstance(record[key], str) or not record[key]:
+            errors.append(f"{key} must be a non-empty string")
+    if record["source_zone"] not in LIMITED_PLAY_ZONES:
+        errors.append(f"source_zone must be one of {sorted(LIMITED_PLAY_ZONES)}")
+    if record["zone_owner"] not in players or record["controller_before"] not in players:
+        errors.append("zone_owner and controller_before must be players")
+    if not isinstance(record["zone_index"], int) or isinstance(record["zone_index"], bool) or record["zone_index"] < 0:
+        errors.append("zone_index must be a non-negative integer")
+    if not isinstance(record["identity_before"], str) or "@" not in record["identity_before"]:
+        errors.append("identity_before must be an identity token")
+    errors.extend(_limited_play_cost_basis_errors(record["cost_basis"]))
+    return errors
+
+
 def validate_program(program: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(program, dict):
@@ -1636,6 +1715,8 @@ def validate_program(program: Any) -> list[str]:
             if effect.get("op") == "trigger_base_cost":
                 errors.extend(f"effects[{index}].trigger_base_cost {e}"
                               for e in _trigger_base_cost_errors(effect, index, len(effects)))
+            if effect.get("op") == "limited_play":
+                errors.extend(f"effects[{index}].limited_play {e}" for e in _limited_play_errors(effect))
             if effect.get("op") == "swap_might":
                 units = effect.get("units")
                 if not isinstance(units, list) or len(units) != 2:
@@ -3820,6 +3901,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # paid at finalization (trigger_cost.py); apply_program only checks the receipt
         raise ValueError("trigger_base_cost is paid when the triggered ability is finalized (Core 383.3.b.1); "
                          "apply_program checks its receipt and never runs it as an instruction")
+
+    elif op == "limited_play":
+        # step 1 of the play is apply_program's (_start_limited_play), which knows the program that
+        # grants it; the rest is the play transaction's (resolution_bridge.finalize_limited_play)
+        raise ValueError("limited_play is started by apply_program (Core 354) and finished by the play "
+                         "transaction (Core 419.3.b); it is never run as a bare instruction")
 
     elif op == "establish_selection":
         # apply_program runs it before selector resolution, because it produces
@@ -7265,6 +7352,37 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        if effect.get("op") == "limited_play":
+            # 2026-09-28 (package 6, Core 419.3): an effect-driven play. Its card was chosen as a target
+            # when the effect was played or finalized (GPT 2026-09-25). No longer a legal target - it
+            # left the zone, or left and came back as a new object (Core 359.3.e.2, 359.3.e.4) - the
+            # instruction is ignored and nothing is played (359.3.e.6, 419.3.c). Legal, this is the
+            # play's step 1 (Core 354): the card moves to the Chain as a Pending item and is a new
+            # object (124); the rest of the play waits until this effect has finished resolving (354.3).
+            target = selectors[0] if selectors else None
+            legal, reason = (evaluate_target(current, target, program.get("controller")) if target is not None
+                             else (False, "target_missing"))
+            if legal and (current["objects"].get(target["object_id"]) or {}).get("kind") not in LIMITED_PLAY_KINDS:
+                legal, reason = False, "target_not_a_playable_card"
+            if not legal:
+                event = {"index": index, "effect_id": effect_id, "op": "limited_play", "outcome": "ignored_illegal_target",
+                         "target_outcome": "skipped_illegal_target", "completion": "none", "reason": reason,
+                         "target_object_id": (target or {}).get("object_id"),
+                         "rule_locators": ["Core 359.3.e.2", "Core 359.3.e.4", "Core 359.3.e.6", "Core 419.3.c"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash, **selector_meta}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            try:
+                current, event = _start_limited_play(current, effect.get("cost_basis"), target, program, effect_id)
+            except NotImplementedError as exc:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                        "reason": str(exc), "trace": trace}
+            event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash,
+                          "after_state_hash": hash_value(current), **selector_meta})
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         if effect.get("affected") is not None:
             # ADR-0007 §4: two layers. The Battlefield (if any) is the target and is
             # revalidated; the units are found by criteria now and are NOT targets —
@@ -8032,7 +8150,59 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         "event_coverage": log.problems or "complete",
         "pending_triggers": [trigger for event in trace for trigger in event.get("pending_triggers", [])],
         "terminal_event": terminal,
+        # 2026-09-28 (package 6): the effect-driven plays this program started (Core 354, 419.3) - each
+        # card now on the Chain awaiting its play's steps 2 to 5, for the resolution bridge to put on
+        # the timing Chain as a Pending item (354.2)
+        **({"limited_plays": [{"chain_item_id": e["chain_item_id"], "card": e["object_id"],
+                               "controller": e["controller"], "object_kind": e["object_kind"]}
+                              for e in trace if e.get("op") == "limited_play" and e.get("outcome") == "applied"]}
+           if any(e.get("op") == "limited_play" and e.get("outcome") == "applied" for e in trace) else {}),
     }
+
+
+def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], target: dict[str, Any],
+                        program: dict[str, Any], effect_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Step 1 of an effect-driven play (Core 354, 419.3): the card leaves its zone for the Chain as a
+    Pending item, a new object (Core 124). The record on the chain entry says who granted the play,
+    where the card came from - so a play cancelled at its legality check can be undone (358.5) - and
+    what the effect changes about its cost (356.1.b). The card's cost is read off its printed cost
+    (Core 206); a card whose printed cost the state does not carry is refused by name, never guessed."""
+    card = target["object_id"]
+    obj = state["objects"][card]
+    printed = obj.get("printed_cost")
+    if not isinstance(printed, dict):
+        raise NotImplementedError(f"the printed cost of {card!r} is not observed; an effect-driven play determines its "
+                                  f"cost from it (Core 206, 356.1) and does not guess it")
+    location = find_location(state, card)
+    if location is None or location[0] != "player":
+        raise NotImplementedError(f"{card!r} is not in a player's zone; an effect-driven play takes it from one")
+    zone_owner, zone = location[1], location[2]
+    working = copy.deepcopy(state)
+    ids = working["players"][zone_owner]["zones"][zone]
+    zone_index = ids.index(card)
+    identity_before = object_identity(working, card) or f"{card}@0"
+    ids.remove(card)
+    controller = program.get("controller")
+    item_id = f"limited-play:{program.get('program_id')}:{effect_id}"
+    serial = 1
+    while item_id in (working.get("chain_items") or {}):
+        serial += 1
+        item_id = f"limited-play:{program.get('program_id')}:{effect_id}:{serial}"
+    record = {"granted_by": program.get("source_object") or program.get("program_id"),
+              "program_id": program.get("program_id"), "effect_id": effect_id, "source_zone": zone,
+              "zone_owner": zone_owner, "zone_index": zone_index, "identity_before": identity_before,
+              "controller_before": working["objects"][card]["controller"], "cost_basis": copy.deepcopy(cost_basis)}
+    working.setdefault("chain_items", {})[item_id] = {"card": card, "controller": controller, "limited_play": record}
+    # the player who plays a card controls it on the Chain (Core 419.1); its owner does not change
+    working["objects"][card]["controller"] = controller
+    identity_after = _bump_identity(working, card)
+    kind = cost_basis["kind"]
+    event = {"op": "limited_play", "outcome": "applied", "completion": "full", "object_id": card,
+             "chain_item_id": item_id, "controller": controller, "object_kind": obj["kind"],
+             "identity_before": identity_before, "identity_after": identity_after,
+             "play_started": copy.deepcopy(record), "play_completes_at": "finalization",
+             "rule_locators": list(OP_RULES["limited_play"]) + [LIMITED_PLAY_COST_BASES[kind]]}
+    return working, event
 
 
 def _load(path: Path) -> dict[str, Any]:

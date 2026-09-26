@@ -1,22 +1,22 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:c8cdf61e1264a44027f2b86a",
-  "capability_set_id": "sha256:c8cdf61e1264a44027f2b86a518d541302140c10b2b90416dba44b3c9af78e22",
+  "manifest_id": "capability-manifest:7f395448d7c8f3b859533d9f",
+  "capability_set_id": "sha256:7f395448d7c8f3b859533d9fad8ba27d1fa6d2ba272a9daeb960210b82f2687f",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:4f4cc2e984f4ddd5ffb856d99451cbac53926b9d34562e3e88e7141ed5d7ecb6",
+    "value": "sha256:6b782f3df6554c9bab482a00c9c871d27632bd82e2c941df74c31faae0115eda",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:a66f58a50389d3b9f54eda28575157b78f6ad21301cd21114625249517b84e4b"
+        "sha256": "sha256:1592d259921d1e7e6e8d680d41ec3ccf4fa8c7cd65e1dd5f230613a80fbb1e26"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:5d331d08efedddf8f4dcead07116e42e2d80ffcce645dddfb5c6231862257e1d"
+        "sha256": "sha256:7134dc6d6c95d12bcdc49e242699cdb20afa62e42327371d4d2806f48f77d3ea"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:2b8b372ce564872ff9e0d4d913f53b182db4f156184b9d68795a7c2ee9676f07"
+        "sha256": "sha256:6093f7b858cd85eef42135a98cd1ce975802bbf32e3a7266acb3f3b38cd04255"
       },
       {
         "path": "engine_check.py",
@@ -611,6 +611,17 @@
       ]
     },
     {
+      "id": "limited_play",
+      "rule_locators": [
+        "Core 419.3",
+        "Core 419.3.a",
+        "Core 419.3.b",
+        "Core 354",
+        "Core 354.3",
+        "Core 124"
+      ]
+    },
+    {
       "id": "look_at_top",
       "rule_locators": [
         "Core 128.4",
@@ -770,6 +781,17 @@
     }
   ],
   "procedures": [
+    {
+      "id": "add_limited_play_items",
+      "rule_locators": [
+        "Core 354",
+        "Core 354.2",
+        "Core 354.3",
+        "Core 419.3",
+        "Core 419.3.a",
+        "Core 312.1.b.1"
+      ]
+    },
     {
       "id": "add_pending_item",
       "rule_locators": [
@@ -1455,6 +1477,7 @@
     "Core 309.1.a",
     "Core 310.1.a",
     "Core 312",
+    "Core 312.1.b.1",
     "Core 312.2.a",
     "Core 313",
     "Core 313.1",
@@ -1517,6 +1540,9 @@
     "Core 348–348.1",
     "Core 348–348.2",
     "Core 349",
+    "Core 354",
+    "Core 354.2",
+    "Core 354.3",
     "Core 354–358",
     "Core 355.1",
     "Core 355.1.a",
@@ -1591,6 +1617,9 @@
     "Core 417.6.b.4",
     "Core 417.6.c–417.6.c.1",
     "Core 418",
+    "Core 419.3",
+    "Core 419.3.a",
+    "Core 419.3.b",
     "Core 419.4.a",
     "Core 420",
     "Core 422.1",

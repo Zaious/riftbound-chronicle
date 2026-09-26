@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
-from rules_core import apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
+from rules_core import add_limited_play_items, apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
@@ -642,6 +642,18 @@ def resolve_with_program(
             trigger["batch_sequence"] = watch_batch
             trigger["batch_id"] = f"watch:{item_id}"
     pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers + watch_triggers
+    # 2026-09-28 (package 6): a card this resolution played (Core 419.3) moved to the Chain at the
+    # play's step 1 as its instruction executed (354), before anything this resolution triggered was
+    # put on the Chain, so its Pending item comes first; its remaining steps wait until this
+    # resolution is done (354.3) - finalize_limited_play takes them as the oldest Pending item
+    limited_plays = effect_result.get("limited_plays") or []
+    if limited_plays:
+        added = add_limited_play_items(next_timing_for_schedule, limited_plays)
+        if added.get("applied") is not True:
+            return {**base, "valid": added.get("valid", True), "committed": False, "stage": "limited_play",
+                    "reason": added.get("reason_code") or "; ".join(added.get("errors", [])) or "limited_play_items_refused",
+                    "effect_result": effect_result, "limited_play_result": added}
+        next_timing_for_schedule = added["next_state"]
     # Core 383.3.d: when one controller has several abilities triggered at
     # once, that controller orders them. The engine never picks: a missing or
     # colliding controller_order inside one batch is a decision_required
@@ -691,6 +703,151 @@ def resolve_with_program(
             + timing_result.get("rule_locators", [])
         )),
     }
+
+
+# 2026-09-28 (package 6): the failures of an effect-driven play's own steps that cancel it (Core 358.5)
+# - its cost cannot be paid with the Add window closed (357.1), or its player cannot play cards now
+# (054.1). Any other refusal is of a choice supplied for it, which its player makes again.
+LIMITED_PLAY_CANCEL_REASONS = {"cost_unpayable", "play_prohibited"}
+LIMITED_PLAY_RULES = ["Core 419.3", "Core 419.3.a", "Core 419.3.b", "Core 354.3", "Core 337.1"]
+
+
+def finalize_limited_play(
+    timing_state: dict[str, Any],
+    effect_state: dict[str, Any],
+    engine_decisions: dict[str, Any] | None = None,
+    *,
+    entry_location: dict[str, Any] | None = None,
+    payment_context: dict[str, Any] | None = None,
+    effect_program: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """2026-09-28 (package 6): the rest of an effect-driven play (Core 419.3). An effect's resolution
+    took step 1 - its card is on the Chain as the oldest Pending item (Core 354, 354.3, 337.1) - and its
+    controller now completes steps 2 to 5 through the play transaction, like any play but as the effect
+    notes (419.3.b): the source and the permission are the effect's, its base cost is the card's
+    printed one with the effect's change (356.1.b), and no timing permission is asked (419.3.a). A Unit
+    enters where its controller chooses now (355.2; `entry_location`); Accelerate and every other
+    optional cost are offered as usual (356.1.b.3).
+
+    Committed, the item is Finalized; a Unit or Gear then resolves immediately (337.2) -
+    complete_limited_play runs both. A decision the play still needs is returned, nothing changed.
+    Its cost unpayable with the Add window closed, or its player unable to play cards, the play is
+    cancelled (358.5): the card goes back where the effect took it from, as it was, and the item leaves
+    the Chain - never Finalized, not countered. What the effect did before it stays (GPT 2026-09-25).
+    Any other refusal is of a choice supplied for the play (an entry location the rules refuse), which
+    its player makes again: nothing changes."""
+    from play_transaction import DECISION_REASONS, DECLARATION_VERSION, LIMITED_PLAY_OVERRIDE, play_card
+    from rules_core import finalize_oldest_pending, next_procedure
+    from effect_ir import CORE_RULESET, FAQ_AS_OF
+    base = {"schema_version": "riftbound-limited-play-result.v1",
+            "input_timing_state_hash": state_hash(timing_state), "input_effect_state_hash": hash_value(effect_state)}
+    step = next_procedure(timing_state)
+    if step.get("procedure") != "finalize_oldest_pending":
+        return {**base, "valid": True, "committed": False, "stage": "timing", "reason": "finalize_not_next", "next_procedure": step}
+    item = next(i for i in timing_state["chain"]["items"] if i["status"] == "pending")
+    if item.get("limited_play") is not True:
+        return {**base, "valid": True, "committed": False, "stage": "timing", "reason": "pending_item_is_not_a_limited_play",
+                "item_id": item["id"]}
+    entry = (effect_state.get("chain_items") or {}).get(item["id"]) or {}
+    record = entry.get("limited_play")
+    card = entry.get("card")
+    if not isinstance(record, dict) or card not in effect_state["objects"]:
+        return {**base, "valid": False, "committed": False, "stage": "effect_state", "item_id": item["id"],
+                "reason": "limited_play_record_missing", "errors": [f"the effect state has no limited play under {item['id']!r}"]}
+    kind = effect_state["objects"][card]["kind"]
+    if kind == "unit" and entry_location is None:
+        # Core 355.2: a Unit's location is chosen in the play's own step 2 - now
+        controller = item["controller"]
+        candidates = [{"kind": "base"}] + [{"kind": "battlefield", "battlefield": b} for b in sorted(effect_state["battlefields"])
+                                           if effect_state["battlefields"][b].get("controller") == controller]
+        return {**base, "valid": True, "committed": False, "stage": "choices", "item_id": item["id"],
+                "reason": "entry_location_required", "decision_controller": controller,
+                "location_candidates": candidates, "rule_locators": ["Core 355.2", "Core 355.2.a"]}
+    declaration = {
+        "schema_version": DECLARATION_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+        "play_id": f"limited:{item['id']}", "actor": item["controller"], "card": card,
+        "chain_item": {"id": item["id"], "object_kind": kind, "timing": "default"},
+        "cost": {"base": copy.deepcopy(effect_state["objects"][card].get("printed_cost"))},
+        "source": {"kind": record["source_zone"]}, "source_permission": {"granted_by": record["granted_by"]},
+        "cost_override": {"kind": LIMITED_PLAY_OVERRIDE[record["cost_basis"]["kind"]], "source": record["granted_by"]},
+        "timing_source": "limited_play",
+        **({"payment_context": copy.deepcopy(payment_context)} if payment_context is not None else {}),
+        **({"entry_location": copy.deepcopy(entry_location)} if entry_location is not None else {}),
+        **({"effect_program_id": effect_program.get("program_id")} if effect_program is not None else {}),
+    }
+    played = play_card(timing_state, effect_state, declaration, engine_decisions=engine_decisions, effect_program=effect_program)
+    if played.get("committed"):
+        finalized = finalize_oldest_pending(played["next_timing_state"])
+        if finalized.get("applied") is not True or (finalized.get("transition") or {}).get("item_id") != item["id"]:
+            return {**base, "valid": finalized.get("valid", True), "committed": False, "stage": "timing", "item_id": item["id"],
+                    "reason": finalized.get("reason_code") or "finalize_failed", "timing_result": finalized}
+        next_timing = finalized["next_state"]
+        return {**base, "valid": True, "committed": True, "item_id": item["id"], "card": card,
+                "next_timing_state": next_timing, "next_timing_state_hash": state_hash(next_timing),
+                "next_effect_state": played["next_effect_state"], "next_effect_state_hash": played["next_effect_state_hash"],
+                "cost_receipt": played["cost_receipt"], "play_trace": played["trace"],
+                "transition": finalized["transition"],
+                "immediate_resolution_required": bool(finalized["transition"].get("immediate_resolution_required")),
+                "rule_locators": list(dict.fromkeys(LIMITED_PLAY_RULES + played.get("rule_locators", [])))}
+    if not played.get("valid"):
+        return {**base, "valid": False, "committed": False, "stage": played.get("stage"), "item_id": item["id"],
+                "reason": played.get("reason_code"), "errors": played.get("errors") or [played.get("reason")]}
+    if played.get("reason_code") in DECISION_REASONS or played.get("reason_code") not in LIMITED_PLAY_CANCEL_REASONS:
+        return {**base, "valid": True, "committed": False, "stage": played.get("stage"), "item_id": item["id"],
+                "reason": played.get("reason_code"), "message": played.get("reason"),
+                "unsupported": bool(played.get("unsupported")),
+                **{k: played[k] for k in ("decision_ids", "decision_controller") if k in played},
+                "rule_locators": played.get("rule_locators", [])}
+    # Core 358.5: the play is cancelled - what its steps did is undone, the card back in the zone the
+    # effect took it from, at its place there and as the object it was (a play that never happened)
+    cancelled = copy.deepcopy(effect_state)
+    del cancelled["chain_items"][item["id"]]
+    if not cancelled["chain_items"]:
+        del cancelled["chain_items"]
+    zone = cancelled["players"][record["zone_owner"]]["zones"][record["source_zone"]]
+    zone.insert(min(record["zone_index"], len(zone)), card)
+    cancelled["objects"][card]["identity"] = record["identity_before"]
+    cancelled["objects"][card]["controller"] = record["controller_before"]
+    removal = remove_chain_item(timing_state, item["id"], reason="limited_play_cancelled")
+    if removal.get("applied") is not True:
+        return {**base, "valid": removal.get("valid", True), "committed": False, "stage": "timing", "item_id": item["id"],
+                "reason": removal.get("reason_code") or "chain_item_removal_failed", "timing_result": removal}
+    next_timing = removal["next_state"]
+    return {**base, "valid": True, "committed": True, "removed": True, "item_id": item["id"], "card": card,
+            "next_timing_state": next_timing, "next_timing_state_hash": state_hash(next_timing),
+            "next_effect_state": cancelled, "next_effect_state_hash": hash_value(cancelled),
+            "transition": {"type": "limited_play_cancelled", "item_id": item["id"], "reason_code": played.get("reason_code"),
+                           "why": played.get("reason"), "never_finalized": True, "countered": False,
+                           "card_returned_to": {"player": record["zone_owner"], "zone": record["source_zone"],
+                                                "identity": record["identity_before"]}},
+            "rule_locators": list(dict.fromkeys(["Core 358.5"] + LIMITED_PLAY_RULES + played.get("rule_locators", [])))}
+
+
+def complete_limited_play(
+    timing_state: dict[str, Any],
+    effect_state: dict[str, Any],
+    engine_decisions: dict[str, Any] | None = None,
+    *,
+    entry_location: dict[str, Any] | None = None,
+    payment_context: dict[str, Any] | None = None,
+    effect_program: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """2026-09-28 (package 6): finalize_limited_play, and - for a Unit or Gear, which resolves as soon as
+    it is Finalized (Core 337.2) - its resolution: it enters the Board and "When you play me" triggers
+    (359.2, 419.4.a). A Spell stays on the Chain, Finalized, and resolves when the players have passed
+    (337.4, 340.1). The result carries both steps."""
+    finalized = finalize_limited_play(timing_state, effect_state, engine_decisions, entry_location=entry_location,
+                                      payment_context=payment_context, effect_program=effect_program)
+    if finalized.get("committed") is not True or finalized.get("removed") or not finalized.get("immediate_resolution_required"):
+        return {**finalized, "resolution": None}
+    resolved = resolve_with_program(finalized["next_timing_state"], finalized["item_id"], finalized["next_effect_state"], None)
+    if resolved.get("committed") is not True:
+        return {**finalized, "committed": False, "stage": "resolution", "reason": resolved.get("reason") or resolved.get("reason_code"),
+                "resolution": resolved, "next_timing_state": None, "next_effect_state": None}
+    return {**finalized, "next_timing_state": resolved["next_timing_state"], "next_timing_state_hash": resolved["next_timing_state_hash"],
+            "next_effect_state": resolved["next_effect_state"], "next_effect_state_hash": resolved["next_effect_state_hash"],
+            "resolution": {k: resolved[k] for k in ("trace", "rule_locators") if k in resolved},
+            "rule_locators": list(dict.fromkeys(finalized["rule_locators"] + ["Core 337.2"] + resolved.get("rule_locators", [])))}
 
 
 def _settle_trigger_orders(pending_triggers: list[dict[str, Any]], engine_decisions: dict[str, Any] | None, base: dict[str, Any]) -> dict[str, Any] | None:

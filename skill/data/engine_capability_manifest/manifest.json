@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:cbf1a797070afc5ec7c00586",
-  "capability_set_id": "sha256:cbf1a797070afc5ec7c005863153c0b834f61c41fb1af4ffb6876d8ab373c041",
+  "manifest_id": "capability-manifest:0cf274f2046ea357bf6848af",
+  "capability_set_id": "sha256:0cf274f2046ea357bf6848afcc9a2fc633cf30be00358aadb739400cf89048d1",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:27cc2340c226a35d449450d0328b210c6ae8bd3fc61ad8dc486f949fd830b0e2",
+    "value": "sha256:408a5b1390d217bffe572a7996fbfdb58072742d096262ab67ca5873fa9f7d71",
     "files": [
       {
         "path": "rules_core.py",
@@ -20,7 +20,7 @@
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:82ee57105efc76a5699ac1d41ab5ea525390657856be71a59b54c7d693ce2852"
+        "sha256": "sha256:f334dec7c3a8686d8d6483bc8c1f7d0da7fd44d26004eac9cfe697f7dc7c8a5c"
       },
       {
         "path": "combat.py",
@@ -271,7 +271,10 @@
         "play_from_hidden",
         "evaluated_cost_modifications",
         "activation_conditions",
-        "spend_costs"
+        "spend_costs",
+        "play_and_cost_watchers",
+        "cost_death_triggers",
+        "trigger_order_decisions"
       ],
       "unsupported_scope": [
         "add_reaction_resolution_during_payment",

@@ -278,6 +278,13 @@
               "minLength": 1
             }
           },
+          "identities_before": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "pay_discard / pay_recycle_trash: each moved card's identity before the move (Core 124), for its semantic event."
+          },
           "identities_after": {
             "type": "object",
             "additionalProperties": {

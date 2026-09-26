@@ -170,7 +170,7 @@ KIND_CONFIG = {
     "play": {
         "component": ("play_transaction", PLAY_RESULT_VERSION),
         "coverage": "play_transaction_v1",
-        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "occupied_enemy_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input", "play_sources", "cost_override", "ambush", "play_from_hidden", "evaluated_cost_modifications", "activation_conditions", "spend_costs"],
+        "supported": ["atomic_play_transaction", "typed_cost_payment", "optional_cost_receipt", "cost_predicates", "engine_decisions", "open_battlefield_permission", "occupied_enemy_battlefield_permission", "deflect", "any_domain_power_allocation", "modal_play_choice", "activated_abilities", "add_abilities", "repeat_costs", "discard_recycle_costs", "self_costs", "restricted_resources", "typed_cost_modification_input", "play_sources", "cost_override", "ambush", "play_from_hidden", "evaluated_cost_modifications", "activation_conditions", "spend_costs", "play_and_cost_watchers", "cost_death_triggers", "trigger_order_decisions"],
         "unsupported": ["add_reaction_resolution_during_payment", "payment_stage_replacement_decisions", "legend_activation", "battlefield_control_transfer", "deck_construction", "hidden_legality_enumeration", "complete_game", "complete_legality"],
     },
     # ADR-0007 §8: two turn-boundary procedures, not a turn transition.

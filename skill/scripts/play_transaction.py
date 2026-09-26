@@ -81,8 +81,10 @@ CHOICE_COSTS = {"discard", "recycle_trash"}
 SPEND_COSTS = {"spend_xp": "Core 730.2", "spend_buff": "Core 702.2.b", "disempower_self": "Core 443.1.b"}
 DEFERRED_COST_KINDS: set[str] = set()
 PAID_OUTCOMES = {"applied", "replaced_prevented", "replaced_modified_applied", "replaced_modified_prevented", "augmented_applied", "augmented_original_replaced"}
-STAGES = ("declaration", "choices", "cost_determination", "payment", "legality", "commit")
-DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required", "card_selection_required", "card_ordering_required"}
+# "watchers": the triggers the costs and the play itself woke, placed on the Chain (2026-09-24/26)
+STAGES = ("declaration", "choices", "cost_determination", "payment", "legality", "watchers", "commit")
+DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required", "card_selection_required", "card_ordering_required",
+                    "trigger_order_required"}
 
 RULES = {
     "choices": ["Core 355.1", "Core 355.1.a", "Core 355.2", "Core 355.5", "Core 355.9"],
@@ -779,11 +781,15 @@ def _pay_resource(resources: dict[str, Any], kind: str, amount: int, use: str, d
     return events
 
 
-def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[str, Any], decisions: dict[str, Any] | None = None, *, use: str | None = None) -> list[dict[str, Any]]:
+def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[str, Any], decisions: dict[str, Any] | None = None, *, use: str | None = None,
+         semantic: dict[str, list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
     """Core 357: Energy and Power in total (357.1), then non-standard costs in
     declared order (357.2). Payment events are unique; components reference
     them with exact allocations. Mutates `working`; the caller discards it on
-    any failure (358.5)."""
+    any failure (358.5). A cost paid by running an instruction (kill, recall,
+    exhaust) adds that run's semantic `events` and `pending_triggers` - a unit
+    killed as a cost puts its own death triggers on the Chain (Core 428.1.a.1,
+    428.1.a.1.b) - to `semantic`, for the caller to wake watchers and schedule."""
     from effect_ir import ChoiceRequired, IllegalDecision, IllegalOperation, _recycle_batch, resolve_choice
     actor = declaration["actor"]
     resources = working["players"][actor]["resources"]
@@ -898,10 +904,12 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                                    "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 422.1", "Core 422.1.a", "Core 422.2.a", "Core 422.3", "Core 124"]})
                 else:
                     order_ref = comp["requested"].get("order_ref") or f"{ref}:order"
+                    identities_before = {o: working["objects"][o].get("identity", f"{o}@0") for o in picked}
                     working_after, sub = _recycle_batch(working, picked, actor, decisions, order_ref, f"cost:{comp['cost_id']}", choice_session=play_stage)
                     if working_after is not working:  # the batch mutates in place; a copy would strand the payment
                         working.clear(); working.update(working_after)
-                    events.append({"event_id": event_id, "kind": "pay_recycle_trash", "cost_id": comp["cost_id"], "objects": list(picked), "identities_after": sub["identities_after"],
+                    events.append({"event_id": event_id, "kind": "pay_recycle_trash", "cost_id": comp["cost_id"], "objects": list(picked),
+                                   "identities_before": identities_before, "identities_after": sub["identities_after"],
                                    "order_decision": sub["order_decision"], "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 416.3", "Core 416.5", "Core 124"]})
             except ChoiceRequired as exc:
                 raise PlayError("payment", exc.reason_code, f"cost {comp['cost_id']!r}: {exc}", decision_ids=exc.decision_ids, decision_controller=actor, choice=exc.summary,
@@ -984,6 +992,9 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         if outcome not in PAID_OUTCOMES:
             raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} ({comp['kind']}) did not happen: {outcome}", rule_locators=["Core 357.2", "Core 203.3"])
         working.clear(); working.update(result["next_state"])
+        if semantic is not None:
+            semantic["events"].extend(copy.deepcopy(result.get("events") or []))
+            semantic["pending_triggers"].extend(copy.deepcopy(result.get("pending_triggers") or []))
         events.append({"event_id": event_id, "kind": f"pay_{comp['kind']}", "cost_id": comp["cost_id"], "object_id": object_id, "outcome": outcome,
                        "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + (["Core 204.2"] if comp["kind"] in SELF_COSTS else [])})
         comp["payment_refs"].append({"event_id": event_id})
@@ -1432,7 +1443,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # --- 357: payment on a working copy.
         working = copy.deepcopy(effect_state)
         before_pay = hash_value(working)
-        pay_events = _pay(working, declaration, skeleton, engine_decisions)
+        cost_semantic: dict[str, list[dict[str, Any]]] = {"events": [], "pending_triggers": []}
+        pay_events = _pay(working, declaration, skeleton, engine_decisions, semantic=cost_semantic)
         trace.append({"stage": "payment", "outcome": "applied", "event_ids": [e["event_id"] for e in pay_events], "before_state_hash": before_pay, "after_state_hash": hash_value(working), "rule_locators": RULES["payment"]})
         locators += RULES["payment"]
 
@@ -1542,48 +1554,73 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
     # "... a card on an opponent's turn") wake now, and their triggers go on the Chain above it.
     watch_trace = None
     import game_events
-    # a discard paid as a cost is a discard (Core 422.2.a, 422.3): its watchers wake with the play's own
-    cost_discards = game_events.cost_discarded_events(play_id=declaration["play_id"], actor=actor, source_card=card,
-                                                      pay_events=pay_events, state=working)
-    if not is_ability or cost_discards:
+
+    def watch_rollback(reason_code: str, reason: str, *, unsupported: bool = False, rule_locators: list[str] | None = None,
+                       **extra: Any) -> dict[str, Any]:
+        """A play the watcher stage cannot finish: rolled back whole (Core 358.5), in the shape
+        every other rollback of this transaction has."""
+        cited = list(rule_locators or [])
+        return {**base, "valid": True, "committed": False, "unsupported": unsupported, "rolled_back": True,
+                "stage": "watchers", "reason_code": reason_code, "reason": reason,
+                "trace": trace + [{"stage": "watchers", "outcome": "rolled_back", "reason_code": reason_code,
+                                   "rule_locators": cited + ["Core 358.5"]}],
+                "rule_locators": list(dict.fromkeys(locators + cited + ["Core 358.5"])),
+                "next_timing_state_hash": base["input_timing_state_hash"],
+                "next_effect_state_hash": base["input_effect_state_hash"], **extra}
+
+    # What the COSTS did happened while paying, before the play Finalized: a card discarded or
+    # recycled as a cost (Core 422.2.a / 416.2.a) and what a cost instruction did (a Kill as a
+    # cost, Core 428.1.a.1, with the killed unit's own death triggers, 428.1.a.1.b). They are
+    # one batch, placed before the play's own (2026-09-26).
+    cost_events = game_events.cost_zone_events(play_id=declaration["play_id"], actor=actor, source_card=card,
+                                               pay_events=pay_events, state=working) + cost_semantic["events"]
+    cost_triggers = [dict(t) for t in cost_semantic["pending_triggers"]]
+    played = [] if is_ability else [game_events.played_event(
+        play_id=declaration["play_id"], card=card, actor=actor,
+        object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
+        identity_after=identity_after, from_hidden=source_kind == "facedown",
+        turn_player=timing_state.get("turn_player"))]
+    if cost_events or cost_triggers or played:
         import watchers
+        from resolution_bridge import _settle_trigger_orders
         from rules_core import schedule_triggered_items
-        batch = cost_discards + ([] if is_ability else [game_events.played_event(
-            play_id=declaration["play_id"], card=card, actor=actor,
-            object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
-            identity_after=identity_after, from_hidden=source_kind == "facedown",
-            turn_player=timing_state.get("turn_player"))])
+        woken_costs: list[dict[str, Any]] = []
+        woken_played: list[dict[str, Any]] = []
         try:
-            woken, working = watchers.schedule_live(working, batch, turn_id=working.get("turn_id", "turn-0"),
-                                                    batch_label=f"play:{declaration['play_id']}")
+            if cost_events:
+                woken_costs, working = watchers.schedule_live(working, cost_events, turn_id=working.get("turn_id", "turn-0"),
+                                                              batch_label=f"play:{declaration['play_id']}:costs")
+            if played:
+                woken_played, working = watchers.schedule_live(working, played, turn_id=working.get("turn_id", "turn-0"),
+                                                               batch_label=f"play:{declaration['play_id']}")
         except watchers.WatchUnsupported as exc:
-            return {**base, "valid": True, "committed": False, "unsupported": True, "rolled_back": True,
-                    "stage": "watchers", "reason_code": exc.reason_code, "reason": str(exc),
-                    "next_timing_state_hash": base["input_timing_state_hash"],
-                    "next_effect_state_hash": base["input_effect_state_hash"]}
+            return watch_rollback(exc.reason_code, str(exc), unsupported=True, rule_locators=["Core 383.1"])
+        from_costs = cost_triggers + woken_costs
+        for trigger in from_costs:
+            trigger.update({"batch_sequence": 0, "batch_id": f"played:{declaration['play_id']}:costs"})
+        for trigger in woken_played:
+            trigger.update({"batch_sequence": 1 if from_costs else 0, "batch_id": f"played:{declaration['play_id']}"})
+        woken = from_costs + woken_played
         if woken:
-            for trigger in woken:
-                trigger.update({"batch_sequence": 0, "batch_id": f"played:{declaration['play_id']}"})
-            # two or more of one player's triggers from this batch: that player orders them
+            # two or more of one player's triggers from one batch: that player orders them
             # (Core 383.3.d) - asked for, never a reason to refuse the play
-            from resolution_bridge import _settle_trigger_orders
             ordering = _settle_trigger_orders(woken, engine_decisions, base)
             if ordering is not None:
-                return {**ordering, "unsupported": False, "rolled_back": True,
-                        "next_timing_state_hash": base["input_timing_state_hash"],
-                        "next_effect_state_hash": base["input_effect_state_hash"]}
+                if ordering.get("valid") is False:
+                    return invalid(list(ordering.get("errors") or [ordering.get("reason", "trigger order")]), "watchers")
+                return watch_rollback(ordering["reason_code"], ordering.get("reason", ""),
+                                      rule_locators=ordering.get("rule_locators") or ["Core 383.3.d"],
+                                      **{k: ordering[k] for k in ("decision_ids", "decision_controller", "batch_id", "trigger_ids")
+                                         if k in ordering})
             scheduled = schedule_triggered_items(next_timing, woken)
             if scheduled.get("applied") is not True:
-                return {**base, "valid": True, "committed": False, "unsupported": False, "rolled_back": True,
-                        "stage": "watchers", "reason_code": scheduled.get("reason_code") or "trigger_schedule_failed",
-                        "reason": "; ".join(scheduled.get("errors", [])),
-                        "next_timing_state_hash": base["input_timing_state_hash"],
-                        "next_effect_state_hash": base["input_effect_state_hash"]}
+                return watch_rollback(scheduled.get("reason_code") or "trigger_schedule_failed",
+                                      "; ".join(scheduled.get("errors", [])), rule_locators=["Core 383.3"])
             next_timing = scheduled["next_state"]
-        watch_trace = {"stage": "watchers", "outcome": "applied", "events": [e["event_id"] for e in batch],
+        watch_trace = {"stage": "watchers", "outcome": "applied", "events": [e["event_id"] for e in cost_events + played],
                        "scheduled": [t["trigger_id"] for t in woken],
-                       "rule_locators": (["Core 419.4.a"] if not is_ability else [])
-                                        + (["Core 422.2.a", "Core 422.3"] if cost_discards else []) + ["Core 383.1"]}
+                       "rule_locators": (["Core 419.4.a"] if played else [])
+                                        + (["Core 357.2"] if cost_events or cost_triggers else []) + ["Core 383.1"]}
     result = {
         **base, "valid": True, "committed": True, "unsupported": False, "rolled_back": False, "stage": "commit", "reason_code": "ok",
         "chain_item_id": item_id, "cost_receipt": receipt,

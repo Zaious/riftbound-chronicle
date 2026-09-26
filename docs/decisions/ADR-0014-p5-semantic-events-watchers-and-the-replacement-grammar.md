@@ -49,6 +49,16 @@ A trigger descriptor gains a `watch` block: the event `kinds` it reacts to, a
 the descriptor still names its own source, and its controller is the source's
 controller.
 
+Amendment (2026-09-24 / 2026-09-26): two scopes were added. `actor` matches
+the player who performed the event ("When you stun ..."); `player` matches
+the player the event happened to, the event's `player` field ("When you
+discard ..." is whose hand the card left, Core 422.1). A play also wakes
+watchers: the costs it paid (a discard or recycle as a cost, what a cost
+instruction such as a Kill did, with a killed unit's own death triggers,
+Core 428.1.a.1.b) form one batch, and the play's own `played` event the next;
+several triggers of one player in a batch are that player's to order
+(Core 383.3.d), asked for as a `trigger_order` decision.
+
 A **delayed trigger** is created by a resolving effect and carries the source
 and target identities it was created with, the event or turn it waits for, and
 the snapshot of anything its instructions need. It fires once; a target whose

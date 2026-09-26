@@ -158,7 +158,7 @@ def main() -> int:
     if not both.get("committed"):
         errors.append(f"a play with two discard components did not commit: {both.get('reason_code')} {both.get('reason')}")
     else:
-        events = game_events.cost_discarded_events(
+        events = game_events.cost_zone_events(
             play_id="play-1", actor="p1", source_card="c1", state=both["next_effect_state"],
             pay_events=both["cost_receipt"]["payment_events"])
         ids = [e["event_id"] for e in events]
@@ -176,20 +176,80 @@ def main() -> int:
     second["event_triggers"][0].update({"trigger_id": "w2", "source_object": "w2"})
     two_watchers["objects"]["w2"] = second
     two_watchers["players"]["p1"]["zones"]["base"].append("w2")
+    from engine_check import build_engine_check
+    from play_transaction import validate_play_result
     ask = play_card(fixture(), two_watchers, declaration(cost=cost))
     if ask.get("committed") or ask.get("reason_code") != "trigger_order_required" or not ask.get("decision_ids") \
-            or len(ask.get("trigger_ids") or []) != 2 or ask.get("next_effect_state_hash") != hash_value(two_watchers):
+            or len(ask.get("trigger_ids") or []) != 2 or ask.get("next_effect_state_hash") != hash_value(two_watchers) \
+            or validate_play_result(ask):
         errors.append(f"two watchers woken by a cost discard did not ask p1 for their order: "
-                      f"{ask.get('reason_code')} {ask.get('decision_ids')} {ask.get('trigger_ids')}")
+                      f"{ask.get('reason_code')} {ask.get('decision_ids')} {ask.get('trigger_ids')} {validate_play_result(ask)}")
     else:
+        wrapped = build_engine_check("play", ask, input_hashes={"timing_state": "sha256:" + "1" * 64,
+                                                                "effect_state": hash_value(two_watchers),
+                                                                "play_declaration": "sha256:" + "2" * 64})
+        if wrapped["outcome"] != "decision_required" or wrapped["decision_required"]["kind"] != "trigger_order":
+            errors.append(f"the play's trigger order wrapped as {wrapped['outcome']} {wrapped.get('decision_required')}")
         order = {"decision_id": ask["decision_ids"][0], "stage": "resolution", "kind": "trigger_order",
                  "controller": "p1", "value": list(reversed(ask["trigger_ids"]))}
         ordered = play_card(fixture(), two_watchers, declaration(cost=cost), engine_decisions=envelope(two_watchers, order))
         woke = [i for i in (ordered.get("next_timing_state") or {}).get("chain", {}).get("items", [])
                 if str(i.get("id", "")).startswith(("w@", "w2@")) or str(i.get("trigger_id", "")).startswith(("w@", "w2@"))]
-        if not ordered.get("committed") or len(woke) != 2:
+        if not ordered.get("committed") or len(woke) != 2 or validate_play_result(ordered):
             errors.append(f"ordered, the two cost-discard triggers were not both scheduled: {len(woke)} "
                           f"({ordered.get('reason_code')} {ordered.get('reason')})")
+        # the order supplied by the wrong player, and an order naming the wrong triggers
+        theirs = play_card(fixture(), two_watchers, declaration(cost=cost),
+                           engine_decisions=envelope(two_watchers, {**order, "controller": "p2"}))
+        if theirs.get("committed") or theirs.get("reason_code") != "decision_controller_mismatch" or validate_play_result(theirs):
+            errors.append(f"an order supplied by p2 for p1's triggers was not refused well-formed: "
+                          f"{theirs.get('reason_code')} {validate_play_result(theirs)}")
+        wrong = play_card(fixture(), two_watchers, declaration(cost=cost),
+                          engine_decisions=envelope(two_watchers, {**order, "value": ["x", "y"]}))
+        if wrong.get("valid") is not False or wrong.get("reason_code") != "invalid_input" or validate_play_result(wrong):
+            errors.append(f"an order naming other triggers was not invalid_input: {wrong.get('reason_code')} "
+                          f"{validate_play_result(wrong)}")
+
+    # a RECYCLE paid as a cost wakes "When you recycle one or more cards to your Main Deck" (Core 416.2.a)
+    recycle_watch = watch_of("When you recycle one or more cards to your Main Deck, draw 1.")
+    rec_state = watcher(hand_state("c1"), recycle_watch)          # p1's trash holds c3 alone: the choice is forced
+    rec_cost = {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "r", "mandatory": True,
+                                                                    "payment": {"kind": "recycle_trash", "amount": 1}}]}
+    recycled = play_card(fixture(), rec_state, declaration(cost=rec_cost))
+    if not recycled.get("committed") or len(scheduled_from(recycled)) != 1 or validate_play_result(recycled):
+        errors.append(f"a recycle paid as a cost scheduled {len(scheduled_from(recycled))}, wanted 1 "
+                      f"({recycled.get('reason_code')} {recycled.get('reason')})")
+
+    # a KILL paid as a cost (Core 428.1.a.1): "the first time a friendly unit dies each turn" sees it, and the
+    # killed unit's own death trigger goes on the Chain too (428.1.a.1.b) - above the ability, under nothing new
+    from check_combat_staging import trigger as death_trigger
+    first_death = watch_of("The first time a friendly unit dies each turn, draw 1.")
+    kill_cost = {"base": {"energy": 0, "power": {}}, "additional": [{"cost_id": "self", "mandatory": True,
+                                                                     "payment": {"kind": "kill_this"}}]}
+    killed_state = watcher(hand_state("c1"), first_death)
+    killed_state["objects"]["u3"] = {**copy.deepcopy(killed_state["objects"]["u1"])}
+    killed_state["players"]["p1"]["zones"]["base"].append("u3")
+    killed = play_card(fixture(), killed_state, ability_declaration(cost=kill_cost))
+    if not killed.get("committed") or len(scheduled_from(killed)) != 1 or validate_play_result(killed):
+        errors.append(f"a unit killed as a cost did not wake the first-friendly-death watcher once: "
+                      f"{len(scheduled_from(killed))} ({killed.get('reason_code')} {killed.get('reason')})")
+    else:
+        later = resolve(killed["next_effect_state"], [{"op": "kill", "effect_id": "k", "object_id": "u3"}])
+        if not later.get("committed") or scheduled_from(later):
+            errors.append(f"an effect death after a cost death was treated as the first friendly death of the turn "
+                          f"(or failed: {later.get('reason')})")
+        # the same effect death with no cost death before it IS the first
+        control = resolve(copy.deepcopy(killed_state), [{"op": "kill", "effect_id": "k", "object_id": "u3"}])
+        if not control.get("committed") or len(scheduled_from(control)) != 1:
+            errors.append(f"negative mutation failed: the effect death alone did not wake the watcher ({control.get('reason')})")
+    knell_state = hand_state("c1")
+    knell_state["objects"]["u1"].update({"keywords": ["deathknell"], "death_triggers": [death_trigger("u1-knell", "p1", "u1")]})
+    knelled = play_card(fixture(), knell_state, ability_declaration(cost=kill_cost))
+    knell_items = [i for i in (knelled.get("next_timing_state") or {}).get("chain", {}).get("items", [])
+                   if "u1-knell" in str(i.get("id", "")) + str(i.get("trigger_id", ""))]
+    if not knelled.get("committed") or len(knell_items) != 1 or validate_play_result(knelled):
+        errors.append(f"a Deathknell unit killed as a cost did not put its death trigger on the Chain: "
+                      f"{len(knell_items)} ({knelled.get('reason_code')} {knelled.get('reason')})")
 
     if errors:
         print("FAILED: watch each / discard checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
@@ -199,7 +259,10 @@ def main() -> int:
           "or more cards' follows the discarding player - p1's own discard, p2 making p1 discard and a discard paid as "
           "a cost (a play's or an ability's) schedule one; p1 making p2 discard, p2's discard, an empty hand, a watcher "
           "in hand and a cost with no discard schedule none; two cost discards are two distinct hand -> trash events; "
-          "two watchers woken by one cost discard are p1's to order, then both scheduled.")
+          "two watchers woken by one cost discard are p1's to order (a well-formed decision_required, wrapped as "
+          "trigger_order; p2's order refused, wrong ids invalid_input), then both scheduled; a recycle and a kill "
+          "paid as costs wake their watchers, the cost death counts as the turn's first, and a Deathknell unit "
+          "killed as a cost puts its own death trigger on the Chain.")
     return 0
 
 

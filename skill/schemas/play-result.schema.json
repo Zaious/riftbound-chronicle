@@ -73,6 +73,7 @@
         "cost_determination",
         "payment",
         "legality",
+        "watchers",
         "commit"
       ]
     },
@@ -106,6 +107,17 @@
         "string",
         "null"
       ]
+    },
+    "batch_id": {
+      "type": "string",
+      "description": "trigger_order_required / decision_controller_mismatch at stage watchers: the batch whose triggers need ordering."
+    },
+    "trigger_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "trigger_order_required / decision_controller_mismatch at stage watchers: the triggers to order (Core 383.3.d)."
     },
     "legality": {
       "type": "object"

@@ -187,33 +187,46 @@ def played_event(*, play_id: str, card: str, actor: str, object_kind: str, ident
             "visibility": {"fact": "public", "identity": "public"}, "rule_locators": list(EVENT_KINDS["played"]["rules"]),
             "object_kind": object_kind, "from_hidden": from_hidden, "turn_player": turn_player}
 
-def cost_discarded_events(*, play_id: str, actor: str, source_card: str | None, pay_events: list[dict[str, Any]],
-                          state: dict[str, Any]) -> list[dict[str, Any]]:
-    """The semantic `discarded` events of the discards a play or activation PAID as a cost
-    (Core 422.2.a: a player discards when a cost instructs it; 422.3: Discard as a cost). They
-    have the shape an instruction's discard has - hand to trash, identity before and after - so
-    a watch reads both alike. The actor paid from their own hand, so the actor is the `player`
-    the discard happened to; `controller` is the card's, as for any discard; `source` is the card
-    played or the source of the ability activated. Which card it was becomes public: it is in
-    the Trash (the module's hand-to-trash convention above)."""
+# The zone-change costs a player pays by choosing cards (Core 357.2): the semantic event each
+# card's move is, where it was, where it went, and the rules that make a cost's move that action.
+_COST_ZONE_EVENTS = {
+    # Core 422.2.a: a player discards when a cost instructs it; 422.3: Discard as a cost
+    "pay_discard": ("discarded", "discard", "hand", "trash", ["Core 422.2.a", "Core 422.3"]),
+    # Core 416.2.a: the same for Recycle; 416.3: Recycle as a cost; 416.1.c: to the owner's deck
+    "pay_recycle_trash": ("recycled", "recycle", "trash", "main_deck", ["Core 416.1.c", "Core 416.2.a", "Core 416.3"]),
+}
+
+
+def cost_zone_events(*, play_id: str, actor: str, source_card: str | None, pay_events: list[dict[str, Any]],
+                     state: dict[str, Any]) -> list[dict[str, Any]]:
+    """The semantic events of the cards a play or activation moved as a COST - a discard from
+    the hand (`discarded`) or a recycle from the trash (`recycled`). They have the shape the same
+    action has when an instruction does it - zone to zone, identity before and after - so a
+    watch reads both alike. The actor paid from their own zone, so the actor is the `player` the
+    action happened to; `controller` is the card's, as for any such event; `source` is the card
+    played or the source of the ability activated. Which card it was is public: a discarded card
+    is in the Trash, and a recycled one was in the Trash when it was chosen (the module's
+    convention above). Costs paid by an instruction (kill, recall, exhaust) are not here: the
+    instruction's own run emits their events."""
     out = []
     for pay in pay_events or []:
-        if pay.get("kind") != "pay_discard":
+        shape = _COST_ZONE_EVENTS.get(pay.get("kind"))
+        if shape is None:
             continue
+        kind, verb, zone_before, zone_after, rules = shape
         for position, card in enumerate(pay.get("objects") or []):
             obj = (state.get("objects") or {}).get(card) or {}
             out.append({"schema_version": EVENT_VERSION,
-                        "event_id": f"play:{play_id}#cost:{pay.get('cost_id')}:discard-{position}",
-                        "action_id": f"play:{play_id}", "kind": "discarded",
+                        "event_id": f"play:{play_id}#cost:{pay.get('cost_id')}:{verb}-{position}",
+                        "action_id": f"play:{play_id}", "kind": kind,
                         "source": {"object": source_card, "kind": "object" if source_card else "rule"},
                         "actor": actor, "controller": obj.get("controller"), "object": card, "player": actor,
                         "identity_before": (pay.get("identities_before") or {}).get(card),
                         "identity_after": (pay.get("identities_after") or {}).get(card),
-                        "location_before": {"kind": "player_zone", "player": actor, "zone": "hand"},
-                        "location_after": {"kind": "player_zone", "player": obj.get("owner"), "zone": "trash"},
+                        "location_before": {"kind": "player_zone", "player": actor, "zone": zone_before},
+                        "location_after": {"kind": "player_zone", "player": obj.get("owner"), "zone": zone_after},
                         "causal_parent": None, "visibility": {"fact": "public", "identity": "public"},
-                        "rule_locators": list(EVENT_KINDS["discarded"]["rules"]) + ["Core 422.2.a", "Core 422.3"],
-                        "as_cost": True})
+                        "rule_locators": list(EVENT_KINDS[kind]["rules"]) + rules, "as_cost": True})
     return out
 
 
@@ -491,6 +504,8 @@ class EventLog:
             "resource_added": ("resource", "amount", "domain"),
             "xp_gained": ("amount",),
             "drawn": ("player",),
+            # the player whose hand the card left (Core 422.1) - what watch scope "player" reads
+            "discarded": ("player",),
             "attached": ("to",),
             "detached": ("destination",),
             "copied": ("source_object",),

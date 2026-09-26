@@ -1176,6 +1176,40 @@
       ]
     },
     {
+      "production_id": "deal_n_damage_split_among_any_number_of_enemy_units_here",
+      "form": "Deal 5 damage split among any number of enemy units here.",
+      "template": "deal (?P<amount>\\d+) damage split among any number of enemy units here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 417",
+        "Core 355.14",
+        "Core 355.14.a",
+        "Core 355.14.b",
+        "Core 355.14.c",
+        "Core 355.14.e",
+        "Core 355.14.f",
+        "Core 355.14.h",
+        "Core 359.3.f.1",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "typed_selectors"
+      ],
+      "boundary": "Up to N chosen enemy Units at the source's current Battlefield, the N divided among them at resolution, a positive amount each. Damage to every enemy Unit here, one chosen Unit, a split at a chosen Battlefield, or a split whose amount is read off the board is a different production.",
+      "golden": [
+        "Deal 5 damage split among any number of enemy units here."
+      ],
+      "negative": [
+        "deal 5 damage split among any number of enemy units at a battlefield",
+        "deal 5 to all enemy units here",
+        "deal 5 to an enemy unit here",
+        "deal damage equal to its might split among enemy units at battlefields"
+      ]
+    },
+    {
       "production_id": "deal_n_to_an_enemy_unit_here",
       "form": "Deal 1 to an enemy unit here.",
       "template": "deal (?P<amount>\\d+) to an enemy unit here",

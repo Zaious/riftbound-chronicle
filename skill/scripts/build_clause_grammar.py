@@ -418,6 +418,18 @@ LITERAL = [
     # Literal rows, not a selector alternative: the selector table is pinned by the
     # signed binding specs, and "here" is not a selector phrase in every production.
     # Crackshot Corsair, Leona - Determined and Ahri - Inquisitive are the real cards.
+    # 2026-09-27 package 5 (Volibear - Furious): a split deal - the Targets chosen at finalization,
+    # no more than the damage, each at the source's current Battlefield; the division at resolution
+    ("deal_n_damage_split_among_any_number_of_enemy_units_here",
+     r"deal (?P<amount>\d+) damage split among any number of enemy units here",
+     ["Core 417", "Core 355.14", "Core 355.14.a", "Core 355.14.b", "Core 355.14.c", "Core 355.14.e",
+      "Core 355.14.f", "Core 355.14.h", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
+     ("Up to N chosen enemy Units at the source's current Battlefield, the N divided among them at resolution, a "
+      "positive amount each. Damage to every enemy Unit here, one chosen Unit, a split at a chosen Battlefield, or a "
+      "split whose amount is read off the board is a different production."),
+     ["Deal 5 damage split among any number of enemy units here."],
+     ["deal 5 damage split among any number of enemy units at a battlefield", "deal 5 to all enemy units here",
+      "deal 5 to an enemy unit here", "deal damage equal to its might split among enemy units at battlefields"]),
     ("deal_n_to_an_enemy_unit_here", r"deal (?P<amount>\d+) to an enemy unit here",
      ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or "

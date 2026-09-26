@@ -349,6 +349,23 @@ def _lower_deal_enemy_unit_here(params):
                                                             "location_ref": dict(_HERE)}}}}
 
 
+def _lower_deal_split_among_enemy_units_here(params):
+    """"Deal N damage split among any number of enemy units here." (Volibear - Furious) - Core
+    355.14: each chosen Unit is a Target (355.14.a), chosen as the ability is finalized (355.14.b),
+    at most N of them (355.14.c: the amount caps them, so the targets carry no max), each at the
+    source's current Battlefield (359.3.f.2); how the N is divided is decided at resolution
+    (355.14.e), a positive amount to each Target kept (355.14.f, 355.14.g, 355.14.h)."""
+    amount = int(params["amount"])
+    restrictions = {"chosen_zone_class": "board", "kind": "unit", "controller_relation": "enemy",
+                    "location_ref": dict(_HERE)}
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": amount,
+                                 "targets": {"decision_ref": "t", "min": 0, "restrictions": restrictions},
+                                 "division_ref": "t-division"}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount": amount, "split": True, "targets": {"min": 0, "max": "amount",
+                                                                            "restrictions": dict(restrictions)}}}}
+
+
 def _lower_deal_my_might_to_enemy_unit_here(params):
     ref = {"kind": "program_source_current_might"}
     return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount_ref": dict(ref), "target": _here_target()}],
@@ -767,6 +784,7 @@ LOWERINGS = {
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
+    "deal_n_damage_split_among_any_number_of_enemy_units_here": _lower_deal_split_among_enemy_units_here,
     "stun_an_enemy_unit_here": _lower_stun_enemy_unit_here,
     "deal_damage_equal_to_my_might_to_an_enemy_unit_here": _lower_deal_my_might_to_enemy_unit_here,
     "give_an_enemy_unit_here_might_this_turn": _lower_give_enemy_unit_here_might,

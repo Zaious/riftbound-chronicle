@@ -1705,6 +1705,23 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}] may carry target or targets, not both")
                 if effect.get("op") not in MULTI_TARGET_OPS:
                     errors.append(f"effects[{index}].targets is not supported for {effect.get('op')!r}")
+                split = effect.get("division_ref") is not None
+                if split:
+                    # 2026-09-27 package 5, Core 355.14: "deal N damage split among any number of ...".
+                    # The targets are one decision made at finalization; how many may be chosen is
+                    # capped by the damage itself (355.14.c), so the split carries no max of its own
+                    # (the amount is the cap); the division is a resolution decision (355.14.e).
+                    if effect.get("op") != "deal_damage" or not isinstance(effect["division_ref"], str) or not effect["division_ref"]:
+                        errors.append(f"effects[{index}].division_ref splits a deal_damage's amount; it must be a non-empty decision id")
+                    if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1 \
+                            or effect.get("amount_ref") is not None:
+                        errors.append(f"effects[{index}] a split deal needs a fixed positive amount (Core 355.14.c)")
+                    if not isinstance(targets, dict) or "decision_ref" not in targets or "selectors" in targets or "max" in targets:
+                        errors.append(f"effects[{index}].targets of a split deal is one decision_ref with min and no max: "
+                                      f"the amount caps the targets (Core 355.14.b, 355.14.c)")
+                    elif isinstance(effect.get("amount"), int) and isinstance(targets.get("min"), int) and targets["min"] > effect["amount"]:
+                        errors.append(f"effects[{index}].targets.min exceeds the damage to split (Core 355.14.c)")
+                    targets = {**targets, "max": effect.get("amount")} if isinstance(targets, dict) else targets
                 if not isinstance(targets, dict) or set(targets) - {"selectors", "decision_ref", "min", "max", "restrictions"} or not {"min", "max"} <= set(targets):
                     errors.append(f"effects[{index}].targets must carry min, max, and selectors or decision_ref")
                 else:
@@ -1718,6 +1735,8 @@ def validate_program(program: Any) -> list[str]:
                         errors.append(f"effects[{index}].targets has more selectors than max")
                     if "decision_ref" in targets and (not isinstance(targets["decision_ref"], str) or not targets["decision_ref"]):
                         errors.append(f"effects[{index}].targets.decision_ref must be non-empty")
+            if effect.get("division_ref") is not None and effect.get("targets") is None:
+                errors.append(f"effects[{index}].division_ref splits the damage among chosen targets; it needs targets")
             seen.add(effect_id)
     return errors
 
@@ -5922,8 +5941,9 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
     if entry["stage"] not in {"play_declaration", "trigger_finalization"}:
         raise ValueError(f"target selection {targets['decision_ref']!r} was supplied at the wrong stage")
     chosen = list(entry["value"])
-    if not (targets["min"] <= len(chosen) <= targets["max"]):
-        raise ValueError(f"target selection {targets['decision_ref']!r} chose {len(chosen)} objects; allowed {targets['min']}..{targets['max']}")
+    cap = targets["max"] if "max" in targets else effect.get("amount")   # a split: its damage is the cap (355.14.c)
+    if not (targets["min"] <= len(chosen) <= cap):
+        raise ValueError(f"target selection {targets['decision_ref']!r} chose {len(chosen)} objects; allowed {targets['min']}..{cap}")
     selectors = []
     for object_id in chosen:
         sel = dict(template)
@@ -5932,6 +5952,45 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
         sel.setdefault("bound_identity", entry["selection_identities"][object_id])
         selectors.append(bind_program_context(sel, state, program))
     return selectors, {"decision_id": entry["decision_id"]}
+
+
+def split_division(state: dict[str, Any], effect: dict[str, Any], valid_sels: list[dict[str, Any]],
+                   decisions: dict[str, Any] | None, controller: str | None) -> tuple[dict[str, int] | None, dict[str, Any] | None]:
+    """Core 355.14.e-h: how the controller divides a split deal among the Targets still legal,
+    decided as it resolves. (division, None), or (None, a refusal to return). The division names
+    each legal Target it keeps with a positive amount (355.14.f, 355.14.g), all of the damage
+    (the whole amount is dealt), and - when more Targets are legal than damage - exactly as many
+    Targets as there is damage, the rest ceasing to be Targets (355.14.h, 355.14.h.1)."""
+    import engine_decisions as ed
+    ref, amount = effect["division_ref"], effect["amount"]
+    legal = [sel["object_id"] for sel in valid_sels]
+    keep = min(len(legal), amount)
+    entry = next((e for e in ed.entries(decisions, kind="damage_division") if e.get("decision_id") == ref), None)
+    if entry is None:
+        return None, {"valid": True, "committed": False, "damage_division_required": True,
+                      "reason_code": "damage_division_required",
+                      "reason": f"how {amount} damage is divided among {legal} is decided as it resolves (Core 355.14.e)",
+                      "decision_ids": [ref], "decision_controller": controller,
+                      "division_candidates": legal, "division_amount": amount, "division_keeps": keep}
+    if entry.get("controller") != controller:
+        return None, {"valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch",
+                      "reason": f"damage division {ref!r} was made by {entry.get('controller')!r}, not the program controller"}
+    value = entry["value"]
+    problems = []
+    if set(value) - set(legal):
+        problems.append(f"it names {sorted(set(value) - set(legal))}, which are not legal Targets now (359.3.e)")
+    if len(value) != keep:
+        problems.append(f"it keeps {len(value)} Targets; with {len(legal)} legal and {amount} damage it must keep {keep} "
+                        f"(355.14.f, 355.14.h.1)")
+    if sum(value.values()) != amount:
+        problems.append(f"it divides {sum(value.values())}, not the {amount} damage (355.14.e)")
+    identities = entry.get("selection_identities") or {}
+    stale = sorted(o for o in value if o in legal and identities.get(o) != object_identity(state, o))
+    if stale:
+        problems.append(f"it was made for other objects than {stale} are now (Core 124)")
+    if problems:
+        return None, {"valid": False, "committed": False, "errors": [f"damage division {ref!r}: {p}" for p in problems]}
+    return {o: value[o] for o in legal if o in value}, None
 
 
 def sb_module():
@@ -6447,13 +6506,26 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 trace.append(event)
                 outcomes[effect_id] = "skipped_illegal_target"
                 continue
+            division = None
+            if effect.get("division_ref") is not None and valid_sels:
+                division, refusal = split_division(current, effect, valid_sels, decisions, program.get("controller"))
+                if refusal is not None:
+                    return {**base, **refusal, "failed_effect_index": index, "trace": trace}
             sub_trace = []
             working = current
             expansion_failed = None
             for sel in valid_sels:
-                single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id"}}
+                if division is not None and sel["object_id"] not in division:
+                    # Core 355.14.h: more Targets than damage - this one ceased to be a Target
+                    continue
+                single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id", "division_ref"}}
+                if division is not None:
+                    single["amount"] = division[sel["object_id"]]
                 single["object_id"] = sel["object_id"]
-                single["target"] = sel
+                # a "here" restriction (location_ref) was bound and checked above, for this Target, now;
+                # the bound Battlefield is engine-internal and never an authorable field of the
+                # sub-program (package 5: a split's Targets carry "here")
+                single["target"] = {k: v for k, v in sel.items() if k != "location_battlefield"}
                 single["effect_id"] = f"{effect_id}:{sel['object_id']}"
                 sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                                "program_id": f"expand:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
@@ -6477,6 +6549,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             applied = sum(1 for ev in sub_trace if ev.get("outcome") in {"applied", "replaced_modified_applied", "augmented_applied"})
             target_outcome = "applied_full" if not invalid and applied == requested else "applied_to_subset"
             below_min = len(valid_sels) < effect["targets"]["min"]
+            if division is not None:
+                requested = len(division)
+                target_outcome = "applied_full" if applied == requested else "applied_to_subset"
             event = {
                 "index": index, "effect_id": effect_id, "op": effect["op"],
                 "outcome": "applied" if applied else "no_op",
@@ -6489,6 +6564,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "rule_locators": list(dict.fromkeys(["Core 355.13", "Core 359.3.e.8"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                 "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,
             }
+            if division is not None:
+                event["division"] = dict(division)
+                event["rule_locators"] = list(dict.fromkeys(event["rule_locators"] + [
+                    "Core 355.14.a", "Core 355.14.e", "Core 355.14.f", "Core 355.14.h"]))
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue

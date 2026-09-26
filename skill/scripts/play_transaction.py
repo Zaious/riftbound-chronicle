@@ -1099,6 +1099,14 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
             if entry["controller"] != actor:
                 raise PlayError("choices", "decision_controller_mismatch", f"target selection {ref!r} was made by {entry['controller']!r}, not the card's controller", rule_locators=["Core 355.5"])
             identities = entry.get("selection_identities") or {}
+            if effect.get("division_ref") is not None and isinstance(effect.get("targets"), dict) \
+                    and ref == effect["targets"].get("decision_ref") \
+                    and not (effect["targets"].get("min", 0) <= len(entry["value"]) <= effect.get("amount", 0)):
+                # 2026-09-27 package 5, Core 355.14.b-c: a split's Targets are chosen now, no more of
+                # them than the damage available as it is played or finalized
+                raise PlayError("choices", "target_count_illegal",
+                                f"target selection {ref!r} chose {len(entry['value'])} Targets for {effect.get('amount')} "
+                                f"damage to split (Core 355.14.c)", rule_locators=["Core 355.14.b", "Core 355.14.c"])
             for object_id in entry["value"]:
                 current_identity = entity_identity(effect_state, object_id)
                 if object_id in identities and current_identity is not None and identities[object_id] != current_identity:

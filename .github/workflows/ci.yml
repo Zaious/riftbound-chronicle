@@ -535,7 +535,7 @@ jobs:
         run: python3 skill/scripts/check_player_ref_and_reveal.py
       - name: a card's own Energy reduction read off the board - highest Might, a death this turn (Core 356.4, 428.1)
         run: python3 skill/scripts/check_cost_from_board.py
-      - name: "opponents can't play cards this turn" refuses their card plays, not their abilities (Core 054.1, 052)
+      - name: opponents can't play cards this turn - refuses their card plays, not their abilities (Core 054.1, 052)
         run: python3 skill/scripts/check_play_prohibition.py
       - name: a linked 'then move it to a battlefield' - same object, skipped with an ignored earlier instruction (Core 359.3.e.14.a)
         run: python3 skill/scripts/check_linked_move.py

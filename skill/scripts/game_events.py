@@ -115,6 +115,15 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # step at resolution records the payment and is not performed, so nothing derives this kind.
     "trigger_cost_paid": {"about": "chain", "rules": ["Core 383.3.b.1", "Core 740.4.a.2"]},
     "reflexive_emitted": {"about": "chain", "rules": ["Core 355.13"]},
+    # --- package 6 (2026-09-27): per-player iteration ----------------------
+    # "Each player ...": the iteration itself changes nothing - its copies run as ordinary
+    # instructions and emit their own events; the kind is named so the op is never unknown
+    "players_iterated": {"about": "player", "rules": ["Core 303.2.a", "Core 411.1"]},
+    # "Each player chooses 2 units ...": a player chose objects as the instruction resolved (not
+    # targets, Core 355.10.e); nothing about the objects changes, so the event is the player's
+    "objects_chosen": {"about": "player", "rules": ["Core 355.10.e"]},
+    # "Each other player chooses Cards or Runes.": a player chose a named option
+    "option_chosen": {"about": "player", "rules": ["Core 355.10.e"]},
 }
 
 # op -> the primary semantic event it emits. An op that is absent is
@@ -170,6 +179,9 @@ OP_PRIMARY: dict[str, str] = {
     "create_delayed_trigger": "delayed_trigger_created",
     "remove_hidden": "hidden_removed",
     "trigger_base_cost": "trigger_cost_paid",
+    "each_player": "players_iterated",
+    "choose_objects": "objects_chosen",
+    "choose_option": "option_chosen",
 }
 
 # Actions performed outside an effect program, so their op is not in
@@ -418,7 +430,23 @@ class EventLog:
 
     def record(self, before: dict[str, dict[str, Any]], after: dict[str, dict[str, Any]],
                entry: dict[str, Any]) -> list[dict[str, Any]]:
-        """Derive the events of one trace entry. Returns the new events."""
+        """Derive the events of one trace entry. Returns the new events.
+
+        package 6 (2026-09-27, Core 411.1): an entry an each_player iteration performed carries the
+        iteration's player in `performed_by`; its events name that player as the actor ("Each player
+        kills one of their units" - each is responsible for their own unit's death)."""
+        performer = entry.get("performed_by")
+        if not isinstance(performer, str) or not performer:
+            return self._record(before, after, entry)
+        saved = self.actor
+        self.actor = performer
+        try:
+            return self._record(before, after, entry)
+        finally:
+            self.actor = saved
+
+    def _record(self, before: dict[str, dict[str, Any]], after: dict[str, dict[str, Any]],
+                entry: dict[str, Any]) -> list[dict[str, Any]]:
         start = len(self.events)
         action_id = f"{self.action_prefix}:{entry.get('effect_id', entry.get('index'))}"
         outcome = entry.get("outcome")

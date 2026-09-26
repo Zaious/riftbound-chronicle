@@ -154,7 +154,10 @@
               "empower",
               "disempower",
               "buff",
-              "gain_xp"
+              "gain_xp",
+              "each_player",
+              "choose_objects",
+              "choose_option"
             ]
           },
           "effect_id": {
@@ -577,6 +580,108 @@
             "type": "string",
             "minLength": 1,
             "description": "Core 355.14 (package 5): a deal_damage whose fixed amount is split among the Targets of its one targets.decision_ref (which then carries min and no max - the amount is the cap, 355.14.c); the division is a resolution-stage damage_division decision with this id (355.14.e-h)."
+          },
+          "players": {
+            "enum": [
+              "all",
+              "others"
+            ],
+            "description": "each_player (package 6): 'each player' or 'each other player' (every player but the program's controller)."
+          },
+          "order": {
+            "enum": [
+              "turn_order",
+              "after_controller"
+            ],
+            "description": "each_player (package 6): Turn Order from the Turn Player (Core 303.2.a), or from the player after the controller ('Starting with the next player'). The Turn Order comes from the timing state (context.turn)."
+          },
+          "effects": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            },
+            "description": "each_player (package 6): the instructions run once per player; '$each_player' names the player of the iteration. Each copy's decision references are suffixed '@<player>'."
+          },
+          "only_chose": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "record",
+              "option"
+            ],
+            "properties": {
+              "record": {
+                "type": "string",
+                "minLength": 1
+              },
+              "option": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "description": "each_player (package 6): only the players whose option recorded by an earlier choose_option of this program is this one ('For each player that chooses Cards')."
+          },
+          "group": {
+            "type": "string",
+            "minLength": 1,
+            "description": "choose_objects (package 6): the group of this program the chosen objects go into."
+          },
+          "distinct_in_group": {
+            "const": true,
+            "description": "choose_objects (package 6): an object already in the group cannot be chosen again ('that hasn't been chosen for this spell')."
+          },
+          "group_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "kill (package 6): act on every object of the group still the chosen object on the board ('Kill those units'); not targets (Core 355.10.e)."
+          },
+          "rest_of": {
+            "type": "string",
+            "minLength": 1,
+            "description": "recycle (package 6): recycle what the group's choices were offered and did not take ('Recycle the rest'), each to its owner's deck (Core 416.1.c), each deck ordered by its owner under order_ref:<owner>.<deck>."
+          },
+          "whole_hand": {
+            "const": true,
+            "description": "discard (package 6): every card in the player's hand as the instruction executes ('discards their hand'); an empty hand discards nothing (Core 422.4)."
+          },
+          "record": {
+            "type": "string",
+            "minLength": 1,
+            "description": "choose_option (package 6): where the chosen option is recorded, per player."
+          },
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "choose_option (package 6): the named options ('Cards or Runes'); answered by an option_selection decision at the resolution stage by the choosing player."
+          },
+          "by": {
+            "type": "string",
+            "minLength": 1,
+            "description": "choose_option (package 6): the choosing player (a player id, or '$each_player' inside each_player)."
+          },
+          "optional": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "decision_ref"
+            ],
+            "properties": {
+              "decision_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "by": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "description": "An instruction its controller may perform, decided as it resolves (Core 355.12); package 6: 'each player may' - by the player of the iteration (by)."
           }
         }
       },
@@ -839,13 +944,15 @@
             "kind": {
               "enum": [
                 "unit",
-                "gear"
+                "gear",
+                "rune"
               ]
             },
             "controller_relation": {
               "enum": [
                 "friendly",
-                "enemy"
+                "enemy",
+                "own"
               ]
             },
             "location": {
@@ -853,6 +960,11 @@
                 "base",
                 "battlefield"
               ]
+            },
+            "not_controlled_by": {
+              "type": "string",
+              "minLength": 1,
+              "description": "package 6: an object this player does not control ('a unit you don't control')."
             }
           }
         },

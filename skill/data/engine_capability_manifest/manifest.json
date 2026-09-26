@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:c8cdf61e1264a44027f2b86a",
-  "capability_set_id": "sha256:c8cdf61e1264a44027f2b86a518d541302140c10b2b90416dba44b3c9af78e22",
+  "manifest_id": "capability-manifest:1cbb4379fadac93dcabd94e5",
+  "capability_set_id": "sha256:1cbb4379fadac93dcabd94e5c4d28de476918af462444827ea5ad22be164e273",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:4f4cc2e984f4ddd5ffb856d99451cbac53926b9d34562e3e88e7141ed5d7ecb6",
+    "value": "sha256:8a7ceeab1594949cf214d12a48c2a8fbdbbd03aa340be11c1da28e11a479c300",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,11 +12,11 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:5d331d08efedddf8f4dcead07116e42e2d80ffcce645dddfb5c6231862257e1d"
+        "sha256": "sha256:f0e04b49983e34590b5298d741788841cabbb2f3d403babd3863347836939901"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:2b8b372ce564872ff9e0d4d913f53b182db4f156184b9d68795a7c2ee9676f07"
+        "sha256": "sha256:d3e537ffabcad9f856d562c6de0cb452ac776ca40f2448fd2b219b5120ee5d05"
       },
       {
         "path": "engine_check.py",
@@ -444,6 +444,19 @@
       ]
     },
     {
+      "id": "choose_objects",
+      "rule_locators": [
+        "Core 355.10.e",
+        "Core 359.3.e"
+      ]
+    },
+    {
+      "id": "choose_option",
+      "rule_locators": [
+        "Core 355.10.e"
+      ]
+    },
+    {
       "id": "choose_player",
       "rule_locators": [
         "Core 355.1",
@@ -521,6 +534,14 @@
         "Core 413",
         "Core 428.5",
         "Core 124"
+      ]
+    },
+    {
+      "id": "each_player",
+      "rule_locators": [
+        "Core 303.2",
+        "Core 303.2.a",
+        "Core 411.1"
       ]
     },
     {
@@ -1451,6 +1472,7 @@
     "Core 196",
     "Core 204.3.a",
     "Core 303.2",
+    "Core 303.2.a",
     "Core 308.1.a",
     "Core 309.1.a",
     "Core 310.1.a",
@@ -1524,6 +1546,7 @@
     "Core 355.10.b",
     "Core 355.10.c",
     "Core 355.10.d",
+    "Core 355.10.e",
     "Core 355.17",
     "Core 355.1–355.17",
     "Core 355.2.a–355.2.b",
@@ -1572,6 +1595,7 @@
     "Core 402–402.1",
     "Core 403.1.b.1",
     "Core 404.2",
+    "Core 411.1",
     "Core 413",
     "Core 413.2.a",
     "Core 413.4",

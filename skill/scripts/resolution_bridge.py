@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
+from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, contains_each_player, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
 from rules_core import apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
@@ -433,6 +433,11 @@ def resolve_with_program(
                if isinstance(entry, dict) and isinstance(entry.get("decision_id"), str)]
     if program and counted:
         context = {**(context or {}), "targets_counted_when_chosen": counted}
+    # 2026-09-27 package 6: "Each player ..." runs in Turn Order from the Turn Player (Core 303.2.a) -
+    # facts only the timing state holds. Given to a program that iterates over players, and to no other.
+    if program and contains_each_player(program):
+        context = {**(context or {}), "turn": {"turn_player": timing_state.get("turn_player"),
+                                               "turn_order": list(timing_state.get("turn_order") or [])}}
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:

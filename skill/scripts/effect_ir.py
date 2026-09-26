@@ -297,6 +297,12 @@ SUPPORTED_OPS = {
     # instruction so the content hash covers it; it changes nothing as the ability resolves -
     # apply_program only checks that the chain item's receipt says it was paid.
     "trigger_base_cost",
+    # 2026-09-27 package 6: one instruction list run once per player (Core 303.2.a, 411.1), a choice of
+    # objects that fills a group later instructions read, and a choice of a named option by a player.
+    # All three are resolved by apply_program; none changes the board by itself.
+    "each_player",
+    "choose_objects",
+    "choose_option",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -315,6 +321,115 @@ SELECTION_SLICE = {"selection_kind": "single", "from": {"board", "battlefields"}
                    "count": {"one": True}, "visibility": "public"}
 # Instructions that resolve their own choice into a set (they may need an order too).
 SELF_RESOLVING_CHOICE_OPS = {"recycle", "banish"}
+# 2026-09-27 package 6 (per-player iteration). "Each player kills one of their units." (Cull the
+# Weak, Core 411.1's own example): an object chosen AS THE INSTRUCTION RESOLVES, by the player the
+# instruction names, is not a target (Core 355.10.e) - the chosen object becomes the instruction's
+# object, exactly as recycle_one's choice does, and a board choice is answered at the resolution stage.
+RESOLUTION_CHOICE_OPS = {"kill", "return_to_hand"}
+# One instruction list run once per player: "Each player ...", "Each other player ...", "Starting with
+# the next player, each player ...". Inside it, EACH_PLAYER_SENTINEL names the player of the iteration;
+# the engine writes each iteration's copy with that player in place (EACH_PLAYER_FIELD records it, an
+# engine-internal field like EXECUTION_FIELD). Core 303.2 / 303.2.a: game actions are never
+# simultaneous, and actions that would be are sequenced in Turn Order starting with the Turn Player;
+# "Starting with the next player" names another start. Core 411.1: each player is responsible for the
+# game actions of their own iteration.
+EACH_PLAYER_OP = "each_player"
+EACH_PLAYER_SENTINEL = "$each_player"
+EACH_PLAYER_FIELD = "_each_player"
+# validate_program's marker on the synthetic program it checks an each_player's instructions as
+EACH_PLAYER_BODY = "_each_player_body"
+EACH_PLAYER_SETS = ("all", "others")
+EACH_PLAYER_ORDERS = ("turn_order", "after_controller")
+EACH_PLAYER_NESTED_OPS = {"kill", "return_to_hand", "discard", "draw", "channel_rune", "choose_objects", "choose_option"}
+EACH_PLAYER_RULES = ["Core 303.2", "Core 303.2.a", "Core 355.10.e", "Core 411.1"]
+# "Each player chooses ..." / "each other player chooses a unit ... that hasn't been chosen for this
+# spell": the objects chosen go into a GROUP of this program (ephemeral, like the selection bindings);
+# "Kill those units" acts on the group (group_ref), "Recycle the rest" on what was offered and not
+# chosen (rest_of). Neither is a target: other players chose them (Core 355.10.e).
+GROUP_OPS = {"kill"}
+# "Each other player chooses Cards or Runes.": a named option chosen at resolution by a player, recorded
+# for "For each player that chooses Cards, ..." (each_player.only_chose).
+OPTION_DECISION_KIND = "option_selection"
+
+
+class EachPlayerUnsupported(ValueError):
+    """An each_player instruction whose order the engine cannot establish: Turn Order and the Turn
+    Player are a procedure's facts (the timing state's), carried in context["turn"]."""
+
+    reason_code = "turn_order_unknown"
+
+
+def each_player_order(state: dict[str, Any], program: dict[str, Any], context: dict[str, Any] | None,
+                      effect: dict[str, Any]) -> list[str]:
+    """The players an each_player instruction runs for, in the order it runs them.
+
+    turn_order         Turn Order starting with the current Turn Player (Core 303.2.a)
+    after_controller   Turn Order starting with the player after the program's controller
+                       ("Starting with the next player")
+    players others     every player but the program's controller ("each other player")"""
+    turn = (context or {}).get("turn") or {}
+    order, turn_player = turn.get("turn_order"), turn.get("turn_player")
+    if not isinstance(order, list) or len(order) != len(set(order)) or set(order) != set(state["players"]) \
+            or turn_player not in order:
+        raise EachPlayerUnsupported("each player acts in Turn Order (Core 303.2.a); the Turn Order and the Turn "
+                                    "Player are not known here (context.turn), and are not guessed")
+    controller = program.get("controller")
+    if effect.get("order") == "after_controller":
+        if controller not in order:
+            raise EachPlayerUnsupported(f"'the next player' is the one after the controller {controller!r}, who is "
+                                        f"not in the Turn Order {order}")
+        start = order[(order.index(controller) + 1) % len(order)]
+    else:
+        start = turn_player
+    at = order.index(start)
+    rotated = order[at:] + order[:at]
+    if effect.get("players") == "others":
+        rotated = [p for p in rotated if p != controller]
+    return rotated
+
+
+def _replace_sentinel(value: Any, player: str) -> Any:
+    if isinstance(value, dict):
+        return {k: _replace_sentinel(v, player) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_replace_sentinel(v, player) for v in value]
+    return player if value == EACH_PLAYER_SENTINEL else value
+
+
+def each_player_copies(effect: dict[str, Any], player: str) -> list[dict[str, Any]]:
+    """The instructions of one iteration: every decision reference and effect id suffixed by the
+    player (each player makes their own choices, Core 355.10.e), the sentinel replaced by the player,
+    and the iteration's player stamped on each copy. A group name is NOT suffixed: every player's
+    choice goes into the one group the later instruction reads."""
+    suffix = f"@{player}{execution_suffix(effect)}"
+    copies = suffix_decision_refs(copy.deepcopy(effect["effects"]), suffix)
+    out = []
+    for copied in copies:
+        copied = _replace_sentinel(copied, player)
+        copied[EACH_PLAYER_FIELD] = player
+        copied["each_player_of"] = effect.get("effect_id")
+        if execution_suffix(effect):
+            copied[EXECUTION_FIELD] = execution_suffix(effect)
+        out.append(copied)
+    return out
+
+
+def _mentions_sentinel(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(_mentions_sentinel(v) for v in value.values())
+    if isinstance(value, list):
+        return any(_mentions_sentinel(v) for v in value)
+    return value == EACH_PLAYER_SENTINEL
+
+
+def contains_each_player(program: dict[str, Any] | None) -> bool:
+    """Whether a program iterates over players (and so needs context.turn)."""
+    if not isinstance(program, dict):
+        return False
+    effects = list(program.get("effects") or [])
+    for option in ((program.get("modal") or {}).get("options") or []):
+        effects += list((option or {}).get("effects") or [])
+    return any(isinstance(e, dict) and e.get("op") == EACH_PLAYER_OP for e in effects)
 
 
 class ReplacementDecisionRequired(ValueError):
@@ -517,6 +632,9 @@ OP_RULES = {
     "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
     "remove_hidden": ["Core 323.7", "Core 811", "Core 124"],
     "trigger_base_cost": ["Core 204.3.a", "Core 383.3.b", "Core 383.3.b.1", "Core 403.1.b.1", "Core 404.2", "Core 740.4.a.2"],
+    "each_player": ["Core 303.2", "Core 303.2.a", "Core 411.1"],
+    "choose_objects": ["Core 355.10.e", "Core 359.3.e"],
+    "choose_option": ["Core 355.10.e"],
 }
 # The payments a triggered ability's base cost is made of (trigger_cost.py pays them): Energy
 # and Power, exhausting the ability's own source, spending a buff from a unit its controller
@@ -1619,9 +1737,12 @@ def validate_program(program: Any) -> list[str]:
             # an instruction its controller MAY perform, decided as it resolves (Core 355.12)
             optional = effect.get("optional")
             if optional is not None:
-                if not isinstance(optional, dict) or set(optional) != {"decision_ref"} \
-                        or not isinstance(optional.get("decision_ref"), str) or not optional["decision_ref"]:
-                    errors.append(f"effects[{index}].optional must be {{decision_ref}}")
+                # package 6: "each player may ..." - decided by the player of the iteration (`by`), not
+                # the program's controller; `by` is written only inside each_player (the sentinel)
+                if not isinstance(optional, dict) or set(optional) - {"by"} != {"decision_ref"} \
+                        or not isinstance(optional.get("decision_ref"), str) or not optional["decision_ref"] \
+                        or ("by" in optional and (not isinstance(optional["by"], str) or not optional["by"])):
+                    errors.append(f"effects[{index}].optional must be {{decision_ref}} (and by, inside each_player)")
                 if effect.get("op") in SELECTION_BINDING_OPS:
                     errors.append(f"effects[{index}].optional is on an instruction, not on a choice")
             subject_identity = effect.get("subject_identity")
@@ -1750,10 +1871,18 @@ def validate_program(program: Any) -> list[str]:
             if choice is not None:
                 import engine_decisions as ed
                 errors.extend(f"effects[{index}].choice {e}" for e in ed.validate_choice_spec(choice))
-                if effect.get("op") not in CHOICE_OPS | SELF_RESOLVING_CHOICE_OPS | SELECTION_BINDING_OPS:
+                if effect.get("op") not in CHOICE_OPS | SELF_RESOLVING_CHOICE_OPS | SELECTION_BINDING_OPS \
+                        | RESOLUTION_CHOICE_OPS | {"choose_objects"}:
                     errors.append(f"effects[{index}].choice is not supported for {effect.get('op')!r}")
                 elif effect.get("op") in {"recycle_one"} and not errors and (choice["selection_kind"] != "single" or choice["from"] not in {"trash", "hand"}):
                     errors.append(f"effects[{index}].{effect.get('op')} chooses a single card from trash or hand")
+                elif effect.get("op") in RESOLUTION_CHOICE_OPS and isinstance(choice, dict) and (
+                        choice.get("selection_kind") != "single" or choice.get("from") != "board"
+                        or not isinstance(effect.get("decision_ref"), str) or not effect.get("decision_ref")):
+                    # package 6: one object on the board, chosen as it resolves (Core 355.10.e), answered
+                    # under the instruction's own decision_ref
+                    errors.append(f"effects[{index}].{effect.get('op')} chooses a single object from the board "
+                                  f"as it resolves, under its own decision_ref")
                 if effect.get("object_id") is not None or effect.get("target") is not None or effect.get("targets") is not None:
                     errors.append(f"effects[{index}].choice excludes object_id, target and targets")
             op_name = effect.get("op")
@@ -1770,6 +1899,62 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].establish_selection needs the decision_ref that answers it")
                 if effect.get("affected") is not None:
                     errors.append(f"effects[{index}].establish_selection establishes one selection; affected is not accepted")
+            if effect.get("op") == "each_player":
+                # package 6: "Each player ..." (Core 303.2.a, 411.1)
+                if effect.get("players") not in EACH_PLAYER_SETS:
+                    errors.append(f"effects[{index}].each_player.players must be one of {list(EACH_PLAYER_SETS)}")
+                if effect.get("order") not in EACH_PLAYER_ORDERS:
+                    errors.append(f"effects[{index}].each_player.order must be one of {list(EACH_PLAYER_ORDERS)}")
+                only = effect.get("only_chose")
+                if only is not None and (not isinstance(only, dict) or set(only) != {"record", "option"}
+                                         or any(not isinstance(only[k], str) or not only[k] for k in ("record", "option"))):
+                    errors.append(f"effects[{index}].each_player.only_chose must be {{record, option}}")
+                stray = {"target", "targets", "affected", "choice", "optional", "object_id", "player", "predicate",
+                         "depends_on", "decision_ref", "count", "amount"} & set(effect)
+                if stray:
+                    errors.append(f"effects[{index}].each_player carries its instructions in effects; {sorted(stray)} "
+                                  f"belong to them")
+                nested = effect.get("effects")
+                if not isinstance(nested, list) or not nested or any(not isinstance(e, dict) for e in nested):
+                    errors.append(f"effects[{index}].each_player.effects must be a non-empty array of instructions")
+                else:
+                    for n_index, inner in enumerate(nested):
+                        if inner.get("op") not in EACH_PLAYER_NESTED_OPS:
+                            errors.append(f"effects[{index}].each_player.effects[{n_index}] op {inner.get('op')!r} is not "
+                                          f"run per player; one of {sorted(EACH_PLAYER_NESTED_OPS)}")
+                    if not _mentions_sentinel(nested):
+                        errors.append(f"effects[{index}].each_player: no instruction names the player of the "
+                                      f"iteration ({EACH_PLAYER_SENTINEL})")
+                    synthetic = {k: v for k, v in program.items() if k not in {"effects", "modal"}}
+                    synthetic["effects"] = nested
+                    synthetic[EACH_PLAYER_BODY] = True
+                    errors.extend(f"effects[{index}].each_player.{e}" for e in validate_program(synthetic))
+            elif _mentions_sentinel(effect) and not program.get(EACH_PLAYER_BODY):
+                errors.append(f"effects[{index}] names {EACH_PLAYER_SENTINEL} outside an each_player instruction")
+            if effect.get("op") == "choose_objects":
+                # package 6: a choice that fills a group ("each player chooses 2 units", "chooses a unit ...
+                # that hasn't been chosen for this spell"); it changes no state
+                if not isinstance(effect.get("group"), str) or not effect.get("group"):
+                    errors.append(f"effects[{index}].choose_objects needs the group its objects go into")
+                if not isinstance(effect.get("choice"), dict) or effect["choice"].get("from") not in {"board", "hand"}:
+                    errors.append(f"effects[{index}].choose_objects chooses from the board or a hand")
+                if not isinstance(effect.get("decision_ref"), str) or not effect.get("decision_ref"):
+                    errors.append(f"effects[{index}].choose_objects needs the decision_ref that answers it")
+                if effect.get("distinct_in_group") not in (None, True):
+                    errors.append(f"effects[{index}].choose_objects.distinct_in_group is true when present")
+            if effect.get("op") == "choose_option":
+                options = effect.get("options")
+                if not isinstance(options, list) or len(options) < 2 or len(options) != len(set(options)) \
+                        or any(not isinstance(o, str) or not o for o in options):
+                    errors.append(f"effects[{index}].choose_option.options must list two or more distinct names")
+                for field in ("record", "decision_ref", "by"):
+                    if not isinstance(effect.get(field), str) or not effect.get(field):
+                        errors.append(f"effects[{index}].choose_option needs {field}")
+            if effect.get("group_ref") is not None:
+                if effect.get("op") not in GROUP_OPS or not isinstance(effect["group_ref"], str) or not effect["group_ref"]:
+                    errors.append(f"effects[{index}].group_ref names a group for one of {sorted(GROUP_OPS)}")
+                if {"target", "targets", "affected", "choice", "object_id"} & set(effect):
+                    errors.append(f"effects[{index}].group_ref acts on the group; it chooses and targets nothing")
             if op_name == "copy_object":
                 if not isinstance(effect.get("source_object"), str) or not effect.get("source_object"):
                     errors.append(f"effects[{index}].copy_object needs the object it copies")
@@ -1822,7 +2007,13 @@ def validate_program(program: Any) -> list[str]:
             if op_name in {"look_at_top", "reveal", "put_back", "put_in_hand", "draw_it", "recycle", "predict"}:
                 errors.extend(f"effects[{index}].{op_name} {e}" for e in _reveal_op_errors(effect))
             if effect.get("op") == "discard":
-                if not isinstance(effect.get("player"), str) or not isinstance(effect.get("count"), int) or effect.get("count", 0) < 1:
+                # package 6: "discards their hand" - every card in it, however many there are at
+                # execution (whole_hand, no count); an empty hand discards nothing (Core 422.4)
+                whole = effect.get("whole_hand")
+                if whole is not None and (whole is not True or "count" in effect or "decision_ref" in effect):
+                    errors.append(f"effects[{index}].discard.whole_hand is true, with no count and no decision_ref")
+                elif not isinstance(effect.get("player"), str) or (whole is None and (
+                        not isinstance(effect.get("count"), int) or effect.get("count", 0) < 1)):
                     errors.append(f"effects[{index}].discard requires player and a positive count")
                 if "decision_ref" in effect and (not isinstance(effect["decision_ref"], str) or not effect["decision_ref"]):
                     errors.append(f"effects[{index}].discard.decision_ref must be a non-empty string")
@@ -2339,6 +2530,18 @@ def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
             errors.append(f"{field} must be a non-empty string")
 
     player = effect.get("player")
+    # package 6: "Recycle the rest." after "Each player chooses ...": what the group's choices were
+    # offered and did not take (rest_of). Each card goes to its owner's deck (Core 416.1.c), and each
+    # owner orders their own deck's cards (416.5.a) - no single player is named
+    rest_of = effect.get("rest_of")
+    if op == "recycle" and rest_of is not None:
+        if not isinstance(rest_of, str) or not rest_of:
+            errors.append("rest_of names the group whose unchosen objects are recycled")
+        if {"objects", "choice", "player", "decision_ref"} & set(effect):
+            errors.append("rest_of recycles what the group left; it names no objects, choice, player or decision")
+        return errors
+    elif rest_of is not None:
+        errors.append("rest_of is read by recycle only")
     # Sabotage: "they reveal their hand" - the player an earlier instruction
     # chose. A reference is only legal to a decision, never to a rule for
     # finding a player again.
@@ -3369,11 +3572,17 @@ def _reorder_deck(state: dict[str, Any], player_id: str, order: list[str], posit
     state["players"][player_id]["zones"]["main_deck"] = (list(order) + rest) if position == "top" else (rest + list(order))
 
 
-def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None, decisions: dict[str, Any] | None, order_ref: str, session: str, choice_session: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None, decisions: dict[str, Any] | None, order_ref: str, session: str, choice_session: dict[str, Any] | None = None,
+                   per_deck_refs: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     """Core 416: Recycle several cards as one Game Action (303.2) — each to its
     owner's Main Deck or Rune Deck bottom (416.1–416.2); two or more to the
-    same deck take the player's card_ordering (416.5); tokens cease to exist."""
+    same deck take the player's card_ordering (416.5); tokens cease to exist.
+
+    `per_deck_refs` (package 6, "Recycle the rest" over every player's cards): several decks may each
+    take two or more cards, so each deck's order is its OWN decision (order_ref:<owner>.<deck>), made
+    by its owner; one ref for several decks would ask one decision to order two decks."""
     order_used = None
+    orders_used: list[dict[str, Any]] = []
     per_deck: dict[tuple[str, str], list[str]] = {}
     for object_id in ids:
         obj = state["objects"][object_id]
@@ -3384,8 +3593,10 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
         if len(group) >= 2:
             chooser = player_id or owner
             spec = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": chooser, "visibility": "private_to_chooser", "identity_binding": True}
-            order, meta = resolve_choice(state, spec, decision_ref=order_ref, decisions=decisions, controller=chooser, candidates=group, session=choice_session)
+            ref = f"{order_ref}:{owner}.{deck}" if per_deck_refs else order_ref
+            order, meta = resolve_choice(state, spec, decision_ref=ref, decisions=decisions, controller=chooser, candidates=group, session=choice_session)
             order_used = {"decision_id": meta.get("decision_id"), "forced": meta["forced"], "deck": f"{owner}.{deck}"}
+            orders_used.append(order_used)
             ordered_ids = [c for c in ordered_ids if c not in set(group)] + list(order)
     identities: dict[str, str] = {}
     destinations: dict[str, str] = {}
@@ -3408,6 +3619,7 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
     return state, {"objects_count": len(ids), "objects_hash": _ids_hash(state, [i for i in ordered_ids if i in state["objects"]]), "destinations": destinations,
                    **({"detached": detached_all} if detached_all else {}),
                    "identities_after": identities, "simultaneous": True, "order_decision": order_used,
+                   **({"order_decisions": orders_used} if per_deck_refs else {}),
                    "completion": "full" if ids else "none"}
 
 
@@ -3699,6 +3911,10 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         trace.update({"player": player_id, "requested_count": requested, "applied_count": len(objects), "objects": list(objects), "identities_after": identities,
                       "not_a_target": True, "selection": effect.get("selection_meta", {}),
                       "completion": "full" if len(objects) == requested else ("partial" if objects else "none")})
+        if effect.get("whole_hand"):
+            # package 6: the whole hand, as it stood when the instruction executed (Core 422.1)
+            trace["whole_hand"] = True
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 422.4"]))
         if not objects:
             trace["outcome"] = "no_op"
 
@@ -3827,6 +4043,16 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # broke, and a silent fall-through would establish nothing while the
         # clauses after it went looking for a selection.
         raise ValueError("establish_selection is resolved by apply_program before selectors; it changes no state")
+
+    elif op == "each_player":
+        # package 6: expanded by apply_program into one copy of its instructions per player
+        raise ValueError("each_player is expanded by apply_program into its per-player instructions (Core 303.2.a)")
+
+    elif op == "choose_objects":
+        raise ValueError("choose_objects is resolved by apply_program; it fills a group and changes no state")
+
+    elif op == "choose_option":
+        raise ValueError("choose_option is resolved by apply_program; it records a player's option and changes no state")
 
     elif op in {"deal_damage", "heal_damage"}:
         object_id, amount = effect.get("object_id"), effect.get("amount")
@@ -4128,7 +4354,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             trace["outcome"] = "no_op"
 
     elif op == "recycle":
-        if effect.get("objects") is not None:
+        rest_of = effect.get("rest_of")
+        if rest_of is not None:
+            # package 6: apply_program has resolved "the rest" of the group into objects (Core 416.4:
+            # as many as possible); each goes to its owner's deck, each owner ordering their own
+            chosen, meta = list(effect.get("objects") or []), {"forced": True, "reason": f"what group {rest_of!r} left (Core 416.4)"}
+        elif effect.get("objects") is not None:
             chosen, meta = list(effect["objects"]), {"forced": True, "reason": "the instruction names the cards"}
             for object_id in chosen:
                 if object_id not in new_state["objects"]:
@@ -4136,7 +4367,11 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         else:
             chosen, meta = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=effect.get("player"),
                                           execution=execution_suffix(effect))
-        new_state, sub = _recycle_batch(new_state, chosen, effect.get("player"), decisions, effect.get("order_ref") or f"{effect.get('effect_id', 'recycle')}:order", effect.get("effect_id", "recycle"))
+        new_state, sub = _recycle_batch(new_state, chosen, effect.get("player"), decisions, effect.get("order_ref") or f"{effect.get('effect_id', 'recycle')}:order", effect.get("effect_id", "recycle"),
+                                        per_deck_refs=rest_of is not None)
+        if rest_of is not None:
+            sub["rest_of"] = rest_of
+            sub["rule_locators"] = list(dict.fromkeys(OP_RULES["recycle"] + ["Core 416.1.c", "Core 416.4", "Core 416.5.a"]))
         trace.update(sub)
         trace["selection"] = {k: v for k, v in meta.items() if k != "choice"}
         if not chosen:
@@ -6075,6 +6310,12 @@ def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: d
     the choice is the generic specification {unordered_set, exactly count,
     from hand, by the player, private}."""
     player_id, count = effect.get("player"), effect.get("count")
+    if effect.get("whole_hand") is True and player_id in state["players"]:
+        # package 6: "discards their hand" - every card in it now; nothing to choose. An empty hand
+        # discards nothing, and the instruction is ignored (Core 422.4)
+        hand = list(state["players"][player_id]["zones"]["hand"])
+        return {**effect, "count": len(hand), "objects": hand,
+                "selection_meta": {"forced": True, "reason": "the whole hand is discarded (Core 422.1, 422.4)"}}
     if player_id not in state["players"] or not isinstance(count, int) or count < 1:
         raise ValueError("discard requires a known player and a resolved selection")
     spec = {"selection_kind": "unordered_set", "count": {"exactly": count}, "from": "hand", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
@@ -6167,6 +6408,12 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
                 if relation == "friendly" and not same_side(state, chooser, obj.get("controller")):
                     continue
                 if relation == "enemy" and same_side(state, chooser, obj.get("controller")):
+                    continue
+                # package 6: "one of THEIR units" - controlled by the chooser, not a teammate's (411.1)
+                if relation == "own" and obj.get("controller") != chooser:
+                    continue
+                # package 6: "a unit YOU don't control" - named by the program's controller, not the chooser
+                if "not_controlled_by" in criteria and obj.get("controller") == criteria["not_controlled_by"]:
                     continue
                 ids.append(object_id)
     elif source == "battlefields":
@@ -6810,6 +7057,13 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     # order they were made. It is per-program and ephemeral: it is not state,
     # and a nested program is given only what it may legitimately read.
     selection_bindings: dict[str, Any] = {}
+    # package 6: what this program's choose_objects put in each group ({"chosen", "offered"}), the
+    # options its choose_option recorded ({record: {player: option}}), and which player each
+    # each_player copy runs for (the player responsible for its game actions, Core 411.1). Per program
+    # and ephemeral, like the selection bindings.
+    chosen_groups: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    recorded_options: dict[str, dict[str, str]] = {}
+    copy_players: dict[str, str] = {}
     # Selections an establish_selection in THIS program attempted and found
     # empty. A reference to one of these is a game event, not a bad artifact.
     empty_selections: set[str] = set()
@@ -6894,6 +7148,141 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        # 2026-09-27 package 6: "Each player ...". The instruction list runs once per player, in the
+        # order the rules give (Core 303.2.a: Turn Order from the Turn Player; "Starting with the next
+        # player": from the player after the controller), each copy with that player in place and
+        # its own choices (355.10.e). The copies run next, as ordinary instructions.
+        if effect.get("op") == "each_player":
+            try:
+                players = each_player_order(current, program, context, effect)
+            except EachPlayerUnsupported as exc:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "reason_code": exc.reason_code,
+                        "reason": str(exc), "failed_effect_index": index, "trace": trace}
+            only = effect.get("only_chose")
+            if only is not None:
+                # "For each player that chooses Cards": the players whose recorded option, made by an
+                # earlier instruction of this program, is that option - in the same order
+                record = recorded_options.get(only["record"])
+                if record is None:
+                    return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "option_record_unbound",
+                            "reason": f"no instruction of this program recorded the options {only['record']!r}",
+                            "failed_effect_index": index, "trace": trace}
+                players = [p for p in players if record.get(p) == only["option"]]
+            expanded = []
+            for player in players:
+                for copied in each_player_copies(effect, player):
+                    copy_players[copied["effect_id"]] = player
+                    expanded.append(copied)
+            event = {"index": index, "effect_id": effect_id, "op": "each_player",
+                     "outcome": "expanded" if expanded else "no_op", "completion": "full" if expanded else "none",
+                     "players": list(players), "players_rule": effect.get("players"), "order_rule": effect.get("order"),
+                     **({"only_chose": dict(only)} if only is not None else {}),
+                     "expanded_into": [e["effect_id"] for e in expanded],
+                     "rule_locators": list(dict.fromkeys(OP_RULES["each_player"] + ["Core 355.10.e"])),
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            effects_to_run[index + 1:index + 1] = expanded
+            continue
+        if effect.get("op") == "choose_option":
+            # "Each other player chooses Cards or Runes.": the player names one option as the
+            # instruction resolves; the program records it for "for each player that chooses ..."
+            import engine_decisions as ed
+            chooser = effect.get("by")
+            if chooser == "controller":
+                chooser = program.get("controller")
+            ref = effect.get("decision_ref")
+            entry = ed.option_selection(decisions, ref)
+            if chooser not in current["players"]:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                        "errors": [f"choose_option by {chooser!r}, who is not a player"], "trace": trace}
+            if entry is None:
+                return {**base, "valid": True, "committed": False, "option_selection_required": True,
+                        "reason_code": "option_selection_required",
+                        "reason": f"{chooser} chooses one of {effect.get('options')} as the instruction resolves",
+                        "decision_ids": [ref], "decision_controller": chooser, "options": list(effect.get("options") or []),
+                        "failed_effect_index": index, "trace": trace}
+            if entry["controller"] != chooser:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch",
+                        "reason": f"option {ref!r} was chosen by {entry['controller']!r}, not {chooser!r}",
+                        "failed_effect_index": index, "trace": trace}
+            if entry["value"] not in (effect.get("options") or []):
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "illegal_operation",
+                        "reason": f"option {ref!r} names {entry['value']!r}, not one of {effect.get('options')}",
+                        "failed_effect_index": index, "trace": trace}
+            recorded_options.setdefault(effect["record"], {})[chooser] = entry["value"]
+            event = {"index": index, "effect_id": effect_id, "op": "choose_option", "outcome": "applied", "completion": "full",
+                     "player": chooser, "option": entry["value"], "options": list(effect["options"]), "record": effect["record"],
+                     "decision_id": ref, "rule_locators": list(OP_RULES["choose_option"]),
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "choose_objects":
+            # "Each player chooses 2 units ..." / "chooses a unit you don't control that hasn't been
+            # chosen for this spell": objects chosen as the instruction resolves by the player it
+            # names - not targets (Core 355.10.e) - into a group of this program. Changes no state.
+            import engine_decisions as ed
+            spec = effect["choice"]
+            chooser = spec.get("by", "controller")
+            if chooser == "controller":
+                chooser = program.get("controller")
+            if chooser not in current["players"]:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                        "reason": f"choose_objects by {spec.get('by')!r}: the chooser is not a player here", "trace": trace}
+            group = chosen_groups.setdefault(effect["group"], {"chosen": [], "offered": []})
+            try:
+                candidates, identities = choice_candidates(current, spec, chooser, program=program)
+            except SelectionBindingRefused as exc:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": exc.reason_code,
+                        "reason": str(exc), "failed_effect_index": index, "trace": trace}
+            if effect.get("distinct_in_group"):
+                taken = {(m["object_id"], m["identity"]) for m in group["chosen"]}
+                candidates = [c for c in candidates if (c, identities.get(c)) not in taken]
+            try:
+                chosen, meta = resolve_choice(current, spec, decision_ref=effect["decision_ref"], decisions=decisions,
+                                              controller=program.get("controller"), chooser=chooser, candidates=candidates,
+                                              execution=execution_suffix(effect))
+                entry = ed.decision_entry(decisions, effect["decision_ref"]) if not meta.get("forced") else None
+                if entry is not None and entry.get("stage") != "resolution":
+                    raise ValueError(f"decision {effect['decision_ref']!r} is made as the instruction resolves "
+                                     f"(Core 355.10.e), not at {entry.get('stage')!r}")
+            except ChoiceRequired as exc:
+                return {**base, "valid": True, "committed": False, "choice_required": True,
+                        f"{exc.summary['decision_kind']}_required": True, "reason_code": exc.reason_code,
+                        "reason": str(exc), "choice": exc.summary, "decision_ids": exc.decision_ids,
+                        "decision_controller": exc.controller, "failed_effect_index": index, "trace": trace}
+            except IllegalDecision as exc:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch",
+                        "reason": str(exc), "failed_effect_index": index, "trace": trace}
+            except IllegalOperation as exc:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "illegal_operation",
+                        "reason": str(exc), "failed_effect_index": index, "trace": trace}
+            except NotImplementedError as exc:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                        "reason": str(exc), "trace": trace}
+            except ValueError as exc:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+            for object_id in candidates:
+                group["offered"].append({"object_id": object_id, "identity": identities.get(object_id),
+                                         "chosen_by": chooser, "effect_id": effect_id})
+            for object_id in chosen:
+                group["chosen"].append({"object_id": object_id, "identity": identities.get(object_id),
+                                        "chosen_by": chooser, "effect_id": effect_id})
+            private = ed.choice_visibility(spec) != "public"
+            event = {"index": index, "effect_id": effect_id, "op": "choose_objects",
+                     "outcome": "applied" if chosen else "no_op", "completion": "full" if chosen else "none",
+                     "player": chooser, "group": effect["group"], "chosen_count": len(chosen), "offered_count": len(candidates),
+                     **({"objects_hash": _ids_hash(current, list(chosen)), "objects_visible_to": [chooser]} if private
+                        else {"chosen_objects": list(chosen)}),
+                     "selection": {k: v for k, v in meta.items() if k != "choice"},
+                     "rule_locators": list(OP_RULES["choose_objects"]),
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            if not chosen:
+                event["reason"] = "there was nothing to choose from (Core 359.3.e)"
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         # 2026-09-27: "its controller" / "its owner" (Core 359.3.e.14). The player is read off
         # the object the linked earlier instruction acted on, as that object stood just before
         # the instruction executed (its snapshot); an ignored earlier instruction makes this
@@ -6949,17 +7338,19 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         if optional is not None:
             import engine_decisions as ed
             ref = optional["decision_ref"]
+            # package 6: "each player may ..." - the player of the iteration decides (optional.by)
+            decider = optional.get("by") or program.get("controller")
             entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
             if entry is None:
                 return {**base, "valid": True, "committed": False, "optional_choice_required": True,
                         "reason_code": "optional_choice_required",
                         "reason": f"instruction {effect_id!r} is optional; its controller decides as it resolves (Core 355.12)",
-                        "decision_ids": [ref], "decision_controller": program.get("controller"),
+                        "decision_ids": [ref], "decision_controller": decider,
                         "failed_effect_index": index, "trace": trace}
-            if entry["controller"] != program.get("controller"):
+            if entry["controller"] != decider:
                 return {**base, "valid": True, "committed": False, "applied": False,
                         "reason_code": "decision_controller_mismatch",
-                        "reason": f"optional instruction {effect_id!r} was decided by {entry['controller']!r}, not its controller",
+                        "reason": f"optional instruction {effect_id!r} was decided by {entry['controller']!r}, not {decider!r}",
                         "failed_effect_index": index, "trace": trace}
             if entry["stage"] != "resolution":
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index,
@@ -7088,9 +7479,18 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
         if effect.get("op") == "grant_keyword" and context is not None and context.get("combat") is not None:
             effect = {**effect, "combat_context": context["combat"]}
-        if effect.get("op") == "discard" or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS):
+        if effect.get("op") == "discard" or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS | RESOLUTION_CHOICE_OPS):
             try:
                 effect = _resolve_discard(current, effect, decisions) if effect.get("op") == "discard" else _resolve_choice_object(current, effect, program, decisions)
+                if effect.get("op") in RESOLUTION_CHOICE_OPS:
+                    # package 6: an object chosen as the instruction resolves (Core 355.10.e) is chosen
+                    # then - a decision made for another stage is not that choice
+                    import engine_decisions as ed
+                    meta = effect.get("selection_meta") or {}
+                    entry = ed.decision_entry(decisions, meta["decision_id"]) if meta.get("decision_id") else None
+                    if entry is not None and entry.get("stage") != "resolution":
+                        raise ValueError(f"decision {meta['decision_id']!r} is made as the instruction resolves "
+                                         f"(Core 355.10.e), not at {entry.get('stage')!r}")
             except ChoiceRequired as exc:
                 # ADR-0011 §1: the summary lists options only for a public source.
                 return {
@@ -7107,6 +7507,86 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "illegal_operation", "reason": str(exc), "failed_effect_index": index, "trace": trace}
             except ValueError as exc:
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
+        if effect.get("op") in RESOLUTION_CHOICE_OPS and effect.get("choice") is not None and effect.get("object_id") is None:
+            # package 6: nothing to choose from (a player with no unit): the instruction does nothing
+            # for that player (Core 359.3.e), and the rest of the program runs
+            event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op", "completion": "none",
+                     "reason": "nothing to choose from (Core 359.3.e)", "selection": effect.get("selection_meta"),
+                     "rule_locators": ["Core 359.3.e", "Core 355.10.e"],
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "recycle" and effect.get("rest_of") is not None:
+            # package 6: "Recycle the rest." - what the group's choices were offered and did not take,
+            # each still the object it was when offered (Core 124: a card that changed zones since is
+            # a new object, and not "the rest" any more)
+            group = chosen_groups.get(effect["rest_of"])
+            if group is None:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "group_unbound",
+                        "reason": f"no instruction of this program chose into group {effect['rest_of']!r}",
+                        "failed_effect_index": index, "trace": trace}
+            kept = {(m["object_id"], m["identity"]) for m in group["chosen"]}
+            rest: list[str] = []
+            for offered in group["offered"]:
+                object_id = offered["object_id"]
+                if (object_id, offered["identity"]) in kept or object_id in rest:
+                    continue
+                if object_id in current["objects"] and object_identity(current, object_id) == offered["identity"]:
+                    rest.append(object_id)
+            effect = {**effect, "objects": rest}
+        if effect.get("group_ref") is not None and effect.get("op") in GROUP_OPS:
+            # package 6: "Kill those units." - every object the group holds, each still the object that
+            # was chosen and still on the board; not targets (Core 355.10.e), so nothing is re-checked
+            # beyond being the same object (Core 124). One instruction over the set.
+            group = chosen_groups.get(effect["group_ref"])
+            if group is None:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "group_unbound",
+                        "reason": f"no instruction of this program chose into group {effect['group_ref']!r}",
+                        "failed_effect_index": index, "trace": trace}
+            members, gone = [], []
+            for member in group["chosen"]:
+                object_id = member["object_id"]
+                if object_id in current["objects"] and object_identity(current, object_id) == member["identity"] \
+                        and zone_class(find_location(current, object_id)) == "board":
+                    members.append(object_id)
+                else:
+                    gone.append({"object_id": object_id, "reason": "no longer the chosen object on the board (Core 124)"})
+            sub_trace, working, failure = [], current, None
+            for object_id in members:
+                single = {k: v for k, v in effect.items() if k not in {"group_ref", "effect_id"}}
+                single["object_id"] = object_id
+                single["effect_id"] = f"{effect_id}:{object_id}"
+                sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+                               "program_id": f"group:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
+                               "source_object": program.get("source_object"), "effects": [single]}
+                sub = apply_program(working, sub_program, decisions=None, context=nested_context(context),
+                                    _replacement_depth=_replacement_depth + 1)
+                if sub.get("committed") is not True:
+                    failure = sub
+                    break
+                working = sub["next_state"]
+                sub_trace.extend(sub["trace"])
+            if failure is not None:
+                return {**base, "valid": failure.get("valid", True), "committed": False,
+                        "unsupported": failure.get("unsupported", False),
+                        "replacement_decision_required": failure.get("replacement_decision_required", False),
+                        "replacement_ids": failure.get("replacement_ids", []), "failed_effect_index": index,
+                        "reason": failure.get("reason", "; ".join(failure.get("errors", [])) or "group expansion failed"),
+                        "expansion_result": failure, "trace": trace}
+            current = working
+            applied = sum(1 for ev in sub_trace if ev.get("outcome") in PERFORMED_OUTCOMES)
+            event = {"index": index, "effect_id": effect_id, "op": effect["op"],
+                     "outcome": "applied" if applied else "no_op",
+                     "completion": "full" if members and applied == len(members) else ("partial" if applied else "none"),
+                     "group": effect["group_ref"], "affected_objects": members, "not_in_play": gone,
+                     "affected_are_targets": False, "expansion_trace": sub_trace,
+                     "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                     "rule_locators": list(dict.fromkeys(["Core 355.10.e", "Core 124"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
+                     "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         if effect.get("op") == "swap_might":
             # Core 477 with Riot's reading: read both Mights BEFORE either moves,
             # then run the two changes as ordinary modify_might events. Because
@@ -7996,6 +8476,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             event["removed_continuous_effects"] = dead
         trace.append(event)
         outcomes[effect_id] = event["outcome"]
+    # package 6 (Core 411.1): an each_player copy's game actions are the iteration player's -
+    # "Each player kills one of their units": each is responsible for their own unit's death
+    for entry in trace:
+        if isinstance(entry, dict) and entry.get("effect_id") in copy_players:
+            entry["performed_by"] = copy_players[entry["effect_id"]]
     log = game_events.EventLog(program.get("program_id"), actor=program.get("controller"),
                                source_object=program.get("source_object"))
     for position, entry in enumerate(trace):

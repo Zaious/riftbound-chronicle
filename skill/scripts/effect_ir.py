@@ -363,6 +363,19 @@ class SelectionBindingRefused(ValueError):
         self.reason_code = reason_code
 
 
+class SourceUnavailable(SelectionBindingRefused):
+    """The program's own source - "me", "my Might" - is not there as the instruction executes: it
+    left the board, the object at its id is a new one (Core 124), or, a token, it ceased to exist
+    (186.1). That is a game event, not a malformed program: the instruction cannot be followed and
+    is ignored, and the rest of the ability resolves (Core 359.3.e.6, 359.3.f.1, 359.3.f.2). Still a
+    refusal where it is raised - the caller in apply_program records the instruction as ignored."""
+
+
+# The outcome an instruction whose own source is unavailable is recorded with (SourceUnavailable).
+SOURCE_UNAVAILABLE_OUTCOME = "ignored_source_unavailable"
+SOURCE_UNAVAILABLE_RULES = ["Core 359.3.e.6", "Core 359.3.f.1", "Core 359.3.f.2"]
+
+
 class ExternalInputRequired(ValueError):
     """ADR-0010 §2: an external randomization receipt the transition needs is absent."""
 
@@ -2048,11 +2061,16 @@ AMOUNT_REF_IDENTITY_CHANGED = "amount_ref_source_identity_changed"
 # 355.10.d - that player is not a target). Read from the state as it stood just BEFORE that
 # instruction executed - the killed unit's controller is the one it had when it was killed.
 OBJECT_PLAYER_RELATIONS = ("controller", "owner")
-# The outcomes that mean an instruction was ignored rather than executed. A later instruction
-# linked to it is ignored too (Core 359.3.e.14.a). A REPLACED instruction still counts as
-# executed for the link (359.3.e.14.b).
-LINKED_IGNORED_OUTCOMES = frozenset({"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency",
-                                     "ignored_subject_changed", "skipped_after_terminal", "skipped_restricted_move"})
+# The outcomes that mean an instruction was ignored - it did not execute - rather than executed.
+# A later instruction linked to it is ignored too (Core 359.3.e.14.a), whether it reads the earlier
+# one's object ("its controller": linked_objects) or runs only unless the earlier one was ignored
+# (depends_on with dependency_mode unless_ignored): ONE set for both. A declined optional
+# instruction (355.12) did not execute; an instruction whose own source is gone was ignored
+# (359.3.e.6). A REPLACED instruction still counts as executed for the link (359.3.e.14.b).
+IGNORED_OUTCOMES = frozenset({"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency",
+                              "ignored_subject_changed", "skipped_after_terminal", "skipped_restricted_move",
+                              "declined", SOURCE_UNAVAILABLE_OUTCOME})
+LINKED_IGNORED_OUTCOMES = IGNORED_OUTCOMES
 # "draw 1 for each of your [Mighty] units" (Kadregrin the Infernal): a draw whose count is its
 # printed number times a count read as the instruction executes. One kind: the units the
 # program's controller controls on the board that are Mighty - Might 5 or greater (Core 708),
@@ -2680,7 +2698,7 @@ MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base", "battlefield"}
 #                   target, 359.3.e.6) or itself skipped - but not when the earlier one executed
 #                   and changed nothing (a Unit already Buffed is still chosen, 426.1.c).
 DEPENDENCY_MODES = {"if_applied", "always", "unless_ignored"}
-IGNORED_OUTCOMES = {"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency"}
+# unless_ignored reads IGNORED_OUTCOMES, the one set linked_objects reads too (defined above).
 
 
 def token_play_locations(state: dict[str, Any], controller: str, token_kind: str) -> list[str]:
@@ -6325,26 +6343,34 @@ def resolve_object_ref(effect: dict[str, Any], state: dict[str, Any],
                 f"the instruction carries {field!r} beside a program_source reference; "
                 f"'me' is self-referential and chooses nothing", OBJECT_REF_NOT_SELF)
 
+    # 2026-09-28 (review 5, R1-2): the three ways the source can be GONE as the instruction
+    # executes - no longer in the state though the program was bound to it, a new object at its
+    # id, off the board - are game events (Core 359.3.e.6): SourceUnavailable, which apply_program
+    # records as an ignored instruction and resolves the rest. A reference with no source, to a
+    # non-permanent, or of the wrong shape is still refused whole.
     source = program.get("source_object")
+    declared = program.get("source_identity")
     if not isinstance(source, str) or source not in state["objects"]:
+        if isinstance(source, str) and source and isinstance(declared, str) and declared:
+            raise SourceUnavailable(
+                f"the program's source {declared!r} is no longer in the state (a token that left the board "
+                f"ceased to exist, Core 186.1); 'me' cannot be acted on", OBJECT_REF_ABSENT)
         raise SelectionBindingRefused(
             f"the program declares source_object {source!r}, which the state does not contain; "
             f"a self-reference with no source is refused, never guessed", OBJECT_REF_ABSENT)
 
     now = object_identity(state, source)
-    declared = program.get("source_identity")
-    if declared is not None and declared != now:
-        raise SelectionBindingRefused(
-            f"the program's source was {declared!r} and is now {now!r}; the object at that id is "
-            f"not the one this instruction is about", OBJECT_REF_IDENTITY_CHANGED)
-
     obj = state["objects"][source]
     if obj.get("kind") not in OBJECT_REF_PERMANENT_KINDS:
         raise SelectionBindingRefused(
             f"the source is a {obj.get('kind')!r}, not a permanent; only a permanent source is "
             f"wired for a self-reference", OBJECT_REF_LEFT_PLAY)
+    if declared is not None and declared != now:
+        raise SourceUnavailable(
+            f"the program's source was {declared!r} and is now {now!r}; the object at that id is "
+            f"not the one this instruction is about", OBJECT_REF_IDENTITY_CHANGED)
     if zone_class(find_location(state, source)) != "board":
-        raise SelectionBindingRefused(
+        raise SourceUnavailable(
             f"the source {source!r} is not on the board any more, so it cannot be acted on by "
             f"its own instruction", OBJECT_REF_LEFT_PLAY)
 
@@ -6358,16 +6384,22 @@ def resolve_amount_ref(ref: dict[str, Any], state: dict[str, Any], program: dict
     response. Identity is mandatory; a source that is gone or is a new object is refused
     by name, never read off whatever holds that id now."""
     source = program.get("source_object")
-    if not isinstance(source, str) or source not in state["objects"]:
-        raise SelectionBindingRefused(
-            f"the program declares source_object {source!r}, which the state does not contain; "
-            f"'my Might' with no source is refused, never guessed", AMOUNT_REF_ABSENT)
     declared = program.get("source_identity")
+    if not isinstance(source, str) or not source:
+        raise SelectionBindingRefused(
+            f"the program declares source_object {source!r}; 'my Might' with no source is refused, never guessed",
+            AMOUNT_REF_ABSENT)
     if not isinstance(declared, str) or not declared:
         raise SelectionBindingRefused("the program declares no source_identity; 'my Might' requires one",
                                       AMOUNT_REF_ABSENT)
+    # 2026-09-28 (review 5, R1-2): the source bound by identity and now gone - ceased to exist, or a
+    # new object at its id - has no Might to read (Core 359.3.e.12): the Deal cannot be followed and
+    # is ignored (359.3.e.6, SourceUnavailable); it is never read off whatever holds the id now
+    if source not in state["objects"]:
+        raise SourceUnavailable(
+            f"the program's source {declared!r} is no longer in the state; 'my Might' reads null", AMOUNT_REF_ABSENT)
     if object_identity(state, source) != declared:
-        raise SelectionBindingRefused(
+        raise SourceUnavailable(
             f"the program's source was {declared!r} and is now {object_identity(state, source)!r}; "
             f"'my Might' is not read off a different object", AMOUNT_REF_IDENTITY_CHANGED)
     return effective_might(state, source), source
@@ -6867,6 +6899,17 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         if is_object_ref(effect.get("object_id")):
             try:
                 effect, object_ref_meta = resolve_object_ref(effect, current, program)
+            except SourceUnavailable as exc:
+                # "me" is gone: the instruction cannot be followed and is ignored; the rest of the
+                # ability resolves (Core 359.3.e.6), and an instruction linked to this one is
+                # ignored with it (359.3.e.14.a, IGNORED_OUTCOMES)
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": SOURCE_UNAVAILABLE_OUTCOME,
+                         "completion": "none", "reason": exc.reason_code, "message": str(exc),
+                         "source_object": program.get("source_object"), "rule_locators": list(SOURCE_UNAVAILABLE_RULES),
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
             except SelectionBindingRefused as exc:
                 return {**base, "valid": True, "committed": False, "applied": False,
                         "reason_code": exc.reason_code, "reason": str(exc),
@@ -7484,6 +7527,16 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         if effect.get("amount_ref") is not None:
             try:
                 read, read_from = resolve_amount_ref(effect["amount_ref"], current, program)
+            except SourceUnavailable as exc:
+                # "my Might" of a source that is gone reads null (359.3.e.12): the Deal is ignored
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": SOURCE_UNAVAILABLE_OUTCOME,
+                         "completion": "none", "reason": exc.reason_code, "message": str(exc),
+                         "source_object": program.get("source_object"),
+                         "rule_locators": list(SOURCE_UNAVAILABLE_RULES) + ["Core 359.3.e.12"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
             except SelectionBindingRefused as exc:
                 return {**base, "valid": True, "committed": False, "applied": False,
                         "reason_code": exc.reason_code, "reason": str(exc),

@@ -10,13 +10,21 @@ expected IR - and forging it means naming the source without the engine ever
 checking its identity or its zone. So it is a typed reference the engine alone
 creates and resolves, and this holds that:
 
-  * the adopted ops (OBJECT_REF_OPS) resolve it and really act on the source. Adoption is
-    PER OP: `ready` working proves nothing about `kill`, so an op outside the
-    reviewed set is refused by its own code rather than quietly allowed;
+  * the adopted ops - the reviewed set, written out here (ADOPTED_OPS), which the
+    engine's OBJECT_REF_OPS must equal - resolve it and really act on the source.
+    Adoption is PER OP: `ready` working proves nothing about `kill`, so an op
+    outside the reviewed set is refused by its own code rather than quietly allowed;
   * it binds the source's full IDENTITY, not its id. An id can be reused after
     an object leaves and returns; the identity token cannot;
-  * five named refusals fire on the five things that can be wrong, each with
-    its own code, so a failure says which one happened;
+  * a source that is GONE as the instruction executes - ceased to exist though
+    the program was bound to it, a new object at its id, off the board - is a game
+    event: the instruction is ignored by name (Core 359.3.e.6), nothing is acted
+    on, the rest of the ability resolves and an instruction linked to it is
+    ignored with it (359.3.e.14.a) (2026-09-28, review 5 R1-2 - these three were
+    refusals of the whole program before, which left such a trigger unresolvable);
+  * a reference that is itself wrong is refused whole, each with its own code: no
+    source and no identity binding it, a Spell source, a clause that also names a
+    target, an op not adopted;
   * a decision artifact carrying the shape is refused. If an artifact could
     inject one, the typing would buy nothing.
 
@@ -39,6 +47,8 @@ from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, 
 from engine_decisions import DECISIONS_VERSION, validate_engine_decisions  # noqa: E402
 
 REF = {"object_ref": "program_source"}
+# The ops whose adoption was reviewed, each with its own fixture (below). Hard-coded on purpose.
+ADOPTED_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand"}
 EXTRA = {"ready": {}, "buff": {}, "banish": {}, "return_to_hand": {},
          "modify_might": {"amount": 3, "duration": "this_turn", "source": "u1"}}
 
@@ -75,8 +85,15 @@ def main() -> int:
             return fail(label, f"expected {code}, got {result.get('reason_code')!r} "
                                f"({result.get('reason') or result.get('errors')})")
 
+    # --- the adopted set is the reviewed one, written here, not read off the engine ---
+    # (review 5, R2-8: looping over the engine's own list proved nothing when an op dropped out
+    # of it - return_to_hand removed from OBJECT_REF_OPS left this gate green)
+    if set(effect_ir.OBJECT_REF_OPS) != ADOPTED_OPS:
+        fail("adopted ops", f"the engine adopts {sorted(effect_ir.OBJECT_REF_OPS)}; the reviewed set is "
+                            f"{sorted(ADOPTED_OPS)}")
+
     # --- every adopted op resolves it, and really acts on the source ----------
-    for op in sorted(effect_ir.OBJECT_REF_OPS):
+    for op in sorted(ADOPTED_OPS):
         state = state_with_source()
         result = apply_program(state, program(op, state))
         if result.get("committed") is not True:
@@ -117,28 +134,59 @@ def main() -> int:
     # --- adoption is per op ---------------------------------------------------
     state = state_with_source()
     for op in ("kill", "stun", "exhaust"):
-        if op in effect_ir.OBJECT_REF_OPS:
-            continue
         expect_refusal(f"unadopted op {op}", apply_program(state, program(op, state)),
                        effect_ir.OBJECT_REF_OP_NOT_ADOPTED)
 
-    # --- the four ways the reference itself can be wrong ----------------------
-    expect_refusal("the source is not in the state",
-                   apply_program(state, program("ready", state, source="nobody")),
+    # --- the source is GONE as the instruction executes: a game event -----------
+    # 2026-09-28 (review 5, R1-2): these three used to refuse the whole program, which left a
+    # trigger whose source was bounced in reaction unresolvable. Core 359.3.e.6: an instruction
+    # that cannot be followed is ignored and the rest of the ability resolves. Each is now an
+    # ignored instruction, named in the trace, and the object at the id - if any - is untouched.
+    def expect_ignored(label, before, result, code):
+        event = next((e for e in result.get("trace") or [] if e.get("effect_id") == "e"), {})
+        if result.get("committed") is not True:
+            return fail(label, f"the program did not resolve with the instruction ignored: "
+                               f"{result.get('reason_code')} ({result.get('reason') or result.get('errors')})")
+        if event.get("outcome") != effect_ir.SOURCE_UNAVAILABLE_OUTCOME or event.get("reason") != code \
+                or "Core 359.3.e.6" not in (event.get("rule_locators") or []):
+            return fail(label, f"expected an ignored instruction ({code}, Core 359.3.e.6), got {event}")
+        if result["next_state"]["objects"] != before["objects"]:
+            return fail(label, "an ignored instruction changed an object")
+
+    gone_token = copy.deepcopy(state)
+    expect_ignored("the source ceased to exist (it was bound by identity)", gone_token,
+                   apply_program(gone_token, program("ready", gone_token, source="nobody")),
                    effect_ir.OBJECT_REF_ABSENT)
 
     changed = copy.deepcopy(state)
     changed["objects"]["u1"]["identity"] = "u1@9"
-    expect_refusal("the source's identity changed",
+    expect_ignored("the source's identity changed", changed,
                    apply_program(changed, {**program("ready", state), "source_identity": "u1@0"}),
                    effect_ir.OBJECT_REF_IDENTITY_CHANGED)
 
     gone = copy.deepcopy(state)
     gone["players"]["p1"]["zones"]["base"].remove("u1")
     gone["players"]["p1"]["zones"]["trash"].append("u1")
-    expect_refusal("the source left the board",
+    expect_ignored("the source left the board", gone,
                    apply_program(gone, program("ready", gone)),
                    effect_ir.OBJECT_REF_LEFT_PLAY)
+
+    # the rest of the ability resolves; an instruction linked to the ignored one is ignored with it
+    # (359.3.e.14.a) - "Ready me, then buff it." - and one that is not linked still runs
+    rest = apply_program(gone, program("ready", gone, effects=[
+        {"op": "ready", "effect_id": "e", "object_id": REF},
+        {"op": "buff", "effect_id": "linked", "object_id": "u2", "depends_on": "e", "dependency_mode": "unless_ignored"},
+        {"op": "draw", "effect_id": "free", "player": "p1", "count": 1}]))
+    outcomes = {e.get("effect_id"): e.get("outcome") for e in rest.get("trace") or []}
+    if rest.get("committed") is not True or outcomes.get("linked") != "skipped_linked_dependency" \
+            or outcomes.get("free") != "applied" or rest["next_state"]["objects"]["u2"].get("buffed"):
+        fail("the rest of the ability", f"expected the linked instruction ignored and the free one applied: "
+                                        f"{outcomes} {rest.get('reason_code') or rest.get('errors')}")
+
+    # --- the reference itself is wrong: still refused whole -----------------------
+    expect_refusal("the source is not in the state and no identity binds it",
+                   apply_program(state, program("ready", state, source="nobody", declare_identity=False)),
+                   effect_ir.OBJECT_REF_ABSENT)
 
     spell = copy.deepcopy(state)
     expect_refusal("the source is a Spell, not a permanent",
@@ -156,8 +204,10 @@ def main() -> int:
     returned = copy.deepcopy(state)
     returned["objects"]["u1"]["identity"] = "u1@1"
     result = apply_program(returned, {**program("ready", state), "source_identity": "u1@0"})
-    if result.get("reason_code") != effect_ir.OBJECT_REF_IDENTITY_CHANGED:
-        fail("identity binding", "an object reusing the id at a new generation was accepted; "
+    event = next((e for e in result.get("trace") or [] if e.get("effect_id") == "e"), {})
+    if event.get("reason") != effect_ir.OBJECT_REF_IDENTITY_CHANGED or result.get("committed") is not True \
+            or result["next_state"]["objects"]["u1"].get("exhausted") is not True:
+        fail("identity binding", "an object reusing the id at a new generation was acted on; "
                                  "the reference binds the identity, not the id")
 
     # --- RECORDED GAP: source_identity is optional ----------------------------
@@ -200,9 +250,10 @@ def main() -> int:
     # The message says what is actually held, and names what is not. It used to
     # say "binds the source's identity rather than its id" without qualification,
     # which is stronger than the implementation.
-    print(f"typed self-reference: {len(effect_ir.OBJECT_REF_OPS)} adopted op(s) "
-          f"({', '.join(sorted(effect_ir.OBJECT_REF_OPS))}) resolve it and change the state; "
-          f"adoption is refused for every other op by its own code; five named refusals fire; "
+    print(f"typed self-reference: {len(ADOPTED_OPS)} adopted op(s) "
+          f"({', '.join(sorted(ADOPTED_OPS))}) resolve it and change the state; "
+          f"adoption is refused for every other op by its own code; a source gone as it executes "
+          f"is an ignored instruction and the rest resolves; a wrong reference is refused by name; "
           f"a decision artifact carrying the shape is refused.")
     print(f"  identity binding is CONDITIONAL: it holds only when the program declares "
           f"`source_identity`. A program that omits it commits with no identity check "

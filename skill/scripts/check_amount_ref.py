@@ -17,7 +17,9 @@ grammar lowering):
   left         the source moved to Base first: "here" makes the target illegal and the
                instruction mistargets - its Might is never read
 and, on a plain program (no "here"), the identity rule location_ref already follows:
-  new object   the source replaced at the same id: refused by name, never read off it
+  new object   the source replaced at the same id: never read off it - its Might is null
+               (359.3.e.12), so the Deal is ignored by name and the program resolves
+               (2026-09-28, review 5 R1-2: this refused the whole program before)
   no identity  a program with no declared source_identity: refused by name
   validator    unknown kind; on an op other than deal_damage; with `amount` too; on an
                affected set - each refused
@@ -122,8 +124,12 @@ def main() -> int:
     changed = copy.deepcopy(board)
     changed["objects"]["u1"]["identity"] = "u1@9"
     result = apply_program(changed, {**plain, "source_identity": "u1@0"})
-    if result.get("committed") is not False or result.get("reason_code") != effect_ir.AMOUNT_REF_IDENTITY_CHANGED:
-        errors.append(f"new object: expected {effect_ir.AMOUNT_REF_IDENTITY_CHANGED}, got {result.get('reason_code')}")
+    event = next((e for e in result.get("trace") or [] if e.get("effect_id") == "dmg"), {})
+    if result.get("committed") is not True or event.get("outcome") != effect_ir.SOURCE_UNAVAILABLE_OUTCOME \
+            or event.get("reason") != effect_ir.AMOUNT_REF_IDENTITY_CHANGED or "amount_read_from" in event \
+            or result["next_state"]["objects"]["u2"]["damage"] != changed["objects"]["u2"]["damage"]:
+        errors.append(f"new object: expected the Deal ignored ({effect_ir.AMOUNT_REF_IDENTITY_CHANGED}, Core 359.3.e.12) "
+                      f"with nothing read or dealt, got {result.get('reason_code')} {event.get('outcome')}")
     result = apply_program(board, plain)
     if result.get("committed") is not False or result.get("reason_code") != effect_ir.AMOUNT_REF_ABSENT:
         errors.append(f"no identity: expected {effect_ir.AMOUNT_REF_ABSENT}, got {result.get('reason_code')}")
@@ -146,7 +152,7 @@ def main() -> int:
             print(f"  - {problem}")
         return 1
     print("amount_ref: the source's Might read on execution - the current value after a change in reaction, "
-          "a named no_op at 0, never read on a mistarget; a changed or undeclared source refused by name; "
+          "a named no_op at 0, never read on a mistarget; a changed source never read (the Deal ignored by name), an undeclared one refused; "
           "four malformed shapes refused.")
     return 0
 

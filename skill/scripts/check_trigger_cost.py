@@ -23,7 +23,9 @@ Held here, every trigger scheduled by the engine itself (a play, a kill, the cha
   Energy          [1]: no Add-window confirmation -> a decision, nothing paid; confirmed and short
                   -> removed; confirmed and paid -> the Energy is gone; "[1] to return me to my
                   owner's hand" (Vayne, Hunter's shape) resolves on the typed self reference
-                  return_to_hand adopted, and the unit is in its owner's hand
+                  return_to_hand adopted, and the unit is in its owner's hand; bounced to hand by
+                  something else after paying, "return me" is ignored and the trigger resolves
+                  (359.3.e.6) - the card in hand once, the Energy still spent
   Power + exhaust [rune:body] and exhaust this (Mistfall's): all or nothing - Power short, the
                   gear is NOT exhausted
   recycle me      [Deathknell] Recycle me to ready your runes (Ekko, Recurrent - 383.3.b's own
@@ -363,6 +365,20 @@ def check_exhaust_energy_power() -> None:
             fail("Energy / return me resolved", f"{done.get('reason')}: u1 is not in its owner's hand")
         elif done["next_effect_state"]["players"]["p1"]["resources"]["energy"] != 0:
             fail("Energy / return me resolved", "the Energy was refunded or paid twice")
+        # review 5 R1-2: paid, then the unit returned to its owner's hand by something else before the
+        # trigger resolves (a new object, Core 124). "Return me" cannot be followed and is ignored -
+        # the trigger resolves (359.3.e.6), the card stays in hand once, the Energy stays paid
+        bounced = copy.deepcopy(paid["next_effect_state"])
+        bounced["players"]["p1"]["zones"]["base"].remove("u1")
+        bounced["players"]["p1"]["zones"]["hand"].append("u1")
+        bounced["objects"]["u1"]["identity"] = "u1@1"
+        done = resolve({**paid, "next_effect_state": bounced}, reg, "u1-trig")
+        after = done.get("next_effect_state") or bounced
+        event = next((e for e in (done.get("trace") or {}).get("effect") or [] if e.get("effect_id") == "ret"), {})
+        if not done.get("committed") or after["players"]["p1"]["zones"]["hand"].count("u1") != 1 \
+                or after["players"]["p1"]["resources"]["energy"] != 0 or event.get("outcome") != "ignored_source_unavailable":
+            fail("Energy / return me, bounced in reaction", f"expected the trigger to resolve with 'return me' ignored, "
+                                                             f"got {done.get('reason')} {event.get('outcome')}")
     # Power and exhaust together: all or nothing
     both = program("gr-both", "gr", [cost({"kind": "power", "domain": "body", "amount": 1}, {"kind": "exhaust", "object_id": SELF}),
                                       {"op": "draw", "effect_id": "dr", "player": "p1", "count": 1}])

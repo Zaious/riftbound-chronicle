@@ -13,6 +13,9 @@ dependency_mode unless_ignored}. Must hold:
     still happens - the earlier instruction executed;
   - the unit moved to a Battlefield before resolution: the Buff is ignored (illegal target), and
     the linked Move is skipped with it (359.3.e.14.a) - the unit stays where it was;
+  - "You may buff ..., then move it": the Buff declined did not execute, so the Move is skipped
+    with it (359.3.e.14.a); accepted, the unit is Buffed and moved; the ignored outcomes are one
+    set for depends_on and for "its" (review 5 R1-5);
   - mutations: the same program with dependency_mode if_applied skips the Move of an already
     Buffed Unit (wrong), and without depends_on it moves the unit the Buff ignored (wrong);
   - an unknown dependency_mode is refused by the validator.
@@ -116,6 +119,32 @@ def main() -> int:
     unlinked = run(state, chosen, effects=[BUFF, {k: v for k, v in MOVE.items() if k not in ("depends_on", "dependency_mode")}])
     if not (unlinked.get("committed") and where(unlinked["next_state"], "u1") == "battlefield:bf2"):
         errors.append("mutation not caught: without depends_on the ignored Buff's unit was not moved, so the case does not bite")
+
+    # review 5 R1-5: "You may buff a friendly unit in your base, then move it" - the Buff declined did
+    # not execute, so the linked Move is ignored with it (359.3.e.14.a, 355.12); accepted, both happen.
+    # The outcomes that count as ignored are one set, read by depends_on and by "its" alike.
+    may_buff = {**BUFF, "optional": {"decision_ref": "may"}}
+    for accept in (False, True):
+        state, chosen = board()
+        prog = program("showstopper", may_buff, MOVE)
+        prog["source_object"] = "c1"
+        decs = [{"decision_id": "t", "kind": "target_selection", "stage": "play_declaration", "controller": "p1",
+                 "value": ["u1"], "selection_identities": {"u1": chosen}},
+                {"decision_id": "dest", "kind": "location_selection", "stage": "resolution", "controller": "p1",
+                 "value": "battlefield:bf2"},
+                {"decision_id": "may", "kind": "optional_choice", "stage": "resolution", "controller": "p1", "value": accept}]
+        got = apply_program(state, prog, decisions={"schema_version": "engine-decisions.v1",
+                                                    "input_hash": hash_value(state), "decisions": decs})
+        want = ({"bf": "applied", "mv": "applied"}, "battlefield:bf2") if accept \
+            else ({"bf": "declined", "mv": "skipped_linked_dependency"}, "base:p1")
+        if not got.get("committed") or outcomes(got) != want[0] or where(got["next_state"], "u1") != want[1]:
+            errors.append(f"'you may buff ..., then move it' with the Buff {'accepted' if accept else 'declined'}: "
+                          f"expected {want}, got {outcomes(got)} at {where(got['next_state'], 'u1') if got.get('committed') else got.get('reason')}")
+    import effect_ir
+    if set(effect_ir.IGNORED_OUTCOMES) != set(effect_ir.LINKED_IGNORED_OUTCOMES) \
+            or not {"declined", "ignored_source_unavailable"} <= set(effect_ir.IGNORED_OUTCOMES):
+        errors.append("the outcomes depends_on and 'its' treat as ignored are not one set, or it misses declined / "
+                      "a source gone (359.3.e.14.a)")
 
     forged = program("showstopper", BUFF, {**MOVE, "dependency_mode": "unless_whatever"})
     if not validate_program(forged):

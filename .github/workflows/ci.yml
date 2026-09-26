@@ -527,6 +527,12 @@ jobs:
         run: python3 skill/scripts/check_cost_comparison.py
       - name: chosen Move destination (Core 428)
         run: python3 skill/scripts/check_move_destination.py
+      - name: printed Battlefield passives - Bonus Damage to units here, an additional facedown card (Core 713-715, 107.3.b.1)
+        run: python3 skill/scripts/check_battlefield_passives.py
+      - name: a look's own sets - recycle the rest, recycle up to both and put the others back (Core 416.4, 424.4.a, 436.1.a)
+        run: python3 skill/scripts/check_look_session_sets.py
+      - name: a trigger's own board choice is made as it resolves, not a re-chosen target (Core 355.10.f)
+        run: python3 skill/scripts/check_resolution_choice.py
       - name: two instructions joined by 'and' are independent steps (Core 422.4)
         run: python3 skill/scripts/check_sequence_steps.py
       - name: watched triggers - one per stunned enemy, one per discard batch (Core 383.3.a)
@@ -722,6 +728,9 @@ jobs:
           python3 "$REPO/skill/scripts/check_replacement_subject.py"
           python3 "$REPO/skill/scripts/check_cost_comparison.py"
           python3 "$REPO/skill/scripts/check_move_destination.py"
+          python3 "$REPO/skill/scripts/check_battlefield_passives.py"
+          python3 "$REPO/skill/scripts/check_look_session_sets.py"
+          python3 "$REPO/skill/scripts/check_resolution_choice.py"
           python3 "$REPO/skill/scripts/check_sequence_steps.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"

@@ -372,12 +372,23 @@ def resolve_with_program(
     if finalized is not None:
         recorded = {entry["decision_id"]: entry for entry in finalized}
         supplied = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") == "target_selection"]
+        # package 5 (2026-09-27): a board choice the program makes AS IT RESOLVES is not a target -
+        # "You must recycle one of your runes." is chosen then (Core 355.10.f) - so a resolution-stage
+        # selection for a choice's own decision_ref, never a target selector's, is not a re-chosen target
+        effects = [e for e in (program or {}).get("effects") or [] if isinstance(e, dict)]
+        target_refs = {s.get("decision_ref") for e in effects for s in (e.get("target"), e.get("targets"))
+                       if isinstance(s, dict) and s.get("decision_ref")}
+        choice_refs = {e.get("decision_ref") for e in effects if isinstance(e.get("choice"), dict) and e.get("decision_ref")} - target_refs
+        resolution_choices = [entry for entry in supplied if entry.get("stage") == "resolution"
+                              and entry.get("decision_id") in choice_refs and entry.get("decision_id") not in recorded]
         for entry in supplied:
+            if entry in resolution_choices:
+                continue
             kept = recorded.get(entry.get("decision_id"))
             if kept is None or entry.get("value") != kept.get("value") or (entry.get("selection_identities") or {}) != (kept.get("selection_identities") or {}):
                 return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_finalization",
                         "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 359.3.e.2", "Core 359.3.e.9"]}
-        others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"]
+        others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"] + resolution_choices
         if finalized or others:
             engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
                                 "decisions": [copy.deepcopy(entry) for entry in finalized] + others}

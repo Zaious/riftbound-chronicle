@@ -12,8 +12,8 @@
   "quota": null,
   "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
   "counts": {
-    "clauses_parsed": 36,
-    "clauses_in_debt": 20,
+    "clauses_parsed": 37,
+    "clauses_in_debt": 19,
     "promotion": {
       "grammar_reproduced": 33,
       "hand_written": 15,
@@ -21,7 +21,7 @@
     },
     "by_rule_family": {
       "attacking_defending_alone": 1,
-      "bonus_damage": 2,
+      "bonus_damage": 1,
       "combat_state": 3,
       "conditional_effects": 3,
       "conditional_might": 1,
@@ -44,7 +44,7 @@
       "unclassified": 2
     },
     "by_risk": {
-      "always_in_play": 4,
+      "always_in_play": 3,
       "main_deck": 16,
       "unknown": 0
     }
@@ -64,25 +64,6 @@
       "risk": "always_in_play",
       "rule_family": [
         "end_of_turn_trigger"
-      ],
-      "missing_capability": "R3-A2-play-conditions-continuous",
-      "claim_in_pack": "stale",
-      "reason_code": "clause_unparsed"
-    },
-    {
-      "clause_id": "void gate#3aa2e8f7",
-      "card_key": "void gate",
-      "card": "Void Gate",
-      "text": "Spells and abilities deal 1 Bonus Damage to units here.",
-      "pack": "global-core-origins-v1",
-      "deck_slots": 0,
-      "deck_count": 1,
-      "decks": [
-        "proving-grounds-annie"
-      ],
-      "risk": "always_in_play",
-      "rule_family": [
-        "bonus_damage"
       ],
       "missing_capability": "R3-A2-play-conditions-continuous",
       "claim_in_pack": "stale",
@@ -453,7 +434,9 @@
     "normalization_baseline": "split_clauses:af6d79ecdf43bc4b",
     "reclassified": [],
     "added": [],
-    "repaid": [],
+    "repaid": [
+      "void gate#3aa2e8f7"
+    ],
     "normalization_reclassification": []
   }
 }

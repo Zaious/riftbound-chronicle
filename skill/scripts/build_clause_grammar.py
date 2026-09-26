@@ -729,6 +729,30 @@ LITERAL = [
      ["If an opponent controls a battlefield, I enter ready."],
      ["if you control a battlefield, i enter ready", "if an opponent controls a battlefield, i enter exhausted",
       "i enter ready"]),
+    # 2026-09-27 (package 5): a Battlefield's printed Bonus Damage over the Units at it - every
+    # Deal of a spell or ability, whoever controls it, to a Unit there (effect_ir.bonus_damage,
+    # scope `location`); check_battlefield_passives.py
+    ("spells_and_abilities_deal_n_bonus_damage_to_units_here",
+     r"spells and abilities deal (?P<amount>\d+) bonus damage to units here",
+     ["Core 713", "Core 714", "Core 715.1", "Core 715.2"], "passive", ["bonus_damage"],
+     ("A Battlefield's printed Bonus Damage: each Deal of any player's spell or ability adds N to the damage it "
+      "deals to a Unit at this Battlefield, and only to such a Unit (715.2: each target separately), while the "
+      "Battlefield is in play. 'Your spells and abilities' (a controller's sources) or 'enemy units here' is a "
+      "different clause."),
+     ["Spells and abilities deal 1 Bonus Damage to units here."],
+     ["your spells and abilities deal 1 bonus damage", "spells and abilities deal 1 bonus damage to enemy units here",
+      "spells deal 1 bonus damage to units here", "spells and abilities deal 1 bonus damage to units"]),
+    # 2026-09-27 (package 5): a Battlefield's printed Facedown Zone occupancy of one more card
+    # (107.3.b.1); hidden.hide_card reads the capacity; check_battlefield_passives.py
+    ("you_may_hide_an_additional_card_here",
+     r"you may hide an additional card here",
+     ["Core 107.3.b", "Core 107.3.b.1", "Core 107.3.c", "Core 421.1"], "passive", ["facedown_zone", "hide_action"],
+     ("A Battlefield's printed statement: its Facedown Zone holds one card more than the one of 107.3.b - two - "
+      "while it is in play. Only this Battlefield's zone; hiding still needs control of it (107.3.c). 'Two "
+      "additional cards', or a statement on another object, is a different clause."),
+     ["You may hide an additional card here."],
+     ["you may hide a card here", "you may hide an additional card", "you may hide two additional cards here",
+      "you may play an additional card here"]),
     ("you_may_pay_own_domain_power_as_additional_cost_to_play_me",
      r"you may pay \[c\] as additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"], "passive", ["card_self_optional_cost", "domain_power"],

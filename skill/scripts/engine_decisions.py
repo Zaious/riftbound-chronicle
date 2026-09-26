@@ -293,7 +293,10 @@ CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "battle
 EXCLUDABLE_KINDS = ("unit", "gear", "spell", "rune", "legend")
 CHOICE_VISIBILITY = ("public", "private_to_chooser")
 CHOICE_BY = ("controller", "opponent", "each_player")
-COUNT_FORMS = ("exactly", "up_to", "any_number", "one")
+# package 5 (2026-09-27): `all` - every card an earlier instruction of the same program marked
+# and still marked ("recycle the rest", Core 416.4, 424.4.a): no choice is made, so it is
+# forced; only an unordered set drawn from `revealed` may say it
+COUNT_FORMS = ("exactly", "up_to", "any_number", "one", "all")
 PRIVATE_SOURCES = {"hand", "main_deck_top", "revealed"}
 DEFAULT_ENUMERABLE_CAP = 64
 CHOICE_FIELDS = {"selection_kind", "count", "from", "by", "visibility", "identity_binding", "enumerable_cap", "criteria", "players", "top"}
@@ -310,13 +313,15 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append(f"choice.selection_kind must be one of {SELECTION_KINDS}")
     count = spec.get("count", {"one": True} if spec["selection_kind"] == "single" else None)
     if not isinstance(count, dict) or len(count) != 1 or next(iter(count)) not in COUNT_FORMS:
-        errors.append("choice.count must be one of {exactly: n}, {up_to: n}, {any_number: true}, {one: true}")
+        errors.append("choice.count must be one of {exactly: n}, {up_to: n}, {any_number: true}, {one: true}, {all: true}")
     else:
         form, value = next(iter(count.items()))
         if form in {"exactly", "up_to"} and (not isinstance(value, int) or isinstance(value, bool) or value < 1):
             errors.append(f"choice.count.{form} must be a positive integer")
-        if form in {"any_number", "one"} and value is not True:
+        if form in {"any_number", "one", "all"} and value is not True:
             errors.append(f"choice.count.{form} must be true")
+        if form == "all" and (spec["selection_kind"] != "unordered_set" or spec["from"] != "revealed"):
+            errors.append("choice.count.all takes every card still marked: an unordered_set from revealed only")
         if spec["selection_kind"] == "single" and form != "one":
             errors.append("a single choice counts one")
         if spec["selection_kind"] == "ordered_permutation" and form != "any_number":
@@ -421,6 +426,8 @@ def forced_choice(spec: dict[str, Any], candidates: list[str]) -> list[str] | No
     if spec["selection_kind"] == "ordered_permutation" and len(candidates) == 1:
         return list(candidates)
     if form == "exactly" and len(candidates) <= (n or 0):
+        return list(candidates)
+    if form == "all":
         return list(candidates)
     return None
 

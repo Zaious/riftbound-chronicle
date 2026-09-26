@@ -262,6 +262,12 @@
     "grantable_keyword": {
       "note": "the keywords an effect may grant, from the engine's own list.",
       "alternatives": {
+        "assault": {
+          "pattern": "\\[assault(?: (?P<assault_grant_value>\\d+))?\\]",
+          "value": {
+            "keyword": "assault"
+          }
+        },
         "backline": {
           "pattern": "\\[backline(?: (?P<backline_grant_value>\\d+))?\\]",
           "value": {
@@ -393,6 +399,7 @@
           "another_friendly_unit"
         ],
         "grantable_keyword": [
+          "assault",
           "backline",
           "ganking",
           "shield",
@@ -458,12 +465,24 @@
         "Give a unit [Shield 1] this combat.",
         "Give me [Tank] this combat.",
         "Give friendly units [Ganking] this combat.",
-        "Give an enemy unit [Backline] this combat."
+        "Give an enemy unit [Backline] this combat.",
+        "Give a unit [Assault 3] this turn.",
+        "Give a friendly unit [Assault 2] this turn.",
+        "Give an enemy unit [Assault] this turn.",
+        "Give friendly units [Assault 1] this turn.",
+        "Give enemy units [Assault 2] this turn.",
+        "Give me [Assault 2] this turn.",
+        "Give another unit [Assault 3] this turn.",
+        "Give another friendly unit [Assault 1] this turn.",
+        "Give it [Assault 2] this turn.",
+        "Give that unit [Assault 3] this turn.",
+        "Give a unit [Assault 2] this combat."
       ],
       "negative": [
-        "Give a unit [Assault 3] this turn.",
+        "Give a unit [Assault 3] permanently.",
         "Give the strongest unit [Tank] this turn.",
-        "Give a unit [Tank] permanently."
+        "Give a unit [Tank] permanently.",
+        "Give a unit [Temporary] this turn."
       ]
     },
     {
@@ -1016,6 +1035,31 @@
       ]
     },
     {
+      "production_id": "draw_n_for_each_of_your_mighty_units",
+      "form": "Draw 1 for each of your [Mighty] units.",
+      "template": "draw (?P<count>\\d+) for each of your \\[mighty\\] units",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 413",
+        "Core 708",
+        "Core 710"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "draw"
+      ],
+      "boundary": "The controller draws the number times how many units they control are Mighty when it executes; none is no draw. Another quality, or another player's units, is a different clause.",
+      "golden": [
+        "Draw 1 for each of your [Mighty] units."
+      ],
+      "negative": [
+        "draw 1 for each of your units",
+        "draw 1 for each enemy [mighty] unit",
+        "draw 1 if you control a [mighty] unit"
+      ]
+    },
+    {
       "production_id": "discard_n",
       "form": "Discard 1.",
       "template": "discard (?P<count>\\d+)",
@@ -1432,6 +1476,58 @@
       "negative": [
         "units you play this turn enter exhausted",
         "i enter ready"
+      ]
+    },
+    {
+      "production_id": "the_next_spell_you_play_this_turn_costs_n_less",
+      "form": "The next spell you play this turn costs :rb_energy_5: less.",
+      "template": "the next spell you play this turn costs \\[e(?P<amount>\\d+)\\] less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 390.4",
+        "Core 391",
+        "Core 356.4",
+        "Core 356.6"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_turn_effect"
+      ],
+      "boundary": "One discount of a fixed Energy amount on the next spell its controller plays this turn, spent by that play whether or not it lowered anything. Every spell, a Power amount, or a unit is a different clause.",
+      "golden": [
+        "The next spell you play this turn costs :rb_energy_5: less."
+      ],
+      "negative": [
+        "spells you play this turn cost :rb_energy_1: less",
+        "the next unit you play this turn costs :rb_energy_2: less",
+        "the next spell you play this turn costs :rb_rune_rainbow: less"
+      ]
+    },
+    {
+      "production_id": "the_next_unit_you_play_this_turn_enters_ready",
+      "form": "The next unit you play this turn enters ready.",
+      "template": "the next unit you play this turn enters ready",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 390.4",
+        "Core 391",
+        "Core 369.3",
+        "Core 143.4"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_turn_effect"
+      ],
+      "boundary": "The next unit its controller plays this turn enters ready: bound to that play as an entry replacement, then spent. Every unit this turn is 'Units you play this turn enter ready.'",
+      "golden": [
+        "The next unit you play this turn enters ready."
+      ],
+      "negative": [
+        "units you play this turn enter ready",
+        "the next spell you play this turn enters ready",
+        "the next unit you play this turn enters exhausted"
       ]
     },
     {

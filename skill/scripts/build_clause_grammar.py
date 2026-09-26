@@ -169,11 +169,20 @@ PRODUCTIONS = [
             "Give that unit [Ganking] this turn.", "Give that unit [Backline] this turn.",
             "Give a unit [Shield 1] this combat.", "Give me [Tank] this combat.",
             "Give friendly units [Ganking] this combat.", "Give an enemy unit [Backline] this combat.",
+            # 2026-09-27: Assault is grantable (Core 807.2's own example is "Give a unit [Assault 3]
+            # this turn."); a bare [Assault] is Assault 1 (807.1.b.3)
+            "Give a unit [Assault 3] this turn.", "Give a friendly unit [Assault 2] this turn.",
+            "Give an enemy unit [Assault] this turn.", "Give friendly units [Assault 1] this turn.",
+            "Give enemy units [Assault 2] this turn.", "Give me [Assault 2] this turn.",
+            "Give another unit [Assault 3] this turn.", "Give another friendly unit [Assault 1] this turn.",
+            "Give it [Assault 2] this turn.", "Give that unit [Assault 3] this turn.",
+            "Give a unit [Assault 2] this combat.",
         ],
         "negative": [
-            "Give a unit [Assault 3] this turn.",
+            "Give a unit [Assault 3] permanently.",
             "Give the strongest unit [Tank] this turn.",
             "Give a unit [Tank] permanently.",
+            "Give a unit [Temporary] this turn.",
         ],
     },
     {
@@ -369,6 +378,14 @@ LITERAL = [
      "A draw that happens only if the controller holds at most one card when it executes. Another count or zone is a different clause.",
      ["Draw 1 if you have one or fewer cards in your hand."],
      ["draw 1 if you have two or fewer cards in your hand", "draw 1 if an opponent has one or fewer cards in their hand", "draw 1"]),
+    # 2026-09-27 (Kadregrin the Infernal): a draw counted as it executes - the printed number for
+    # each unit its controller controls that is Mighty, Might 5 or greater (Core 708, 710)
+    ("draw_n_for_each_of_your_mighty_units", r"draw (?P<count>\d+) for each of your \[mighty\] units",
+     ["Core 413", "Core 708", "Core 710"], "instruction", ["draw"],
+     "The controller draws the number times how many units they control are Mighty when it executes; none is no draw. "
+     "Another quality, or another player's units, is a different clause.",
+     ["Draw 1 for each of your [Mighty] units."],
+     ["draw 1 for each of your units", "draw 1 for each enemy [mighty] unit", "draw 1 if you control a [mighty] unit"]),
     # 2026-09-25: the controller discards N from their own hand, chosen privately (Core 422.1);
     # a hand shorter than N discards what it has, an empty hand ignores it (422.4). Returned
     # now that ", then" no longer makes the next instruction depend on it (GPT 2026-09-25).
@@ -480,6 +497,23 @@ LITERAL = [
      "Entry state for this turn's own plays.",
      ["Units you play this turn enter ready."],
      ["units you play this turn enter exhausted", "i enter ready"]),
+    # 2026-09-27: delayed passives for the NEXT card of a kind played this turn, spent by that play
+    # (Core 390.4, 391): a discount on the next spell's cost (356.4), and the next unit's entry state
+    ("the_next_spell_you_play_this_turn_costs_n_less",
+     r"the next spell you play this turn costs \[e(?P<amount>\d+)\] less",
+     ["Core 390.4", "Core 391", "Core 356.4", "Core 356.6"], "instruction", ["grant_turn_effect"],
+     "One discount of a fixed Energy amount on the next spell its controller plays this turn, spent by that play "
+     "whether or not it lowered anything. Every spell, a Power amount, or a unit is a different clause.",
+     ["The next spell you play this turn costs :rb_energy_5: less."],
+     ["spells you play this turn cost :rb_energy_1: less", "the next unit you play this turn costs :rb_energy_2: less",
+      "the next spell you play this turn costs :rb_rune_rainbow: less"]),
+    ("the_next_unit_you_play_this_turn_enters_ready", r"the next unit you play this turn enters ready",
+     ["Core 390.4", "Core 391", "Core 369.3", "Core 143.4"], "instruction", ["grant_turn_effect"],
+     "The next unit its controller plays this turn enters ready: bound to that play as an entry replacement, "
+     "then spent. Every unit this turn is 'Units you play this turn enter ready.'",
+     ["The next unit you play this turn enters ready."],
+     ["units you play this turn enter ready", "the next spell you play this turn enters ready",
+      "the next unit you play this turn enters exhausted"]),
     ("self_cost_reduction_score",
      r"if an opponent's score is within (?P<within>\d+) points? of the victory score, this costs \[e(?P<amount>\d+)\] less",
      ["Core 356.4", "Core 194.1"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],

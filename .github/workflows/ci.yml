@@ -518,6 +518,14 @@ jobs:
         run: python3 skill/scripts/check_watch_each_and_discard.py
       - name: player referent bound to a reveal (Sabotage)
         run: python3 skill/scripts/check_player_ref_and_reveal.py
+      - name: granted Assault (Core 807.2, Cleave)
+        run: python3 skill/scripts/check_grant_assault.py
+      - name: linked instructions - its controller / owner / Might / Energy cost (Core 359.3.e.14)
+        run: python3 skill/scripts/check_linked_references.py
+      - name: the next spell / unit you play this turn (Core 390.4, 391)
+        run: python3 skill/scripts/check_next_card_effects.py
+      - name: draw N for each of your Mighty units (Core 708, 710)
+        run: python3 skill/scripts/check_draw_per_each.py
       - name: stun.v1 (DP-94, Core 423)
         run: python3 skill/scripts/check_stun.py
       - name: occupied_enemy_battlefield (DP-95, Core 355.2)
@@ -683,6 +691,10 @@ jobs:
           python3 "$REPO/skill/scripts/check_sequence_steps.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
+          python3 "$REPO/skill/scripts/check_grant_assault.py"
+          python3 "$REPO/skill/scripts/check_linked_references.py"
+          python3 "$REPO/skill/scripts/check_next_card_effects.py"
+          python3 "$REPO/skill/scripts/check_draw_per_each.py"
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"

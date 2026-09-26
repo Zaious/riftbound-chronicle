@@ -723,6 +723,20 @@ def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> l
     return reductions
 
 
+def next_card_turn_effects(effect_state: dict[str, Any], actor: str, object_kind: str) -> list[dict[str, Any]]:
+    """2026-09-27 (Core 390.4, 391): this turn's delayed passives that apply to the NEXT card of
+    one kind the actor plays - "the next spell you play this turn costs [5] less" (Raging
+    Firebrand), "the next unit you play this turn enters ready" (Sun Disc). They apply to this
+    play and are spent by it, whether or not they changed anything (it is still the next one).
+    Only a card played through this transaction is "played" here; a token an effect plays is
+    not read (the same boundary "Units you play this turn enter ready" has)."""
+    import effect_ir as _ir
+    turn_id = effect_state.get("turn_id", _ir.DEFAULT_TURN_ID)
+    return [copy.deepcopy(e) for e in effect_state.get("turn_effects", []) or []
+            if _ir.NEXT_CARD_TURN_EFFECT_KINDS.get(e.get("kind")) == object_kind
+            and e.get("controller") == actor and e.get("turn_id") == turn_id]
+
+
 def affordability(resources: dict[str, Any], total: dict[str, Any], use: str) -> dict[str, Any]:
     """Core 357.1: can this pool pay this total for this use? The one place
     the question is answered — the payment path and the C-57 enumeration both
@@ -1429,6 +1443,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         own = self_cost_reductions(effect_state, declaration.get("card"))
         if own:
             cost["discounts"] = list(cost.get("discounts", []) or []) + own
+        # 2026-09-27: "the next spell you play this turn costs [N] less" - a discount on the
+        # spell's cost as a whole (356.4.d; 356.4.f.1's own example lets such a discount reach
+        # an optional additional cost), spent by this play (Core 391)
+        next_card = [] if is_ability else next_card_turn_effects(effect_state, actor, declaration["chain_item"]["object_kind"])
+        for turn_effect in next_card:
+            if turn_effect["kind"] == "next_spell_cost_reduction":
+                cost["discounts"] = list(cost.get("discounts", []) or []) + [
+                    {"id": f"turn:{turn_effect['effect_id']}", "applies_to": "total", "amount": turn_effect["value"],
+                     "source": {"kind": "turn_effect", "effect_id": turn_effect["effect_id"]}}]
         evaluated: list[dict[str, Any]] = []
         for key in ("increases", "discounts"):
             kept = []
@@ -1498,6 +1521,23 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # Core 419.4.b / 812.1.c: this card is Finalized by this play; a
             # Legion reads that, even if the card is later countered.
             record_finalized_card(working, actor, card)
+        if next_card:
+            # 2026-09-27 (Core 391): the next-card effects this play is the "next" of are spent;
+            # an entry state one becomes an entry replacement bound to THIS play (the same shape
+            # a paid Accelerate makes, 806.1.b), applied when the unit enters (369.3)
+            spent = {e["effect_id"] for e in next_card}
+            working["turn_effects"] = [e for e in working.get("turn_effects", []) or [] if e.get("effect_id") not in spent]
+            if not working["turn_effects"]:
+                working.pop("turn_effects")
+            for turn_effect in next_card:
+                if turn_effect["kind"] == "entry_state_for_next_played_unit":
+                    working["objects"][card].setdefault("entry_replacements", []).append(
+                        {"replacement_id": f"turn:{turn_effect['effect_id']}", "mode": "entry_state",
+                         "value": turn_effect["value"], "source": str(turn_effect.get("source") or "turn_effect"),
+                         "chain_item": item_id, "card": card})
+            trace.append({"stage": "cost_determination", "outcome": "applied",
+                          "next_card_turn_effects_spent": sorted(spent),
+                          "rule_locators": ["Core 390.4", "Core 391"]})
         state_errors = validate_state(working)
         if state_errors:
             raise PlayError("payment", "invalid_working_state", "; ".join(state_errors), invalid=True)

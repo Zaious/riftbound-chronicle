@@ -268,6 +268,17 @@ def _lower_draw_if_few_in_hand(params):
                     "if": condition}}
 
 
+def _lower_draw_per_mighty_unit(params):
+    """Core 413 with a count read on execution: N for each Mighty unit the controller controls
+    (708, 710). effect_ir count_per."""
+    count = int(params["count"])
+    per = {"kind": "units_you_control", "mighty": True}
+    return {"program_effects": [{"op": "draw", "effect_id": "dr", "player": "$controller", "count": count,
+                                 "count_per": dict(per)}],
+            "ast": {"node": "instruction", "op": "draw", "params": {"count": count, "player": "$controller",
+                                                                     "for_each": dict(per)}}}
+
+
 def _lower_discard(params):
     """Core 422.1: the controller discards N from their own hand, chosen privately; 422.4: a
     shorter hand discards what it has, an empty one ignores the instruction."""
@@ -424,6 +435,27 @@ def _lower_units_enter_ready(params):
                                  "controller": "$controller", "source": "$chain_item"}],
             "ast": {"node": "instruction", "op": "grant_turn_effect",
                     "params": {"turn_effect_kind": "entry_state_for_played_units", "value": "ready"}}}
+
+
+def _lower_next_spell_discount(params):
+    """"The next spell you play this turn costs [N] less." (Raging Firebrand) - a turn effect the
+    play transaction reads as a discount on the next spell and spends (Core 391, 356.4)."""
+    amount = int(params["amount"])
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "next_spell_cost_reduction", "value": amount,
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "next_spell_cost_reduction", "value": amount}}}
+
+
+def _lower_next_unit_enters_ready(params):
+    """"The next unit you play this turn enters ready." (Sun Disc) - bound to that one play as an
+    entry replacement, then spent (Core 391, 369.3)."""
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "entry_state_for_next_played_unit", "value": "ready",
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "entry_state_for_next_played_unit", "value": "ready"}}}
 
 
 def _lower_self_cost_reduction(params):
@@ -717,6 +749,7 @@ LOWERINGS = {
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
+    "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
     "discard_n": _lower_discard,
     "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
@@ -734,6 +767,8 @@ LOWERINGS = {
     "return_a_unit_from_your_trash_to_your_hand": _lower_return_from_trash,
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
+    "the_next_spell_you_play_this_turn_costs_n_less": _lower_next_spell_discount,
+    "the_next_unit_you_play_this_turn_enters_ready": _lower_next_unit_enters_ready,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
     "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,

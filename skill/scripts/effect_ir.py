@@ -85,13 +85,25 @@ COMBAT_ROLES = {"attacker", "defender"}
 # DP-94 / Core 423: a Stun lasts the turn, so the Expiration Step is what
 # ends it. `stunned` on the object stays as the readable status, but the entry
 # here is what owns its lifetime - a status with no owner never comes off.
-TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit"}
+TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit",
+                     # 2026-09-27, Core 390.4 / 391 delayed passives that apply to the NEXT card
+                     # played this turn and are then spent: "the next spell you play this turn
+                     # costs [N] less" (Raging Firebrand; value = the Energy discount, read by the
+                     # play transaction's cost step, 356.4) and "the next unit you play this turn
+                     # enters ready" (Sun Disc; bound to that play as an entry replacement, 369.3)
+                     "next_spell_cost_reduction", "entry_state_for_next_played_unit"}
+# what each kind's `value` may be; a kind not listed here takes ready | exhausted
+NEXT_CARD_TURN_EFFECT_KINDS = {"next_spell_cost_reduction": "spell", "entry_state_for_next_played_unit": "unit"}
 # ADR-0008 §5: attacking_or_defending_alone reads the Unit's own designation
 # and company (740.2.a); friendly_unit_defends_alone is the bounded external
 # aura of the Master Yi Legend clause, carried by a might_auras entry.
 CONDITION_KINDS = {"runes_at_least", "attacking_or_defending_alone"}
 AURA_CONDITION_KINDS = {"friendly_unit_defends_alone"}
-GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline"}
+# "assault" (2026-09-27, Cleave: "Give a unit [Assault 3] this turn."): a granted Assault is
+# summed with any other (Core 807.2 - its own example is Cleave on a unit that has Assault)
+# and adds Might only while the Unit is an Attacker (807.1.c); the grant path already carried
+# the value for every VALUED_KEYWORDS entry, the list was the only thing refusing it.
+GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline", "assault"}
 KEYWORD_MODIFIER_DURATIONS = {"this_combat", "this_turn"}
 # Core 812.1.c: a Legion ability is active once its controller has Finalized another card
 # this turn. On a trigger it is only read where "When you play me" triggers are collected.
@@ -726,8 +738,11 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.controller is not a player")
         if not isinstance(effect["turn_id"], str) or not effect["turn_id"]:
             errors.append(f"{label}.turn_id must be a non-empty string")
-        if effect["kind"] == "entry_state_for_played_units" and effect.get("value") not in {"ready", "exhausted"}:
+        if effect["kind"] in {"entry_state_for_played_units", "entry_state_for_next_played_unit"} and effect.get("value") not in {"ready", "exhausted"}:
             errors.append(f"{label}.value must be ready or exhausted")
+        if effect["kind"] == "next_spell_cost_reduction" and (not isinstance(effect.get("value"), int)
+                                                             or isinstance(effect.get("value"), bool) or effect["value"] < 1):
+            errors.append(f"{label}.value must be the positive Energy amount of the discount (Core 356.4)")
         if effect["kind"] == "stunned_unit":
             if effect.get("object_id") not in objects:
                 errors.append(f"{label}.object_id must name an object in this state")
@@ -1449,7 +1464,10 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].mutual_damage_current_might takes no `amount`: the damage is each Unit's current Might, read at resolution")
             if "amount_ref" in effect:
                 if not is_amount_ref(effect["amount_ref"]):
-                    errors.append(f"effects[{index}].amount_ref must be {{kind}} with kind in {list(AMOUNT_REF_KINDS)}")
+                    errors.append(f"effects[{index}].amount_ref must be {{kind}} with kind in {list(AMOUNT_REF_KINDS)} "
+                                  f"({{kind, effect_id}} for {sorted(LINKED_AMOUNT_REF_KINDS)})")
+                elif effect["amount_ref"]["kind"] in LINKED_AMOUNT_REF_KINDS and effect["amount_ref"]["effect_id"] not in seen:
+                    errors.append(f"effects[{index}].amount_ref.effect_id must name an earlier instruction")
                 if effect.get("op") != "deal_damage":
                     errors.append(f"effects[{index}].amount_ref is read by deal_damage only")
                 if "amount" in effect:
@@ -1493,10 +1511,32 @@ def validate_program(program: Any) -> list[str]:
             # program chose. Deferring is only legal to a decision reference;
             # anything else is a player named, or an error.
             player_field = effect.get("player")
-            if isinstance(player_field, dict) and (set(player_field) != {"decision_ref"}
-                                                   or not isinstance(player_field.get("decision_ref"), str)
-                                                   or not player_field["decision_ref"]):
-                errors.append(f"effects[{index}].player must be a player id or {{decision_ref}}")
+            if is_object_player(player_field):
+                # 2026-09-27: "its controller" / "its owner" - an EARLIER instruction of this
+                # program named by effect_id (Core 359.3.e.14); a later or unknown one is refused
+                if player_field["object_player"]["effect_id"] not in seen:
+                    errors.append(f"effects[{index}].player.object_player.effect_id must name an earlier instruction")
+            elif isinstance(player_field, dict) and (set(player_field) != {"decision_ref"}
+                                                     or not isinstance(player_field.get("decision_ref"), str)
+                                                     or not player_field["decision_ref"]):
+                errors.append(f"effects[{index}].player must be a player id, {{decision_ref}} or "
+                              f"{{object_player: {{effect_id, relation}}}} with relation in {list(OBJECT_PLAYER_RELATIONS)}")
+            if "count_per" in effect:
+                if not is_count_per(effect["count_per"]):
+                    errors.append(f"effects[{index}].count_per must be {{kind: units_you_control, mighty: true}}")
+                if effect.get("op") != "draw":
+                    errors.append(f"effects[{index}].count_per is read by draw only")
+                if not isinstance(effect.get("count"), int) or isinstance(effect.get("count"), bool) or effect.get("count", 0) < 1:
+                    errors.append(f"effects[{index}].count_per multiplies a positive printed count")
+            if "source_ref" in effect:
+                if not is_source_ref(effect["source_ref"]):
+                    errors.append(f"effects[{index}].source_ref must be {{effect_id}}")
+                elif effect["source_ref"]["effect_id"] not in seen:
+                    errors.append(f"effects[{index}].source_ref.effect_id must name an earlier instruction")
+                if effect.get("op") != "deal_damage":
+                    errors.append(f"effects[{index}].source_ref is read by deal_damage only")
+                if "source_object" in effect:
+                    errors.append(f"effects[{index}] carries both source_object and source_ref; the source is one or the other")
             choice = effect.get("choice")
             if choice is not None:
                 import engine_decisions as ed
@@ -1759,9 +1799,51 @@ LOCATION_REF_NOT_AT_BATTLEFIELD = "location_ref_source_not_at_battlefield"
 # program's own source carries, read on EXECUTION of the instruction - Core 359.3.f.2's
 # own example: Stupefied in reaction, Yasuo's attack trigger deals damage equal to his
 # current Might. One kind; identity mandatory, exactly as location_ref.
-AMOUNT_REF_KINDS = ("program_source_current_might",)
+#
+# 2026-09-27, two LINKED kinds (Core 359.3.e.14: "its" in a later instruction references the
+# object an earlier instruction of the same card acted on). Each names that earlier
+# instruction by effect_id:
+#   linked_object_current_might  "It deals damage equal to its Might" (Last Breath): the
+#                                object's current Might, read as THIS instruction executes
+#                                (359.3.f.2); off the board, or a new object, it is null
+#                                (359.3.e.12) and nothing is dealt
+#   linked_card_printed_energy   "Deal its Energy cost as damage" (Get Excited!): the printed
+#                                Energy cost of the card the earlier instruction discarded
+#                                (Core 206: printed or copied cost, whatever was paid)
+# If the earlier instruction was ignored, this one is too (359.3.e.14.a).
+AMOUNT_REF_KINDS = ("program_source_current_might", "linked_object_current_might", "linked_card_printed_energy")
+LINKED_AMOUNT_REF_KINDS = {"linked_object_current_might", "linked_card_printed_energy"}
 AMOUNT_REF_ABSENT = "amount_ref_source_absent"
 AMOUNT_REF_IDENTITY_CHANGED = "amount_ref_source_identity_changed"
+# "Its controller draws 2." (Hidden Blade) / "Its owner channels 1 rune exhausted." (Retreat):
+# a player named by an object an earlier instruction of this program acted on (Core 359.3.e.14,
+# 355.10.d - that player is not a target). Read from the state as it stood just BEFORE that
+# instruction executed - the killed unit's controller is the one it had when it was killed.
+OBJECT_PLAYER_RELATIONS = ("controller", "owner")
+# The outcomes that mean an instruction was ignored rather than executed. A later instruction
+# linked to it is ignored too (Core 359.3.e.14.a). A REPLACED instruction still counts as
+# executed for the link (359.3.e.14.b).
+LINKED_IGNORED_OUTCOMES = frozenset({"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency",
+                                     "ignored_subject_changed", "skipped_after_terminal", "skipped_restricted_move"})
+# "draw 1 for each of your [Mighty] units" (Kadregrin the Infernal): a draw whose count is its
+# printed number times a count read as the instruction executes. One kind: the units the
+# program's controller controls on the board that are Mighty - Might 5 or greater (Core 708),
+# by their current Might (710).
+COUNT_PER_KINDS = {"units_you_control"}
+MIGHTY_AT = 5
+
+
+def is_count_per(value: Any) -> bool:
+    return isinstance(value, dict) and value == {"kind": "units_you_control", "mighty": True}
+
+
+def count_per_value(state: dict[str, Any], spec: dict[str, Any], controller: str | None) -> tuple[int, list[str]]:
+    """(how many, which) for a count_per, read now (Core 708, 710)."""
+    counted = sorted(object_id for object_id, obj in state["objects"].items()
+                     if obj.get("kind") == "unit" and obj.get("controller") == controller
+                     and zone_class(find_location(state, object_id)) == "board"
+                     and effective_might(state, object_id) >= MIGHTY_AT)
+    return len(counted), counted
 
 
 def is_object_ref(value: Any) -> bool:
@@ -1773,7 +1855,57 @@ def is_location_ref(value: Any) -> bool:
 
 
 def is_amount_ref(value: Any) -> bool:
-    return isinstance(value, dict) and set(value) == {"kind"} and value.get("kind") in AMOUNT_REF_KINDS
+    if not isinstance(value, dict) or value.get("kind") not in AMOUNT_REF_KINDS:
+        return False
+    if value["kind"] in LINKED_AMOUNT_REF_KINDS:
+        return set(value) == {"kind", "effect_id"} and isinstance(value.get("effect_id"), str) and bool(value["effect_id"])
+    return set(value) == {"kind"}
+
+
+def is_object_player(value: Any) -> bool:
+    """{"object_player": {"effect_id", "relation"}} - see OBJECT_PLAYER_RELATIONS."""
+    if not isinstance(value, dict) or set(value) != {"object_player"}:
+        return False
+    spec = value["object_player"]
+    return (isinstance(spec, dict) and set(spec) == {"effect_id", "relation"} and isinstance(spec.get("effect_id"), str)
+            and bool(spec["effect_id"]) and spec.get("relation") in OBJECT_PLAYER_RELATIONS)
+
+
+def is_source_ref(value: Any) -> bool:
+    """{"effect_id"} - "It deals damage ...": the object an earlier instruction acted on is the
+    source of this Deal (Core 417.6.b.3), not the spell."""
+    return isinstance(value, dict) and set(value) == {"effect_id"} and isinstance(value.get("effect_id"), str) \
+        and bool(value["effect_id"])
+
+
+def on_board_as_linked(state: dict[str, Any], snapshots: list[dict[str, Any]], object_id: str,
+                       linked_event: dict[str, Any]) -> bool:
+    """Still on the board, and the same object the linked instruction acted on: its identity now
+    is the one it had right after that instruction (Core 124, 359.3.e.12)."""
+    import game_events
+    at = linked_event.get("index")
+    after_link = snapshots[at + 1] if isinstance(at, int) and at + 1 < len(snapshots) else game_events.snapshot(state)
+    return (object_id in state["objects"] and zone_class(find_location(state, object_id)) == "board"
+            and object_identity(state, object_id) == (after_link.get(object_id) or {}).get("identity"))
+
+
+def linked_objects(trace: list[dict[str, Any]], effect_id: str) -> tuple[list[str] | None, dict[str, Any] | None]:
+    """The objects an earlier instruction of this program acted on, and its trace event - or
+    (None, event) when that instruction was ignored or acted on nothing (Core 359.3.e.14.a).
+    A discard names the cards it discarded; every other instruction the object it acted on,
+    or, when a replacement took its place, the object the replaced event was acting on
+    (359.3.e.14.b)."""
+    event = next((e for e in trace if e.get("effect_id") == effect_id), None)
+    if event is None:
+        return None, None
+    if event.get("outcome") in LINKED_IGNORED_OUTCOMES or event.get("reason") == "bound_object_left_board":
+        return None, event
+    if isinstance(event.get("objects"), list):
+        found = [o for o in event["objects"] if isinstance(o, str)]
+    else:
+        single = event.get("object_id") if isinstance(event.get("object_id"), str) else event.get("affected_object_id")
+        found = [single] if isinstance(single, str) else []
+    return (found or None), event
 
 
 def contains_object_ref(value: Any) -> bool:
@@ -3297,10 +3429,19 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
         if kind not in TURN_EFFECT_KINDS:
             raise NotImplementedError(f"turn effect {kind!r} is not modelled")
-        if controller not in new_state["players"] or value not in {"ready", "exhausted"}:
+        if kind == "next_spell_cost_reduction":
+            # the Energy the next spell's cost is reduced by (Core 356.4, 356.6)
+            if controller not in new_state["players"] or not isinstance(value, int) or isinstance(value, bool) or value < 1:
+                raise ValueError("next_spell_cost_reduction requires a known controller and a positive Energy value")
+        elif controller not in new_state["players"] or value not in {"ready", "exhausted"}:
             raise ValueError("grant_turn_effect requires a known controller and a ready|exhausted value")
         turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
-        granted = {"effect_id": f"{kind}:{controller}:{turn_id}:{len(new_state.get('turn_effects', []))}", "kind": kind, "controller": controller,
+        taken = {e.get("effect_id") for e in new_state.get("turn_effects", []) or []}
+        serial = len(new_state.get("turn_effects", []))
+        # a spent next-card effect leaves the list, so a count alone could name a live one twice
+        while f"{kind}:{controller}:{turn_id}:{serial}" in taken:
+            serial += 1
+        granted = {"effect_id": f"{kind}:{controller}:{turn_id}:{serial}", "kind": kind, "controller": controller,
                    "value": value, "turn_id": turn_id, "source": effect.get("source", "effect")}
         new_state.setdefault("turn_effects", []).append(granted)
         trace.update({"turn_effect": granted})
@@ -5908,6 +6049,52 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        # 2026-09-27: "its controller" / "its owner" (Core 359.3.e.14). The player is read off
+        # the object the linked earlier instruction acted on, as that object stood just before
+        # the instruction executed (its snapshot); an ignored earlier instruction makes this
+        # one ignored as well (359.3.e.14.a), a replaced one does not (359.3.e.14.b).
+        linked_reads: dict[str, Any] = {}
+        if is_object_player(effect.get("player")):
+            spec = effect["player"]["object_player"]
+            objects, linked = linked_objects(trace, spec["effect_id"])
+            if objects is None or len(objects) != 1:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"],
+                         "outcome": "skipped_linked_dependency", "completion": "none",
+                         "linked_effect_id": spec["effect_id"],
+                         "reason": ("the linked instruction was ignored, so this one is too" if objects is None
+                                    else "the linked instruction acted on more than one object; 'its' names one"),
+                         "rule_locators": ["Core 359.3.e.14", "Core 359.3.e.14.a"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            at = linked.get("index")
+            record = (snapshots[at].get(objects[0]) or {}) if isinstance(at, int) and 0 <= at < len(snapshots) else {}
+            player_id = record.get(spec["relation"])
+            if player_id not in current["players"]:
+                return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                        "reason": f"the {spec['relation']} of {objects[0]!r} as the linked instruction found it is not "
+                                  f"observed; 'its {spec['relation']}' is not guessed", "trace": trace}
+            effect = {**effect, "player": player_id}
+            linked_reads["player_read"] = {"relation": spec["relation"], "object_id": objects[0],
+                                           "linked_effect_id": spec["effect_id"], "player": player_id,
+                                           "read_as": "before_the_linked_instruction",
+                                           "rule_locators": ["Core 359.3.e.14", "Core 355.10.d"]}
+        # 2026-09-27: "draw 1 for each of your [Mighty] units" - the count read now (708, 710)
+        if effect.get("count_per") is not None:
+            found, counted = count_per_value(current, effect["count_per"], program.get("controller"))
+            if found < 1:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "count_per_zero", "counted": [],
+                         "rule_locators": ["Core 708", "Core 710"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            per = dict(effect["count_per"])
+            effect = {**{k: v for k, v in effect.items() if k != "count_per"}, "count": effect["count"] * found}
+            linked_reads["count_read"] = {"per": per, "counted": counted, "printed_count": effect["count"] // found,
+                                          "rule_locators": ["Core 708", "Core 710"]}
         # selector-group `self`: resolve a typed program_source reference into
         # the concrete object before anything else looks at object_id.
         if is_object_ref(effect.get("object_id")):
@@ -6409,6 +6596,77 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "errors": ["effect object_id must match target.object_id"],
                     "trace": trace,
                 }
+        # 2026-09-27: the LINKED references (Core 359.3.e.14) - "It deals damage equal to its
+        # Might" names the earlier instruction's object as the Deal's source (417.6.b.3) and its
+        # Might as the amount; "Deal its Energy cost" names the discarded card's printed cost.
+        # Read now, once the target is known legal; an ignored earlier instruction ignores this
+        # one (359.3.e.14.a); an object no longer there reads null and nothing is dealt (359.3.e.12).
+        linked_refs = []
+        if is_source_ref(effect.get("source_ref")):
+            linked_refs.append(("source", effect["source_ref"]["effect_id"]))
+        if isinstance(effect.get("amount_ref"), dict) and effect["amount_ref"].get("kind") in LINKED_AMOUNT_REF_KINDS:
+            linked_refs.append(("amount", effect["amount_ref"]["effect_id"]))
+        skipped_link = None
+        linked_now: dict[str, tuple[str, dict[str, Any]]] = {}
+        for role, ref_id in linked_refs:
+            objects, linked = linked_objects(trace, ref_id)
+            if objects is None or len(objects) != 1:
+                skipped_link = (ref_id, objects)
+                break
+            linked_now[role] = (objects[0], linked)
+        if skipped_link is not None:
+            event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "skipped_linked_dependency",
+                     "completion": "none", "linked_effect_id": skipped_link[0],
+                     "reason": ("the linked instruction was ignored, so this one is too" if skipped_link[1] is None
+                                else "the linked instruction acted on more than one object; 'its' names one"),
+                     "rule_locators": ["Core 359.3.e.14", "Core 359.3.e.14.a"],
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+
+
+        if "source" in linked_now:
+            source_id, source_event = linked_now["source"]
+            if not on_board_as_linked(current, snapshots, source_id, source_event):
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "source_ref_object_unavailable", "source_object": source_id,
+                         "rule_locators": ["Core 359.3.e.12", "Core 417.6.b.3"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            effect = {k: v for k, v in effect.items() if k != "source_ref"}
+            effect.update({"source_object": source_id, "source_kind": "unit"})
+            linked_reads["source_read"] = {"object_id": source_id, "linked_effect_id": source_event.get("effect_id"),
+                                           "rule_locators": ["Core 359.3.e.14", "Core 417.6.b.3"]}
+        if "amount" in linked_now:
+            ref = effect["amount_ref"]
+            object_id, amount_event = linked_now["amount"]
+            if ref["kind"] == "linked_object_current_might":
+                read = effective_might(current, object_id) if on_board_as_linked(current, snapshots, object_id, amount_event) else None
+                read_from = {"kind": ref["kind"], "object_id": object_id, "linked_effect_id": ref["effect_id"], "might": read}
+            else:
+                printed = (current["objects"].get(object_id) or {}).get("printed_cost")
+                energy = printed.get("energy") if isinstance(printed, dict) else None
+                if not isinstance(energy, int) or isinstance(energy, bool):
+                    return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                            "reason": f"the printed Energy cost of {object_id!r} is not observed; 'its Energy cost' "
+                                      f"is not guessed (Core 206)", "trace": trace}
+                read = energy
+                read_from = {"kind": ref["kind"], "object_id": object_id, "linked_effect_id": ref["effect_id"], "energy": read}
+            effect = {k: v for k, v in effect.items() if k != "amount_ref"}
+            if read is None or read < 1:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "amount_ref_not_positive" if read is not None else "amount_ref_null",
+                         "amount_read": read, "amount_read_from": read_from,
+                         "rule_locators": ["Core 359.3.e.12", "Core 359.3.f.2", "Core 417.1.e"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            effect["amount"] = read
+            effect["amount_read_from"] = read_from
         # "equal to my Might": read now, on execution, once the target is known legal
         # (Core 359.3.f.2); an illegal target was already skipped above, unread
         if effect.get("amount_ref") is not None:
@@ -6778,6 +7036,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         if event.get("terminal_event") is not None:
             terminal = event["terminal_event"]
         event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
+        if linked_reads:
+            # 2026-09-27: what a linked reference read (the player, the source), on the event itself
+            event.update(copy.deepcopy(linked_reads))
         event.setdefault("completion", "full" if event.get("outcome") == "applied" else "none")
         if effect.get("target") is not None:
             event.setdefault("target_outcome", "applied_full")

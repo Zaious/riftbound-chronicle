@@ -25,7 +25,8 @@ execute (359.3.e.7). A pair with one illegal Unit deals no damage at all (359.3.
 
 The programs run here are the shapes the overlay maps card sentences to (up to two units /
 two friendly units / up to two friendly units at battlefields to their Base / a friendly
-and an enemy unit dealing damage to each other). Every fixture is synthetic.
+and an enemy unit dealing damage to each other / one chosen Battlefield whose units of each
+side two instructions change, one of them to a floor). Every fixture is synthetic.
 """
 from __future__ import annotations
 
@@ -61,6 +62,14 @@ PAIR = {"op": "mutual_damage_current_might", "effect_id": "duel",
         "units": [{"decision_ref": "a", **FRIENDLY}, {"decision_ref": "b", **ENEMY}]}
 ANY_PAIR = {"op": "mutual_damage_current_might", "effect_id": "duel",
             "units": [{"decision_ref": "a", **UNIT}, {"decision_ref": "b", **UNIT}]}
+# one chosen Battlefield read by two instructions (the units of each side "there")
+THERE = {"decision_ref": "bf", "chosen_zone_class": "board", "kind": "battlefield"}
+THERE_FRIENDLY = {"op": "modify_might", "effect_id": "mm1", "amount": 1, "duration": "this_turn", "source": "spell-1",
+                  "target": dict(THERE), "affected": {"criteria": {"kind": "unit", "controller_relation": "friendly",
+                                                                    "location": "target_battlefield"}}}
+THERE_ENEMY = {"op": "modify_might", "effect_id": "mm2", "amount": -1, "minimum": 1, "duration": "this_turn",
+               "source": "spell-1", "target": dict(THERE),
+               "affected": {"criteria": {"kind": "unit", "controller_relation": "enemy", "location": "target_battlefield"}}}
 
 
 def board() -> dict:
@@ -79,9 +88,10 @@ def board() -> dict:
     return settle_contested(state)
 
 
-def spell_program(effect: dict) -> dict:
+def spell_program(effect: dict | list) -> dict:
+    effects = effect if isinstance(effect, list) else [effect]
     return {"schema_version": "riftbound-effect-program.v1", "ruleset": RULESET, "program_id": "c1-effects",
-            "controller": "p1", "effects": [copy.deepcopy(effect)]}
+            "controller": "p1", "effects": copy.deepcopy(effects)}
 
 
 def choose(state: dict, stage: str = "play_declaration", **slots) -> dict:
@@ -243,6 +253,36 @@ def main() -> int:
         if not miss.get("committed") or outcome != ["ignored_illegal_target"] \
                 or miss["next_effect_state"]["objects"]["u2"]["damage"] != 0:
             errors.append(f"a pair with one illegal Unit at resolution still dealt damage: {outcome} {miss.get('reason')}")
+
+    # --- one chosen Battlefield, read by two instructions ("friendly units there +1 and enemy
+    #     units there -1, to a minimum of 1"): one decision, the units at THAT Battlefield only -----
+    there = board()
+    for object_id, owner in (("w1", "p1"), ("w2", "p2")):
+        there["objects"][object_id] = {"owner": owner, "controller": owner, "kind": "unit", "base_might": 3,
+                                       "might_modifiers": [], "damage": 0, "exhausted": False}
+    there["battlefields"]["bf2"] = {"controller": None, "objects": ["w1", "w2"]}
+    settle_contested(there)
+    both = [THERE_FRIENDLY, THERE_ENEMY]
+    declaration_effects = spell_program(both)
+    played = play_card(fixture(), there, {"schema_version": DECLARATION_VERSION, "ruleset": RULESET, "play_id": "play-3",
+                                          "actor": "p1", "card": "c1",
+                                          "chain_item": {"id": "spell-1", "object_kind": "spell", "timing": "default"},
+                                          "cost": {"base": {"energy": 1, "power": {}}}, "effect_program_id": "c1-effects",
+                                          "payment_context": {"add_window_closed": True, "confirmed_by": "human"}},
+                       engine_decisions={"schema_version": "engine-decisions.v1", "input_hash": hash_value(there),
+                                         "decisions": [{"decision_id": "bf", "stage": "play_declaration",
+                                                        "kind": "target_selection", "controller": "p1", "value": ["bf1"],
+                                                        "selection_identities": {"bf1": "bf1@0"}}]},
+                       effect_program=declaration_effects)
+    if not played.get("committed"):
+        errors.append(f"one chosen Battlefield: the play was refused ({played.get('reason_code')} {played.get('reason')})")
+    else:
+        played["_state"] = there
+        after = resolve(played, both).get("next_effect_state") or {}
+        got = {o: effective_might(after, o) for o in ("u1", "u3", "u6", "u2", "u4", "w1", "w2")} if after else None
+        # friendly at bf1 +1; enemy at bf1 -1 but not below 1 (u4 is 1 already); bf2 untouched
+        if got != {"u1": 4, "u3": 3, "u6": 3, "u2": 3, "u4": 1, "w1": 3, "w2": 3}:
+            errors.append(f"one chosen Battlefield: Mights are {got}")
 
     # --- the pair in a triggered ability: the same check at finalization ---------------------------
     trigger_program = {**spell_program(ANY_PAIR), "program_id": "c1-on-play-effects", "source_object": "c1"}

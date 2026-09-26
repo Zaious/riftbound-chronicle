@@ -682,6 +682,11 @@
                 "minimum": 0
               }
             },
+            "universal_power": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "2026-09-27: Universal Power ([A] Added, Core 135.2.e.5.b, 163.2.b) - pays a Power cost of any Domain; no Domain's, so apart from power."
+            },
             "restricted": {
               "type": "array",
               "description": "ADR-0011 §4: Add resources that may only be spent on named uses ('Spend this Energy only to play spells'); consumed first for a matching use, never otherwise.",
@@ -708,6 +713,10 @@
                   "domain": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "universal": {
+                    "const": true,
+                    "description": "2026-09-27: Universal Power (Core 135.2.e.5.b) - kind power with no domain."
                   },
                   "amount": {
                     "type": "integer",

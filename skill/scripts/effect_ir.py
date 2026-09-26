@@ -586,6 +586,11 @@ def validate_state(state: Any) -> list[str]:
         power = resources.get("power") if isinstance(resources, dict) else None
         if not isinstance(power, dict) or any(not isinstance(v, int) or v < 0 for v in power.values()):
             errors.append(f"players.{player_id}.resources.power must map domains to non-negative integers")
+        # 2026-09-27: Universal Power ([A] Added, Core 135.2.e.5.b, 163.2.b) pays a Power cost of any
+        # Domain; it is no Domain's, so it is counted apart from `power`
+        universal = resources.get("universal_power", 0) if isinstance(resources, dict) else 0
+        if not isinstance(universal, int) or isinstance(universal, bool) or universal < 0:
+            errors.append(f"players.{player_id}.resources.universal_power must be a non-negative integer (Core 163.2.b)")
         restricted = resources.get("restricted", []) if isinstance(resources, dict) else []
         if not isinstance(restricted, list):
             errors.append(f"players.{player_id}.resources.restricted must be an array")
@@ -593,13 +598,17 @@ def validate_state(state: Any) -> list[str]:
             seen_restrictions: set[str] = set()
             for r_index, entry in enumerate(restricted):
                 label = f"players.{player_id}.resources.restricted[{r_index}]"
-                if not isinstance(entry, dict) or set(entry) - {"restriction_id", "kind", "domain", "amount", "uses", "source"} or not {"restriction_id", "kind", "amount", "uses"} <= set(entry):
-                    errors.append(f"{label} must carry restriction_id, kind, amount, uses (and domain / source)")
+                if not isinstance(entry, dict) or set(entry) - {"restriction_id", "kind", "domain", "universal", "amount", "uses", "source"} or not {"restriction_id", "kind", "amount", "uses"} <= set(entry):
+                    errors.append(f"{label} must carry restriction_id, kind, amount, uses (and domain or universal / source)")
                     continue
                 if not isinstance(entry["restriction_id"], str) or not entry["restriction_id"] or entry["restriction_id"] in seen_restrictions:
                     errors.append(f"{label}.restriction_id is invalid or duplicated")
                 seen_restrictions.add(entry.get("restriction_id", ""))
-                if entry["kind"] not in {"energy", "power"} or (entry["kind"] == "power" and (not isinstance(entry.get("domain"), str) or not entry.get("domain"))) or (entry["kind"] == "energy" and "domain" in entry):
+                # power has a domain, or is Universal (2026-09-27, Core 163.2.b) - never both, never neither
+                universal_entry = "universal" in entry
+                if universal_entry and (entry["universal"] is not True or entry["kind"] != "power" or "domain" in entry):
+                    errors.append(f"{label}.universal is `true` on power with no domain (Core 135.2.e.5.b)")
+                elif entry["kind"] not in {"energy", "power"} or (entry["kind"] == "power" and not universal_entry and (not isinstance(entry.get("domain"), str) or not entry.get("domain"))) or (entry["kind"] == "energy" and "domain" in entry):
                     errors.append(f"{label}.kind must be energy, or power with a domain")
                 if not isinstance(entry["amount"], int) or isinstance(entry["amount"], bool) or entry["amount"] < 1:
                     errors.append(f"{label}.amount must be a positive integer")
@@ -1716,6 +1725,12 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].add_resource.restriction must be {{uses: non-empty unique subset of {RESOURCE_USES}}}")
                 if effect.get("resource") not in {"energy", "power"}:
                     errors.append(f"effects[{index}].add_resource.restriction applies to energy or power")
+            if effect.get("op") == "add_resource" and "universal" in effect:
+                # 2026-09-27: "[Add] [A]" - Power of any Domain (Core 135.2.e.5, 135.2.e.5.b, 163.2.b): Power,
+                # no Domain named, `universal: true`
+                if effect["universal"] is not True or effect.get("resource") != "power" or "domain" in effect:
+                    errors.append(f"effects[{index}].add_resource.universal is `true` on power with no domain "
+                                  f"(Core 135.2.e.5.b)")
             # Sabotage: "they" - a player an earlier instruction of this same
             # program chose. Deferring is only legal to a decision reference;
             # anything else is a player named, or an error.
@@ -3867,22 +3882,33 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("add_resource requires a known player and positive amount")
         resources = new_state["players"][player_id]["resources"]
         restriction = effect.get("restriction")
+        # 2026-09-27: "[Add] [A]" adds Universal Power, which pays a Power cost of any Domain
+        # (Core 135.2.e.5.b, 163.2.b); validate_program holds its shape
+        universal = effect.get("universal") is True and resource == "power" and "domain" not in effect
         if restriction is not None:
             # ADR-0011 §4: "Spend this Energy only to play spells" — the resource
             # sits in a restricted pool the payment consumes only for a matching use.
-            if resource == "power" and not (isinstance(effect.get("domain"), str) and effect["domain"]):
+            if resource == "power" and not universal and not (isinstance(effect.get("domain"), str) and effect["domain"]):
                 raise ValueError("power addition requires a domain")
             entry = {"restriction_id": effect.get("restriction_id") or f"{effect.get('effect_id', 'add')}:{player_id}", "kind": resource, "amount": amount, "uses": list(restriction["uses"])}
-            if resource == "power":
+            if universal:
+                entry["universal"] = True
+            elif resource == "power":
                 entry["domain"] = effect["domain"]
             if effect.get("source") or effect.get("_source"):
                 entry["source"] = effect.get("source") or effect.get("_source")
             resources.setdefault("restricted", []).append(entry)
-            trace.update({"player": player_id, "resource": resource, "amount": amount, "restricted": {k: v for k, v in entry.items()}, **({"domain": effect["domain"]} if resource == "power" else {})})
-            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 446.3", "Core 447.2"]))
+            trace.update({"player": player_id, "resource": resource, "amount": amount, "restricted": {k: v for k, v in entry.items()},
+                          **({"universal": True} if universal else {"domain": effect["domain"]} if resource == "power" else {})})
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 446.3", "Core 447.2"]
+                                                        + (["Core 135.2.e.5.b", "Core 163.2.b"] if universal else [])))
         elif resource == "energy":
             resources["energy"] += amount
             trace.update({"player": player_id, "resource": resource, "amount": amount})
+        elif universal:
+            resources["universal_power"] = resources.get("universal_power", 0) + amount
+            trace.update({"player": player_id, "resource": resource, "universal": True, "amount": amount})
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 135.2.e.5.b", "Core 163.2.b"]))
         elif resource == "power" and isinstance(effect.get("domain"), str) and effect["domain"]:
             domain = effect["domain"]
             resources["power"][domain] = resources["power"].get(domain, 0) + amount

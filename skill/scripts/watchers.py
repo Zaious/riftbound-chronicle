@@ -51,6 +51,12 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
 #   printed_energy_at_least  the object's PRINTED Energy cost is at least N - "a spell that costs
 #                            [5] or more"; Core 206: an effect that needs a card's cost for any
 #                            purpose uses its printed (or copied) cost, never what was paid
+#   object_might_at_least    (2026-09-27) the Unit's CURRENT Might is at least N - "a [Mighty] unit"
+#                            is N = 5 (Core 708: Mighty while its Might is 5 or greater; 710: read
+#                            as it is now, every modifier included). Read off the object where it
+#                            is when the event is matched - for "played", the moment the play
+#                            Finalized (game_events.played_event); an object that is no Unit is not
+#                            Mighty; one no zone holds is refused by name, never guessed
 WATCH_FILTERS = {
     "object_kind": {"spell", "unit", "gear"},
     "object_controller_relation": {"friendly", "enemy"},
@@ -61,6 +67,7 @@ WATCH_FILTERS = {
     "destination_zone": {"main_deck"},
     "destination_kind": {"battlefield"},
     "printed_energy_at_least": set(range(1, 21)),
+    "object_might_at_least": set(range(1, 21)),
 }
 # "each": one trigger per matching event (Core 383.3.a); "one_or_more": one per batch of
 # simultaneous events however many match ("When you stun one or more enemy units").
@@ -113,7 +120,9 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
             problems.append(f"{path}.filter must be a non-empty object")
         else:
             for key, value in event_filter.items():
-                if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key]:
+                # a count is an integer, never a boolean that happens to equal 1 (2026-09-27)
+                counted = key in ("printed_energy_at_least", "object_might_at_least")
+                if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key] or (counted and isinstance(value, bool)):
                     problems.append(f"{path}.filter.{key} = {value!r} is not a named event fact")
     if watch.get("grouping", "each") not in WATCH_GROUPINGS:
         problems.append(f"{path}.grouping must be one of {sorted(WATCH_GROUPINGS)}")
@@ -332,6 +341,17 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                 raise WatchUnsupported(f"{subject!r} carries no printed Energy cost to compare (Core 206)",
                                        "printed_cost_unknown")
             if printed < wanted:
+                return False
+        elif key == "object_might_at_least":
+            # Core 708, 710: the Unit's current Might, every modifier included (effect_ir's own reader).
+            # Only a Unit has Might to be Mighty (708); an object no zone holds cannot be read
+            from effect_ir import effective_might, find_location
+            if (event.get("object_kind") or obj.get("kind")) != "unit":
+                return False
+            if subject not in (state.get("objects") or {}) or find_location(state, subject) is None:
+                raise WatchUnsupported(f"{subject!r} is in no zone of the game; its Might cannot be read "
+                                       f"(Core 708, 710)", "might_not_readable")
+            if effective_might(state, subject) < wanted:
                 return False
         else:
             return False

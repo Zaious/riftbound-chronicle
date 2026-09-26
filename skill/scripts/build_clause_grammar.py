@@ -971,6 +971,12 @@ WRAPPERS = [
      ["event_triggers"], ["When you play a gear, draw 1."], ["when you play a spell, draw 1", "when you play me, draw 1"]),
     ("when_you_play_another_unit", r"when you play another unit, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
      ["event_triggers"], ["When you play another unit, draw 1."], ["when you play a unit, draw 1", "when you play me, draw 1"]),
+    # 2026-09-27: "a [Mighty] unit" - a Unit whose current Might is 5 or greater (Core 708, 710)
+    ("when_you_play_a_mighty_unit", r"when you play a \[mighty\] unit, (?P<inner>.+)",
+     ["Core 383.1", "Core 419.4.a", "Core 708", "Core 710"], ["event_triggers"],
+     ["When you play a [Mighty] unit, draw 1."],
+     ["when you play a unit, draw 1", "when you play another unit, draw 1", "when an opponent plays a [mighty] unit, draw 1",
+      "when a unit becomes [mighty], draw 1", "when you play a [mighty] gear, draw 1"]),
     ("when_you_play_a_card_on_an_opponents_turn", r"when you play a card on an opponent's turn, (?P<inner>.+)",
      ["Core 383.1", "Core 419.4.a"], ["event_triggers"], ["When you play a card on an opponent's turn, draw 1."],
      ["when you play a card, draw 1", "when an opponent plays a card, draw 1"]),

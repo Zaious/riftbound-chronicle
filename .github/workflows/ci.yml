@@ -569,6 +569,10 @@ jobs:
         run: python3 skill/scripts/check_played_and_conquer_trigger.py
       - name: This enters exhausted - a printed entry replacement (Core 369.3)
         run: python3 skill/scripts/check_enters_exhausted.py
+      - name: When you play a [Mighty] unit - the played Unit's current Might (Core 708, 710)
+        run: python3 skill/scripts/check_mighty_watch.py
+      - name: Universal Power - [Add] [A] pays a Power cost of any Domain (Core 135.2.e.5.b, 163.2.b)
+        run: python3 skill/scripts/check_universal_power.py
       - name: stun.v1 (DP-94, Core 423)
         run: python3 skill/scripts/check_stun.py
       - name: occupied_enemy_battlefield (DP-95, Core 355.2)
@@ -757,6 +761,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_draw_per_each.py"
           python3 "$REPO/skill/scripts/check_played_and_conquer_trigger.py"
           python3 "$REPO/skill/scripts/check_enters_exhausted.py"
+          python3 "$REPO/skill/scripts/check_mighty_watch.py"
+          python3 "$REPO/skill/scripts/check_universal_power.py"
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"

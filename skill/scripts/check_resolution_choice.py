@@ -12,6 +12,9 @@ choice could never be made there. Held here, on a play trigger whose program is
   - finalized with no targets; resolved with a resolution-stage selection of p1's rune ra
     for rune-pick: committed, ra at the bottom of p1's Rune Deck, rb still in the Base;
   - with one rune there is nothing to choose: it is recycled with no decision;
+  - a program with a finalized TARGET (deal 2 to an enemy unit in a base) and the rune choice:
+    the bridge rebuilds the envelope from the finalized targets, and the resolution-stage
+    choice still reaches resolution - u2 is dealt 2 and ra is recycled (review 5 R2-3);
   - still refused: the same selection supplied at the trigger_finalization stage, a
     selection naming p2's rune (not a candidate), and - on a program with a TARGET - a
     fresh selection for the target's decision_ref (target_changed_after_finalization,
@@ -93,6 +96,28 @@ def main() -> int:
         zones = (one.get("next_effect_state") or {}).get("players", {}).get("p1", {}).get("zones", {})
         if not one.get("committed") or zones.get("rune_deck", [])[-1:] != ["ra"]:
             errors.append(f"one rune was not recycled without a decision: {one.get('reason')} {zones}")
+
+    # review 5 R2-3: a finalized TARGET and a resolution-stage choice in one program. The bridge
+    # rebuilds the envelope from the finalized targets; the choice must still reach resolution
+    combo = {**RUNE_PROGRAM, "effects": copy.deepcopy(program()["effects"]) + copy.deepcopy(RUNE_PROGRAM["effects"])}
+    registry = {PROGRAM_ID: combo}
+    combo_state = rune_board(("ra", "rb"))
+    combo_state["objects"]["c1"]["play_triggers"][0]["effect_program_hash"] = program_hash(combo)
+    timing, combo_state = enter(combo_state)
+    finalized = finalize_trigger(timing, combo_state, registry, choose(combo_state, "u2"))
+    if not finalized.get("committed"):
+        errors.append(f"target + choice: finalization refused: {finalized.get('stage')} {finalized.get('reason')}")
+    else:
+        ready = to_resolution(finalized["next_timing_state"])
+        dispatched, _ = dispatch_program(registry, ready["chain"]["items"][0])
+        done = resolve_with_program(ready, TRIGGER, combo_state, dispatched, engine_decisions=pick(combo_state, "ra"))
+        after = done.get("next_effect_state") or {}
+        zones = after.get("players", {}).get("p1", {}).get("zones", {})
+        if not done.get("committed") or after["objects"]["u2"]["damage"] != combo_state["objects"]["u2"]["damage"] + 2 \
+                or zones.get("rune_deck", [])[-1:] != ["ra"] or "rb" not in zones.get("base", []):
+            errors.append(f"target + choice: the finalized target was not dealt 2, or the resolution-stage rune "
+                          f"choice (ra) did not reach resolution: {done.get('stage')} {done.get('reason')} "
+                          f"{(done.get('effect_result') or {}).get('reason_code')}")
 
     # a TARGET is still never re-chosen at resolution
     registry = {PROGRAM_ID: program()}

@@ -7,7 +7,8 @@ Must hold:
     grant_turn_effect of kind cards_play_prohibited, value opponents, controller $controller;
   - after p1's grant resolves on turn 3, p2 is refused a [Reaction] spell it could otherwise
     play in a Closed state (play_prohibited), and a Unit card on its own turn 3 likewise; the
-    same plays without the grant commit (the refusal is the grant's, not the timing's);
+    same plays without the grant commit (the refusal is the grant's, not the timing's); so is
+    p2's card played from Hidden (a Facedown Zone, Core 811), not only from hand (review 5 R2-4);
   - p1 - the granting player - still plays its own cards;
   - an activated ability of p2's is not a card (052): it is not refused by the grant;
   - on turn 4 the grant stamped turn 3 forbids nothing;
@@ -72,6 +73,25 @@ def play(state, actor, card_id, kind, timing, timing_state):
         "payment_context": {"add_window_closed": True, "confirmed_by": "human"}})
 
 
+def hidden(state):
+    """p2's spell hd, hidden at bf1 on turn 2 - playable from Hidden on turn 3 (Core 811.1)."""
+    state = copy.deepcopy(state)
+    state["objects"]["hd"] = card("p2", "spell")
+    state["battlefields"]["bf1"]["facedown"] = {"capacity": 1, "cards": [{"object_id": "hd", "controller": "p2",
+                                                                          "hidden_on_turn": "turn-2"}]}
+    return state
+
+
+def play_hidden(state, timing_state):
+    return PT.play_card(timing_state, state, {
+        "schema_version": PT.DECLARATION_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+        "play_id": "play-hd", "actor": "p2", "card": "hd",
+        "chain_item": {"id": "item-hd", "object_kind": "spell", "timing": "default"},
+        "cost": {"base": {"energy": 1, "power": {}}},
+        "source": {"kind": "facedown", "battlefield": "bf1"},
+        "cost_override": {"kind": "ignore_base_cost", "source": "hidden"}})
+
+
 def activate(state, actor, source, timing_state):
     return PT.play_card(timing_state, state, {
         "schema_version": PT.DECLARATION_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -110,6 +130,10 @@ def main() -> int:
             got = outcome(play(state, "p2", "n2", "unit", "default", p2_turn))
             if got != want:
                 errors.append(f"p2's Unit card on its turn, {label}: {got}, wanted {want}")
+            # review 5 R2-4: a card played from Hidden is a card play too - not only one from hand
+            got = outcome(play_hidden(hidden(state), p2_turn))
+            if got != want:
+                errors.append(f"p2's card played from Hidden on its turn, {label}: {got}, wanted {want}")
         own = outcome(play(granted, "p1", "s1", "spell", "default", fixture()))
         if own != "committed":
             errors.append(f"the granting player's own card was refused: {own}")

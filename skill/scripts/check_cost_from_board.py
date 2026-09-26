@@ -20,6 +20,9 @@ Spoils of War, "If an enemy unit has died this turn, this costs [2] less." (4 En
     ceased to exist, 186.1); a Unit killed by lethal damage in a Cleanup counts (428.4);
   - no death, only a friendly death, a death last turn, a Unit returned to its owner's hand,
     and a Gear killed are not "an enemy unit has died this turn" - the cost stays 4;
+  - the death is its controller's as it died, not its owner's (review 5 R2-2): a Unit p2 owns
+    and p1 controls killed leaves p1's cost at 4 (and the friendly side reads it), a Unit p1
+    owns and p2 controls killed makes it 2;
   - the leaf needs a controller_relation and a controller to ask for.
 """
 from __future__ import annotations
@@ -168,7 +171,14 @@ def main() -> int:
     lethal_done = perform_lethal_cleanup(lethal)
     last_turn = run(spoils_board(), {"op": "kill", "effect_id": "k", "object_id": "e"})
     last_turn["turn_id"] = "turn-8"
+    # review 5 R2-2: a death counts for the unit's CONTROLLER as it died (428.1), not its owner
+    stolen = spoils_board()
+    stolen["objects"]["e"]["controller"] = "p1"          # p2 owns e; p1 controls it
+    lost = spoils_board()
+    lost["objects"]["f"]["controller"] = "p2"            # p1 owns f; p2 controls it
     cases = [
+        ("a Unit p2 owns and p1 controls killed (p1's own death)", run(stolen, {"op": "kill", "effect_id": "k", "object_id": "e"}), 4),
+        ("a Unit p1 owns and p2 controls killed (an enemy death)", run(lost, {"op": "kill", "effect_id": "k", "object_id": "f"}), 2),
         ("no death", spoils_board(), 4),
         ("an enemy Unit killed this turn", run(spoils_board(), {"op": "kill", "effect_id": "k", "object_id": "e"}), 2),
         ("an enemy token killed this turn", run(enemy_token, {"op": "kill", "effect_id": "k", "object_id": "e"}), 2),
@@ -192,6 +202,10 @@ def main() -> int:
     only_friend["objects"]["c1"].update(copy.deepcopy(friendly))
     if left(play(only_friend, 4)) != 2:
         errors.append("the leaf's friendly side did not read a friendly Unit's death")
+    stolen_dead = run(stolen, {"op": "kill", "effect_id": "k", "object_id": "e"})
+    stolen_dead["objects"]["c1"].update(copy.deepcopy(friendly))
+    if left(play(stolen_dead, 4)) != 2:
+        errors.append("the leaf's friendly side did not read the death of a Unit p1 controlled but p2 owned (428.1)")
     if validate_condition({"kind": "unit_died_this_turn"}) == []:
         errors.append("unit_died_this_turn without a controller_relation was accepted")
     try:

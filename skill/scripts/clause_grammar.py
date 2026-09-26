@@ -775,9 +775,11 @@ TRIGGER_WRAPPERS = {
     # where "one or more" above is one per batch
     "when_you_stun_an_enemy_unit": ("event_triggers", "on-stun-enemy", {"watch": {
         "kinds": ["stunned"], "scope": "actor", "filter": {"object_controller_relation": "enemy"}}}),
-    # "you discard": the discarding player is the event's actor; one trigger per batch
+    # "you discard": the player whose card was discarded - the discarded card's controller, not
+    # the controller of the effect that made them discard (an opponent's "discard 1" makes YOU
+    # discard); one trigger per batch. A discard paid as a cost counts (Core 422.1.b)
     "when_you_discard_one_or_more_cards": ("event_triggers", "on-discard", {"watch": {
-        "kinds": ["discarded"], "scope": "actor", "grouping": "one_or_more"}}),
+        "kinds": ["discarded"], "scope": "controller", "grouping": "one_or_more"}}),
     "when_you_recycle_one_or_more_cards_to_your_main_deck": ("event_triggers", "on-recycle", {"watch": {
         "kinds": ["recycled"], "scope": "actor", "filter": {"destination_zone": "main_deck"},
         "grouping": "one_or_more"}}),

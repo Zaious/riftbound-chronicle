@@ -2310,8 +2310,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 423",
-        "Core 383.3.a"
+        "Core 423"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -2335,7 +2334,7 @@
       "rule_locators": [
         "Core 383.1",
         "Core 423",
-        "Core 383.3.a"
+        "Core 423.1.a.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -2360,7 +2359,7 @@
       "rule_locators": [
         "Core 383.1",
         "Core 422",
-        "Core 383.3.a"
+        "Core 422.1.b"
       ],
       "ast_node": "triggered",
       "required_capability": [

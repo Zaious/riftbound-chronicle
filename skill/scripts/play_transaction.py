@@ -1173,9 +1173,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # activating from its controller's Legend Zone - and nothing else from there
             on_board = on_board or (legend_activation_source(effect_state, card) and where == ("player", actor, "legend_zone"))
             if not on_board:
-                raise PlayError("choices", "activation_source_not_on_board", f"{card!r} is at {where}; activated abilities are activated from the Board (Core 377.4)", rule_locators=["Core 377.4", "Core 377"])
+                raise PlayError("choices", "activation_source_not_on_board", f"{card!r} is at {where}; activated abilities are activated from the Board (Core 377; the Board requirement is the engine's reading)", rule_locators=["Core 377"])
             if source.get("controller") != actor:
-                raise PlayError("choices", "activation_source_not_controlled", f"{card!r} is controlled by {source.get('controller')!r}, not {actor}", rule_locators=["Core 377.3", "Core 377.4"])
+                raise PlayError("choices", "activation_source_not_controlled", f"{card!r} is controlled by {source.get('controller')!r}, not {actor}", rule_locators=["Core 377.3"])
             # GPT 2026-09-22 (Legion, option b): an ability gated by a Dependent Keyword
             # does not exist while its condition fails, so it is refused here - before
             # any cost is paid or anything is exhausted, never paid for and left empty.
@@ -1539,17 +1539,20 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
     # ("When you play a spell", "... a gear", "... another unit", "... a card from [Hidden]",
     # "... a card on an opponent's turn") wake now, and their triggers go on the Chain above it.
     watch_trace = None
-    if not is_ability:
-        import game_events
+    import game_events
+    # a discard paid as a cost is a discard (Core 422.1.b): its watchers wake with the play's own
+    cost_discards = game_events.cost_discarded_events(play_id=declaration["play_id"], actor=actor, pay_events=pay_events)
+    if not is_ability or cost_discards:
         import watchers
         from rules_core import schedule_triggered_items
         event = game_events.played_event(
             play_id=declaration["play_id"], card=card, actor=actor,
             object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
             identity_after=identity_after, from_hidden=source_kind == "facedown",
-            turn_player=timing_state.get("turn_player"))
+            turn_player=timing_state.get("turn_player")) if not is_ability else cost_discards[-1]
+        batch = cost_discards + ([event] if not is_ability else [])
         try:
-            woken, working = watchers.schedule_live(working, [event], turn_id=working.get("turn_id", "turn-0"),
+            woken, working = watchers.schedule_live(working, batch, turn_id=working.get("turn_id", "turn-0"),
                                                     batch_label=f"play:{declaration['play_id']}")
         except watchers.WatchUnsupported as exc:
             return {**base, "valid": True, "committed": False, "unsupported": True, "rolled_back": True,

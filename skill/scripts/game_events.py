@@ -187,6 +187,27 @@ def played_event(*, play_id: str, card: str, actor: str, object_kind: str, ident
             "visibility": {"fact": "public", "identity": "public"}, "rule_locators": list(EVENT_KINDS["played"]["rules"]),
             "object_kind": object_kind, "from_hidden": from_hidden, "turn_player": turn_player}
 
+def cost_discarded_events(*, play_id: str, actor: str, pay_events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The semantic `discarded` events of the discards a play or activation PAID as a cost
+    (Core 422.1.b: they are discards like any other, and what triggers on a discard triggers on
+    them). The card left the actor's own hand, so the actor, controller and player are the actor;
+    which card it was is private to the hand, but the fact of the discard is public."""
+    out = []
+    for pay in pay_events or []:
+        if pay.get("kind") != "pay_discard":
+            continue
+        for position, card in enumerate(pay.get("objects") or []):
+            out.append({"schema_version": EVENT_VERSION, "event_id": f"play:{play_id}#cost-discard-{position}",
+                        "action_id": f"play:{play_id}", "kind": "discarded",
+                        "source": {"object": card, "kind": "object"}, "actor": actor, "controller": actor,
+                        "object": card, "player": actor, "identity_before": None,
+                        "identity_after": (pay.get("identities_after") or {}).get(card),
+                        "location_before": None, "location_after": None, "causal_parent": None,
+                        "visibility": {"fact": "public", "identity": "public"},
+                        "rule_locators": list(EVENT_KINDS["discarded"]["rules"]) + ["Core 422.1.b"], "as_cost": True})
+    return out
+
+
 # Structural events that no single op names: they hang under a primary event.
 STRUCTURAL_KINDS = {"left_location", "entered_location", "ceased_to_exist", "replacement_applied", "burned_out"}
 

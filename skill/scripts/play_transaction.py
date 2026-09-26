@@ -929,6 +929,32 @@ def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> l
     return reductions
 
 
+def granted_cost_discounts(effect_state: dict[str, Any], card_id: str | None, actor: str) -> list[dict[str, Any]]:
+    """2026-09-27 package 6: the discounts permanents on the board grant the card being played -
+    "Your Dragons' Energy costs are reduced by [2], to a minimum of [1]" (Core 356.4.a: a discount
+    may come from any other card). A source grants it while it is on the board and controlled by
+    the player playing the card ("your"), to a card with the named tag as printed (object_tags).
+    Each minimum is its own (356.4.e). Returned in the sources' board order, after the card's own."""
+    from effect_ir import object_tags
+    objects = effect_state.get("objects") or {}
+    if not card_id or card_id not in objects:
+        return []
+    tags = set(object_tags(effect_state, card_id))
+    out = []
+    for source_id, source in sorted(objects.items()):
+        if not source.get("granted_cost_discounts") or source_id == card_id:
+            continue
+        if zone_class(find_location(effect_state, source_id)) != "board" or source.get("controller") != actor:
+            continue
+        for entry in source["granted_cost_discounts"]:
+            if entry["card_tag"] not in tags:
+                continue
+            out.append({"id": f"granted:{source_id}:{entry['discount_id']}", "applies_to": entry["applies_to"],
+                        "amount": entry["amount"], **({"minimum": entry["minimum"]} if "minimum" in entry else {}),
+                        "source": {"kind": "granted_by_permanent", "object": source_id, "card_tag": entry["card_tag"]}})
+    return out
+
+
 def next_card_turn_effects(effect_state: dict[str, Any], actor: str, object_kind: str) -> list[dict[str, Any]]:
     """2026-09-27 (Core 390.4, 391): this turn's delayed passives that apply to the NEXT card of
     one kind the actor plays - "the next spell you play this turn costs [5] less" (Raging
@@ -1769,6 +1795,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         own = self_cost_reductions(effect_state, declaration.get("card"))
         if own:
             cost["discounts"] = list(cost.get("discounts", []) or []) + own
+        # 2026-09-27 package 6: discounts another permanent grants this card (Core 356.4.a)
+        granted = [] if is_ability else granted_cost_discounts(effect_state, declaration.get("card"), actor)
+        if granted:
+            cost["discounts"] = list(cost.get("discounts", []) or []) + granted
         # 2026-09-27: "the next spell you play this turn costs [N] less" - a discount on the
         # spell's cost as a whole (356.4.d; 356.4.f.1's own example lets such a discount reach
         # an optional additional cost), spent by this play (Core 391)

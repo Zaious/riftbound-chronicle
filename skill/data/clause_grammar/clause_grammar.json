@@ -2312,6 +2312,36 @@
       ]
     },
     {
+      "production_id": "your_tags_energy_costs_are_reduced_to_a_minimum",
+      "form": "Your Poros' Energy costs are reduced by [E1], to a minimum of [E1].",
+      "template": "your (?P<tag>[a-z]+)s' energy costs are reduced by \\[e(?P<amount>\\d+)\\], to a minimum of \\[e(?P<minimum>\\d+)\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.4.a",
+        "Core 356.4.b",
+        "Core 356.4.e",
+        "Core 356.6",
+        "Core 133.8"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "evaluated_cost_modifications",
+        "typed_cost_modification_input"
+      ],
+      "boundary": "While this permanent is on the board, each card its controller plays that has the tag (as printed) costs N Energy less, never below M by this discount (356.4.e). Another player's card, a card without the tag, and Power are untouched. 'Cost [N] less' with no minimum, or 'your units', is a different clause.",
+      "golden": [
+        "Your Poros' Energy costs are reduced by [E1], to a minimum of [E1]."
+      ],
+      "negative": [
+        "your dragons' power costs are reduced by [e2], to a minimum of [e1]",
+        "your dragons' energy costs are reduced by [e2]",
+        "dragons' energy costs are reduced by [e2], to a minimum of [e1]",
+        "your dragon energy costs are reduced by [e2], to a minimum of [e1]"
+      ]
+    },
+    {
       "production_id": "if_a_friendly_unit_would_die_kill_this_instead",
       "form": "If a friendly unit would die, kill this instead.",
       "template": "if a friendly unit would die, kill this instead",

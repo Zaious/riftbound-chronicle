@@ -227,6 +227,11 @@ jobs:
       - name: Printed additional costs and their linked cost modifications
         run: python3 skill/scripts/check_printed_costs.py
 
+      # A permanent's discount on its controller's cards of one printed tag (Core 356.4.a, 356.4.e): only
+      # while it is on the board, only the controller's tagged cards, to the discount's own minimum.
+      - name: Granted cost discounts on tagged cards
+        run: python3 skill/scripts/check_granted_cost_discounts.py
+
       # A triggered ability's program runs with the identity its source had when it
       # triggered, recorded on the chain item; the relational "here" (location_ref)
       # resolves fresh at execution and refuses by name when the source left, changed
@@ -667,6 +672,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
           python3 "$REPO/skill/scripts/check_trigger_cost.py"
           python3 "$REPO/skill/scripts/check_printed_costs.py"
+          python3 "$REPO/skill/scripts/check_granted_cost_discounts.py"
           python3 "$REPO/skill/scripts/check_location_ref.py"
           python3 "$REPO/skill/scripts/check_token_minting.py"
           python3 "$REPO/skill/scripts/check_watch_wiring.py"

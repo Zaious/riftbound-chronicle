@@ -491,6 +491,8 @@ def _cost_total(cost: Any, *, effect_state: dict[str, Any] | None = None, card_i
             if outcome["applies"] and outcome["amount"] > 0:
                 kept.append({k: v for k, v in modification.items() if k not in {"condition", "self_card"}}
                             | {"amount": outcome["amount"]})
+        # 2026-09-27 package 6: a discount another permanent grants this card, as the payment reads it
+        kept += play_transaction.granted_cost_discounts(effect_state, card_id, actor)
         if kept:
             cost["discounts"] = kept
     try:

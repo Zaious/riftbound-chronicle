@@ -1045,6 +1045,11 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
         if "stunned" in obj and not isinstance(obj["stunned"], bool):
             errors.append(f"objects.{object_id}.stunned must be boolean (Core 423.1.a)")
+        # 2026-09-27 package 6: a card's printed tags, as printed ("Poro", "Dragon") - a characteristic
+        # (Core 133.8, 133.8.a, 143.1), read through object_tags()
+        if "tags" in obj and (not isinstance(obj["tags"], list) or any(not isinstance(t, str) or not t for t in obj["tags"])
+                              or len(set(obj["tags"])) != len(obj["tags"])):
+            errors.append(f"objects.{object_id}.tags must be a list of distinct non-empty strings, as printed (Core 133.8)")
         # Round H: an optional additional cost the card itself offers, of
         # which Accelerate is one printed instance. Only the card may offer it,
         # and only for its own play (Core 356.2.b, 820.1).
@@ -1066,6 +1071,7 @@ def validate_state(state: Any) -> list[str]:
         if len(offer_ids) != len(set(offer_ids)):
             errors.append(f"objects.{object_id}.optional_additional_costs have duplicate cost_offer_ids")
         errors.extend(_printed_cost_errors(object_id, obj, offer_ids))
+        errors.extend(_granted_discount_errors(object_id, obj))
 
         # Round H / Core 805: a card's printed Domains. Absent means the data
         # does not say, which is not the same as "no Domain" - an empty list
@@ -1524,6 +1530,37 @@ def _printed_cost_errors(object_id: str, obj: dict[str, Any], resource_offer_ids
             errors.append(f"{label} counts what an 'any number' offer paid, per Domain")
         elif link["kind"] != "power_reduction_per_paid" and any_number:
             errors.append(f"{label} applies once, so it links an offer of one payment")
+    return errors
+
+
+def _granted_discount_errors(object_id: str, obj: dict[str, Any]) -> list[str]:
+    """2026-09-27 package 6: a permanent's printed discount on its controller's cards of one tag ("Your
+    Dragons' Energy costs are reduced by [2], to a minimum of [1]" - Core 356.4.a, 356.4.b, 356.4.e).
+    Read only while its source is on the board (a passive works there, Core 363); the tag is as
+    printed (object_tags)."""
+    granted = obj.get("granted_cost_discounts")
+    if granted is None:
+        return []
+    if not isinstance(granted, list):
+        return [f"objects.{object_id}.granted_cost_discounts must be a list"]
+    errors, ids = [], set()
+    for index, entry in enumerate(granted):
+        label = f"objects.{object_id}.granted_cost_discounts[{index}]"
+        if not isinstance(entry, dict) or set(entry) - {"discount_id", "applies_to", "amount", "minimum", "card_tag"} \
+                or not {"discount_id", "applies_to", "amount", "card_tag"} <= set(entry):
+            errors.append(f"{label} must be {{discount_id, applies_to, amount, card_tag, minimum?}}")
+            continue
+        if not isinstance(entry["discount_id"], str) or not entry["discount_id"] or entry["discount_id"] in ids:
+            errors.append(f"{label}.discount_id must be a non-empty string no other discount of this object uses")
+        ids.add(entry.get("discount_id"))
+        if entry["applies_to"] != "energy":
+            errors.append(f"{label}.applies_to must be energy; nothing else is modelled")
+        for field in ("amount", "minimum"):
+            value = entry.get(field)
+            if field in entry and (not isinstance(value, int) or isinstance(value, bool) or value < (1 if field == "amount" else 0)):
+                errors.append(f"{label}.{field} must be a {'positive' if field == 'amount' else 'non-negative'} integer")
+        if not isinstance(entry["card_tag"], str) or not entry["card_tag"]:
+            errors.append(f"{label}.card_tag names the tag, as printed")
     return errors
 
 
@@ -5637,6 +5674,13 @@ def temporary_triggers(state: dict[str, Any], object_id: str, controller: str) -
 
 def keyword_values(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     return characteristics(state, object_id)["keywords"]
+
+
+def object_tags(state: dict[str, Any], object_id: str) -> list[str]:
+    """2026-09-27 package 6: the object's tags, as printed ("Poro", "Dragon"; Core 133.8, 143.1).
+    No effect the engine models grants or removes a tag yet (477.1.c would, in the Trait layer),
+    so this is the printed list; every reader of a tag goes through here."""
+    return list((state["objects"].get(object_id) or {}).get("tags") or [])
 
 
 def has_keyword(state: dict[str, Any], object_id: str, keyword: str) -> bool:

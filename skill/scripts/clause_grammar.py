@@ -779,6 +779,18 @@ def _offer_linked(text: str, normalized: str, previous: dict[str, Any] | None,
     return None
 
 
+def _lower_granted_tag_discount(params):
+    """2026-09-27 package 6: "Your [Tag]s' Energy costs are reduced by [N], to a minimum of [M]." - a
+    permanent's printed discount on its controller's cards of that tag while it is on the board
+    (Core 356.4.a, 356.4.b; the minimum is this discount's own, 356.4.e). The tag is named as
+    printed: the plural's stem, capitalised ("dragons'" is the tag Dragon)."""
+    tag = params["tag"][:1].upper() + params["tag"][1:]
+    entry = {"discount_id": "$clause_id", "applies_to": "energy", "amount": int(params["amount"]),
+             "minimum": int(params["minimum"]), "card_tag": tag}
+    return {"object_fields": {"granted_cost_discounts": [entry]},
+            "ast": {"node": "passive", "kind": "granted_cost_discount", "params": {k: v for k, v in entry.items() if k != "discount_id"}}}
+
+
 def _lower_death_replacement(params):
     """Core 370.1.b: what happens instead of the death. The list starts with
     killing the source; a following clause of the same card adds to it, and
@@ -1053,6 +1065,7 @@ LOWERINGS = {
     # 2026-09-27 package 6: printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7)
     "as_an_additional_cost_to_play_me_kill_a_friendly_unit": _lower_printed_cost(True),
     "as_you_play_me_you_may_pay_a_cost_as_an_additional_cost": _lower_printed_cost(False),
+    "your_tags_energy_costs_are_reduced_to_a_minimum": _lower_granted_tag_discount,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,

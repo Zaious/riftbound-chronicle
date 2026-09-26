@@ -792,6 +792,19 @@ LITERAL = [
       "as you play me, you may kill any number of enemy units as an additional cost",
       "when you play me, you may discard 1 as an additional cost",
       "as you play me, you may spend any number of buffs"]),
+    # 2026-09-27 (package 6): a permanent's discount on its controller's cards of one tag
+    # (play_transaction.granted_cost_discounts); check_granted_cost_discounts.py
+    ("your_tags_energy_costs_are_reduced_to_a_minimum",
+     r"your (?P<tag>[a-z]+)s' energy costs are reduced by \[e(?P<amount>\d+)\], to a minimum of \[e(?P<minimum>\d+)\]",
+     ["Core 356.4", "Core 356.4.a", "Core 356.4.b", "Core 356.4.e", "Core 356.6", "Core 133.8"], "passive",
+     ["evaluated_cost_modifications", "typed_cost_modification_input"],
+     ("While this permanent is on the board, each card its controller plays that has the tag (as printed) costs "
+      "N Energy less, never below M by this discount (356.4.e). Another player's card, a card without the tag, "
+      "and Power are untouched. 'Cost [N] less' with no minimum, or 'your units', is a different clause."),
+     ["Your Poros' Energy costs are reduced by [E1], to a minimum of [E1]."],
+     ["your dragons' power costs are reduced by [e2], to a minimum of [e1]", "your dragons' energy costs are reduced by [e2]",
+      "dragons' energy costs are reduced by [e2], to a minimum of [e1]",
+      "your dragon energy costs are reduced by [e2], to a minimum of [e1]"]),
     ("if_a_friendly_unit_would_die_kill_this_instead",
      r"if a friendly unit would die, kill this instead",
      ["Core 367", "Core 370.1.b", "Core 373.1"], "passive", ["replacement_effects", "kill"],

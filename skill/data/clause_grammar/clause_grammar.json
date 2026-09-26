@@ -1103,7 +1103,9 @@
         "Core 420",
         "Core 355.4",
         "Core 355.4.a",
-        "Core 355.9",
+        "Core 141.1.a.1",
+        "Core 144.4.b",
+        "Core 355.9.b",
         "Core 355.10.b"
       ],
       "ast_node": "instruction",

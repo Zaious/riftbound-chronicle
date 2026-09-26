@@ -300,8 +300,9 @@ def _lower_move_friendly_at_battlefield_to_its_base(params):
 
 def _lower_move_unit_from_battlefield_to_its_base(params):
     # 2026-09-26 (Maddened Marauder): any unit at a battlefield, either side, to its OWN Base -
-    # the destination is resolved per object as its controller's (Core 355.4.a), so an enemy
-    # unit goes to its controller's Base. "from a battlefield" restricts the target (355.10.b)
+    # a Unit's Base is its own (Core 141.1.a.1, 144.4.b), resolved per object as its controller's,
+    # so an enemy unit goes to its controller's Base. "from a battlefield" restricts the target
+    # (355.9.b, 355.10.b)
     return {"program_effects": [{"op": "move_board_object", "effect_id": "mv",
                                  "destination": {"kind": "base", "player_relation": "object_controller"},
                                  "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",

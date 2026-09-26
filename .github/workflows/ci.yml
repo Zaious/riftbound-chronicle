@@ -235,6 +235,12 @@ jobs:
 
       - name: Printed static auras - a unit's over the other friendly units at its Battlefield, a Battlefield's over the units at it
         run: python3 skill/scripts/check_static_auras.py
+      - name: Printed keyword auras - Ganking at a Battlefield, Assault / Shield here, Vision to the other friendly units (817.2)
+        run: python3 skill/scripts/check_keyword_auras.py
+      - name: Conditional passives - buffed, discarded this turn, Mighty from the layers in progress (476.3); Might per count
+        run: python3 skill/scripts/check_conditional_passives.py
+      - name: Conditional entry - "If an opponent's score is within N / controls a battlefield, I enter ready." (364.3.a, 369.3)
+        run: python3 skill/scripts/check_conditional_entry.py
 
       # Every engine check is listed in this workflow; one that is not has never run.
       - name: CI lists every engine check
@@ -613,6 +619,9 @@ jobs:
           python3 "$REPO/skill/scripts/check_watch_wiring.py"
           python3 "$REPO/skill/scripts/check_bulk_might.py"
           python3 "$REPO/skill/scripts/check_static_auras.py"
+          python3 "$REPO/skill/scripts/check_keyword_auras.py"
+          python3 "$REPO/skill/scripts/check_conditional_passives.py"
+          python3 "$REPO/skill/scripts/check_conditional_entry.py"
           python3 "$REPO/skill/scripts/check_trigger_source_identity.py"
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"

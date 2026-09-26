@@ -690,6 +690,76 @@ def _lower_battlefield_aura(params):
                                                                          "on": "battlefield"}}}
 
 
+# 2026-09-27: printed keyword auras (Core 477.2, 477.2.b) and a card's own conditional
+# keywords / Might (364.3.a). A keyword granted this
+# way is a keyword_grant in the Ability layer, read by whatever uses the keyword off the computed
+# characteristics (effect_ir.STATIC_AURA_KEYWORDS).
+AURA_OTHER_FRIENDLY = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True}
+
+
+def _lower_keyword_aura(on, criteria):
+    def lower(params):
+        keyword = params["keyword"]
+        aura = {"aura_id": f"{'here' if criteria.get('at_source_battlefield') or on == 'battlefield' else 'all'}-{keyword}",
+                "keyword": keyword, "criteria": dict(criteria)}
+        field = "battlefield_fields" if on == "battlefield" else "object_fields"
+        return {field: {"static_auras": [aura]},
+                "ast": {"node": "passive", "kind": "static_keyword_aura",
+                        "params": {"keyword": keyword, "criteria": dict(criteria), **({"on": "battlefield"} if on == "battlefield" else {})}}}
+    return lower
+
+
+KEYWORD_LIST_ITEM = re.compile(r"\[([a-z]+)\]")
+
+
+def _listed_keywords(text: str) -> list[str] | None:
+    """"[a]", "[a] and [b]", "[a], [b], and [c]" - bare keywords, each once, each one the engine
+    reads off the computed characteristics; None otherwise."""
+    from effect_ir import STATIC_AURA_KEYWORDS
+    found = KEYWORD_LIST_ITEM.findall(text)
+    if not found or len(found) != len(set(found)) or any(k not in STATIC_AURA_KEYWORDS for k in found):
+        return None
+    return found
+
+
+def _lower_conditional_keywords(condition):
+    def lower(params):
+        keywords = _listed_keywords(params["keywords"])
+        if keywords is None:
+            return {"ast": {"node": "conditional_keywords", "keywords": params["keywords"], "condition": dict(condition)},
+                    "known_unsupported": "keyword_not_implemented"}
+        return {"object_fields": {"conditional_keywords": [
+                    {"modifier_id": f"own-text-{keyword}", "keyword": keyword, "condition": dict(condition)} for keyword in keywords]},
+                "ast": {"node": "conditional_keywords", "keywords": keywords, "condition": dict(condition)}}
+    return lower
+
+
+def _lower_while_buffed_might(params):
+    amount = int(params["amount"])
+    return {"passive": {"object_fields": {"conditional_might": [
+                {"modifier_id": "clause", "amount": amount, "condition": {"kind": "is_buffed"}}]}},
+            "ast": {"node": "conditional_might", "amount": amount, "condition": {"kind": "is_buffed"}}}
+
+
+def _lower_might_per(kind, fixed_amount=None):
+    def lower(params):
+        amount = int(params["amount"]) if fixed_amount is None else fixed_amount
+        return {"object_fields": {"dynamic_might": [{"modifier_id": "own-text", "amount": amount, "per": {"kind": kind}}]},
+                "ast": {"node": "dynamic_might", "per": kind, "amount": amount}}
+    return lower
+
+
+def _lower_conditional_enter_ready(condition_of):
+    """"If <condition>, I enter ready." - a conditional replacement of the card's own entry state
+    (364.3.a, 369.3), its condition read as it enters."""
+    def lower(params):
+        condition = condition_of(params)
+        return {"object_fields": {"entry_replacements": [
+                    {"replacement_id": "own-text", "mode": "entry_state", "value": "ready", "condition": condition}]},
+                "ast": {"node": "passive", "kind": "conditional_entry", "params": {"value": "ready", "condition": dict(condition)}}}
+    return lower
+
+
 def _lower_move_restriction(params):
     """Core 359.3.e.6: printed on the Battlefield, and read by both Move paths
     - the Standard Move it forbids outright, and the effect-induced Move whose
@@ -709,6 +779,21 @@ LOWERINGS = {
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,
+    # 2026-09-27: keyword auras, conditional keywords and Might, Might per count
+    "units_here_have_keyword": _lower_keyword_aura("battlefield", {"kind": "unit"}),
+    "other_friendly_units_here_have_keyword": _lower_keyword_aura("object", AURA_HERE),
+    "other_friendly_units_have_keyword": _lower_keyword_aura("object", AURA_OTHER_FRIENDLY),
+    "while_im_buffed_i_have_keywords": _lower_conditional_keywords({"kind": "is_buffed"}),
+    "if_you_discarded_a_card_this_turn_i_have_keywords": _lower_conditional_keywords(
+        {"kind": "cards_discarded_this_turn_at_least", "count": 1}),
+    "while_im_mighty_i_have_keywords": _lower_conditional_keywords({"kind": "might_at_least", "count": 5}),
+    "while_im_buffed_i_have_an_additional_might": _lower_while_buffed_might,
+    "i_get_might_for_each_buffed_friendly_unit_at_my_battlefield": _lower_might_per("buffed_friendly_units_at_source_battlefield"),
+    "my_might_is_increased_by_the_number_of_cards_in_your_trash": _lower_might_per("controller_trash_count", 1),
+    "if_an_opponents_score_is_within_n_i_enter_ready": _lower_conditional_enter_ready(
+        lambda params: {"kind": "score_within_of_victory", "count": int(params["within"])}),
+    "if_an_opponent_controls_a_battlefield_i_enter_ready": _lower_conditional_enter_ready(
+        lambda params: {"kind": "controls_a_battlefield", "controller_relation": "enemy"}),
     "choose_an_opponent": _lower_choose_an_opponent,
     "they_reveal_their_hand": _lower_they_reveal_their_hand,
     "choose_a_non_unit_card_from_it_and_recycle_that_card": _lower_recycle_a_non_unit_from_the_reveal,

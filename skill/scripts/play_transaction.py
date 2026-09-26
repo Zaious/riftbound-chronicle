@@ -50,9 +50,9 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
-    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, derive_targeted, evaluate_target,
+    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, deflect_total, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
-    record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
+    record_discarded_cards, record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
 from effect_ir import ConditionUnsupported  # noqa: E402
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
@@ -899,6 +899,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                         owner = working["objects"][object_id]["owner"]
                         working["players"][owner]["zones"]["trash"].append(object_id)
                         identities[object_id] = _bump_identity(working, object_id)
+                    # Core 422.3 (2026-09-27): a Discard paid as a cost is a discard this turn too
+                    record_discarded_cards(working, actor, list(picked))
                     events.append({"event_id": event_id, "kind": "pay_discard", "cost_id": comp["cost_id"], "objects": list(picked),
                                    "identities_before": identities_before, "identities_after": identities,
                                    "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 422.1", "Core 422.1.a", "Core 422.2.a", "Core 422.3", "Core 124"]})
@@ -1139,9 +1141,11 @@ def deflect_costs(state: dict[str, Any], actor: str, chosen_objects: list[str]) 
     seen: dict[str, int] = {}
     for object_id in chosen_objects:
         obj = state["objects"].get(object_id, {})
-        if "deflect" not in (obj.get("keywords") or []) or _same_team(state, actor, obj.get("controller")):
+        # 2026-09-27: Deflect is read off the computed characteristics (809.3), so a granted one
+        # ("While I'm [Mighty], I have [Deflect]") imposes its cost too; values summed (809.2)
+        value = deflect_total(state, object_id) if object_id in state["objects"] else 0
+        if not value or _same_team(state, actor, obj.get("controller")):
             continue
-        value = obj.get("deflect_value", 1)
         seen[object_id] = seen.get(object_id, 0) + 1
         costs.append({"cost_id": f"deflect:{object_id}:{seen[object_id]}", "mandatory": True, "payment": {"kind": "power_any", "amount": value}, "source": object_id})
     return costs

@@ -78,8 +78,11 @@ SANCTIONED_MODES = frozenset({"duel", "match", "skirmish", "war", "magma_chamber
 LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers", "dynamic_might")
 # "My Might is increased by your points." (Draven - Showboat): the amounts a passive
 # arithmetic effect may read off the board each time it is computed (477.3.b: a
-# passive source is not snapshotted). One quantity so far.
-MIGHT_PER_KINDS = {"controller_points"}
+# passive source is not snapshotted). 2026-09-27: "for each buffed friendly unit at my
+# battlefield" (a count of Units with a Buff counter, the source included, at the
+# Battlefield the source is at - none while it is in a Base) and "the number of cards in
+# your trash" (a public zone, 108.2.b).
+MIGHT_PER_KINDS = {"controller_points", "buffed_friendly_units_at_source_battlefield", "controller_trash_count"}
 COMBAT_ROLES = {"attacker", "defender"}
 # ADR-0007 §6–8.
 # DP-94 / Core 423: a Stun lasts the turn, so the Expiration Step is what
@@ -89,8 +92,28 @@ TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit"}
 # ADR-0008 §5: attacking_or_defending_alone reads the Unit's own designation
 # and company (740.2.a); friendly_unit_defends_alone is the bounded external
 # aura of the Master Yi Legend clause, carried by a might_auras entry.
-CONDITION_KINDS = {"runes_at_least", "attacking_or_defending_alone"}
+# 2026-09-27: is_buffed ("While I'm buffed, I have an additional +1 [M].") reads the Unit's
+# own Buff counter (702.2.a).
+CONDITION_KINDS = {"runes_at_least", "attacking_or_defending_alone", "is_buffed"}
 AURA_CONDITION_KINDS = {"friendly_unit_defends_alone"}
+# 2026-09-27: a printed keyword that the card has only under a condition (Core 364.3.a):
+# "While I'm buffed, I have [Ganking].", "If you've discarded a card this turn, I have
+# [Assault] and [Ganking].", "While I'm [Mighty], I have [Deflect], [Ganking], and [Shield]."
+# Read live off the object (like static_auras), a keyword_grant in the Ability layer whose
+# condition is evaluated there (476.2, 476.3). might_at_least on the card itself is read from
+# the layer result in progress, never through effective_might (which would recurse).
+CONDITIONAL_KEYWORD_CONDITIONS = {"is_buffed", "might_at_least", "cards_discarded_this_turn_at_least"}
+# 2026-09-27: the conditions a printed "If ..., I enter ready." reads as the unit enters (369.3)
+ENTRY_CONDITION_KINDS = {"score_within_of_victory", "controls_a_battlefield"}
+# 2026-09-27: the keywords a printed static aura may give ("Units here have [Ganking].",
+# "Other friendly units here have [Assault].", "Other friendly units have [Vision].") and a
+# conditional printed keyword may carry. Each is read from the computed characteristics by
+# whatever uses it (standard_move, assault_total, shield_total, vision_triggers,
+# play_transaction.deflect_costs, combat's Tank assignment).
+STATIC_AURA_KEYWORDS = {"ganking", "assault", "shield", "vision", "deflect", "tank"}
+# the keywords whose value is summed across every instance (807.2, 809.2, 814.2); an omitted
+# value is 1 (807.1.b.3, 809.1.b.3, 814.1.b.3)
+SUMMED_VALUE_KEYWORDS = {"assault", "shield", "deflect"}
 GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline"}
 KEYWORD_MODIFIER_DURATIONS = {"this_combat", "this_turn"}
 # Core 812.1.c: a Legion ability is active once its controller has Finalized another card
@@ -536,6 +559,11 @@ def validate_state(state: Any) -> list[str]:
         finalized = player.get("cards_finalized_this_turn")
         if finalized is not None and (not isinstance(finalized, dict) or any(not isinstance(k, str) or not k or not isinstance(v, list) or len(v) != len(set(v)) or any(o not in objects for o in v) for k, v in finalized.items())):
             errors.append(f"players.{player_id}.cards_finalized_this_turn must map turn ids to unique known object ids")
+        # Core 422.1 (2026-09-27): the cards this player discarded, per turn - one entry per
+        # discard, so a card discarded twice in a turn is there twice.
+        discarded = player.get("cards_discarded_this_turn")
+        if discarded is not None and (not isinstance(discarded, dict) or any(not isinstance(k, str) or not k or not isinstance(v, list) or any(o not in objects for o in v) for k, v in discarded.items())):
+            errors.append(f"players.{player_id}.cards_discarded_this_turn must map turn ids to lists of known object ids")
 
     for battlefield_id, battlefield in battlefields.items():
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
@@ -551,6 +579,15 @@ def validate_state(state: Any) -> list[str]:
         if battlefield.get("contested") and battlefield.get("contested_by") is None:
             errors.append(f"battlefields.{battlefield_id} is contested without contested_by")
         for a_index, aura in enumerate(battlefield.get("static_auras", []) or []):
+            if isinstance(aura, dict) and "keyword" in aura:
+                # 2026-09-27: "Units here have [Ganking]." - a keyword instead of a Might amount
+                if set(aura) - {"aura_id", "keyword", "value", "criteria"} or _static_keyword_problem(aura) \
+                        or not isinstance(aura.get("criteria"), dict) or set(aura["criteria"]) - BATTLEFIELD_AURA_CRITERIA \
+                        or aura["criteria"].get("kind", "unit") != "unit":
+                    errors.append(f"battlefields.{battlefield_id}.static_auras[{a_index}] must be {{aura_id, keyword in "
+                                  f"{sorted(STATIC_AURA_KEYWORDS)}, value? (summed keywords only), criteria over "
+                                  f"{sorted(BATTLEFIELD_AURA_CRITERIA)}}}")
+                continue
             if not isinstance(aura, dict) or set(aura) - {"aura_id", "amount", "criteria"} \
                     or not isinstance(aura.get("amount"), int) or isinstance(aura.get("amount"), bool) or aura.get("amount") == 0 \
                     or not isinstance(aura.get("criteria"), dict) or set(aura["criteria"]) - BATTLEFIELD_AURA_CRITERIA \
@@ -1031,8 +1068,14 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope is not a field of this trigger kind")
         entry_ids: set[str] = set()
         for r_index, replacement in enumerate(obj.get("entry_replacements", []) or []):
-            if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value", "source", "chain_item", "card"}:
-                errors.append(f"objects.{object_id}.entry_replacements[{r_index}] must be {{replacement_id?, mode: entry_state, value: ready|exhausted, source?, chain_item?, card?}}")
+            if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value", "source", "chain_item", "card", "condition"}:
+                errors.append(f"objects.{object_id}.entry_replacements[{r_index}] must be {{replacement_id?, mode: entry_state, value: ready|exhausted, source?, chain_item?, card?, condition?}}")
+            elif "condition" in replacement and (validate_condition(replacement["condition"])
+                                                 or replacement["condition"].get("kind") not in ENTRY_CONDITION_KINDS):
+                # 2026-09-27: a printed conditional entry (Core 364.3.a), read as the unit
+                # enters (369.3)
+                errors.append(f"objects.{object_id}.entry_replacements[{r_index}].condition must be a condition.v1 of "
+                              f"{sorted(ENTRY_CONDITION_KINDS)}")
             elif replacement.get("card") is not None and replacement["card"] != object_id:
                 # Core 806.1.b: the delayed replacement a paid Accelerate makes
                 # belongs to the card that paid it. One bound to another card
@@ -1051,6 +1094,18 @@ def validate_state(state: Any) -> list[str]:
         for a_index, aura in enumerate(obj.get("static_auras", []) or []):
             label = f"objects.{object_id}.static_auras[{a_index}]"
             criteria = aura.get("criteria") if isinstance(aura, dict) else None
+            if isinstance(aura, dict) and "keyword" in aura:
+                # 2026-09-27: "Other friendly units here have [Assault]." - a keyword, granted in
+                # the Ability layer (477.2.b), instead of a Might amount
+                if (set(aura) - {"aura_id", "keyword", "value", "criteria"} or not isinstance(aura.get("aura_id"), str)
+                        or _static_keyword_problem(aura)
+                        or not isinstance(criteria, dict) or set(criteria) - STATIC_AURA_CRITERIA
+                        or criteria.get("kind", "unit") != "unit"
+                        or criteria.get("controller_relation", "friendly") not in {"friendly", "enemy"}
+                        or any(criteria.get(k) not in (None, True) for k in ("exclude_source", "at_source_battlefield", "buffed"))):
+                    errors.append(f"{label} must be {{aura_id, keyword in {sorted(STATIC_AURA_KEYWORDS)}, value? (summed "
+                                  f"keywords only), criteria over {sorted(STATIC_AURA_CRITERIA)} (units)}}")
+                continue
             if (not isinstance(aura, dict) or set(aura) != {"aura_id", "amount", "criteria"} or not isinstance(aura["aura_id"], str)
                     or not isinstance(aura["amount"], int) or isinstance(aura["amount"], bool) or aura["amount"] == 0
                     or not isinstance(criteria, dict) or set(criteria) - STATIC_AURA_CRITERIA
@@ -1074,6 +1129,30 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"{label}.condition.runes_at_least needs a non-negative count")
             elif condition["kind"] == "attacking_or_defending_alone" and set(condition) != {"kind"}:
                 errors.append(f"{label}.condition.attacking_or_defending_alone carries no other fields")
+            elif condition["kind"] == "is_buffed" and set(condition) != {"kind"}:
+                errors.append(f"{label}.condition.is_buffed reads the card's own Buff counter and carries no other fields")
+        # 2026-09-27: a printed keyword the card has only while its condition holds (Core 364.3.a)
+        seen_conditional_keywords: set[str] = set()
+        for k_index, conditional in enumerate(obj.get("conditional_keywords", []) or []):
+            label = f"objects.{object_id}.conditional_keywords[{k_index}]"
+            if not isinstance(conditional, dict) or {"modifier_id", "keyword", "condition"} - set(conditional) \
+                    or set(conditional) - {"modifier_id", "keyword", "value", "condition"}:
+                errors.append(f"{label} must carry modifier_id, keyword, condition (and value for a summed keyword)")
+                continue
+            if not isinstance(conditional["modifier_id"], str) or not conditional["modifier_id"] or conditional["modifier_id"] in seen_conditional_keywords:
+                errors.append(f"{label}.modifier_id is invalid or duplicated")
+            seen_conditional_keywords.add(conditional.get("modifier_id", ""))
+            if _static_keyword_problem(conditional):
+                errors.append(f"{label}.keyword must be one of {sorted(STATIC_AURA_KEYWORDS)}, with a positive value only on {sorted(SUMMED_VALUE_KEYWORDS)}")
+            condition = conditional["condition"]
+            problems = validate_condition(condition, f"{label}.condition")
+            if problems:
+                errors.extend(problems)
+            elif condition["kind"] not in CONDITIONAL_KEYWORD_CONDITIONS or "object" in condition \
+                    or (condition["kind"] == "cards_discarded_this_turn_at_least" and "player" in condition):
+                # the card's own facts, and its own controller's discards - nothing else is read
+                errors.append(f"{label}.condition must be one of {sorted(CONDITIONAL_KEYWORD_CONDITIONS)} about the card itself "
+                              f"(no object; no player)")
         # ADR-0008 §5: granted characteristics, each bound to the object identity
         # it was granted to and to the Combat or turn it lasts for.
         seen_keyword_modifiers: set[str] = set()
@@ -3206,6 +3285,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             owner = new_state["objects"][object_id]["owner"]
             new_state["players"][owner]["zones"]["trash"].append(object_id)
             identities[object_id] = _bump_identity(new_state, object_id)
+        # Core 422.1 (2026-09-27): "if you've discarded a card this turn" reads this ledger
+        record_discarded_cards(new_state, player_id, list(objects))
         requested = effect.get("count")
         trace.update({"player": player_id, "requested_count": requested, "applied_count": len(objects), "objects": list(objects), "identities_after": identities,
                       "not_a_target": True, "selection": effect.get("selection_meta", {}),
@@ -4156,6 +4237,17 @@ def printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
     for object_id in sorted(state.get("objects") or {}):
         obj = state["objects"][object_id]
         for position, aura in enumerate(obj.get("static_auras", []) or []):
+            if "keyword" in aura:
+                # 2026-09-27: a keyword aura is granted in the Ability layer (477.2, 477.2.b)
+                effects.append({
+                    "effect_id": f"printed:aura:{object_id}:{aura.get('aura_id', position)}", "kind": "keyword_grant",
+                    "source": {"object": object_id, "identity": obj.get("identity") or f"{object_id}@0"},
+                    "affects": {"scope": "criteria", "criteria": {**copy.deepcopy(aura["criteria"]), "printed_aura_source": object_id,
+                                                                  "aura_controller": obj.get("controller")}},
+                    "layer": "ability", "timestamp": _legacy_timestamp(6, position), "value": _keyword_value(aura),
+                    "duration": {"kind": "while_source_active"}, "passive": True,
+                })
+                continue
             amount = aura["amount"]
             effects.append({
                 "effect_id": f"printed:aura:{object_id}:{aura.get('aura_id', position)}", "kind": "might_arithmetic",
@@ -4169,6 +4261,16 @@ def printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
     # a Battlefield's own printed aura ("Units here have +1 [M]."): every Unit at it, either side
     for battlefield_id in sorted(state.get("battlefields") or {}):
         for position, aura in enumerate(state["battlefields"][battlefield_id].get("static_auras", []) or []):
+            if "keyword" in aura:
+                # 2026-09-27: "Units here have [Ganking]."
+                effects.append({
+                    "effect_id": f"printed:aura:{battlefield_id}:{aura.get('aura_id', position)}", "kind": "keyword_grant",
+                    "source": {"object": battlefield_id, "identity": f"{battlefield_id}@0"},
+                    "affects": {"scope": "criteria", "criteria": {**copy.deepcopy(aura["criteria"]), "printed_aura_battlefield": battlefield_id}},
+                    "layer": "ability", "timestamp": _legacy_timestamp(7, position), "value": _keyword_value(aura),
+                    "duration": {"kind": "while_source_active"}, "passive": True,
+                })
+                continue
             amount = aura["amount"]
             effects.append({
                 "effect_id": f"printed:aura:{battlefield_id}:{aura.get('aura_id', position)}", "kind": "might_arithmetic",
@@ -4178,7 +4280,38 @@ def printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
                 "timestamp": _legacy_timestamp(7, position), "value": {"amount": amount, "mode": "delta"},
                 "duration": {"kind": "while_source_active"}, "passive": True,
             })
+    # 2026-09-27: a card's own conditional keyword ("While I'm buffed, I have [Ganking].") - on
+    # the card itself, while it is on the board (365.1), applied only while its condition holds
+    for object_id in sorted(state.get("objects") or {}):
+        obj = state["objects"][object_id]
+        identity = obj.get("identity") or f"{object_id}@0"
+        for position, conditional in enumerate(obj.get("conditional_keywords", []) or []):
+            effects.append({
+                "effect_id": f"printed:conditional_keyword:{object_id}:{conditional['modifier_id']}", "kind": "keyword_grant",
+                "source": {"object": object_id, "identity": identity},
+                "affects": {"scope": "object", "object": object_id, "identity": identity},
+                "layer": "ability", "timestamp": _legacy_timestamp(8, position), "value": _keyword_value(conditional),
+                "condition": copy.deepcopy(conditional["condition"]),
+                "duration": {"kind": "while_source_active"}, "passive": True,
+            })
     return effects
+
+
+def _keyword_value(entry: dict[str, Any]) -> dict[str, Any]:
+    """The {keyword, value?} a keyword aura or a conditional keyword grants."""
+    return {"keyword": entry["keyword"], **({"value": entry["value"]} if "value" in entry else {})}
+
+
+def _static_keyword_problem(entry: dict[str, Any]) -> bool:
+    """A printed keyword aura / conditional keyword names a keyword the engine reads off the
+    computed characteristics, and a value only where values are summed (807.2, 809.2, 814.2)."""
+    keyword = entry.get("keyword")
+    if keyword not in STATIC_AURA_KEYWORDS:
+        return True
+    if "value" in entry:
+        value = entry["value"]
+        return keyword not in SUMMED_VALUE_KEYWORDS or not isinstance(value, int) or isinstance(value, bool) or value < 1
+    return False
 
 
 STATIC_AURA_CRITERIA = {"kind", "controller_relation", "exclude_source", "at_source_battlefield", "buffed"}
@@ -4245,9 +4378,32 @@ def _read_per(state: dict[str, Any], effect: dict[str, Any]) -> dict[str, Any]:
     per = value.get("per")
     if per is None:
         return effect
-    source = (state["objects"].get(effect["source"]["object"]) or {})
-    points = int((state["players"].get(source.get("controller")) or {}).get("points", 0))
-    return {**effect, "value": {k: v for k, v in value.items() if k != "per"} | {"amount": value["amount"] * points}}
+    count = per_count(state, effect["source"]["object"], per["kind"])
+    return {**effect, "value": {k: v for k, v in value.items() if k != "per"} | {"amount": value["amount"] * count}}
+
+
+def per_count(state: dict[str, Any], source_id: str, kind: str) -> int:
+    """The quantity a passive "for each" / "increased by" reads, as the board has it now.
+    controller_points: the source's controller's points. buffed_friendly_units_at_source_battlefield
+    (2026-09-27): Units with a Buff counter (702.2.a) at the Battlefield the source is at, friendly
+    to its controller - the source itself included, since the text says "friendly", not "other";
+    none while the source is not at a Battlefield. controller_trash_count (2026-09-27): the cards
+    in the source's controller's Trash, a public zone (108.2.b)."""
+    source = state["objects"].get(source_id) or {}
+    controller = source.get("controller")
+    if kind == "controller_points":
+        return int((state["players"].get(controller) or {}).get("points", 0))
+    if kind == "controller_trash_count":
+        return len(((state["players"].get(controller) or {}).get("zones") or {}).get("trash", []))
+    if kind == "buffed_friendly_units_at_source_battlefield":
+        at = find_location(state, source_id)
+        if at is None or at[0] != "battlefield":
+            return 0
+        return sum(1 for other in state["battlefields"][at[1]].get("objects", []) or []
+                   if (state["objects"].get(other) or {}).get("kind") == "unit"
+                   and state["objects"][other].get("buffed")
+                   and same_side(state, controller, state["objects"][other].get("controller")))
+    raise ConditionUnsupported(f"a passive per-each over {kind!r} is not counted (unsupported: might_per_kind_unknown)")
 
 
 def _applied_amount(effect: dict[str, Any], current: int) -> int:
@@ -4308,12 +4464,21 @@ CONDITION_LEAVES = {
     # Legion (Core 812.1.b.1, 812.1.c): "if you have played another card this turn" -
     # a card other than `object` Finalized by `player` this turn (419.4.b).
     "another_card_finalized_this_turn": {"object", "player"},
+    # 2026-09-27: "While I'm buffed" - the object has a Buff counter (702.2.a)
+    "is_buffed": {"object"},
+    # 2026-09-27: "If you've discarded a card this turn" - `player` (default: the effect's
+    # controller) discarded at least `count` cards this turn (422.1), from the per-turn ledger
+    "cards_discarded_this_turn_at_least": {"count", "player"},
+    # 2026-09-27: "If an opponent controls a battlefield" - some Battlefield is controlled by a
+    # player on that side of the effect's controller (190.2.b: controlled by a specific player or by no one)
+    "controls_a_battlefield": {"controller_relation"},
 }
 CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
                       "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
                       "zone_count_at_least": {"zone", "count"}, "same_location_as": {"as"},
                       "might_less_than": {"than"}, "object_kind": {"value"},
-                      "score_within_of_victory": {"count"}}
+                      "score_within_of_victory": {"count"}, "cards_discarded_this_turn_at_least": {"count"},
+                      "controls_a_battlefield": {"controller_relation"}}
 PRIVATE_ZONES = {"hand", "main_deck", "rune_deck"}
 # "for each card in your trash" (Rhasa the Sunderer): the zones a printed per-each
 # reduction may count - public ones, so no perspective is needed to count them.
@@ -4420,6 +4585,21 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
         return subject is not None and has_keyword(state, subject, condition["keyword"])
     if kind == "is_empowered":
         return bool(state["objects"].get(subject, {}).get("empowered")) if subject else False
+    if kind == "is_buffed":
+        # Core 702.2.a: whether the object carries a Buff counter now
+        return bool(state["objects"].get(subject, {}).get("buffed")) if subject else False
+    if kind == "controls_a_battlefield":
+        if controller is None:
+            raise ConditionUnsupported("controls_a_battlefield needs to know whose side to read")
+        holders = [bf.get("controller") for bf in state["battlefields"].values() if bf.get("controller") is not None]
+        if condition["controller_relation"] == "friendly":
+            return any(same_side(state, controller, holder) for holder in holders)
+        return any(not same_side(state, controller, holder) for holder in holders)
+    if kind == "cards_discarded_this_turn_at_least":
+        player = condition.get("player", controller)
+        if player is None:
+            raise ConditionUnsupported("cards_discarded_this_turn_at_least needs to know whose discards to read")
+        return len(cards_discarded_this_turn(state, player)) >= condition["count"]
     if kind == "xp_at_least":
         player = condition.get("player", controller)
         return int(state["players"].get(player, {}).get("xp", 0)) >= condition["count"]
@@ -4490,6 +4670,23 @@ def record_finalized_card(state: dict[str, Any], player: str, card: str) -> None
     state["players"][player]["cards_finalized_this_turn"] = {turn_id: ledger + ([card] if card not in ledger else [])}
 
 
+def cards_discarded_this_turn(state: dict[str, Any], player: str) -> list[str]:
+    """Core 422.1 (2026-09-27): the cards `player` discarded this turn, one entry per
+    discard - by an instruction (422.2.a, 422.4) or as a cost (422.3)."""
+    ledger = (state["players"].get(player) or {}).get("cards_discarded_this_turn") or {}
+    return list(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), []))
+
+
+def record_discarded_cards(state: dict[str, Any], player: str, cards: list[str]) -> None:
+    """Called where a discard happens (the discard op, and a Discard cost paid). Only this
+    turn's entry is kept: the ledger is read for "this turn" and nothing else."""
+    if not cards:
+        return
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    ledger = (state["players"][player].get("cards_discarded_this_turn") or {}).get(turn_id, [])
+    state["players"][player]["cards_discarded_this_turn"] = {turn_id: ledger + list(cards)}
+
+
 def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, Any], actor: str) -> dict[str, Any]:
     """ADR-0013 §6 / cost_modification.v1: P4 evaluates the condition and the
     per-each count; P2 consumes the result and never evaluates a source."""
@@ -4553,16 +4750,31 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     if buffs:
         result["applied"].append({"effect_id": f"buff:{object_id}", "layer": "arithmetic",
                                   "amount": buffs, "rule_locators": ["Core 703", "Core 476.3"]})
-    pending = {e["effect_id"]: e for e in effects}
+    # 2026-09-27, Core 476.2-476.3: an effect conditioned on the object's OWN Might ("While I'm
+    # [Mighty], I have ...", 708) is not asked through effective_might - that is this function,
+    # and asking it recursed forever. It is read from the layer result in progress, at the start
+    # of each Ability layer: applied once when the Might there reaches the count, removed
+    # (disqualified) once if it later falls below, never re-applied. Every other effect takes
+    # the path below unchanged.
+    own_might = sorted((e for e in effects if _reads_own_might(e, object_id)), key=lambda e: (e["timestamp"], e["effect_id"]))
+    own_status = {e["effect_id"]: "unapplied" for e in own_might}
+    buff_in_might = bool(buffs)      # the Buff is an Arithmetic-layer application (476.3)
+    arithmetic_ran = False
+    pending = {e["effect_id"]: e for e in effects if e["effect_id"] not in own_status}
     applied: set[str] = set()
-    for _ in range(len(effects) + 1):
+    for _ in range(len(effects) + 2 * len(own_might) + 1):
         result["passes"] += 1
         changed = False
         for layer in CONTINUOUS_LAYERS:
+            if layer == "ability" and own_might:
+                layered = _layered_own_might(state, object_id, result, own_might, own_status,
+                                             pending_buff=buffs if buff_in_might and not arithmetic_ran else 0,
+                                             arithmetic_ran=arithmetic_ran)
             ready = [e for e in pending.values() if e["effect_id"] not in applied and e["layer"] == layer and _condition_holds(state, e, object_id)]
             for effect in _layer_order(state, ready, object_id, result):
                 if effect["kind"] == "might_set":
                     result["might"] = effect["value"]["amount"]
+                    buff_in_might = False
                 elif effect["kind"] == "might_arithmetic":
                     amount = _applied_amount(_read_per(state, effect), result["might"])
                     result["might"] += amount
@@ -4607,11 +4819,76 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
                 result["applied"].append({"effect_id": effect["effect_id"], "layer": layer})
                 applied.add(effect["effect_id"])
                 changed = True
+            if layer == "ability" and own_might:
+                for effect in own_might:
+                    before = own_status[effect["effect_id"]]
+                    own_status[effect["effect_id"]] = _own_might_step(before, layered >= effect["condition"]["count"])
+                    changed = changed or own_status[effect["effect_id"]] != before
+            if layer == "arithmetic":
+                if own_might and not arithmetic_ran:
+                    changed = True      # 476.2: the Ability layer is evaluated again after it
+                arithmetic_ran = True
         if not changed:
             break
+    if own_might:
+        result["keywords"] = _with_own_might_grants(result["keywords"], own_might, own_status)
+        for effect in own_might:
+            if own_status[effect["effect_id"]] == "applied":
+                result["applied"].append({"effect_id": effect["effect_id"], "layer": "ability"})
+        result["disqualified"] = [e["effect_id"] for e in own_might if own_status[e["effect_id"]] == "removed"]
     # Core 143.2.b: the arithmetic value stays as it is; the rules-facing read
     # clamps at zero, which `effective_might` does.
     return result
+
+
+def _own_might_step(status: str, holds: bool) -> str:
+    """Core 476.1 / 476.3: applied as soon as its condition holds, once; removed (disqualified)
+    when it stops holding, once; never applied again after that."""
+    if status == "unapplied" and holds:
+        return "applied"
+    if status == "applied" and not holds:
+        return "removed"
+    return status
+
+
+def _reads_own_might(effect: dict[str, Any], object_id: str) -> bool:
+    """A keyword grant whose condition is the affected object's own Might (Core 708: Mighty)."""
+    condition = effect.get("condition") or {}
+    return (effect["kind"] == "keyword_grant" and condition.get("kind") == "might_at_least"
+            and condition.get("object", object_id) == object_id)
+
+
+def _with_own_might_grants(keywords: dict[str, Any], own_might: list[dict[str, Any]], status: dict[str, str]) -> dict[str, Any]:
+    merged = dict(keywords)
+    for effect in own_might:
+        if status[effect["effect_id"]] != "applied":
+            continue
+        keyword = effect["value"]["keyword"]
+        if keyword in VALUED_KEYWORDS:
+            merged[keyword] = (merged.get(keyword) or 0) + (effect["value"].get("value") or 1)
+        else:
+            merged.setdefault(keyword, None)
+    return merged
+
+
+def _layered_own_might(state: dict[str, Any], object_id: str, result: dict[str, Any], own_might: list[dict[str, Any]],
+                       status: dict[str, str], *, pending_buff: int, arithmetic_ran: bool) -> int:
+    """The object's Might as the layers have it at the start of an Ability layer (476.2): before
+    any Arithmetic layer has run, without the Buff; after, with everything the Arithmetic layer
+    applied - the effects, the Buff, and the Might a Defender's Shield / an Attacker's Assault
+    and attached cards contribute there (476.3, 477.3.d), from the keywords the object has at
+    that point."""
+    might = result["might"] - pending_buff
+    if not arithmetic_ran or zone_class(find_location(state, object_id)) != "board":
+        return might
+    keywords = _with_own_might_grants(result["keywords"], own_might, status)
+    designation = state["objects"][object_id].get("combat_designation") or {}
+    if designation.get("role") == "defender":
+        might += keywords.get("shield") or 0
+    if designation.get("role") == "attacker":
+        might += keywords.get("assault") or 0
+    might += sum(state["objects"][attached].get("might_bonus", 0) for attached in attachments(state, object_id))
+    return might
 
 
 def _layer_order(state: dict[str, Any], effects: list[dict[str, Any]], object_id: str, result: dict[str, Any]) -> list[dict[str, Any]]:
@@ -4695,9 +4972,48 @@ def vision_triggers(state: dict[str, Any], object_id: str, controller: str) -> l
     # modelled. Whether one put onto the Board without being played triggers is NOT
     # decided here - that case is an exception awaiting a more direct source.
     program = vision_program(state, object_id, controller)
-    return [{"trigger_id": f"{object_id}:vision", "controller": controller, "source_object": object_id, "controller_order": 0,
+    first = {"trigger_id": f"{object_id}:vision", "controller": controller, "source_object": object_id, "controller_order": 0,
              "effect_program_id": program["program_id"], "effect_program_hash": hash_value(program["effects"]),
-             "optional_at_finalize": False}]
+             "optional_at_finalize": False}
+    # 2026-09-27, Core 817.2: multiple instances trigger separately - a printed Vision and one
+    # granted by "Other friendly units have [Vision].", or two such grants, are two triggers
+    # (each its own recycle choice, 817.2.a). The first keeps the id it always had.
+    extra = [{**first, "trigger_id": f"{object_id}:vision:{k}", "controller_order": k - 1}
+             for k in range(2, keyword_instances(state, object_id, "vision") + 1)]
+    return [first] + extra
+
+
+def _applied_grants(state: dict[str, Any], object_id: str, keyword: str) -> tuple[bool, list[dict[str, Any]]]:
+    """(has the keyword after the layers, the keyword grants the Ability layer applied to it)."""
+    computed = characteristics(state, object_id)
+    if keyword not in computed["keywords"]:
+        return False, []
+    by_id = {e["effect_id"]: e for e in canonical_effects(state) + printed_aura_effects(state)}
+    grants = [by_id[r["effect_id"]] for r in computed["applied"]
+              if (by_id.get(r["effect_id"]) or {}).get("kind") == "keyword_grant"
+              and by_id[r["effect_id"]]["value"]["keyword"] == keyword]
+    return True, grants
+
+
+def keyword_instances(state: dict[str, Any], object_id: str, keyword: str) -> int:
+    """Core 817.2 (2026-09-27): how many instances of a keyword the object has - the printed
+    one, plus one per grant the Ability layer applied; 0 when it does not have it."""
+    has, grants = _applied_grants(state, object_id, keyword)
+    if not has:
+        return 0
+    printed = 1 if keyword in (state["objects"][object_id].get("keywords") or []) else 0
+    return max(1, printed + len(grants))
+
+
+def deflect_total(state: dict[str, Any], object_id: str) -> int:
+    """Core 809.2 (2026-09-27): the Deflect Value of every Deflect the object has or was granted,
+    summed; an omitted X is 1 (809.1.b.3). A printed-only Deflect is its printed value, as before."""
+    has, grants = _applied_grants(state, object_id, "deflect")
+    if not has:
+        return 0
+    obj = state["objects"][object_id]
+    printed = obj.get("deflect_value", 1) if "deflect" in (obj.get("keywords") or []) else 0
+    return printed + sum(g["value"].get("value") or 1 for g in grants)
 
 
 TEMPORARY_PROGRAM_PREFIX = "keyword:temporary"

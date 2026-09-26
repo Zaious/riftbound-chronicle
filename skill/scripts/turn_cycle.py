@@ -31,6 +31,7 @@ from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, P
 from resolution_bridge import TURN_STEP_VERSION, _settle_trigger_orders  # noqa: E402
 from rules_core import CLEANUP_TASK, START_OF_TURN_PHASES, apply_terminal_event, is_terminal, schedule_triggered_items, state_hash, terminal_record  # noqa: E402
 import engine_decisions as _ed  # noqa: E402
+import watchers  # noqa: E402
 
 # Core 484–489: the sanctioned Modes of Play this slice can read. `match`
 # carries Best-of / Game Win semantics (486.6) and `magma_chamber` teams
@@ -512,14 +513,30 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         death_triggers = [dict(t) for t in lethal.get("pending_triggers", [])]
         for trigger in death_triggers:
             trigger["batch_sequence"] = index * 100 + int(trigger.get("batch_sequence", 0))
-        if failure := _settle_trigger_orders(death_triggers, engine_decisions, base):
+        # 2026-09-28: a death in this Cleanup - any phase's, the Beginning's and the Ending's too - is
+        # a death (Core 428.1.a.2, 323.5) and wakes watchers as a resolution's Cleanup does, as the
+        # batch after the death triggers. This step scheduled death triggers only.
+        watch_triggers: list[dict[str, Any]] = []
+        if lethal.get("events"):
+            try:
+                watch_triggers, working_e = watchers.schedule_live(
+                    working_e, list(lethal["events"]), turn_id=working_e.get("turn_id", DEFAULT_TURN_ID),
+                    batch_label=f"cleanup:{base['input_hash'][7:19]}:{index}")
+            except watchers.WatchUnsupported as exc:
+                return _unsupported(base, exc.reason_code, f"step 3: {exc}", ["Core 323.4", "Core 428.1.a.2"], cleanup_step="3")
+            watch_batch = max((t["batch_sequence"] for t in death_triggers), default=index * 100 - 1) + 1
+            for trigger in watch_triggers:
+                trigger["batch_sequence"] = watch_batch
+                trigger["batch_id"] = f"watch:cleanup:{base['input_hash'][7:19]}:{index}"
+        if failure := _settle_trigger_orders(death_triggers + watch_triggers, engine_decisions, base):
             return failure
-        if death_triggers:
-            scheduled = schedule_triggered_items(working_t, death_triggers)
+        if death_triggers or watch_triggers:
+            scheduled = schedule_triggered_items(working_t, death_triggers + watch_triggers)
             if scheduled.get("applied") is not True:
                 return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "death triggers could not be scheduled", ["Core 323.4"], cleanup_step="3a")
             working_t = scheduled["next_state"]
-        record["steps"].append({"step": 3, "outcome": "killed" if lethal.get("killed_objects") else "nothing_lethal", "killed": lethal.get("killed_objects", []), "pending_triggers": [t["trigger_id"] for t in death_triggers]})
+        record["steps"].append({"step": 3, "outcome": "killed" if lethal.get("killed_objects") else "nothing_lethal", "killed": lethal.get("killed_objects", []), "pending_triggers": [t["trigger_id"] for t in death_triggers],
+                                **({"watch_triggers": [t["trigger_id"] for t in watch_triggers]} if watch_triggers else {})})
         # 4 — Core 323.6
         board4 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e, index, "4"), steps=("control_loss",), within_cleanup=True)
         if failure := sub(board4, "4"):

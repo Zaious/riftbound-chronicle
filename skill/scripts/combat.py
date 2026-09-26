@@ -773,19 +773,39 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     for trigger in death_triggers:
         trigger["batch_id"] = f"combat:{record['combat_id']}:cleanup"
         trigger["batch_sequence"] = 1
+    # 2026-09-28: the deaths of Combat Damage are deaths (Core 428.1.a.2, 323.5): they wake
+    # watchers ("When a unit dies", "The first time a friendly unit dies each turn") exactly as a
+    # resolution's Cleanup does - once the Combat Cleanup has run, as the batch after its death
+    # triggers. This Cleanup scheduled death triggers only and no watcher ever heard a combat death.
+    import watchers
+    watch_triggers: list[dict[str, Any]] = []
+    if cleanup.get("events"):
+        try:
+            watch_triggers, working = watchers.schedule_live(
+                working, list(cleanup["events"]), turn_id=working.get("turn_id", "turn-0"),
+                batch_label=f"combat:{record['combat_id']}:cleanup")
+        except watchers.WatchUnsupported as exc:
+            return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",
+                    "reason_code": exc.reason_code, "reason": str(exc)}
+        watch_batch = max((t.get("batch_sequence", -1) for t in sync_triggers + death_triggers), default=-1) + 1
+        for trigger in watch_triggers:
+            trigger["batch_sequence"] = watch_batch
+            trigger["batch_id"] = f"watch:combat:{record['combat_id']}:cleanup"
     from resolution_bridge import _settle_trigger_orders
-    failure = _settle_trigger_orders(sync_triggers + death_triggers, engine_decisions, base)
+    failure = _settle_trigger_orders(sync_triggers + death_triggers + watch_triggers, engine_decisions, base)
     if failure is not None:
         return failure
     next_timing = copy.deepcopy(timing_state)
     next_timing["combat"] = next_record
-    scheduled = schedule_triggered_items(next_timing, sync_triggers + death_triggers)
+    scheduled = schedule_triggered_items(next_timing, sync_triggers + death_triggers + watch_triggers)
     if scheduled.get("applied") is not True:
         return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "the Cleanup's triggers could not be scheduled", ["Core 323.4"], trigger_result=scheduled)
     trace = {"designations": sync_trace, "lethal_cleanup": cleanup["trace"], "killed": cleanup.get("killed_objects", []), "attribution": attribution, "healed": healed, "recalled": recalled,
-             "follow_up_cleanup": follow_up, "scheduled_triggers": [t["trigger_id"] for t in sync_triggers + death_triggers], "trigger_schedule": scheduled.get("transition"),
+             "follow_up_cleanup": follow_up, "scheduled_triggers": [t["trigger_id"] for t in sync_triggers + death_triggers + watch_triggers], "trigger_schedule": scheduled.get("transition"),
+             "watch_triggers": [t["trigger_id"] for t in watch_triggers],
              "order": ["323.2 designations", "323.4 death triggers", "323.5 kills", "466.1.a.1 heal all Units", "466.1.a.2 Recall Attackers if Defenders remain", "324.2 follow-up Cleanup for recalled Units"]}
-    return _commit(base, scheduled["next_state"], working, trace=trace, locators=["Core 466.1", "Core 466.1.a", "Core 466.1.a.1", "Core 466.1.a.2", "Core 323.2", "Core 323.4", "Core 323.5", "Core 428.5.c.2", "Core 143.3.b.2"])
+    return _commit(base, scheduled["next_state"], working, trace=trace, locators=["Core 466.1", "Core 466.1.a", "Core 466.1.a.1", "Core 466.1.a.2", "Core 323.2", "Core 323.4", "Core 323.5", "Core 428.5.c.2", "Core 143.3.b.2"]
+                   + (["Core 428.1.a.2"] if watch_triggers else []))
 
 
 def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:

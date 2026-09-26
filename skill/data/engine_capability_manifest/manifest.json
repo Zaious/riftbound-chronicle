@@ -4,7 +4,7 @@
   "capability_set_id": "sha256:c8cdf61e1264a44027f2b86a518d541302140c10b2b90416dba44b3c9af78e22",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:e966c5267fe48cb730aedda3756c9d973b1f536389eeabc71424b4800f1b3cee",
+    "value": "sha256:1bd813bd9cc2ec51ff901c82f7f4e1be427d84c25e35d0a017e00fa22bf79072",
     "files": [
       {
         "path": "rules_core.py",
@@ -16,7 +16,7 @@
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:14bd1b1af8e4a89b8d86710db6c990d2b7ed121c6bd18ab18956372a7d0b439b"
+        "sha256": "sha256:ceb134ab8613e8ddfdd6f348ce3c41298534a07f4c1e5cb64be52ea65e3fce64"
       },
       {
         "path": "engine_check.py",

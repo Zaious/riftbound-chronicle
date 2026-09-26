@@ -2166,6 +2166,61 @@
       ]
     },
     {
+      "production_id": "spells_and_abilities_deal_n_bonus_damage_to_units_here",
+      "form": "Spells and abilities deal 1 Bonus Damage to units here.",
+      "template": "spells and abilities deal (?P<amount>\\d+) bonus damage to units here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 713",
+        "Core 714",
+        "Core 715.1",
+        "Core 715.2"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "bonus_damage"
+      ],
+      "boundary": "A Battlefield's printed Bonus Damage: each Deal of any player's spell or ability adds N to the damage it deals to a Unit at this Battlefield, and only to such a Unit (715.2: each target separately), while the Battlefield is in play. 'Your spells and abilities' (a controller's sources) or 'enemy units here' is a different clause.",
+      "golden": [
+        "Spells and abilities deal 1 Bonus Damage to units here."
+      ],
+      "negative": [
+        "your spells and abilities deal 1 bonus damage",
+        "spells and abilities deal 1 bonus damage to enemy units here",
+        "spells deal 1 bonus damage to units here",
+        "spells and abilities deal 1 bonus damage to units"
+      ]
+    },
+    {
+      "production_id": "you_may_hide_an_additional_card_here",
+      "form": "You may hide an additional card here.",
+      "template": "you may hide an additional card here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 107.3.b",
+        "Core 107.3.b.1",
+        "Core 107.3.c",
+        "Core 421.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "facedown_zone",
+        "hide_action"
+      ],
+      "boundary": "A Battlefield's printed statement: its Facedown Zone holds one card more than the one of 107.3.b - two - while it is in play. Only this Battlefield's zone; hiding still needs control of it (107.3.c). 'Two additional cards', or a statement on another object, is a different clause.",
+      "golden": [
+        "You may hide an additional card here."
+      ],
+      "negative": [
+        "you may hide a card here",
+        "you may hide an additional card",
+        "you may hide two additional cards here",
+        "you may play an additional card here"
+      ]
+    },
+    {
       "production_id": "you_may_pay_own_domain_power_as_additional_cost_to_play_me",
       "form": "You may pay [C] as additional cost to play me.",
       "template": "you may pay \\[c\\] as additional cost to play me",

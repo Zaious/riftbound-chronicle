@@ -287,6 +287,8 @@ def snapshot(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
         record["controller"] = obj.get("controller")
         # whether it had a buff (Core 426) - what "a buffed unit dies" reads, as it was
         record["buffed"] = bool(obj.get("buffed"))
+        # 2026-09-27: whether it was stunned (Core 423) - what "a stunned enemy unit" reads, as it was
+        record["stunned"] = bool(obj.get("stunned"))
         record["exists"] = True
     for record in out.values():
         record.setdefault("location", None)
@@ -409,6 +411,12 @@ class EventLog:
             # a death is read off the object as it was (Core 417): "When a buffed friendly unit
             # dies" asks about the buff it had, not the card now in the trash (2026-09-24)
             event["was_buffed"] = bool(before.get("buffed"))
+            # 2026-09-27: and whether it was stunned; and who is responsible for the kill (Core 411.4:
+            # "when you kill" is a kill you are responsible for). A Kill instruction's is its
+            # program's controller (428.5.b, 411.1); a Cleanup's kill has none here - the caller
+            # that knows the damage's source names it (428.5.c.1, 428.5.c.2), else nobody (411.2)
+            event["was_stunned"] = bool(before.get("stunned"))
+            event["responsible_player"] = self.actor
         if extra:
             event.update(extra)
         self.events.append(event)

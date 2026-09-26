@@ -836,7 +836,7 @@ def _pay_universal(resources: dict[str, Any], amount: int, use: str, paid_for: s
         events.append({"event_id": f"pay:power_universal:{paid_for}:restricted:{entry['restriction_id']}", "kind": "pay_power",
                        "domain": "universal", "paid_for": paid_for, "amount": take, "before": before, "after": entry["amount"],
                        "restricted_from": entry["restriction_id"], "use": use,
-                       "rule_locators": ["Core 357.1", "Core 135.2.e.5.b", "Core 163.2.b", "Core 446.3", "Core 447.2"]})
+                       "rule_locators": ["Core 357.1", "Core 135.2.e.5.b", "Core 163.2.b"]})
     resources["restricted"] = [r for r in resources.get("restricted", []) if r["amount"] > 0]
     if not resources["restricted"]:
         del resources["restricted"]

@@ -3195,6 +3195,36 @@
       ]
     },
     {
+      "production_id": "when_you_kill_a_stunned_enemy_unit",
+      "form": "When you kill a stunned enemy unit, draw 1.",
+      "template": "when you kill a stunned enemy unit, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 411.4",
+        "Core 428.5.b",
+        "Core 428.5.c.1",
+        "Core 428.5.c.2",
+        "Core 423"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you kill a stunned enemy unit, draw 1."
+      ],
+      "negative": [
+        "when you kill an enemy unit, draw 1",
+        "when a stunned enemy unit dies, draw 1",
+        "when you kill a stunned unit, draw 1",
+        "when you stun an enemy unit, draw 1",
+        "when an opponent kills a stunned enemy unit, draw 1"
+      ]
+    },
+    {
       "production_id": "the_first_time_a_friendly_unit_dies_each_turn",
       "form": "The first time a friendly unit dies each turn, draw 1.",
       "template": "the first time a friendly unit dies each turn, (?P<inner>.+)",

@@ -999,6 +999,12 @@ WRAPPERS = [
     ("when_a_buffed_friendly_unit_dies", r"when a buffed friendly unit dies, (?P<inner>.+)",
      ["Core 383.1", "Core 417", "Core 426"], ["event_triggers"], ["When a buffed friendly unit dies, draw 1."],
      ["when a friendly unit dies, draw 1", "when a buffed enemy unit dies, draw 1"]),
+    # 2026-09-27: "you kill" - a kill you are responsible for (Core 411.4, 428.5); "stunned", as the unit was
+    ("when_you_kill_a_stunned_enemy_unit", r"when you kill a stunned enemy unit, (?P<inner>.+)",
+     ["Core 383.1", "Core 411.4", "Core 428.5.b", "Core 428.5.c.1", "Core 428.5.c.2", "Core 423"], ["event_triggers"],
+     ["When you kill a stunned enemy unit, draw 1."],
+     ["when you kill an enemy unit, draw 1", "when a stunned enemy unit dies, draw 1", "when you kill a stunned unit, draw 1",
+      "when you stun an enemy unit, draw 1", "when an opponent kills a stunned enemy unit, draw 1"]),
     ("the_first_time_a_friendly_unit_dies_each_turn", r"the first time a friendly unit dies each turn, (?P<inner>.+)",
      ["Core 383.1", "Core 417", "Core 383.3.e"], ["event_triggers"],
      ["The first time a friendly unit dies each turn, draw 1."],

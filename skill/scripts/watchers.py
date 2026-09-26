@@ -37,7 +37,11 @@ from typing import Any
 # "player": the player the event happened to - "When YOU discard" is about whose hand the card
 # left (the event's `player`), not whose effect it was nor the card's controller field
 # (2026-09-26; Core 422.1: a player's hand into their trash)
-WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
+# "responsible" (2026-09-27): the player responsible for the event's game action - "When YOU kill ..." is
+# a kill you are responsible for (Core 411.4): a Kill instruction's controller (428.5.b), the player whose
+# damage a Cleanup kill is attributed to (428.5.c.1, 428.5.c.2); a kill nobody is responsible for (411.2)
+# matches no one. Only a `died` event carries it (game_events: responsible_player)
+WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "responsible"}
 # 2026-09-24: typed facts of the EVENT a watch may require, each named, none guessed.
 #   object_kind              the object the event is about is a spell / unit / gear
 #   object_controller_relation   that object is the watcher controller's (friendly) or not (enemy)
@@ -57,6 +61,8 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
 #                            is when the event is matched - for "played", the moment the play
 #                            Finalized (game_events.played_event); an object that is no Unit is not
 #                            Mighty; one no zone holds is refused by name, never guessed
+#   object_was_stunned       (2026-09-27) the object was stunned when the event happened (a death reads
+#                            the object as it was, as object_was_buffed does; Core 423)
 WATCH_FILTERS = {
     "object_kind": {"spell", "unit", "gear"},
     "object_controller_relation": {"friendly", "enemy"},
@@ -68,6 +74,7 @@ WATCH_FILTERS = {
     "destination_kind": {"battlefield"},
     "printed_energy_at_least": set(range(1, 21)),
     "object_might_at_least": set(range(1, 21)),
+    "object_was_stunned": {True},
 }
 # "each": one trigger per matching event (Core 383.3.a); "one_or_more": one per batch of
 # simultaneous events however many match ("When you stun one or more enemy units").
@@ -120,9 +127,12 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
             problems.append(f"{path}.filter must be a non-empty object")
         else:
             for key, value in event_filter.items():
-                # a count is an integer, never a boolean that happens to equal 1 (2026-09-27)
+                # a count is an integer, never a boolean that happens to equal 1; a flag is `true`, never 1
+                # (2026-09-27)
                 counted = key in ("printed_energy_at_least", "object_might_at_least")
-                if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key] or (counted and isinstance(value, bool)):
+                flag = WATCH_FILTERS.get(key) == {True}
+                if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key] or (counted and isinstance(value, bool)) \
+                        or (flag and value is not True):
                     problems.append(f"{path}.filter.{key} = {value!r} is not a named event fact")
     if watch.get("grouping", "each") not in WATCH_GROUPINGS:
         problems.append(f"{path}.grouping must be one of {sorted(WATCH_GROUPINGS)}")
@@ -284,6 +294,12 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
     elif scope == "player":
         if event.get("player") != controller:
             return False
+    elif scope == "responsible":
+        if "responsible_player" not in event:
+            raise WatchUnsupported(f"event {event.get('event_id')!r} ({event.get('kind')}) records no responsible player; "
+                                   f"'you' is not guessed (Core 411.4)", "responsibility_not_recorded")
+        if event["responsible_player"] is None or event["responsible_player"] != controller:
+            return False
     elif scope == "location":
         # The event's Location, before or after: a Unit that died at my
         # Battlefield died there even though it now sits in the Trash.
@@ -327,6 +343,13 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                 return False
         elif key == "object_was_buffed":
             if event.get("was_buffed") is not True:
+                return False
+        elif key == "object_was_stunned":
+            # 2026-09-27: read off the object as it was when the event happened, like the buff (Core 423)
+            if "was_stunned" not in event:
+                raise WatchUnsupported(f"event {event.get('event_id')!r} ({event.get('kind')}) records no stun; "
+                                       f"it is not guessed (Core 423)", "stun_not_recorded")
+            if event["was_stunned"] is not True:
                 return False
         elif key == "destination_zone":
             after = event.get("location_after") or {}

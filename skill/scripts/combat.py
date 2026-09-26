@@ -745,6 +745,11 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
         if role is not None:
             sources = sides_before["defender" if role == "attacker" else "attacker"]
             attribution[killed] = {"role": role, "killed_by": sources, "responsible_player": record["defender" if role == "attacker" else "attacker"], "rule_locators": ["Core 428.5.c.2"]}
+    # 2026-09-27: the death's event carries that responsibility too (Core 428.5.c.2, 411.4), for "when you kill"
+    for event in cleanup.get("events") or []:
+        if event.get("kind") == "died" and event.get("object") in attribution:
+            event["responsible_player"] = attribution[event["object"]]["responsible_player"]
+            event["rule_locators"] = list(dict.fromkeys(list(event.get("rule_locators") or []) + ["Core 428.5.c.2"]))
     healed = []
     for object_id, obj in working["objects"].items():
         if obj.get("kind") == "unit" and obj["damage"] > 0 and zone_class(find_location(working, object_id)) == "board":

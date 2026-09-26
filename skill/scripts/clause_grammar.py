@@ -1038,6 +1038,11 @@ TRIGGER_WRAPPERS = {
     "when_a_buffed_friendly_unit_dies": ("event_triggers", "on-buffed-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any",
         "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "object_was_buffed": True}}}),
+    # 2026-09-27 (Solari Shrine): "you kill" is a kill you are responsible for (Core 411.4, 428.5.b, 428.5.c.1,
+    # 428.5.c.2 - the died event's responsible_player); "a stunned enemy unit" is read off the unit as it was
+    "when_you_kill_a_stunned_enemy_unit": ("event_triggers", "on-kill-stunned-enemy", {"watch": {
+        "kinds": ["died"], "scope": "responsible",
+        "filter": {"object_kind": "unit", "object_controller_relation": "enemy", "object_was_stunned": True}}}),
     "the_first_time_a_friendly_unit_dies_each_turn": ("event_triggers", "on-first-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "occurrence": "first_each_turn"}}),

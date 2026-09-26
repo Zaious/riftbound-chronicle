@@ -559,6 +559,15 @@ def resolve_with_program(
             "cleanup_result": cleanup_result,
         }
     final_effect_state = cleanup_result["next_state"]
+    # 2026-09-27: Core 428.5.c, 428.5.c.1 - a Cleanup kill is attributed to the spell or ability that resolved
+    # immediately before it AND dealt damage to that Unit; the player responsible for that deal action (its
+    # controller, 411.1) is responsible for the kill. A Unit this program never damaged died for no one's
+    # action here (411.2): its event keeps responsible_player None
+    damaged_here = {e.get("object") for e in effect_result.get("events") or [] if e.get("kind") == "damaged"}
+    for event in cleanup_result.get("events") or []:
+        if event.get("kind") == "died" and event.get("object") in damaged_here:
+            event["responsible_player"] = program.get("controller")
+            event["rule_locators"] = list(dict.fromkeys(list(event.get("rule_locators") or []) + ["Core 428.5.c", "Core 428.5.c.1"]))
     effect_triggers = [dict(trigger) for trigger in effect_result.get("pending_triggers", [])]
     # Play-completion triggers form one batch after the item's own effect
     # triggers and before anything the board-entry Cleanup raises (419.4.a).

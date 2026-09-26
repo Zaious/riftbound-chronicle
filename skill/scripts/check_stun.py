@@ -179,9 +179,14 @@ def main() -> int:
                                                "filter": {"object_controller_relation": "enemy"},
                                                "grouping": "one_or_more"}:
         errors.append(f"the stun trigger did not compile to its typed watch: {watch}")
+    # 2026-09-27 package 6: the stun AURA is now compiled on purpose - a printed decrease over the
+    # Stunned enemy units here with its own floor (check_stunned_aura.py runs it)
+    aura = cg.compile_clause("Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:.", grammar)
+    criteria = (((aura.get("passive") or {}).get("object_fields") or {}).get("static_auras") or [{}])[0].get("criteria")
+    if aura.get("unsupported") or not (criteria or {}).get("stunned"):
+        errors.append(f"the stun aura did not compile to a static aura over Stunned units: {criteria}")
     for text, family in (
         ("While there's a stunned enemy unit here, I have +2 :rb_might:.", "stun_state_condition"),
-        ("Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:.", "stun_aura"),
         ("If a spell or ability that chooses me would stun me, give me -2 :rb_might: instead.", "stun_replacement"),
         ("If an opponent controls a stunned unit, I cost :rb_energy_2: less and enter ready.", "stun_cost_condition"),
     ):

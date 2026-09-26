@@ -1848,6 +1848,89 @@
       ]
     },
     {
+      "production_id": "play_n_might_recruit_unit_tokens_here",
+      "form": "Play two 1 :rb_might: Recruit unit tokens here.",
+      "template": "play (?P<count>a|two|three|four) (?P<might>\\d+) \\[m\\] recruit unit tokens? here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 185.2",
+        "Core 187.1",
+        "Core 359.3.f.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "play_token"
+      ],
+      "boundary": "One to four catalogued Recruit unit tokens (187.1) with the printed Might, each played at the Battlefield the program's source is at when it executes (359.3.f.2); none if it is not at one. 'In your base', a token without a place, or another token is a different clause.",
+      "golden": [
+        "Play two 1 :rb_might: Recruit unit tokens here.",
+        "Play a 1 :rb_might: Recruit unit token here."
+      ],
+      "negative": [
+        "play two 1 :rb_might: recruit unit tokens into your base",
+        "play two 1 :rb_might: recruit unit tokens",
+        "play a 3 :rb_might: sprite unit token here",
+        "play five 1 :rb_might: recruit unit tokens here"
+      ]
+    },
+    {
+      "production_id": "other_friendly_units_enter_ready",
+      "form": "Other friendly units enter ready.",
+      "template": "other friendly units enter ready",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 369.3",
+        "Core 365.1",
+        "Core 143.4"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "entry_replacements"
+      ],
+      "boundary": "While the source is on the board, each other Unit that enters the board under its controller's side - a Unit card played, or a Unit token - enters ready instead of exhausted (143.4). The source's own entry, an opponent's Units, a timed grant ('this turn'), or 'exhausted' is a different clause.",
+      "golden": [
+        "Other friendly units enter ready."
+      ],
+      "negative": [
+        "units you play this turn enter ready",
+        "i enter ready",
+        "other friendly units enter exhausted",
+        "other units enter ready",
+        "friendly units enter ready"
+      ]
+    },
+    {
+      "production_id": "stunned_enemy_units_here_have_might_to_a_minimum",
+      "form": "Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:.",
+      "template": "stunned enemy units here have -(?P<amount>\\d+) \\[m\\], to a minimum of (?P<floor>\\d+) \\[m\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 423.1.a",
+        "Core 476",
+        "Core 477.3",
+        "Core 477.3.b",
+        "Core 479"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "A printed aura: -N Might, to a minimum of M, to every enemy Unit at the Battlefield where the source is that is Stunned right now (423.1.a), while the source is on the board. The floor is applied fresh each time the Might is computed (477.3.b). Friendly or unstunned units, a decrease without the floor, or a whole-board aura is a different clause.",
+      "golden": [
+        "Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:."
+      ],
+      "negative": [
+        "stunned enemy units here have -8 :rb_might:",
+        "enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:",
+        "stunned friendly units here have -8 :rb_might:, to a minimum of 1 :rb_might:",
+        "stunned enemy units have -8 :rb_might:, to a minimum of 1 :rb_might:"
+      ]
+    },
+    {
       "production_id": "units_here_have_keyword",
       "form": "Units here have [Ganking].",
       "template": "units here have \\[(?P<keyword>ganking)\\]",
@@ -2543,6 +2626,34 @@
       "negative": [
         "[Action] this turn",
         "action"
+      ]
+    },
+    {
+      "production_id": "when_you_play_me_if_you_control_a_tag",
+      "form": "When you play me, if you control a Poro, draw 1.",
+      "template": "when you play me, if you control an? (?P<tag>poro), (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a",
+        "Core 383.2.a.1",
+        "Core 133.8.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "play_triggers",
+        "typed_conditions"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play me, if you control a Poro, draw 1."
+      ],
+      "negative": [
+        "when you play me, draw 1 if you control a poro",
+        "when you play me, if you control a unit, draw 1",
+        "when you play a poro, draw 1",
+        "when i move, if you control a poro, draw 1"
       ]
     },
     {

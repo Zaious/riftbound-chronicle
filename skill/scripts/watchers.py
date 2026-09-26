@@ -83,7 +83,10 @@ DESCRIPTOR_FIELDS = {"trigger_id", "controller", "source_object", "controller_or
                      "optional_at_finalize", "watch", "per_turn_limit", "ability_id", "effect_program_hash"}
 DELAYED_FIELDS = {"delayed_id", "controller", "source_object", "source_identity", "target_object", "target_identity",
                   "waits_for", "effect_program_id", "optional_at_finalize", "controller_order", "snapshot",
-                  "created_turn"}
+                  "created_turn",
+                  # 2026-09-27 package 6: the content hash of the program the creating instruction
+                  # carried, bound by the engine and carried to the Chain
+                  "effect_program_hash"}
 MULTIPLIER_FIELDS = {"multiplier_id", "controller", "source_object", "applies_to", "extra_times"}
 
 
@@ -205,6 +208,9 @@ def validate_watch_state(state: dict[str, Any]) -> list[str]:
             errors.append(f"{path}.waits_for must be {{kind: turn, moment, turn_id}} with moment in {sorted(TURN_MOMENTS)}")
         if ("target_object" in entry) != ("target_identity" in entry):
             errors.append(f"{path} must bind a target identity with its target object (Core 124)")
+        if "effect_program_hash" in entry and not (isinstance(entry["effect_program_hash"], str)
+                                                   and entry["effect_program_hash"].startswith("sha256:")):
+            errors.append(f"{path}.effect_program_hash must be a sha256 content hash")
 
     uses = state.get("trigger_uses", {})
     if not isinstance(uses, dict) or any(not isinstance(v, int) or isinstance(v, bool) or v < 0 for v in uses.values()):
@@ -567,7 +573,9 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
                                             extra={"delayed_id": entry["delayed_id"], "moment": waits["moment"],
                                                    "snapshot": entry.get("snapshot"),
                                                    "source_identity_at_creation": entry["source_identity"],
-                                                   "source_identity_now": source_now}))
+                                                   "source_identity_now": source_now,
+                                                   **({"effect_program_hash": entry["effect_program_hash"]}
+                                                      if entry.get("effect_program_hash") else {})}))
             continue
         matched_but_unbound: dict[str, Any] | None = None
         for event in events or []:
@@ -586,7 +594,9 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
                                             trigger_kind="delayed",
                                             extra={"delayed_id": entry["delayed_id"], "snapshot": entry.get("snapshot"),
                                                    "source_identity_at_creation": entry["source_identity"],
-                                                   "source_identity_now": source_now}))
+                                                   "source_identity_now": source_now,
+                                                   **({"effect_program_hash": entry["effect_program_hash"]}
+                                                      if entry.get("effect_program_hash") else {})}))
                 matched_but_unbound = None
                 break  # it fires once
         if matched_but_unbound is not None:

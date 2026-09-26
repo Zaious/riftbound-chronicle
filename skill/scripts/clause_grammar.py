@@ -789,6 +789,51 @@ def _lower_buffed_aura_here(params):
             "ast": {"node": "passive", "kind": "static_aura", "params": {"amount": amount, "criteria": dict(criteria)}}}
 
 
+TOKEN_COUNTS = {"a": 1, "two": 2, "three": 3, "four": 4}
+
+
+def _lower_recruit_tokens_here(params):
+    """Package 6 (2026-09-27): "Play two 1 [M] Recruit unit tokens here." - one play_token per token, each
+    a catalogued Recruit (Core 187.1) with the printed Might, each placed at the program source's current
+    Battlefield, read as it executes (location_ref, Core 359.3.f.2) - the signed eff_294 shape, repeated.
+    Lowered so a dependent keyword over it ("[Legion][>] When you play me, ...") reads (812.1.b)."""
+    count, might = TOKEN_COUNTS[params["count"]], int(params["might"])
+    effects = [{"op": "play_token", "effect_id": f"tok{i + 1}" if count > 1 else "tok", "owner": "$controller",
+                "controller": "$controller", "token_kind": "unit", "base_might": might, "token_id": "recruit",
+                "object_id_ref": {"kind": "fresh"},
+                "destination": {"kind": "battlefield", "location_ref": {"kind": "program_source_current_battlefield"}}}
+               for i in range(count)]
+    return {"program_effects": effects,
+            "ast": {"node": "instruction", "op": "play_token", "params": {"count": count, "might": might,
+                                                                          "token_id": "recruit", "where": "here"}}}
+
+
+def _lower_other_friendly_units_enter_ready(params):
+    """Package 6 (2026-09-27): "Other friendly units enter ready." - a replacement the permanent
+    applies, while it is on the board (365.1), to the entry of the other Units its side plays or
+    makes (369.3); effect_ir.granted_entry_states reads it at entry and for a token."""
+    from effect_ir import GRANTED_ENTRY_CRITERIA
+    grant = {"replacement_id": "others-enter-ready", "value": "ready", "criteria": dict(GRANTED_ENTRY_CRITERIA)}
+    return {"object_fields": {"granted_entry_states": [grant]},
+            "ast": {"node": "passive", "kind": "granted_entry_state",
+                    "params": {"value": "ready", "criteria": dict(GRANTED_ENTRY_CRITERIA)}}}
+
+
+STUNNED_ENEMY_HERE = {"kind": "unit", "controller_relation": "enemy", "at_source_battlefield": True, "stunned": True}
+
+
+def _lower_stunned_enemy_aura_here(params):
+    """Package 6 (2026-09-27): "Stunned enemy units here have -N [M], to a minimum of M [M]." - a
+    printed decrease over the enemy Units at the source's Battlefield that are Stunned right now
+    (Core 423.1.a), limited to its floor; a passive's limit is applied fresh, never snapshotted
+    (477.3.b). effect_ir.printed_aura_effects reads it while the source is on the board (365.1)."""
+    amount, floor = -int(params["amount"]), int(params["floor"])
+    aura = {"aura_id": "stunned-enemy-here", "amount": amount, "minimum": floor, "criteria": dict(STUNNED_ENEMY_HERE)}
+    return {"object_fields": {"static_auras": [aura]},
+            "ast": {"node": "passive", "kind": "static_aura",
+                    "params": {"amount": amount, "minimum": floor, "criteria": dict(STUNNED_ENEMY_HERE)}}}
+
+
 def _lower_battlefield_aura(params):
     """Core 365.1, 190.6: a Battlefield's printed aura over every Unit at it (effect_ir
     printed_aura_effects reads a Battlefield's static_auras)."""
@@ -909,6 +954,12 @@ LOWERINGS = {
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,
+    # 2026-09-27 package 6 (Leona - Zealot)
+    "stunned_enemy_units_here_have_might_to_a_minimum": _lower_stunned_enemy_aura_here,
+    # 2026-09-27 package 6 (Magma Wurm)
+    "other_friendly_units_enter_ready": _lower_other_friendly_units_enter_ready,
+    # 2026-09-27 package 6 (Vanguard Captain)
+    "play_n_might_recruit_unit_tokens_here": _lower_recruit_tokens_here,
     # 2026-09-27: keyword auras, conditional keywords and Might, Might per count
     "units_here_have_keyword": _lower_keyword_aura("battlefield", {"kind": "unit"}),
     "other_friendly_units_here_have_keyword": _lower_keyword_aura("object", AURA_HERE),
@@ -966,8 +1017,17 @@ LOWERINGS = {
     "self_cost_reduction_unit_died": _lower_self_cost_reduction_unit_died,
 }
 
+# 2026-09-27 package 6: the tags a trigger condition may name, normalized -> as printed (Core 763.1).
+# A closed table: a word that is not a tag ("if you control a unit") never becomes one.
+PRINTED_TAGS = {"poro": "Poro"}
+
 # Productions that wrap another clause: "When you play me, <inner>."
 TRIGGER_WRAPPERS = {
+    # 2026-09-27 package 6 (Poro Herder): "When you play me, if you control a Poro, ..." - the conditional
+    # statement right after the trigger condition is part of it (Core 383.2.a.1), read as the play
+    # completes (resolution_bridge.complete_permanent_play); the tag as printed (Core 133.8.a, 763.1)
+    "when_you_play_me_if_you_control_a_tag": ("play_triggers", "on-play", lambda params: {
+        "condition": {"kind": "controls_units", "count": 1, "tag": PRINTED_TAGS[params["tag"]]}}),
     "when_you_play_me": ("play_triggers", "on-play", None),
     "when_i_move": ("move_triggers", "on-move", None),
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),

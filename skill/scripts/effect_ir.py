@@ -154,7 +154,10 @@ GRANT_DURATIONS = KEYWORD_MODIFIER_DURATIONS | {"permanent"}
 # trigger condition is part of it (Core 383.2.a.1), read when the Beginning Step schedules - a facedown
 # card (355.9.a.3) its controller controls in any Battlefield's Facedown Zone (107.3.f, 128.4)
 TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn", "moved_to_battlefield",
-                           "controls_facedown_card_at_battlefield"}
+                           "controls_facedown_card_at_battlefield",
+                           # 2026-09-27 package 6 (Poro Herder): "When you play me, if you control a
+                           # Poro, ..." - read as the play completes (Core 383.2.a.1)
+                           "controls_units"}
 DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
@@ -1045,6 +1048,11 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.combat_designation applies to Units only (464.2.c.3)")
         if "stunned" in obj and not isinstance(obj["stunned"], bool):
             errors.append(f"objects.{object_id}.stunned must be boolean (Core 423.1.a)")
+        # 2026-09-27 package 6: a card's printed tags, as printed ("Poro", "Dragon") - a characteristic
+        # (Core 133.8, 133.8.a, 143.1), read through object_tags()
+        if "tags" in obj and (not isinstance(obj["tags"], list) or any(not isinstance(t, str) or not t for t in obj["tags"])
+                              or len(set(obj["tags"])) != len(obj["tags"])):
+            errors.append(f"objects.{object_id}.tags must be a list of distinct non-empty strings, as printed (Core 133.8)")
         # Round H: an optional additional cost the card itself offers, of
         # which Accelerate is one printed instance. Only the card may offer it,
         # and only for its own play (Core 356.2.b, 820.1).
@@ -1139,6 +1147,10 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "another_card_finalized_this_turn" and (trigger_field != "play_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: a Legion condition is read only on a play trigger, as {{kind}} (Core 812.1.c)")
+                elif "condition" in trigger and trigger["condition"].get("kind") == "controls_units" and (
+                        trigger_field != "play_triggers" or set(trigger["condition"]) != {"kind", "count", "tag"}
+                        or validate_condition(trigger["condition"])):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'if you control a <tag>' is read only on a play trigger, as {{kind, count, tag}} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "controls_facedown_card_at_battlefield" and (trigger_field != "beginning_phase_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'if you control a facedown card at a battlefield' is read only on a Beginning Phase trigger, as {{kind}} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "moved_to_battlefield" and (trigger_field != "move_triggers" or set(trigger["condition"]) != {"kind"}):
@@ -1168,6 +1180,19 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.entry_replacements[{r_index}].replacement_id is invalid or duplicated")
             elif "replacement_id" in replacement:
                 entry_ids.add(replacement["replacement_id"])
+        # 2026-09-27 package 6: "Other friendly units enter ready." - a replacement this permanent
+        # applies, while it is on the board (365.1), to the entry of the other Units its side plays
+        # (369.3); read by granted_entry_states. One closed shape: the only one printed.
+        granted_ids: set[str] = set()
+        for g_index, grant in enumerate(obj.get("granted_entry_states", []) or []):
+            if (not isinstance(grant, dict) or set(grant) != {"replacement_id", "value", "criteria"}
+                    or not isinstance(grant["replacement_id"], str) or not grant["replacement_id"]
+                    or grant["replacement_id"] in granted_ids or grant["value"] != "ready"
+                    or grant["criteria"] != GRANTED_ENTRY_CRITERIA):
+                errors.append(f"objects.{object_id}.granted_entry_states[{g_index}] must be {{replacement_id, value: ready, "
+                              f"criteria: {GRANTED_ENTRY_CRITERIA}}} (Core 369.3)")
+            else:
+                granted_ids.add(grant["replacement_id"])
         for d_index, dynamic in enumerate(obj.get("dynamic_might", []) or []):
             label = f"objects.{object_id}.dynamic_might[{d_index}]"
             if (not isinstance(dynamic, dict) or set(dynamic) != {"modifier_id", "amount", "per"} or not isinstance(dynamic["modifier_id"], str)
@@ -1185,17 +1210,25 @@ def validate_state(state: Any) -> list[str]:
                         or not isinstance(criteria, dict) or set(criteria) - STATIC_AURA_CRITERIA
                         or criteria.get("kind", "unit") != "unit"
                         or criteria.get("controller_relation", "friendly") not in {"friendly", "enemy"}
-                        or any(criteria.get(k) not in (None, True) for k in ("exclude_source", "at_source_battlefield", "buffed"))):
+                        or any(criteria.get(k) not in (None, True) for k in STATIC_AURA_FLAGS)):
                     errors.append(f"{label} must be {{aura_id, keyword in {sorted(STATIC_AURA_KEYWORDS)}, value? (summed "
                                   f"keywords only), criteria over {sorted(STATIC_AURA_CRITERIA)} (units)}}")
                 continue
-            if (not isinstance(aura, dict) or set(aura) != {"aura_id", "amount", "criteria"} or not isinstance(aura["aura_id"], str)
+            # 2026-09-27 package 6: "Stunned enemy units here have -8 [M], to a minimum of 1 [M]." - a
+            # decrease may carry the floor it is limited to; a passive's limit is applied fresh each
+            # time the Might is computed, never snapshotted (Core 477.3.b, its second example)
+            floor = aura.get("minimum") if isinstance(aura, dict) else None
+            if (not isinstance(aura, dict) or set(aura) - {"minimum"} != {"aura_id", "amount", "criteria"}
+                    or not isinstance(aura["aura_id"], str)
                     or not isinstance(aura["amount"], int) or isinstance(aura["amount"], bool) or aura["amount"] == 0
+                    or ("minimum" in aura and (not isinstance(floor, int) or isinstance(floor, bool) or floor < 0
+                                               or aura["amount"] >= 0))
                     or not isinstance(criteria, dict) or set(criteria) - STATIC_AURA_CRITERIA
                     or criteria.get("kind", "unit") not in {"unit", "gear"}
                     or criteria.get("controller_relation", "friendly") not in {"friendly", "enemy"}
-                    or any(criteria.get(k) not in (None, True) for k in ("exclude_source", "at_source_battlefield", "buffed"))):
-                errors.append(f"{label} must be {{aura_id, amount != 0, criteria over {sorted(STATIC_AURA_CRITERIA)}}}")
+                    or any(criteria.get(k) not in (None, True) for k in STATIC_AURA_FLAGS)):
+                errors.append(f"{label} must be {{aura_id, amount != 0, minimum >= 0 (a decrease only)?, criteria over "
+                              f"{sorted(STATIC_AURA_CRITERIA)}}}")
         seen_conditional: set[str] = set()
         for c_index, conditional in enumerate(obj.get("conditional_might", []) or []):
             label = f"objects.{object_id}.conditional_might[{c_index}]"
@@ -1706,10 +1739,32 @@ def validate_program(program: Any) -> list[str]:
                     supplied = set(spec)
                     required = {"delayed_id", "controller", "source_object", "waits_for", "effect_program_id",
                                 "optional_at_finalize", "controller_order"}
-                    if not required <= supplied or supplied - (watchers.DELAYED_FIELDS - {"source_identity", "created_turn"}):
+                    if not required <= supplied or supplied - (watchers.DELAYED_FIELDS - {"source_identity", "created_turn",
+                                                                                         "effect_program_hash"}):
                         errors.append(f"effects[{index}].delayed must carry {sorted(required)} and may add "
-                                      "target_object, target_identity and snapshot; the identities and the turn are "
-                                      "bound by the engine")
+                                      "target_object, target_identity and snapshot; the identities, the turn and the "
+                                      "program's hash are bound by the engine")
+                    # 2026-09-27 package 6: "at the end of THIS turn" (Targon's Peak) - the turn is the
+                    # one the instruction runs in, bound by the engine as it creates the trigger
+                    waits = spec.get("waits_for")
+                    if isinstance(waits, dict) and "turn" in waits and (
+                            waits.get("turn") != "this_turn" or waits.get("kind") != "turn"
+                            or waits.get("moment") != "end_of_turn" or set(waits) != {"kind", "moment", "turn"}):
+                        errors.append(f"effects[{index}].delayed.waits_for may name only {{kind: turn, moment: end_of_turn, "
+                                      "turn: this_turn}} - the end of the turn it is created in (Core 390.2)")
+                # 2026-09-27 package 6: the delayed trigger's own instructions, carried by the
+                # instruction that creates it - its content hash is bound on the trigger, so what
+                # resolves at the end of the turn is exactly this program (resolution_bridge.dispatch_program)
+                if "effects" in effect:
+                    nested = effect["effects"]
+                    if not isinstance(nested, list) or not nested:
+                        errors.append(f"effects[{index}].create_delayed_trigger.effects must be a non-empty list of instructions")
+                    elif any(isinstance(e, dict) and e.get("op") == "create_delayed_trigger" for e in nested):
+                        errors.append(f"effects[{index}].create_delayed_trigger.effects may not create another delayed trigger")
+                    else:
+                        errors.extend(f"effects[{index}].effects: {problem}" for problem in validate_program(
+                            {"schema_version": PROGRAM_VERSION, "ruleset": program.get("ruleset"),
+                             "program_id": f"{program.get('program_id')}:delayed", "effects": nested}))
             if effect.get("op") == "add_resource" and effect.get("restriction") is not None:
                 restriction = effect["restriction"]
                 if not isinstance(restriction, dict) or set(restriction) != {"uses"} or not isinstance(restriction["uses"], list) or not restriction["uses"] or any(u not in RESOURCE_USES for u in restriction["uses"]) or len(restriction["uses"]) != len(set(restriction["uses"])):
@@ -2471,6 +2526,29 @@ def source_active(state: dict[str, Any], source_id: str) -> bool:
     if zone_class(location) == "board":
         return True
     return location is not None and location[0] == "player" and location[2] == "legend_zone"
+
+
+GRANTED_ENTRY_CRITERIA = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True}
+
+
+def granted_entry_states(state: dict[str, Any], entering: str | None, kind: str, controller: str) -> list[dict[str, Any]]:
+    """2026-09-27 package 6: the entry replacements other permanents grant a Unit entering the board
+    ("Other friendly units enter ready.", Core 369.3): one per grant of each source that is on the
+    board now (365.1), on the entering Unit's controller's side, that is not the entering object
+    itself. `entering` is the object entering (None for a token not yet made); `kind` its type."""
+    found = []
+    for source_id in sorted(state.get("objects") or {}):
+        source = state["objects"][source_id]
+        grants = source.get("granted_entry_states") or []
+        if not grants or source_id == entering or zone_class(find_location(state, source_id)) != "board":
+            continue
+        for grant in grants:
+            criteria = grant["criteria"]
+            if kind != criteria["kind"] or not same_side(state, source.get("controller"), controller):
+                continue
+            found.append({"replacement_id": f"{source_id}:{grant['replacement_id']}", "source": source_id,
+                          "mode": "granted_entry_state", "value": grant["value"], "rule_locators": ["Core 369.3", "Core 365.1"]})
+    return found
 
 
 def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str | None) -> tuple[int, list[dict[str, Any]]]:
@@ -3933,6 +4011,13 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         modifiers = copy.deepcopy(effect.get("event_modifiers", {}))
         default_entry_state = "exhausted" if token_kind == "unit" else "ready"
         entry_state = modifiers.get("entry_state", default_entry_state)
+        # 2026-09-27 package 6: a token Unit enters the board too - a grant on the board ("Other
+        # friendly units enter ready.", Core 369.3) replaces its default when the instruction names none
+        granted = (granted_entry_states(new_state, None, token_kind, controller)
+                   if token_kind == "unit" and "entry_state" not in modifiers else [])
+        if granted:
+            entry_state = granted[-1]["value"]
+            trace["granted_entry_states"] = [g["replacement_id"] for g in granted]
         keywords = modifiers.get("result_keywords", []) if token_kind == "unit" else []
         new_state["objects"][object_id] = {
             "owner": owner,
@@ -4371,15 +4456,32 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # ADR-0014 §2 / Core 124: the delayed trigger is bound to the identities
         # it was created with, so a target that becomes a new object no longer
         # matches it and the trigger is dropped instead of firing on a stranger.
-        spec = dict(effect["delayed"])
+        spec = copy.deepcopy(effect["delayed"])
         if spec["controller"] not in new_state["players"]:
             raise ValueError("create_delayed_trigger requires a known controller")
+        this_turn = new_state.get("turn_id", DEFAULT_TURN_ID)
+        waits = spec.get("waits_for") or {}
+        if waits.get("turn") == "this_turn" and effect.get("ending_step_context") == this_turn:
+            # 2026-09-27 package 6, Core 359.3.e.16 (its own example is Targon's Peak): "at the end of
+            # this turn" once this turn's Ending Step has begun - the delayed ability's duration ended
+            # before it was generated, so it is not generated and its instructions are ignored
+            trace.update({"outcome": "no_op", "not_generated": True, "delayed_id": spec["delayed_id"],
+                          "reason": "the Ending Step of this turn has begun; the delayed trigger's window has passed",
+                          "rule_locators": OP_RULES[op] + ["Core 359.3.e.16"]})
+            return new_state, trace
+        if waits.get("turn") == "this_turn":
+            # the end of the turn it is created in, bound now (Core 390.2)
+            spec["waits_for"] = {"kind": "turn", "moment": "end_of_turn", "turn_id": this_turn}
         if any(entry["delayed_id"] == spec["delayed_id"] for entry in new_state.get("delayed_triggers", [])):
             raise ValueError(f"delayed trigger {spec['delayed_id']!r} already exists")
         spec["source_identity"] = object_identity(new_state, spec["source_object"]) or spec["source_object"]
         if spec.get("target_object") is not None:
             spec["target_identity"] = object_identity(new_state, spec["target_object"])
-        spec["created_turn"] = new_state.get("turn_id", DEFAULT_TURN_ID)
+        spec["created_turn"] = this_turn
+        if effect.get("effects"):
+            # package 6: the program the trigger will run is the one this instruction carries - its
+            # content hash rides on the trigger to the Chain (dispatch_program refuses any other)
+            spec["effect_program_hash"] = hash_value(effect["effects"])
         new_state.setdefault("delayed_triggers", []).append(spec)
         trace.update({"player": spec["controller"], "delayed_id": spec["delayed_id"],
                       "source_object": spec["source_object"], "source_identity": spec["source_identity"],
@@ -4695,7 +4797,9 @@ def printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
                 "affects": {"scope": "criteria", "criteria": {**copy.deepcopy(aura["criteria"]), "printed_aura_source": object_id,
                                                               "aura_controller": obj.get("controller")}},
                 "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
-                "timestamp": _legacy_timestamp(6, position), "value": {"amount": amount, "mode": "delta"},
+                "timestamp": _legacy_timestamp(6, position),
+                # package 6: the aura's own floor, applied fresh (a passive does not snapshot, 477.3.b)
+                "value": {"amount": amount, "mode": "delta", **({"minimum": aura["minimum"]} if "minimum" in aura else {})},
                 "duration": {"kind": "while_source_active"}, "passive": True,
             })
     # a Battlefield's own printed aura ("Units here have +1 [M]."): every Unit at it, either side
@@ -4754,7 +4858,10 @@ def _static_keyword_problem(entry: dict[str, Any]) -> bool:
     return False
 
 
-STATIC_AURA_CRITERIA = {"kind", "controller_relation", "exclude_source", "at_source_battlefield", "buffed"}
+STATIC_AURA_CRITERIA = {"kind", "controller_relation", "exclude_source", "at_source_battlefield", "buffed", "stunned"}
+# the criteria that are flags (true, or absent); package 6 (2026-09-27): `stunned` - only a Unit
+# that is Stunned right now (Core 423.1.a: a binary state)
+STATIC_AURA_FLAGS = ("exclude_source", "at_source_battlefield", "buffed", "stunned")
 BATTLEFIELD_AURA_CRITERIA = {"kind"}
 
 
@@ -4783,6 +4890,8 @@ def _printed_aura_applies(state: dict[str, Any], criteria: dict[str, Any], objec
         if at is None or at[0] != "battlefield" or where[0] != "battlefield" or where[1] != at[1]:
             return False
     if criteria.get("buffed") and not obj.get("buffed"):
+        return False
+    if criteria.get("stunned") and not obj.get("stunned"):
         return False
     return True
 
@@ -4884,7 +4993,8 @@ CONDITION_LEAVES = {
     "runes_at_least": {"count"},
     "attacking_or_defending_alone": set(),
     "friendly_unit_defends_alone": set(),
-    "controls_units": {"count", "location", "controller_relation"},
+    # 2026-09-27 package 6: `tag` - "if you control a Poro": only Units whose printed tags hold it (Core 133.8.a)
+    "controls_units": {"count", "location", "controller_relation", "tag"},
     "might_at_least": {"count", "object"},
     "has_keyword": {"keyword", "object"},
     "is_empowered": {"object"},
@@ -4967,6 +5077,8 @@ def validate_condition(condition: Any, path: str = "condition") -> list[str]:
         return [f"{path}.location must be board, battlefield or base"]
     if "zone" in condition and condition["zone"] not in PLAYER_ZONES:
         return [f"{path}.zone must be one of {sorted(PLAYER_ZONES)}"]
+    if "tag" in condition and (not isinstance(condition["tag"], str) or not condition["tag"]):
+        return [f"{path}.tag must be a non-empty string, as printed"]
     return []
 
 
@@ -5080,6 +5192,8 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
                 continue
             friendly = same_side(state, controller, obj.get("controller"))
             if (relation == "friendly") != friendly:
+                continue
+            if "tag" in condition and condition["tag"] not in object_tags(state, object_id_):
                 continue
             count += 1
         return count >= condition["count"]
@@ -5563,6 +5677,13 @@ def temporary_triggers(state: dict[str, Any], object_id: str, controller: str) -
 
 def keyword_values(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     return characteristics(state, object_id)["keywords"]
+
+
+def object_tags(state: dict[str, Any], object_id: str) -> list[str]:
+    """2026-09-27 package 6: the object's tags, as printed ("Poro", "Dragon"; Core 133.8, 143.1).
+    No effect the engine models grants or removes a tag yet (477.1.c would, in the Trait layer),
+    so this is the printed list; every reader of a tag goes through here."""
+    return list((state["objects"].get(object_id) or {}).get("tags") or [])
 
 
 def has_keyword(state: dict[str, Any], object_id: str, keyword: str) -> bool:
@@ -7088,6 +7209,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
         if effect.get("op") == "grant_keyword" and context is not None and context.get("combat") is not None:
             effect = {**effect, "combat_context": context["combat"]}
+        # 2026-09-27 package 6 (Core 359.3.e.16): whether this turn's Ending Step has begun - only a
+        # procedure knows; a delayed trigger "at the end of this turn" is then not generated
+        if effect.get("op") == "create_delayed_trigger" and context is not None and context.get("ending_step_begun") is not None:
+            effect = {**effect, "ending_step_context": context["ending_step_begun"]}
         if effect.get("op") == "discard" or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS):
             try:
                 effect = _resolve_discard(current, effect, decisions) if effect.get("op") == "discard" else _resolve_choice_object(current, effect, program, decisions)

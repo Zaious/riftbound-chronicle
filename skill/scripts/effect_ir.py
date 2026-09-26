@@ -2485,6 +2485,69 @@ def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str |
     return total, sources
 
 
+SPLIT_BONUS_RULES = ["Core 713", "Core 714", "Core 715.3", "Core 355.14.c", "Core 437.1.a.1"]
+
+
+def split_bonus_damage(state: dict[str, Any], controller: str | None, object_ids: list[str]) -> tuple[int, list[dict[str, Any]]]:
+    """Core 715.3: a Deal that Splits its damage has its Bonus Damage added ONCE, to the amount
+    being split - never to each share - so the bonus also raises how many Targets may be chosen
+    (355.14.c). What applies is what applies to the Deal (713, 714 - summed once): the
+    controller's own ("your spells and abilities"), and a Battlefield's "to units here" when the
+    Targets are there. `object_ids` are the Targets the split is over; none means no Deal, and no
+    Bonus Damage (715.4). A Battlefield's bonus over a split whose Targets are only partly at that
+    Battlefield is a case the rules do not settle; it is refused as a mechanic the engine does not
+    have, never guessed."""
+    return _split_bonus(state, controller, object_ids, strict=True)
+
+
+def split_target_cap(state: dict[str, Any], effect: dict[str, Any], controller: str | None, object_ids: list[str]) -> int:
+    """Core 355.14.c with 715.3: how many Targets a split may have - its printed amount plus the
+    Bonus Damage its Deal would have. Asked where the Targets are chosen (play, or a trigger's
+    finalization), over the chosen objects. As an upper bound it counts a Battlefield's bonus
+    when any chosen Target is there; how the amount is really divided is settled as it resolves
+    (split_bonus_damage, 355.14.h)."""
+    amount = effect.get("amount", 0)
+    if effect.get("source_kind") == "unit":
+        return amount
+    return amount + _split_bonus(state, controller, object_ids, strict=False)[0]
+
+
+def _split_bonus(state: dict[str, Any], controller: str | None, object_ids: list[str], *,
+                 strict: bool) -> tuple[int, list[dict[str, Any]]]:
+    object_ids = list(object_ids)
+    if not object_ids:
+        return 0, []
+    total = 0
+    sources: list[dict[str, Any]] = []
+    locations = [find_location(state, object_id) for object_id in object_ids]
+    for effect in canonical_effects(state):
+        if effect["kind"] != "bonus_damage":
+            continue
+        active, _ = _effect_active(state, effect)
+        if not active:
+            continue
+        criteria = effect["affects"]["criteria"]
+        scope = criteria["bonus_scope"]
+        kind = scope["kind"]
+        if kind not in BONUS_SCOPES:
+            raise NotImplementedError(f"Bonus Damage scope {kind!r} is not modelled")
+        if kind == "controller_sources" and criteria["controller"] != controller:
+            continue
+        if kind == "location":
+            there = [location is not None and location[0] == "battlefield" and location[1] == scope["battlefield"]
+                     for location in locations]
+            if not any(there):
+                continue
+            if strict and not all(there):
+                raise NotImplementedError(
+                    f"Bonus Damage {effect['effect_id']!r} is dealt to units at {scope['battlefield']!r}; a split whose "
+                    f"Targets are only partly there is not modelled (Core 715.3 adds the bonus once, to the amount split)")
+        total += effect["value"]["amount"]
+        sources.append({"modifier_id": effect["effect_id"], "source_object": effect["source"]["object"],
+                        "amount": effect["value"]["amount"], "scope": dict(scope)})
+    return total, sources
+
+
 def same_side(state: dict[str, Any], left: str | None, right: str | None) -> bool:
     """Module-level friendliness for criteria expansion: the same player, or the
     same declared team_id (2v2)."""
@@ -6473,14 +6536,17 @@ def _establish_selection(state: dict[str, Any], effect: dict[str, Any], program:
 
 
 def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None,
-                       *, bindings: dict[str, Any] | None = None, order_index: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+                       *, bindings: dict[str, Any] | None = None, order_index: int = 0,
+                       counted_when_chosen: Any = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Turn `targets` (or a decision_ref on `target`) into concrete selectors,
     consuming a target_selection decision when the program defers to one.
     Returns (selectors, meta) where meta says which decision was used.
 
     `bindings` are the selections earlier instructions of this program have
     established (selection-binding.v1); `order_index` is this instruction's
-    position, so a reference can only look backwards.
+    position, so a reference can only look backwards. `counted_when_chosen` names
+    the target selections the resolution bridge took from the chain item's record -
+    counted and checked where they were chosen (play, or the trigger's finalization).
     """
     import engine_decisions as ed  # local import keeps effect_ir importable on its own
     controller = program.get("controller")
@@ -6532,7 +6598,15 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
     if entry["stage"] not in {"play_declaration", "trigger_finalization"}:
         raise ValueError(f"target selection {targets['decision_ref']!r} was supplied at the wrong stage")
     chosen = list(entry["value"])
-    cap = targets["max"] if "max" in targets else effect.get("amount")   # a split: its damage is the cap (355.14.c)
+    if "max" in targets:
+        cap = targets["max"]
+    elif entry["decision_id"] in (counted_when_chosen or ()):
+        # a split whose Targets were counted where they were chosen, against the damage available
+        # then (355.14.c, 715.3); if the amount has shrunk since, 355.14.h settles it as it resolves
+        cap = len(chosen)
+    else:
+        # a split: its damage, with the Bonus Damage its Deal would have, is the cap (355.14.c, 715.3)
+        cap = split_target_cap(state, effect, controller, chosen)
     if not (targets["min"] <= len(chosen) <= cap):
         raise ValueError(f"target selection {targets['decision_ref']!r} chose {len(chosen)} objects; allowed {targets['min']}..{cap}")
     selectors = []
@@ -6847,7 +6921,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         # instruction into per-object applications with a typed instruction outcome.
         try:
             selectors, selector_meta = _resolve_selectors(current, effect, program, decisions,
-                                                          bindings=selection_bindings, order_index=index)
+                                                          bindings=selection_bindings, order_index=index,
+                                                          counted_when_chosen=(context or {}).get("targets_counted_when_chosen"))
         except SelectionBindingRefused as exc:
             # Narrow, and only here: the selection this instruction refers to is
             # one THIS program tried to establish and could not, because there
@@ -7199,7 +7274,21 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 outcomes[effect_id] = "skipped_illegal_target"
                 continue
             division = None
+            split_bonus = None
             if effect.get("division_ref") is not None and valid_sels:
+                # Core 715.3: the Bonus Damage is added once, to the amount split, over the Targets
+                # still legal - before it is divided; no share has it added again below
+                if effect.get("source_kind") != "unit":
+                    try:
+                        bonus, bonus_sources = split_bonus_damage(current, program.get("controller"),
+                                                                  [sel["object_id"] for sel in valid_sels])
+                    except NotImplementedError as exc:
+                        return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
+                                "reason": str(exc), "trace": trace}
+                    if bonus:
+                        split_bonus = {"base_amount": effect["amount"], "amount": bonus, "sources": bonus_sources,
+                                       "rule_locators": list(SPLIT_BONUS_RULES)}
+                        effect = {**effect, "amount": effect["amount"] + bonus}
                 division, refusal = split_division(current, effect, valid_sels, decisions, program.get("controller"))
                 if refusal is not None:
                     return {**base, **refusal, "failed_effect_index": index, "trace": trace}
@@ -7213,6 +7302,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id", "division_ref", "optional"}}
                 if division is not None:
                     single["amount"] = division[sel["object_id"]]
+                    # the share already holds its part of the split's Bonus Damage (715.3): marked,
+                    # so the single-target Deal does not add a bonus of its own (715.1)
+                    single["bonus_damage"] = {"included_in_split": effect_id, "split_bonus": (split_bonus or {}).get("amount", 0),
+                                              "rule_locators": ["Core 715.3"]}
                 single["object_id"] = sel["object_id"]
                 # a "here" restriction (location_ref) was bound and checked above, for this Target, now;
                 # the bound Battlefield is engine-internal and never an authorable field of the
@@ -7258,8 +7351,12 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             }
             if division is not None:
                 event["division"] = dict(division)
+                event["division_amount"] = effect["amount"]
                 event["rule_locators"] = list(dict.fromkeys(event["rule_locators"] + [
                     "Core 355.14.a", "Core 355.14.e", "Core 355.14.f", "Core 355.14.h"]))
+                if split_bonus is not None:
+                    event["bonus_damage"] = split_bonus
+                    event["rule_locators"] = list(dict.fromkeys(event["rule_locators"] + split_bonus["rule_locators"]))
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue

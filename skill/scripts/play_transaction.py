@@ -52,7 +52,7 @@ from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, deflect_total, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
-    play_prohibition, record_discarded_cards, record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
+    play_prohibition, record_discarded_cards, record_finalized_card, split_target_cap, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
 from effect_ir import ConditionUnsupported  # noqa: E402
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
@@ -1116,13 +1116,21 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 raise PlayError("choices", "decision_controller_mismatch", f"target selection {ref!r} was made by {entry['controller']!r}, not the card's controller", rule_locators=["Core 355.5"])
             identities = entry.get("selection_identities") or {}
             if effect.get("division_ref") is not None and isinstance(effect.get("targets"), dict) \
-                    and ref == effect["targets"].get("decision_ref") \
-                    and not (effect["targets"].get("min", 0) <= len(entry["value"]) <= effect.get("amount", 0)):
+                    and ref == effect["targets"].get("decision_ref"):
                 # 2026-09-27 package 5, Core 355.14.b-c: a split's Targets are chosen now, no more of
-                # them than the damage available as it is played or finalized
-                raise PlayError("choices", "target_count_illegal",
-                                f"target selection {ref!r} chose {len(entry['value'])} Targets for {effect.get('amount')} "
-                                f"damage to split (Core 355.14.c)", rule_locators=["Core 355.14.b", "Core 355.14.c"])
+                # them than the damage available as it is played or finalized - the printed amount
+                # with the Bonus Damage its Deal has now (715.3: the bonus is added to the amount split)
+                try:
+                    cap = split_target_cap(effect_state, effect, actor,
+                                           [o for o in entry["value"] if isinstance(o, str) and o in effect_state["objects"]])
+                except NotImplementedError as exc:
+                    raise PlayError("choices", "bonus_damage_unsupported", str(exc), unsupported=True,
+                                    rule_locators=["Core 713", "Core 715.3"]) from exc
+                if not (effect["targets"].get("min", 0) <= len(entry["value"]) <= cap):
+                    raise PlayError("choices", "target_count_illegal",
+                                    f"target selection {ref!r} chose {len(entry['value'])} Targets for {cap} "
+                                    f"damage to split (Core 355.14.c, 715.3)",
+                                    rule_locators=["Core 355.14.b", "Core 355.14.c", "Core 715.3"])
             for object_id in entry["value"]:
                 current_identity = entity_identity(effect_state, object_id)
                 if object_id in identities and current_identity is not None and identities[object_id] != current_identity:

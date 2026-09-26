@@ -426,6 +426,13 @@ def resolve_with_program(
     paid_cost = chain_item.get("trigger_cost_receipt")
     if program and paid_cost is not None:
         context = {**(context or {}), "trigger_base_cost_paid": paid_cost.get("cost_hash")}
+    # The target selections the program runs with from the chain item's record were counted where
+    # they were chosen (Core 355.14.c: a split's Targets against the damage available then, its
+    # Bonus Damage included, 715.3); resolution does not count them again against a changed amount.
+    counted = [entry["decision_id"] for entry in (finalized if finalized is not None else (played or []))
+               if isinstance(entry, dict) and isinstance(entry.get("decision_id"), str)]
+    if program and counted:
+        context = {**(context or {}), "targets_counted_when_chosen": counted}
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:

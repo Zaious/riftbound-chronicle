@@ -19,7 +19,18 @@ e2 and e3 (Might 6), p1's f1, and p2's e9 at bf2. Must hold:
     359.3.f.2), nothing is dealt;
   - no Target chosen (min 0): a no_op, no division asked for;
   - the validator refuses a split with a max of its own, on another op, without targets, or with
-    an amount read off the board.
+    an amount read off the board;
+  - Bonus Damage (Core 715.3: added once, to the amount split) - with the source at a Void Gate
+    ("Spells and abilities deal 1 Bonus Damage to units here", bound onto bf1), and again with
+    p1's Annie - Fiery ("Your spells and abilities deal 1 Bonus Damage"): 6 is split, six Targets
+    are accepted at finalization and seven refused; a division of 6 is dealt exactly as divided
+    (no share has the bonus added again) and the split's trace records the bonus once; divisions
+    summing to 5 or to 8 are refused; with no division the amount asked for is 6;
+  - through the resolution bridge: six Targets finalized with Annie in play, Annie gone before
+    it resolves - the six are not counted again against the 5 left; 5 is divided among five of
+    them (355.14.h) and a division keeping all six is refused;
+  - the damage division is the controller's and is made as it resolves: one made by p2 is
+    refused decision_controller_mismatch, one supplied for another stage is refused.
 """
 from __future__ import annotations
 
@@ -33,7 +44,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import clause_grammar as CG  # noqa: E402
 import play_transaction as PT  # noqa: E402
 from check_effect_ir import base_state, program, settle_contested  # noqa: E402
-from effect_ir import apply_program, hash_value, object_identity, validate_program  # noqa: E402
+from effect_ir import apply_program, hash_value, object_identity, validate_program, validate_state  # noqa: E402
 from engine_decisions import validate_engine_decisions  # noqa: E402
 
 SENTENCE = "Deal 5 damage split among any number of enemy units here."
@@ -84,8 +95,163 @@ def dealt(before, result):
             and after["objects"][o]["damage"] != before["objects"][o]["damage"]}
 
 
+VOID_GATE = "Spells and abilities deal 1 Bonus Damage to units here."
+
+
+def void_gate_board():
+    """board(), with bf1 carrying the Void Gate statement the clause grammar lowers, and e7 there too."""
+    import json
+    state = board()
+    state["objects"]["e7"] = unit("p2", 6)
+    state["battlefields"]["bf1"]["objects"].append("e7")
+    lowered = CG.compile_clause(VOID_GATE, CG.load_grammar())["passive"]
+    text = json.dumps(lowered.get("state_lists") or {}).replace('"$source_object"', '"bf1"') \
+        .replace('"$controller"', '"p2"').replace('"$clause_id"', '"bf1-statement"')
+    for key, entries in json.loads(text).items():
+        state.setdefault(key, []).extend(entries)
+    return settle_contested(state)
+
+
+def annie_board():
+    """board(), with p1's Annie - Fiery in p1's Base ("Your spells and abilities deal 1 Bonus Damage"), and e7."""
+    state = board()
+    state["objects"]["e7"] = unit("p2", 6)
+    state["battlefields"]["bf1"]["objects"].append("e7")
+    state["objects"]["annie"] = unit("p1", 3)
+    state["players"]["p1"]["zones"]["base"].append("annie")
+    state["damage_modifiers"] = [{"modifier_id": "annie-fiery", "source_object": "annie", "controller": "p1", "amount": 1,
+                                  "scope": {"kind": "controller_sources"}}]
+    return settle_contested(state)
+
+
+def bonus_cases(errors: list[str]) -> None:
+    """Core 715.3: the Bonus Damage is added once, to the amount split - also to how many Targets
+    may be chosen - and never again to each share."""
+    prog = split_program()
+    seven = ["e1", "e2", "e3", "e4", "e5", "e6", "e7"]
+    for label, state in (("Void Gate", void_gate_board()), ("Annie - Fiery", annie_board())):
+        if validate_state(state):
+            errors.append(f"{label}: the board is invalid: {validate_state(state)}")
+            continue
+        try:
+            six_ok = PT._check_play_targets(state, "p1", prog, decisions(state, seven[:6]), stage="trigger_finalization")
+            if sorted(six_ok) != sorted(seven[:6]):
+                errors.append(f"{label}: six Targets for 5 + 1 Bonus Damage were not all accepted: {six_ok}")
+        except PT.PlayError as refusal:
+            errors.append(f"{label}: six Targets for 5 + 1 Bonus Damage were refused at finalization "
+                          f"({refusal.reason_code}); the bonus raises the cap (715.3)")
+        try:
+            PT._check_play_targets(state, "p1", prog, decisions(state, seven), stage="trigger_finalization")
+            errors.append(f"{label}: seven Targets for 5 + 1 damage were accepted at finalization")
+        except PT.PlayError as refusal:
+            if refusal.reason_code != "target_count_illegal":
+                errors.append(f"{label}: seven Targets were refused for the wrong reason: {refusal.reason_code}")
+        done = run(state, ["e1", "e2", "e3"], {"e1": 2, "e2": 2, "e3": 2})
+        if not done.get("committed") or dealt(state, done) != {"e1": 2, "e2": 2, "e3": 2}:
+            errors.append(f"{label}: a 2/2/2 division of 5 + 1 Bonus Damage was not dealt as divided: "
+                          f"{done.get('reason') or done.get('errors')} {dealt(state, done) if done.get('committed') else ''}")
+        else:
+            split = next((e for e in done["trace"] if e.get("division") is not None), {})
+            if (split.get("bonus_damage") or {}).get("amount") != 1 or split["bonus_damage"].get("base_amount") != 5 \
+                    or split.get("division_amount") != 6:
+                errors.append(f"{label}: the split's trace does not record the bonus once on the amount split: "
+                              f"{split.get('bonus_damage')} {split.get('division_amount')}")
+        wide = run(state, seven[:6], {o: 1 for o in seven[:6]})
+        if not wide.get("committed") or dealt(state, wide) != {o: 1 for o in seven[:6]}:
+            errors.append(f"{label}: 6 divided 1 each among six Targets was not dealt: {wide.get('reason') or wide.get('errors')}")
+        for why, division in (("summing to 5 (the bonus left out)", {"e1": 1, "e2": 2, "e3": 2}),
+                              ("summing to 8 (the bonus added to each share)", {"e1": 2, "e2": 3, "e3": 3})):
+            got = run(state, ["e1", "e2", "e3"], division)
+            if got.get("committed") or got.get("valid") is not False:
+                errors.append(f"{label}: a division {why} was accepted")
+        asked = run(state, ["e1", "e2", "e3"])
+        if asked.get("reason_code") != "damage_division_required" or asked.get("division_amount") != 6:
+            errors.append(f"{label}: with no division the amount asked for is {asked.get('division_amount')}, not 6")
+
+
+def bridged_bonus_case(errors: list[str]) -> None:
+    """Six Targets finalized with Annie - Fiery in play (5 + 1); Annie gone before it resolves. The
+    six were counted when chosen (355.14.c); now 5 is divided among five of them (355.14.h)."""
+    from check_rules_core import fixture
+    from resolution_bridge import dispatch_program, finalize_trigger, program_hash, resolve_with_program
+    from rules_core import next_procedure, pass_priority, schedule_triggered_items
+    prog = split_program()
+    prog.pop("source_identity")               # a registered template; the chain item supplies it
+    registry = {prog["program_id"]: prog}
+    state = annie_board()
+    descriptor = {"trigger_id": "v1-attack", "controller": "p1", "source_object": "v1", "controller_order": 0,
+                  "effect_program_id": prog["program_id"], "optional_at_finalize": False,
+                  "effect_program_hash": program_hash(prog), "trigger_kind": "triggered",
+                  "source_identity": object_identity(state, "v1")}
+    scheduled = schedule_triggered_items(fixture(), [descriptor])
+    if not scheduled.get("applied"):
+        errors.append(f"bridge: the trigger was not scheduled: {scheduled.get('reason_code')}")
+        return
+    six = ["e1", "e2", "e3", "e4", "e5", "e6"]
+    final = finalize_trigger(scheduled["next_state"], state, registry, decisions(state, six))
+    if not final.get("committed"):
+        errors.append(f"bridge: six Targets with Annie in play were not finalized: {final.get('reason')} {final.get('message')}")
+        return
+    timing = final["next_timing_state"]
+    for actor in ("p1", "p2"):
+        timing = (pass_priority(timing, actor) or {}).get("next_state") or timing
+    step = next_procedure(timing)
+    if step.get("procedure") != "resolve_newest_finalized":
+        errors.append(f"bridge: the finalized split is not next to resolve: {step}")
+        return
+    item_id = step["subject"]
+    chain_item = next(i for i in timing["chain"]["items"] if i["id"] == item_id)
+    dispatched, refusal = dispatch_program(registry, chain_item)
+    if refusal:
+        errors.append(f"bridge: dispatch refused: {refusal}")
+        return
+    gone = copy.deepcopy(final["next_effect_state"])
+    gone["players"]["p1"]["zones"]["base"].remove("annie")
+    gone["players"]["p1"]["zones"]["trash"].append("annie")
+    gone["objects"]["annie"]["identity"] = "annie@1"
+
+    def division(values):
+        return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(gone),
+                "decisions": [{"decision_id": "t-division", "kind": "damage_division", "stage": "resolution",
+                               "controller": "p1", "value": dict(values),
+                               "selection_identities": {o: object_identity(gone, o) for o in values}}]}
+
+    five = {o: 1 for o in six[:5]}
+    kept = resolve_with_program(timing, item_id, gone, dispatched, engine_decisions=division(five))
+    if not kept.get("committed") or dealt(gone, {"next_state": kept["next_effect_state"]}) != five:
+        errors.append(f"bridge: with Annie gone, 5 among five of the six finalized Targets was not dealt "
+                      f"(355.14.h): {kept.get('reason')}")
+    all_six = resolve_with_program(timing, item_id, gone, dispatched, engine_decisions=division({o: 1 for o in six}))
+    if all_six.get("committed"):
+        errors.append("bridge: with Annie gone, a division keeping all six Targets for 5 damage was accepted")
+
+
+def division_decision_cases(errors: list[str]) -> None:
+    """The division is the program controller's, made as the split resolves (355.14.e, 355.14.h)."""
+    state = board()
+    theirs = decisions(state, ["e1", "e2", "e3"], {"e1": 3, "e2": 1, "e3": 1})
+    for entry in theirs["decisions"]:
+        if entry["kind"] == "damage_division":
+            entry["controller"] = "p2"
+    got = apply_program(state, split_program(), decisions=theirs)
+    if got.get("committed") or got.get("reason_code") != "decision_controller_mismatch":
+        errors.append(f"a damage division made by p2 for p1's split was not refused decision_controller_mismatch: "
+                      f"{got.get('reason_code')} {got.get('errors')}")
+    early = decisions(state, ["e1", "e2", "e3"], {"e1": 1, "e2": 2, "e3": 2})
+    for entry in early["decisions"]:
+        if entry["kind"] == "damage_division":
+            entry["stage"] = "trigger_finalization"
+    got = apply_program(state, split_program(), decisions=early)
+    if got.get("committed") or got.get("valid") is not False:
+        errors.append(f"a damage division supplied at finalization, not as the split resolves, was accepted: "
+                      f"{got.get('reason_code')}")
+
+
 def main() -> int:
     errors: list[str] = []
+    bonus_cases(errors)
+    bridged_bonus_case(errors)
+    division_decision_cases(errors)
     prog = split_program()
     if validate_program(prog):
         errors.append(f"the grammar's split program is invalid: {validate_program(prog)}")

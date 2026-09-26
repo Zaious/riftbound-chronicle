@@ -761,6 +761,15 @@ def _lower_granted_open_permission(params):
     }
 
 
+def _lower_enters_exhausted(params):
+    """Core 369.3: a printed replacement on how this permanent enters - exhausted, where a Gear
+    would enter ready (359.2.d). resolution_bridge.entry_state_for applies it at entry."""
+    return {
+        "object_fields": {"entry_replacements": [{"mode": "entry_state", "value": "exhausted"}]},
+        "ast": {"node": "passive", "kind": "entry_replacement", "params": {"entry_state": "exhausted"}},
+    }
+
+
 AURA_HERE = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True, "at_source_battlefield": True}
 
 
@@ -896,6 +905,7 @@ LOWERINGS = {
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "you_may_play_me_to_an_open_battlefield": _lower_open_permission,
     "friendly_units_may_be_played_to_open_battlefields": _lower_granted_open_permission,
+    "this_enters_exhausted": _lower_enters_exhausted,
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,
@@ -985,6 +995,10 @@ TRIGGER_WRAPPERS = {
     # both fields carry the same trigger_id, so it goes on the Chain at most once per
     # Combat (383.4.e.2.a, 383.4.f.2.a).
     "when_i_attack_or_defend": (("attack_triggers", "defend_triggers"), "on-attack-or-defend", None),
+    # 2026-09-27: one ability, two conditions of different kinds - a Play Effect (Core 383.4.a,
+    # 419.4.a) and a Conquer Effect (383.4.c.2.a). The conquer field's default scope is the
+    # Unit's own (unit_here, battlefield_control._score_triggers), so no extra is shared.
+    "when_im_played_and_when_i_conquer": (("play_triggers", "conquer_triggers"), "on-play-and-conquer", None),
     # 2026-09-24: watched triggers - a typed watch over the semantic events (watchers.py),
     # woken by the play transaction's "played" and by every resolution's events. The player
     # "you" is the event's actor; each fact the text names is a named filter, nothing else.

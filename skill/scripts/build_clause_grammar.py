@@ -845,6 +845,18 @@ LITERAL = [
      ["Friendly units may be played to open battlefields."],
      ["friendly units may be played to occupied enemy battlefields", "you may play me to an open battlefield",
       "enemy units may be played to open battlefields"]),
+    # 2026-09-27: a printed replacement on how this permanent enters (Core 369.3). A Gear would
+    # otherwise enter ready (359.2.d); a Unit already enters exhausted (143.4, 359.2.c).
+    ("this_enters_exhausted",
+     r"this enters exhausted",
+     ["Core 369.3", "Core 359.2.d", "Core 143.4"], "passive", ["entry_replacements"],
+     ("The permanent's own entry replacement: it enters the board exhausted (resolution_bridge."
+      "entry_state_for reads it). A timed or granted form ('units you play this turn enter exhausted'), "
+      "or 'ready', is a different clause and stays unparsed."),
+     ["This enters exhausted."],
+     ["this enters ready",
+      "units you play enter exhausted",
+      "i enter ready"]),
     ("units_cant_move_from_here_to_base",
      r"units can't move from here to base",
      ["Core 144.4.b", "Core 359.3.e.6", "Core 190.6.a"], "passive", ["move_restriction"],
@@ -917,6 +929,15 @@ WRAPPERS = [
      ["attack_triggers"],
      ["When I attack or defend, draw 1."],
      ["when i attack, draw 1", "when i defend, draw 1", "when you attack or defend, draw 1"]),
+    # 2026-09-27: one Unit ability with two trigger conditions of different kinds - a Play Effect
+    # (Core 383.4.a, 419.4.a: on play completion) and a Conquer Effect (383.4.c, 383.4.c.2.a: the
+    # Unit present at the Battlefield Conquered). The same descriptor in play_triggers and
+    # conquer_triggers; the two events are different, so each schedules it at most once.
+    ("when_im_played_and_when_i_conquer", r"when i'm played and when i conquer, (?P<inner>.+)",
+     ["Core 383.4.a", "Core 419.4.a", "Core 383.4.c", "Core 383.4.c.2.a", "Core 469.1"],
+     ["play_triggers", "conquer_triggers"],
+     ["When I'm played and when I conquer, draw 1."],
+     ["when i'm played, draw 1", "when i conquer, draw 1", "when i'm played or when i hold, draw 1"]),
     # 2026-09-25 (Jinx - Loose Cannon): a Beginning Phase trigger (turn_cycle schedules it with
     # the Beginning Step's other effects, Core 315.2.a); both printed spellings
     # 2026-09-27 (Mushroom Pouch): BEFORE the plain row, which would take the condition as its inner

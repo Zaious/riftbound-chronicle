@@ -7547,6 +7547,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             members, gone = [], []
             for member in group["chosen"]:
                 object_id = member["object_id"]
+                if object_id in members:
+                    continue            # chosen twice (a group that allows it): it is one object, acted on once
                 if object_id in current["objects"] and object_identity(current, object_id) == member["identity"] \
                         and zone_class(find_location(current, object_id)) == "board":
                     members.append(object_id)

@@ -70,7 +70,7 @@ WHIRL = [{"op": "each_player", "effect_id": "ep", "players": "all", "order": "af
                                   "criteria": {"kind": "unit"}}}]}]
 INVERT = [{"op": "each_player", "effect_id": "ep", "players": "all", "order": "turn_order",
            "effects": [{"op": "discard", "effect_id": "d", "player": "$each_player", "whole_hand": True}]},
-          {"op": "each_player", "effect_id": "ep2", "players": "all", "order": "turn_order",
+          {"op": "each_player", "effect_id": "epd", "players": "all", "order": "turn_order",
            "effects": [{"op": "draw", "effect_id": "dr", "player": "$each_player", "count": 4}]}]
 EDICT = [{"op": "each_player", "effect_id": "ep", "players": "others", "order": "after_controller",
           "effects": [{"op": "choose_objects", "effect_id": "ch", "decision_ref": "ch", "group": "ke", "distinct_in_group": True,
@@ -143,6 +143,26 @@ def three_players(state: dict) -> dict:
                                         "rune_deck": []}, "resources": {"energy": 0, "power": {}}}
     unit(state, "c1u", "p3")
     return state
+
+
+def judgment_case(state: dict) -> tuple[dict, list[dict]]:
+    """Divine Judgment's board and choices: p1 has three units, three gear, three runes and three cards in
+    hand and keeps two of each; p2 keeps two of its three units (its one rune and one card are forced); p1
+    orders the four cards bound for its Main Deck."""
+    judge = copy.deepcopy(state)
+    unit(judge, "a3", "p1")
+    unit(judge, "b2", "p2")
+    for rune, owner in (("rn1", "p1"), ("rn2", "p1"), ("rn3", "p1"), ("rn4", "p2")):
+        card(judge, rune, owner, "base", kind="rune")
+    card(judge, "h1c", "p1", "hand")
+    for gear in ("g1a", "g1b", "g1c"):
+        card(judge, gear, "p1", "base", kind="gear")
+    chosen = [pick(judge, "cu@p1", "p1", ["u1", "a1"]), pick(judge, "cg@p1", "p1", ["g1a", "g1b"]),
+              pick(judge, "cr@p1", "p1", ["rn1", "rn2"]),
+              pick(judge, "ch@p1", "p1", ["h1a", "h1b"], kind="card_selection"),
+              pick(judge, "cu@p2", "p2", ["u2", "b1"]),
+              pick(judge, "rc:order:p1.main_deck", "p1", ["h1c", "g1c", "a3", "a2"], kind="card_ordering")]
+    return judge, chosen
 
 
 def program(effects) -> dict:
@@ -290,6 +310,13 @@ def main() -> int:
     twice = run(three, EDICT, [pick(three, "ch@p2", "p2", ["b1"]), pick(three, "ch@p3", "p3", ["b1"])], context=ctx3)
     if twice.get("committed") or twice.get("reason_code") != "illegal_operation":
         errors.append(f"p3 choosing the unit p2 chose was not refused: {twice.get('reason_code')}")
+    # a group that allows a repeat (no distinct_in_group): the unit chosen twice is one object, killed once
+    loose = copy.deepcopy(EDICT)
+    loose[0]["effects"][0].pop("distinct_in_group")
+    once = run(three, loose, [pick(three, "ch@p2", "p2", ["b1"]), pick(three, "ch@p3", "p3", ["b1"])], context=ctx3)
+    if not once.get("committed") or once["next_state"]["players"]["p2"]["zones"]["trash"].count("b1") != 1 \
+            or once["trace"][-1].get("affected_objects") != ["b1"]:
+        errors.append(f"a unit chosen twice is killed once: {once.get('reason') or once.get('errors')}")
     mine = run(three, EDICT, [pick(three, "ch@p2", "p2", ["a1"]), pick(three, "ch@p3", "p3", ["c1u"])], context=ctx3)
     if mine.get("committed") or mine.get("reason_code") != "illegal_operation":
         errors.append(f"p2 choosing a unit the caster controls was not refused: {mine.get('reason_code')}")
@@ -307,18 +334,7 @@ def main() -> int:
         errors.append(f"'those units' with nothing chosen was not refused: {unbound.get('reason_code')}")
 
     # ---------------------------------------------------------------- groups: the rest
-    judge = copy.deepcopy(state)
-    unit(judge, "a3", "p1")
-    for rune, owner in (("rn1", "p1"), ("rn2", "p1"), ("rn3", "p1"), ("rn4", "p2")):
-        card(judge, rune, owner, "base", kind="rune")
-    card(judge, "h1c", "p1", "hand")
-    for gear in ("g1a", "g1b", "g1c"):
-        card(judge, gear, "p1", "base", kind="gear")
-    chosen = [pick(judge, "cu@p1", "p1", ["u1", "a1"]), pick(judge, "cg@p1", "p1", ["g1a", "g1b"]),
-              pick(judge, "cr@p1", "p1", ["rn1", "rn2"]),
-              pick(judge, "ch@p1", "p1", ["h1a", "h1b"], kind="card_selection"),
-              pick(judge, "cu@p2", "p2", ["u2", "b1"]),
-              pick(judge, "rc:order:p1.main_deck", "p1", ["h1c", "g1c", "a3", "a2"], kind="card_ordering")]
+    judge, chosen = judgment_case(state)
     done = run(judge, JUDGE, chosen)
     if not done.get("committed"):
         errors.append(f"Divine Judgment refused: {done.get('reason') or done.get('errors')}")

@@ -51,6 +51,20 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
 #   printed_energy_at_least  the object's PRINTED Energy cost is at least N - "a spell that costs
 #                            [5] or more"; Core 206: an effect that needs a card's cost for any
 #                            purpose uses its printed (or copied) cost, never what was paid
+#   card_played_ordinal      (2026-09-27, package 6) the card played is the Nth card its player has
+#                            played this turn - "When you play your second card in a turn"; counted
+#                            when each play is Finalized (Core 419.4.b), every play of the turn, the
+#                            ones before the watching card was on the board included
+#   killed_by_your_spell     (2026-09-27, package 6) a death the watcher's controller is responsible for,
+#                            attributed to a spell (Core 428.5: a spell's own Kill instruction, a
+#                            Cleanup death of a unit it dealt damage to, or an ability originating from
+#                            a spell - resolution_bridge.kill_attributed stamps it) - "When you kill a
+#                            unit with a spell"
+#   object_not_tagged        (2026-09-27, package 6) the object did not have this tag when the event
+#                            happened - "another non-Recruit unit"; tags are categories (Core 133.8)
+#                            read off the object as it was (a death, Core 428.1), a token's by the rule
+#                            that makes it (Core 187.1); an object whose tags were never observed is
+#                            refused by name, never guessed
 WATCH_FILTERS = {
     "object_kind": {"spell", "unit", "gear"},
     "object_controller_relation": {"friendly", "enemy"},
@@ -61,7 +75,18 @@ WATCH_FILTERS = {
     "destination_zone": {"main_deck"},
     "destination_kind": {"battlefield"},
     "printed_energy_at_least": set(range(1, 21)),
+    "card_played_ordinal": set(range(1, 21)),
+    "object_not_tagged": {"Recruit"},
+    "killed_by_your_spell": {True},
 }
+# 2026-09-27 (package 6): where a triggered ability works when that is not the board. Core 385.1-385.2:
+# an ability of a card outside the board says where it works, and works there and nowhere else - a
+# descriptor naming `functions_from` listens only while its source is in that zone of its OWNER (a
+# trash is its owner's, Core 108.2.a, 428.2, and so is the ability, 191.4.a.1). It is read on the state after the event, so a card that
+# enters that zone as the condition is met triggers (Core 383.2.c.1: Immortal Phoenix killed by the very
+# spell whose kill it watches) and one that leaves it at the same time does not (383.2.c.2). A
+# descriptor without it works where every other ability works: the board, or a Legend's Legend Zone.
+FUNCTIONS_FROM_ZONES = {"trash"}
 # "each": one trigger per matching event (Core 383.3.a); "one_or_more": one per batch of
 # simultaneous events however many match ("When you stun one or more enemy units").
 WATCH_GROUPINGS = {"each", "one_or_more"}
@@ -80,7 +105,8 @@ TURN_MOMENTS = {"end_of_turn", "beginning_of_turn"}
 MAX_CAUSAL_DEPTH = 1
 
 DESCRIPTOR_FIELDS = {"trigger_id", "controller", "source_object", "controller_order", "effect_program_id",
-                     "optional_at_finalize", "watch", "per_turn_limit", "ability_id", "effect_program_hash"}
+                     "optional_at_finalize", "watch", "per_turn_limit", "ability_id", "effect_program_hash",
+                     "functions_from"}
 DELAYED_FIELDS = {"delayed_id", "controller", "source_object", "source_identity", "target_object", "target_identity",
                   "waits_for", "effect_program_id", "optional_at_finalize", "controller_order", "snapshot",
                   "created_turn"}
@@ -143,6 +169,22 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
     return errors
 
 
+def functions_from_errors(descriptor: dict[str, Any], obj: Any, path: str) -> list[str]:
+    """`functions_from` (Core 385.2): a non-empty list of the owner's zones the ability works from, and
+    nothing else; the ability of a source outside the board is controlled by the source's owner (Core
+    191.4.a.1), so the descriptor's controller must be the card's owner."""
+    if "functions_from" not in descriptor:
+        return []
+    zones = descriptor["functions_from"]
+    if not isinstance(zones, list) or not zones or len(zones) != len(set(zones)) \
+            or any(zone not in FUNCTIONS_FROM_ZONES for zone in zones):
+        return [f"{path}.functions_from must be a non-empty list of {sorted(FUNCTIONS_FROM_ZONES)} (Core 385.2)"]
+    if not isinstance(obj, dict) or descriptor.get("controller") != obj.get("owner"):
+        return [f"{path}.controller must be the card's owner: an ability of a card outside the board is its "
+                f"owner's (Core 191.4.a.1)"]
+    return []
+
+
 def _limit_errors(value: Any, path: str) -> list[str]:
     if value is None:
         return []
@@ -178,6 +220,7 @@ def validate_watch_state(state: dict[str, Any]) -> list[str]:
             seen_triggers.add(descriptor["trigger_id"])
             errors.extend(_watch_errors(descriptor["watch"], f"{path}.watch"))
             errors.extend(_limit_errors(descriptor.get("per_turn_limit"), f"{path}.per_turn_limit"))
+            errors.extend(functions_from_errors(descriptor, obj, path))
 
     delayed = state.get("delayed_triggers", [])
     if not isinstance(delayed, list):
@@ -333,20 +376,54 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                                        "printed_cost_unknown")
             if printed < wanted:
                 return False
+        elif key == "card_played_ordinal":
+            # the ordinal the play transaction stamped on its own `played` event (Core 419.4.b)
+            if event.get("kind") != "played" or event.get("play_ordinal") != wanted:
+                return False
+        elif key == "killed_by_your_spell":
+            killed = event.get("killed_by") or {}
+            if event.get("kind") != "died" or killed.get("responsible_player") != controller or not any(
+                    ((state.get("objects") or {}).get(o) or {}).get("kind") == "spell" for o in killed.get("objects") or []):
+                return False
+        elif key == "object_not_tagged":
+            tags = event_object_tags(state, event)
+            if tags is None:
+                raise WatchUnsupported(f"{subject!r} carries no observed tags, so whether it is a {wanted} is "
+                                       f"not known (Core 133.8); refused rather than guessed", "object_tags_unknown")
+            if wanted in tags:
+                return False
         else:
             return False
     return True
 
 
-def source_active(state: dict[str, Any], source_object: str | None) -> bool:
+def event_object_tags(state: dict[str, Any], event: dict[str, Any]) -> list[str] | None:
+    """The tags of the object the event is about, as it was when the event happened: a death carries
+    them (game_events: read off the object before it left the board, Core 428.1 - a token has ceased
+    to exist by now, Core 186.1); any other event reads the object now. None when never observed."""
+    if "object_tags" in event:
+        return event["object_tags"]
+    from effect_ir import object_tags
+
+    subject = event.get("object")
+    return object_tags(state, subject) if subject in (state.get("objects") or {}) else None
+
+
+def source_active(state: dict[str, Any], source_object: str | None, functions_from: list[str] | None = None) -> bool:
     """A watcher listens only while its source is where its abilities work: on the board
     (a Base or a Battlefield) or in its controller's Legend Zone. A card in a hand, a deck
-    or a trash has no triggered abilities working (2026-09-24)."""
+    or a trash has no triggered abilities working (2026-09-24) - unless the ability says where
+    it works (2026-09-27, Core 385.2: `functions_from`), and then only there: in that zone of the
+    card's owner, and not on the board or anywhere else."""
     from effect_ir import find_location, zone_class
 
     if source_object not in (state.get("objects") or {}):
         return False
     location = find_location(state, source_object)
+    if functions_from:
+        owner = state["objects"][source_object].get("owner")
+        return location is not None and location[0] == "player" and location[1] == owner \
+            and location[2] in functions_from
     return zone_class(location) == "board" or (location is not None and location[0] == "player"
                                                and location[2] == "legend_zone")
 
@@ -499,7 +576,7 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
     occurrences = counted.setdefault("watch_occurrences", {})
     for object_id in sorted(state.get("objects") or {}):
         for descriptor in state["objects"][object_id].get("event_triggers", []) or []:
-            if not source_active(state, descriptor["source_object"]):
+            if not source_active(state, descriptor["source_object"], descriptor.get("functions_from")):
                 continue
             watch = descriptor["watch"]
             matched = [event for event in events

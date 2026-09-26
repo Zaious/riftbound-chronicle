@@ -109,9 +109,26 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
         location = find_location(effect_state, object_id)
         in_legend_zone = (location is not None and location[0] == "player" and location[2] == "legend_zone"
                           and obj.get("kind") == "legend")
+        # 2026-09-27 (package 6, Core 385.2): a card outside the board whose Conquer Effect says where
+        # it works ("When you conquer, ... this from your trash ...") - read from that zone of its
+        # owner, only there, and only for its owner's Conquer; its other descriptors are not
+        from_zone = [d for d in obj.get(field, []) or [] if d.get("functions_from")]
+        if from_zone and location is not None and location[0] == "player" and location[1] == obj.get("owner") \
+                and obj.get("owner") == player:
+            for descriptor in from_zone:
+                if location[2] not in descriptor["functions_from"] or descriptor.get("scope") != "controller":
+                    continue
+                copied = {k: v for k, v in descriptor.items() if k not in ("scope", "functions_from")}
+                copied.update({"trigger_kind": "triggered", "batch_id": batch_id, "batch_sequence": 0,
+                               "scored_battlefield": battlefield_id, "how": how, "scope": "controller",
+                               "functions_from": list(descriptor["functions_from"]),
+                               "source_identity": object_identity(effect_state, object_id) or f"{object_id}@0"})
+                descriptors.append(copied)
         if obj.get("controller") != player or not (zone_class(location) == "board" or in_legend_zone):
             continue
         for descriptor in obj.get(field, []) or []:
+            if descriptor.get("functions_from"):
+                continue   # it works only from the zone it names, never from the board (Core 385.2)
             scope = descriptor.get("scope", "unit_here")
             if scope == "unit_here" and (obj.get("kind") != "unit" or find_location(effect_state, object_id) != ("battlefield", battlefield_id, None)):
                 continue

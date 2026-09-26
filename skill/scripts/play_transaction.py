@@ -1626,10 +1626,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 accelerate_entry_replacement(card, item_id))
         working.setdefault("chain_items", {})[item_id] = entry
         identity_after = _bump_identity(working, card) if not is_ability else object_identity(working, card)
+        play_ordinal = None
         if not is_ability:
             # Core 419.4.b / 812.1.c: this card is Finalized by this play; a
             # Legion reads that, even if the card is later countered.
             record_finalized_card(working, actor, card)
+            # 2026-09-27 (package 6): and it is this player's Nth play this turn - what
+            # "When you play your second card in a turn" reads off the played event
+            from effect_ir import record_card_played
+            play_ordinal = record_card_played(working, actor)
         if next_card:
             # 2026-09-27 (Core 391): the next-card effects this play is the "next" of are spent;
             # an entry state one becomes an entry replacement bound to THIS play (the same shape
@@ -1748,7 +1753,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         play_id=declaration["play_id"], card=card, actor=actor,
         object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
         identity_after=identity_after, from_hidden=source_kind == "facedown",
-        turn_player=timing_state.get("turn_player"))]
+        turn_player=timing_state.get("turn_player"), play_ordinal=play_ordinal)]
     if cost_events or cost_triggers or played:
         import watchers
         from resolution_bridge import _settle_trigger_orders

@@ -239,6 +239,8 @@ jobs:
         run: python3 skill/scripts/check_watch_wiring.py
       - name: A Standard Move wakes watchers, the Nth time I move, and a Legend's Conquer and end-of-turn triggers
         run: python3 skill/scripts/check_move_count_and_legend_triggers.py
+      - name: Where a triggered ability works (the trash), the Nth card played this turn, a non-Recruit death
+        run: python3 skill/scripts/check_trigger_zones.py
       - name: A Might change over every unit of a side, Base and Battlefield
         run: python3 skill/scripts/check_bulk_might.py
 
@@ -664,6 +666,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_token_minting.py"
           python3 "$REPO/skill/scripts/check_watch_wiring.py"
           python3 "$REPO/skill/scripts/check_move_count_and_legend_triggers.py"
+          python3 "$REPO/skill/scripts/check_trigger_zones.py"
           python3 "$REPO/skill/scripts/check_bulk_might.py"
           python3 "$REPO/skill/scripts/check_static_auras.py"
           python3 "$REPO/skill/scripts/check_keyword_auras.py"

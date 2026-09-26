@@ -253,6 +253,26 @@ def _trigger_left_unpaid(base: dict[str, Any], timing_state: dict[str, Any], eff
             "rule_locators": rule_locators}
 
 
+def kill_attributed(effect_events: list[dict[str, Any]], cleanup_events: list[dict[str, Any]], *,
+                    killer: str | None, responsible: str | None) -> list[dict[str, Any]]:
+    """The events of one resolution, its deaths stamped with the kill's attribution (Core 428.5): a
+    death by one of its own instructions (428.5.b), or a death in the Cleanup right after it of a unit
+    it dealt damage to (428.5.c), is a kill by the resolving card - or, for an ability, by the object
+    it originates from, which is attributed with it (428.5.d) - and its controller is the player
+    responsible (428.5.c.1). Copies are stamped; the events themselves are not changed. A death the
+    resolution did not cause (a Cleanup death of a unit it did not damage) is left unattributed."""
+    if killer is None or responsible is None:
+        return effect_events + cleanup_events
+    damaged = {event.get("object") for event in effect_events if event.get("kind") == "damaged"}
+
+    def stamp(event: dict[str, Any], rules: list[str]) -> dict[str, Any]:
+        return {**event, "killed_by": {"objects": [killer], "responsible_player": responsible,
+                                       "rule_locators": rules + ["Core 428.5.d"]}}
+    return ([stamp(e, ["Core 428.5.b"]) if e.get("kind") == "died" else e for e in effect_events]
+            + [stamp(e, ["Core 428.5.c", "Core 428.5.c.1"]) if e.get("kind") == "died" and e.get("object") in damaged else e
+               for e in cleanup_events])
+
+
 def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], next_effect: dict[str, Any],
                             paid: dict[str, Any], engine_decisions: dict[str, Any] | None, item_id: str) -> dict[str, Any]:
     """What the base cost did happened while the ability was finalized: a card recycled as a cost
@@ -626,7 +646,11 @@ def resolve_with_program(
     # unit dies", ...) wake on what this resolution actually did - the program's events and
     # its Cleanup's - once Cleanup has run, as the batch after its death triggers.
     import watchers
-    watched_events = list(effect_result.get("events") or []) + list(cleanup_result.get("events") or [])
+    # 2026-09-27 (package 6): the deaths this resolution is responsible for name what killed them and
+    # who is responsible (Core 428.5) - what "When you kill a unit with a spell" reads (kill_attributed)
+    watched_events = kill_attributed(list(effect_result.get("events") or []), list(cleanup_result.get("events") or []),
+                                     killer=entry_before.get("card") or chain_item.get("source_object"),
+                                     responsible=chain_item.get("controller"))
     watch_triggers: list[dict[str, Any]] = []
     if watched_events:
         try:

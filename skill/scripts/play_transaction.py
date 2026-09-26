@@ -632,6 +632,209 @@ def card_self_cost_offers(effect_state: dict[str, Any], card_id: str | None) -> 
 
 
 # --------------------------------------------------------------------------
+# Printed non-resource additional costs, and what paying one switches on
+# (Core 356.2.a.1, 356.2.b.1, 356.4, 356.7, 357.2) - package 6, 2026-09-27
+# --------------------------------------------------------------------------
+
+PRINTED_COST_PREFIX = "self_cost"      # a mandatory printed cost; an optional one is a CARD_SELF_OFFER_PREFIX offer
+PRINTED_COST_RULES = {True: ["Core 356.2.a", "Core 356.2.a.1", "Core 356.7", "Core 357.2"],
+                      False: ["Core 356.2.b", "Core 356.2.b.1", "Core 355.1.a", "Core 356.4.f.1", "Core 357.2"]}
+
+
+def card_printed_costs(effect_state: dict[str, Any], card_id: str | None) -> list[dict[str, Any]]:
+    """The non-resource additional costs the card being played prints for its own play, each with
+    the modifications its payment switches on. Only the card's own text: a cost another card
+    imposes (Deflect) is not read here."""
+    obj = (effect_state.get("objects") or {}).get(card_id) if card_id else None
+    if not isinstance(obj, dict):
+        return []
+    links: dict[str, list[dict[str, Any]]] = {}
+    for link in obj.get("offer_linked_cost_modifications", []) or []:
+        links.setdefault(link["cost_offer_id"], []).append(copy.deepcopy(link))
+    out = []
+    for offer in obj.get("printed_additional_costs", []) or []:
+        mandatory = bool(offer["mandatory"])
+        out.append({"cost_id": f"{PRINTED_COST_PREFIX if mandatory else CARD_SELF_OFFER_PREFIX}:{offer['cost_offer_id']}",
+                    "cost_offer_id": offer["cost_offer_id"], "offered_by": card_id, "mandatory": mandatory,
+                    "payment": copy.deepcopy(offer["payment"]), "linked": links.get(offer["cost_offer_id"], []),
+                    "rule_locators": list(PRINTED_COST_RULES[mandatory])})
+    return out
+
+
+def printed_cost_candidates(effect_state: dict[str, Any], payment: dict[str, Any], actor: str,
+                            card_id: str | None) -> list[str]:
+    """What a printed cost may be paid with, as the payer chooses it (Core 355.9.a.1: "unit" is a
+    Unit on the board). kill / exhaust: a friendly Unit - one already exhausted cannot be exhausted
+    again (Core 203.3); spend_buff: a Unit its payer controls that has a buff (702.2.b.1, 702.2.b.2);
+    discard: a card in the payer's hand other than the card being played (Core 354)."""
+    from effect_ir import same_side
+    objects = effect_state.get("objects") or {}
+    if payment["kind"] == "discard":
+        return [c for c in effect_state["players"][actor]["zones"]["hand"] if c != card_id]
+    found = []
+    for object_id, obj in sorted(objects.items()):
+        if obj.get("kind") != "unit" or zone_class(find_location(effect_state, object_id)) != "board":
+            continue
+        if payment["kind"] == "spend_buff":
+            if obj.get("controller") == actor and obj.get("buffed"):
+                found.append(object_id)
+        elif same_side(effect_state, actor, obj.get("controller")):
+            if payment["kind"] == "exhaust" and obj.get("exhausted"):
+                continue
+            found.append(object_id)
+    return found
+
+
+def printed_cost_decision_id(play_id: str, cost_id: str) -> str:
+    return f"cost:{play_id}:{cost_id}"
+
+
+def _printed_cost_objects(effect_state: dict[str, Any], entry: dict[str, Any], declaration: dict[str, Any],
+                          decisions: dict[str, Any] | None) -> tuple[list[str], str]:
+    """The Units a chosen printed cost is paid with, chosen as the card is played (355.1.a;
+    357.2.a's own example: the unit is chosen before the cost is paid). One candidate for a
+    one-unit cost is used without asking; several need the payer's card_selection. An offer of
+    "any number" always asks, and a paid one names at least one (a payment of none is a decline).
+    Returns (objects, how it was decided)."""
+    actor, payment = declaration["actor"], entry["payment"]
+    candidates = printed_cost_candidates(effect_state, payment, actor, declaration["card"])
+    any_number = payment.get("any_number") is True
+    decision_id = printed_cost_decision_id(declaration["play_id"], entry["cost_id"])
+    supplied = next((e for e in ed.entries(decisions, kind="card_selection") if e["decision_id"] == decision_id), None)
+    if not candidates:
+        raise PlayError("choices", "cost_unpayable",
+                        f"{entry['cost_id']!r} ({payment['kind']}) has nothing to be paid with: no "
+                        + ("unit its payer controls has a buff" if payment["kind"] == "spend_buff" else "friendly unit can pay it")
+                        + " (Core 203.3)", rule_locators=["Core 203.3"] + entry["rule_locators"])
+    if supplied is None:
+        if not any_number and len(candidates) == 1:
+            return list(candidates), "sole_candidate"
+        raise PlayError("choices", "card_selection_required",
+                        f"{actor} chooses what pays {entry['cost_id']!r} from {candidates}",
+                        decision_ids=[decision_id], decision_controller=actor, candidates=candidates,
+                        rule_locators=["Core 355.1.a", "Core 357.2", "Core 357.2.a"])
+    if supplied["stage"] != "play_declaration":
+        raise PlayError("choices", "decision_stage_mismatch",
+                        f"{decision_id!r} was supplied for stage {supplied['stage']!r}, not play_declaration", invalid=True)
+    if supplied["controller"] != actor:
+        raise PlayError("choices", "decision_controller_mismatch",
+                        f"{decision_id!r} was made by {supplied['controller']!r}, not the paying player {actor!r}",
+                        rule_locators=["Core 355.1.a"])
+    chosen = list(supplied["value"])
+    if any(o not in candidates for o in chosen) or (not any_number and len(chosen) != 1) or (any_number and not chosen):
+        raise PlayError("choices", "cost_choice_illegal",
+                        f"{decision_id!r} names {chosen}; it is paid with "
+                        + ("one or more of " if any_number else "one of ") + f"{candidates}",
+                        rule_locators=["Core 203.3", "Core 702.2.b.2"] if payment["kind"] == "spend_buff" else ["Core 203.3"])
+    identities = supplied.get("selection_identities") or {}
+    for object_id in chosen:
+        if identities.get(object_id) != object_identity(effect_state, object_id):
+            raise PlayError("choices", "selection_identity_mismatch",
+                            f"{decision_id!r} was bound to {identities.get(object_id)!r}; {object_id!r} is now "
+                            f"{object_identity(effect_state, object_id)!r} (Core 124)", invalid=True)
+    return chosen, decision_id
+
+
+def printed_cost_components(effect_state: dict[str, Any], entries: list[dict[str, Any]], intents: dict[str, bool],
+                            declaration: dict[str, Any], decisions: dict[str, Any] | None
+                            ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """The cost components the card's printed costs add, and the modifications their payment
+    switches on. Returns (additional components, base modifications, discounts, trace records).
+
+    A declined optional offer still leaves a component on the receipt, unpaid - that is what a
+    later "If you do" / "Otherwise" reads (356.4.f.1). A discard is chosen when it is paid, as any
+    declared discard is (357.2); a Unit cost names its Unit now. A linked modification applies when
+    the offer was chosen: a fixed Energy reduction at 356.4; "ignore this spell's cost" at 356.1
+    (356.1.b.1: its base Energy and Power are zero - the spent buff is still paid, 356.1.b.3); a
+    Power reduction per unit paid, counted from what was declared, at 356.4 (356.6: not below 0)."""
+    components: list[dict[str, Any]] = []
+    base_mods: list[dict[str, Any]] = []
+    discounts: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
+    for entry in entries:
+        chosen = entry["mandatory"] or bool(intents.get(entry["cost_id"]))
+        payment = entry["payment"]
+        stamp = {"cost_offer_id": entry["cost_offer_id"], "offered_by": entry["offered_by"]}
+        if not chosen:
+            components.append({"cost_id": entry["cost_id"], "mandatory": False,
+                               "payment": {"kind": payment["kind"], **({"amount": payment["amount"]} if "amount" in payment else {})},
+                               **stamp})
+            records.append({"cost_id": entry["cost_id"], "chosen": False})
+            continue
+        paid_with: list[str] = []
+        decided_by = None
+        if payment["kind"] == "discard":
+            if len(printed_cost_candidates(effect_state, payment, declaration["actor"], declaration["card"])) < payment["amount"]:
+                raise PlayError("choices", "cost_unpayable",
+                                f"{entry['cost_id']!r} discards {payment['amount']}; {declaration['actor']} has fewer other "
+                                f"cards in hand (Core 203.3, 422.3)", rule_locators=["Core 203.3", "Core 422.3"])
+            components.append({"cost_id": entry["cost_id"], "mandatory": entry["mandatory"],
+                               "payment": {"kind": "discard", "amount": payment["amount"]}, **stamp})
+            count = payment["amount"]
+        else:
+            paid_with, decided_by = _printed_cost_objects(effect_state, entry, declaration, decisions)
+            for k, object_id in enumerate(paid_with):
+                components.append({"cost_id": entry["cost_id"] if k == 0 else f"{entry['cost_id']}#{k + 1}",
+                                   "mandatory": entry["mandatory"], "payment": {"kind": payment["kind"], "object_id": object_id},
+                                   **stamp})
+            count = len(paid_with)
+        applied = []
+        for link in entry["linked"]:
+            source = {"kind": "printed_offer_link", "cost_offer_id": entry["cost_offer_id"], "object": entry["offered_by"]}
+            if link["kind"] == "ignore_base_cost":
+                base_mods.append({"kind": "ignore_all", "source": f"offer:{entry['cost_offer_id']}"})
+            elif link["kind"] == "energy_reduction":
+                discounts.append({"id": f"offer:{entry['cost_offer_id']}", "applies_to": "energy", "amount": link["amount"],
+                                  "source": source})
+            elif count:
+                discounts.append({"id": f"offer:{entry['cost_offer_id']}", "applies_to": f"power:{link['domain']}",
+                                  "amount": link["amount"] * count, "source": source})
+            applied.append({**link, **({"count": count} if link["kind"] == "power_reduction_per_paid" else {})})
+        records.append({"cost_id": entry["cost_id"], "chosen": True, "paid_with": paid_with,
+                        **({"decided_by": decided_by} if decided_by else {}), "count": count, "linked": applied})
+    return components, base_mods, discounts, records
+
+
+def printed_cost_blocker(effect_state: dict[str, Any], card_id: str, actor: str) -> str | None:
+    """Why the card's MANDATORY printed cost cannot be paid now, or None - read by the enumerator
+    through the same candidate rule the transaction uses (C-57: a candidate is a playable play)."""
+    for entry in card_printed_costs(effect_state, card_id):
+        if not entry["mandatory"]:
+            continue
+        candidates = printed_cost_candidates(effect_state, entry["payment"], actor, card_id)
+        need = entry["payment"].get("amount", 1)
+        if len(candidates) < need:
+            return f"{entry['cost_id']} ({entry['payment']['kind']}) has nothing to be paid with"
+    return None
+
+
+def printed_offer_totals(effect_state: dict[str, Any], card_id: str, actor: str, cost: dict[str, Any]) -> list[dict[str, Any]]:
+    """The totals the card could be played for by paying ONE payable optional printed offer whose
+    payment switches on a cost modification - for the enumerator, so a card affordable only with
+    its own discount ("If you do, reduce my cost by [2]") is still offered (356.2.b.1)."""
+    totals = []
+    for entry in card_printed_costs(effect_state, card_id):
+        if entry["mandatory"] or not entry["linked"]:
+            continue
+        candidates = printed_cost_candidates(effect_state, entry["payment"], actor, card_id)
+        count = len(candidates) if entry["payment"].get("any_number") else entry["payment"].get("amount", 1)
+        if not candidates or len(candidates) < entry["payment"].get("amount", 1):
+            continue
+        variant = copy.deepcopy(cost)
+        for link in entry["linked"]:
+            if link["kind"] == "ignore_base_cost":
+                variant["base_modifications"] = list(variant.get("base_modifications", []) or []) + [{"kind": "ignore_all"}]
+            elif link["kind"] == "energy_reduction":
+                variant["discounts"] = list(variant.get("discounts", []) or []) + [
+                    {"id": f"offer:{entry['cost_offer_id']}", "applies_to": "energy", "amount": link["amount"]}]
+            else:
+                variant["discounts"] = list(variant.get("discounts", []) or []) + [
+                    {"id": f"offer:{entry['cost_offer_id']}", "applies_to": f"power:{link['domain']}", "amount": link["amount"] * count}]
+        totals.append(determine_total_cost(variant, {})["total"])
+    return totals
+
+
+# --------------------------------------------------------------------------
 # Where a Permanent may enter (Core 355.2) - DP-95
 # --------------------------------------------------------------------------
 
@@ -1432,6 +1635,11 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         declared_additional = declared_additional + [
             {k: v for k, v in entry.items() if k not in {"energy", "rule_locators", "cost_offer_id", "offered_by"}}
             for entry in self_offers]
+        # 2026-09-27 package 6: the card's printed non-resource costs (Core 356.2.a.1 / 356.2.b.1). An
+        # optional one is an intent like any other; a mandatory one is always part of the play.
+        printed = [] if is_ability else card_printed_costs(effect_state, declaration.get("card"))
+        declared_additional = declared_additional + [
+            {"cost_id": e["cost_id"], "mandatory": False, "payment": e["payment"]} for e in printed if not e["mandatory"]]
         intents: dict[str, bool] = {}
         missing: list[str] = []
         for add in declared_additional:
@@ -1515,7 +1723,21 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                  "payment": {"kind": "energy", "amount": accelerate_entry["energy"]}},
                 {k: v for k, v in accelerate_entry.items() if k not in {"energy", "rule_locators"}}]
             intents[f"{ACCELERATE_COST_ID}:energy"] = intents.get(ACCELERATE_COST_ID, False)
+        printed_records: list[dict[str, Any]] = []
+        if printed:
+            extra, printed_base, printed_discounts, printed_records = printed_cost_components(
+                effect_state, printed, intents, declaration, engine_decisions)
+            for component in extra:
+                if not component["mandatory"] and component["cost_id"] not in intents:
+                    # the second and later Units of an "any number" offer ride on its one intent
+                    intents[component["cost_id"]] = intents.get(component["cost_id"].split("#", 1)[0], False)
+            cost["additional"] = list(cost.get("additional", []) or []) + extra
+            if printed_base:
+                cost["base_modifications"] = list(cost.get("base_modifications", []) or []) + printed_base
+            if printed_discounts:
+                cost["discounts"] = list(cost.get("discounts", []) or []) + printed_discounts
         trace.append({"stage": "choices", "outcome": "applied",
+                      **({"printed_costs": printed_records} if printed_records else {}),
                       **({"card_self_offers": {"offered": [e["cost_offer_id"] for e in self_offers],
                                                "paid": [e["cost_offer_id"] for e in self_offers if intents.get(e["cost_id"])],
                                                "abstained": self_offer_abstentions}}

@@ -221,6 +221,12 @@ jobs:
       - name: Trigger base cost paid at finalization
         run: python3 skill/scripts/check_trigger_cost.py
 
+      # A card's printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7): a mandatory
+      # kill of a chosen friendly unit or no play; an optional discard / buff / any-number offer is
+      # the player's choice and switches on its linked cost reduction (356.1.b.1, 356.4, 356.6).
+      - name: Printed additional costs and their linked cost modifications
+        run: python3 skill/scripts/check_printed_costs.py
+
       # A triggered ability's program runs with the identity its source had when it
       # triggered, recorded on the chain item; the relational "here" (location_ref)
       # resolves fresh at execution and refuses by name when the source left, changed
@@ -660,6 +666,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
           python3 "$REPO/skill/scripts/check_trigger_cost.py"
+          python3 "$REPO/skill/scripts/check_printed_costs.py"
           python3 "$REPO/skill/scripts/check_location_ref.py"
           python3 "$REPO/skill/scripts/check_token_minting.py"
           python3 "$REPO/skill/scripts/check_watch_wiring.py"

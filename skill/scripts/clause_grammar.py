@@ -661,6 +661,124 @@ def _lower_card_self_offer(params):
     }
 
 
+# 2026-09-27 package 6: a card's printed NON-RESOURCE additional cost for its own play (Core
+# 356.2.a.1, 356.2.b.1, 356.7). The words of the cost are a closed table; the engine resolves what
+# pays it (which unit, which card) as the card is played (play_transaction.printed_cost_components).
+PRINTED_COST_WORDS = {
+    "kill a friendly unit": {"kind": "kill", "amount": 1},
+    "discard": {"kind": "discard"},             # "discard N": the amount is the production's own
+    "spend a buff": {"kind": "spend_buff", "amount": 1},
+    "kill any number of friendly units": {"kind": "kill", "any_number": True},
+    "spend any number of buffs": {"kind": "spend_buff", "any_number": True},
+}
+
+
+def _lower_printed_cost(mandatory: bool):
+    def lower(params):
+        words = params["cost"]
+        payment = copy.deepcopy(PRINTED_COST_WORDS["discard" if words.startswith("discard ") else words])
+        if payment["kind"] == "discard":
+            payment["amount"] = int(params["amount"])
+        return {
+            "object_fields": {"printed_additional_costs": [
+                {"cost_offer_id": "$clause_id", "mandatory": mandatory, "payment": payment}]},
+            "ast": {"node": "passive", "kind": "printed_additional_cost",
+                    "params": {"mandatory": mandatory, "payment": payment}},
+        }
+    return lower
+
+
+# "If you do, ..." / "Otherwise, ..." right after a printed OPTIONAL additional cost reads the
+# decision to pay it (Core 356.4.f.1, 356.2.b.1's own example) - a cost receipt, not whether an
+# instruction was performed (Core 205 is about a payment that is no cost). What it links to is a
+# cost modification (applied as the card is played, 356.1 / 356.4) or an instruction (a cost_paid /
+# cost_not_paid predicate). A per-each discount counts what an "any number" offer paid.
+OFFER_LINK_PREFIXES = {"if you do, ": "cost_paid", "otherwise, ": "cost_not_paid"}
+OFFER_LINKED_MODIFICATIONS = (
+    (re.compile(r"^reduce my cost by \[e(?P<amount>\d+)\]$"), "energy_reduction"),
+    (re.compile(r"^ignore this spell's cost$"), "ignore_base_cost"),
+)
+OFFER_PER_PAID = re.compile(r"^reduce my cost by \[rune:(?P<domain>[a-z]+)\] for each (?P<what>killed this way|buff you spend)$")
+OFFER_PER_PAID_KIND = {"killed this way": "kill", "buff you spend": "spend_buff"}
+
+
+def _printed_offer_of(previous: dict[str, Any] | None, *, linked_too: bool = False) -> dict[str, Any] | None:
+    """The one OPTIONAL printed non-resource offer the previous clause declared ({cost_offer_id,
+    payment}), or - for "Otherwise" (linked_too) - the offer the previous clause was itself linked
+    to. None when there is none, or more than one."""
+    if not isinstance(previous, dict) or previous.get("unsupported"):
+        return None
+    if linked_too and isinstance(previous.get("offer_link"), dict):
+        return previous["offer_link"]
+    offers = [o for o in (((previous.get("passive") or {}).get("object_fields", {}) or {})
+                          .get("printed_additional_costs") or []) if not o.get("mandatory")]
+    return {"cost_offer_id": offers[0]["cost_offer_id"], "payment": offers[0]["payment"]} if len(offers) == 1 else None
+
+
+def _offer_linked(text: str, normalized: str, previous: dict[str, Any] | None,
+                  grammar: dict[str, Any]) -> dict[str, Any] | None:
+    """A clause that reads a printed optional offer the previous clause declared, or None (then the
+    clause is read as it always was)."""
+    per_paid = OFFER_PER_PAID.match(normalized)
+    if per_paid:
+        offer = _printed_offer_of(previous)
+        wanted = OFFER_PER_PAID_KIND[per_paid.group("what")]
+        if offer is None or offer["payment"].get("any_number") is not True or offer["payment"]["kind"] != wanted:
+            return {"production_id": "offer_linked_modification", "unsupported": True, "reason_code": "cost_offer_not_declared",
+                    "text": text, "normalized": normalized,
+                    "reason": f"'for each {per_paid.group('what')}' counts an 'any number' offer of {wanted} the clause "
+                              "before did not declare"}
+        link = {"cost_offer_id": offer["cost_offer_id"], "kind": "power_reduction_per_paid",
+                "domain": per_paid.group("domain"), "amount": 1}
+        return {"production_id": "offer_linked_modification", "unsupported": False, "text": text, "normalized": normalized,
+                "params": {}, "slots": {}, "cost_offer_id": offer["cost_offer_id"], "offer_link": offer,
+                "rule_locators": ["Core 356.2.b.1", "Core 356.4", "Core 356.6"],
+                "required_capability": ["evaluated_cost_modifications", "self_costs"],
+                "ast": {"node": "offer_linked", "reads": offer["cost_offer_id"], "modification": link},
+                "passive": {"object_fields": {"offer_linked_cost_modifications": [link]}}}
+    for prefix, link_kind in OFFER_LINK_PREFIXES.items():
+        if not normalized.startswith(prefix):
+            continue
+        offer = _printed_offer_of(previous, linked_too=link_kind == "cost_not_paid")
+        if offer is None:
+            return None     # not after a printed offer: the prefix keeps its ordinary reading
+        rest = normalized[len(prefix):]
+        for pattern, kind in OFFER_LINKED_MODIFICATIONS:
+            found = pattern.match(rest)
+            if not found:
+                continue
+            if link_kind != "cost_paid" or offer["payment"].get("any_number") is True:
+                return {"production_id": "offer_linked_modification", "unsupported": True,
+                        "reason_code": "cost_offer_not_declared", "text": text, "normalized": normalized,
+                        "reason": "a cost modification switched on by paying names one optional offer of one payment"}
+            link = {"cost_offer_id": offer["cost_offer_id"], "kind": kind,
+                    **({"amount": int(found.group("amount"))} if kind == "energy_reduction" else {})}
+            return {"production_id": "offer_linked_modification", "unsupported": False, "text": text,
+                    "normalized": normalized, "params": {}, "slots": {}, "link": link_kind,
+                    "cost_offer_id": offer["cost_offer_id"], "offer_link": offer,
+                    "rule_locators": ["Core 356.2.b.1", "Core 356.4.f.1"]
+                                     + (["Core 356.4"] if kind == "energy_reduction" else ["Core 356.1.b", "Core 356.1.b.1"]),
+                    "required_capability": ["evaluated_cost_modifications", "self_costs"],
+                    "ast": {"node": "offer_linked", "reads": offer["cost_offer_id"], "modification": link},
+                    "passive": {"object_fields": {"offer_linked_cost_modifications": [link]}}}
+        inner = compile_clause(rest, grammar)
+        if inner.get("unsupported"):
+            return {"production_id": "offer_linked_prefix", "unsupported": True,
+                    "reason_code": inner.get("reason_code", "clause_unparsed"), "text": text,
+                    "reason": f"the linked instruction did not parse: {rest!r}"}
+        effects = copy.deepcopy(inner.get("program_effects", []))
+        predicate = {"kind": link_kind, "cost_id": f"self_offer:{offer['cost_offer_id']}", "cost_offer_id": offer["cost_offer_id"]}
+        for effect in effects:
+            effect.setdefault("predicate", predicate)
+        return {"production_id": "offer_linked_prefix", "unsupported": False, "text": text, "normalized": normalized,
+                "params": {}, "slots": {}, "link": link_kind, "cost_offer_id": offer["cost_offer_id"], "offer_link": offer,
+                "rule_locators": ["Core 356.4.f.1", "Core 356.2.b.1"] + inner["rule_locators"],
+                "required_capability": sorted(set(inner["required_capability"]) | {"cost_predicates"}),
+                "ast": {"node": "cost_linked", "link": link_kind, "reads": offer["cost_offer_id"], "then": inner["ast"]},
+                "program_effects": effects}
+    return None
+
+
 def _lower_death_replacement(params):
     """Core 370.1.b: what happens instead of the death. The list starts with
     killing the source; a following clause of the same card adds to it, and
@@ -932,6 +1050,9 @@ LOWERINGS = {
     "counter_a_spell_within_a_cost_limit": _lower_counter_within_cost_limit,
     "if_a_friendly_unit_would_die_kill_this_instead": _lower_death_replacement,
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
+    # 2026-09-27 package 6: printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7)
+    "as_an_additional_cost_to_play_me_kill_a_friendly_unit": _lower_printed_cost(True),
+    "as_you_play_me_you_may_pay_a_cost_as_an_additional_cost": _lower_printed_cost(False),
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
@@ -1307,6 +1428,12 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
             "ast": {"node": "cost_linked", "link": link, "reads": offer, "then": inner["ast"]},
             "program_effects": effects,
         }
+
+    # 2026-09-27 package 6: right after a printed optional additional cost, "If you do" /
+    # "Otherwise" / "for each killed this way" read that offer (Core 356.2.b.1, 356.4.f.1)
+    offer_linked = _offer_linked(text, normalized, previous, grammar)
+    if offer_linked is not None:
+        return offer_linked
 
     # Core 430.5's own example (Catalyst of Aeons): "If you couldn't channel 2 runes this
     # way" is "if you can't" with the count spelled out. It reads the SAME receipt - the

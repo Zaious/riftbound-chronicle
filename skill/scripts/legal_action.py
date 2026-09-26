@@ -531,7 +531,16 @@ def _enumerate_play_card(observation, timing_state, effect_state, actor):
         if total is None:
             excluded.append({"object_id": object_id, "reason_code": problem, "check": "cost"})
             continue
-        if play_transaction.affordability(resources, total, f"play_{object_kind}")["short"]:
+        # 2026-09-27 package 6: a mandatory printed non-resource cost nothing can pay makes the play
+        # illegal (Core 356.2.a.1, 203.3) - the same candidate rule the transaction applies
+        if play_transaction.printed_cost_blocker(effect_state, object_id, actor) is not None:
+            excluded.append({"object_id": object_id, "reason_code": "additional_cost_unpayable", "check": "cost"})
+            continue
+        if play_transaction.affordability(resources, total, f"play_{object_kind}")["short"] and not any(
+                not play_transaction.affordability(resources, other, f"play_{object_kind}")["short"]
+                for other in (play_transaction.printed_offer_totals(effect_state, object_id, actor, {"base": printed})
+                              if isinstance(printed, dict) else [])):
+            # short even with any one payable offer whose payment reduces the cost (356.2.b.1, 356.4)
             excluded.append({"object_id": object_id, "reason_code": "cost_unpayable", "check": "cost"})
             continue
         # DP-95 / Core 355.2: where a Permanent may enter, read through the same

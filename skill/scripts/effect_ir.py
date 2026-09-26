@@ -1065,6 +1065,7 @@ def validate_state(state: Any) -> list[str]:
         offer_ids = [o.get("cost_offer_id") for o in (obj.get("optional_additional_costs") or []) if isinstance(o, dict)]
         if len(offer_ids) != len(set(offer_ids)):
             errors.append(f"objects.{object_id}.optional_additional_costs have duplicate cost_offer_ids")
+        errors.extend(_printed_cost_errors(object_id, obj, offer_ids))
 
         # Round H / Core 805: a card's printed Domains. Absent means the data
         # does not say, which is not the same as "no Domain" - an empty list
@@ -1450,6 +1451,79 @@ def validate_state(state: Any) -> list[str]:
     # ADR-0014 §2: watchers, delayed triggers, per-turn counters, multipliers.
     import watchers
     errors.extend(watchers.validate_watch_state(state))
+    return errors
+
+
+# 2026-09-27 package 6: a card's own printed NON-RESOURCE additional costs (Core 356.2.a.1,
+# 356.2.b.1, 356.7) - "As an additional cost to play me, kill a friendly unit", "As you play me,
+# you may discard 1 as an additional cost" - and the cost modifications a paid offer switches on
+# ("If you do, reduce my cost by [2]", "If you do, ignore this spell's cost", "Reduce my cost by
+# [C] for each killed this way"). The payment is a typed kind; what it is paid WITH (which unit,
+# which card) is the payer's choice as the card is played (Core 355.1.a, 357.2.a's own example).
+PRINTED_COST_KINDS = {"kill", "exhaust", "spend_buff", "discard"}
+# the kinds whose object is a Unit on the board (kill / exhaust: a friendly unit; spend_buff: a unit
+# its payer controls with a buff, Core 702.2.b.1-b.2); discard names cards in the payer's hand
+PRINTED_COST_UNIT_KINDS = {"kill", "exhaust", "spend_buff"}
+OFFER_LINK_KINDS = {"energy_reduction", "ignore_base_cost", "power_reduction_per_paid"}
+
+
+def _printed_cost_errors(object_id: str, obj: dict[str, Any], resource_offer_ids: list[Any]) -> list[str]:
+    errors: list[str] = []
+    printed = obj.get("printed_additional_costs")
+    if printed is not None and not isinstance(printed, list):
+        return [f"objects.{object_id}.printed_additional_costs must be a list"]
+    offers: dict[str, dict[str, Any]] = {}
+    for index, offer in enumerate(printed or []):
+        label = f"objects.{object_id}.printed_additional_costs[{index}]"
+        if not isinstance(offer, dict) or set(offer) != {"cost_offer_id", "mandatory", "payment"}:
+            errors.append(f"{label} must be {{cost_offer_id, mandatory, payment}}")
+            continue
+        offer_id, payment = offer["cost_offer_id"], offer["payment"]
+        if not isinstance(offer_id, str) or not offer_id or offer_id in offers or offer_id in resource_offer_ids:
+            errors.append(f"{label}.cost_offer_id must be a non-empty string no other offer of this card uses")
+            continue
+        if not isinstance(offer["mandatory"], bool):
+            errors.append(f"{label}.mandatory must be boolean")
+            continue
+        if not isinstance(payment, dict) or payment.get("kind") not in PRINTED_COST_KINDS:
+            errors.append(f"{label}.payment.kind must be one of {sorted(PRINTED_COST_KINDS)}")
+            continue
+        if payment.get("any_number") is True:
+            # "any number" (Core 355.13) is a count the payer chooses; only an optional offer of a
+            # Unit kind prints it, and a mandatory cost of "any number" would be no cost at all
+            if set(payment) != {"kind", "any_number"} or payment["kind"] not in PRINTED_COST_UNIT_KINDS or offer["mandatory"]:
+                errors.append(f"{label}.payment {{kind, any_number: true}} is an optional offer of a unit kind")
+                continue
+        elif set(payment) != {"kind", "amount"} or not isinstance(payment["amount"], int) or isinstance(payment["amount"], bool) \
+                or payment["amount"] < 1 or (payment["kind"] in PRINTED_COST_UNIT_KINDS and payment["amount"] != 1):
+            errors.append(f"{label}.payment must be {{kind, amount}} (discard N >= 1; one unit for a unit kind) "
+                          "or {kind, any_number: true}")
+            continue
+        offers[offer_id] = offer
+    links = obj.get("offer_linked_cost_modifications")
+    if links is not None and not isinstance(links, list):
+        return errors + [f"objects.{object_id}.offer_linked_cost_modifications must be a list"]
+    for index, link in enumerate(links or []):
+        label = f"objects.{object_id}.offer_linked_cost_modifications[{index}]"
+        if not isinstance(link, dict) or link.get("kind") not in OFFER_LINK_KINDS:
+            errors.append(f"{label}.kind must be one of {sorted(OFFER_LINK_KINDS)}")
+            continue
+        offer = offers.get(link.get("cost_offer_id"))
+        if offer is None or offer["mandatory"]:
+            # "If you do" reads the decision to pay an OPTIONAL cost (356.4.f.1); a mandatory one is always paid
+            errors.append(f"{label}.cost_offer_id must name an optional printed offer of this card")
+            continue
+        any_number = offer["payment"].get("any_number") is True
+        wanted = {"energy_reduction": {"cost_offer_id", "kind", "amount"}, "ignore_base_cost": {"cost_offer_id", "kind"},
+                  "power_reduction_per_paid": {"cost_offer_id", "kind", "domain", "amount"}}[link["kind"]]
+        if set(link) != wanted:
+            errors.append(f"{label} must be exactly {sorted(wanted)}")
+        elif "amount" in link and (not isinstance(link["amount"], int) or isinstance(link["amount"], bool) or link["amount"] < 1):
+            errors.append(f"{label}.amount must be a positive integer")
+        elif link["kind"] == "power_reduction_per_paid" and (not any_number or not isinstance(link["domain"], str) or not link["domain"]):
+            errors.append(f"{label} counts what an 'any number' offer paid, per Domain")
+        elif link["kind"] != "power_reduction_per_paid" and any_number:
+            errors.append(f"{label} applies once, so it links an offer of one payment")
     return errors
 
 

@@ -95,13 +95,21 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
     scoring player's, is at the Battlefield scored (scope unit_here); a
     player-referencing trigger fires from any board object the scoring player
     controls (scope controller); the Battlefield's own trigger belongs to its
-    controller (190.6). Only modelled board objects can be sources."""
+    controller (190.6). Only modelled board objects can be sources - and, since
+    2026-09-27, a Legend in its controller's Legend Zone, where a Legend's
+    abilities work (Core 107.4, 174.7; the same test turn_cycle._phase_triggers
+    and watchers.source_active make): its "When you conquer" references the
+    player Conquering (383.4.c.2.b). A Legend is never a Unit at the Battlefield,
+    so a unit_here descriptor on it never fires."""
     field = SCORE_TRIGGER_FIELDS[how]
     batch_id = f"score:{battlefield_id}:{turn_id}:{how}"
     descriptors: list[dict[str, Any]] = []
     for object_id in sorted(effect_state["objects"]):
         obj = effect_state["objects"][object_id]
-        if obj.get("controller") != player or zone_class(find_location(effect_state, object_id)) != "board":
+        location = find_location(effect_state, object_id)
+        in_legend_zone = (location is not None and location[0] == "player" and location[2] == "legend_zone"
+                          and obj.get("kind") == "legend")
+        if obj.get("controller") != player or not (zone_class(location) == "board" or in_legend_zone):
             continue
         for descriptor in obj.get(field, []) or []:
             scope = descriptor.get("scope", "unit_here")

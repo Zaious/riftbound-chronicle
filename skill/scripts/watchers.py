@@ -68,7 +68,11 @@ WATCH_GROUPINGS = {"each", "one_or_more"}
 # "first_each_turn": only the first matching event of the turn triggers it ("The first time a
 # friendly unit dies each turn") - counted whether or not the trigger was performed, unlike
 # per_turn_limit (383.3.e), which counts performances.
-WATCH_OCCURRENCES = {"first_each_turn"}
+# "nth_each_turn" (2026-09-27): only the watch's `nth` matching event of the turn triggers it
+# ("The third time I move in a turn", Core 383.1) - counted the same way; first_each_turn is
+# its nth = 1. Events met together that cross the count trigger it once (383.1.b).
+WATCH_OCCURRENCES = {"first_each_turn", "nth_each_turn"}
+MAX_NTH = 20
 WAIT_KINDS = {"event", "turn"}
 TURN_MOMENTS = {"end_of_turn", "beginning_of_turn"}
 # A multiplier applies to the trigger the game generated, never to a copy it
@@ -100,8 +104,8 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
     from effect_ir import validate_condition
     from game_events import EVENT_KINDS
 
-    if not isinstance(watch, dict) or set(watch) - {"kinds", "scope", "condition", "filter", "grouping", "occurrence"}:
-        return [f"{path} must be {{kinds, scope, condition?, filter?, grouping?, occurrence?}}"]
+    if not isinstance(watch, dict) or set(watch) - {"kinds", "scope", "condition", "filter", "grouping", "occurrence", "nth"}:
+        return [f"{path} must be {{kinds, scope, condition?, filter?, grouping?, occurrence?, nth?}}"]
     problems: list[str] = []
     event_filter = watch.get("filter")
     if event_filter is not None:
@@ -115,6 +119,13 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
         problems.append(f"{path}.grouping must be one of {sorted(WATCH_GROUPINGS)}")
     if "occurrence" in watch and watch["occurrence"] not in WATCH_OCCURRENCES:
         problems.append(f"{path}.occurrence must be one of {sorted(WATCH_OCCURRENCES)}")
+    # "the Nth time": the count is part of the watch, and only there (Core 383.1)
+    nth = watch.get("nth")
+    if watch.get("occurrence") == "nth_each_turn":
+        if not isinstance(nth, int) or isinstance(nth, bool) or not 1 <= nth <= MAX_NTH:
+            problems.append(f"{path}.nth must be an integer from 1 to {MAX_NTH} for occurrence nth_each_turn")
+    elif "nth" in watch:
+        problems.append(f"{path}.nth belongs only to occurrence nth_each_turn")
     if problems:
         return problems
     errors: list[str] = []
@@ -457,15 +468,27 @@ def schedule_watchers(state: dict[str, Any], events: list[dict[str, Any]], *, tu
     return scheduled
 
 
+def occurrence_nth(watch: dict[str, Any]) -> int | None:
+    """Which matching event of the turn the watch waits for: 1 for "the first time", the
+    watch's `nth` for "the Nth time", None for a watch that triggers on every match."""
+    occurrence = watch.get("occurrence")
+    if occurrence == "first_each_turn":
+        return 1
+    if occurrence == "nth_each_turn":
+        return int(watch["nth"])
+    return None
+
+
 def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_id: str,
                   batch_label: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """The watchers one batch of events wakes in real play (2026-09-24). Returns (the
     trigger descriptors to schedule, the state with this batch's occurrences counted).
 
     Unlike schedule_watchers (the scheduling rule on its own), this is what the resolution
-    bridge and the play transaction call: a watcher listens only while its source is on the
-    board or in its Legend Zone; "one_or_more" wakes once per batch; "first_each_turn" wakes
-    only on the turn's first matching event, counted whether or not it was performed; each
+    bridge, the play transaction and the Standard Move call: a watcher listens only while its
+    source is on the board or in its Legend Zone; "one_or_more" wakes once per batch;
+    "first_each_turn" wakes only on the turn's first matching event and "nth_each_turn" only on
+    its nth, counted whether or not it was performed; each
     scheduled trigger gets its own id, carries the program hash its descriptor names, and is
     bound to its source's identity now (Core 124)."""
     import copy
@@ -485,10 +508,14 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
             if not matched:
                 continue
             key = use_key(state, descriptor, turn_id)
-            if watch.get("occurrence") == "first_each_turn":
+            nth = occurrence_nth(watch)
+            if nth is not None:
+                # the turn's count of matching events, per source identity (Core 124): the
+                # ability triggers once, on the event that makes the count reach nth - several
+                # met together that cross it are one trigger (Core 383.1.b); later ones, none
                 earlier = occurrences.get(key, 0)
                 occurrences[key] = earlier + len(matched)
-                matched = matched[:1] if earlier == 0 else []
+                matched = [matched[nth - earlier - 1]] if earlier < nth <= earlier + len(matched) else []
             if watch.get("grouping") == "one_or_more":
                 matched = matched[:1]
             if at_limit(state, descriptor, turn_id):

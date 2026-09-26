@@ -748,8 +748,14 @@ def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any]
         obj = effect_state["objects"][object_id]
         for descriptor in object_triggers(effect_state, object_id, "end_of_turn_triggers"):
             record = {"trigger_id": descriptor["trigger_id"], "source_object": object_id, "controller": descriptor["controller"], "scheduled": False}
-            if obj.get("controller") != turn_player or zone_class(find_location(effect_state, object_id)) != "board":
-                record["reason"] = "not the turn player's board object"
+            # a board object, or (2026-09-27, Annie - Dark Child) a Legend in its controller's
+            # Legend Zone, where a Legend's abilities work (Core 107.4, 174.7) - the same test
+            # turn_cycle._phase_triggers makes for the Beginning Phase
+            location = find_location(effect_state, object_id)
+            in_legend_zone = (location is not None and location[0] == "player" and location[2] == "legend_zone"
+                              and obj.get("kind") == "legend")
+            if obj.get("controller") != turn_player or not (zone_class(location) == "board" or in_legend_zone):
+                record["reason"] = "not the turn player's board object or Legend"
                 evaluated.append(record); continue
             condition = descriptor.get("condition")
             if condition is not None and condition["kind"] == "at_battlefield":

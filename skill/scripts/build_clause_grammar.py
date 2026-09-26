@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 OUT = ROOT / "skill" / "data" / "clause_grammar" / "clause_grammar.json"
 CATALOGUE = ROOT / "skill" / "data" / "keyword_catalog" / "keyword_catalog.json"
 sys.path.insert(0, str(ROOT / "skill" / "scripts"))
-from effect_ir import GRANTABLE_KEYWORDS  # noqa: E402
+from effect_ir import GRANTABLE_KEYWORDS, UNTIMED_GRANTABLE_KEYWORDS  # noqa: E402
 
 N = "clause-grammar.v1/normalize"
 
@@ -49,7 +49,8 @@ def grantable_alternatives() -> dict:
     catalogue = {e["name"].lower() for e in json.loads(CATALOGUE.read_text(encoding="utf-8"))["entries"]}
     return {
         keyword: {"pattern": rf"\[{keyword}(?: (?P<{keyword}_grant_value>\d+))?\]", "value": {"keyword": keyword}}
-        for keyword in sorted(GRANTABLE_KEYWORDS & catalogue)
+        # 2026-09-27: Temporary is granted with no duration (Core 801.3.a.3) by its own rows, not here
+        for keyword in sorted((GRANTABLE_KEYWORDS - UNTIMED_GRANTABLE_KEYWORDS) & catalogue)
     }
 
 
@@ -169,11 +170,20 @@ PRODUCTIONS = [
             "Give that unit [Ganking] this turn.", "Give that unit [Backline] this turn.",
             "Give a unit [Shield 1] this combat.", "Give me [Tank] this combat.",
             "Give friendly units [Ganking] this combat.", "Give an enemy unit [Backline] this combat.",
+            # 2026-09-27: Assault is grantable (Core 807.2's own example is "Give a unit [Assault 3]
+            # this turn."); a bare [Assault] is Assault 1 (807.1.b.3)
+            "Give a unit [Assault 3] this turn.", "Give a friendly unit [Assault 2] this turn.",
+            "Give an enemy unit [Assault] this turn.", "Give friendly units [Assault 1] this turn.",
+            "Give enemy units [Assault 2] this turn.", "Give me [Assault 2] this turn.",
+            "Give another unit [Assault 3] this turn.", "Give another friendly unit [Assault 1] this turn.",
+            "Give it [Assault 2] this turn.", "Give that unit [Assault 3] this turn.",
+            "Give a unit [Assault 2] this combat.",
         ],
         "negative": [
-            "Give a unit [Assault 3] this turn.",
+            "Give a unit [Assault 3] permanently.",
             "Give the strongest unit [Tank] this turn.",
             "Give a unit [Tank] permanently.",
+            "Give a unit [Temporary] this turn.",
         ],
     },
     {
@@ -369,6 +379,14 @@ LITERAL = [
      "A draw that happens only if the controller holds at most one card when it executes. Another count or zone is a different clause.",
      ["Draw 1 if you have one or fewer cards in your hand."],
      ["draw 1 if you have two or fewer cards in your hand", "draw 1 if an opponent has one or fewer cards in their hand", "draw 1"]),
+    # 2026-09-27 (Kadregrin the Infernal): a draw counted as it executes - the printed number for
+    # each unit its controller controls that is Mighty, Might 5 or greater (Core 708, 710)
+    ("draw_n_for_each_of_your_mighty_units", r"draw (?P<count>\d+) for each of your \[mighty\] units",
+     ["Core 413", "Core 708", "Core 710"], "instruction", ["draw"],
+     "The controller draws the number times how many units they control are Mighty when it executes; none is no draw. "
+     "Another quality, or another player's units, is a different clause.",
+     ["Draw 1 for each of your [Mighty] units."],
+     ["draw 1 for each of your units", "draw 1 for each enemy [mighty] unit", "draw 1 if you control a [mighty] unit"]),
     # 2026-09-25: the controller discards N from their own hand, chosen privately (Core 422.1);
     # a hand shorter than N discards what it has, an empty hand ignores it (422.4). Returned
     # now that ", then" no longer makes the next instruction depend on it (GPT 2026-09-25).
@@ -498,11 +516,37 @@ LITERAL = [
      ["Opponents can't play cards this turn."],
      ["opponents can't play spells this turn", "you can't play cards this turn",
       "opponents can't play cards", "opponents can't activate abilities this turn"]),
+    # 2026-09-27 (Fading Memories): one chosen permanent - a unit at a battlefield OR a gear - is granted
+    # Temporary with no duration, so while it stays on the board (Core 816.1.a, 801.3.a.3)
+    ("give_a_unit_at_a_battlefield_or_a_gear_temporary", r"give a unit at (?:a )?battlefield or a gear \[temporary\]",
+     ["Core 816", "Core 816.1.a", "Core 801.3.a.3", "Core 355.9"], "instruction", ["grant_keyword", "targeting"],
+     "One chosen object that is a unit at a battlefield or a gear anywhere on the board gains Temporary for as long "
+     "as it stays there. A unit in a base, a duration, or another keyword is a different clause.",
+     ["Give a unit at a battlefield or a gear [Temporary]."],
+     ["give a unit or a gear [temporary]", "give a unit at a battlefield or a gear [temporary] this turn",
+      "give a unit at a battlefield or a gear [tank]"]),
     ("units_you_play_this_turn_enter_ready", r"units you play this turn enter ready",
      ["Core 317.2", "Core 419.4"], "instruction", ["grant_turn_effect"],
      "Entry state for this turn's own plays.",
      ["Units you play this turn enter ready."],
      ["units you play this turn enter exhausted", "i enter ready"]),
+    # 2026-09-27: delayed passives for the NEXT card of a kind played this turn, spent by that play
+    # (Core 390.4, 391): a discount on the next spell's cost (356.4), and the next unit's entry state
+    ("the_next_spell_you_play_this_turn_costs_n_less",
+     r"the next spell you play this turn costs \[e(?P<amount>\d+)\] less",
+     ["Core 390.4", "Core 391", "Core 356.4", "Core 356.6"], "instruction", ["grant_turn_effect"],
+     "One discount of a fixed Energy amount on the next spell its controller plays this turn, spent by that play "
+     "whether or not it lowered anything. Every spell, a Power amount, or a unit is a different clause.",
+     ["The next spell you play this turn costs :rb_energy_5: less."],
+     ["spells you play this turn cost :rb_energy_1: less", "the next unit you play this turn costs :rb_energy_2: less",
+      "the next spell you play this turn costs :rb_rune_rainbow: less"]),
+    ("the_next_unit_you_play_this_turn_enters_ready", r"the next unit you play this turn enters ready",
+     ["Core 390.4", "Core 391", "Core 369.3", "Core 143.4"], "instruction", ["grant_turn_effect"],
+     "The next unit its controller plays this turn enters ready: bound to that play as an entry replacement, "
+     "then spent. Every unit this turn is 'Units you play this turn enter ready.'",
+     ["The next unit you play this turn enters ready."],
+     ["units you play this turn enter ready", "the next spell you play this turn enters ready",
+      "the next unit you play this turn enters exhausted"]),
     ("self_cost_reduction_score",
      r"if an opponent's score is within (?P<within>\d+) points? of the victory score, this costs \[e(?P<amount>\d+)\] less",
      ["Core 356.4", "Core 194.1"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
@@ -851,6 +895,15 @@ WRAPPERS = [
      ["when i attack, draw 1", "when i defend, draw 1", "when you attack or defend, draw 1"]),
     # 2026-09-25 (Jinx - Loose Cannon): a Beginning Phase trigger (turn_cycle schedules it with
     # the Beginning Step's other effects, Core 315.2.a); both printed spellings
+    # 2026-09-27 (Mushroom Pouch): BEFORE the plain row, which would take the condition as its inner
+    # instruction and refuse it. The condition is the trigger's (Core 383.2.a.1), not the effect's
+    ("at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield",
+     r"at (?:the )?start of your beginning phase, if you control a facedown card at a battlefield, (?P<inner>.+)",
+     ["Core 315.2.a", "Core 383.2.a.1", "Core 355.9.a.3", "Core 107.3.f"], ["beginning_phase_triggers"],
+     ["At the start of your Beginning Phase, if you control a facedown card at a battlefield, draw 1."],
+     ["at the start of your beginning phase, draw 1 if you control a facedown card at a battlefield",
+      "at the start of your beginning phase, if you control a unit at a battlefield, draw 1",
+      "at the start of each player's beginning phase, if you control a facedown card at a battlefield, draw 1"]),
     ("at_the_start_of_your_beginning_phase", r"at (?:the )?start of your beginning phase, (?P<inner>.+)",
      ["Core 315.2.a", "Core 315.2.a.1", "Core 383.1"], ["beginning_phase_triggers"],
      ["At the start of your Beginning Phase, draw 1.", "At start of your Beginning Phase, draw 1."],

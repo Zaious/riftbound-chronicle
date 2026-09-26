@@ -268,6 +268,17 @@ def _lower_draw_if_few_in_hand(params):
                     "if": condition}}
 
 
+def _lower_draw_per_mighty_unit(params):
+    """Core 413 with a count read on execution: N for each Mighty unit the controller controls
+    (708, 710). effect_ir count_per."""
+    count = int(params["count"])
+    per = {"kind": "units_you_control", "mighty": True}
+    return {"program_effects": [{"op": "draw", "effect_id": "dr", "player": "$controller", "count": count,
+                                 "count_per": dict(per)}],
+            "ast": {"node": "instruction", "op": "draw", "params": {"count": count, "player": "$controller",
+                                                                     "for_each": dict(per)}}}
+
+
 def _lower_discard(params):
     """Core 422.1: the controller discards N from their own hand, chosen privately; 422.4: a
     shorter hand discards what it has, an empty one ignores the instruction."""
@@ -451,6 +462,36 @@ def _lower_opponents_cant_play_cards(params):
                                  "controller": "$controller", "source": "$chain_item"}],
             "ast": {"node": "instruction", "op": "grant_turn_effect",
                     "params": {"turn_effect_kind": "cards_play_prohibited", "value": "opponents"}}}
+def _lower_temporary_unit_at_battlefield_or_gear(params):
+    """"Give a unit at a battlefield or a gear [Temporary]." (Fading Memories): one chosen object fitting
+    either alternative (effect_ir any_of), granted Temporary with no duration (Core 816.1.a, 801.3.a.3)."""
+    target = {"decision_ref": "t", "chosen_zone_class": "board",
+              "any_of": [{"kind": "unit", "location": "battlefield"}, {"kind": "gear"}]}
+    return {"program_effects": [{"op": "grant_keyword", "effect_id": "kw", "keyword": "temporary", "duration": "permanent",
+                                 "source": "$chain_item", "target": target}],
+            "ast": {"node": "instruction", "op": "grant_keyword",
+                    "params": {"keyword": "temporary", "duration": "permanent", "target": dict(target)}}}
+
+
+def _lower_next_spell_discount(params):
+    """"The next spell you play this turn costs [N] less." (Raging Firebrand) - a turn effect the
+    play transaction reads as a discount on the next spell and spends (Core 391, 356.4)."""
+    amount = int(params["amount"])
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "next_spell_cost_reduction", "value": amount,
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "next_spell_cost_reduction", "value": amount}}}
+
+
+def _lower_next_unit_enters_ready(params):
+    """"The next unit you play this turn enters ready." (Sun Disc) - bound to that one play as an
+    entry replacement, then spent (Core 391, 369.3)."""
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "entry_state_for_next_played_unit", "value": "ready",
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "entry_state_for_next_played_unit", "value": "ready"}}}
 
 
 def _lower_self_cost_reduction(params):
@@ -861,6 +902,7 @@ LOWERINGS = {
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
+    "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
     "discard_n": _lower_discard,
     "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
@@ -880,6 +922,9 @@ LOWERINGS = {
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
     "opponents_cant_play_cards_this_turn": _lower_opponents_cant_play_cards,
+    "the_next_spell_you_play_this_turn_costs_n_less": _lower_next_spell_discount,
+    "give_a_unit_at_a_battlefield_or_a_gear_temporary": _lower_temporary_unit_at_battlefield_or_gear,
+    "the_next_unit_you_play_this_turn_enters_ready": _lower_next_unit_enters_ready,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
     "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,
@@ -896,6 +941,11 @@ TRIGGER_WRAPPERS = {
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
     "at_the_start_of_your_beginning_phase": ("beginning_phase_triggers", "on-beginning", {"scope": "your_beginning_phase"}),
+    # 2026-09-27 (Mushroom Pouch): the conditional statement right after the trigger condition is
+    # part of the trigger condition (Core 383.2.a.1) - on the descriptor, not a predicate of the effect
+    "at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield": (
+        "beginning_phase_triggers", "on-beginning",
+        {"scope": "your_beginning_phase", "condition": {"kind": "controls_facedown_card_at_battlefield"}}),
     # Core 469.1: the unit conquering is the one at the Battlefield being
     # scored. That is the engine's default scope for a conquer trigger; the
     # clause states it rather than relying on the default.

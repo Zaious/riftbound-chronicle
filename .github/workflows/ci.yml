@@ -543,6 +543,18 @@ jobs:
         run: python3 skill/scripts/check_granted_play_permission.py
       - name: split damage - Targets at finalization capped by the damage, the division at resolution (Core 355.14)
         run: python3 skill/scripts/check_split_damage.py
+      - name: a granted Temporary with no duration on a unit at a battlefield or a gear (Core 816, 801.3.a.3)
+        run: python3 skill/scripts/check_granted_temporary.py
+      - name: a Beginning Phase trigger's own condition - a facedown card at a battlefield (Core 383.2.a.1)
+        run: python3 skill/scripts/check_phase_trigger_condition.py
+      - name: granted Assault (Core 807.2, Cleave)
+        run: python3 skill/scripts/check_grant_assault.py
+      - name: linked instructions - its controller / owner / Might / Energy cost (Core 359.3.e.14)
+        run: python3 skill/scripts/check_linked_references.py
+      - name: the next spell / unit you play this turn (Core 390.4, 391)
+        run: python3 skill/scripts/check_next_card_effects.py
+      - name: draw N for each of your Mighty units (Core 708, 710)
+        run: python3 skill/scripts/check_draw_per_each.py
       - name: stun.v1 (DP-94, Core 423)
         run: python3 skill/scripts/check_stun.py
       - name: occupied_enemy_battlefield (DP-95, Core 355.2)
@@ -718,6 +730,12 @@ jobs:
           python3 "$REPO/skill/scripts/check_linked_move.py"
           python3 "$REPO/skill/scripts/check_granted_play_permission.py"
           python3 "$REPO/skill/scripts/check_split_damage.py"
+          python3 "$REPO/skill/scripts/check_granted_temporary.py"
+          python3 "$REPO/skill/scripts/check_phase_trigger_condition.py"
+          python3 "$REPO/skill/scripts/check_grant_assault.py"
+          python3 "$REPO/skill/scripts/check_linked_references.py"
+          python3 "$REPO/skill/scripts/check_next_card_effects.py"
+          python3 "$REPO/skill/scripts/check_draw_per_each.py"
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"

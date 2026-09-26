@@ -241,6 +241,14 @@ def _phase_triggers(effect_state: dict[str, Any], player: str, phase: str) -> tu
                 if location is None or location[0] != "battlefield":
                     record["reason"] = "condition at_battlefield not met (383.2.a.1)"
                     evaluated.append(record); continue
+            if condition is not None and condition["kind"] == "controls_facedown_card_at_battlefield":
+                # 2026-09-27 (Mushroom Pouch): read now, as the trigger condition is met (383.2.a.1)
+                held = [entry.get("object_id") for bf in (effect_state.get("battlefields") or {}).values()
+                        for entry in ((bf.get("facedown") or {}).get("cards") or [])
+                        if isinstance(entry, dict) and entry.get("controller") == descriptor["controller"]]
+                if not held:
+                    record["reason"] = "condition controls_facedown_card_at_battlefield not met (383.2.a.1)"
+                    evaluated.append(record); continue
             copied = {k: v for k, v in descriptor.items() if k not in {"condition", "scope"}}
             copied.update({"trigger_kind": "triggered", "batch_sequence": 0, "batch_id": f"{phase}:{turn_id}", "scope": scope, "source_identity": object_identity(effect_state, object_id) or f"{object_id}@0"})
             descriptors.append(copied)

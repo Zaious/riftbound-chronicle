@@ -12,7 +12,7 @@ hand-set designation:
   - a printed Assault adds nothing before the Combat opens, adds X to the attacker once
     it is the Attacker, and adds nothing to a defender that has it;
   - an omitted X is 1; "[Assault 2]" lowered by the engine grammar is 2;
-  - granting Assault (grant_keyword) is refused - a later item, not half-supported;
+  - a granted Assault sums with the printed one (807.2; check_grant_assault.py for the grant itself);
   - effective_might and combat_might_contributions agree;
   - negative mutation: the same attacker without the keyword is its printed Might.
 """
@@ -69,15 +69,16 @@ def main() -> int:
     if fields.get("keywords") != ["assault"] or fields.get("assault_value") != 2:
         errors.append(f"[Assault 2] did not lower to assault_value 2: {fields}")
 
-    # granting Assault is not part of this capability: the grammar's grant production
-    # names the grantable keywords, and "Give a unit [Assault 3] this turn." is its own
-    # later item. Until then a grant is refused, not half-supported.
+    # 2026-09-27: granting Assault is supported (check_grant_assault.py has the whole story -
+    # Cleave, 807.2's own example). Here: a grant on the Attacker sums with the printed one.
     combat_id = timing["combat"]["combat_id"]
     granted = apply_program(state, program("rally", {"op": "grant_keyword", "object_id": "u1", "keyword": "assault", "value": 2,
                                                      "duration": "this_combat", "source": "rally", "effect_id": "g"}),
                             context={"combat": {"combat_id": combat_id, "battlefield": "bf1"}})
-    if granted.get("committed"):
-        errors.append("a grant of Assault went through, though granting it is not supported yet")
+    if not granted.get("committed") or assault_total(granted["next_state"], "u1") != 3 \
+            or effective_might(granted["next_state"], "u1") != printed_u1 + 3:
+        errors.append(f"a granted Assault 2 on the Attacker with Assault 1 is not Assault 3 / +3 (807.2): "
+                      f"{granted.get('reason') or granted.get('errors')}")
 
     # negative mutation: no keyword, no bonus
     bare = copy.deepcopy(contested_board())

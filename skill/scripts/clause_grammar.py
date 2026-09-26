@@ -437,6 +437,17 @@ def _lower_units_enter_ready(params):
                     "params": {"turn_effect_kind": "entry_state_for_played_units", "value": "ready"}}}
 
 
+def _lower_temporary_unit_at_battlefield_or_gear(params):
+    """"Give a unit at a battlefield or a gear [Temporary]." (Fading Memories): one chosen object fitting
+    either alternative (effect_ir any_of), granted Temporary with no duration (Core 816.1.a, 801.3.a.3)."""
+    target = {"decision_ref": "t", "chosen_zone_class": "board",
+              "any_of": [{"kind": "unit", "location": "battlefield"}, {"kind": "gear"}]}
+    return {"program_effects": [{"op": "grant_keyword", "effect_id": "kw", "keyword": "temporary", "duration": "permanent",
+                                 "source": "$chain_item", "target": target}],
+            "ast": {"node": "instruction", "op": "grant_keyword",
+                    "params": {"keyword": "temporary", "duration": "permanent", "target": dict(target)}}}
+
+
 def _lower_next_spell_discount(params):
     """"The next spell you play this turn costs [N] less." (Raging Firebrand) - a turn effect the
     play transaction reads as a discount on the next spell and spends (Core 391, 356.4)."""
@@ -768,6 +779,7 @@ LOWERINGS = {
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
     "the_next_spell_you_play_this_turn_costs_n_less": _lower_next_spell_discount,
+    "give_a_unit_at_a_battlefield_or_a_gear_temporary": _lower_temporary_unit_at_battlefield_or_gear,
     "the_next_unit_you_play_this_turn_enters_ready": _lower_next_unit_enters_ready,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,

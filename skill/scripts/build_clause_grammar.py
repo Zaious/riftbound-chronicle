@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 OUT = ROOT / "skill" / "data" / "clause_grammar" / "clause_grammar.json"
 CATALOGUE = ROOT / "skill" / "data" / "keyword_catalog" / "keyword_catalog.json"
 sys.path.insert(0, str(ROOT / "skill" / "scripts"))
-from effect_ir import GRANTABLE_KEYWORDS  # noqa: E402
+from effect_ir import GRANTABLE_KEYWORDS, UNTIMED_GRANTABLE_KEYWORDS  # noqa: E402
 
 N = "clause-grammar.v1/normalize"
 
@@ -49,7 +49,8 @@ def grantable_alternatives() -> dict:
     catalogue = {e["name"].lower() for e in json.loads(CATALOGUE.read_text(encoding="utf-8"))["entries"]}
     return {
         keyword: {"pattern": rf"\[{keyword}(?: (?P<{keyword}_grant_value>\d+))?\]", "value": {"keyword": keyword}}
-        for keyword in sorted(GRANTABLE_KEYWORDS & catalogue)
+        # 2026-09-27: Temporary is granted with no duration (Core 801.3.a.3) by its own rows, not here
+        for keyword in sorted((GRANTABLE_KEYWORDS - UNTIMED_GRANTABLE_KEYWORDS) & catalogue)
     }
 
 
@@ -492,6 +493,15 @@ LITERAL = [
      "A condition on the controller's own Runes on the board.",
      ["While you have 8+ runes, I have +4 [M]."],
      ["while i'm attacking or defending alone, i have +2 [m]", "while you have 8+ runes, i have [tank]"]),
+    # 2026-09-27 (Fading Memories): one chosen permanent - a unit at a battlefield OR a gear - is granted
+    # Temporary with no duration, so while it stays on the board (Core 816.1.a, 801.3.a.3)
+    ("give_a_unit_at_a_battlefield_or_a_gear_temporary", r"give a unit at (?:a )?battlefield or a gear \[temporary\]",
+     ["Core 816", "Core 816.1.a", "Core 801.3.a.3", "Core 355.9"], "instruction", ["grant_keyword", "targeting"],
+     "One chosen object that is a unit at a battlefield or a gear anywhere on the board gains Temporary for as long "
+     "as it stays there. A unit in a base, a duration, or another keyword is a different clause.",
+     ["Give a unit at a battlefield or a gear [Temporary]."],
+     ["give a unit or a gear [temporary]", "give a unit at a battlefield or a gear [temporary] this turn",
+      "give a unit at a battlefield or a gear [tank]"]),
     ("units_you_play_this_turn_enter_ready", r"units you play this turn enter ready",
      ["Core 317.2", "Core 419.4"], "instruction", ["grant_turn_effect"],
      "Entry state for this turn's own plays.",

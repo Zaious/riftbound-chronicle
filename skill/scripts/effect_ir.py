@@ -103,8 +103,15 @@ AURA_CONDITION_KINDS = {"friendly_unit_defends_alone"}
 # summed with any other (Core 807.2 - its own example is Cleave on a unit that has Assault)
 # and adds Might only while the Unit is an Attacker (807.1.c); the grant path already carried
 # the value for every VALUED_KEYWORDS entry, the list was the only thing refusing it.
-GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline", "assault"}
+GRANTABLE_KEYWORDS = {"shield", "tank", "ganking", "backline", "assault", "temporary"}
+# 2026-09-27 (Fading Memories): Temporary is present on Permanents (Core 816.1.a) - a Unit OR a Gear
+# may be granted it; every other keyword here is still granted to Units only
+PERMANENT_GRANTABLE_KEYWORDS = {"temporary"}
+# a grant that states no duration lasts as long as the object stays on the board (Core 801.3.a.3):
+# "permanent", bound to the identity it was granted to (124). Only for the keywords listed.
+UNTIMED_GRANTABLE_KEYWORDS = {"temporary"}
 KEYWORD_MODIFIER_DURATIONS = {"this_combat", "this_turn"}
+GRANT_DURATIONS = KEYWORD_MODIFIER_DURATIONS | {"permanent"}
 # Core 812.1.c: a Legion ability is active once its controller has Finalized another card
 # this turn. On a trigger it is only read where "When you play me" triggers are collected.
 # "moved_to_battlefield" (2026-09-24, "When I move to a battlefield"): read only on a move
@@ -1489,8 +1496,10 @@ def validate_program(program: Any) -> list[str]:
             if effect.get("op") == "grant_keyword":
                 if effect.get("keyword") not in GRANTABLE_KEYWORDS:
                     errors.append(f"effects[{index}].grant_keyword.keyword must be one of {sorted(GRANTABLE_KEYWORDS)}")
-                if effect.get("duration") not in KEYWORD_MODIFIER_DURATIONS:
-                    errors.append(f"effects[{index}].grant_keyword.duration must be one of {sorted(KEYWORD_MODIFIER_DURATIONS)}")
+                if effect.get("duration") not in KEYWORD_MODIFIER_DURATIONS and not (
+                        effect.get("duration") == "permanent" and effect.get("keyword") in UNTIMED_GRANTABLE_KEYWORDS):
+                    errors.append(f"effects[{index}].grant_keyword.duration must be one of {sorted(KEYWORD_MODIFIER_DURATIONS)}"
+                                  f" (or permanent, for {sorted(UNTIMED_GRANTABLE_KEYWORDS)})")
                 if "value" in effect and (not isinstance(effect["value"], int) or isinstance(effect["value"], bool) or effect["value"] < 1):
                     errors.append(f"effects[{index}].grant_keyword.value must be a positive integer")
                 if not isinstance(effect.get("source"), str) or not effect.get("source"):
@@ -1744,7 +1753,10 @@ def validate_program(program: Any) -> list[str]:
 
 
 MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref", "any_of"}
+# 2026-09-27 (Fading Memories, "a unit at a battlefield or a gear"): one chosen object that fits ONE of
+# the alternatives; each names a kind and may narrow the location and the controller relation
+ANY_OF_FIELDS = {"kind", "location", "controller_relation"}
 # Round H: "another unit" is *this* unit excluded, by identity. The clause
 # writes the sentinel; the engine resolves it from the program's own
 # source_object when the selection is made, so the exclusion can never be a
@@ -1981,6 +1993,17 @@ def _selector_errors(selector: Any) -> list[str]:
             errors.append("location_ref narrows where an object is; a Battlefield target has no location")
     if "controller_relation" in selector and selector["controller_relation"] not in {"friendly", "enemy"}:
         errors.append("controller_relation is invalid")
+    if "any_of" in selector:
+        alternatives = selector["any_of"]
+        if not isinstance(alternatives, list) or len(alternatives) < 2 or any(
+                not isinstance(a, dict) or "kind" not in a or set(a) - ANY_OF_FIELDS or a.get("kind") not in OBJECT_KINDS
+                or a.get("location", "board") not in {"board", "battlefield", "base"}
+                or a.get("controller_relation", "friendly") not in {"friendly", "enemy"} for a in alternatives):
+            errors.append(f"any_of must list two or more {{kind, location?, controller_relation?}} alternatives")
+        if {"kind", "location", "controller_relation"} & set(selector):
+            errors.append("any_of carries the kind, location and relation; the selector itself names none of them")
+        if selector.get("chosen_zone_class") != "board":
+            errors.append("any_of chooses among objects on the board")
     if "zone_owner_relation" in selector and selector["zone_owner_relation"] not in {"own", "opponent"}:
         errors.append("zone_owner_relation is invalid")
     if "targeted" in selector and selector["targeted"] != derive_targeted(selector):
@@ -2447,6 +2470,16 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
         if bound is not None and battlefield_identity(state, object_id) != bound:
             return False, "target_identity_changed"
         return True, "ok"
+    if "any_of" in target:
+        # one of the alternatives, each checked exactly as a plain selector would be
+        base = {k: v for k, v in target.items() if k != "any_of"}
+        reasons = []
+        for alternative in target["any_of"]:
+            ok, reason = evaluate_target(state, {**base, **alternative}, controller)
+            if ok:
+                return True, "ok"
+            reasons.append(reason)
+        return False, reasons[0] if len(set(reasons)) == 1 else "target_any_of_requirement_failed"
     obj = state["objects"].get(object_id)
     if obj is None:
         return False, "target_object_missing"
@@ -3401,10 +3434,13 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # a granted characteristic bound to the object's identity now and to
         # the Combat in progress (expires with it, 466.7.c) or to this turn.
         object_id, keyword, duration = effect.get("object_id"), effect.get("keyword"), effect.get("duration")
-        if object_id not in new_state["objects"] or keyword not in GRANTABLE_KEYWORDS or duration not in KEYWORD_MODIFIER_DURATIONS:
+        if object_id not in new_state["objects"] or keyword not in GRANTABLE_KEYWORDS or duration not in GRANT_DURATIONS \
+                or (duration == "permanent" and keyword not in UNTIMED_GRANTABLE_KEYWORDS):
             raise ValueError("grant_keyword requires a known object, a grantable keyword and a duration")
-        if new_state["objects"][object_id].get("kind") != "unit" or zone_class(find_location(new_state, object_id)) != "board":
-            raise IllegalOperation(f"grant_keyword applies only to a Unit on the board; {object_id!r} is not one")
+        kinds = {"unit", "gear"} if keyword in PERMANENT_GRANTABLE_KEYWORDS else {"unit"}
+        if new_state["objects"][object_id].get("kind") not in kinds or zone_class(find_location(new_state, object_id)) != "board":
+            raise IllegalOperation(f"grant_keyword {keyword} applies only to a {' or '.join(sorted(kinds))} on the board; "
+                                   f"{object_id!r} is not one")
         value = effect.get("value")
         if keyword not in VALUED_KEYWORDS and value is not None:
             raise ValueError(f"{keyword} carries no value")
@@ -3416,6 +3452,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             if not isinstance(combat, dict) or not combat.get("combat_id"):
                 raise NotImplementedError("a 'this combat' grant needs the Combat in progress as context (466.7.c); none was supplied")
             effect_duration = {"kind": "this_combat", "combat_id": combat["combat_id"]}
+        elif duration == "permanent":
+            # Core 801.3.a.3: no duration - while it stays on the board; the identity binding below ends it (124)
+            effect_duration = {"kind": "permanent"}
         else:
             effect_duration = {"kind": "this_turn", "turn_id": new_state.get("turn_id", DEFAULT_TURN_ID)}
         entry = {

@@ -518,6 +518,8 @@ jobs:
         run: python3 skill/scripts/check_watch_each_and_discard.py
       - name: player referent bound to a reveal (Sabotage)
         run: python3 skill/scripts/check_player_ref_and_reveal.py
+      - name: a granted Temporary with no duration on a unit at a battlefield or a gear (Core 816, 801.3.a.3)
+        run: python3 skill/scripts/check_granted_temporary.py
       - name: a Beginning Phase trigger's own condition - a facedown card at a battlefield (Core 383.2.a.1)
         run: python3 skill/scripts/check_phase_trigger_condition.py
       - name: granted Assault (Core 807.2, Cleave)
@@ -693,6 +695,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_sequence_steps.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
+          python3 "$REPO/skill/scripts/check_granted_temporary.py"
           python3 "$REPO/skill/scripts/check_phase_trigger_condition.py"
           python3 "$REPO/skill/scripts/check_grant_assault.py"
           python3 "$REPO/skill/scripts/check_linked_references.py"

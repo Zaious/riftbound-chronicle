@@ -1456,6 +1456,33 @@
       ]
     },
     {
+      "production_id": "give_a_unit_at_a_battlefield_or_a_gear_temporary",
+      "form": "Give a unit at a battlefield or a gear [Temporary].",
+      "template": "give a unit at (?:a )?battlefield or a gear \\[temporary\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 816",
+        "Core 816.1.a",
+        "Core 801.3.a.3",
+        "Core 355.9"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_keyword",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen object that is a unit at a battlefield or a gear anywhere on the board gains Temporary for as long as it stays there. A unit in a base, a duration, or another keyword is a different clause.",
+      "golden": [
+        "Give a unit at a battlefield or a gear [Temporary]."
+      ],
+      "negative": [
+        "give a unit or a gear [temporary]",
+        "give a unit at a battlefield or a gear [temporary] this turn",
+        "give a unit at a battlefield or a gear [tank]"
+      ]
+    },
+    {
       "production_id": "units_you_play_this_turn_enter_ready",
       "form": "Units you play this turn enter ready.",
       "template": "units you play this turn enter ready",

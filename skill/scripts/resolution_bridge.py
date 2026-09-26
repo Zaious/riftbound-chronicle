@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
+from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
 from rules_core import apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
@@ -825,6 +825,10 @@ def complete_permanent_play(
     if entry_problem is not None:
         return state, entry_problem, []
     obj["exhausted"] = final == "exhausted"
+    # 2026-09-28: a replacement bound to this play (Accelerate, "the next unit you play enters ready")
+    # is this play's and is done with once the card has entered; kept on the object, it applied
+    # again to the same card played later under a reused chain item id - a new object (Core 124)
+    drop_play_bound_replacements(obj, item_id)
     trace: dict[str, Any] = {"card": card, "chain_item_id": item_id, "kind": obj["kind"], "default_entry_state": default,
                              "entry_replacements": replacements, "entry_state": final, "not_a_move": True,
                              "rule_locators": ["Core 359.2", "Core 359.2.a", "Core 143.4", "Core 124", "Core 446.2"]}

@@ -17,7 +17,13 @@ Must hold, through real play_card (and resolve_with_program for units):
   next unit       the unit played next enters ready and the effect is spent at the play; the
                   unit after it enters exhausted; a spell played first does not spend it; the
                   opponent's unit does not; a unit already on the chain when the effect is made
-                  is not "the next unit you play" and enters exhausted
+                  is not "the next unit you play" and enters exhausted; the next unit countered
+                  back to hand and played again - under a new chain item id or the same one -
+                  enters exhausted, and so does the next unit that entered ready, was bounced and
+                  is played again under the same id (the replacement ends with the play it was
+                  bound to, 2026-09-28)
+  ids             a second next-spell grant after a spent next-unit effect does not reuse the
+                  live grant's id; both discounts apply and are spent (review 5 R2-7)
   validator       a next-spell discount with no positive Energy value is refused
 """
 from __future__ import annotations
@@ -183,6 +189,16 @@ def main() -> int:
         done, exhausted = enters(unit["next_effect_state"], "un1", "item-un1")
         if not done.get("committed") or exhausted is not False:
             errors.append(f"the next unit should enter ready: {done.get('reason')} exhausted={exhausted}")
+        # it entered: the play is over, and the replacement with it - returned to hand and played
+        # again under the same chain item id, it is a new object (Core 124) and enters exhausted
+        if done.get("committed"):
+            bounced = apply_program(done["next_effect_state"],
+                                    program("bounce", {"op": "return_to_hand", "effect_id": "rt", "object_id": "un1"}))
+            replay = play_card(fixture(), bounced["next_state"], declaration("un1", "unit", 2, item_id="item-un1")) \
+                if bounced.get("committed") else {}
+            if not replay.get("committed") or enters(replay["next_effect_state"], "un1", "item-un1")[1] is not True:
+                errors.append(f"the next unit, entered ready, bounced and played again under the same chain item id "
+                              f"entered ready again: {bounced.get('reason') or replay.get('reason')}")
         second = run(done["next_effect_state"], "un2", "unit", 2) if done.get("committed") else {}
         if second.get("committed"):
             _, exhausted2 = enters(second["next_effect_state"], "un2", "item-un2")
@@ -209,6 +225,48 @@ def main() -> int:
             errors.append("a unit played BEFORE the effect was made entered ready")
     else:
         errors.append(f"the early unit could not be played: {on_chain.get('reason')}")
+
+    # review 5 R2-7a: the next unit played, then countered back to hand (Core 425.1) - the effect
+    # was spent by that play and its replacement ends with it. Played again - under a new chain
+    # item id, or the SAME id reused - it is a new object (Core 124) and enters exhausted. (The
+    # replacement stayed on the card and applied again under a reused id before 2026-09-28.)
+    countered_disc = granted(board(), ready)
+    countered_disc["players"]["p1"]["resources"]["energy"] = 4
+    first_play = run(countered_disc, "un1", "unit", 2)
+    if not first_play.get("committed"):
+        errors.append(f"the unit to be countered could not be played: {first_play.get('reason')}")
+    else:
+        counter = {**program("counter", {"op": "counter", "effect_id": "c", "chain_item_id": "item-un1", "card_to": "hand"}),
+                   "controller": "p2"}
+        back = apply_program(first_play["next_effect_state"], counter)
+        if not back.get("committed") or "un1" not in back["next_state"]["players"]["p1"]["zones"]["hand"]:
+            errors.append(f"the counter did not return un1 to hand: {back.get('reason') or back.get('errors')}")
+        else:
+            for item_id in ("item-un1-again", "item-un1"):
+                again = play_card(fixture(), back["next_state"], declaration("un1", "unit", 2, item_id=item_id))
+                if not again.get("committed"):
+                    errors.append(f"un1 could not be played again as {item_id}: {again.get('reason')}")
+                    continue
+                _, exhausted = enters(again["next_effect_state"], "un1", item_id)
+                if exhausted is not True:
+                    errors.append(f"a countered next unit played again (chain item {item_id}) entered ready again")
+    # review 5 R2-7b: turn-effect ids stay distinct when a spent one left the list - a next-unit
+    # grant (serial 0), a next-spell grant (1), the unit played (spends 0), another next-spell
+    # grant: it must not reuse the live one's id, and both discounts apply to the next spell
+    mixed = granted(granted(board(), ready), discount)
+    mixed["players"]["p1"]["resources"]["energy"] = 2
+    spent_unit = run(mixed, "un1", "unit", 2)
+    if not spent_unit.get("committed"):
+        errors.append(f"the unit spending the next-unit effect could not be played: {spent_unit.get('reason')}")
+    else:
+        again = granted(spent_unit["next_effect_state"], discount)
+        ids = [e["effect_id"] for e in kinds(again, "next_spell_cost_reduction")]
+        again["players"]["p1"]["resources"]["energy"] = 0
+        both = run(again, "sp6", "spell", 6)
+        if len(ids) != 2 or len(set(ids)) != 2 or not both.get("committed") or paid(both) != 0 \
+                or kinds(both["next_effect_state"], "next_spell_cost_reduction"):
+            errors.append(f"a second next-spell grant after a spent next-unit effect reused a live id, or the two "
+                          f"discounts did not both apply and both get spent: {ids} {both.get('reason')}")
 
     bad = program("bad", {"op": "grant_turn_effect", "effect_id": "g", "turn_effect_kind": "next_spell_cost_reduction",
                           "value": "ready", "controller": "p1", "source": "x"})

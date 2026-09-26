@@ -2566,6 +2566,17 @@ def _split_bonus(state: dict[str, Any], controller: str | None, object_ids: list
     return total, sources
 
 
+def drop_play_bound_replacements(obj: dict[str, Any], item_id: str) -> None:
+    """Remove from a card the entry replacements bound to the play `item_id` (Core 805.2.b, 391):
+    that play has ended - the card entered, or it was countered (425.1) - and the replacement
+    does not outlive it. Printed (unbound) entry replacements stay."""
+    kept = [r for r in obj.get("entry_replacements") or [] if r.get("chain_item") != item_id]
+    if kept:
+        obj["entry_replacements"] = kept
+    else:
+        obj.pop("entry_replacements", None)
+
+
 def same_side(state: dict[str, Any], left: str | None, right: str | None) -> bool:
     """Module-level friendliness for criteria expansion: the same player, or the
     same declared team_id (2v2)."""
@@ -4210,6 +4221,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             owner = new_state["objects"][card]["owner"]
             zone = "trash" if destination == "trash" else "hand"
             new_state["players"][owner]["zones"][zone].append(card)
+            # 2026-09-28: a replacement bound to the countered play (Accelerate, "the next unit you
+            # play enters ready") ends with it; the card played again is a new object (Core 124)
+            drop_play_bound_replacements(new_state["objects"][card], item_id)
             trace.update({"card": card, "destination": f"{owner}.{zone}", "identity_after": _bump_identity(new_state, card)})
             if destination != "trash":
                 trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 359.3"]))
@@ -5963,6 +5977,9 @@ def perform_lethal_cleanup(
     initial_group: list[str] = []
     killed_objects: list[str] = []
     stable_prevented: list[str] = []
+    # 2026-09-28: the deaths' events (ADR-0014), which the kill batch records and this dropped - so a
+    # unit dead of lethal damage never woke a "when a unit dies" watcher (Core 428; review 5 R2-6)
+    events: list[dict[str, Any]] = []
     iterations = 0
     while iterations < 16:
         lethal = []
@@ -6020,6 +6037,7 @@ def perform_lethal_cleanup(
             copied_trigger.setdefault("trigger_kind", "self_death")
             pending_triggers.append(copied_trigger)
         killed_objects.extend(batch.get("killed_objects", []))
+        events.extend(copy.deepcopy(batch.get("events") or []))
         iterations += 1
         if hash_value(current) == before_iteration_hash:
             stable_prevented = batch.get("prevented_objects", [])
@@ -6042,6 +6060,7 @@ def perform_lethal_cleanup(
         "cleanup_iterations": iterations,
         "trace": trace,
         "pending_triggers": pending_triggers,
+        "events": events,
         "coverage": "lethal-damage-with-single-prevention-descriptor-sequencing",
     }
 

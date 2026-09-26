@@ -7,7 +7,8 @@ Must hold:
     lists could not express: a Unit whose ability watches for a friendly Unit
     dying fires when its neighbour dies, and the scope really filters —
     `self` sees only its own events, `controller` only its controller's,
-    `location` only what happens where it is;
+    `location` only what happens where it is; a death in a Cleanup (lethal
+    damage, Core 428) wakes it through the resolution bridge as a Kill does;
   - the visibility boundary of ADR-0013 §3 holds at the watch: a watcher may
     react to a public fact, but one whose condition would read a card its
     controller may not see is refused by name (`watch_beyond_visibility`)
@@ -110,6 +111,20 @@ def main() -> int:
     enemy_any = kill(anything, "u2")
     if [entry["trigger_id"] for entry in w.schedule_watchers(enemy_any["next_state"], enemy_any["events"], turn_id=TURN)] != ["u1-any"]:
         errors.append("negative mutation failed: widening the scope to `any` did not change what matched, so the scope filter is vacuous")
+
+    # a death in a Cleanup is a death (Core 428): the lethal-damage kill batch's events reach the
+    # watchers - a spell dealing 9 to u2 wakes the `any` watcher through the resolution bridge, as a
+    # Kill does. perform_lethal_cleanup dropped those events, so it never woke (2026-09-28)
+    from check_rules_core import item
+    from resolution_bridge import resolve_with_program
+    chain = fixture(priority="p2", items=[item("spell-1", "p1", "spell", "default", "finalized")], passes=["p1", "p2"])
+    for label, effect in (("dealt lethal damage", {"op": "deal_damage", "effect_id": "d", "object_id": "u2", "amount": 9}),
+                          ("killed", {"op": "kill", "effect_id": "k", "object_id": "u2"})):
+        done = resolve_with_program(chain, "spell-1", anything, program("s", effect))
+        woke = [i["id"] for i in (done.get("next_timing_state") or {}).get("chain", {}).get("items", [])]
+        if not done.get("committed") or woke != ["u1-any@resolve:spell-1"]:
+            errors.append(f"u2 {label} by a resolving spell did not wake the 'when a unit dies' watcher once: "
+                          f"{woke} {done.get('reason')}")
 
     # a watcher that only reacts to the kind, with no condition, may watch a
     # private event: the fact is public even when the card is not.

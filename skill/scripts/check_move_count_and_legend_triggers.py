@@ -19,6 +19,9 @@ resolve_battlefield_control after a decided Combat, begin_ending_step):
     count; another friendly unit's Moves, and the opponent's unit's, do not count; a new turn
     starts a new count; a unit that left the board and came back is a new object (Core 124) and
     counts from zero;
+  - a Standard Move's own Cleanup wakes watchers too: a unit already carrying lethal damage dies
+    in it (323.5), and a "when a unit dies" watcher is scheduled in the Move's watch batch
+    (review 5 R2-6 - perform_lethal_cleanup dropped the deaths' events before);
   - "The first time I move each turn": the first Move schedules it, the second does not - even
     when the first trigger was declined at finalization (the count is of Moves, not of
     performances; unlike 383.3.e); two units with that watch moved in one Standard Move
@@ -190,6 +193,27 @@ def main() -> int:
         errors.append(f"the third Standard Move's trigger is not one pending item in the Move's watch batch: {items}")
     if "Core 420.2.b" not in (third.get("rule_locators") or []):
         errors.append("a Standard Move that woke a watcher did not cite Core 420.2.b")
+
+    # --- a Standard Move's Cleanup wakes watchers too (review 5 R2-6) ---------------------------------
+    # p2's z1 already carries lethal damage; y1's Standard Move ends with a Cleanup that kills it
+    # (323.5), and w1's "when a unit dies" watcher wakes on that death - in the watch batch
+    doomed = mover_board()
+    doomed["objects"]["z1"] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                               "damage": 2, "exhausted": False}
+    doomed["players"]["p2"]["zones"]["base"].append("z1")
+    doomed["objects"]["w1"] = {"owner": "p1", "controller": "p1", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                               "damage": 0, "exhausted": True,
+                               "event_triggers": [descriptor("w-died", "w1", watch={"kinds": ["died"], "scope": "any"})]}
+    doomed["players"]["p1"]["zones"]["base"].append("w1")
+    if validate_state(doomed):
+        errors.append(f"the Cleanup board is invalid: {validate_state(doomed)[:2]}")
+    else:
+        moved = smove(doomed, "y1", TO_BF1)
+        woke = mine(moved, "w-died@")
+        if not moved.get("committed") or "z1" not in (moved.get("next_effect_state") or {}).get("players", {}).get("p2", {}).get("zones", {}).get("trash", []) \
+                or len(woke) != 1 or woke[0].get("batch_id") != "watch:standard-move:p1":
+            errors.append(f"a death in a Standard Move's Cleanup did not wake the 'when a unit dies' watcher: "
+                          f"{moved.get('reason_code')} {moved.get('reason')} {woke}")
 
     # an effect's Moves count with Standard Moves; a Standard Move that is the third schedules it
     counts, _ = moves(mover_board(), [("effect", TO_BF1), ("effect", TO_BF2), ("standard", TO_BASE)], errors)

@@ -690,6 +690,28 @@ def _lower_battlefield_aura(params):
                                                                          "on": "battlefield"}}}
 
 
+def _lower_battlefield_bonus_damage(params):
+    """Core 713-715 (package 5, 2026-09-27): a Battlefield's printed Bonus Damage to the
+    Units at it. effect_ir.bonus_damage reads a `location` scope on the affected Unit's current
+    Battlefield and ignores whose spell or ability deals; the entry's controller is only the
+    state's bookkeeping (a source-backed entry names one)."""
+    amount = int(params["amount"])
+    return {"state_lists": {"damage_modifiers": [{
+                "modifier_id": "$clause_id", "source_object": "$source_object", "controller": "$controller",
+                "amount": amount, "scope": {"kind": "location", "battlefield": "$source_object"}}]},
+            "ast": {"node": "passive", "kind": "bonus_damage",
+                    "params": {"amount": amount, "scope": "location", "on": "battlefield"}}}
+
+
+def _lower_additional_facedown_card(params):
+    """Core 107.3.b, 107.3.b.1 (package 5, 2026-09-27): this Battlefield's Facedown Zone holds
+    one card more than 107.3.b's one. hidden.hide_card refuses a hide into a full zone
+    (facedown_zone_full); the zone still starts empty."""
+    return {"battlefield_fields": {"facedown": {"capacity": 2, "cards": []}},
+            "ast": {"node": "passive", "kind": "facedown_capacity",
+                    "params": {"base": 1, "additional": 1, "on": "battlefield"}}}
+
+
 def _lower_move_restriction(params):
     """Core 359.3.e.6: printed on the Battlefield, and read by both Move paths
     - the Standard Move it forbids outright, and the effect-induced Move whose
@@ -709,6 +731,8 @@ LOWERINGS = {
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,
+    "spells_and_abilities_deal_n_bonus_damage_to_units_here": _lower_battlefield_bonus_damage,
+    "you_may_hide_an_additional_card_here": _lower_additional_facedown_card,
     "choose_an_opponent": _lower_choose_an_opponent,
     "they_reveal_their_hand": _lower_they_reveal_their_hand,
     "choose_a_non_unit_card_from_it_and_recycle_that_card": _lower_recycle_a_non_unit_from_the_reveal,

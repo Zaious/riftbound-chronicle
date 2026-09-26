@@ -418,6 +418,18 @@ LITERAL = [
     # Literal rows, not a selector alternative: the selector table is pinned by the
     # signed binding specs, and "here" is not a selector phrase in every production.
     # Crackshot Corsair, Leona - Determined and Ahri - Inquisitive are the real cards.
+    # 2026-09-27 package 5 (Volibear - Furious): a split deal - the Targets chosen at finalization,
+    # no more than the damage, each at the source's current Battlefield; the division at resolution
+    ("deal_n_damage_split_among_any_number_of_enemy_units_here",
+     r"deal (?P<amount>\d+) damage split among any number of enemy units here",
+     ["Core 417", "Core 355.14", "Core 355.14.a", "Core 355.14.b", "Core 355.14.c", "Core 355.14.e",
+      "Core 355.14.f", "Core 355.14.h", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
+     ("Up to N chosen enemy Units at the source's current Battlefield, the N divided among them at resolution, a "
+      "positive amount each. Damage to every enemy Unit here, one chosen Unit, a split at a chosen Battlefield, or a "
+      "split whose amount is read off the board is a different production."),
+     ["Deal 5 damage split among any number of enemy units here."],
+     ["deal 5 damage split among any number of enemy units at a battlefield", "deal 5 to all enemy units here",
+      "deal 5 to an enemy unit here", "deal damage equal to its might split among enemy units at battlefields"]),
     ("deal_n_to_an_enemy_unit_here", r"deal (?P<amount>\d+) to an enemy unit here",
      ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or "
@@ -475,6 +487,17 @@ LITERAL = [
      "A condition on the controller's own Runes on the board.",
      ["While you have 8+ runes, I have +4 [M]."],
      ["while i'm attacking or defending alone, i have +2 [m]", "while you have 8+ runes, i have [tank]"]),
+    # 2026-09-27 package 5: a turn-long prohibition on the opponents' card plays (Brynhir
+    # Thundersong). Cards are Main Deck cards (Core 052), so an activated ability is untouched;
+    # Can't beats Can (054.1); it expires with the turn (317.2.c).
+    ("opponents_cant_play_cards_this_turn", r"opponents can't play cards this turn",
+     ["Core 054.1", "Core 052", "Core 317.2.c"], "instruction", ["grant_turn_effect"],
+     ("A turn effect its controller creates: each opponent of that player can't play a card for the rest of "
+      "the turn. The controller's own plays, an activated ability, a later turn, and a prohibition on one kind "
+      "of card are outside it."),
+     ["Opponents can't play cards this turn."],
+     ["opponents can't play spells this turn", "you can't play cards this turn",
+      "opponents can't play cards", "opponents can't activate abilities this turn"]),
     ("units_you_play_this_turn_enter_ready", r"units you play this turn enter ready",
      ["Core 317.2", "Core 419.4"], "instruction", ["grant_turn_effect"],
      "Entry state for this turn's own plays.",
@@ -503,6 +526,33 @@ LITERAL = [
      "The card's own text, a fixed Energy amount per card in its controller's trash; 356.6 keeps the Energy cost at 0 or above. Another zone, or a count of something else, is a different clause.",
      ["I cost :rb_energy_1: less for each card in your trash."],
      ["i cost :rb_energy_1: less for each card in your hand", "i cost :rb_energy_1: less for each unit you control"]),
+    # 2026-09-27 package 5: a spell's own Energy reduction by a value read off the board as the
+    # cost is determined - the highest Might among the Units its player controls (Core 356.4.e's
+    # and 206's own example card). 1 per point, 0 with no Unit, never below 0 (356.6).
+    ("self_cost_reduction_highest_might",
+     r"this spell's energy cost is reduced by the highest might among units you control",
+     ["Core 356.4", "Core 356.4.b", "Core 356.4.e", "Core 356.6", "Core 355.9.a.1", "Core 206"],
+     "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text: its Energy cost reduced by the highest Might among the Units its player controls on the "
+      "board, read as the cost is determined. The sum of their Might, an opponent's Units, a Power reduction or a "
+      "unit's printed Might are different clauses."),
+     ["This spell's Energy cost is reduced by the highest Might among units you control."],
+     ["this spell's energy cost is reduced by the highest might among units your opponents control",
+      "this spell's energy cost is reduced by the total might of units you control",
+      "this spell's power cost is reduced by the highest might among units you control"]),
+    # 2026-09-27 package 5: a card's own fixed Energy reduction gated by a death this turn (Core
+    # 356.4, 428.1): a Unit on the named side of its player died this turn.
+    ("self_cost_reduction_unit_died",
+     r"if an? (?P<relation>enemy|friendly) unit has died this turn, this costs \[e(?P<amount>\d+)\] less",
+     ["Core 356.4", "Core 356.4.b", "Core 428.1", "Core 428.2.a"], "self_cost_reduction",
+     ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text, a fixed Energy amount, gated by a Unit of the named side having died this turn - the "
+      "side as it was when it died. A unit that died last turn, a unit that left the board another way, or a "
+      "Power reduction is a different clause."),
+     ["If an enemy unit has died this turn, this costs :rb_energy_2: less."],
+     ["if an enemy unit has died this turn, this costs :rb_rune_rainbow: less",
+      "if an enemy unit died last turn, this costs :rb_energy_2: less",
+      "if an enemy unit has been banished this turn, this costs :rb_energy_2: less"]),
     # 2026-09-24: a unit's printed static aura - a continuous Might effect over the other
     # friendly units at its own Battlefield, read live off the object while it is on the
     # board (effect_ir.printed_aura_effects; check_static_auras.py).
@@ -716,6 +766,17 @@ LITERAL = [
      ["you may play me to an occupied enemy battlefield",
       "friendly units may be played to open battlefields",
       "you may play a unit to an open battlefield"]),
+    # 2026-09-27 package 5: a permanent's printed grant to its side's unit plays (Miss Fortune -
+    # Buccaneer), read while it is on the board (Core 355.2.b, 170.11.c)
+    ("friendly_units_may_be_played_to_open_battlefields",
+     r"friendly units may be played to open battlefields",
+     ["Core 355.2.a", "Core 355.2.b", "Core 170.11.c"], "passive", ["open_battlefield"],
+     ("A permission this permanent grants while it is on the board: a unit card its controller's side plays may "
+      "enter an open Battlefield. An enemy's unit, a gear, an occupied or controlled Battlefield, and the permanent "
+      "off the board are outside it."),
+     ["Friendly units may be played to open battlefields."],
+     ["friendly units may be played to occupied enemy battlefields", "you may play me to an open battlefield",
+      "enemy units may be played to open battlefields"]),
     ("units_cant_move_from_here_to_base",
      r"units can't move from here to base",
      ["Core 144.4.b", "Core 359.3.e.6", "Core 190.6.a"], "passive", ["move_restriction"],

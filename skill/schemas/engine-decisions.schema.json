@@ -68,7 +68,8 @@
               "damage_assignment",
               "player_selection",
               "mode_selection",
-              "card_ordering"
+              "card_ordering",
+              "damage_division"
             ]
           },
           "controller": {
@@ -102,7 +103,8 @@
                     "target_selection",
                     "card_selection",
                     "damage_assignment",
-                    "card_ordering"
+                    "card_ordering",
+                    "damage_division"
                   ]
                 }
               },

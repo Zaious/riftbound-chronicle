@@ -349,6 +349,23 @@ def _lower_deal_enemy_unit_here(params):
                                                             "location_ref": dict(_HERE)}}}}
 
 
+def _lower_deal_split_among_enemy_units_here(params):
+    """"Deal N damage split among any number of enemy units here." (Volibear - Furious) - Core
+    355.14: each chosen Unit is a Target (355.14.a), chosen as the ability is finalized (355.14.b),
+    at most N of them (355.14.c: the amount caps them, so the targets carry no max), each at the
+    source's current Battlefield (359.3.f.2); how the N is divided is decided at resolution
+    (355.14.e), a positive amount to each Target kept (355.14.f, 355.14.g, 355.14.h)."""
+    amount = int(params["amount"])
+    restrictions = {"chosen_zone_class": "board", "kind": "unit", "controller_relation": "enemy",
+                    "location_ref": dict(_HERE)}
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": amount,
+                                 "targets": {"decision_ref": "t", "min": 0, "restrictions": restrictions},
+                                 "division_ref": "t-division"}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount": amount, "split": True, "targets": {"min": 0, "max": "amount",
+                                                                            "restrictions": dict(restrictions)}}}}
+
+
 def _lower_deal_my_might_to_enemy_unit_here(params):
     ref = {"kind": "program_source_current_might"}
     return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount_ref": dict(ref), "target": _here_target()}],
@@ -426,6 +443,16 @@ def _lower_units_enter_ready(params):
                     "params": {"turn_effect_kind": "entry_state_for_played_units", "value": "ready"}}}
 
 
+def _lower_opponents_cant_play_cards(params):
+    """"Opponents can't play cards this turn." - a turn effect of its controller's: each of their
+    opponents is refused a card play for the rest of the turn (Core 054.1, 052, 317.2.c)."""
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "cards_play_prohibited", "value": "opponents",
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "cards_play_prohibited", "value": "opponents"}}}
+
+
 def _lower_self_cost_reduction(params):
     """Round H: "If <condition>, this costs N less." — the card's own text,
     a fixed Energy amount, a registered condition leaf. The program is not an
@@ -464,6 +491,27 @@ def _lower_self_cost_reduction_per_trash(params):
                 "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
                 "per_each": {"kind": "zone_count_at_least", "zone": "trash"}}]},
             "ast": {"node": "self_cost_reduction", "amount": amount, "per_each": {"zone": "trash"}}}
+
+
+def _lower_self_cost_reduction_highest_might(params):
+    """"This spell's Energy cost is reduced by the highest Might among units you control." -
+    1 Energy per point of the highest Might among the Units its player controls on the board,
+    read as the cost is determined (356.4; 356.6 keeps it at 0 or above)."""
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": 1,
+                "per_each": {"kind": "highest_might_among_units_you_control"}}]},
+            "ast": {"node": "self_cost_reduction", "amount": 1, "per_each": {"kind": "highest_might_among_units_you_control"}}}
+
+
+def _lower_self_cost_reduction_unit_died(params):
+    """"If an enemy unit has died this turn, this costs N less." - the card's own text, a fixed
+    Energy amount, gated by a Unit of that side having died this turn (356.4, 428.1)."""
+    amount = int(params["amount"])
+    condition = {"kind": "unit_died_this_turn", "controller_relation": params["relation"]}
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
+                "condition": dict(condition)}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "condition": dict(condition)}}
 
 
 def _lower_empty(params):
@@ -662,6 +710,16 @@ def _lower_open_permission(params):
     }
 
 
+def _lower_granted_open_permission(params):
+    """Core 355.2.b, 170.11.c: while this permanent is on the board, the unit cards its side plays
+    may enter an open Battlefield (Miss Fortune - Buccaneer)."""
+    grant = {"permission": "open_battlefield", "kind": "unit", "controller_relation": "friendly"}
+    return {
+        "object_fields": {"granted_play_permissions": [dict(grant)]},
+        "ast": {"node": "passive", "kind": "granted_play_permission", "params": dict(grant)},
+    }
+
+
 AURA_HERE = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True, "at_source_battlefield": True}
 
 
@@ -776,6 +834,7 @@ LOWERINGS = {
     "units_cant_move_from_here_to_base": _lower_move_restriction,
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "you_may_play_me_to_an_open_battlefield": _lower_open_permission,
+    "friendly_units_may_be_played_to_open_battlefields": _lower_granted_open_permission,
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,
@@ -810,6 +869,7 @@ LOWERINGS = {
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
+    "deal_n_damage_split_among_any_number_of_enemy_units_here": _lower_deal_split_among_enemy_units_here,
     "stun_an_enemy_unit_here": _lower_stun_enemy_unit_here,
     "deal_damage_equal_to_my_might_to_an_enemy_unit_here": _lower_deal_my_might_to_enemy_unit_here,
     "give_an_enemy_unit_here_might_this_turn": _lower_give_enemy_unit_here_might,
@@ -819,11 +879,14 @@ LOWERINGS = {
     "return_a_unit_from_your_trash_to_your_hand": _lower_return_from_trash,
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
+    "opponents_cant_play_cards_this_turn": _lower_opponents_cant_play_cards,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
     "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,
     "my_might_is_increased_by_your_points": _lower_might_by_points,
     "self_cost_reduction_per_trash_card": _lower_self_cost_reduction_per_trash,
+    "self_cost_reduction_highest_might": _lower_self_cost_reduction_highest_might,
+    "self_cost_reduction_unit_died": _lower_self_cost_reduction_unit_died,
 }
 
 # Productions that wrap another clause: "When you play me, <inner>."

@@ -32,6 +32,11 @@ OPTIONAL_PLAYER_ZONES = {"legend_zone", "champion_zone"}
 # occupied_enemy_battlefield reads 170.11.a ("occupied" = a Unit is there) and
 # the controller relation the card's own words already give.
 PLAY_PERMISSIONS = {"open_battlefield", "ambush", "occupied_enemy_battlefield"}
+# 2026-09-27 package 5 (Miss Fortune - Buccaneer, "Friendly units may be played to open
+# battlefields."): a permission a permanent GRANTS, while it is on the board, to the unit cards its
+# controller's side plays - one shape, closed: {permission: open_battlefield, kind: unit,
+# controller_relation: friendly} (Core 355.2.b, 170.11.c).
+GRANTED_PLAY_PERMISSION_SHAPES = [{"permission": "open_battlefield", "kind": "unit", "controller_relation": "friendly"}]
 # Which of those a card gets from a *sentence* rather than from a bracketed
 # keyword. [Ambush] is printed on the card and belongs in the keyword
 # catalogue; "You may play me to an open / occupied enemy battlefield" is a
@@ -88,7 +93,12 @@ COMBAT_ROLES = {"attacker", "defender"}
 # DP-94 / Core 423: a Stun lasts the turn, so the Expiration Step is what
 # ends it. `stunned` on the object stays as the readable status, but the entry
 # here is what owns its lifetime - a status with no owner never comes off.
-TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit"}
+TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit", "cards_play_prohibited"}
+# The values a granted turn effect may carry, per kind. 2026-09-27 package 5 (Brynhir Thundersong,
+# "opponents can't play cards this turn"): cards_play_prohibited forbids the granting player's
+# opponents to play cards - Main Deck cards (Core 052), not activated abilities - for the rest of
+# the turn it is granted in; Can't beats Can (054.1). It expires with that turn (317.2.c).
+TURN_EFFECT_VALUES = {"entry_state_for_played_units": {"ready", "exhausted"}, "cards_play_prohibited": {"opponents"}}
 # ADR-0008 §5: attacking_or_defending_alone reads the Unit's own designation
 # and company (740.2.a); friendly_unit_defends_alone is the bounded external
 # aura of the Master Yi Legend clause, carried by a might_auras entry.
@@ -578,6 +588,13 @@ def validate_state(state: Any) -> list[str]:
         discarded = player.get("cards_discarded_this_turn")
         if discarded is not None and (not isinstance(discarded, dict) or any(not isinstance(k, str) or not k or not isinstance(v, list) or any(o not in objects for o in v) for k, v in discarded.items())):
             errors.append(f"players.{player_id}.cards_discarded_this_turn must map turn ids to lists of known object ids")
+        # Core 428.1 / 428.2.a: how many Units this player controlled when they died, per turn -
+        # "if an enemy unit has died this turn" (Spoils of War). A count, not ids: a token that
+        # dies ceases to exist (186.1) and would leave an id pointing at nothing.
+        died = player.get("units_died_this_turn")
+        if died is not None and (not isinstance(died, dict) or any(not isinstance(k, str) or not k or not isinstance(v, int)
+                                                                  or isinstance(v, bool) or v < 1 for k, v in died.items())):
+            errors.append(f"players.{player_id}.units_died_this_turn must map turn ids to a positive count (Core 428.1)")
 
     for battlefield_id, battlefield in battlefields.items():
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
@@ -779,6 +796,8 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.turn_id must be a non-empty string")
         if effect["kind"] == "entry_state_for_played_units" and effect.get("value") not in {"ready", "exhausted"}:
             errors.append(f"{label}.value must be ready or exhausted")
+        if effect["kind"] == "cards_play_prohibited" and effect.get("value") not in TURN_EFFECT_VALUES["cards_play_prohibited"]:
+            errors.append(f"{label}.value must be one of {sorted(TURN_EFFECT_VALUES['cards_play_prohibited'])}")
         if effect["kind"] == "stunned_unit":
             if effect.get("object_id") not in objects:
                 errors.append(f"{label}.object_id must name an object in this state")
@@ -1030,9 +1049,11 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"{label} must be {{modification_id, kind, amount, condition?, per_each?}}")
                 continue
             per_each = modification.get("per_each")
-            if per_each is not None and (not isinstance(per_each, dict) or per_each.get("kind") != "zone_count_at_least"
-                                         or set(per_each) - {"kind", "zone", "player"} or per_each.get("zone") not in PUBLIC_COUNT_ZONES):
-                errors.append(f"{label}.per_each must count a public zone of the controller ({sorted(PUBLIC_COUNT_ZONES)}) (Core 356.4)")
+            if per_each is not None and per_each != {"kind": HIGHEST_MIGHT_YOU_CONTROL} and (
+                    not isinstance(per_each, dict) or per_each.get("kind") != "zone_count_at_least"
+                    or set(per_each) - {"kind", "zone", "player"} or per_each.get("zone") not in PUBLIC_COUNT_ZONES):
+                errors.append(f"{label}.per_each must count a public zone of the controller ({sorted(PUBLIC_COUNT_ZONES)}), "
+                              f"or be {{kind: {HIGHEST_MIGHT_YOU_CONTROL}}} (Core 356.4)")
             if modification["kind"] != "energy_reduction":
                 errors.append(f"{label}.kind must be energy_reduction; nothing else is modelled (Round H)")
             if not isinstance(modification["amount"], int) or isinstance(modification["amount"], bool) or modification["amount"] < 1:
@@ -1198,6 +1219,11 @@ def validate_state(state: Any) -> list[str]:
         permissions = obj.get("play_permissions", [])
         if not isinstance(permissions, list) or len(permissions) != len(set(permissions)) or any(p not in PLAY_PERMISSIONS for p in permissions):
             errors.append(f"objects.{object_id}.play_permissions must be a unique array drawn from {sorted(PLAY_PERMISSIONS)}")
+        granted = obj.get("granted_play_permissions")
+        if granted is not None and (not isinstance(granted, list) or not granted
+                                    or any(g not in GRANTED_PLAY_PERMISSION_SHAPES for g in granted)):
+            errors.append(f"objects.{object_id}.granted_play_permissions must be a non-empty array of "
+                          f"{GRANTED_PLAY_PERMISSION_SHAPES}")
         # ADR-0012 §4 / Core 434: an attached card names its Top-Most card. The
         # engine derives the other direction, so the two can never disagree.
         host_id = obj.get("attached_to")
@@ -1540,7 +1566,7 @@ def validate_program(program: Any) -> list[str]:
             dependency = effect.get("depends_on")
             if dependency is not None and dependency not in seen:
                 errors.append(f"effects[{index}].depends_on must reference an earlier effect")
-            if effect.get("dependency_mode", "if_applied") not in {"if_applied", "always"}:
+            if effect.get("dependency_mode", "if_applied") not in DEPENDENCY_MODES:
                 errors.append(f"effects[{index}].dependency_mode is invalid")
             subject_identity = effect.get("subject_identity")
             if subject_identity is not None and (not isinstance(subject_identity, str)
@@ -1826,6 +1852,23 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}] may carry target or targets, not both")
                 if effect.get("op") not in MULTI_TARGET_OPS:
                     errors.append(f"effects[{index}].targets is not supported for {effect.get('op')!r}")
+                split = effect.get("division_ref") is not None
+                if split:
+                    # 2026-09-27 package 5, Core 355.14: "deal N damage split among any number of ...".
+                    # The targets are one decision made at finalization; how many may be chosen is
+                    # capped by the damage itself (355.14.c), so the split carries no max of its own
+                    # (the amount is the cap); the division is a resolution decision (355.14.e).
+                    if effect.get("op") != "deal_damage" or not isinstance(effect["division_ref"], str) or not effect["division_ref"]:
+                        errors.append(f"effects[{index}].division_ref splits a deal_damage's amount; it must be a non-empty decision id")
+                    if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1 \
+                            or effect.get("amount_ref") is not None:
+                        errors.append(f"effects[{index}] a split deal needs a fixed positive amount (Core 355.14.c)")
+                    if not isinstance(targets, dict) or "decision_ref" not in targets or "selectors" in targets or "max" in targets:
+                        errors.append(f"effects[{index}].targets of a split deal is one decision_ref with min and no max: "
+                                      f"the amount caps the targets (Core 355.14.b, 355.14.c)")
+                    elif isinstance(effect.get("amount"), int) and isinstance(targets.get("min"), int) and targets["min"] > effect["amount"]:
+                        errors.append(f"effects[{index}].targets.min exceeds the damage to split (Core 355.14.c)")
+                    targets = {**targets, "max": effect.get("amount")} if isinstance(targets, dict) else targets
                 if not isinstance(targets, dict) or set(targets) - {"selectors", "decision_ref", "min", "max", "restrictions"} or not {"min", "max"} <= set(targets):
                     errors.append(f"effects[{index}].targets must carry min, max, and selectors or decision_ref")
                 else:
@@ -1839,6 +1882,8 @@ def validate_program(program: Any) -> list[str]:
                         errors.append(f"effects[{index}].targets has more selectors than max")
                     if "decision_ref" in targets and (not isinstance(targets["decision_ref"], str) or not targets["decision_ref"]):
                         errors.append(f"effects[{index}].targets.decision_ref must be non-empty")
+            if effect.get("division_ref") is not None and effect.get("targets") is None:
+                errors.append(f"effects[{index}].division_ref splits the damage among chosen targets; it needs targets")
             seen.add(effect_id)
     return errors
 
@@ -2383,8 +2428,20 @@ def location_token(location: tuple[str, str, str | None] | None) -> str | None:
 
 
 # "to or from its base" (2026-09-25, Yasuo - Unforgiven): a chosen Move destination narrowed to
-# the unit's own Base when it is at a Battlefield, and to a Battlefield when it is in its Base
-MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base"}
+# the unit's own Base when it is at a Battlefield, and to a Battlefield when it is in its Base.
+# "to a battlefield" (2026-09-27 package 5, Showstopper): a chosen destination that is a
+# Battlefield - never a Base (Core 355.4.a, 144.4.b).
+MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base", "battlefield"}
+# How a later instruction depends on the earlier one it names in depends_on:
+#   if_applied      only when the earlier one was applied (the long-standing default)
+#   always          regardless
+#   unless_ignored  2026-09-27 package 5 - Core 359.3.e.14.a: a later LINKED instruction ("Buff a
+#                   friendly unit in your base, then move IT ...") executes only if the earlier
+#                   one executed; it is skipped when the earlier one was ignored (an illegal
+#                   target, 359.3.e.6) or itself skipped - but not when the earlier one executed
+#                   and changed nothing (a Unit already Buffed is still chosen, 426.1.c).
+DEPENDENCY_MODES = {"if_applied", "always", "unless_ignored"}
+IGNORED_OUTCOMES = {"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency"}
 
 
 def token_play_locations(state: dict[str, Any], controller: str, token_kind: str) -> list[str]:
@@ -3127,6 +3184,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # destinations this board actually offers.
             import engine_decisions as _ed
             candidates = legal_move_destinations(new_state, object_id)
+            if destination.get("restriction") == "battlefield":
+                candidates = [c for c in candidates if c.startswith("battlefield:")]
             if destination.get("restriction") == "to_or_from_own_base":
                 # "Move a friendly unit to or from its base." (2026-09-25): from a Battlefield the
                 # only destination is its own Base; from its Base, a Battlefield (Core 355.4.a, 144.4.b)
@@ -3449,8 +3508,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
         if kind not in TURN_EFFECT_KINDS:
             raise NotImplementedError(f"turn effect {kind!r} is not modelled")
-        if controller not in new_state["players"] or value not in {"ready", "exhausted"}:
-            raise ValueError("grant_turn_effect requires a known controller and a ready|exhausted value")
+        if controller not in new_state["players"] or value not in TURN_EFFECT_VALUES.get(kind, {"ready", "exhausted"}):
+            raise ValueError(f"grant_turn_effect requires a known controller and a value in "
+                             f"{sorted(TURN_EFFECT_VALUES.get(kind, {'ready', 'exhausted'}))}")
         turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
         granted = {"effect_id": f"{kind}:{controller}:{turn_id}:{len(new_state.get('turn_effects', []))}", "kind": kind, "controller": controller,
                    "value": value, "turn_id": turn_id, "source": effect.get("source", "effect")}
@@ -3643,8 +3703,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         deathknell = {trigger["trigger_id"] for trigger in deathknell_instances(new_state, object_id)}
         for trigger in pending_triggers:
             trigger["deathknell"] = trigger["trigger_id"] in deathknell
+        # Core 428.1: a Unit died - counted for its controller as it died, before it leaves the
+        # board (a token ceases to exist below, 186.1, and still died)
+        died_as_unit = characteristics(new_state, object_id).get("kind") == "unit"
+        controller_at_death = obj.get("controller")
         detached = detach_records(new_state, object_id, _last_board_location(location), host_left_board=True)
         _remove_from_location(new_state, object_id)
+        if died_as_unit:
+            record_unit_death(new_state, controller_at_death)
         if obj.get("is_token"):
             del new_state["objects"][object_id]
             destination = "ceased_to_exist"
@@ -4548,17 +4614,28 @@ CONDITION_LEAVES = {
     # 2026-09-27: "If an opponent controls a battlefield" - some Battlefield is controlled by a
     # player on that side of the effect's controller (190.2.b: controlled by a specific player or by no one)
     "controls_a_battlefield": {"controller_relation"},
+    # "If an enemy unit has died this turn" (Spoils of War): a Unit controlled - when it died -
+    # by a player on the given side of the asking controller died this turn (Core 428.1, 428.2.a).
+    # Read off the per-turn ledger the Kill action writes (units_died_this_turn); a death a
+    # Replacement Effect replaced never happened (370.1.a.1) and is not in it.
+    "unit_died_this_turn": {"controller_relation"},
 }
 CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
                       "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
                       "zone_count_at_least": {"zone", "count"}, "same_location_as": {"as"},
                       "might_less_than": {"than"}, "object_kind": {"value"},
                       "score_within_of_victory": {"count"}, "cards_discarded_this_turn_at_least": {"count"},
-                      "controls_a_battlefield": {"controller_relation"}}
+                      "controls_a_battlefield": {"controller_relation"}, "unit_died_this_turn": {"controller_relation"}}
 PRIVATE_ZONES = {"hand", "main_deck", "rune_deck"}
 # "for each card in your trash" (Rhasa the Sunderer): the zones a printed per-each
 # reduction may count - public ones, so no perspective is needed to count them.
 PUBLIC_COUNT_ZONES = {"trash"}
+# "This spell's Energy cost is reduced by the highest Might among units you control." (Sky
+# Splitter): a printed reduction of 1 per point of the highest Might among the Units the
+# player playing it controls on the board (Core 355.9.a.1: "unit" is a Unit on the board),
+# read as the cost is determined (356.4, 356.4.b); 0 with no Unit, and 356.6 keeps the cost
+# at 0 or above. The Might is the Unit's Might as the layers compute it (476-480).
+HIGHEST_MIGHT_YOU_CONTROL = "highest_might_among_units_you_control"
 
 
 class ConditionUnsupported(NotImplementedError):
@@ -4645,6 +4722,12 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
         if player is None:
             raise ConditionUnsupported("another_card_finalized_this_turn needs to know whose plays to read")
         return legion_active(state, player, subject)
+    if kind == "unit_died_this_turn":
+        if controller is None:
+            raise ConditionUnsupported("unit_died_this_turn needs to know whose friends and enemies to read")
+        friendly = condition["controller_relation"] == "friendly"
+        return any(units_died_this_turn(state, player_id) > 0 for player_id in sorted(state["players"])
+                   if same_side(state, controller, player_id) == friendly)
     if kind == "object_kind":
         return subject is not None and characteristics(state, subject).get("kind") == condition["value"]
     if kind == "same_location_as":
@@ -4761,6 +4844,60 @@ def record_discarded_cards(state: dict[str, Any], player: str, cards: list[str])
     turn_id = state.get("turn_id", DEFAULT_TURN_ID)
     ledger = (state["players"][player].get("cards_discarded_this_turn") or {}).get(turn_id, [])
     state["players"][player]["cards_discarded_this_turn"] = {turn_id: ledger + list(cards)}
+def units_died_this_turn(state: dict[str, Any], player: str) -> int:
+    """Core 428.1: how many Units `player` controlled when they died, this turn."""
+    ledger = (state["players"].get(player) or {}).get("units_died_this_turn") or {}
+    return int(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), 0))
+
+
+def record_unit_death(state: dict[str, Any], controller: str) -> None:
+    """Called by the Kill action (the one place a permanent goes from the board to the trash,
+    Core 428.1, 428.2) for a Unit, with its controller as it died. Only this turn's entry is
+    kept, as record_finalized_card does."""
+    if controller not in state["players"]:
+        return
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    state["players"][controller]["units_died_this_turn"] = {turn_id: units_died_this_turn(state, controller) + 1}
+
+
+def play_prohibition(state: dict[str, Any], player: str) -> dict[str, Any] | None:
+    """The turn effect, if any, that forbids `player` to play cards this turn: a
+    cards_play_prohibited granted this turn by a player `player` is an opponent of (Core 054.1;
+    052: cards are Main Deck cards). None when nothing forbids it."""
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    for effect in state.get("turn_effects", []) or []:
+        if (effect.get("kind") == "cards_play_prohibited" and effect.get("turn_id") == turn_id
+                and effect.get("value") == "opponents" and not same_side(state, effect.get("controller"), player)):
+            return effect
+    return None
+
+
+def granted_play_permissions(state: dict[str, Any], card: str, actor: str) -> list[str]:
+    """The play permissions permanents on the board grant to `card` played by `actor` (Core
+    355.2.b): each friendly permanent - one on `actor`'s side - on the board whose
+    granted_play_permissions names the card's kind. The card itself grants nothing to itself
+    here: its own permission is its play_permissions."""
+    kind = (state["objects"].get(card) or {}).get("kind")
+    found = []
+    for source, obj in sorted(state["objects"].items()):
+        if source == card or not obj.get("granted_play_permissions") \
+                or zone_class(find_location(state, source)) != "board":
+            continue
+        for grant in obj["granted_play_permissions"]:
+            if grant["kind"] == kind and grant["controller_relation"] == "friendly" \
+                    and same_side(state, obj.get("controller"), actor) and grant["permission"] not in found:
+                found.append(grant["permission"])
+    return found
+
+
+def highest_might_you_control(state: dict[str, Any], player: str) -> int:
+    """The highest Might among the Units `player` controls on the board (Core 355.9.a.1), as the
+    layers compute it (476-480); 0 when they control none. A negative Might counts as 0: it can
+    only lower nothing (356.6)."""
+    mights = [effective_might(state, object_id) for object_id, obj in state["objects"].items()
+              if obj.get("controller") == player and zone_class(find_location(state, object_id)) == "board"
+              and characteristics(state, object_id).get("kind") == "unit"]
+    return max([0] + mights)
 
 
 def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, Any], actor: str) -> dict[str, Any]:
@@ -4773,6 +4910,14 @@ def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, An
         result["applies"] = evaluate_condition(state, condition, controller=actor)
         result["condition_result"] = result["applies"]
     per_each = modification.get("per_each")
+    if per_each == {"kind": HIGHEST_MIGHT_YOU_CONTROL}:
+        # Sky Splitter: 1 per point of the highest Might among the actor's Units, read now
+        # (356.4); 356.6 floors the total later, in determine_total_cost
+        count = highest_might_you_control(state, actor)
+        result["per_each_count"] = count
+        result["amount"] = modification.get("amount", 0) * count
+        result["applies"] = result["applies"] and count > 0
+        return result
     if per_each is not None:
         problems = validate_condition({**per_each, "count": 0} if "count" not in per_each else per_each)
         if problems:
@@ -6186,8 +6331,9 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
     if entry["stage"] not in {"play_declaration", "trigger_finalization"}:
         raise ValueError(f"target selection {targets['decision_ref']!r} was supplied at the wrong stage")
     chosen = list(entry["value"])
-    if not (targets["min"] <= len(chosen) <= targets["max"]):
-        raise ValueError(f"target selection {targets['decision_ref']!r} chose {len(chosen)} objects; allowed {targets['min']}..{targets['max']}")
+    cap = targets["max"] if "max" in targets else effect.get("amount")   # a split: its damage is the cap (355.14.c)
+    if not (targets["min"] <= len(chosen) <= cap):
+        raise ValueError(f"target selection {targets['decision_ref']!r} chose {len(chosen)} objects; allowed {targets['min']}..{cap}")
     selectors = []
     for object_id in chosen:
         sel = dict(template)
@@ -6196,6 +6342,45 @@ def _resolve_selectors(state: dict[str, Any], effect: dict[str, Any], program: d
         sel.setdefault("bound_identity", entry["selection_identities"][object_id])
         selectors.append(bind_program_context(sel, state, program))
     return selectors, {"decision_id": entry["decision_id"]}
+
+
+def split_division(state: dict[str, Any], effect: dict[str, Any], valid_sels: list[dict[str, Any]],
+                   decisions: dict[str, Any] | None, controller: str | None) -> tuple[dict[str, int] | None, dict[str, Any] | None]:
+    """Core 355.14.e-h: how the controller divides a split deal among the Targets still legal,
+    decided as it resolves. (division, None), or (None, a refusal to return). The division names
+    each legal Target it keeps with a positive amount (355.14.f, 355.14.g), all of the damage
+    (the whole amount is dealt), and - when more Targets are legal than damage - exactly as many
+    Targets as there is damage, the rest ceasing to be Targets (355.14.h, 355.14.h.1)."""
+    import engine_decisions as ed
+    ref, amount = effect["division_ref"], effect["amount"]
+    legal = [sel["object_id"] for sel in valid_sels]
+    keep = min(len(legal), amount)
+    entry = next((e for e in ed.entries(decisions, kind="damage_division") if e.get("decision_id") == ref), None)
+    if entry is None:
+        return None, {"valid": True, "committed": False, "damage_division_required": True,
+                      "reason_code": "damage_division_required",
+                      "reason": f"how {amount} damage is divided among {legal} is decided as it resolves (Core 355.14.e)",
+                      "decision_ids": [ref], "decision_controller": controller,
+                      "division_candidates": legal, "division_amount": amount, "division_keeps": keep}
+    if entry.get("controller") != controller:
+        return None, {"valid": True, "committed": False, "applied": False, "reason_code": "decision_controller_mismatch",
+                      "reason": f"damage division {ref!r} was made by {entry.get('controller')!r}, not the program controller"}
+    value = entry["value"]
+    problems = []
+    if set(value) - set(legal):
+        problems.append(f"it names {sorted(set(value) - set(legal))}, which are not legal Targets now (359.3.e)")
+    if len(value) != keep:
+        problems.append(f"it keeps {len(value)} Targets; with {len(legal)} legal and {amount} damage it must keep {keep} "
+                        f"(355.14.f, 355.14.h.1)")
+    if sum(value.values()) != amount:
+        problems.append(f"it divides {sum(value.values())}, not the {amount} damage (355.14.e)")
+    identities = entry.get("selection_identities") or {}
+    stale = sorted(o for o in value if o in legal and identities.get(o) != object_identity(state, o))
+    if stale:
+        problems.append(f"it was made for other objects than {stale} are now (Core 124)")
+    if problems:
+        return None, {"valid": False, "committed": False, "errors": [f"damage division {ref!r}: {p}" for p in problems]}
+    return {o: value[o] for o in legal if o in value}, None
 
 
 def sb_module():
@@ -6286,7 +6471,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 outcomes[effect_id] = event["outcome"]
                 continue
         dependency = effect.get("depends_on")
-        if dependency is not None and effect.get("dependency_mode", "if_applied") == "if_applied" and outcomes.get(dependency) != "applied":
+        linked_mode = effect.get("dependency_mode", "if_applied")
+        if dependency is not None and ((linked_mode == "if_applied" and outcomes.get(dependency) != "applied")
+                                       or (linked_mode == "unless_ignored" and (dependency not in outcomes
+                                                                         or outcomes[dependency] in IGNORED_OUTCOMES))):
             event = {
                 "index": index,
                 "effect_id": effect_id,
@@ -6731,13 +6919,26 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 trace.append(event)
                 outcomes[effect_id] = "skipped_illegal_target"
                 continue
+            division = None
+            if effect.get("division_ref") is not None and valid_sels:
+                division, refusal = split_division(current, effect, valid_sels, decisions, program.get("controller"))
+                if refusal is not None:
+                    return {**base, **refusal, "failed_effect_index": index, "trace": trace}
             sub_trace = []
             working = current
             expansion_failed = None
             for sel in valid_sels:
-                single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id"}}
+                if division is not None and sel["object_id"] not in division:
+                    # Core 355.14.h: more Targets than damage - this one ceased to be a Target
+                    continue
+                single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id", "division_ref"}}
+                if division is not None:
+                    single["amount"] = division[sel["object_id"]]
                 single["object_id"] = sel["object_id"]
-                single["target"] = sel
+                # a "here" restriction (location_ref) was bound and checked above, for this Target, now;
+                # the bound Battlefield is engine-internal and never an authorable field of the
+                # sub-program (package 5: a split's Targets carry "here")
+                single["target"] = {k: v for k, v in sel.items() if k != "location_battlefield"}
                 single["effect_id"] = f"{effect_id}:{sel['object_id']}"
                 sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                                "program_id": f"expand:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
@@ -6761,6 +6962,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             applied = sum(1 for ev in sub_trace if ev.get("outcome") in {"applied", "replaced_modified_applied", "augmented_applied"})
             target_outcome = "applied_full" if not invalid and applied == requested else "applied_to_subset"
             below_min = len(valid_sels) < effect["targets"]["min"]
+            if division is not None:
+                requested = len(division)
+                target_outcome = "applied_full" if applied == requested else "applied_to_subset"
             event = {
                 "index": index, "effect_id": effect_id, "op": effect["op"],
                 "outcome": "applied" if applied else "no_op",
@@ -6773,6 +6977,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "rule_locators": list(dict.fromkeys(["Core 355.13", "Core 359.3.e.8"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                 "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,
             }
+            if division is not None:
+                event["division"] = dict(division)
+                event["rule_locators"] = list(dict.fromkeys(event["rule_locators"] + [
+                    "Core 355.14.a", "Core 355.14.e", "Core 355.14.f", "Core 355.14.h"]))
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue

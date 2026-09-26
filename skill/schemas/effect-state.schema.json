@@ -740,6 +740,14 @@
           "type": "integer",
           "minimum": 0,
           "description": "Core 730.1: the XP marked on the player."
+        },
+        "units_died_this_turn": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Core 428.1 (package 5): turn id -> how many Units this player controlled when they died that turn; only the current turn's entry is kept."
         }
       }
     },
@@ -1377,6 +1385,37 @@
               "type": "object"
             }
           }
+        },
+        "granted_play_permissions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "permission",
+              "kind",
+              "controller_relation"
+            ],
+            "properties": {
+              "permission": {
+                "enum": [
+                  "open_battlefield"
+                ]
+              },
+              "kind": {
+                "enum": [
+                  "unit"
+                ]
+              },
+              "controller_relation": {
+                "enum": [
+                  "friendly"
+                ]
+              }
+            }
+          },
+          "description": "Core 355.2.b (package 5): a play permission this permanent grants, while it is on the board, to the unit cards its side plays."
         }
       }
     },

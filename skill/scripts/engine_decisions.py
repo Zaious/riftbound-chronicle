@@ -45,7 +45,9 @@ STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
 # ADR-0011 §2–3: mode_selection names a modal option by its stable id;
 # card_ordering is the player's permutation of the looked-at / revealed cards
 # that remain: complete whenever any card is left, empty when none is.
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering")
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering",
+         # 2026-09-27 package 5, Core 355.14.e: how a split deal's damage is divided, at resolution
+         "damage_division")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -137,8 +139,18 @@ def validate_engine_decisions(value: Any) -> list[str]:
                 errors.append(f"{label}.selection_identities values must be identity tokens")
             if item["stage"] != "procedure":
                 errors.append(f"{label}: damage_assignment is a procedure-stage decision")
+        elif kind == "damage_division":
+            # Core 355.14.e-g: every Target kept gets a positive amount; the identities bind them
+            if not isinstance(val, dict) or not val or any(not isinstance(k, str) or not k or isinstance(n, bool)
+                                                           or not isinstance(n, int) or n < 1 for k, n in val.items()):
+                errors.append(f"{label}.value must map each Target kept to a positive amount of damage (Core 355.14.g)")
+            identities = item.get("selection_identities")
+            if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, dict) else []):
+                errors.append(f"{label}.selection_identities must bind every Target in the division exactly once")
+            if item["stage"] != "resolution":
+                errors.append(f"{label}: damage_division is decided as the split resolves (Core 355.14.e)")
         elif "selection_identities" in item:
-            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering or damage_assignment")
+            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering, damage_assignment or damage_division")
         # selection-binding.v1: a decision that ESTABLISHES a selection later
         # instructions refer to carries the binding it was made under, so a
         # changed candidate set, rule, visibility or origin is refused by name

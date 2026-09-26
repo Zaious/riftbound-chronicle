@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:299ec4596f73f5ca339529f5",
-  "capability_set_id": "sha256:299ec4596f73f5ca339529f5d22208c380b3312bf63d2e98fff065db7c00c848",
+  "manifest_id": "capability-manifest:c0580db8d1d5872da08b42f3",
+  "capability_set_id": "sha256:c0580db8d1d5872da08b42f3a6da25c61185944b7cfc90d2ef3ae22d519e7690",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:8a6df773da451e31bd727f769350af8976c415750be62e44be44db5e531e8ded",
+    "value": "sha256:886fff1b1c8157f7f715d16966466d75a4ba2e96f9b3d75bb41ca927a0f5fa53",
     "files": [
       {
         "path": "rules_core.py",
@@ -16,19 +16,19 @@
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:4e1b6335ff6b3d9be264e258337b10ee5a5b691aae1b06c9e9842279b2b71c4d"
+        "sha256": "sha256:f1b0686a2f1e87ef2564afdc7057ccfb80a66c30041a1d0d897b74e77e2ca0a1"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:f334dec7c3a8686d8d6483bc8c1f7d0da7fd44d26004eac9cfe697f7dc7c8a5c"
+        "sha256": "sha256:233657211e93f8fd6889dc2a1c1bd02547d66af7049102f63c1111a11c148b92"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:ac746ce8b6e4fc73831877b2dfe373d08ae0f2db8de0f4afc79eb40e693a52cb"
+        "sha256": "sha256:8187352cdc15d715679813a110884eb47f6bc72dce1c50973063bfbe7328e318"
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:83ca835f2dc9885e1518cb5341eb68ce607a763bc371d4ca2949cedb6e8f4204"
+        "sha256": "sha256:b1399f18e48bc343db6dce6525e851d41f2f6e0a04463c0514627809b3676a94"
       },
       {
         "path": "terminal.py",
@@ -321,7 +321,8 @@
         "standard_move",
         "ganking",
         "move_triggers",
-        "bounded_cleanup"
+        "bounded_cleanup",
+        "watched_triggers"
       ],
       "unsupported_scope": [
         "non_standard_moves",

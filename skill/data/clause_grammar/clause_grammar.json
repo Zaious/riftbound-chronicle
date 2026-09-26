@@ -2475,6 +2475,86 @@
         "when a friendly unit dies, draw 1",
         "the first time an enemy unit dies each turn, draw 1"
       ]
+    },
+    {
+      "production_id": "the_first_time_i_move_each_turn",
+      "form": "The first time I move each turn, draw 1.",
+      "template": "the first time i move each turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.1.b",
+        "Core 420.2",
+        "Core 446.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "The first time I move each turn, draw 1."
+      ],
+      "negative": [
+        "the first time a friendly unit dies each turn, draw 1",
+        "when i move, draw 1",
+        "the third time i move in a turn, draw 1",
+        "the first time i move each combat, draw 1"
+      ]
+    },
+    {
+      "production_id": "the_third_time_i_move_in_a_turn",
+      "form": "The third time I move in a turn, draw 1.",
+      "template": "the third time i move in a turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.1.b",
+        "Core 420.2",
+        "Core 446.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "The third time I move in a turn, draw 1."
+      ],
+      "negative": [
+        "the first time i move each turn, draw 1",
+        "the second time i move in a turn, draw 1",
+        "when i move, draw 1",
+        "the third time a unit moves in a turn, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_conquer",
+      "form": "When you conquer, draw 1.",
+      "template": "when you conquer, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 469.1",
+        "Core 383.4.c",
+        "Core 383.4.c.2.b"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you conquer, draw 1."
+      ],
+      "negative": [
+        "when you conquer here, draw 1",
+        "when i conquer, draw 1",
+        "when you hold, draw 1",
+        "when an opponent conquers, draw 1"
+      ]
     }
   ]
 }

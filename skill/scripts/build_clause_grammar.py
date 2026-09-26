@@ -733,6 +733,25 @@ WRAPPERS = [
      ["Core 383.1", "Core 417", "Core 383.3.e"], ["event_triggers"],
      ["The first time a friendly unit dies each turn, draw 1."],
      ["when a friendly unit dies, draw 1", "the first time an enemy unit dies each turn, draw 1"]),
+    # 2026-09-27: "the Nth time I move" - a watch over the card's own `moved` events (a Standard
+    # Move or an effect's, Core 420.2, 446.1), counted per turn and per object; the count reaching
+    # N triggers it once (Core 383.1, 383.1.b)
+    ("the_first_time_i_move_each_turn", r"the first time i move each turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.1.b", "Core 420.2", "Core 446.1"], ["event_triggers"],
+     ["The first time I move each turn, draw 1."],
+     ["the first time a friendly unit dies each turn, draw 1", "when i move, draw 1",
+      "the third time i move in a turn, draw 1", "the first time i move each combat, draw 1"]),
+    ("the_third_time_i_move_in_a_turn", r"the third time i move in a turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.1.b", "Core 420.2", "Core 446.1"], ["event_triggers"],
+     ["The third time I move in a turn, draw 1."],
+     ["the first time i move each turn, draw 1", "the second time i move in a turn, draw 1",
+      "when i move, draw 1", "the third time a unit moves in a turn, draw 1"]),
+    # 2026-09-27: a player-level Conquer Effect (Core 383.4.c.2.b) - any source the Conquering
+    # player controls where its abilities work, a Legend in its Legend Zone included
+    ("when_you_conquer", r"when you conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.4.c", "Core 383.4.c.2.b"],
+     ["conquer_triggers"], ["When you conquer, draw 1."],
+     ["when you conquer here, draw 1", "when i conquer, draw 1", "when you hold, draw 1",
+      "when an opponent conquers, draw 1"]),
 ]
 
 

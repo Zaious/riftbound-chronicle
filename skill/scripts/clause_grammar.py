@@ -803,6 +803,18 @@ TRIGGER_WRAPPERS = {
     "the_first_time_a_friendly_unit_dies_each_turn": ("event_triggers", "on-first-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "occurrence": "first_each_turn"}}),
+    # 2026-09-27: "the Nth time I move" - the card's own Moves this turn, a Standard Move or one an
+    # effect makes (Core 420.2, 446.1), counted per object (Core 124); the count reaching N
+    # triggers it once (Core 383.1, 383.1.b). A Recall is not a Move (446.1) and emits no `moved`
+    "the_first_time_i_move_each_turn": ("event_triggers", "on-first-move", {"watch": {
+        "kinds": ["moved"], "scope": "self", "occurrence": "first_each_turn"}}),
+    "the_third_time_i_move_in_a_turn": ("event_triggers", "on-third-move", {"watch": {
+        "kinds": ["moved"], "scope": "self", "occurrence": "nth_each_turn", "nth": 3}}),
+    # 2026-09-27: a player-level Conquer Effect (Core 383.4.c.2.b): it references the player who
+    # Conquered, so it fires from any source that player controls where its abilities work - a
+    # board object or a Legend in its Legend Zone (battlefield_control._score_triggers). Distinct
+    # from a Unit's "When I conquer" (unit_here) and a Battlefield's "When you conquer here"
+    "when_you_conquer": ("conquer_triggers", "on-you-conquer", {"scope": "controller"}),
 }
 
 # A Battlefield's own trigger is a different shape from an object's - Core

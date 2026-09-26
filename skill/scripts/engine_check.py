@@ -192,7 +192,7 @@ KIND_CONFIG = {
     "standard_move": {
         "component": ("standard_move", STANDARD_MOVE_VERSION),
         "coverage": "standard_move_v1",
-        "supported": ["standard_move", "ganking", "move_triggers", "bounded_cleanup"],
+        "supported": ["standard_move", "ganking", "move_triggers", "bounded_cleanup", "watched_triggers"],
         "unsupported": ["non_standard_moves", "invalid_destination_catalog", "combat_moves", "complete_game", "complete_legality"],
     },
     # ADR-0009: control, Conquer, Hold and scoring over the timing/effect pair.

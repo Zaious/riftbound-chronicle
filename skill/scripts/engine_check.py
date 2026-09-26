@@ -53,6 +53,12 @@ FEATURE_RULES = {
     "play_triggers": ["Core 419.4.a", "Core 355.5.b", "Core 383.2.c"],
     # 2026-09-24: triggers woken by what happened to anything - a play, a stun, a death
     "watched_triggers": ["Core 383.1", "Core 383.3.a", "Core 383.3.e", "Core 419.4.a"],
+    # 2026-09-28: a watched trigger's "it" - the object its event was about, as it was then
+    "trigger_referent": ["Core 359.3.f.3", "Core 383.2.c", "Core 124", "Core 359.3.e.6"],
+    # 2026-09-28: a Unit gaining a combat designation wakes watchers, its other requirements read then
+    "designation_watchers": ["Core 464.2.c.3", "Core 383.4.e.2.b", "Core 383.4.f.2.b", "Core 740.2.a"],
+    # 2026-09-28: a Battlefield's "When a unit moves from here", controlled per 190.6.a / 190.6.b
+    "battlefield_move_from_triggers": ["Core 190.6.a", "Core 190.6.b", "Core 446.1"],
     "open_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.c"],
     # DP-95: one more place a card may enter. "occupied" is 170.11.a - a Unit
     # is there - and "enemy" is the controller relation; 323.6 is why a
@@ -150,7 +156,7 @@ KIND_CONFIG = {
     "resolution": {
         "component": ("resolution_bridge", "riftbound-resolution-bridge-result.v1"),
         "coverage": "combined_resolution_v1",
-        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions", "permanent_entry", "play_triggers", "watched_triggers", "burn_out_draw", "terminal_event_bridge", "counter_chain_removal"],
+        "supported": ["eligible_chain_item", "typed_effect_program", "bounded_cleanup", "trigger_schedule", "engine_decisions", "permanent_entry", "play_triggers", "watched_triggers", "trigger_referent", "battlefield_move_from_triggers", "burn_out_draw", "terminal_event_bridge", "counter_chain_removal"],
         "unsupported": ["arbitrary_card_text", "burn_out_non_draw", "complete_game", "complete_legality"],
     },
     "cleanup": {
@@ -185,14 +191,14 @@ KIND_CONFIG = {
     "combat_step": {
         "component": ("combat", COMBAT_STEP_VERSION),
         "coverage": "combat_step_v1",
-        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers", "combat_showdown_close", "combat_damage_assignment", "tank_backline_priority", "assignment_replacement_preview", "combat_damage_deal", "combat_cleanup", "combat_result", "combat_close", "combat_restage"],
+        "supported": ["combat_staging", "combat_opening", "combat_designations", "attack_defend_triggers", "battlefield_defend_triggers", "designation_watchers", "combat_showdown_close", "combat_damage_assignment", "tank_backline_priority", "assignment_replacement_preview", "combat_damage_deal", "combat_cleanup", "combat_result", "combat_close", "combat_restage"],
         "unsupported": ["start_of_combat_effects", "end_of_combat_effects", "take_damage_triggers", "player_level_attack_defend_triggers", "multi_player_combat", "damage_exemption_sources", "non_prevent_assignment_replacements", "complete_game", "complete_legality"],
     },
     # ADR-0008 §6: the Standard Move as a player action outside Combat.
     "standard_move": {
         "component": ("standard_move", STANDARD_MOVE_VERSION),
         "coverage": "standard_move_v1",
-        "supported": ["standard_move", "ganking", "move_triggers", "bounded_cleanup", "watched_triggers"],
+        "supported": ["standard_move", "ganking", "move_triggers", "bounded_cleanup", "watched_triggers", "battlefield_move_from_triggers"],
         "unsupported": ["non_standard_moves", "invalid_destination_catalog", "combat_moves", "complete_game", "complete_legality"],
     },
     # ADR-0009: control, Conquer, Hold and scoring over the timing/effect pair.

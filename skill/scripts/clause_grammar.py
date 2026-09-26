@@ -1049,7 +1049,27 @@ TRIGGER_WRAPPERS = {
     # board object or a Legend in its Legend Zone (battlefield_control._score_triggers). Distinct
     # from a Unit's "When I conquer" (unit_here) and a Battlefield's "When you conquer here"
     "when_you_conquer": ("conquer_triggers", "on-you-conquer", {"scope": "controller"}),
+    # 2026-09-28: watches over a Unit gaining a combat designation (combat.open_combat /
+    # sync_designations emit `attacked` / `defended`, Core 464.2.c.3). One trigger per Unit
+    # (383.3.a); the other requirements are read as the designation is gained (383.4.e.2.b,
+    # 383.4.f.2.b). "a battlefield you control": the watcher's controller controlled the combat's
+    # Battlefield then (control does not change during the combat, 190.4.b).
+    "when_an_enemy_unit_attacks_a_battlefield_you_control": ("event_triggers", "on-enemy-attacks-yours", {"watch": {
+        "kinds": ["attacked"], "scope": "any",
+        "filter": {"object_kind": "unit", "object_controller_relation": "enemy", "at_battlefield_you_control": True}}}),
+    # "attacks or defends alone": one ability, either designation, the Unit alone then (Core 740.2.a)
+    "when_a_friendly_unit_attacks_or_defends_alone": ("event_triggers", "on-friendly-alone", {"watch": {
+        "kinds": ["attacked", "defended"], "scope": "any",
+        "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "alone": True}}}),
 }
+# 2026-09-28: the wrappers whose watched event is about ONE object that the ability's "it" names -
+# the trigger's referent (Core 359.3.f.3). An instruction of the inner clause that points at
+# $referent is bound to {object_ref: trigger_event_object}, which the engine resolves from the
+# trigger's chain item (effect_ir.resolve_trigger_event_object); an op with no reviewed adoption of
+# that reference leaves the clause unsupported (referent_not_bound). No other wrapper binds it: a
+# watch over a death or a play would name an object that is no longer (or not yet) on the board.
+REFERENT_WRAPPERS = {"when_an_enemy_unit_attacks_a_battlefield_you_control",
+                     "when_a_friendly_unit_attacks_or_defends_alone", "when_a_unit_moves_from_here"}
 
 # A Battlefield's own trigger is a different shape from an object's - Core
 # 190.6.a leaves its controller unnamed - so it has its own branch rather than
@@ -1057,7 +1077,10 @@ TRIGGER_WRAPPERS = {
 # compiled, which is the whole point of that check.
 BATTLEFIELD_TRIGGER_WRAPPERS = {"when_you_hold_here": ("hold_triggers", "on-hold"),
                                 "when_you_conquer_here": ("conquer_triggers", "on-conquer"),
-                                "when_you_defend_here": ("defend_triggers", "on-defend")}
+                                "when_you_defend_here": ("defend_triggers", "on-defend"),
+                                # 2026-09-28: a Unit's Move whose location before was this
+                                # Battlefield (watchers.BATTLEFIELD_WATCH_FIELDS)
+                                "when_a_unit_moves_from_here": ("move_from_triggers", "on-move-from")}
 
 
 # --------------------------------------------------------------------------
@@ -1242,6 +1265,33 @@ def _bind_to_replacement_subject(effects: list[dict[str, Any]]) -> list[dict[str
     return bound
 
 
+def _bind_to_trigger_event(effects: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    """2026-09-28 (REFERENT_WRAPPERS): point every referent at the object the trigger's event was
+    about - {object_ref: trigger_event_object}, resolved by the engine from the chain item, never
+    chosen (so the target, and its selector, go). None when an instruction pointing at the referent
+    has an op with no reviewed adoption of that reference: refused, not guessed."""
+    from effect_ir import TRIGGER_EVENT_OBJECT, TRIGGER_EVENT_OBJECT_OPS
+    bound = copy.deepcopy(effects)
+    for effect in bound:
+        target = effect.get("target")
+        if isinstance(target, dict) and target.get("decision_ref") == REFERENT_REF:
+            if effect.get("op") not in TRIGGER_EVENT_OBJECT_OPS:
+                return None
+            effect.pop("target")
+            effect["object_id"] = {"object_ref": TRIGGER_EVENT_OBJECT}
+    return bound
+
+
+def _trigger_referent_effects(production_id: str, inner: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """The wrapper's program: the inner clause's, with its referent bound to the trigger's event object
+    when this wrapper is one of REFERENT_WRAPPERS (None: an op that may not carry it); every other
+    wrapper's exactly as before."""
+    effects = inner.get("program_effects", [])
+    if production_id not in REFERENT_WRAPPERS or not _has_unbound_referent(effects):
+        return effects
+    return _bind_to_trigger_event(effects)
+
+
 def _has_unbound_referent(effects: list[dict[str, Any]]) -> bool:
     """True while an instruction still points at $referent: it names an object
     no decision has produced yet, so it cannot be run."""
@@ -1415,12 +1465,17 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                         "reason_code": inner.get("reason_code", "clause_unparsed"),
                         "text": text, "inner_text": params["inner"],
                         "reason": f"the Battlefield trigger parsed but its instruction did not: {params['inner']!r}"}
+            inner_effects = _trigger_referent_effects(production_id, inner)
+            if inner_effects is None:
+                return {"production_id": production_id, "unsupported": True, "reason_code": "referent_not_bound",
+                        "text": text, "inner_text": params["inner"],
+                        "reason": "'it' names the trigger's object, and the instruction's op has no reviewed adoption of that reference"}
             return {
                 "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
                 "params": params, "rule_locators": production["rule_locators"] + inner["rule_locators"],
                 "ast": {"node": "triggered", "on": production_id, "optional": optional, "then": inner["ast"]},
                 "passive": _battlefield_trigger(field, trigger_id, optional),
-                "program_effects": inner.get("program_effects", []),
+                "program_effects": inner_effects,
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
             }
         if production_id in TRIGGER_WRAPPERS:
@@ -1439,12 +1494,17 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                         "text": text, "inner_text": params["inner"],
                         "reason": f"the wrapper parsed but its instruction did not: {params['inner']!r} "
                                   f"({inner.get('reason', '')})"}
+            inner_effects = _trigger_referent_effects(production_id, inner)
+            if inner_effects is None:
+                return {"production_id": production_id, "unsupported": True, "reason_code": "referent_not_bound",
+                        "text": text, "inner_text": params["inner"],
+                        "reason": "'it' names the trigger's object, and the instruction's op has no reviewed adoption of that reference"}
             return {
                 "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
                 "params": params, "rule_locators": production["rule_locators"] + inner["rule_locators"],
                 "ast": {"node": "triggered", "on": production_id, "then": inner["ast"]},
                 "passive": _trigger(field, trigger_id, trigger_extra),
-                "program_effects": inner.get("program_effects", []),
+                "program_effects": inner_effects,
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
                 # what the inner clause bound to travels with the wrapper, so a
                 # card-level check sees it

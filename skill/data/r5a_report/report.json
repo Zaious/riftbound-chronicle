@@ -1,9 +1,9 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:c8cdf61e1264a44027f2b86a",
-    "capability_set_id": "sha256:c8cdf61e1264a44027f2b86a518d541302140c10b2b90416dba44b3c9af78e22",
-    "implementation_identity": "sha256:4f4cc2e984f4ddd5ffb856d99451cbac53926b9d34562e3e88e7141ed5d7ecb6",
+    "manifest_id": "capability-manifest:592447406f1467bfbc06fc38",
+    "capability_set_id": "sha256:592447406f1467bfbc06fc383194b3ef3bb02147c45f8750b524c81c46e6ffbf",
+    "implementation_identity": "sha256:2557b5d6f55ce25c523aeca5dc5b45639f7c190b6bcf64176fc459dab10c4014",
     "ruleset": {
       "core": "2026-07-16",
       "faq_as_of": "2026-08-14"
@@ -124,9 +124,9 @@
     }
   },
   "locator_exercise": {
-    "declared_locators": 304,
+    "declared_locators": 311,
     "exactly_cited_declared_locators": 29,
-    "exact_ratio": 0.0954,
+    "exact_ratio": 0.0932,
     "exact_matches": [
       "Core 124",
       "Core 308.1.a",
@@ -186,6 +186,7 @@
       "Core 190.4.a",
       "Core 190.4.c",
       "Core 190.6.a",
+      "Core 190.6.b",
       "Core 190.6.d",
       "Core 194.1.d",
       "Core 194.2–194.2.b",
@@ -266,6 +267,8 @@
       "Core 359.3.e.2",
       "Core 359.3.e.4",
       "Core 359.3.e.5",
+      "Core 359.3.e.6",
+      "Core 359.3.f.3",
       "Core 364.3",
       "Core 365.1",
       "Core 369.3",
@@ -285,8 +288,10 @@
       "Core 383.3.c–383.3.d.1",
       "Core 383.3.e",
       "Core 383.4.c–383.4.d",
+      "Core 383.4.e.2.b",
       "Core 383.4.e–383.4.f.3",
       "Core 383.4.f",
+      "Core 383.4.f.2.b",
       "Core 386–388",
       "Core 402–402.1",
       "Core 403.1.b.1",
@@ -377,6 +382,7 @@
       "Core 442.1.a.1",
       "Core 445",
       "Core 446",
+      "Core 446.1",
       "Core 446.2",
       "Core 455",
       "Core 456.1",
@@ -384,6 +390,7 @@
       "Core 460–462",
       "Core 464.2.b–464.2.g",
       "Core 464.2.c.1.a–464.2.c.1.b",
+      "Core 464.2.c.3",
       "Core 464.2.c.3–464.2.c.3.a",
       "Core 464.2.e.1",
       "Core 465.1–465.2.c.4.a",
@@ -955,5 +962,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:f86900baca578af7e15b2efeafa70c12cde4e3c798465f167f4a7be86bc968e7"
+  "report_hash": "sha256:a06d0ab70fff95615da58d51b98b1d13d840cc5c95959f6cfef8d132973c3dbc"
 }

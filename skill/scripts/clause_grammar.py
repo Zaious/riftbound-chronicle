@@ -765,6 +765,10 @@ TRIGGER_WRAPPERS = {
     # both fields carry the same trigger_id, so it goes on the Chain at most once per
     # Combat (383.4.e.2.a, 383.4.f.2.a).
     "when_i_attack_or_defend": (("attack_triggers", "defend_triggers"), "on-attack-or-defend", None),
+    # 2026-09-27: one ability, two conditions of different kinds - a Play Effect (Core 383.4.a,
+    # 419.4.a) and a Conquer Effect (383.4.c.2.a). The conquer field's default scope is the
+    # Unit's own (unit_here, battlefield_control._score_triggers), so no extra is shared.
+    "when_im_played_and_when_i_conquer": (("play_triggers", "conquer_triggers"), "on-play-and-conquer", None),
     # 2026-09-24: watched triggers - a typed watch over the semantic events (watchers.py),
     # woken by the play transaction's "played" and by every resolution's events. The player
     # "you" is the event's actor; each fact the text names is a named filter, nothing else.

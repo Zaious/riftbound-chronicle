@@ -426,6 +426,16 @@ def _lower_units_enter_ready(params):
                     "params": {"turn_effect_kind": "entry_state_for_played_units", "value": "ready"}}}
 
 
+def _lower_opponents_cant_play_cards(params):
+    """"Opponents can't play cards this turn." - a turn effect of its controller's: each of their
+    opponents is refused a card play for the rest of the turn (Core 054.1, 052, 317.2.c)."""
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "cards_play_prohibited", "value": "opponents",
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "cards_play_prohibited", "value": "opponents"}}}
+
+
 def _lower_self_cost_reduction(params):
     """Round H: "If <condition>, this costs N less." — the card's own text,
     a fixed Energy amount, a registered condition leaf. The program is not an
@@ -464,6 +474,27 @@ def _lower_self_cost_reduction_per_trash(params):
                 "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
                 "per_each": {"kind": "zone_count_at_least", "zone": "trash"}}]},
             "ast": {"node": "self_cost_reduction", "amount": amount, "per_each": {"zone": "trash"}}}
+
+
+def _lower_self_cost_reduction_highest_might(params):
+    """"This spell's Energy cost is reduced by the highest Might among units you control." -
+    1 Energy per point of the highest Might among the Units its player controls on the board,
+    read as the cost is determined (356.4; 356.6 keeps it at 0 or above)."""
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": 1,
+                "per_each": {"kind": "highest_might_among_units_you_control"}}]},
+            "ast": {"node": "self_cost_reduction", "amount": 1, "per_each": {"kind": "highest_might_among_units_you_control"}}}
+
+
+def _lower_self_cost_reduction_unit_died(params):
+    """"If an enemy unit has died this turn, this costs N less." - the card's own text, a fixed
+    Energy amount, gated by a Unit of that side having died this turn (356.4, 428.1)."""
+    amount = int(params["amount"])
+    condition = {"kind": "unit_died_this_turn", "controller_relation": params["relation"]}
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
+                "condition": dict(condition)}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "condition": dict(condition)}}
 
 
 def _lower_empty(params):
@@ -734,11 +765,14 @@ LOWERINGS = {
     "return_a_unit_from_your_trash_to_your_hand": _lower_return_from_trash,
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
+    "opponents_cant_play_cards_this_turn": _lower_opponents_cant_play_cards,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
     "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,
     "my_might_is_increased_by_your_points": _lower_might_by_points,
     "self_cost_reduction_per_trash_card": _lower_self_cost_reduction_per_trash,
+    "self_cost_reduction_highest_might": _lower_self_cost_reduction_highest_might,
+    "self_cost_reduction_unit_died": _lower_self_cost_reduction_unit_died,
 }
 
 # Productions that wrap another clause: "When you play me, <inner>."

@@ -518,6 +518,10 @@ jobs:
         run: python3 skill/scripts/check_watch_each_and_discard.py
       - name: player referent bound to a reveal (Sabotage)
         run: python3 skill/scripts/check_player_ref_and_reveal.py
+      - name: a card's own Energy reduction read off the board - highest Might, a death this turn (Core 356.4, 428.1)
+        run: python3 skill/scripts/check_cost_from_board.py
+      - name: "opponents can't play cards this turn" refuses their card plays, not their abilities (Core 054.1, 052)
+        run: python3 skill/scripts/check_play_prohibition.py
       - name: stun.v1 (DP-94, Core 423)
         run: python3 skill/scripts/check_stun.py
       - name: occupied_enemy_battlefield (DP-95, Core 355.2)
@@ -683,6 +687,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_sequence_steps.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
+          python3 "$REPO/skill/scripts/check_cost_from_board.py"
+          python3 "$REPO/skill/scripts/check_play_prohibition.py"
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"

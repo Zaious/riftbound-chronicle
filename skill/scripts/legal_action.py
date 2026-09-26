@@ -514,6 +514,10 @@ def _enumerate_play_card(observation, timing_state, effect_state, actor):
         if object_kind not in {"unit", "gear", "spell", "rune"}:
             excluded.append({"object_id": object_id, "reason_code": "card_kind_not_observed"})
             continue
+        # 2026-09-27 package 5: the same prohibition the transaction refuses (Core 054.1, 052)
+        if object_kind in {"unit", "gear", "spell"} and effect_ir.play_prohibition(effect_state, actor) is not None:
+            excluded.append({"object_id": object_id, "reason_code": "play_prohibited", "check": "prohibition"})
+            continue
         timing = obj.get("play_timing", "default")
         verdict = _timing_verdict(timing_state, {"actor": actor, "kind": "play_card", "timing": timing,
                                                  "object_kind": object_kind})

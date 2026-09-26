@@ -52,7 +52,7 @@ from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
-    record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
+    play_prohibition, record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
 from effect_ir import ConditionUnsupported  # noqa: E402
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
@@ -1262,6 +1262,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                     raise PlayError("choices", "play_source_not_permitted", f"playing from {source_kind} needs a permission an effect granted (Core 349)", rule_locators=["Core 349"])
             if effect_state["objects"][card]["kind"] != declaration["chain_item"]["object_kind"]:
                 raise PlayError("choices", "object_kind_mismatch", f"{card!r} is a {effect_state['objects'][card]['kind']}; the chain item says {declaration['chain_item']['object_kind']}", invalid=True)
+            # 2026-09-27 package 5 (Brynhir Thundersong): "opponents can't play cards this turn" -
+            # a card play by a forbidden player is refused before anything is chosen or paid;
+            # Can't beats Can (Core 054.1). An activated ability is not a card (052): not here.
+            prohibition = play_prohibition(effect_state, actor)
+            if prohibition is not None:
+                raise PlayError("legality", "play_prohibited",
+                                f"{actor} can't play cards this turn: {prohibition['effect_id']} (granted by "
+                                f"{prohibition['controller']}, source {prohibition.get('source')!r})",
+                                rule_locators=["Core 054.1", "Core 052"])
 
         # --- 355.2: the Unit's location is chosen now. Own Base, a Battlefield
         # the controller controls, or — with the compiled permission — an open

@@ -1412,6 +1412,32 @@
       ]
     },
     {
+      "production_id": "opponents_cant_play_cards_this_turn",
+      "form": "Opponents can't play cards this turn.",
+      "template": "opponents can't play cards this turn",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 054.1",
+        "Core 052",
+        "Core 317.2.c"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_turn_effect"
+      ],
+      "boundary": "A turn effect its controller creates: each opponent of that player can't play a card for the rest of the turn. The controller's own plays, an activated ability, a later turn, and a prohibition on one kind of card are outside it.",
+      "golden": [
+        "Opponents can't play cards this turn."
+      ],
+      "negative": [
+        "opponents can't play spells this turn",
+        "you can't play cards this turn",
+        "opponents can't play cards",
+        "opponents can't activate abilities this turn"
+      ]
+    },
+    {
       "production_id": "units_you_play_this_turn_enter_ready",
       "form": "Units you play this turn enter ready.",
       "template": "units you play this turn enter ready",
@@ -1527,6 +1553,60 @@
       "negative": [
         "i cost :rb_energy_1: less for each card in your hand",
         "i cost :rb_energy_1: less for each unit you control"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_highest_might",
+      "form": "This spell's Energy cost is reduced by the highest Might among units you control.",
+      "template": "this spell's energy cost is reduced by the highest might among units you control",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.4.b",
+        "Core 356.4.e",
+        "Core 356.6",
+        "Core 355.9.a.1",
+        "Core 206"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text: its Energy cost reduced by the highest Might among the Units its player controls on the board, read as the cost is determined. The sum of their Might, an opponent's Units, a Power reduction or a unit's printed Might are different clauses.",
+      "golden": [
+        "This spell's Energy cost is reduced by the highest Might among units you control."
+      ],
+      "negative": [
+        "this spell's energy cost is reduced by the highest might among units your opponents control",
+        "this spell's energy cost is reduced by the total might of units you control",
+        "this spell's power cost is reduced by the highest might among units you control"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_unit_died",
+      "form": "If an enemy unit has died this turn, this costs :rb_energy_2: less.",
+      "template": "if an? (?P<relation>enemy|friendly) unit has died this turn, this costs \\[e(?P<amount>\\d+)\\] less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.4.b",
+        "Core 428.1",
+        "Core 428.2.a"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text, a fixed Energy amount, gated by a Unit of the named side having died this turn - the side as it was when it died. A unit that died last turn, a unit that left the board another way, or a Power reduction is a different clause.",
+      "golden": [
+        "If an enemy unit has died this turn, this costs :rb_energy_2: less."
+      ],
+      "negative": [
+        "if an enemy unit has died this turn, this costs :rb_rune_rainbow: less",
+        "if an enemy unit died last turn, this costs :rb_energy_2: less",
+        "if an enemy unit has been banished this turn, this costs :rb_energy_2: less"
       ]
     },
     {

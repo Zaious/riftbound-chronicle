@@ -85,7 +85,12 @@ COMBAT_ROLES = {"attacker", "defender"}
 # DP-94 / Core 423: a Stun lasts the turn, so the Expiration Step is what
 # ends it. `stunned` on the object stays as the readable status, but the entry
 # here is what owns its lifetime - a status with no owner never comes off.
-TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit"}
+TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit", "cards_play_prohibited"}
+# The values a granted turn effect may carry, per kind. 2026-09-27 package 5 (Brynhir Thundersong,
+# "opponents can't play cards this turn"): cards_play_prohibited forbids the granting player's
+# opponents to play cards - Main Deck cards (Core 052), not activated abilities - for the rest of
+# the turn it is granted in; Can't beats Can (054.1). It expires with that turn (317.2.c).
+TURN_EFFECT_VALUES = {"entry_state_for_played_units": {"ready", "exhausted"}, "cards_play_prohibited": {"opponents"}}
 # ADR-0008 §5: attacking_or_defending_alone reads the Unit's own designation
 # and company (740.2.a); friendly_unit_defends_alone is the bounded external
 # aura of the Master Yi Legend clause, carried by a might_auras entry.
@@ -536,6 +541,13 @@ def validate_state(state: Any) -> list[str]:
         finalized = player.get("cards_finalized_this_turn")
         if finalized is not None and (not isinstance(finalized, dict) or any(not isinstance(k, str) or not k or not isinstance(v, list) or len(v) != len(set(v)) or any(o not in objects for o in v) for k, v in finalized.items())):
             errors.append(f"players.{player_id}.cards_finalized_this_turn must map turn ids to unique known object ids")
+        # Core 428.1 / 428.2.a: how many Units this player controlled when they died, per turn -
+        # "if an enemy unit has died this turn" (Spoils of War). A count, not ids: a token that
+        # dies ceases to exist (186.1) and would leave an id pointing at nothing.
+        died = player.get("units_died_this_turn")
+        if died is not None and (not isinstance(died, dict) or any(not isinstance(k, str) or not k or not isinstance(v, int)
+                                                                  or isinstance(v, bool) or v < 1 for k, v in died.items())):
+            errors.append(f"players.{player_id}.units_died_this_turn must map turn ids to a positive count (Core 428.1)")
 
     for battlefield_id, battlefield in battlefields.items():
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
@@ -728,6 +740,8 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"{label}.turn_id must be a non-empty string")
         if effect["kind"] == "entry_state_for_played_units" and effect.get("value") not in {"ready", "exhausted"}:
             errors.append(f"{label}.value must be ready or exhausted")
+        if effect["kind"] == "cards_play_prohibited" and effect.get("value") not in TURN_EFFECT_VALUES["cards_play_prohibited"]:
+            errors.append(f"{label}.value must be one of {sorted(TURN_EFFECT_VALUES['cards_play_prohibited'])}")
         if effect["kind"] == "stunned_unit":
             if effect.get("object_id") not in objects:
                 errors.append(f"{label}.object_id must name an object in this state")
@@ -979,9 +993,11 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"{label} must be {{modification_id, kind, amount, condition?, per_each?}}")
                 continue
             per_each = modification.get("per_each")
-            if per_each is not None and (not isinstance(per_each, dict) or per_each.get("kind") != "zone_count_at_least"
-                                         or set(per_each) - {"kind", "zone", "player"} or per_each.get("zone") not in PUBLIC_COUNT_ZONES):
-                errors.append(f"{label}.per_each must count a public zone of the controller ({sorted(PUBLIC_COUNT_ZONES)}) (Core 356.4)")
+            if per_each is not None and per_each != {"kind": HIGHEST_MIGHT_YOU_CONTROL} and (
+                    not isinstance(per_each, dict) or per_each.get("kind") != "zone_count_at_least"
+                    or set(per_each) - {"kind", "zone", "player"} or per_each.get("zone") not in PUBLIC_COUNT_ZONES):
+                errors.append(f"{label}.per_each must count a public zone of the controller ({sorted(PUBLIC_COUNT_ZONES)}), "
+                              f"or be {{kind: {HIGHEST_MIGHT_YOU_CONTROL}}} (Core 356.4)")
             if modification["kind"] != "energy_reduction":
                 errors.append(f"{label}.kind must be energy_reduction; nothing else is modelled (Round H)")
             if not isinstance(modification["amount"], int) or isinstance(modification["amount"], bool) or modification["amount"] < 1:
@@ -3297,8 +3313,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
         if kind not in TURN_EFFECT_KINDS:
             raise NotImplementedError(f"turn effect {kind!r} is not modelled")
-        if controller not in new_state["players"] or value not in {"ready", "exhausted"}:
-            raise ValueError("grant_turn_effect requires a known controller and a ready|exhausted value")
+        if controller not in new_state["players"] or value not in TURN_EFFECT_VALUES.get(kind, {"ready", "exhausted"}):
+            raise ValueError(f"grant_turn_effect requires a known controller and a value in "
+                             f"{sorted(TURN_EFFECT_VALUES.get(kind, {'ready', 'exhausted'}))}")
         turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
         granted = {"effect_id": f"{kind}:{controller}:{turn_id}:{len(new_state.get('turn_effects', []))}", "kind": kind, "controller": controller,
                    "value": value, "turn_id": turn_id, "source": effect.get("source", "effect")}
@@ -3486,8 +3503,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         deathknell = {trigger["trigger_id"] for trigger in deathknell_instances(new_state, object_id)}
         for trigger in pending_triggers:
             trigger["deathknell"] = trigger["trigger_id"] in deathknell
+        # Core 428.1: a Unit died - counted for its controller as it died, before it leaves the
+        # board (a token ceases to exist below, 186.1, and still died)
+        died_as_unit = characteristics(new_state, object_id).get("kind") == "unit"
+        controller_at_death = obj.get("controller")
         detached = detach_records(new_state, object_id, _last_board_location(location), host_left_board=True)
         _remove_from_location(new_state, object_id)
+        if died_as_unit:
+            record_unit_death(new_state, controller_at_death)
         if obj.get("is_token"):
             del new_state["objects"][object_id]
             destination = "ceased_to_exist"
@@ -4308,16 +4331,27 @@ CONDITION_LEAVES = {
     # Legion (Core 812.1.b.1, 812.1.c): "if you have played another card this turn" -
     # a card other than `object` Finalized by `player` this turn (419.4.b).
     "another_card_finalized_this_turn": {"object", "player"},
+    # "If an enemy unit has died this turn" (Spoils of War): a Unit controlled - when it died -
+    # by a player on the given side of the asking controller died this turn (Core 428.1, 428.2.a).
+    # Read off the per-turn ledger the Kill action writes (units_died_this_turn); a death a
+    # Replacement Effect replaced never happened (370.1.a.1) and is not in it.
+    "unit_died_this_turn": {"controller_relation"},
 }
 CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
                       "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
                       "zone_count_at_least": {"zone", "count"}, "same_location_as": {"as"},
                       "might_less_than": {"than"}, "object_kind": {"value"},
-                      "score_within_of_victory": {"count"}}
+                      "score_within_of_victory": {"count"}, "unit_died_this_turn": {"controller_relation"}}
 PRIVATE_ZONES = {"hand", "main_deck", "rune_deck"}
 # "for each card in your trash" (Rhasa the Sunderer): the zones a printed per-each
 # reduction may count - public ones, so no perspective is needed to count them.
 PUBLIC_COUNT_ZONES = {"trash"}
+# "This spell's Energy cost is reduced by the highest Might among units you control." (Sky
+# Splitter): a printed reduction of 1 per point of the highest Might among the Units the
+# player playing it controls on the board (Core 355.9.a.1: "unit" is a Unit on the board),
+# read as the cost is determined (356.4, 356.4.b); 0 with no Unit, and 356.6 keeps the cost
+# at 0 or above. The Might is the Unit's Might as the layers compute it (476-480).
+HIGHEST_MIGHT_YOU_CONTROL = "highest_might_among_units_you_control"
 
 
 class ConditionUnsupported(NotImplementedError):
@@ -4404,6 +4438,12 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
         if player is None:
             raise ConditionUnsupported("another_card_finalized_this_turn needs to know whose plays to read")
         return legion_active(state, player, subject)
+    if kind == "unit_died_this_turn":
+        if controller is None:
+            raise ConditionUnsupported("unit_died_this_turn needs to know whose friends and enemies to read")
+        friendly = condition["controller_relation"] == "friendly"
+        return any(units_died_this_turn(state, player_id) > 0 for player_id in sorted(state["players"])
+                   if same_side(state, controller, player_id) == friendly)
     if kind == "object_kind":
         return subject is not None and characteristics(state, subject).get("kind") == condition["value"]
     if kind == "same_location_as":
@@ -4490,6 +4530,44 @@ def record_finalized_card(state: dict[str, Any], player: str, card: str) -> None
     state["players"][player]["cards_finalized_this_turn"] = {turn_id: ledger + ([card] if card not in ledger else [])}
 
 
+def units_died_this_turn(state: dict[str, Any], player: str) -> int:
+    """Core 428.1: how many Units `player` controlled when they died, this turn."""
+    ledger = (state["players"].get(player) or {}).get("units_died_this_turn") or {}
+    return int(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), 0))
+
+
+def record_unit_death(state: dict[str, Any], controller: str) -> None:
+    """Called by the Kill action (the one place a permanent goes from the board to the trash,
+    Core 428.1, 428.2) for a Unit, with its controller as it died. Only this turn's entry is
+    kept, as record_finalized_card does."""
+    if controller not in state["players"]:
+        return
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    state["players"][controller]["units_died_this_turn"] = {turn_id: units_died_this_turn(state, controller) + 1}
+
+
+def play_prohibition(state: dict[str, Any], player: str) -> dict[str, Any] | None:
+    """The turn effect, if any, that forbids `player` to play cards this turn: a
+    cards_play_prohibited granted this turn by a player `player` is an opponent of (Core 054.1;
+    052: cards are Main Deck cards). None when nothing forbids it."""
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    for effect in state.get("turn_effects", []) or []:
+        if (effect.get("kind") == "cards_play_prohibited" and effect.get("turn_id") == turn_id
+                and effect.get("value") == "opponents" and not same_side(state, effect.get("controller"), player)):
+            return effect
+    return None
+
+
+def highest_might_you_control(state: dict[str, Any], player: str) -> int:
+    """The highest Might among the Units `player` controls on the board (Core 355.9.a.1), as the
+    layers compute it (476-480); 0 when they control none. A negative Might counts as 0: it can
+    only lower nothing (356.6)."""
+    mights = [effective_might(state, object_id) for object_id, obj in state["objects"].items()
+              if obj.get("controller") == player and zone_class(find_location(state, object_id)) == "board"
+              and characteristics(state, object_id).get("kind") == "unit"]
+    return max([0] + mights)
+
+
 def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, Any], actor: str) -> dict[str, Any]:
     """ADR-0013 §6 / cost_modification.v1: P4 evaluates the condition and the
     per-each count; P2 consumes the result and never evaluates a source."""
@@ -4500,6 +4578,14 @@ def evaluate_cost_modification(state: dict[str, Any], modification: dict[str, An
         result["applies"] = evaluate_condition(state, condition, controller=actor)
         result["condition_result"] = result["applies"]
     per_each = modification.get("per_each")
+    if per_each == {"kind": HIGHEST_MIGHT_YOU_CONTROL}:
+        # Sky Splitter: 1 per point of the highest Might among the actor's Units, read now
+        # (356.4); 356.6 floors the total later, in determine_total_cost
+        count = highest_might_you_control(state, actor)
+        result["per_each_count"] = count
+        result["amount"] = modification.get("amount", 0) * count
+        result["applies"] = result["applies"] and count > 0
+        return result
     if per_each is not None:
         problems = validate_condition({**per_each, "count": 0} if "count" not in per_each else per_each)
         if problems:

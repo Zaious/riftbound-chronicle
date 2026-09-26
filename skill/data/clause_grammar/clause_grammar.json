@@ -2450,6 +2450,31 @@
       ]
     },
     {
+      "production_id": "this_enters_exhausted",
+      "form": "This enters exhausted.",
+      "template": "this enters exhausted",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 369.3",
+        "Core 359.2.d",
+        "Core 143.4"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "entry_replacements"
+      ],
+      "boundary": "The permanent's own entry replacement: it enters the board exhausted (resolution_bridge.entry_state_for reads it). A timed or granted form ('units you play this turn enter exhausted'), or 'ready', is a different clause and stays unparsed.",
+      "golden": [
+        "This enters exhausted."
+      ],
+      "negative": [
+        "this enters ready",
+        "units you play enter exhausted",
+        "i enter ready"
+      ]
+    },
+    {
       "production_id": "units_cant_move_from_here_to_base",
       "form": "Units can't move from here to base.",
       "template": "units can't move from here to base",
@@ -2775,6 +2800,34 @@
         "when i attack, draw 1",
         "when i defend, draw 1",
         "when you attack or defend, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_im_played_and_when_i_conquer",
+      "form": "When I'm played and when I conquer, draw 1.",
+      "template": "when i'm played and when i conquer, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.4.a",
+        "Core 419.4.a",
+        "Core 383.4.c",
+        "Core 383.4.c.2.a",
+        "Core 469.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "play_triggers",
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I'm played and when I conquer, draw 1."
+      ],
+      "negative": [
+        "when i'm played, draw 1",
+        "when i conquer, draw 1",
+        "when i'm played or when i hold, draw 1"
       ]
     },
     {

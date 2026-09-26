@@ -750,7 +750,7 @@ def entry_state_for(
     default = "exhausted" if obj["kind"] == "unit" else "ready"
     candidates: list[dict[str, Any]] = []
     for index, replacement in enumerate(obj.get("entry_replacements", []) or []):
-        # Core 806.1.b: a replacement bound to one play belongs to that play.
+        # Core 805.2.b: a replacement bound to one play belongs to that play.
         # An unbound one (a printed entry replacement) applies as it always did.
         bound = replacement.get("chain_item")
         if bound is not None and bound != chain_item:

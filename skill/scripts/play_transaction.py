@@ -540,7 +540,7 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
     matching one of the unit's Domains, so a card whose data does not say what
     its Domains are cannot be offered a payable Accelerate at all.
 
-    806.1.a keeps this to the play: nothing here reads a card on the board.
+    805.2.a keeps this to the play: nothing here reads a card on the board.
     """
     from effect_ir import has_keyword
 
@@ -548,7 +548,7 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
     if not isinstance(obj, dict) or not has_keyword(effect_state, card_id, "accelerate"):
         return None, None
     if obj.get("kind") != "unit":
-        return None, "accelerate_is_a_unit_ability"          # 805.2.a
+        return None, "accelerate_is_a_unit_ability"          # 805.1
     domains = obj.get("domains")
     if domains is None:
         return None, "accelerate_domain_not_observed"        # the data does not say
@@ -562,12 +562,12 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
         "payment": payment,
         "energy": ACCELERATE_ENERGY,
         "source": {"kind": "keyword", "keyword": "accelerate", "object": card_id},
-        "rule_locators": ["Core 805.2.b", "Core 805.4", "Core 806.1.a"],
+        "rule_locators": ["Core 805.1.a", "Core 805.4", "Core 805.2.a"],
     }, None
 
 
 def accelerate_entry_replacement(card_id: str, item_id: str) -> dict[str, Any]:
-    """Core 806.1.b: paying generates a delayed Replacement Effect. It is bound
+    """Core 805.2.b: paying generates a delayed Replacement Effect. It is bound
     to the card that paid and to the play that paid it, so a later loss of the
     keyword cannot take it back and another card's payment cannot borrow it."""
     return {"replacement_id": f"accelerate:{item_id}", "mode": "entry_state", "value": "ready",
@@ -1620,7 +1620,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # (359.3.e), never chosen again (the resolution bridge refuses a different one)
             entry["played_targets"] = played_targets
         if accelerate_entry is not None and intents.get(ACCELERATE_COST_ID):
-            # 806.1.b: paid, so the card enters ready even if it loses the
+            # 805.2.b: paid, so the card enters ready even if it loses the
             # keyword during finalization. Bound to this card and this play.
             working["objects"][card].setdefault("entry_replacements", []).append(
                 accelerate_entry_replacement(card, item_id))
@@ -1633,7 +1633,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if next_card:
             # 2026-09-27 (Core 391): the next-card effects this play is the "next" of are spent;
             # an entry state one becomes an entry replacement bound to THIS play (the same shape
-            # a paid Accelerate makes, 806.1.b), applied when the unit enters (369.3)
+            # a paid Accelerate makes, 805.2.b), applied when the unit enters (369.3)
             spent = {e["effect_id"] for e in next_card}
             working["turn_effects"] = [e for e in working.get("turn_effects", []) or [] if e.get("effect_id") not in spent]
             if not working["turn_effects"]:

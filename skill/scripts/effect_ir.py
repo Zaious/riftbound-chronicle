@@ -1160,7 +1160,7 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id}.entry_replacements[{r_index}].condition must be a condition.v1 of "
                               f"{sorted(ENTRY_CONDITION_KINDS)}")
             elif replacement.get("card") is not None and replacement["card"] != object_id:
-                # Core 806.1.b: the delayed replacement a paid Accelerate makes
+                # Core 805.2.b: the delayed replacement a paid Accelerate makes
                 # belongs to the card that paid it. One bound to another card
                 # is a mis-binding, not a rule.
                 errors.append(f"objects.{object_id}.entry_replacements[{r_index}].card names {replacement['card']!r}, not this object")

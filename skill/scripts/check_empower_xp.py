@@ -4,13 +4,13 @@ Regression gate for C-52 (ADR-0013 §5; Codex G-2 on DP-71 / DP-72): Empower,
 Disempower, Buff, XP and the three costs that spend them.
 
 Must hold:
-  - Empowered is a binary state for an object on the board (442.1): the action
+  - Empowered is a binary state for an object on the board (441.2): the action
     sets it and records the event hook P5 will emit; an object that is already
     Empowered is a no_op with `became_empowered: false` — nothing additional
     happens (441.1.b, 441.1.c.1) — while the first Empower on the same object
     does emit it (negative mutation); an object off the board is illegal;
   - Disempower removes the state and does nothing to a card that is not
-    Empowered (443.2.a);
+    Empowered (442.1.a.1);
   - a Buff is one counter on a Unit (426.1.b): buffing a Unit that already has
     one is a no_op with `was_buffed: false`, which is what "chosen but not
     Buffed" (426.1.c) needs; buffing a non-Unit or an off-board Unit is
@@ -18,7 +18,7 @@ Must hold:
   - XP is a non-negative value on the player (730.1) and `gain_xp` adds to it;
   - the three costs spend real state: `spend_xp` needs the XP (730.2),
     `spend_buff` needs a Buff counter on a Unit the payer controls (702.2.b),
-    `disempower_self` needs the source to be Empowered (443.2.a); each writes
+    `disempower_self` needs the source to be Empowered (442.1.a); each writes
     its own receipt event, and each refuses when the state is not there while
     the same play with the state commits (negative mutation);
   - a Level ability is expressible as a continuous effect gated by
@@ -76,13 +76,13 @@ def main() -> int:
     off_board["players"]["p1"]["zones"]["base"].remove("u1")
     off_board["players"]["p1"]["zones"]["hand"].append("u1")
     if apply_program(off_board, program("e", {"op": "empower", "effect_id": "e", "object_id": "u1"})).get("reason_code") != "illegal_operation":
-        errors.append("Empowering an object off the board was accepted (442.1)")
+        errors.append("Empowering an object off the board was accepted (441.2)")
     dis = apply_program(empowered["next_state"], program("d", {"op": "disempower", "effect_id": "d", "object_id": "u1"}))
     if not dis.get("committed") or dis["next_state"]["objects"]["u1"].get("empowered"):
         errors.append("disempower did not remove the state")
     idle = apply_program(state, program("d", {"op": "disempower", "effect_id": "d", "object_id": "u1"}))
     if not idle.get("committed") or ev(idle).get("outcome") != "no_op":
-        errors.append("disempowering a card that is not Empowered was not a no_op (443.2.a)")
+        errors.append("disempowering a card that is not Empowered was not a no_op (442.1.a.1)")
 
     # --- Buff --------------------------------------------------------------------------------------
     buffed = apply_program(state, program("b", {"op": "buff", "effect_id": "b", "object_id": "u1"}))

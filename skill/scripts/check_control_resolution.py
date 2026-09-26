@@ -144,7 +144,7 @@ def main() -> int:
     colliding = copy.deepcopy(e); colliding["objects"]["g1"]["conquer_triggers"][0]["controller_order"] = 0
     collision = resolve_battlefield_control(t, colliding)
     if collision.get("committed") or collision.get("reason_code") != "trigger_order_required" or collision.get("decision_ids") != ["trigger_order:score:bf1:turn-0:conquer:p1"]:
-        errors.append(f"two Score triggers of one controller with the same order were not left to that controller's choice (383.3.d.1): {collision.get('reason_code')} {collision.get('decision_ids')}")
+        errors.append(f"two Score triggers of one controller with the same order were not left to that controller's choice (383.3.d): {collision.get('reason_code')} {collision.get('decision_ids')}")
 
     # --- the Final Point (471.1.b) ---------------------------------------------------------------------------
     def two_battlefields(s):

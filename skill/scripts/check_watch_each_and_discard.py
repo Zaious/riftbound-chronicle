@@ -22,8 +22,10 @@ paths, each with the watch the clause grammar itself lowers from the golden sent
     of refusing the play; ordered, both are scheduled;
   - a recycle and a kill paid as costs wake their watchers; a unit killed as a cost puts its own
     death trigger on the Chain as its own earlier batch (Core 428.1.a.1.b), under what the death
-    woke, whoever controls the watcher; a kill cost a replacement changed is refused by name
-    (Core 357.2.a: it is paid, but its events are not modelled), never called unpayable;
+    woke, whoever controls the watcher; two kill costs are two death batches in payment order, no
+    order asked; a kill cost a replacement changed is refused by name (Core 357.2.a: it is paid,
+    but its events are not modelled), never called unpayable; a cost whose events do not cover
+    what it moved is refused by name;
   - every field a result, its receipt and its payment events carry is one the schema allows.
 """
 from __future__ import annotations
@@ -278,6 +280,39 @@ def main() -> int:
     watch_at = next((k for k, i in enumerate(ids) if i.startswith("w@")), None)
     if not other.get("committed") or knell_at is None or watch_at is None or not knell_at < watch_at:
         errors.append(f"p1's cost-death trigger and p2's watcher were not ordered death first: {other.get('reason_code')} {ids}")
+
+    # two kills paid as costs, both Deathknell: each its own batch in payment order - no order is
+    # asked, exactly as the same two kills during a resolution
+    two_knell = copy.deepcopy(knell_state)
+    two_knell["objects"]["u3"] = {**copy.deepcopy(two_knell["objects"]["u1"]),
+                                  "death_triggers": [death_trigger("u3-knell", "p1", "u3")]}
+    two_knell["players"]["p1"]["zones"]["base"].append("u3")
+    two_kills = {"base": {"energy": 0, "power": {}},
+                 "additional": [{"cost_id": "k3", "mandatory": True, "payment": {"kind": "kill", "object_id": "u3"}},
+                                {"cost_id": "self", "mandatory": True, "payment": {"kind": "kill_this"}}]}
+    twice = play_card(fixture(), two_knell, ability_declaration(cost=two_kills))
+    ids = chain_ids(twice)
+    u3_at = next((k for k, i in enumerate(ids) if "u3-knell" in i), None)
+    u1_at = next((k for k, i in enumerate(ids) if "u1-knell" in i), None)
+    if not twice.get("committed") or u3_at is None or u1_at is None or not u3_at < u1_at:
+        errors.append(f"two kill costs were not two death batches in payment order: {twice.get('reason_code')} {ids}")
+
+    # a cost whose own events do not cover what it moved fails closed by name (never silently)
+    import play_transaction as _pt
+    real_apply = _pt.apply_program
+
+    def uncovered(state, program, **kw):
+        got = real_apply(state, program, **kw)
+        return {**got, "event_coverage": ["something moved with no event"]} if got.get("committed") else got
+
+    _pt.apply_program = uncovered
+    try:
+        blind = play_card(fixture(), copy.deepcopy(knell_state), ability_declaration(cost=kill_cost))
+    finally:
+        _pt.apply_program = real_apply
+    if blind.get("committed") or not blind.get("unsupported") or blind.get("reason_code") != "payment_events_incomplete" \
+            or validate_play_result(blind):
+        errors.append(f"a cost whose events are incomplete was not refused by name: {blind.get('reason_code')}")
 
     # a kill paid as a cost that a replacement changes is still PAID (Core 357.2.a, 203.2) - the engine
     # does not model the replacement's events during payment, so it refuses by name, never "unpayable"

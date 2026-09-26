@@ -221,7 +221,7 @@ def validate_declaration(value: Any) -> list[str]:
         if pay["kind"] in SELF_COSTS and "object_id" in pay and (not isinstance(pay["object_id"], str) or not pay["object_id"]):
             errors.append(f"cost.additional[{i}].payment.object_id must be a non-empty string when supplied")
         if pay["kind"] in SELF_COSTS and "object_id" not in pay and item_kind_early != "ability":
-            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs the activation's source or an object_id (Core 204.1.b)")
+            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs the activation's source or an object_id (Core 204.2)")
         if pay["kind"] == "spend_xp" and (not isinstance(pay.get("amount"), int) or isinstance(pay.get("amount"), bool) or pay["amount"] < 1):
             errors.append(f"cost.additional[{i}].payment spend_xp needs a positive amount (Core 730.2)")
         if pay["kind"] == "spend_buff" and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
@@ -991,7 +991,9 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         if result.get("committed") is not True:
             raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} ({comp['kind']}) cannot be paid: {result.get('reason') or '; '.join(result.get('errors', []))}", rule_locators=["Core 357.2", "Core 203.3"])
         outcome = result["trace"][0].get("outcome")
-        if outcome not in PAID_OUTCOMES and str(outcome).startswith("replaced"):
+        import game_events as _events
+        if (outcome not in PAID_OUTCOMES and str(outcome).startswith("replaced")) or \
+                (outcome in PAID_OUTCOMES and outcome not in _events.PERFORMED | _events.PREVENTED):
             # a cost a replacement changed is still paid (Core 357.2.a, 203.2: Cruel Patron and
             # Zhonya's Hourglass) - but this outcome's own events are not modelled, so a watcher
             # could not see what really happened: refused by name, never called unpayable
@@ -1004,13 +1006,16 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             # what the cost did moved something no event names: a watcher would miss it (fail closed)
             raise PlayError("payment", "payment_events_incomplete",
                             f"cost {comp['cost_id']!r} ({comp['kind']}) changed the board in a way its events do not cover: "
-                            f"{result.get('event_coverage')}", unsupported=True, rule_locators=["Core 357.2", "Core 383.1"])
+                            f"{result.get('event_coverage')}", unsupported=True, rule_locators=["Core 357.2"])
         working.clear(); working.update(result["next_state"])
         if semantic is not None:
             semantic["events"].extend(copy.deepcopy(result.get("events") or []))
-            semantic["pending_triggers"].extend(copy.deepcopy(result.get("pending_triggers") or []))
+            if result.get("pending_triggers"):
+                # each kill paid as a cost is its own batch, in the order the costs were paid
+                semantic["death_batches"].append(copy.deepcopy(result["pending_triggers"]))
         events.append({"event_id": event_id, "kind": f"pay_{comp['kind']}", "cost_id": comp["cost_id"], "object_id": object_id, "outcome": outcome,
-                       "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + (["Core 204.1.b"] if comp["kind"] in SELF_COSTS else [])})
+                       "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + ([("Core 204.1.b" if declaration["chain_item"].get("object_kind") == "ability" else "Core 204.2")]
+                                                         if comp["kind"] in SELF_COSTS else [])})
         comp["payment_refs"].append({"event_id": event_id})
         comp["paid"] = True
         if outcome != "applied":
@@ -1457,7 +1462,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # --- 357: payment on a working copy.
         working = copy.deepcopy(effect_state)
         before_pay = hash_value(working)
-        cost_semantic: dict[str, list[dict[str, Any]]] = {"events": [], "pending_triggers": []}
+        cost_semantic: dict[str, list[Any]] = {"events": [], "death_batches": []}
         pay_events = _pay(working, declaration, skeleton, engine_decisions, semantic=cost_semantic)
         trace.append({"stage": "payment", "outcome": "applied", "event_ids": [e["event_id"] for e in pay_events], "before_state_hash": before_pay, "after_state_hash": hash_value(working), "rule_locators": RULES["payment"]})
         locators += RULES["payment"]
@@ -1588,7 +1593,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
     # one batch, placed before the play's own (2026-09-26).
     cost_events = game_events.cost_zone_events(play_id=declaration["play_id"], actor=actor, source_card=card,
                                                pay_events=pay_events, state=working) + cost_semantic["events"]
-    cost_triggers = [dict(t) for t in cost_semantic["pending_triggers"]]
+    death_batches = [[dict(t) for t in batch] for batch in cost_semantic["death_batches"]]
+    cost_triggers = [t for batch in death_batches for t in batch]
     played = [] if is_ability else [game_events.played_event(
         play_id=declaration["play_id"], card=card, actor=actor,
         object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
@@ -1609,10 +1615,12 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                                                                batch_label=f"play:{declaration['play_id']}")
         except watchers.WatchUnsupported as exc:
             return watch_rollback(exc.reason_code, str(exc), unsupported=True, rule_locators=["Core 383.1"])
-        # in the order they happened, each its own batch (as the resolution path does): a unit
+        # in the order they happened, each its own batch (as the resolution path does): each unit
         # killed as a cost has its own death triggers put on the Chain first (Core 428.1.a.1.b),
-        # then what the costs woke, then what the play itself woke
-        batches = [(cost_triggers, "cost-deaths"), (woken_costs, "costs"), (woken_played, None)]
+        # one batch per kill cost in the order the costs were paid, then what the costs woke,
+        # then what the play itself woke
+        batches = [(batch, f"cost-deaths-{k}") for k, batch in enumerate(death_batches)] \
+            + [(woken_costs, "costs"), (woken_played, None)]
         sequence = 0
         for members, label in batches:
             if not members:

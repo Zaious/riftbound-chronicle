@@ -490,7 +490,7 @@ def resolve_with_program(
             trigger["batch_sequence"] = watch_batch
             trigger["batch_id"] = f"watch:{item_id}"
     pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers + watch_triggers
-    # Core 383.3.d.1: when one controller has several abilities triggered at
+    # Core 383.3.d: when one controller has several abilities triggered at
     # once, that controller orders them. The engine never picks: a missing or
     # colliding controller_order inside one batch is a decision_required
     # naming the controller, the batch and the trigger ids; a supplied
@@ -542,7 +542,7 @@ def resolve_with_program(
 
 
 def _settle_trigger_orders(pending_triggers: list[dict[str, Any]], engine_decisions: dict[str, Any] | None, base: dict[str, Any]) -> dict[str, Any] | None:
-    """Core 383.3.d.1: one controller's simultaneously triggered abilities are
+    """Core 383.3.d: one controller's simultaneously triggered abilities are
     ordered by that controller. Missing or colliding controller_order inside
     one batch is a decision_required; a supplied trigger_order decision
     assigns 0..n-1. Returns a failure result or None."""
@@ -569,7 +569,7 @@ def _settle_trigger_orders(pending_triggers: list[dict[str, Any]], engine_decisi
             return {
                 **base, "valid": True, "committed": False, "stage": "trigger_order",
                 "reason_code": "trigger_order_required",
-                "reason": f"{controller} has {len(members)} abilities triggered together in batch {batch_id}; their order is {controller}'s choice (Core 383.3.d.1)",
+                "reason": f"{controller} has {len(members)} abilities triggered together in batch {batch_id}; their order is {controller}'s choice (Core 383.3.d)",
                 "decision_ids": [decision_id], "decision_controller": controller,
                 "batch_id": batch_id, "trigger_ids": trigger_ids,
                 "rule_locators": ["Core 383.3.d", "Core 383.3.d.1"],

@@ -173,7 +173,7 @@
         "module": "effect_ir",
         "symbol": "_apply_one",
         "layer": "procedure",
-        "note": "the Empower action sets the binary state and refuses a second application (441.1.b, 441.1.c.1); P5 emits the become_empowered event (442.2)"
+        "note": "the Empower action sets the binary state and refuses a second application (441.1.b, 441.1.c.1); P5 emits the become_empowered event (441.2.a)"
       },
       "active_zone": "board",
       "boundary": {

@@ -1132,7 +1132,7 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.effect_text must map appendable ability lists to non-empty descriptor arrays (Core 477.2)")
         for flag in ("empowered", "buffed"):
             if flag in obj and not isinstance(obj[flag], bool):
-                errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 442.1, 426.1.b)")
+                errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 441.1.a, 426.1.b)")
         limit = obj.get(EMPOWER_LIMIT_FIELD, DEFAULT_EMPOWER_LIMIT)
         if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
             errors.append(f"objects.{object_id}.{EMPOWER_LIMIT_FIELD} must be an integer of at least 1 "
@@ -3730,7 +3730,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                       "identities_after": identities, "burn_out": False, "completion": "full"})
 
     elif op == "empower":
-        # Core 441: a binary state for a Game Object on the board (442.1). An
+        # Core 441: a binary state for a Game Object on the board (441.1.a, 441.2). An
         # object that is already Empowered cannot be Empowered again — nothing
         # additional happens (441.1.b, 441.1.c) — UNLESS its own text grants the
         # permission 441.1.c.1 describes, in which case a further level is added
@@ -3741,7 +3741,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("empower requires a known object")
         obj = new_state["objects"][object_id]
         if zone_class(find_location(new_state, object_id)) != "board":
-            raise IllegalOperation(f"Empowered is a state for objects on the board; {object_id!r} is not on it (442.1)")
+            raise IllegalOperation(f"Empowered is a state for objects on the board; {object_id!r} is not on it (441.2)")
         limit = obj.get(EMPOWER_LIMIT_FIELD, DEFAULT_EMPOWER_LIMIT)
         count = obj.get(EMPOWER_COUNT_FIELD, 1 if obj.get("empowered") else 0)
         if obj.get("empowered") and count >= limit:
@@ -3759,7 +3759,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                       "empowered_count": count + 1, "empower_limit": limit})
         if became:
             trace["event_hook"] = {"kind": "become_empowered", "object_id": object_id,
-                                   "note": "P5 emits the event (442.2)"}
+                                   "note": "P5 emits the event (441.2.a)"}
 
     elif op == "disempower":
         # Core 442.1: removes the Empowered status. Where a card was Empowered

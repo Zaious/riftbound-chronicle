@@ -174,8 +174,11 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must be the stable option id of the chosen mode (not an index)")
         if kind == "mode_selection" and item["stage"] not in ("play_declaration", "trigger_finalization"):
             errors.append(f"{label}: mode_selection is chosen while playing or at trigger finalization (Core 402.2)")
-        if kind == "card_selection" and item["stage"] not in ("resolution", "play_declaration"):
-            errors.append(f"{label}: card_selection is decided at resolution, or while paying a cost at play (Core 357.2)")
+        # 2026-09-27: or while paying a triggered ability's base cost as it is finalized (Core 404.1,
+        # 383.3.b.1) - which unit spends its buff (trigger_cost.py)
+        if kind == "card_selection" and item["stage"] not in ("resolution", "play_declaration", "trigger_finalization"):
+            errors.append(f"{label}: card_selection is decided at resolution, or while paying a cost at play (Core 357.2) "
+                          f"or at trigger finalization (Core 404.1)")
         if kind in ("replacement_order", "replacement_choice", "trigger_order") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
         if kind == "player_selection" and (not isinstance(val, str) or not val):

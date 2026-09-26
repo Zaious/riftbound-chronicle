@@ -10,7 +10,7 @@ expected IR - and forging it means naming the source without the engine ever
 checking its identity or its zone. So it is a typed reference the engine alone
 creates and resolves, and this holds that:
 
-  * the four adopted ops resolve it and really act on the source. Adoption is
+  * the adopted ops (OBJECT_REF_OPS) resolve it and really act on the source. Adoption is
     PER OP: `ready` working proves nothing about `kill`, so an op outside the
     reviewed set is refused by its own code rather than quietly allowed;
   * it binds the source's full IDENTITY, not its id. An id can be reused after
@@ -39,7 +39,7 @@ from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, 
 from engine_decisions import DECISIONS_VERSION, validate_engine_decisions  # noqa: E402
 
 REF = {"object_ref": "program_source"}
-EXTRA = {"ready": {}, "buff": {}, "banish": {},
+EXTRA = {"ready": {}, "buff": {}, "banish": {}, "return_to_hand": {},
          "modify_might": {"amount": 3, "duration": "this_turn", "source": "u1"}}
 
 
@@ -105,6 +105,10 @@ def main() -> int:
             fail("adopted op buff", "the source is not Buffed; nothing was applied")
         if op == "banish" and "u1" in (after["players"]["p1"]["zones"]["base"]):
             fail("adopted op banish", "the source is still in its Base")
+        # 2026-09-27: "return me to my owner's hand" - the source leaves the board for its owner's hand
+        if op == "return_to_hand" and ("u1" in after["players"]["p1"]["zones"]["base"]
+                                       or "u1" not in after["players"]["p1"]["zones"]["hand"]):
+            fail("adopted op return_to_hand", "the source is not in its owner's hand")
         # The static executor audit lives in the overlay (executor_audit.py) and
         # is asserted there, per op, by check_object_ref_adoption.py. What is
         # checked HERE is stronger and independent: the op ran and the source's

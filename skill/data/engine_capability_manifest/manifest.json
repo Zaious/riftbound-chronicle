@@ -1,22 +1,22 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:299ec4596f73f5ca339529f5",
-  "capability_set_id": "sha256:299ec4596f73f5ca339529f5d22208c380b3312bf63d2e98fff065db7c00c848",
+  "manifest_id": "capability-manifest:10ef9d4b1b5dc91851db30f7",
+  "capability_set_id": "sha256:10ef9d4b1b5dc91851db30f72675d8fb463ed2db095f7007055694f7bf710263",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:8a6df773da451e31bd727f769350af8976c415750be62e44be44db5e531e8ded",
+    "value": "sha256:492843ff32a33e46310e8eb11863e4d8dcc6543609f618d8c5b77bca40ab384e",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:2fa173f0ebb49a2608d9383147c6e75763325f4bb6129078e84f5ca3c04e3ac5"
+        "sha256": "sha256:a66f58a50389d3b9f54eda28575157b78f6ad21301cd21114625249517b84e4b"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:257269120348f875f53d34f5925917e63207ee9c0cccab4d1c61ac380e014925"
+        "sha256": "sha256:56fb4703716b6cf884c1dbdea65284b37d00cfdf9a76cbdb3d00b2ebb8c177ed"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:4e1b6335ff6b3d9be264e258337b10ee5a5b691aae1b06c9e9842279b2b71c4d"
+        "sha256": "sha256:b9ccc1d998091d86b34a60ad84629fa0d6ac5ef3c33532a9f77e2515c79d0072"
       },
       {
         "path": "engine_check.py",
@@ -755,6 +755,17 @@
         "Core 370.1.a",
         "Core 373.2"
       ]
+    },
+    {
+      "id": "trigger_base_cost",
+      "rule_locators": [
+        "Core 204.3.a",
+        "Core 383.3.b",
+        "Core 383.3.b.1",
+        "Core 403.1.b.1",
+        "Core 404.2",
+        "Core 740.4.a.2"
+      ]
     }
   ],
   "procedures": [
@@ -1437,6 +1448,7 @@
     "Core 194.1.d",
     "Core 194.2–194.2.b",
     "Core 196",
+    "Core 204.3.a",
     "Core 303.2",
     "Core 308.1.a",
     "Core 309.1.a",
@@ -1548,6 +1560,8 @@
     "Core 383.3",
     "Core 383.3.a",
     "Core 383.3.a–383.3.a.3",
+    "Core 383.3.b",
+    "Core 383.3.b.1",
     "Core 383.3.c–383.3.d.1",
     "Core 383.3.e",
     "Core 383.4.c–383.4.d",
@@ -1555,6 +1569,8 @@
     "Core 383.4.f",
     "Core 386–388",
     "Core 402–402.1",
+    "Core 403.1.b.1",
+    "Core 404.2",
     "Core 413",
     "Core 413.2.a",
     "Core 413.4",
@@ -1693,6 +1709,7 @@
     "Core 730.2",
     "Core 740.2.a",
     "Core 740.2.c",
+    "Core 740.4.a.2",
     "Core 806–807",
     "Core 807",
     "Core 809.1.c.1",

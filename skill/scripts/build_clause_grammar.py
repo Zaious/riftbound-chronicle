@@ -530,6 +530,111 @@ LITERAL = [
       "in play. A keyword instead of Might, or 'friendly' / 'enemy' units, is a different clause."),
      ["Units here have +1 :rb_might:."],
      ["units here have [ganking]", "friendly units here have +1 :rb_might:", "units have +1 :rb_might:"]),
+    # 2026-09-27: printed keyword auras - a keyword granted in the Ability layer (477.2, 477.2.b),
+    # read live off the source (effect_ir.printed_aura_effects; check_keyword_auras.py). Each
+    # admits only the keywords its gate exercises.
+    ("units_here_have_keyword",
+     r"units here have \[(?P<keyword>ganking)\]",
+     ["Core 365.1", "Core 190.6", "Core 476", "Core 477.2", "Core 477.2.b", "Core 810.1.b"], "passive", ["might_aura", "layer_engine"],
+     ("A Battlefield's printed keyword aura: every Unit at it, whoever controls it, has the keyword while it is "
+      "there. A Might amount, 'friendly' / 'enemy' units, a keyword with a value, or a timed grant is a different clause."),
+     ["Units here have [Ganking]."],
+     ["units here have +1 :rb_might:", "friendly units here have [ganking]", "units have [ganking]",
+      "units here have [ganking] this turn"]),
+    ("other_friendly_units_here_have_keyword",
+     r"other friendly units here have \[(?P<keyword>assault|shield)\]",
+     ["Core 365.1", "Core 476", "Core 477.2", "Core 477.2.b", "Core 807.2", "Core 814.2"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura over every other friendly Unit at the Battlefield where the source is, while the source "
+      "is on the board; values are summed with the Unit's own (807.2, 814.2). A Might amount, the source itself, "
+      "a whole-board aura or a keyword with a value is a different clause."),
+     ["Other friendly units here have [Assault].", "Other friendly units here have [Shield]."],
+     ["other friendly units here have +1 :rb_might:", "friendly units here have [assault]",
+      "other friendly units have [assault]", "other friendly units here have [assault 2]"]),
+    ("other_friendly_units_have_keyword",
+     r"other friendly units have \[(?P<keyword>vision)\]",
+     ["Core 365.1", "Core 476", "Core 477.2", "Core 477.2.b", "Core 817.2"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura over every other friendly Unit on the board, while the source is there. Each "
+      "instance of Vision triggers separately (817.2), so a Unit with its own Vision played under this aura "
+      "triggers twice. 'here', the source itself, or another keyword is a different clause."),
+     ["Other friendly units have [Vision]."],
+     ["other friendly units here have [vision]", "friendly units have [vision]", "other friendly units have [tank]"]),
+    # 2026-09-27: a card's own conditional keywords (364.3.a), each a keyword_grant on the card
+    # itself that applies only while its condition holds; the condition is evaluated in the
+    # Ability layer - for Mighty (708) from the layer result in progress (476.2, 476.3).
+    ("while_im_buffed_i_have_keywords",
+     r"while i'm buffed, i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 477.2", "Core 702.2.a"], "conditional_keywords",
+     ["continuous_effects", "condition_v1", "conditional_passives", "buff_counters"],
+     ("The card's own keywords while it has a Buff counter (702.2.a); spent, it no longer has them. Another "
+      "object's Buff, a Might amount, or a keyword with a value is a different clause."),
+     ["While I'm buffed, I have [Ganking]."],
+     ["while i'm buffed, i have an additional +1 :rb_might:", "while a friendly unit is buffed, i have [ganking]",
+      "while i'm buffed, i have [ganking 2]"]),
+    ("if_you_discarded_a_card_this_turn_i_have_keywords",
+     r"if you've discarded a card this turn, i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 477.2", "Core 422.1"], "conditional_keywords",
+     ["continuous_effects", "condition_v1", "conditional_passives", "private_discard"],
+     ("The card's own keywords while its controller has discarded at least one card this turn - by an "
+      "instruction or as a cost (422.1, 422.3). An opponent's discard, another turn, or a count other than one "
+      "is a different clause."),
+     ["If you've discarded a card this turn, I have [Assault] and [Ganking]."],
+     ["if an opponent has discarded a card this turn, i have [assault]", "if you've discarded two cards this turn, i have [assault]",
+      "when you discard a card, i have [assault]"]),
+    ("while_im_mighty_i_have_keywords",
+     r"while i'm \[mighty\], i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 476.2", "Core 476.3", "Core 477.2", "Core 708"], "conditional_keywords",
+     ["continuous_effects", "condition_v1", "conditional_passives", "layer_engine"],
+     ("The card's own keywords while its own Might is 5 or more (708), read from the layers in progress: a Buff "
+      "added in the Arithmetic layer makes it Mighty and the Ability layer is evaluated again (476.2); once the "
+      "grant is disqualified it is not re-applied (476.3). Another unit's Might is a different clause."),
+     ["While I'm [Mighty], I have [Deflect], [Ganking], and [Shield]."],
+     ["while a friendly unit is [mighty], i have [ganking]", "while i'm [mighty], i have +2 :rb_might:",
+      "when i become [mighty], i have [ganking]"]),
+    ("while_im_buffed_i_have_an_additional_might",
+     r"while i'm buffed, i have an additional \+(?P<amount>\d+) \[m\]",
+     ["Core 364.3", "Core 364.3.a", "Core 702.2.a", "Core 703", "Core 477.3"], "conditional_might",
+     ["continuous_effects", "condition_v1", "conditional_passives", "buff_counters"],
+     ("+N Might on the card itself while it has a Buff counter, on top of the Buff's own +1 (703). Another "
+      "object's Buff or a keyword is a different clause."),
+     ["While I'm buffed, I have an additional +1 :rb_might:."],
+     ["while i'm buffed, i have [ganking]", "while a friendly unit is buffed, i have an additional +1 :rb_might:",
+      "while i'm buffed, i have +1 :rb_might:"]),
+    ("i_get_might_for_each_buffed_friendly_unit_at_my_battlefield",
+     r"i get \+(?P<amount>\d+) \[m\] for each buffed friendly unit at my battlefield",
+     ["Core 364.1", "Core 477.3", "Core 477.3.b", "Core 702.2.a"], "dynamic_might", ["continuous_effects", "buff_counters"],
+     ("A passive increase of the card's own Might by the number of Units with a Buff counter, friendly to its "
+      "controller, at the Battlefield it is at - itself included ('friendly', not 'other'); none while it is in "
+      "a Base. Computed fresh each time (477.3.b). Enemy or unbuffed units, or 'here' elsewhere, are a different clause."),
+     ["I get +1 :rb_might: for each buffed friendly unit at my battlefield."],
+     ["i get +1 :rb_might: for each friendly unit at my battlefield", "i get +1 :rb_might: for each buffed enemy unit at my battlefield",
+      "i get +1 :rb_might: for each other buffed friendly unit at my battlefield"]),
+    ("my_might_is_increased_by_the_number_of_cards_in_your_trash",
+     r"my might is increased by the number of cards in your trash",
+     ["Core 364.1", "Core 477.3", "Core 477.3.b", "Core 108.2.b"], "dynamic_might", ["continuous_effects"],
+     ("A passive increase of the card's own Might by the number of cards in its controller's Trash, a public "
+      "zone, computed fresh each time (477.3.b). An opponent's Trash, or another zone, is a different clause."),
+     ["My Might is increased by the number of cards in your trash."],
+     ["my might is increased by the number of cards in your hand", "my might is increased by your points",
+      "my might is increased by the number of cards in your opponent's trash"]),
+    # 2026-09-27: a card's own conditional entry (364.3.a, 369.3) - an
+    # entry_replacements entry whose condition resolution_bridge.entry_state_for reads as it enters
+    ("if_an_opponents_score_is_within_n_i_enter_ready",
+     r"if an opponent's score is within (?P<within>\d+) points? of the victory score, i enter ready",
+     ["Core 364.3.a", "Core 369.3", "Core 143.4", "Core 194.3"], "passive", ["entry_replacements", "condition_v1"],
+     ("The card enters ready when, as it enters, its one opponent's score is within N of the Victory Score of the "
+      "Mode of Play; otherwise exhausted (143.4). Teams, several opponents, or a Mode that does not state its "
+      "Victory Score are refused by name, not guessed."),
+     ["If an opponent's score is within 3 points of the Victory Score, I enter ready."],
+     ["if an opponent's score is within 3 points of the victory score, this costs :rb_energy_2: less",
+      "if your score is within 3 points of the victory score, i enter ready", "i enter ready"]),
+    ("if_an_opponent_controls_a_battlefield_i_enter_ready",
+     r"if an opponent controls a battlefield, i enter ready",
+     ["Core 364.3.a", "Core 369.3", "Core 143.4", "Core 190.2.b"], "passive", ["entry_replacements", "condition_v1"],
+     ("The card enters ready when, as it enters, a Battlefield is controlled by a player who is not on its "
+      "controller's side; otherwise exhausted (143.4). 'You control', or a named Battlefield, is a different clause."),
+     ["If an opponent controls a battlefield, I enter ready."],
+     ["if you control a battlefield, i enter ready", "if an opponent controls a battlefield, i enter exhausted",
+      "i enter ready"]),
     ("you_may_pay_own_domain_power_as_additional_cost_to_play_me",
      r"you may pay \[c\] as additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"], "passive", ["card_self_optional_cost", "domain_power"],

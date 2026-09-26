@@ -722,6 +722,16 @@ def entry_state_for(
             continue
         if replacement.get("card") is not None and replacement["card"] != card:
             continue
+        if replacement.get("condition") is not None:
+            # 2026-09-27, Core 364.3.a / 369.3: "If an opponent controls a battlefield, I enter
+            # ready." - a conditional replacement, read as the unit enters; one that cannot be
+            # read is refused by name, never guessed
+            from effect_ir import ConditionUnsupported, evaluate_condition
+            try:
+                if not evaluate_condition(state, replacement["condition"], controller=controller, object_id=card):
+                    continue
+            except ConditionUnsupported as exc:
+                return default, default, [], {"error": f"the entry replacement's condition cannot be read here: {exc}"}
         if replacement.get("mode") == "entry_state" and replacement.get("value") in {"ready", "exhausted"}:
             candidates.append({"replacement_id": replacement.get("replacement_id", f"entry:{card}:{index}"),
                                "source": card, "mode": "entry_state", "value": replacement["value"], "rule_locators": ["Core 369.3"]})

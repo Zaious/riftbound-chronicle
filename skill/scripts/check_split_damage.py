@@ -247,8 +247,24 @@ def division_decision_cases(errors: list[str]) -> None:
                       f"{got.get('reason_code')}")
 
 
+def repeat_case(errors: list[str]) -> None:
+    """Core 820.2.a: a Repeat execution of a split makes its own choices - its Targets AND its own
+    division (review 5 R1-4: division_ref follows the copy's suffix)."""
+    state = board()
+    items = decisions(state, ["e1", "e2"], {"e1": 2, "e2": 3})["decisions"]
+    copy_items = decisions(state, ["e3"], {"e3": 5})["decisions"]
+    for entry in copy_items:
+        entry["decision_id"] += "#1"
+    envelope = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(state), "decisions": items + copy_items}
+    got = apply_program(state, split_program(), decisions=envelope, context={"repeat": {"executions": 2}})
+    if not got.get("committed") or dealt(state, got) != {"e1": 2, "e2": 3, "e3": 5}:
+        errors.append(f"a split repeated (e1/e2 2/3, then e3 5): each execution's own division: "
+                      f"{got.get('reason') or got.get('errors')} {dealt(state, got) if got.get('committed') else ''}")
+
+
 def main() -> int:
     errors: list[str] = []
+    repeat_case(errors)
     bonus_cases(errors)
     bridged_bonus_case(errors)
     division_decision_cases(errors)

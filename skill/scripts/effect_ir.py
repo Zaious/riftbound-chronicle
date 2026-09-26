@@ -6238,7 +6238,13 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
 def suffix_decision_refs(effects: list[dict[str, Any]], suffix: str) -> list[dict[str, Any]]:
     """ADR-0011 §4 / Core 820.2.a: an additional Repeat execution makes its own
     choices — every decision reference and effect id of the copy carries the
-    execution suffix, and internal references follow."""
+    execution suffix, and internal references follow.
+
+    2026-09-28 (review 5, R1-4): the linked references (Core 359.3.e.14) follow too - "its
+    controller" (player.object_player), "its Might" / "its Energy cost" (amount_ref), "it deals"
+    (source_ref) name the COPY's earlier instruction, never the first execution's - and so do the
+    copy's own choices: an optional instruction's decision, a split's division, a chosen
+    destination, a chosen player, and a selection it establishes with the references to it."""
     out: list[dict[str, Any]] = []
     for index, effect in enumerate(effects):
         copied = copy.deepcopy(effect)
@@ -6248,16 +6254,31 @@ def suffix_decision_refs(effects: list[dict[str, Any]], suffix: str) -> list[dic
                 copied[key] = copied[key] + suffix
         if isinstance(copied.get("predicate"), dict) and isinstance(copied["predicate"].get("effect_id"), str):
             copied["predicate"]["effect_id"] += suffix
-        for key in ("decision_ref", "recycle_ref", "order_ref", "put_back_ref"):
+        for key in ("decision_ref", "recycle_ref", "order_ref", "put_back_ref", "division_ref", "selection_id"):
             if isinstance(copied.get(key), str):
                 copied[key] += suffix
-        for holder in ("target", "targets"):
+        for holder in ("target", "targets", "optional", "destination"):
             if isinstance(copied.get(holder), dict) and isinstance(copied[holder].get("decision_ref"), str):
                 copied[holder]["decision_ref"] += suffix
+        if isinstance(copied.get("target"), dict) and isinstance(copied["target"].get("selection_ref"), str):
+            copied["target"]["selection_ref"] += suffix
         if isinstance(copied.get("units"), list):
             for unit in copied["units"]:
                 if isinstance(unit, dict) and isinstance(unit.get("decision_ref"), str):
                     unit["decision_ref"] += suffix
+                if isinstance(unit, dict) and isinstance(unit.get("selection_ref"), str):
+                    unit["selection_ref"] += suffix
+        player = copied.get("player")
+        if is_object_player(player):
+            player["object_player"]["effect_id"] += suffix
+        elif isinstance(player, dict) and isinstance(player.get("decision_ref"), str):
+            player["decision_ref"] += suffix
+        amount_ref = copied.get("amount_ref")
+        if isinstance(amount_ref, dict) and amount_ref.get("kind") in LINKED_AMOUNT_REF_KINDS \
+                and isinstance(amount_ref.get("effect_id"), str):
+            amount_ref["effect_id"] += suffix
+        if is_source_ref(copied.get("source_ref")):
+            copied["source_ref"]["effect_id"] += suffix
         out.append(copied)
     return out
 
@@ -6688,6 +6709,18 @@ def split_division(state: dict[str, Any], effect: dict[str, Any], valid_sels: li
     if problems:
         return None, {"valid": False, "committed": False, "errors": [f"damage division {ref!r}: {p}" for p in problems]}
     return {o: value[o] for o in legal if o in value}, None
+
+
+def nested_context(context: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The context a program run INSIDE one instruction gets - a multi-target instruction's
+    per-object application, a replacement's or augmentation's events. The facts of the moment
+    carry over (the Combat in progress); the executions of the resolving card do not: a paid
+    Repeat (820.1.d) and a mode chosen at play (402.2) belong to the outer program, which already
+    runs one execution per Repeat. Passed down, each nested application ran once per Repeat
+    again - "deal 1 to each of up to two units" with one Repeat dealt 4, not 2 (2026-09-28)."""
+    if not context:
+        return context
+    return {k: v for k, v in context.items() if k not in {"repeat", "mode_selection"}} or None
 
 
 def sb_module():
@@ -7269,7 +7302,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                                "program_id": f"affected:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
                                "source_object": program.get("source_object"), "effects": [single]}
-                sub = apply_program(working, sub_program, decisions=None, context=context, _replacement_depth=_replacement_depth + 1)
+                sub = apply_program(working, sub_program, decisions=None, context=nested_context(context), _replacement_depth=_replacement_depth + 1)
                 if sub.get("committed") is not True:
                     failure = sub
                     break
@@ -7358,7 +7391,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                                "program_id": f"expand:{program['program_id']}:{effect_id}", "controller": program.get("controller"),
                                "source_object": program.get("source_object"), "effects": [single]}
-                sub = apply_program(working, sub_program, decisions=None, context=context, _replacement_depth=_replacement_depth + 1)
+                sub = apply_program(working, sub_program, decisions=None, context=nested_context(context), _replacement_depth=_replacement_depth + 1)
                 if sub.get("committed") is not True:
                     expansion_failed = sub
                     break
@@ -7656,7 +7689,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     "source_object": program.get("source_object"),
                     "effects": [original_effect],
                 }
-                original_result = apply_program(recursive_state, original_program, context=context,
+                original_result = apply_program(recursive_state, original_program, context=nested_context(context),
                                                 _replacement_depth=_replacement_depth + 1,
                                                 _applied_replacements=_applied_replacements | {replacement_id})
                 if original_result.get("committed") is not True:
@@ -7690,7 +7723,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     **({"source_object": replacement["source_object"]} if "source_object" in replacement else {}),
                     "effects": augmentation_effects,
                 }
-                augmentation_result = apply_program(original_result["next_state"], augmentation_program, context=context,
+                augmentation_result = apply_program(original_result["next_state"], augmentation_program, context=nested_context(context),
                                                     _replacement_depth=_replacement_depth + 1,
                                                     _applied_replacements=_applied_replacements | {replacement_id})
                 if augmentation_result.get("committed") is not True:
@@ -7796,7 +7829,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             # Core 370.2: the replacing events carry the memory of what has
             # already been applied in this sequence, so a Replacement Effect
             # cannot apply to the event that replaced its own application.
-            recursive_result = apply_program(recursive_state, recursive_program, context=context,
+            recursive_result = apply_program(recursive_state, recursive_program, context=nested_context(context),
                                              _replacement_depth=_replacement_depth + 1,
                                              _applied_replacements=_applied_replacements | {replacement_id})
             if recursive_result.get("committed") is not True:

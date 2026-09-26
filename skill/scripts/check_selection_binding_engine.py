@@ -24,7 +24,9 @@ What is held:
     ordered permutations - is refused as unsupported, not run half-bound;
   * a location phrase lowers into the choice's own criteria and genuinely
     narrows the candidates, and a decision taken under one location rule is
-    refused under another.
+    refused under another;
+  * a Repeat's copy establishes its own selection (s1#1) and its "it" reads
+    that one (Core 820.2.a; 2026-09-28, review 5 R1-4).
 
     python skill/scripts/check_selection_binding_engine.py
 """
@@ -404,6 +406,19 @@ def main() -> int:
         if sb.program_ancestry(made_up) != [made_up]:
             fail("ancestry", f"{made_up!r} has no parent in its name, yet ancestry claims "
                             f"{sb.program_ancestry(made_up)}")
+
+    # --- Repeat (Core 820.2.a, review 5 R1-4): the copy establishes its OWN selection -------------
+    # "Choose a friendly unit. Buff it." twice: the copy's selection is s1#1, chosen by d1#1 and
+    # read by the copy's "it"; it neither collides with s1 nor reads the first execution's unit
+    repeat_state = state_with_two_friendly_units()
+    first = envelope(repeat_state, ["u1"])
+    second = envelope(repeat_state, ["u3"], selection_id="s1#1", decision_ref="d1#1", effect_id="choose#1")
+    both = {**first, "decisions": first["decisions"] + second["decisions"]}
+    repeated = apply_program(repeat_state, program(choose(), refers("buff")), decisions=both,
+                             context={"repeat": {"executions": 2}})
+    if repeated.get("committed") is not True or not all(repeated["next_state"]["objects"][o].get("buffed") for o in ("u1", "u3")):
+        fail("Repeat", f"'choose a friendly unit, buff it' twice did not buff u1 and then u3: "
+                       f"{repeated.get('reason_code')} {repeated.get('reason') or repeated.get('errors')}")
 
     if errors:
         print("FAILED: selection binding, engine end-to-end")

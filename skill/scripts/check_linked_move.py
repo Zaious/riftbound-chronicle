@@ -140,6 +140,25 @@ def main() -> int:
         if not got.get("committed") or outcomes(got) != want[0] or where(got["next_state"], "u1") != want[1]:
             errors.append(f"'you may buff ..., then move it' with the Buff {'accepted' if accept else 'declined'}: "
                           f"expected {want}, got {outcomes(got)} at {where(got['next_state'], 'u1') if got.get('committed') else got.get('reason')}")
+    # Repeat (Core 820.2.a, review 5 R1-4): the copy chooses its own unit AND its own destination -
+    # u1 to bf2, then u3 to bf3; the copy never reuses the first execution's destination
+    state, chosen = board()
+    state["battlefields"]["bf3"] = {"controller": None, "objects": []}
+    state["objects"]["u3"] = copy.deepcopy(state["objects"]["u1"])
+    state["players"]["p1"]["zones"]["base"].append("u3")
+    decs = [{"decision_id": ref, "kind": "target_selection", "stage": "play_declaration", "controller": "p1",
+             "value": [unit], "selection_identities": {unit: object_identity(state, unit)}} for ref, unit in (("t", "u1"), ("t#1", "u3"))]
+    decs += [{"decision_id": ref, "kind": "location_selection", "stage": "resolution", "controller": "p1", "value": where_to}
+             for ref, where_to in (("dest", "battlefield:bf2"), ("dest#1", "battlefield:bf3"))]
+    prog = program("showstopper", BUFF, MOVE)
+    prog["source_object"] = "c1"
+    got = apply_program(state, prog, decisions={"schema_version": "engine-decisions.v1", "input_hash": hash_value(state),
+                                                "decisions": decs}, context={"repeat": {"executions": 2}})
+    if not got.get("committed") or where(got["next_state"], "u1") != "battlefield:bf2" \
+            or where(got["next_state"], "u3") != "battlefield:bf3":
+        errors.append(f"repeated, the copy's own destination was not used (u1 to bf2, u3 to bf3): "
+                      f"{got.get('reason') or got.get('errors')} "
+                      f"{(where(got['next_state'], 'u1'), where(got['next_state'], 'u3')) if got.get('committed') else ''}")
     import effect_ir
     if set(effect_ir.IGNORED_OUTCOMES) != set(effect_ir.LINKED_IGNORED_OUTCOMES) \
             or not {"declined", "ignored_source_unavailable"} <= set(effect_ir.IGNORED_OUTCOMES):

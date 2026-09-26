@@ -269,6 +269,23 @@ def resolve_with_program(
         if finalized or others:
             engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
                                 "decisions": [copy.deepcopy(entry) for entry in finalized] + others}
+    # The same for a card's or an activated ability's own targets, chosen as it was played
+    # (Core 355.5) and recorded on its chain entry: they cannot be changed after that step
+    # (355.15). A selection supplied now for one of them must BE the recorded one; when none
+    # is supplied the record is what the program runs with. Other decisions pass through.
+    played = ((effect_state.get("chain_items") or {}).get(item_id) or {}).get("played_targets")
+    if finalized is None and played:
+        recorded = {entry["decision_id"]: entry for entry in played}
+        supplied = list((engine_decisions or {}).get("decisions") or [])
+        for entry in supplied:
+            kept = recorded.get(entry.get("decision_id"))
+            if kept is not None and (entry.get("kind") != "target_selection" or entry.get("value") != kept.get("value")
+                                     or (entry.get("selection_identities") or {}) != (kept.get("selection_identities") or {})):
+                return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_play",
+                        "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 355.15", "Core 359.3.e.2"]}
+        others = [entry for entry in supplied if entry.get("decision_id") not in recorded]
+        engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
+                            "decisions": [copy.deepcopy(entry) for entry in played] + others}
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
     # ADR-0008 §5: a 'this combat' grant binds to the Combat in progress, which
     # only the timing state knows.

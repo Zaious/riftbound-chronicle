@@ -660,14 +660,20 @@ def validate_state(state: Any) -> list[str]:
         # DP-93: a chain item may carry the receipt of the play that made it, so
         # a cost comparison can read what that spell actually cost rather than
         # only what is printed on it.
-        allowed = ({"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable", "cost_receipt"} if is_ability
-                   else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt"})
+        allowed = ({"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable", "cost_receipt", "played_targets"} if is_ability
+                   else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt", "played_targets"})
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
             continue
         if "counterable" in entry and not isinstance(entry["counterable"], bool):
             errors.append(f"chain_items.{item_id}.counterable must be boolean (ADR-0011 §5)")
+        # Core 355.5 / 355.15: the targets chosen at play ride with the entry to resolution
+        played = entry.get("played_targets")
+        if played is not None and (not isinstance(played, list) or not played or any(
+                not isinstance(e, dict) or e.get("stage") != "play_declaration" or e.get("kind") != "target_selection"
+                or not isinstance(e.get("decision_id"), str) or not isinstance(e.get("value"), list) for e in played)):
+            errors.append(f"chain_items.{item_id}.played_targets must be the play_declaration target selections it was played with")
         if "cost_receipt" in entry:
             errors.extend(f"chain_items.{item_id}.cost_receipt {e}" for e in _receipt_errors(entry["cost_receipt"]))
         repeat = entry.get("repeat")

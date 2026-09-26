@@ -1145,7 +1145,74 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                         raise PlayError("choices", "target_illegal_at_play", f"effects[{index}] target {object_id!r}: {reason}", rule_locators=["Core 355.9"])
                     if selector.get("kind") != "battlefield" and object_id in effect_state["objects"]:
                         chosen_objects.append(object_id)
+        _check_target_bounds(effect, index, decisions, effect_state)
     return chosen_objects
+
+
+def _played_target_record(effects: list[dict[str, Any]], decisions: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """The target selections these instructions were played with, as they were supplied:
+    one entry per decision a `target`, `targets` or `units` slot defers to."""
+    refs: list[str] = []
+    for effect in effects:
+        for field in ("target", "targets"):
+            selector = effect.get(field)
+            if isinstance(selector, dict) and isinstance(selector.get("decision_ref"), str):
+                refs.append(selector["decision_ref"])
+        for unit in effect.get("units") or []:
+            if isinstance(unit, dict) and isinstance(unit.get("decision_ref"), str):
+                refs.append(unit["decision_ref"])
+    recorded = []
+    for ref in dict.fromkeys(refs):
+        entry = ed.target_selection(decisions, ref)
+        if entry is not None:
+            recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
+    return recorded
+
+
+def _check_target_bounds(effect: dict[str, Any], index: int, decisions: dict[str, Any] | None,
+                         effect_state: dict[str, Any]) -> None:
+    """How MANY targets an instruction was given, and whether its slots are different
+    objects - asked where the targets are chosen (play, or a trigger's finalization), after
+    each chosen object has been found legal on its own (the loop above).
+
+    Core 355.8: a spell or ability goes on the Chain only with valid choices for all its
+    targets. An instruction over a bounded number of targets (`targets` min..max: "up to
+    two" is 0..2, Core 355.13; "two" is 2..2) with a count outside its bounds is refused
+    here, not discovered when it resolves.
+
+    A composite instruction's two Units (`units`: "They deal damage equal to their Mights to
+    each other") are two target slots; GPT 2026-09-25: both must be legal AND different
+    objects when they are chosen, so one object in both slots never finalizes. Resolution
+    re-checks them and chooses nothing again (the pair's executor)."""
+    spec = effect.get("targets")
+    if isinstance(spec, dict) and isinstance(spec.get("decision_ref"), str):
+        entry = ed.target_selection(decisions, spec["decision_ref"])
+        if entry is not None and not (spec["min"] <= len(entry["value"]) <= spec["max"]):
+            raise PlayError("choices", "target_count_out_of_range",
+                            f"effects[{index}] target selection {spec['decision_ref']!r} chose {len(entry['value'])} "
+                            f"object(s); this instruction takes {spec['min']}..{spec['max']}",
+                            rule_locators=["Core 355.8", "Core 355.13"])
+    units = effect.get("units")
+    if isinstance(units, list) and len(units) == 2:
+        slots: list[str | None] = []
+        for sel in units:
+            if not isinstance(sel, dict) or "selection_ref" in sel:
+                slots.append(None)
+                continue
+            if isinstance(sel.get("decision_ref"), str):
+                entry = ed.target_selection(decisions, sel["decision_ref"])
+                value = list((entry or {}).get("value") or [])
+                if len(value) != 1:
+                    raise PlayError("choices", "target_count_out_of_range",
+                                    f"effects[{index}] unit slot {sel['decision_ref']!r} names {len(value)} object(s); "
+                                    f"each slot of the pair is exactly one Unit", rule_locators=["Core 355.8"])
+                slots.append(value[0])
+            else:
+                slots.append(sel.get("object_id") if isinstance(sel.get("object_id"), str) else None)
+        if slots[0] is not None and slots[0] == slots[1]:
+            raise PlayError("choices", "target_slots_not_distinct",
+                            f"effects[{index}] names {slots[0]!r} in both unit slots; the pair's two targets are "
+                            f"different objects (GPT 2026-09-25)", rule_locators=["Core 355.8"])
 
 
 def _same_team(state: dict[str, Any], left: str | None, right: str | None) -> bool:
@@ -1379,9 +1446,11 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # own choices, made now like the first (820.2).
         repeat_paid = [add["cost_id"] for add in declaration["cost"].get("additional", []) or [] if add.get("repeat") and intents.get(add["cost_id"])]
         repeat_record = None
+        played_targets: list[dict[str, Any]] = []
         if effect_program is not None:
             effects, mode = _play_mode(actor, effect_program, engine_decisions)
             chosen_objects = _check_play_targets(effect_state, actor, effect_program, engine_decisions, effects)
+            played_targets += _played_target_record(effects, engine_decisions)
             repeat_modes = [mode] if mode else []
             for k, _ in enumerate(repeat_paid, start=1):
                 program_k = effect_program
@@ -1389,6 +1458,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                     program_k = {**effect_program, "modal": {**effect_program["modal"], "decision_ref": effect_program["modal"]["decision_ref"] + f"#{k}"}}
                 effects_k, mode_k = _play_mode(actor, program_k, engine_decisions)
                 chosen_objects += _check_play_targets(effect_state, actor, effect_program, engine_decisions, suffix_decision_refs(effects_k, f"#{k}"))
+                played_targets += _played_target_record(suffix_decision_refs(effects_k, f"#{k}"), engine_decisions)
                 if mode_k:
                     repeat_modes.append(mode_k)
             if repeat_paid:
@@ -1534,6 +1604,11 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             entry["mode_selection"] = dict(mode)  # ADR-0011 §2: the mode rides with the chain entry to resolution
         if repeat_record is not None:
             entry["repeat"] = copy.deepcopy(repeat_record)  # ADR-0011 §4: paid Repeats ride to resolution
+        if played_targets:
+            # Core 355.5 / 355.15: the targets chosen now ride with the chain entry, so the
+            # resolution that reads them is the one they were chosen for - re-checked there
+            # (359.3.e), never chosen again (the resolution bridge refuses a different one)
+            entry["played_targets"] = played_targets
         if accelerate_entry is not None and intents.get(ACCELERATE_COST_ID):
             # 806.1.b: paid, so the card enters ready even if it loses the
             # keyword during finalization. Bound to this card and this play.

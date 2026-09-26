@@ -535,6 +535,10 @@ jobs:
         run: python3 skill/scripts/check_resolution_choice.py
       - name: two instructions joined by 'and' are independent steps (Core 422.4)
         run: python3 skill/scripts/check_sequence_steps.py
+      - name: target counts and two target slots, held where the targets are chosen (Core 355.8, 355.13)
+        run: python3 skill/scripts/check_target_counts.py
+      - name: an instruction its controller may perform, decided as it resolves (Core 355.12)
+        run: python3 skill/scripts/check_optional_instruction.py
       - name: watched triggers - one per stunned enemy, one per discard batch (Core 383.3.a)
         run: python3 skill/scripts/check_watch_each_and_discard.py
       - name: player referent bound to a reveal (Sabotage)
@@ -732,6 +736,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_look_session_sets.py"
           python3 "$REPO/skill/scripts/check_resolution_choice.py"
           python3 "$REPO/skill/scripts/check_sequence_steps.py"
+          python3 "$REPO/skill/scripts/check_target_counts.py"
+          python3 "$REPO/skill/scripts/check_optional_instruction.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
           python3 "$REPO/skill/scripts/check_cost_from_board.py"

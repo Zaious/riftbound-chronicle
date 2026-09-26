@@ -195,6 +195,33 @@ def main() -> int:
                     any(t.get("outcome") == "applied" for t in got.get("trace") or []):
                 errors.append(f"'a friendly unit at a battlefield' accepted {why}: {got.get('trace')}")
 
+        # --- "move a unit from a battlefield to its base" (Maddened Marauder, 2026-09-26): either side,
+        # each to its OWN Base - an enemy unit goes to its controller's Base, not the mover's ------------
+        marauder = cg.compile_clause("Move a unit from a battlefield to its base.", cg.load_grammar())
+        if marauder.get("unsupported") or marauder.get("production_id") != "move_a_unit_from_a_battlefield_to_its_base":
+            errors.append(f"Maddened Marauder's clause did not compile: {marauder}")
+        else:
+            def run_marauder(chosen):
+                prog = program("marauder", *[dict(e) for e in marauder["program_effects"]])
+                picked = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(home),
+                          "decisions": [{"decision_id": "t", "stage": "play_declaration", "kind": "target_selection",
+                                         "controller": "p1", "value": [chosen],
+                                         "selection_identities": {chosen: object_identity(home, chosen) or f"{chosen}@0"}}]}
+                return apply_program(home, prog, decisions=picked)
+
+            for unit, owner in (("u1", "p1"), ("u2", "p2")):
+                got = run_marauder(unit)
+                after = got.get("next_state", {})
+                if not got.get("committed") or unit not in after["players"][owner]["zones"]["base"] \
+                        or unit in after["battlefields"]["bf1"]["objects"] \
+                        or any(unit in after["players"][p]["zones"]["base"] for p in after["players"] if p != owner):
+                    errors.append(f"'move a unit from a battlefield to its base' did not put {unit} in {owner}'s Base: "
+                                  f"{got.get('reason') or got.get('errors') or got.get('trace')}")
+            got = run_marauder("u5")
+            if got.get("committed") and got["next_state"] != home and \
+                    any(t.get("outcome") == "applied" for t in got.get("trace") or []):
+                errors.append(f"'a unit from a battlefield' accepted a unit already in its Base: {got.get('trace')}")
+
     # --- the rule locators a Move emits (GPT 2026-09-25: Core 428 is Kill; Move is 420 / 445,
     # the destination 355.4 / 355.4.a) - read from the actual output, not the prose -------------
     grammar = cg.load_grammar()

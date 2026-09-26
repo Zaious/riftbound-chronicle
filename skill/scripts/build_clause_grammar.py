@@ -389,6 +389,13 @@ LITERAL = [
      ["Move a friendly unit at a battlefield to its base."],
      ["move a friendly unit to its base", "move an enemy unit at a battlefield to its base",
       "move a friendly unit to or from its base"]),
+    ("move_a_unit_from_a_battlefield_to_its_base", r"move a unit from (?:a )?battlefield to its base",
+     ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9", "Core 355.10.b"], "instruction", ["move_board_object", "targeting"],
+     "One chosen Unit at a Battlefield, of either side, moves to its own Base (its controller's). A Unit in a "
+     "Base is not a legal target; 'a friendly unit at a battlefield' is a different production.",
+     ["Move a unit from a battlefield to its base."],
+     ["move a unit to its base", "move a friendly unit from a battlefield to its base",
+      "move a unit from a battlefield to your base"]),
     ("deal_n_to_all_enemy_units_at_a_battlefield", r"deal (?P<amount>\d+) to all enemy units at a battlefield",
      ["Core 417", "Core 355.10.b", "Core 715.2"], "instruction", ["deal_damage", "criteria_expansion"],
      "One chosen Battlefield, then every enemy Unit there.",

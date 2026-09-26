@@ -298,6 +298,18 @@ def _lower_move_friendly_at_battlefield_to_its_base(params):
                                "destination": "its_base"}}}
 
 
+def _lower_move_unit_from_battlefield_to_its_base(params):
+    # 2026-09-26 (Maddened Marauder): any unit at a battlefield, either side, to its OWN Base -
+    # the destination is resolved per object as its controller's (Core 355.4.a), so an enemy
+    # unit goes to its controller's Base. "from a battlefield" restricts the target (355.10.b)
+    return {"program_effects": [{"op": "move_board_object", "effect_id": "mv",
+                                 "destination": {"kind": "base", "player_relation": "object_controller"},
+                                 "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
+                                            "location": "battlefield"}}],
+            "ast": {"node": "instruction", "op": "move_board_object",
+                    "params": {"target": {"kind": "unit", "location": "battlefield"}, "destination": "its_base"}}}
+
+
 def _lower_deal_all_enemy_at_battlefield(params):
     amount = int(params["amount"])
     return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": amount,
@@ -708,6 +720,7 @@ LOWERINGS = {
     "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
     "move_a_friendly_unit_at_a_battlefield_to_its_base": _lower_move_friendly_at_battlefield_to_its_base,
+    "move_a_unit_from_a_battlefield_to_its_base": _lower_move_unit_from_battlefield_to_its_base,
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,

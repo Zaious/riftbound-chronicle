@@ -719,6 +719,15 @@ WRAPPERS = [
      ["when i attack, draw 1", "when i defend, draw 1", "when you attack or defend, draw 1"]),
     # 2026-09-25 (Jinx - Loose Cannon): a Beginning Phase trigger (turn_cycle schedules it with
     # the Beginning Step's other effects, Core 315.2.a); both printed spellings
+    # 2026-09-27 (Mushroom Pouch): BEFORE the plain row, which would take the condition as its inner
+    # instruction and refuse it. The condition is the trigger's (Core 383.2.a.1), not the effect's
+    ("at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield",
+     r"at (?:the )?start of your beginning phase, if you control a facedown card at a battlefield, (?P<inner>.+)",
+     ["Core 315.2.a", "Core 383.2.a.1", "Core 355.9.a.3", "Core 107.3.f"], ["beginning_phase_triggers"],
+     ["At the start of your Beginning Phase, if you control a facedown card at a battlefield, draw 1."],
+     ["at the start of your beginning phase, draw 1 if you control a facedown card at a battlefield",
+      "at the start of your beginning phase, if you control a unit at a battlefield, draw 1",
+      "at the start of each player's beginning phase, if you control a facedown card at a battlefield, draw 1"]),
     ("at_the_start_of_your_beginning_phase", r"at (?:the )?start of your beginning phase, (?P<inner>.+)",
      ["Core 315.2.a", "Core 315.2.a.1", "Core 383.1"], ["beginning_phase_triggers"],
      ["At the start of your Beginning Phase, draw 1.", "At start of your Beginning Phase, draw 1."],

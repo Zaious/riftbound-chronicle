@@ -518,6 +518,8 @@ jobs:
         run: python3 skill/scripts/check_watch_each_and_discard.py
       - name: player referent bound to a reveal (Sabotage)
         run: python3 skill/scripts/check_player_ref_and_reveal.py
+      - name: a Beginning Phase trigger's own condition - a facedown card at a battlefield (Core 383.2.a.1)
+        run: python3 skill/scripts/check_phase_trigger_condition.py
       - name: granted Assault (Core 807.2, Cleave)
         run: python3 skill/scripts/check_grant_assault.py
       - name: linked instructions - its controller / owner / Might / Energy cost (Core 359.3.e.14)
@@ -691,6 +693,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_sequence_steps.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
+          python3 "$REPO/skill/scripts/check_phase_trigger_condition.py"
           python3 "$REPO/skill/scripts/check_grant_assault.py"
           python3 "$REPO/skill/scripts/check_linked_references.py"
           python3 "$REPO/skill/scripts/check_next_card_effects.py"

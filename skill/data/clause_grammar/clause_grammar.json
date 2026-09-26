@@ -2239,6 +2239,32 @@
       ]
     },
     {
+      "production_id": "at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield",
+      "form": "At the start of your Beginning Phase, if you control a facedown card at a battlefield, draw 1.",
+      "template": "at (?:the )?start of your beginning phase, if you control a facedown card at a battlefield, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 315.2.a",
+        "Core 383.2.a.1",
+        "Core 355.9.a.3",
+        "Core 107.3.f"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "beginning_phase_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "At the start of your Beginning Phase, if you control a facedown card at a battlefield, draw 1."
+      ],
+      "negative": [
+        "at the start of your beginning phase, draw 1 if you control a facedown card at a battlefield",
+        "at the start of your beginning phase, if you control a unit at a battlefield, draw 1",
+        "at the start of each player's beginning phase, if you control a facedown card at a battlefield, draw 1"
+      ]
+    },
+    {
       "production_id": "at_the_start_of_your_beginning_phase",
       "form": "At the start of your Beginning Phase, draw 1.",
       "template": "at (?:the )?start of your beginning phase, (?P<inner>.+)",

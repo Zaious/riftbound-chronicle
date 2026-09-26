@@ -783,6 +783,11 @@ TRIGGER_WRAPPERS = {
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
     "at_the_start_of_your_beginning_phase": ("beginning_phase_triggers", "on-beginning", {"scope": "your_beginning_phase"}),
+    # 2026-09-27 (Mushroom Pouch): the conditional statement right after the trigger condition is
+    # part of the trigger condition (Core 383.2.a.1) - on the descriptor, not a predicate of the effect
+    "at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield": (
+        "beginning_phase_triggers", "on-beginning",
+        {"scope": "your_beginning_phase", "condition": {"kind": "controls_facedown_card_at_battlefield"}}),
     # Core 469.1: the unit conquering is the one at the Battlefield being
     # scored. That is the engine's default scope for a conquer trigger; the
     # clause states it rather than relying on the default.

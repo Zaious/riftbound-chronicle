@@ -109,7 +109,12 @@ KEYWORD_MODIFIER_DURATIONS = {"this_combat", "this_turn"}
 # this turn. On a trigger it is only read where "When you play me" triggers are collected.
 # "moved_to_battlefield" (2026-09-24, "When I move to a battlefield"): read only on a move
 # trigger, against the completed Move's destination
-TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn", "moved_to_battlefield"}
+# "controls_facedown_card_at_battlefield" (2026-09-27, Mushroom Pouch: "At the start of your Beginning Phase, if
+# you control a facedown card at a battlefield, draw 1."): the conditional statement right after the
+# trigger condition is part of it (Core 383.2.a.1), read when the Beginning Step schedules - a facedown
+# card (355.9.a.3) its controller controls in any Battlefield's Facedown Zone (107.3.f, 128.4)
+TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn", "moved_to_battlefield",
+                           "controls_facedown_card_at_battlefield"}
 DEFAULT_TURN_ID = "turn-0"
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
@@ -1036,6 +1041,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].condition.kind must be one of {sorted(TRIGGER_CONDITION_KINDS)} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "another_card_finalized_this_turn" and (trigger_field != "play_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: a Legion condition is read only on a play trigger, as {{kind}} (Core 812.1.c)")
+                elif "condition" in trigger and trigger["condition"].get("kind") == "controls_facedown_card_at_battlefield" and (trigger_field != "beginning_phase_triggers" or set(trigger["condition"]) != {"kind"}):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'if you control a facedown card at a battlefield' is read only on a Beginning Phase trigger, as {{kind}} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "moved_to_battlefield" and (trigger_field != "move_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'to a battlefield' is read only on a move trigger, as {{kind}} (Core 383.1, 428)")
                 elif "scope" in trigger and trigger_field in {"conquer_triggers", "hold_triggers"} and trigger["scope"] not in {"unit_here", "controller"}:

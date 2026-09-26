@@ -397,6 +397,16 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.finalized_targets must be trigger_finalization target selections")
             if "finalized_targets" in item and item.get("status") != "finalized":
                 errors.append(f"{label}.finalized_targets on an item that is not finalized")
+            if "trigger_cost_receipt" in item:
+                # 2026-09-27: the base cost paid as the ability was finalized (Core 383.3.b.1)
+                from cost_receipt import validate_cost_receipt
+                paid = item["trigger_cost_receipt"]
+                if item.get("status") != "finalized":
+                    errors.append(f"{label}.trigger_cost_receipt on an item that is not finalized")
+                elif (not isinstance(paid, dict) or set(paid) != {"cost_hash", "receipt"}
+                      or not (isinstance(paid.get("cost_hash"), str) and paid["cost_hash"].startswith("sha256:"))
+                      or validate_cost_receipt(paid.get("receipt")) or paid["receipt"].get("paid") is not True):
+                    errors.append(f"{label}.trigger_cost_receipt must be {{cost_hash, receipt}} with a valid, paid receipt")
             if item.get("trigger_kind") not in {"triggered", "self_death", "reflexive"}:
                 errors.append(f"{label}.trigger_kind is invalid")
             if not isinstance(item.get("batch_sequence"), int) or item.get("batch_sequence", -1) < 0:

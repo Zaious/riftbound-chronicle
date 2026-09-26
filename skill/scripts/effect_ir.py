@@ -233,6 +233,13 @@ SUPPORTED_OPS = {
     # ("Buff it.", "Kill it.") refer to, and records the binding they are
     # checked against.
     "establish_selection",
+    # 2026-09-27: "[do X] to [do Y]" that opens a triggered ability's effect (or follows the
+    # "you may" that opens it): [do X] is the ability's BASE cost (Core 204.3.a, 383.3.b,
+    # 403.1.b.1), paid while the ability is finalized (383.3.b.1, 740.4.a.2) by
+    # resolution_bridge.finalize_trigger (trigger_cost.py). It is the program's first
+    # instruction so the content hash covers it; it changes nothing as the ability resolves -
+    # apply_program only checks that the chain item's receipt says it was paid.
+    "trigger_base_cost",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -439,7 +446,14 @@ OP_RULES = {
     "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
     "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
     "remove_hidden": ["Core 323.7", "Core 811", "Core 124"],
+    "trigger_base_cost": ["Core 204.3.a", "Core 383.3.b", "Core 383.3.b.1", "Core 403.1.b.1", "Core 404.2", "Core 740.4.a.2"],
 }
+# The payments a triggered ability's base cost is made of (trigger_cost.py pays them): Energy
+# and Power, exhausting the ability's own source, spending a buff from a unit its controller
+# controls (Core 702.2.b), and recycling the ability's own source from its owner's trash (Core
+# 416; Ekko, Recurrent is 383.3.b's own example). Anything else is not modelled and refused.
+TRIGGER_COST_PAYMENTS = {"energy": {"amount"}, "power": {"domain", "amount"}, "exhaust": {"object_id"},
+                         "spend_buff": set(), "recycle": {"object_id"}}
 
 
 def hash_value(value: Any) -> str:
@@ -1321,6 +1335,47 @@ def _offer_binding_errors(program: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _trigger_base_cost_errors(effect: dict[str, Any], index: int, count: int) -> list[str]:
+    """The shape of a triggered ability's base cost (Core 204.3.a, 383.3.b): the program's first
+    instruction, followed by the effect it pays for, carrying only the typed payments
+    TRIGGER_COST_PAYMENTS names."""
+    errors: list[str] = []
+    if index != 0:
+        errors.append("must be the program's first instruction: a triggered ability's base cost opens its "
+                      "effect (Core 383.3.b); a cost in a later part is paid on resolution (Core 740.4.a.2.a), "
+                      "which this instruction does not model")
+    if count < 2:
+        errors.append("needs the effect it pays for after it ([do X] to [do Y], Core 740.4.a)")
+    extra = set(effect) - {"op", "effect_id", "payment"}
+    if extra:
+        errors.append(f"carries its payment only, not {sorted(extra)}")
+    payment = effect.get("payment")
+    if not isinstance(payment, list) or not payment:
+        return errors + ["payment must be a non-empty array"]
+    seen: set[tuple[str, str | None]] = set()
+    for position, part in enumerate(payment):
+        kind = part.get("kind") if isinstance(part, dict) else None
+        if kind not in TRIGGER_COST_PAYMENTS:
+            errors.append(f"payment[{position}].kind must be one of {sorted(TRIGGER_COST_PAYMENTS)}")
+            continue
+        if set(part) - {"kind"} != TRIGGER_COST_PAYMENTS[kind]:
+            errors.append(f"payment[{position}] ({kind}) must carry exactly {sorted(TRIGGER_COST_PAYMENTS[kind])}")
+            continue
+        if kind in {"energy", "power"} and (not isinstance(part["amount"], int) or isinstance(part["amount"], bool)
+                                            or part["amount"] < 1):
+            errors.append(f"payment[{position}] ({kind}) needs a positive amount")
+        if kind == "power" and (not isinstance(part["domain"], str) or not part["domain"]):
+            errors.append(f"payment[{position}] (power) needs a domain")
+        if kind in {"exhaust", "recycle"} and part["object_id"] != {"object_ref": "program_source"}:
+            errors.append(f"payment[{position}] ({kind}) is paid with the ability's own source only "
+                          f"({{object_ref: program_source}})")
+        key = (kind, part.get("domain") if kind == "power" else None)
+        if key in seen:
+            errors.append(f"payment[{position}] repeats a {kind} payment; write its amount once")
+        seen.add(key)
+    return errors
+
+
 def validate_program(program: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(program, dict):
@@ -1380,6 +1435,9 @@ def validate_program(program: Any) -> list[str]:
                     if option["option_id"] in seen_options:
                         errors.append(f"modal.options[{o_index}].option_id {option['option_id']!r} is duplicated")
                     seen_options.add(option["option_id"])
+                    if any(isinstance(e, dict) and e.get("op") == "trigger_base_cost" for e in option["effects"] or []):
+                        errors.append(f"modal.options[{o_index}] carries a trigger_base_cost; a base cost inside a "
+                                      f"mode is not modelled (the cost belongs to the ability, Core 383.3.b)")
                     synthetic = {k: v for k, v in program.items() if k not in {"modal", "effects"}}
                     synthetic["effects"] = option["effects"]
                     errors.extend(f"modal.options[{o_index}] {e}" for e in validate_program(synthetic))
@@ -1414,6 +1472,9 @@ def validate_program(program: Any) -> list[str]:
             predicate = effect.get("predicate")
             if predicate is not None:
                 errors.extend(f"effects[{index}].predicate {e}" for e in _predicate_errors(predicate, program.get("cost_receipt"), seen, {e.get("effect_id", f"effect-{i}"): e for i, e in enumerate(effects[:index]) if isinstance(e, dict)}))
+            if effect.get("op") == "trigger_base_cost":
+                errors.extend(f"effects[{index}].trigger_base_cost {e}"
+                              for e in _trigger_base_cost_errors(effect, index, len(effects)))
             if effect.get("op") == "swap_might":
                 units = effect.get("units")
                 if not isinstance(units, list) or len(units) != 2:
@@ -1661,9 +1722,16 @@ def validate_program(program: Any) -> list[str]:
                         errors.append(f"effects[{index}].affected over the whole board targets nothing (Core 355.10.b)")
                     if criteria["location"] == "active_combat" and target is not None:
                         errors.append(f"effects[{index}].affected over active_combat targets nothing (Core 355.10.d, 740.2.c)")
-                    if "kind" in criteria and criteria["kind"] not in {"unit", "gear"}:
+                    if "kind" in criteria and criteria["kind"] not in {"unit", "gear", "rune"}:
                         errors.append(f"effects[{index}].affected.criteria.kind is invalid")
-                    if "controller_relation" in criteria and criteria["controller_relation"] not in {"friendly", "enemy"}:
+                    # 2026-09-27 ("ready your runes", Ekko - Recurrent): a player's Runes are on the board
+                    # in their Base (Core 430.1), so a set of Runes is read over the whole board, and only
+                    # readied or exhausted
+                    if criteria.get("kind") == "rune" and (criteria["location"] != "board" or effect.get("op") not in {"ready", "exhaust"}):
+                        errors.append(f"effects[{index}].affected over runes reads the whole board and only readies or exhausts them")
+                    # "own": controlled by the program's controller ("your runes") - not "friendly", which
+                    # also takes a teammate's (same_side); a teammate's Runes are not "yours"
+                    if "controller_relation" in criteria and criteria["controller_relation"] not in {"friendly", "enemy", "own"}:
                         errors.append(f"effects[{index}].affected.criteria.controller_relation is invalid")
                     if criteria["location"] == "target_battlefield" and (not isinstance(target, dict) or target.get("kind") != "battlefield"):
                         errors.append(f"effects[{index}].affected over target_battlefield needs a battlefield target")
@@ -1716,7 +1784,10 @@ OBJECT_REF_KINDS = ("program_source",)
 # Which ops may carry it. Codex's boundary: adoption is proved per op with an
 # executor audit AND a real resolution fixture. `ready` working says nothing
 # about `kill`, so an op is added here only once its fixture exists.
-OBJECT_REF_OPS = {"ready", "buff", "modify_might", "banish"}
+# 2026-09-27: return_to_hand ("return me to my owner's hand", Vayne, Hunter) - its fixtures are
+# check_object_ref_self.py (the source leaves the board for its owner's hand) and
+# check_trigger_cost.py (a Conquer-shaped trigger whose base cost is [1], resolved for real).
+OBJECT_REF_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand"}
 # A Spell is not a permanent; it is not on the board to be acted on when its own
 # program resolves. The default is deliberately narrow (Core 355.4.a: the Board's
 # Locations are the Battlefields and the Bases).
@@ -3310,6 +3381,11 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
 
     elif op == "swap_might":
         raise ValueError("swap_might is resolved by apply_program as two Might changes over one snapshot")
+
+    elif op == "trigger_base_cost":
+        # paid at finalization (trigger_cost.py); apply_program only checks the receipt
+        raise ValueError("trigger_base_cost is paid when the triggered ability is finalized (Core 383.3.b.1); "
+                         "apply_program checks its receipt and never runs it as an instruction")
 
     elif op == "establish_selection":
         # apply_program runs it before selector resolution, because it produces
@@ -5908,6 +5984,27 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        if effect.get("op") == "trigger_base_cost":
+            # Core 383.3.b.1 / 740.4.a.2: the base cost was paid as the ability was finalized, or
+            # the ability never reached the Chain as a Finalized item (404.2). Resolution pays
+            # nothing again: it reads the payment the chain item's receipt settled, and a program
+            # run without that receipt - or with one for another cost - is refused, never paid here.
+            payment = copy.deepcopy(effect.get("payment"))
+            paid = (context or {}).get("trigger_base_cost_paid")
+            if paid != hash_value(effect):
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": "trigger_base_cost_unpaid",
+                        "reason": "this program opens with a triggered ability's base cost, which is paid when the "
+                                  "ability is finalized (Core 383.3.b.1, 740.4.a.2); no receipt for this cost came "
+                                  "with the resolution" + (" (the receipt is for a different cost)" if paid else ""),
+                        "failed_effect_index": index, "trace": trace}
+            event = {"index": index, "effect_id": effect_id, "op": "trigger_base_cost", "outcome": "paid_at_finalization",
+                     "completion": "full", "payment": payment, "cost_hash": paid,
+                     "rule_locators": list(OP_RULES["trigger_base_cost"]),
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
         # selector-group `self`: resolve a typed program_source reference into
         # the concrete object before anything else looks at object_id.
         if is_object_ref(effect.get("object_id")):
@@ -6256,6 +6353,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     if relation == "friendly" and not same_side(current, program.get("controller"), obj.get("controller")):
                         continue
                     if relation == "enemy" and same_side(current, program.get("controller"), obj.get("controller")):
+                        continue
+                    if relation == "own" and obj.get("controller") != program.get("controller"):
                         continue
                     affected_ids.append(candidate)
             snapshot_hash = hash_value({"state": before_hash, "criteria": criteria, "battlefields": battlefield_ids, "affected": affected_ids})

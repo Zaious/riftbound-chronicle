@@ -8,12 +8,18 @@ paths, each with the watch the clause grammar itself lowers from the golden sent
     the same resolution under "When you stun one or more enemy units" schedules one; p1 stunning a
     friendly unit, p2 stunning p2's own unit (enemy to p1, but not stunned by p1), and p1 stunning
     an enemy that is already stunned (Core 423.1.a.1: it cannot be stunned again) schedule none;
-  - "When you discard one or more cards" is about the player whose card is discarded, not about
-    whose effect it is: p1 discarding two cards in one instruction schedules one; p2's effect
-    making p1 discard schedules one; p1's effect making p2 discard schedules none; p2 discarding
-    schedules none; p1 with an empty hand discards nothing (Core 422.4) and schedules none; the
-    watcher's card in a hand schedules none; a card played by p1 with a discard as its COST
-    schedules one (Core 422.1.b: a discard paid as a cost is a discard).
+  - "When you discard one or more cards" is about the player whose card is discarded (the
+    event's player, scope `player`), not about whose effect it is: p1 discarding two cards in one
+    instruction schedules one; p2's effect making p1 discard schedules one; p1's effect making p2
+    discard schedules none; p2 discarding schedules none; p1 with an empty hand discards nothing
+    (Core 422.4) and schedules none; the watcher's card in a hand schedules none;
+  - a discard paid as a COST is a discard (Core 422.2.a, 422.3): a card played by p1 with a
+    discard in its cost schedules one, and so does an ability p1 activates with one (no `played`
+    event: the discard alone wakes it, and the ability stays the item under the trigger); a play
+    or an activation with no discard in its cost schedules none; two cost components give events
+    with distinct ids, shaped hand -> trash like an instruction's discard;
+  - two of p1's watchers woken by one cost discard ask p1 to order them (Core 383.3.d) instead
+    of refusing the play; ordered, both are scheduled.
 """
 from __future__ import annotations
 
@@ -91,7 +97,7 @@ def main() -> int:
             errors.append(f"{label} scheduled 'When you stun an enemy unit' (or failed: {result.get('reason')})")
 
     discard = watch_of("When you discard one or more cards, draw 1.")
-    if discard.get("kinds") != ["discarded"] or discard.get("scope") != "controller" or discard.get("grouping") != "one_or_more":
+    if discard.get("kinds") != ["discarded"] or discard.get("scope") != "player" or discard.get("grouping") != "one_or_more":
         errors.append(f"the discard watch is not 'discarded, the discarding player, one per batch': {discard}")
 
     def run(owner_hand: str, n: int, player: str, controller: str, where: str = "base"):
@@ -109,8 +115,9 @@ def main() -> int:
         if not result.get("committed") or len(scheduled_from(result)) != wanted:
             errors.append(f"{label}: scheduled {len(scheduled_from(result))}, wanted {wanted} ({result.get('reason')})")
 
-    # a discard paid as a COST (Core 422.1.b): p1 plays a spell whose additional cost is 'discard 1'
-    from check_costs_and_activation import declaration, hand_state
+    # a discard paid as a COST (Core 422.2.a, 422.3): p1 plays a spell whose additional cost is 'discard 1'
+    from check_costs_and_activation import ability_declaration, declaration, envelope, hand_state
+    from game_events import validate_events
     from play_transaction import play_card
     paid = watcher(hand_state("c1", "c2"), discard)
     cost = {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": True,
@@ -124,13 +131,75 @@ def main() -> int:
     if not no_cost.get("committed") or scheduled_from(no_cost):
         errors.append(f"a play with no discard in its cost scheduled the discard watcher ({no_cost.get('reason')})")
 
+    # ... and the same for an ACTIVATED ability of u1 (no `played` event: the discard alone wakes it)
+    ability_cost = {"base": {"energy": 0, "power": {}}, "additional": [{"cost_id": "d", "mandatory": True,
+                                                                        "payment": {"kind": "discard", "amount": 1}}]}
+    activated = play_card(fixture(), watcher(hand_state("c1"), discard), ability_declaration(cost=ability_cost))
+    items = (activated.get("next_timing_state") or {}).get("chain", {}).get("items", [])
+    if not activated.get("committed") or len(scheduled_from(activated)) != 1:
+        errors.append(f"an ability with a discard cost scheduled {len(scheduled_from(activated))}, wanted 1 "
+                      f"({activated.get('reason_code')} {activated.get('reason')})")
+    elif not items or items[0].get("id") != "ability-1":
+        errors.append(f"the ability is not the item under the discard trigger: {[i.get('id') for i in items]}")
+    no_discard = play_card(fixture(), watcher(hand_state("c1"), discard), ability_declaration())
+    if not no_discard.get("committed") or scheduled_from(no_discard):
+        errors.append(f"an ability with no discard in its cost scheduled the discard watcher ({no_discard.get('reason')})")
+
+    # two discard components: two events, distinct ids, each hand -> trash with its identity before and after
+    import game_events
+    two_parts = {"base": {"energy": 1, "power": {}},
+                 "additional": [{"cost_id": "d1", "mandatory": True, "payment": {"kind": "discard", "amount": 1}},
+                                {"cost_id": "d2", "mandatory": True, "payment": {"kind": "discard", "amount": 1}}]}
+    # the payer picks c2 for the first; the second then has only c3 left (forced)
+    from check_costs_and_activation import pick
+    state3 = hand_state("c1", "c2", "c3")
+    both = play_card(fixture(), state3, declaration(cost=two_parts),
+                     engine_decisions=envelope(state3, pick("cost:play-1:d1", ["c2"], state3)))
+    if not both.get("committed"):
+        errors.append(f"a play with two discard components did not commit: {both.get('reason_code')} {both.get('reason')}")
+    else:
+        events = game_events.cost_discarded_events(
+            play_id="play-1", actor="p1", source_card="c1", state=both["next_effect_state"],
+            pay_events=both["cost_receipt"]["payment_events"])
+        ids = [e["event_id"] for e in events]
+        shaped = all(e["location_before"] == {"kind": "player_zone", "player": "p1", "zone": "hand"}
+                     and e["location_after"] == {"kind": "player_zone", "player": "p1", "zone": "trash"}
+                     and e["identity_before"] and e["identity_after"] and e["identity_before"] != e["identity_after"]
+                     and e["source"] == {"object": "c1", "kind": "object"} and e["player"] == "p1" for e in events)
+        problems = validate_events(events)
+        if len(ids) != 2 or len(set(ids)) != 2 or not shaped or problems:
+            errors.append(f"two cost discards are not two well-shaped events: {ids} shaped={shaped} {problems}")
+
+    # two of p1's watchers woken by one cost discard: p1 orders them (Core 383.3.d), the play is not refused
+    two_watchers = watcher(hand_state("c1", "c2"), discard)
+    second = copy.deepcopy(two_watchers["objects"]["w1"])
+    second["event_triggers"][0].update({"trigger_id": "w2", "source_object": "w2"})
+    two_watchers["objects"]["w2"] = second
+    two_watchers["players"]["p1"]["zones"]["base"].append("w2")
+    ask = play_card(fixture(), two_watchers, declaration(cost=cost))
+    if ask.get("committed") or ask.get("reason_code") != "trigger_order_required" or not ask.get("decision_ids") \
+            or len(ask.get("trigger_ids") or []) != 2 or ask.get("next_effect_state_hash") != hash_value(two_watchers):
+        errors.append(f"two watchers woken by a cost discard did not ask p1 for their order: "
+                      f"{ask.get('reason_code')} {ask.get('decision_ids')} {ask.get('trigger_ids')}")
+    else:
+        order = {"decision_id": ask["decision_ids"][0], "stage": "resolution", "kind": "trigger_order",
+                 "controller": "p1", "value": list(reversed(ask["trigger_ids"]))}
+        ordered = play_card(fixture(), two_watchers, declaration(cost=cost), engine_decisions=envelope(two_watchers, order))
+        woke = [i for i in (ordered.get("next_timing_state") or {}).get("chain", {}).get("items", [])
+                if str(i.get("id", "")).startswith(("w@", "w2@")) or str(i.get("trigger_id", "")).startswith(("w@", "w2@"))]
+        if not ordered.get("committed") or len(woke) != 2:
+            errors.append(f"ordered, the two cost-discard triggers were not both scheduled: {len(woke)} "
+                          f"({ordered.get('reason_code')} {ordered.get('reason')})")
+
     if errors:
         print("FAILED: watch each / discard checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
     print("OK: 'When you stun an enemy unit' schedules one trigger per enemy p1 stuns (two for two, ordered) where "
           "'one or more' schedules one; a friendly stun, p2's stun and a re-stun schedule none; 'When you discard one "
           "or more cards' follows the discarding player - p1's own discard, p2 making p1 discard and a discard paid as "
-          "a cost schedule one; p1 making p2 discard, p2's discard, an empty hand and a watcher in hand schedule none.")
+          "a cost (a play's or an ability's) schedule one; p1 making p2 discard, p2's discard, an empty hand, a watcher "
+          "in hand and a cost with no discard schedule none; two cost discards are two distinct hand -> trash events; "
+          "two watchers woken by one cost discard are p1's to order, then both scheduled.")
     return 0
 
 

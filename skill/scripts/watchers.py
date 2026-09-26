@@ -33,8 +33,11 @@ from __future__ import annotations
 from typing import Any
 
 # "actor": the player who performed the event - "When YOU stun ..." is about who stunned,
-# not whose unit was stunned (2026-09-24; "controller" compares the affected object's side)
-WATCH_SCOPES = {"self", "controller", "location", "any", "actor"}
+# not whose unit was stunned (2026-09-24; "controller" compares the affected object's side).
+# "player": the player the event happened to - "When YOU discard" is about whose hand the card
+# left (the event's `player`), not whose effect it was nor the card's controller field
+# (2026-09-26; Core 422.1: a player's hand into their trash)
+WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
 # 2026-09-24: typed facts of the EVENT a watch may require, each named, none guessed.
 #   object_kind              the object the event is about is a spell / unit / gear
 #   object_controller_relation   that object is the watcher controller's (friendly) or not (enemy)
@@ -257,6 +260,9 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
             return False
     elif scope == "actor":
         if event.get("actor") != controller:
+            return False
+    elif scope == "player":
+        if event.get("player") != controller:
             return False
     elif scope == "location":
         # The event's Location, before or after: a Unit that died at my

@@ -152,7 +152,7 @@ def main() -> int:
         errors.append(f"a discard naming another player's card was not illegal: {outside.get('reason_code')}")
     two_needed = {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": True, "payment": {"kind": "discard", "amount": 2}}]}
     short = play_card(timing, two, declaration(cost=two_needed))
-    if short.get("reason_code") != "cost_unpayable" or "Core 423.1.b" not in short.get("rule_locators", []):
+    if short.get("reason_code") != "cost_unpayable" or "Core 422.3" not in short.get("rule_locators", []):
         errors.append(f"a hand too small for the discard cost was not cost_unpayable: {short.get('reason_code')} {short.get('rule_locators')}")
 
     # --- Recycle from the trash as a cost --------------------------------------------------------

@@ -867,7 +867,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         if comp["kind"] in CHOICE_COSTS:
             # ADR-0011 §4: Discard N (422.1.a, private) / Recycle N from the
             # trash (416.3, public) — the payer's card_selection at play stage;
-            # the whole amount must be payable (423.1.b, 416.3).
+            # the whole amount must be payable (422.3, 416.3).
             amount = comp["requested"]["amount"]
             zone = "hand" if comp["kind"] == "discard" else "trash"
             # Core 354: the card being played moved to the Chain before costs
@@ -875,7 +875,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             pool = [c for c in working["players"][actor]["zones"][zone] if c != declaration["card"]]
             if len(pool) < amount:
                 raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} needs {amount} card(s) in {actor}'s {zone}; there are {len(pool)} (the action must be completable to pay it)",
-                                rule_locators=(["Core 423.1.b"] if zone == "hand" else ["Core 416.3"]) + ["Core 354"])
+                                rule_locators=(["Core 422.3"] if zone == "hand" else ["Core 416.3"]) + ["Core 354"])
             spec = {"selection_kind": "single" if amount == 1 else "unordered_set", **({"count": {"exactly": amount}} if amount != 1 else {}), "from": zone, "by": actor,
                     "visibility": "private_to_chooser" if zone == "hand" else "public", "identity_binding": True}
             ref = comp["requested"].get("decision_ref") or f"cost:{declaration['play_id']}:{comp['cost_id']}"
@@ -886,14 +886,16 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                     if supplied is not None and supplied["stage"] != "play_declaration":
                         raise PlayError("payment", "decision_stage_mismatch", f"cost choice {ref!r} was supplied for stage {supplied['stage']!r}, not play_declaration", invalid=True)
                 if comp["kind"] == "discard":
-                    identities = {}
+                    identities, identities_before = {}, {}
                     for object_id in picked:
+                        identities_before[object_id] = working["objects"][object_id].get("identity", f"{object_id}@0")
                         working["players"][actor]["zones"]["hand"].remove(object_id)
                         owner = working["objects"][object_id]["owner"]
                         working["players"][owner]["zones"]["trash"].append(object_id)
                         identities[object_id] = _bump_identity(working, object_id)
-                    events.append({"event_id": event_id, "kind": "pay_discard", "cost_id": comp["cost_id"], "objects": list(picked), "identities_after": identities,
-                                   "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 422.1", "Core 422.1.a", "Core 423.1.b", "Core 124"]})
+                    events.append({"event_id": event_id, "kind": "pay_discard", "cost_id": comp["cost_id"], "objects": list(picked),
+                                   "identities_before": identities_before, "identities_after": identities,
+                                   "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 422.1", "Core 422.1.a", "Core 422.2.a", "Core 422.3", "Core 124"]})
                 else:
                     order_ref = comp["requested"].get("order_ref") or f"{ref}:order"
                     working_after, sub = _recycle_batch(working, picked, actor, decisions, order_ref, f"cost:{comp['cost_id']}", choice_session=play_stage)
@@ -1175,7 +1177,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             if not on_board:
                 raise PlayError("choices", "activation_source_not_on_board", f"{card!r} is at {where}; activated abilities are activated from the Board (Core 377; the Board requirement is the engine's reading)", rule_locators=["Core 377"])
             if source.get("controller") != actor:
-                raise PlayError("choices", "activation_source_not_controlled", f"{card!r} is controlled by {source.get('controller')!r}, not {actor}", rule_locators=["Core 377.3"])
+                raise PlayError("choices", "activation_source_not_controlled", f"{card!r} is controlled by {source.get('controller')!r}, not {actor}", rule_locators=["Core 378"])
             # GPT 2026-09-22 (Legion, option b): an ability gated by a Dependent Keyword
             # does not exist while its condition fails, so it is refused here - before
             # any cost is paid or anything is exhausted, never paid for and left empty.
@@ -1540,17 +1542,17 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
     # "... a card on an opponent's turn") wake now, and their triggers go on the Chain above it.
     watch_trace = None
     import game_events
-    # a discard paid as a cost is a discard (Core 422.1.b): its watchers wake with the play's own
-    cost_discards = game_events.cost_discarded_events(play_id=declaration["play_id"], actor=actor, pay_events=pay_events)
+    # a discard paid as a cost is a discard (Core 422.2.a, 422.3): its watchers wake with the play's own
+    cost_discards = game_events.cost_discarded_events(play_id=declaration["play_id"], actor=actor, source_card=card,
+                                                      pay_events=pay_events, state=working)
     if not is_ability or cost_discards:
         import watchers
         from rules_core import schedule_triggered_items
-        event = game_events.played_event(
+        batch = cost_discards + ([] if is_ability else [game_events.played_event(
             play_id=declaration["play_id"], card=card, actor=actor,
             object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
             identity_after=identity_after, from_hidden=source_kind == "facedown",
-            turn_player=timing_state.get("turn_player")) if not is_ability else cost_discards[-1]
-        batch = cost_discards + ([event] if not is_ability else [])
+            turn_player=timing_state.get("turn_player"))])
         try:
             woken, working = watchers.schedule_live(working, batch, turn_id=working.get("turn_id", "turn-0"),
                                                     batch_label=f"play:{declaration['play_id']}")
@@ -1562,6 +1564,14 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if woken:
             for trigger in woken:
                 trigger.update({"batch_sequence": 0, "batch_id": f"played:{declaration['play_id']}"})
+            # two or more of one player's triggers from this batch: that player orders them
+            # (Core 383.3.d) - asked for, never a reason to refuse the play
+            from resolution_bridge import _settle_trigger_orders
+            ordering = _settle_trigger_orders(woken, engine_decisions, base)
+            if ordering is not None:
+                return {**ordering, "unsupported": False, "rolled_back": True,
+                        "next_timing_state_hash": base["input_timing_state_hash"],
+                        "next_effect_state_hash": base["input_effect_state_hash"]}
             scheduled = schedule_triggered_items(next_timing, woken)
             if scheduled.get("applied") is not True:
                 return {**base, "valid": True, "committed": False, "unsupported": False, "rolled_back": True,
@@ -1570,8 +1580,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                         "next_timing_state_hash": base["input_timing_state_hash"],
                         "next_effect_state_hash": base["input_effect_state_hash"]}
             next_timing = scheduled["next_state"]
-        watch_trace = {"stage": "watchers", "outcome": "applied", "event": event["event_id"],
-                       "scheduled": [t["trigger_id"] for t in woken], "rule_locators": ["Core 419.4.a", "Core 383.1"]}
+        watch_trace = {"stage": "watchers", "outcome": "applied", "events": [e["event_id"] for e in batch],
+                       "scheduled": [t["trigger_id"] for t in woken],
+                       "rule_locators": (["Core 419.4.a"] if not is_ability else [])
+                                        + (["Core 422.2.a", "Core 422.3"] if cost_discards else []) + ["Core 383.1"]}
     result = {
         **base, "valid": True, "committed": True, "unsupported": False, "rolled_back": False, "stage": "commit", "reason_code": "ok",
         "chain_item_id": item_id, "cost_receipt": receipt,

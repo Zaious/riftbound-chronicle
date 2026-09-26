@@ -1895,6 +1895,31 @@
       ]
     },
     {
+      "production_id": "friendly_units_may_be_played_to_open_battlefields",
+      "form": "Friendly units may be played to open battlefields.",
+      "template": "friendly units may be played to open battlefields",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.2.a",
+        "Core 355.2.b",
+        "Core 170.11.c"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "open_battlefield_permission"
+      ],
+      "boundary": "A permission this permanent grants while it is on the board: a unit card its controller's side plays may enter an open Battlefield. An enemy's unit, a gear, an occupied or controlled Battlefield, and the permanent off the board are outside it.",
+      "golden": [
+        "Friendly units may be played to open battlefields."
+      ],
+      "negative": [
+        "friendly units may be played to occupied enemy battlefields",
+        "you may play me to an open battlefield",
+        "enemy units may be played to open battlefields"
+      ]
+    },
+    {
       "production_id": "units_cant_move_from_here_to_base",
       "form": "Units can't move from here to base.",
       "template": "units can't move from here to base",

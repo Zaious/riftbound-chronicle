@@ -666,7 +666,10 @@ def battlefield_entry_paths(effect_state: dict[str, Any], card: str, actor: str,
     controller = battlefield.get("controller")
     objects = effect_state.get("objects") or {}
     present = [o for o in battlefield.get("objects", []) if (objects.get(o) or {}).get("kind") == "unit"]
-    permissions = (objects.get(card) or {}).get("play_permissions", []) or []
+    permissions = list((objects.get(card) or {}).get("play_permissions", []) or [])
+    # 2026-09-27 package 5: a permission a friendly permanent on the board grants (Core 355.2.b)
+    from effect_ir import granted_play_permissions
+    permissions += [p for p in granted_play_permissions(effect_state, card, actor) if p not in permissions]
     friendly_units = [o for o in present if (objects.get(o) or {}).get("controller") == actor]
     return {
         "controlled": controller == actor,

@@ -522,6 +522,10 @@ jobs:
         run: python3 skill/scripts/check_cost_from_board.py
       - name: "opponents can't play cards this turn" refuses their card plays, not their abilities (Core 054.1, 052)
         run: python3 skill/scripts/check_play_prohibition.py
+      - name: a linked 'then move it to a battlefield' - same object, skipped with an ignored earlier instruction (Core 359.3.e.14.a)
+        run: python3 skill/scripts/check_linked_move.py
+      - name: a permanent's granted play permission - friendly units to open battlefields (Core 355.2.b, 170.11.c)
+        run: python3 skill/scripts/check_granted_play_permission.py
       - name: stun.v1 (DP-94, Core 423)
         run: python3 skill/scripts/check_stun.py
       - name: occupied_enemy_battlefield (DP-95, Core 355.2)
@@ -689,6 +693,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
           python3 "$REPO/skill/scripts/check_cost_from_board.py"
           python3 "$REPO/skill/scripts/check_play_prohibition.py"
+          python3 "$REPO/skill/scripts/check_linked_move.py"
+          python3 "$REPO/skill/scripts/check_granted_play_permission.py"
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"

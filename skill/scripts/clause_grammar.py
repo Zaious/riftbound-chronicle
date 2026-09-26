@@ -693,6 +693,16 @@ def _lower_open_permission(params):
     }
 
 
+def _lower_granted_open_permission(params):
+    """Core 355.2.b, 170.11.c: while this permanent is on the board, the unit cards its side plays
+    may enter an open Battlefield (Miss Fortune - Buccaneer)."""
+    grant = {"permission": "open_battlefield", "kind": "unit", "controller_relation": "friendly"}
+    return {
+        "object_fields": {"granted_play_permissions": [dict(grant)]},
+        "ast": {"node": "passive", "kind": "granted_play_permission", "params": dict(grant)},
+    }
+
+
 AURA_HERE = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True, "at_source_battlefield": True}
 
 
@@ -737,6 +747,7 @@ LOWERINGS = {
     "units_cant_move_from_here_to_base": _lower_move_restriction,
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "you_may_play_me_to_an_open_battlefield": _lower_open_permission,
+    "friendly_units_may_be_played_to_open_battlefields": _lower_granted_open_permission,
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,

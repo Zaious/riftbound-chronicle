@@ -32,6 +32,11 @@ OPTIONAL_PLAYER_ZONES = {"legend_zone", "champion_zone"}
 # occupied_enemy_battlefield reads 170.11.a ("occupied" = a Unit is there) and
 # the controller relation the card's own words already give.
 PLAY_PERMISSIONS = {"open_battlefield", "ambush", "occupied_enemy_battlefield"}
+# 2026-09-27 package 5 (Miss Fortune - Buccaneer, "Friendly units may be played to open
+# battlefields."): a permission a permanent GRANTS, while it is on the board, to the unit cards its
+# controller's side plays - one shape, closed: {permission: open_battlefield, kind: unit,
+# controller_relation: friendly} (Core 355.2.b, 170.11.c).
+GRANTED_PLAY_PERMISSION_SHAPES = [{"permission": "open_battlefield", "kind": "unit", "controller_relation": "friendly"}]
 # Which of those a card gets from a *sentence* rather than from a bracketed
 # keyword. [Ambush] is printed on the card and belongs in the keyword
 # catalogue; "You may play me to an open / occupied enemy battlefield" is a
@@ -1121,6 +1126,11 @@ def validate_state(state: Any) -> list[str]:
         permissions = obj.get("play_permissions", [])
         if not isinstance(permissions, list) or len(permissions) != len(set(permissions)) or any(p not in PLAY_PERMISSIONS for p in permissions):
             errors.append(f"objects.{object_id}.play_permissions must be a unique array drawn from {sorted(PLAY_PERMISSIONS)}")
+        granted = obj.get("granted_play_permissions")
+        if granted is not None and (not isinstance(granted, list) or not granted
+                                    or any(g not in GRANTED_PLAY_PERMISSION_SHAPES for g in granted)):
+            errors.append(f"objects.{object_id}.granted_play_permissions must be a non-empty array of "
+                          f"{GRANTED_PLAY_PERMISSION_SHAPES}")
         # ADR-0012 §4 / Core 434: an attached card names its Top-Most card. The
         # engine derives the other direction, so the two can never disagree.
         host_id = obj.get("attached_to")
@@ -1419,7 +1429,7 @@ def validate_program(program: Any) -> list[str]:
             dependency = effect.get("depends_on")
             if dependency is not None and dependency not in seen:
                 errors.append(f"effects[{index}].depends_on must reference an earlier effect")
-            if effect.get("dependency_mode", "if_applied") not in {"if_applied", "always"}:
+            if effect.get("dependency_mode", "if_applied") not in DEPENDENCY_MODES:
                 errors.append(f"effects[{index}].dependency_mode is invalid")
             subject_identity = effect.get("subject_identity")
             if subject_identity is not None and (not isinstance(subject_identity, str)
@@ -2249,8 +2259,20 @@ def location_token(location: tuple[str, str, str | None] | None) -> str | None:
 
 
 # "to or from its base" (2026-09-25, Yasuo - Unforgiven): a chosen Move destination narrowed to
-# the unit's own Base when it is at a Battlefield, and to a Battlefield when it is in its Base
-MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base"}
+# the unit's own Base when it is at a Battlefield, and to a Battlefield when it is in its Base.
+# "to a battlefield" (2026-09-27 package 5, Showstopper): a chosen destination that is a
+# Battlefield - never a Base (Core 355.4.a, 144.4.b).
+MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base", "battlefield"}
+# How a later instruction depends on the earlier one it names in depends_on:
+#   if_applied      only when the earlier one was applied (the long-standing default)
+#   always          regardless
+#   unless_ignored  2026-09-27 package 5 - Core 359.3.e.14.a: a later LINKED instruction ("Buff a
+#                   friendly unit in your base, then move IT ...") executes only if the earlier
+#                   one executed; it is skipped when the earlier one was ignored (an illegal
+#                   target, 359.3.e.6) or itself skipped - but not when the earlier one executed
+#                   and changed nothing (a Unit already Buffed is still chosen, 426.1.c).
+DEPENDENCY_MODES = {"if_applied", "always", "unless_ignored"}
+IGNORED_OUTCOMES = {"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency"}
 
 
 def token_play_locations(state: dict[str, Any], controller: str, token_kind: str) -> list[str]:
@@ -2993,6 +3015,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # destinations this board actually offers.
             import engine_decisions as _ed
             candidates = legal_move_destinations(new_state, object_id)
+            if destination.get("restriction") == "battlefield":
+                candidates = [c for c in candidates if c.startswith("battlefield:")]
             if destination.get("restriction") == "to_or_from_own_base":
                 # "Move a friendly unit to or from its base." (2026-09-25): from a Battlefield the
                 # only destination is its own Base; from its Base, a Battlefield (Core 355.4.a, 144.4.b)
@@ -4558,6 +4582,24 @@ def play_prohibition(state: dict[str, Any], player: str) -> dict[str, Any] | Non
     return None
 
 
+def granted_play_permissions(state: dict[str, Any], card: str, actor: str) -> list[str]:
+    """The play permissions permanents on the board grant to `card` played by `actor` (Core
+    355.2.b): each friendly permanent - one on `actor`'s side - on the board whose
+    granted_play_permissions names the card's kind. The card itself grants nothing to itself
+    here: its own permission is its play_permissions."""
+    kind = (state["objects"].get(card) or {}).get("kind")
+    found = []
+    for source, obj in sorted(state["objects"].items()):
+        if source == card or not obj.get("granted_play_permissions") \
+                or zone_class(find_location(state, source)) != "board":
+            continue
+        for grant in obj["granted_play_permissions"]:
+            if grant["kind"] == kind and grant["controller_relation"] == "friendly" \
+                    and same_side(state, obj.get("controller"), actor) and grant["permission"] not in found:
+                found.append(grant["permission"])
+    return found
+
+
 def highest_might_you_control(state: dict[str, Any], player: str) -> int:
     """The highest Might among the Units `player` controls on the board (Core 355.9.a.1), as the
     layers compute it (476-480); 0 when they control none. A negative Might counts as 0: it can
@@ -5980,7 +6022,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 outcomes[effect_id] = event["outcome"]
                 continue
         dependency = effect.get("depends_on")
-        if dependency is not None and effect.get("dependency_mode", "if_applied") == "if_applied" and outcomes.get(dependency) != "applied":
+        linked_mode = effect.get("dependency_mode", "if_applied")
+        if dependency is not None and ((linked_mode == "if_applied" and outcomes.get(dependency) != "applied")
+                                       or (linked_mode == "unless_ignored" and (dependency not in outcomes
+                                                                         or outcomes[dependency] in IGNORED_OUTCOMES))):
             event = {
                 "index": index,
                 "effect_id": effect_id,

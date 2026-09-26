@@ -649,6 +649,17 @@ LITERAL = [
      ["you may play me to an occupied enemy battlefield",
       "friendly units may be played to open battlefields",
       "you may play a unit to an open battlefield"]),
+    # 2026-09-27 package 5: a permanent's printed grant to its side's unit plays (Miss Fortune -
+    # Buccaneer), read while it is on the board (Core 355.2.b, 170.11.c)
+    ("friendly_units_may_be_played_to_open_battlefields",
+     r"friendly units may be played to open battlefields",
+     ["Core 355.2.a", "Core 355.2.b", "Core 170.11.c"], "passive", ["open_battlefield"],
+     ("A permission this permanent grants while it is on the board: a unit card its controller's side plays may "
+      "enter an open Battlefield. An enemy's unit, a gear, an occupied or controlled Battlefield, and the permanent "
+      "off the board are outside it."),
+     ["Friendly units may be played to open battlefields."],
+     ["friendly units may be played to occupied enemy battlefields", "you may play me to an open battlefield",
+      "enemy units may be played to open battlefields"]),
     ("units_cant_move_from_here_to_base",
      r"units can't move from here to base",
      ["Core 144.4.b", "Core 359.3.e.6", "Core 190.6.a"], "passive", ["move_restriction"],

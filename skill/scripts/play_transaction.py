@@ -1185,7 +1185,9 @@ def _check_target_bounds(effect: dict[str, Any], index: int, decisions: dict[str
     objects when they are chosen, so one object in both slots never finalizes. Resolution
     re-checks them and chooses nothing again (the pair's executor)."""
     spec = effect.get("targets")
-    if isinstance(spec, dict) and isinstance(spec.get("decision_ref"), str):
+    # a split deal's Targets have a min and no max: no more of them than the damage, checked as
+    # they are chosen (_check_play_targets above, Core 355.14.c)
+    if isinstance(spec, dict) and isinstance(spec.get("decision_ref"), str) and effect.get("division_ref") is None:
         entry = ed.target_selection(decisions, spec["decision_ref"])
         if entry is not None and not (spec["min"] <= len(entry["value"]) <= spec["max"]):
             raise PlayError("choices", "target_count_out_of_range",

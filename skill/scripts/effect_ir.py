@@ -1411,6 +1411,14 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].depends_on must reference an earlier effect")
             if effect.get("dependency_mode", "if_applied") not in {"if_applied", "always"}:
                 errors.append(f"effects[{index}].dependency_mode is invalid")
+            # an instruction its controller MAY perform, decided as it resolves (Core 355.12)
+            optional = effect.get("optional")
+            if optional is not None:
+                if not isinstance(optional, dict) or set(optional) != {"decision_ref"} \
+                        or not isinstance(optional.get("decision_ref"), str) or not optional["decision_ref"]:
+                    errors.append(f"effects[{index}].optional must be {{decision_ref}}")
+                if effect.get("op") in SELECTION_BINDING_OPS:
+                    errors.append(f"effects[{index}].optional is on an instruction, not on a choice")
             subject_identity = effect.get("subject_identity")
             if subject_identity is not None and (not isinstance(subject_identity, str)
                                                  or ("@" not in subject_identity and not subject_identity.startswith("$"))):
@@ -5914,6 +5922,38 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        # "You may kill up to one gear.": an instruction the card leaves to its controller.
+        # Its targets were chosen as the card was played, whatever the controller will decide
+        # (Core 355.12); whether to perform it is decided now, as it resolves - an optional_choice
+        # decision at the resolution stage, by the program's controller. Declined, it is not
+        # performed and changes nothing; the instructions after it run as they would.
+        optional = effect.get("optional")
+        if optional is not None:
+            import engine_decisions as ed
+            ref = optional["decision_ref"]
+            entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
+            if entry is None:
+                return {**base, "valid": True, "committed": False, "optional_choice_required": True,
+                        "reason_code": "optional_choice_required",
+                        "reason": f"instruction {effect_id!r} is optional; its controller decides as it resolves (Core 355.12)",
+                        "decision_ids": [ref], "decision_controller": program.get("controller"),
+                        "failed_effect_index": index, "trace": trace}
+            if entry["controller"] != program.get("controller"):
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": "decision_controller_mismatch",
+                        "reason": f"optional instruction {effect_id!r} was decided by {entry['controller']!r}, not its controller",
+                        "failed_effect_index": index, "trace": trace}
+            if entry["stage"] != "resolution":
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                        "errors": [f"optional instruction {effect_id!r} is decided as it resolves; the decision was "
+                                   f"supplied for stage {entry['stage']!r}"], "trace": trace}
+            if entry["value"] is False:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "declined",
+                         "completion": "none", "decision_id": ref, "rule_locators": ["Core 355.12"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
         # selector-group `self`: resolve a typed program_source reference into
         # the concrete object before anything else looks at object_id.
         if is_object_ref(effect.get("object_id")):
@@ -6269,7 +6309,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             working = current
             failure = None
             for object_id in affected_ids:
-                single = {k: v for k, v in effect.items() if k not in {"affected", "target", "targets", "effect_id"}}
+                single = {k: v for k, v in effect.items() if k not in {"affected", "target", "targets", "effect_id", "optional"}}
                 single["object_id"] = object_id
                 single["effect_id"] = f"{effect_id}:{object_id}"
                 sub_program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -6326,7 +6366,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             working = current
             expansion_failed = None
             for sel in valid_sels:
-                single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id"}}
+                single = {k: v for k, v in effect.items() if k not in {"targets", "effect_id", "optional"}}
                 single["object_id"] = sel["object_id"]
                 single["target"] = sel
                 single["effect_id"] = f"{effect_id}:{sel['object_id']}"

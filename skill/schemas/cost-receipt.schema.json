@@ -316,6 +316,10 @@
     "paid": {
       "type": "boolean"
     },
+    "chain_item": {
+      "type": "string",
+      "description": "Round H: the chain item this play or activation created, so a trigger that fires from it can prove the payment it reads belongs to its own play."
+    },
     "rule_locators": {
       "type": "array",
       "items": {

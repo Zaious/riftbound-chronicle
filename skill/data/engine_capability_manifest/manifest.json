@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:0cf274f2046ea357bf6848af",
-  "capability_set_id": "sha256:0cf274f2046ea357bf6848afcc9a2fc633cf30be00358aadb739400cf89048d1",
+  "manifest_id": "capability-manifest:299ec4596f73f5ca339529f5",
+  "capability_set_id": "sha256:299ec4596f73f5ca339529f5d22208c380b3312bf63d2e98fff065db7c00c848",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:408a5b1390d217bffe572a7996fbfdb58072742d096262ab67ca5873fa9f7d71",
+    "value": "sha256:172607f2d7474484790286f3ae45e34153dadb1b1beb8078647eede476d3ddfb",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,11 +12,11 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:fd7d9f0e49437d4638bdaaedad968a32d60ec989de2130a1b370bda17e5f5bf9"
+        "sha256": "sha256:a6c110ecdefb37cc623b633480081488f7ce7f23bdd1640a0afbc6df4ffc30c9"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:4cf54d31aa5caeeac75bef61d2abe6e5729f682c1d0d5185ab93ca8b21ff5d9a"
+        "sha256": "sha256:9ed72168117f7dea48fe921cdf33ba35c78dae755c8169dd65e0cd1865546bcb"
       },
       {
         "path": "engine_check.py",
@@ -503,9 +503,9 @@
     {
       "id": "disempower",
       "rule_locators": [
-        "Core 443.1.b",
-        "Core 443.2",
-        "Core 443.2.a"
+        "Core 442.1",
+        "Core 442.1.a",
+        "Core 442.1.a.1"
       ]
     },
     {
@@ -533,10 +533,9 @@
       "rule_locators": [
         "Core 441.1",
         "Core 441.1.b",
+        "Core 441.1.c",
         "Core 441.1.c.1",
-        "Core 442.1",
-        "Core 442.2",
-        "Core 443.1"
+        "Core 441.2.a"
       ]
     },
     {
@@ -1638,13 +1637,12 @@
     "Core 440.2",
     "Core 441.1",
     "Core 441.1.b",
+    "Core 441.1.c",
     "Core 441.1.c.1",
+    "Core 441.2.a",
     "Core 442.1",
-    "Core 442.2",
-    "Core 443.1",
-    "Core 443.1.b",
-    "Core 443.2",
-    "Core 443.2.a",
+    "Core 442.1.a",
+    "Core 442.1.a.1",
     "Core 445",
     "Core 446",
     "Core 446.2",

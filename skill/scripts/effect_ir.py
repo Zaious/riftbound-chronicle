@@ -429,8 +429,9 @@ OP_RULES = {
     "counter": ["Core 425.1", "Core 425.1.a", "Core 425.1.b", "Core 425.1.c", "Core 124"],
     "burn": ["Core 440.1", "Core 440.2", "Core 431.1.b", "Core 124"],
     "copy_object": ["Core 135.2.b", "Core 185.3.a", "Core 187.1"],
-    "empower": ["Core 441.1", "Core 441.1.b", "Core 441.1.c.1", "Core 442.1", "Core 442.2", "Core 443.1"],
-    "disempower": ["Core 443.1.b", "Core 443.2", "Core 443.2.a"],
+    # 441 is Empower, 442 Disempower (443 is Skip) - fourth adversarial review 2026-09-26
+    "empower": ["Core 441.1", "Core 441.1.b", "Core 441.1.c", "Core 441.1.c.1", "Core 441.2.a"],
+    "disempower": ["Core 442.1", "Core 442.1.a", "Core 442.1.a.1"],
     "buff": ["Core 426.1", "Core 426.1.b", "Core 426.1.c", "Core 702"],
     "gain_xp": ["Core 730.1", "Core 730.2"],
     "gain_point": ["Core 471.1", "Core 471.1.a.1", "Core 471.2"],

@@ -63,7 +63,7 @@ RESULT_VERSION = "riftbound-play-result.v1"
 # Non-standard costs the engine can pay by reusing a primitive operation
 # (356.7, 357.2). Anything else is `unsupported` by name.
 SUPPORTED_NON_STANDARD = {"exhaust": "exhaust", "kill": "kill", "kill_this": "kill", "recall_self": "recall"}
-# ADR-0011 §4: costs paid by the chain item's own source (204.2); the object
+# ADR-0011 §4: costs paid by the chain item's own source (an ability's own cost, 204.1.b); the object
 # is the activation's source_object unless the declaration names one.
 SELF_COSTS = {"kill_this", "recall_self", "banish_self"}
 # ADR-0012 §1: where a card is played from. The hand is the default; the
@@ -78,7 +78,7 @@ HIDDEN_TARGETING = {"restricted", "free_by_restriction"}
 CHOICE_COSTS = {"discard", "recycle_trash"}
 # Costs whose sources live in P4 (XP, Buff, Empower): typed, refused by name.
 # C-52 (ADR-0013 §5): the three costs that spend the P4 states.
-SPEND_COSTS = {"spend_xp": "Core 730.2", "spend_buff": "Core 702.2.b", "disempower_self": "Core 443.1.b"}
+SPEND_COSTS = {"spend_xp": "Core 730.2", "spend_buff": "Core 702.2.b", "disempower_self": "Core 442.1"}
 DEFERRED_COST_KINDS: set[str] = set()
 PAID_OUTCOMES = {"applied", "replaced_prevented", "replaced_modified_applied", "replaced_modified_prevented", "augmented_applied", "augmented_original_replaced"}
 # "watchers": the triggers the costs and the play itself woke, placed on the Chain (2026-09-24/26)
@@ -221,7 +221,7 @@ def validate_declaration(value: Any) -> list[str]:
         if pay["kind"] in SELF_COSTS and "object_id" in pay and (not isinstance(pay["object_id"], str) or not pay["object_id"]):
             errors.append(f"cost.additional[{i}].payment.object_id must be a non-empty string when supplied")
         if pay["kind"] in SELF_COSTS and "object_id" not in pay and item_kind_early != "ability":
-            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs the activation's source or an object_id (Core 204.2)")
+            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs the activation's source or an object_id (Core 204.1.b)")
         if pay["kind"] == "spend_xp" and (not isinstance(pay.get("amount"), int) or isinstance(pay.get("amount"), bool) or pay["amount"] < 1):
             errors.append(f"cost.additional[{i}].payment spend_xp needs a positive amount (Core 730.2)")
         if pay["kind"] == "spend_buff" and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
@@ -931,7 +931,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                 amount = comp["requested"]["amount"]
                 before = int(working["players"][actor].get("xp", 0))
                 if before < amount:
-                    raise PlayError("payment", "cost_unpayable", f"{actor} has {before} XP and the cost spends {amount} (730.2)", rule_locators=["Core 730.2", "Core 204.3"])
+                    raise PlayError("payment", "cost_unpayable", f"{actor} has {before} XP and the cost spends {amount} (730.2)", rule_locators=["Core 730.2", "Core 203.3"])
                 working["players"][actor]["xp"] = before - amount
                 events.append({"event_id": event_id, "kind": "pay_spend_xp", "cost_id": comp["cost_id"], "amount": amount,
                                "before": before, "after": before - amount, "rule_locators": ["Core 357.2", "Core 730.2"]})
@@ -939,7 +939,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                 object_id = comp["object_id"]
                 unit = working["objects"].get(object_id, {})
                 if not unit.get("buffed"):
-                    raise PlayError("payment", "cost_unpayable", f"{object_id!r} has no Buff counter to spend (702.2.b)", rule_locators=["Core 702.2.b", "Core 204.3"])
+                    raise PlayError("payment", "cost_unpayable", f"{object_id!r} has no Buff counter to spend (702.2.b)", rule_locators=["Core 702.2.b", "Core 203.3"])
                 if unit.get("controller") != actor:
                     raise PlayError("payment", "cost_unpayable", f"{actor} does not control {object_id!r}; a spender must control the object the counter is on (702.2)", rule_locators=["Core 702.2"])
                 del working["objects"][object_id]["buffed"]
@@ -948,10 +948,10 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             else:
                 object_id = comp["object_id"]
                 if not working["objects"].get(object_id, {}).get("empowered"):
-                    raise PlayError("payment", "cost_unpayable", f"{object_id!r} is not Empowered, so it cannot be Disempowered as a cost (443.2.a)", rule_locators=["Core 443.2.a", "Core 204.3"])
+                    raise PlayError("payment", "cost_unpayable", f"{object_id!r} is not Empowered, so it cannot be Disempowered as a cost (442.1.a)", rule_locators=["Core 442.1.a", "Core 203.3"])
                 del working["objects"][object_id]["empowered"]
                 events.append({"event_id": event_id, "kind": "pay_disempower_self", "cost_id": comp["cost_id"], "object_id": object_id,
-                               "rule_locators": ["Core 357.2", "Core 443.1.b"]})
+                               "rule_locators": ["Core 357.2", "Core 442.1"]})
             comp["payment_refs"].append({"event_id": event_id})
             comp["paid"] = True
             continue
@@ -963,11 +963,11 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             object_id = comp["object_id"]
             if working["objects"][object_id].get("exhausted"):
                 raise PlayError("payment", "cost_unpayable", f"{object_id!r} is already exhausted and cannot pay its exhaust cost (414.1)",
-                                rule_locators=["Core 414.1", "Core 204.3"])
+                                rule_locators=["Core 414.1", "Core 203.3"])
             working["objects"][object_id]["exhausted"] = True
             events.append({"event_id": event_id, "kind": "pay_exhaust", "cost_id": comp["cost_id"], "object_id": object_id,
                            "outcome": "applied", "legend_zone": True,
-                           "rule_locators": ["Core 357.2", "Core 174.8", "Core 414.1", "Core 204.2"]})
+                           "rule_locators": ["Core 357.2", "Core 174.8", "Core 414.1", "Core 204.1.b"]})
             comp["payment_refs"].append({"event_id": event_id})
             comp["paid"] = True
             continue
@@ -977,6 +977,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                     "bound_identity": object_identity(working, object_id) or f"{object_id}@0"}
         program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                    "program_id": f"cost:{declaration['play_id']}:{comp['cost_id']}", "controller": actor,
+                   # the card played / the ability's source: what the cost's own events name as their source
+                   "source_object": declaration["card"],
                    "effects": [{"op": op, "effect_id": comp["cost_id"], "object_id": object_id, "target": selector}]}
         # No envelope here: it is keyed to the pre-play hash and the pool is
         # already debited. A replacement that needs a choice mid-payment is a
@@ -989,14 +991,26 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         if result.get("committed") is not True:
             raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} ({comp['kind']}) cannot be paid: {result.get('reason') or '; '.join(result.get('errors', []))}", rule_locators=["Core 357.2", "Core 203.3"])
         outcome = result["trace"][0].get("outcome")
+        if outcome not in PAID_OUTCOMES and str(outcome).startswith("replaced"):
+            # a cost a replacement changed is still paid (Core 357.2.a, 203.2: Cruel Patron and
+            # Zhonya's Hourglass) - but this outcome's own events are not modelled, so a watcher
+            # could not see what really happened: refused by name, never called unpayable
+            raise PlayError("payment", "payment_replacement_events_not_modelled",
+                            f"cost {comp['cost_id']!r} ({comp['kind']}) was replaced ({outcome}); it is paid, but the events of the "
+                            f"replacement are not modelled during payment", unsupported=True, rule_locators=["Core 357.2.a", "Core 203.2"])
         if outcome not in PAID_OUTCOMES:
             raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} ({comp['kind']}) did not happen: {outcome}", rule_locators=["Core 357.2", "Core 203.3"])
+        if result.get("event_coverage", "complete") != "complete":
+            # what the cost did moved something no event names: a watcher would miss it (fail closed)
+            raise PlayError("payment", "payment_events_incomplete",
+                            f"cost {comp['cost_id']!r} ({comp['kind']}) changed the board in a way its events do not cover: "
+                            f"{result.get('event_coverage')}", unsupported=True, rule_locators=["Core 357.2", "Core 383.1"])
         working.clear(); working.update(result["next_state"])
         if semantic is not None:
             semantic["events"].extend(copy.deepcopy(result.get("events") or []))
             semantic["pending_triggers"].extend(copy.deepcopy(result.get("pending_triggers") or []))
         events.append({"event_id": event_id, "kind": f"pay_{comp['kind']}", "cost_id": comp["cost_id"], "object_id": object_id, "outcome": outcome,
-                       "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + (["Core 204.2"] if comp["kind"] in SELF_COSTS else [])})
+                       "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + (["Core 204.1.b"] if comp["kind"] in SELF_COSTS else [])})
         comp["payment_refs"].append({"event_id": event_id})
         comp["paid"] = True
         if outcome != "applied":
@@ -1595,12 +1609,19 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                                                                batch_label=f"play:{declaration['play_id']}")
         except watchers.WatchUnsupported as exc:
             return watch_rollback(exc.reason_code, str(exc), unsupported=True, rule_locators=["Core 383.1"])
-        from_costs = cost_triggers + woken_costs
-        for trigger in from_costs:
-            trigger.update({"batch_sequence": 0, "batch_id": f"played:{declaration['play_id']}:costs"})
-        for trigger in woken_played:
-            trigger.update({"batch_sequence": 1 if from_costs else 0, "batch_id": f"played:{declaration['play_id']}"})
-        woken = from_costs + woken_played
+        # in the order they happened, each its own batch (as the resolution path does): a unit
+        # killed as a cost has its own death triggers put on the Chain first (Core 428.1.a.1.b),
+        # then what the costs woke, then what the play itself woke
+        batches = [(cost_triggers, "cost-deaths"), (woken_costs, "costs"), (woken_played, None)]
+        sequence = 0
+        for members, label in batches:
+            if not members:
+                continue
+            batch_id = f"played:{declaration['play_id']}" + (f":{label}" if label else "")
+            for trigger in members:
+                trigger.update({"batch_sequence": sequence, "batch_id": batch_id})
+            sequence += 1
+        woken = cost_triggers + woken_costs + woken_played
         if woken:
             # two or more of one player's triggers from one batch: that player orders them
             # (Core 383.3.d) - asked for, never a reason to refuse the play
@@ -1617,10 +1638,14 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 return watch_rollback(scheduled.get("reason_code") or "trigger_schedule_failed",
                                       "; ".join(scheduled.get("errors", [])), rule_locators=["Core 383.3"])
             next_timing = scheduled["next_state"]
+        paid_kinds = {e.get("kind") for e in pay_events}
+        cost_rules = [rule for kind, rule in (("pay_discard", "Core 422.2.a"), ("pay_recycle_trash", "Core 416.2.a"),
+                                              ("pay_kill", "Core 428.1.a.1"), ("pay_kill_this", "Core 428.1.a.1"))
+                      if kind in paid_kinds]
         watch_trace = {"stage": "watchers", "outcome": "applied", "events": [e["event_id"] for e in cost_events + played],
                        "scheduled": [t["trigger_id"] for t in woken],
-                       "rule_locators": (["Core 419.4.a"] if played else [])
-                                        + (["Core 357.2"] if cost_events or cost_triggers else []) + ["Core 383.1"]}
+                       "rule_locators": list(dict.fromkeys((["Core 419.4.a"] if played else []) + cost_rules
+                                                           + (["Core 428.1.a.1.b"] if cost_triggers else []) + ["Core 383.1"]))}
     result = {
         **base, "valid": True, "committed": True, "unsupported": False, "rolled_back": False, "stage": "commit", "reason_code": "ok",
         "chain_item_id": item_id, "cost_receipt": receipt,

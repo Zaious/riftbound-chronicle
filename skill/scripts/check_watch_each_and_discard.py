@@ -19,7 +19,12 @@ paths, each with the watch the clause grammar itself lowers from the golden sent
     or an activation with no discard in its cost schedules none; two cost components give events
     with distinct ids, shaped hand -> trash like an instruction's discard;
   - two of p1's watchers woken by one cost discard ask p1 to order them (Core 383.3.d) instead
-    of refusing the play; ordered, both are scheduled.
+    of refusing the play; ordered, both are scheduled;
+  - a recycle and a kill paid as costs wake their watchers; a unit killed as a cost puts its own
+    death trigger on the Chain as its own earlier batch (Core 428.1.a.1.b), under what the death
+    woke, whoever controls the watcher; a kill cost a replacement changed is refused by name
+    (Core 357.2.a: it is paid, but its events are not modelled), never called unpayable;
+  - every field a result, its receipt and its payment events carry is one the schema allows.
 """
 from __future__ import annotations
 
@@ -251,6 +256,56 @@ def main() -> int:
         errors.append(f"a Deathknell unit killed as a cost did not put its death trigger on the Chain: "
                       f"{len(knell_items)} ({knelled.get('reason_code')} {knelled.get('reason')})")
 
+    def chain_ids(result):
+        return [str(i.get("id")) for i in (result.get("next_timing_state") or {}).get("chain", {}).get("items", [])]
+
+    # the dying unit's own death trigger is its OWN earlier batch (Core 428.1.a.1.b), as on the
+    # resolution path: with p1's "first friendly death" watcher too, no order is asked, and the
+    # death trigger is under the watcher's
+    both_state = watcher(copy.deepcopy(knell_state), first_death)
+    both = play_card(fixture(), both_state, ability_declaration(cost=kill_cost))
+    ids = chain_ids(both)
+    knell_at = next((k for k, i in enumerate(ids) if "u1-knell" in i), None)
+    watch_at = next((k for k, i in enumerate(ids) if i.startswith("w@")), None)
+    if not both.get("committed") or knell_at is None or watch_at is None or not knell_at < watch_at:
+        errors.append(f"a cost death's own trigger and a watcher it woke were not two batches, death first: "
+                      f"{both.get('reason_code')} {ids}")
+    # ... and with the watcher p2's ("when a unit dies", any side): still death trigger first, then p2's
+    other_state = watcher(copy.deepcopy(knell_state), {"kinds": ["died"], "scope": "any"}, owner="p2")
+    other = play_card(fixture(), other_state, ability_declaration(cost=kill_cost))
+    ids = chain_ids(other)
+    knell_at = next((k for k, i in enumerate(ids) if "u1-knell" in i), None)
+    watch_at = next((k for k, i in enumerate(ids) if i.startswith("w@")), None)
+    if not other.get("committed") or knell_at is None or watch_at is None or not knell_at < watch_at:
+        errors.append(f"p1's cost-death trigger and p2's watcher were not ordered death first: {other.get('reason_code')} {ids}")
+
+    # a kill paid as a cost that a replacement changes is still PAID (Core 357.2.a, 203.2) - the engine
+    # does not model the replacement's events during payment, so it refuses by name, never "unpayable"
+    from check_replacement_subject import CLAUSES, hourglass_state, install
+    zhonya = install(hourglass_state(), cg.compile_card(CLAUSES, cg.load_grammar()))
+    zhonya["players"]["p1"]["resources"] = {"energy": 0, "power": {}}
+    replaced = play_card(fixture(), zhonya, ability_declaration(cost=kill_cost))
+    if replaced.get("committed") or not replaced.get("unsupported") \
+            or replaced.get("reason_code") != "payment_replacement_events_not_modelled" or validate_play_result(replaced):
+        errors.append(f"a kill cost a replacement changed was not refused by name as unsupported: "
+                      f"{replaced.get('reason_code')} unsupported={replaced.get('unsupported')}")
+
+    # every field a result, its receipt and its payment events carry is one the published schema allows
+    import json as _json
+    schemas = Path(__file__).resolve().parent.parent / "schemas"
+    result_schema = _json.loads((schemas / "play-result.schema.json").read_text(encoding="utf-8"))
+    receipt_schema = _json.loads((schemas / "cost-receipt.schema.json").read_text(encoding="utf-8"))
+    event_props = set(receipt_schema["properties"]["payment_events"]["items"].get("properties") or {})
+    for label, result in (("committed play", played), ("cost-discard ask", ask), ("recycle cost", recycled),
+                          ("kill cost", killed), ("Deathknell cost", knelled), ("replaced cost", replaced)):
+        extra = set(result) - set(result_schema["properties"])
+        receipt = result.get("cost_receipt") or {}
+        extra |= {f"cost_receipt.{k}" for k in set(receipt) - set(receipt_schema["properties"])}
+        for event in receipt.get("payment_events") or []:
+            extra |= {f"payment_events.{k}" for k in set(event) - event_props} if event_props else set()
+        if extra:
+            errors.append(f"the {label} result carries fields its schema does not allow: {sorted(extra)}")
+
     if errors:
         print("FAILED: watch each / discard checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
@@ -261,8 +316,9 @@ def main() -> int:
           "in hand and a cost with no discard schedule none; two cost discards are two distinct hand -> trash events; "
           "two watchers woken by one cost discard are p1's to order (a well-formed decision_required, wrapped as "
           "trigger_order; p2's order refused, wrong ids invalid_input), then both scheduled; a recycle and a kill "
-          "paid as costs wake their watchers, the cost death counts as the turn's first, and a Deathknell unit "
-          "killed as a cost puts its own death trigger on the Chain.")
+          "paid as costs wake their watchers, the cost death counts as the turn's first, a Deathknell unit "
+          "killed as a cost puts its own death trigger on the Chain as the earlier batch, a replaced kill cost is "
+          "refused by name, and every result field is one its schema allows.")
     return 0
 
 

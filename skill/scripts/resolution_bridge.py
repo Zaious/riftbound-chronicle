@@ -549,7 +549,14 @@ def _settle_trigger_orders(pending_triggers: list[dict[str, Any]], engine_decisi
     groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for trigger in pending_triggers:
         groups.setdefault((trigger.get("batch_id"), trigger.get("controller")), []).append(trigger)
-    for (batch_id, controller), members in sorted(groups.items(), key=lambda kv: (kv[0][0] or "", kv[0][1] or "")):
+
+    def asked_first(kv):
+        # the batches in the order they happened (batch_sequence), then by id and controller -
+        # a play's cost batch is asked about before the play's own (fourth review 2026-09-26)
+        sequences = [t.get("batch_sequence") for t in kv[1] if isinstance(t.get("batch_sequence"), int)]
+        return (min(sequences) if sequences else 0, kv[0][0] or "", kv[0][1] or "")
+
+    for (batch_id, controller), members in sorted(groups.items(), key=asked_first):
         if len(members) < 2:
             continue
         orders = [t.get("controller_order") for t in members]

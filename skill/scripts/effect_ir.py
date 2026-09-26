@@ -4071,7 +4071,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # nothing; what it produces is the receipt every later instruction of
         # this program reads instead of choosing again.
         chosen, meta = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"),
-                                      decisions=decisions, controller=controller)
+                                      decisions=decisions, controller=controller, execution=execution_suffix(effect))
         if len(chosen) != 1:
             raise ValueError("choose_player chooses exactly one player")
         trace.update({"player": chosen[0], "decision_ref": effect.get("decision_ref"),
@@ -4134,7 +4134,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                 if object_id not in new_state["objects"]:
                     raise ValueError(f"recycle names unknown object {object_id!r}")
         else:
-            chosen, meta = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=effect.get("player"))
+            chosen, meta = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=effect.get("player"),
+                                          execution=execution_suffix(effect))
         new_state, sub = _recycle_batch(new_state, chosen, effect.get("player"), decisions, effect.get("order_ref") or f"{effect.get('effect_id', 'recycle')}:order", effect.get("effect_id", "recycle"))
         trace.update(sub)
         trace["selection"] = {k: v for k, v in meta.items() if k != "choice"}
@@ -4171,7 +4172,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         ids = list(effect.get("objects") or ([effect["object_id"]] if effect.get("object_id") else []))
         selection = effect.get("selection_meta")
         if effect.get("choice") is not None and not ids:
-            chosen, selection = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=effect.get("player") or effect.get("_controller"))
+            chosen, selection = resolve_choice(new_state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=effect.get("player") or effect.get("_controller"),
+                                               execution=execution_suffix(effect))
             ids = list(chosen)
         identities: dict[str, str] = {}
         destinations: dict[str, str] = {}
@@ -6076,7 +6078,8 @@ def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: d
     if player_id not in state["players"] or not isinstance(count, int) or count < 1:
         raise ValueError("discard requires a known player and a resolved selection")
     spec = {"selection_kind": "unordered_set", "count": {"exactly": count}, "from": "hand", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
-    chosen, meta = resolve_choice(state, spec, decision_ref=effect.get("decision_ref") or f"discard:{player_id}", decisions=decisions, controller=player_id)
+    chosen, meta = resolve_choice(state, spec, decision_ref=effect.get("decision_ref") or f"discard:{player_id}{execution_suffix(effect)}",
+                                  decisions=decisions, controller=player_id)
     if meta["forced"]:
         return {**effect, "objects": chosen, "selection_meta": {"forced": True, "reason": "every card in hand must be discarded (Core 422.4)", "choice": meta["choice"]}}
     return {**effect, "objects": chosen, "selection_meta": {"forced": False, "decision_id": meta["decision_id"], "choice": meta["choice"]}}
@@ -6085,7 +6088,8 @@ def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: d
 def _resolve_choice_object(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, Any]:
     """An instruction whose single object comes from a `choice` (recycle_one
     from the trash, banish a card from hand): the chosen id becomes object_id."""
-    chosen, meta = resolve_choice(state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=program.get("controller"))
+    chosen, meta = resolve_choice(state, effect["choice"], decision_ref=effect.get("decision_ref"), decisions=decisions, controller=program.get("controller"),
+                                  execution=execution_suffix(effect))
     if not chosen:
         return {**effect, "object_id": None, "selection_meta": {**meta, "empty": True}}
     return {**effect, "object_id": chosen[0], "selection_meta": meta}
@@ -6205,12 +6209,17 @@ def resolve_player_ref(player: Any, decisions: dict[str, Any] | None, state: dic
 
 
 def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref: str | None, decisions: dict[str, Any] | None,
-                   controller: str | None, session: dict[str, Any] | None = None, chooser: str | None = None, candidates: list[str] | None = None) -> tuple[list[str], dict[str, Any]]:
+                   controller: str | None, session: dict[str, Any] | None = None, chooser: str | None = None, candidates: list[str] | None = None,
+                   execution: str = "") -> tuple[list[str], dict[str, Any]]:
     """ADR-0011 §1. Returns (chosen ids, meta). Raises ChoiceRequired when the
     decision is absent, IllegalDecision when another player made it,
     IllegalOperation when it names a non-candidate, ValueError when it is
     malformed, stale or the wrong count, NotImplementedError for a chooser
-    rule this slice does not have."""
+    rule this slice does not have.
+
+    `execution` is the Repeat execution's suffix ("#1", ...; execution_suffix). A choice with no
+    decision_ref of its own is answered under a default ref; a Repeat copy's default carries the
+    suffix, so the copy makes its own choice and never reads the first execution's (Core 820.2.a)."""
     import engine_decisions as ed
     problems = ed.validate_choice_spec(spec)
     if problems:
@@ -6238,7 +6247,7 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
     summary = ed.choice_summary(spec, chooser, candidates, identities)
     if forced is not None:
         return forced, {"forced": True, "reason": "no alternative: every candidate is taken or there is none (Core 359.3.e)", "choice": summary}
-    ref = decision_ref or f"choice:{spec['from']}:{chooser}"
+    ref = decision_ref or f"choice:{spec['from']}:{chooser}{execution}"
     entry = ed.decision_entry(decisions, ref)
     if entry is None:
         raise ChoiceRequired(f"{chooser} chooses from {spec['from']} ({spec['selection_kind']})", [ref], chooser, summary)
@@ -6252,6 +6261,16 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
     if entry["stage"] != "resolution" and entry["kind"] in {"card_selection", "card_ordering"} and not (session or {}).get("allow_play_stage"):
         raise ValueError(f"decision {ref!r} must be a resolution-stage decision")
     return chosen, {"forced": False, "decision_id": entry["decision_id"], "choice": {k: v for k, v in summary.items() if k != "options"}}
+
+
+# The Repeat execution an instruction belongs to ("#1", ...), stamped on a copy by
+# suffix_decision_refs. Engine-internal: never authored, read only by execution_suffix.
+EXECUTION_FIELD = "_execution"
+
+
+def execution_suffix(effect: dict[str, Any]) -> str:
+    value = effect.get(EXECUTION_FIELD)
+    return value if isinstance(value, str) else ""
 
 
 def suffix_decision_refs(effects: list[dict[str, Any]], suffix: str) -> list[dict[str, Any]]:
@@ -6292,6 +6311,9 @@ def suffix_decision_refs(effects: list[dict[str, Any]], suffix: str) -> list[dic
             player["object_player"]["effect_id"] += suffix
         elif isinstance(player, dict) and isinstance(player.get("decision_ref"), str):
             player["decision_ref"] += suffix
+        # a choice with no decision_ref of its own is answered under a default ref (resolve_choice,
+        # discard): the copy's default carries the suffix too (execution_suffix)
+        copied[EXECUTION_FIELD] = suffix
         amount_ref = copied.get("amount_ref")
         if isinstance(amount_ref, dict) and amount_ref.get("kind") in LINKED_AMOUNT_REF_KINDS \
                 and isinstance(amount_ref.get("effect_id"), str):

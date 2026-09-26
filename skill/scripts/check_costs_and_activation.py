@@ -30,6 +30,10 @@ Must hold:
     one Repeat deals 1 + 1, a Deal augmented with a draw deals 1 + 1 and draws
     2, and a kill replaced with a draw draws 2 - a per-object application or a
     replacement's events do not run once per execution again (2026-09-28);
+    a choice with no decision_ref ("discard 1", "recycle a card from your
+    trash") repeated: the copy is answered under its own suffixed default ref
+    and asks for it when absent - it never reuses the first execution's
+    choice (820.2.a, 2026-09-28);
   - a restricted Add resource lands in resources.restricted, is spent first
     for a matching use (the event names the restriction), and cannot be
     spent otherwise — cost_unpayable naming it, while the same pool with a
@@ -316,6 +320,37 @@ def main() -> int:
         errors.append(f"a Deal augmented with a draw, repeated once: 1 + 1 dealt and 2 drawn, got "
                       f"{after['objects']['u2']['damage']} dealt, {len(after['players']['p1']['zones']['hand']) - hand_before} drawn "
                       f"({augmented.get('reason') or augmented.get('errors')})")
+    # 820.2.a: a choice with no decision_ref of its own is answered under a default ref - the copy's
+    # default carries the execution suffix, so it asks for its own choice and never reads the first
+    # execution's ("discard:p1" / "discard:p1#1"; "choice:trash:p1" / "choice:trash:p1#1")
+    chooser_state = hand_state("c1", energy=0)
+    for card, zone in (("k1", "hand"), ("k2", "hand"), ("t1", "trash"), ("t2", "trash")):
+        chooser_state["objects"][card] = {"owner": "p1", "controller": "p1", "kind": "spell", "base_might": 0,
+                                          "might_modifiers": [], "damage": 0, "exhausted": False}
+        chooser_state["players"]["p1"]["zones"][zone].append(card)
+
+    def picks(*rows):
+        return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(chooser_state), "decisions": [
+            {"decision_id": ref, "stage": "resolution", "kind": "card_selection", "controller": "p1", "value": [card],
+             "selection_identities": {card: object_identity(chooser_state, card)}} for ref, card in rows]}
+
+    twice = {"repeat": {"executions": 2}}
+    discard_twice = apply_program(chooser_state, program("dc", {"op": "discard", "effect_id": "d", "player": "p1", "count": 1}),
+                                  decisions=picks(("discard:p1", "k1"), ("discard:p1#1", "k2")), context=twice)
+    if not discard_twice.get("committed") or not {"k1", "k2"} <= set(discard_twice["next_state"]["players"]["p1"]["zones"]["trash"]):
+        errors.append(f"'discard 1' repeated with no decision_ref: k1 then k2 should both be discarded, each by its own "
+                      f"choice: {discard_twice.get('reason_code')} {discard_twice.get('reason') or discard_twice.get('errors')}")
+    asks = apply_program(chooser_state, program("dc", {"op": "discard", "effect_id": "d", "player": "p1", "count": 1}),
+                         decisions=picks(("discard:p1", "k1")), context=twice)
+    if asks.get("committed") or asks.get("decision_ids") != ["discard:p1#1"]:
+        errors.append(f"'discard 1' repeated with only the first choice supplied did not ask for the copy's own "
+                      f"(discard:p1#1): {asks.get('reason_code')} {asks.get('decision_ids')}")
+    recycle_twice = apply_program(chooser_state, program("rc", {"op": "recycle_one", "effect_id": "r", "player": "p1",
+                                                               "choice": {"selection_kind": "single", "from": "trash", "by": "controller"}}),
+                                  decisions=picks(("choice:trash:p1", "t1"), ("choice:trash:p1#1", "t2")), context=twice)
+    if not recycle_twice.get("committed") or recycle_twice["next_state"]["players"]["p1"]["zones"]["main_deck"][-2:] != ["t1", "t2"]:
+        errors.append(f"'recycle a card from your trash' repeated with no decision_ref: t1 then t2 should be recycled: "
+                      f"{recycle_twice.get('reason_code')} {recycle_twice.get('reason') or recycle_twice.get('errors')}")
     # a kill replaced with a draw, repeated once: the replacement's draw happens once per execution
     replacing = copy.deepcopy(augmenting)
     for n in range(4):

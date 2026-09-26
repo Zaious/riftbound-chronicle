@@ -1815,6 +1815,31 @@
       ]
     },
     {
+      "production_id": "this_enters_exhausted",
+      "form": "This enters exhausted.",
+      "template": "this enters exhausted",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 369.3",
+        "Core 359.2.d",
+        "Core 143.4"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "entry_replacements"
+      ],
+      "boundary": "The permanent's own entry replacement: it enters the board exhausted (resolution_bridge.entry_state_for reads it). A timed or granted form ('units you play this turn enter exhausted'), or 'ready', is a different clause and stays unparsed.",
+      "golden": [
+        "This enters exhausted."
+      ],
+      "negative": [
+        "this enters ready",
+        "units you play enter exhausted",
+        "i enter ready"
+      ]
+    },
+    {
       "production_id": "units_cant_move_from_here_to_base",
       "form": "Units can't move from here to base.",
       "template": "units can't move from here to base",

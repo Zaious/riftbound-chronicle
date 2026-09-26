@@ -662,6 +662,15 @@ def _lower_open_permission(params):
     }
 
 
+def _lower_enters_exhausted(params):
+    """Core 369.3: a printed replacement on how this permanent enters - exhausted, where a Gear
+    would enter ready (359.2.d). resolution_bridge.entry_state_for applies it at entry."""
+    return {
+        "object_fields": {"entry_replacements": [{"mode": "entry_state", "value": "exhausted"}]},
+        "ast": {"node": "passive", "kind": "entry_replacement", "params": {"entry_state": "exhausted"}},
+    }
+
+
 AURA_HERE = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True, "at_source_battlefield": True}
 
 
@@ -706,6 +715,7 @@ LOWERINGS = {
     "units_cant_move_from_here_to_base": _lower_move_restriction,
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "you_may_play_me_to_an_open_battlefield": _lower_open_permission,
+    "this_enters_exhausted": _lower_enters_exhausted,
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,

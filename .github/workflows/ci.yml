@@ -520,6 +520,8 @@ jobs:
         run: python3 skill/scripts/check_player_ref_and_reveal.py
       - name: When I'm played and when I conquer - one ability, a Play and a Conquer condition
         run: python3 skill/scripts/check_played_and_conquer_trigger.py
+      - name: This enters exhausted - a printed entry replacement (Core 369.3)
+        run: python3 skill/scripts/check_enters_exhausted.py
       - name: stun.v1 (DP-94, Core 423)
         run: python3 skill/scripts/check_stun.py
       - name: occupied_enemy_battlefield (DP-95, Core 355.2)
@@ -686,6 +688,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
           python3 "$REPO/skill/scripts/check_played_and_conquer_trigger.py"
+          python3 "$REPO/skill/scripts/check_enters_exhausted.py"
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"

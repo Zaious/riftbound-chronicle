@@ -611,6 +611,18 @@ LITERAL = [
      ["you may play me to an occupied enemy battlefield",
       "friendly units may be played to open battlefields",
       "you may play a unit to an open battlefield"]),
+    # 2026-09-27: a printed replacement on how this permanent enters (Core 369.3). A Gear would
+    # otherwise enter ready (359.2.d); a Unit already enters exhausted (143.4, 359.2.c).
+    ("this_enters_exhausted",
+     r"this enters exhausted",
+     ["Core 369.3", "Core 359.2.d", "Core 143.4"], "passive", ["entry_replacements"],
+     ("The permanent's own entry replacement: it enters the board exhausted (resolution_bridge."
+      "entry_state_for reads it). A timed or granted form ('units you play this turn enter exhausted'), "
+      "or 'ready', is a different clause and stays unparsed."),
+     ["This enters exhausted."],
+     ["this enters ready",
+      "units you play enter exhausted",
+      "i enter ready"]),
     ("units_cant_move_from_here_to_base",
      r"units can't move from here to base",
      ["Core 144.4.b", "Core 359.3.e.6", "Core 190.6.a"], "passive", ["move_restriction"],

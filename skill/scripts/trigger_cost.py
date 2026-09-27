@@ -163,6 +163,15 @@ def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: d
             base["energy"] += part["amount"]
         elif kind == "power":
             base["power"][part["domain"]] = base["power"].get(part["domain"], 0) + part["amount"]
+        elif kind == "power_own_domain":
+            # 2026-09-28 (package 6): [C], Power of the ability's own card's Domain. A card with no Domain the
+            # state records, or several, gives no one Domain to pay: refused by name, never guessed
+            domains = ((working.get("objects") or {}).get(item.get("source_object") or "") or {}).get("domains")
+            if not isinstance(domains, list) or len(domains) != 1:
+                raise TriggerCostError("refused", "trigger_cost_domain_not_single",
+                                       f"[C] is Power of the card's own Domain; {item.get('source_object')!r} records "
+                                       f"{domains!r}, not exactly one", rule_locators=["Core 383.3.b"])
+            base["power"][domains[0]] = base["power"].get(domains[0], 0) + part["amount"]
         elif kind == "exhaust":
             source = _source_is_me(working, item, where="board")
             additional.append({"cost_id": "trigger:exhaust-self", "mandatory": True,

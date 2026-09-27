@@ -1317,6 +1317,9 @@ def _limited_play_checks(timing_state: dict[str, Any], effect_state: dict[str, A
         problems.append(f"cost.base {declaration['cost'].get('base')} is not the card's printed cost {printed} (Core 206)")
     if declaration["chain_item"].get("timing") != "default":
         problems.append("an effect-driven play declares default timing; the effect's instruction is its permission (Core 419.3.a)")
+    if record.get("entry_location") is not None and declaration.get("entry_location") != record["entry_location"]:
+        problems.append(f"entry_location {declaration.get('entry_location')} is not where the effect plays it "
+                        f"({record['entry_location']}, Core 355.2.b)")
     if problems:
         raise PlayError("declaration", "limited_play_declaration_mismatch", "; ".join(problems), invalid=True)
     return record
@@ -1518,6 +1521,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 raise PlayError("choices", "ambush_location_invalid",
                                 f"{card!r} claims Ambush timing at {location['battlefield']!r}, where {actor} has no Units (822.1, 822.3)",
                                 rule_locators=["Core 822.1", "Core 822.3"])
+            # 2026-09-28 (package 6): the Battlefield an effect-driven play's effect names for the unit
+            # ("play it here") is a location that effect permits (Core 355.2.b)
+            if limited and (limited_record or {}).get("entry_location") == location:
+                paths = {**paths, "granted_by_the_effect": True}
             if not any(paths.values()):
                 raise PlayError("choices", "entry_location_illegal",
                                 f"{card!r} may enter its controller's Base or a Battlefield {actor} controls (355.2.a); {location['battlefield']!r} is "

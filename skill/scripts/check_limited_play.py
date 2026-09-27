@@ -54,6 +54,15 @@ Held here:
   C8 shapes           a hand target, no zone_owner_relation own, an unknown cost basis, an extra field,
                       a malformed record on the chain entry - each refused by validation
   C9 prohibited       "opponents can't play cards this turn" in force on its player: cancelled (054.1)
+  H  a hand choice    "When I attack, you may pay [C] to play a card with [Hidden] from your hand, ignoring its
+     and 'here'       cost. If it's a unit, play it here." (Ava Achiever's shape): the base cost [C] is one Power
+                      of the card's own Domain (a card with two Domains, or none recorded, cannot pay it); the card
+                      is chosen from the hand as the ability resolves - private, not a target (Core 355.10.a) - and
+                      only a card with [Hidden]; choosing none is allowed (128.6), and with none in hand nothing is
+                      asked (419.3.c); a unit enters the source's Battlefield though its player does not control it
+                      (355.2.b), and no other location is taken; a gear enters its Base; the source gone from the
+                      Battlefield names no location, which is then chosen (355.2.a); a cancelled play puts the card
+                      back in the hand at its place
 
     python skill/scripts/check_limited_play.py
 """
@@ -571,10 +580,147 @@ def check_prohibited() -> None:
         fail("C9", f"{cancelled.get('reason')} {cancelled.get('transition')}")
 
 
+# --- H: a hand choice, the location the effect names, [C] ------------------------------------------
+
+AVA_PROGRAM = program("ava-on-attack-effects", "ava", [
+    {"op": "trigger_base_cost", "effect_id": "cost", "payment": [{"kind": "power_own_domain", "amount": 1}]},
+    {"op": "limited_play", "effect_id": "lp", "decision_ref": "c",
+     "choice": {"from": "hand", "selection_kind": "unordered_set", "count": {"up_to": 1}, "by": "controller",
+                "visibility": "private_to_chooser"}, "card_filter": {"hidden": True},
+     "entry": {"kind": "unit_at_source_battlefield"}, "cost_basis": {"kind": "ignore_all"}}])
+AVA_REGISTRY = {AVA_PROGRAM["program_id"]: AVA_PROGRAM}
+
+
+def ava_board(*, domains=("mind",), hand=("hid-unit", "hid-gear", "plain")) -> dict:
+    """Ava (p1, Domain mind) at bf1, which p2 controls, with p2's unit there (contested by Ava's arrival); p1's
+    hand holds a unit and a gear with [Hidden] and a unit without; p1 has one mind Power."""
+    state = base_state()
+    state["objects"]["ava"] = card("p1", "unit", {"energy": 3, "power": {}}, might=3,
+                                   **({"domains": list(domains)} if domains is not None else {}))
+    state["players"]["p1"]["zones"]["base"].remove("u1")
+    state["battlefields"]["bf1"] = {"controller": "p2", "objects": ["u2", "ava"], "contested": True, "contested_by": "p1"}
+    state["players"]["p2"]["zones"]["base"].remove("u2")
+    state["players"]["p1"]["zones"]["base"].append("u1")
+    pool = {"hid-unit": card("p1", "unit", {"energy": 5, "power": {"mind": 2}}, might=4, hidden=True),
+            "hid-gear": card("p1", "gear", {"energy": 2, "power": {}}, hidden=True),
+            "plain": card("p1", "unit", {"energy": 1, "power": {}}, might=1)}
+    for name in hand:
+        state["objects"][name] = pool[name]
+        state["players"]["p1"]["zones"]["hand"].append(name)
+    state["players"]["p1"]["resources"] = {"energy": 0, "power": {"mind": 1}}
+    problems = validate_state(state)
+    assert not problems, problems
+    return state
+
+
+def ava_pending(state: dict) -> dict:
+    from rules_core import schedule_triggered_items
+    descriptor = {"trigger_id": "ava-on-attack", "controller": "p1", "source_object": "ava", "controller_order": 0,
+                  "effect_program_id": AVA_PROGRAM["program_id"], "optional_at_finalize": True,
+                  "effect_program_hash": program_hash(AVA_PROGRAM), "trigger_kind": "triggered",
+                  "source_identity": object_identity(state, "ava")}
+    scheduled = schedule_triggered_items(fixture(), [descriptor])
+    assert scheduled.get("applied"), scheduled
+    return scheduled["next_state"]
+
+
+def ava_resolved(state: dict, chosen: list[str] | None, *, move_away: bool = False) -> dict:
+    timing = ava_pending(state)
+    fin = finalize_trigger(timing, state, AVA_REGISTRY, None, perform_optional_trigger=True, pay_trigger_cost=True,
+                           payment_context=CLOSED)
+    assert fin.get("committed") and not fin.get("removed"), (fin.get("reason"), fin.get("message"))
+    board_now = copy.deepcopy(fin["next_effect_state"])
+    if move_away:
+        board_now["battlefields"]["bf1"]["objects"].remove("ava")
+        board_now["players"]["p1"]["zones"]["base"].append("ava")
+        board_now["battlefields"]["bf1"].update({"contested": False, "contested_by": None})
+    decisions = None
+    if chosen is not None:
+        decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(board_now),
+                     "decisions": [{"decision_id": "c", "stage": "resolution", "kind": "card_selection", "controller": "p1",
+                                    "value": list(chosen), "selection_identities": {c: object_identity(board_now, c) for c in chosen}}]}
+    ready = to_resolution(fin["next_timing_state"])
+    item_ = next(i for i in ready["chain"]["items"] if i["id"] == "ava-on-attack")
+    prog, refusal = dispatch_program(AVA_REGISTRY, item_)
+    assert refusal is None, refusal
+    return {"done": resolve_with_program(ready, "ava-on-attack", board_now, prog, engine_decisions=decisions),
+            "paid": fin["next_effect_state"]}
+
+
+def check_hand_choice() -> None:
+    state = ava_board()
+    run = ava_resolved(state, ["hid-unit"])
+    done = run["done"]
+    if not done.get("committed"):
+        return fail("H unit", f"{done.get('stage')} {done.get('reason')}")
+    if run["paid"]["players"]["p1"]["resources"]["power"].get("mind") != 0:
+        fail("H cost", f"[C] did not take ava's one mind Power: {run['paid']['players']['p1']['resources']}")
+    lp = pending_play(done["next_timing_state"])
+    record = ((done["next_effect_state"].get("chain_items") or {}).get((lp or {}).get("id")) or {}).get("limited_play") or {}
+    if lp is None or record.get("source_zone") != "hand" or record.get("entry_location") != {"kind": "battlefield", "battlefield": "bf1"}:
+        return fail("H unit", f"the play did not start from the hand with 'here' named: {record}")
+    other = finalize_limited_play(done["next_timing_state"], done["next_effect_state"], entry_location=BASE, payment_context=CLOSED)
+    if other.get("committed") or other.get("reason") != "entry_location_named_by_the_effect":
+        fail("H named", f"another location than 'here' was taken: {other.get('reason')}")
+    completed = complete_limited_play(done["next_timing_state"], done["next_effect_state"], payment_context=CLOSED)
+    e2 = completed.get("next_effect_state") or {}
+    if not completed.get("committed") or "hid-unit" not in e2["battlefields"]["bf1"]["objects"]:
+        return fail("H unit", f"the unit is not at bf1: {completed.get('reason')} {completed.get('message')}")
+    if e2["players"]["p1"]["resources"] != {"energy": 0, "power": {"mind": 0}} or "hid-unit" in e2["players"]["p1"]["zones"]["hand"]:
+        fail("H unit", f"the play paid something or left the card in hand: {e2['players']['p1']['resources']}")
+    # choosing none (128.6), and nothing to choose (419.3.c)
+    declined = ava_resolved(state, [])["done"]
+    if [s.get("outcome") for s in declined["trace"]["effect"]] != ["paid_at_finalization", "no_op"] or pending_play(declined["next_timing_state"]):
+        fail("H none chosen", f"{[s.get('outcome') for s in declined['trace']['effect']]}")
+    empty = ava_resolved(ava_board(hand=("plain",)), None)["done"]
+    if not empty.get("committed") or [s.get("reason") for s in empty["trace"]["effect"]][1:] != ["no_eligible_card"]:
+        fail("H no hidden card", f"{empty.get('reason')} {[s.get('reason') for s in (empty.get('trace') or {}).get('effect', [])]}")
+    asked = ava_resolved(state, None)["done"]
+    asked_effect = asked.get("effect_result") or {}
+    if asked.get("committed") or not asked_effect.get("choice_required") or asked_effect.get("decision_controller") != "p1":
+        fail("H ask", f"the choice was made for the player: {asked_effect.get('reason_code')} {asked.get('reason')}")
+    plain = ava_resolved(state, ["plain"])["done"]
+    if plain.get("committed"):
+        fail("H no [Hidden]", "a card without [Hidden] was played")
+    # a gear with [Hidden]: 'If it's a unit' names no location; it enters its Base
+    gear = ava_resolved(state, ["hid-gear"])["done"]
+    gear_done = complete_limited_play(gear["next_timing_state"], gear["next_effect_state"], payment_context=CLOSED)
+    if not gear_done.get("committed") or "hid-gear" not in gear_done["next_effect_state"]["players"]["p1"]["zones"]["base"]:
+        fail("H gear", f"{gear_done.get('reason')} {gear_done.get('message')}")
+    # the source gone from the Battlefield: no 'here'; the location is the player's choice (355.2.a)
+    away = ava_resolved(state, ["hid-unit"], move_away=True)["done"]
+    ask = finalize_limited_play(away["next_timing_state"], away["next_effect_state"], payment_context=CLOSED)
+    if ask.get("reason") != "entry_location_required":
+        fail("H here gone", f"{ask.get('reason')}")
+    # cancelled (the player cannot play cards): back in the hand at its place
+    prohibited = copy.deepcopy(done["next_effect_state"])
+    prohibited["turn_effects"] = [{"effect_id": "stop", "kind": "cards_play_prohibited", "controller": "p2",
+                                   "turn_id": prohibited.get("turn_id", "turn-0"), "value": "opponents", "source": "x"}]
+    cancel = finalize_limited_play(done["next_timing_state"], prohibited, payment_context=CLOSED)
+    hand = (cancel.get("next_effect_state") or {}).get("players", {}).get("p1", {}).get("zones", {}).get("hand", [])
+    if not cancel.get("removed") or hand.index("hid-unit") != state["players"]["p1"]["zones"]["hand"].index("hid-unit"):
+        fail("H cancelled", f"the card is not back in the hand at its place: {hand}")
+    # [C] with two Domains, or none recorded: no one Domain to pay
+    for label, domains in (("two Domains", ("mind", "calm")), ("no Domain recorded", None)):
+        other_board = ava_board(domains=domains)
+        fin = finalize_trigger(ava_pending(other_board), other_board, AVA_REGISTRY, None, perform_optional_trigger=True,
+                               pay_trigger_cost=True, payment_context=CLOSED)
+        if fin.get("committed") or fin.get("reason") != "trigger_cost_domain_not_single":
+            fail(f"H [C] {label}", f"{fin.get('reason')}")
+    for label, change in (("one card counted exactly", {"count": {"exactly": 1}}), ("from the trash", {"from": "trash"}),
+                          ("chosen by the opponent", {"by": "opponent"}), ("a single choice", {"selection_kind": "single", "count": {"one": True}})):
+        wrong = program("x", "ava", [{**AVA_PROGRAM["effects"][1], "choice": {**AVA_PROGRAM["effects"][1]["choice"], **change}}])
+        if not validate_program(wrong):
+            fail(f"H shape: {label}", "validated")
+    both = program("x", "ava", [{**AVA_PROGRAM["effects"][1], "target": trash_target()}])
+    if not validate_program(both):
+        fail("H shape: a target and a choice", "validated")
+
+
 def main() -> int:
     for check in (check_real_chain, check_trigger, check_chain_underneath, check_own_place, check_ignore_all,
                   check_underpayment, check_target_changed, check_355_16, check_forged, check_op_alone,
-                  check_no_target, check_entry_location, check_shapes, check_prohibited):
+                  check_no_target, check_entry_location, check_shapes, check_prohibited, check_hand_choice):
         try:
             check()
         except AssertionError as exc:
@@ -590,7 +736,8 @@ def main() -> int:
     print("OK: effect-driven play - step 1 at the instruction, steps 2-5 through the play transaction from the Chain "
           "(real Chain, trigger performed/declined, a Chain underneath, its place before triggers, cost ignored, "
           "underpayment cancelled with the effect standing, target changed, 355.16, forged declarations, no target, "
-          "entry location, shapes, prohibition)")
+          "entry location, shapes, prohibition; a hand choice with the location the effect names and a base cost of "
+          "the card's own Domain)")
     return 0
 
 

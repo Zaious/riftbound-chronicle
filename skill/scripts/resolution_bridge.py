@@ -755,6 +755,13 @@ def finalize_limited_play(
         return {**base, "valid": False, "committed": False, "stage": "effect_state", "item_id": item["id"],
                 "reason": "limited_play_record_missing", "errors": [f"the effect state has no limited play under {item['id']!r}"]}
     kind = effect_state["objects"][card]["kind"]
+    named = record.get("entry_location")
+    if named is not None:
+        # the effect named the location ("play it here", Core 355.2.b): nothing to choose
+        if entry_location is not None and entry_location != named:
+            return {**base, "valid": True, "committed": False, "stage": "choices", "item_id": item["id"],
+                    "reason": "entry_location_named_by_the_effect", "location": named, "rule_locators": ["Core 355.2.b"]}
+        entry_location = named
     if kind == "unit" and entry_location is None:
         # Core 355.2: a Unit's location is chosen in the play's own step 2 - now
         controller = item["controller"]

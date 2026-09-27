@@ -536,15 +536,28 @@ LIMITED_PLAY_COST_BASES = {"ignore_energy": "Core 356.1.b.2", "ignore_power": "C
 # the effect is played or finalized (GPT 2026-09-25; Core 355.10.a, 355.9.a). A private zone (the
 # hand) is a choice made as the effect resolves, which this instruction does not model yet.
 LIMITED_PLAY_ZONES = {"trash"}
+# 2026-09-28 (package 6, step 2): a card from a private zone - its controller's hand - is not a target
+# (Core 355.10.a); it is chosen as the effect resolves, and a player cannot be made to take a card of a named
+# type or quality from a hidden zone (128.6), so the choice is of at most one card
+LIMITED_PLAY_CHOICE_ZONES = {"hand"}
+LIMITED_PLAY_CARD_FILTER = {"kind", "hidden"}
 LIMITED_PLAY_KINDS = {"unit", "gear", "spell"}
 LIMITED_PLAY_RECORD_FIELDS = {"granted_by", "program_id", "effect_id", "source_zone", "zone_owner", "zone_index",
                               "identity_before", "controller_before", "cost_basis"}
+# the location the effect named for the unit it plays ("play it here", Core 355.2.b), when it named one
+LIMITED_PLAY_RECORD_OPTIONAL = {"entry_location"}
+# "If it's a unit, play it here.": where the effect has a unit it plays enter - the program source's current
+# Battlefield, read as the instruction executes (Core 359.3.f.2)
+LIMITED_PLAY_ENTRY_KINDS = {"unit_at_source_battlefield"}
 # The payments a triggered ability's base cost is made of (trigger_cost.py pays them): Energy
 # and Power, exhausting the ability's own source, spending a buff from a unit its controller
 # controls (Core 702.2.b), and recycling the ability's own source from its owner's trash (Core
 # 416; Ekko, Recurrent is 383.3.b's own example). Anything else is not modelled and refused.
 TRIGGER_COST_PAYMENTS = {"energy": {"amount"}, "power": {"domain", "amount"}, "exhaust": {"object_id"},
-                         "spend_buff": set(), "recycle": {"object_id"}}
+                         "spend_buff": set(), "recycle": {"object_id"},
+                         # 2026-09-28 (package 6): [C] - Power of the ability's own card's Domain, read off the
+                         # source as the cost is paid (the errata's [C]; its one Domain, or not payable)
+                         "power_own_domain": {"amount"}}
 
 
 def hash_value(value: Any) -> str:
@@ -1542,8 +1555,8 @@ def _trigger_base_cost_errors(effect: dict[str, Any], index: int, count: int) ->
         if set(part) - {"kind"} != TRIGGER_COST_PAYMENTS[kind]:
             errors.append(f"payment[{position}] ({kind}) must carry exactly {sorted(TRIGGER_COST_PAYMENTS[kind])}")
             continue
-        if kind in {"energy", "power"} and (not isinstance(part["amount"], int) or isinstance(part["amount"], bool)
-                                            or part["amount"] < 1):
+        if kind in {"energy", "power", "power_own_domain"} and (not isinstance(part["amount"], int) or isinstance(part["amount"], bool)
+                                                                or part["amount"] < 1):
             errors.append(f"payment[{position}] ({kind}) needs a positive amount")
         if kind == "power" and (not isinstance(part["domain"], str) or not part["domain"]):
             errors.append(f"payment[{position}] (power) needs a domain")
@@ -1569,11 +1582,33 @@ def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
     changes about the card's cost. Nothing else - an entry location is chosen as the play itself is
     finalized (Core 355.2), and a card chosen from a private zone is not this instruction."""
     errors: list[str] = []
-    extra = set(effect) - {"op", "effect_id", "target", "cost_basis", "depends_on", "dependency_mode", "predicate",
-                           "_execution"}
+    extra = set(effect) - {"op", "effect_id", "target", "choice", "decision_ref", "card_filter", "entry", "cost_basis", "depends_on",
+                           "dependency_mode", "predicate", "_execution"}
     if extra:
-        errors.append(f"carries only its target and cost_basis, not {sorted(extra)}")
+        errors.append(f"carries only its target or choice, entry and cost_basis, not {sorted(extra)}")
     errors.extend(_limited_play_cost_basis_errors(effect.get("cost_basis")))
+    entry = effect.get("entry")
+    if entry is not None and (not isinstance(entry, dict) or set(entry) != {"kind"} or entry.get("kind") not in LIMITED_PLAY_ENTRY_KINDS):
+        errors.append(f"entry must be {{kind}} with kind in {sorted(LIMITED_PLAY_ENTRY_KINDS)} (Core 355.2.b)")
+    if ("target" in effect) == ("choice" in effect):
+        return errors + ["needs exactly one of target (a card in a public zone, Core 355.10.a) or choice (a card in "
+                         "a private zone, chosen as the effect resolves)"]
+    if "choice" in effect:
+        choice = effect["choice"]
+        if (not isinstance(choice, dict) or choice.get("from") not in LIMITED_PLAY_CHOICE_ZONES
+                or choice.get("by", "controller") != "controller" or choice.get("selection_kind") != "unordered_set"
+                or choice.get("count") != {"up_to": 1} or choice.get("visibility") != "private_to_chooser"):
+            errors.append(f"choice must be at most one card (count up_to 1, Core 128.6) of the controller's own "
+                          f"{sorted(LIMITED_PLAY_CHOICE_ZONES)}, private to the chooser")
+        card_filter = effect.get("card_filter", {})
+        if (not isinstance(card_filter, dict) or set(card_filter) - LIMITED_PLAY_CARD_FILTER
+                or card_filter.get("kind", "unit") not in LIMITED_PLAY_KINDS or card_filter.get("hidden", True) is not True):
+            errors.append(f"card_filter is over {sorted(LIMITED_PLAY_CARD_FILTER)}: a kind, and hidden (the card has [Hidden])")
+        if not isinstance(effect.get("decision_ref"), str) or not effect.get("decision_ref"):
+            errors.append("a choice names its decision_ref")
+        return errors
+    if "decision_ref" in effect or "card_filter" in effect:
+        errors.append("a target carries its decision_ref and its criteria on the target")
     target = effect.get("target")
     if not isinstance(target, dict):
         return errors + ["needs a target: the card to play, chosen in a public zone (Core 355.10.a)"]
@@ -1590,14 +1625,19 @@ def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
 
 
 def _limited_play_record_errors(record: Any, players: dict[str, Any]) -> list[str]:
-    if not isinstance(record, dict) or set(record) != LIMITED_PLAY_RECORD_FIELDS:
-        return [f"must carry exactly {sorted(LIMITED_PLAY_RECORD_FIELDS)}"]
+    if not isinstance(record, dict) or not LIMITED_PLAY_RECORD_FIELDS <= set(record) \
+            or set(record) - LIMITED_PLAY_RECORD_FIELDS - LIMITED_PLAY_RECORD_OPTIONAL:
+        return [f"must carry exactly {sorted(LIMITED_PLAY_RECORD_FIELDS)} (and {sorted(LIMITED_PLAY_RECORD_OPTIONAL)})"]
     errors: list[str] = []
     for key in ("granted_by", "program_id", "effect_id"):
         if not isinstance(record[key], str) or not record[key]:
             errors.append(f"{key} must be a non-empty string")
-    if record["source_zone"] not in LIMITED_PLAY_ZONES:
-        errors.append(f"source_zone must be one of {sorted(LIMITED_PLAY_ZONES)}")
+    if record["source_zone"] not in LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES:
+        errors.append(f"source_zone must be one of {sorted(LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES)}")
+    entry = record.get("entry_location")
+    if entry is not None and (not isinstance(entry, dict) or set(entry) != {"kind", "battlefield"} or entry.get("kind") != "battlefield"
+                              or not isinstance(entry.get("battlefield"), str) or not entry["battlefield"]):
+        errors.append("entry_location must be {kind: battlefield, battlefield}")
     if record["zone_owner"] not in players or record["controller_before"] not in players:
         errors.append("zone_owner and controller_before must be players")
     if not isinstance(record["zone_index"], int) or isinstance(record["zone_index"], bool) or record["zone_index"] < 0:
@@ -1831,7 +1871,8 @@ def validate_program(program: Any) -> list[str]:
             if choice is not None:
                 import engine_decisions as ed
                 errors.extend(f"effects[{index}].choice {e}" for e in ed.validate_choice_spec(choice))
-                if effect.get("op") not in CHOICE_OPS | SELF_RESOLVING_CHOICE_OPS | SELECTION_BINDING_OPS:
+                # 2026-09-28 (package 6): an effect-driven play from a private zone chooses its card as it resolves
+                if effect.get("op") not in CHOICE_OPS | SELF_RESOLVING_CHOICE_OPS | SELECTION_BINDING_OPS | {"limited_play"}:
                     errors.append(f"effects[{index}].choice is not supported for {effect.get('op')!r}")
                 elif effect.get("op") in {"recycle_one"} and not errors and (choice["selection_kind"] != "single" or choice["from"] not in {"trash", "hand"}):
                     errors.append(f"effects[{index}].{effect.get('op')} chooses a single card from trash or hand")
@@ -7359,9 +7400,51 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             # instruction is ignored and nothing is played (359.3.e.6, 419.3.c). Legal, this is the
             # play's step 1 (Core 354): the card moves to the Chain as a Pending item and is a new
             # object (124); the rest of the play waits until this effect has finished resolving (354.3).
-            target = selectors[0] if selectors else None
-            legal, reason = (evaluate_target(current, target, program.get("controller")) if target is not None
-                             else (False, "target_missing"))
+            if effect.get("choice") is not None:
+                # 2026-09-28 (package 6, step 2): a card of the controller's hand, chosen now (Core 355.10.a) - or
+                # none: a player cannot be made to take a card of a named quality from a hidden zone (128.6)
+                controller = program.get("controller")
+                criteria = effect.get("card_filter") or {}
+                candidates = [c for c in current["players"][controller]["zones"][effect["choice"]["from"]]
+                              if (current["objects"].get(c) or {}).get("kind") in LIMITED_PLAY_KINDS
+                              and ("kind" not in criteria or current["objects"][c]["kind"] == criteria["kind"])
+                              and (not criteria.get("hidden") or current["objects"][c].get("hidden") is True)]
+                try:
+                    chosen, choice_meta = resolve_choice(current, effect["choice"], decision_ref=effect.get("decision_ref"),
+                                                         decisions=decisions, controller=controller, candidates=candidates,
+                                                         execution=execution_suffix(effect))
+                except ChoiceRequired as exc:
+                    return {**base, "valid": True, "committed": False, "choice_required": True,
+                            f"{exc.summary['decision_kind']}_required": True, "reason_code": exc.reason_code,
+                            "reason": str(exc), "choice": exc.summary, "decision_ids": exc.decision_ids,
+                            "decision_controller": exc.controller, "failed_effect_index": index, "trace": trace}
+                except IllegalDecision as exc:
+                    return {**base, "valid": True, "committed": False, "applied": False,
+                            "reason_code": "decision_controller_mismatch", "reason": str(exc),
+                            "failed_effect_index": index, "trace": trace}
+                except IllegalOperation as exc:
+                    return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "illegal_operation",
+                            "reason": str(exc), "failed_effect_index": index, "trace": trace}
+                except ValueError as exc:
+                    return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                            "errors": [str(exc)], "trace": trace}
+                if not chosen:
+                    event = {"index": index, "effect_id": effect_id, "op": "limited_play", "outcome": "no_op",
+                             "completion": "none",
+                             "reason": "no_eligible_card" if not candidates else "declined",
+                             "rule_locators": ["Core 419.3.c"] if not candidates else ["Core 128.6"],
+                             "before_state_hash": before_hash, "after_state_hash": before_hash}
+                    trace.append(event)
+                    outcomes[effect_id] = event["outcome"]
+                    continue
+                target = {"object_id": chosen[0]}
+                legal, reason = True, "ok"
+                selector_meta = {**selector_meta, "choice": choice_meta.get("choice"),
+                                 **({"decision_id": choice_meta["decision_id"]} if choice_meta.get("decision_id") else {})}
+            else:
+                target = selectors[0] if selectors else None
+                legal, reason = (evaluate_target(current, target, program.get("controller")) if target is not None
+                                 else (False, "target_missing"))
             if legal and (current["objects"].get(target["object_id"]) or {}).get("kind") not in LIMITED_PLAY_KINDS:
                 legal, reason = False, "target_not_a_playable_card"
             if not legal:
@@ -7374,7 +7457,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 outcomes[effect_id] = event["outcome"]
                 continue
             try:
-                current, event = _start_limited_play(current, effect.get("cost_basis"), target, program, effect_id)
+                current, event = _start_limited_play(current, effect.get("cost_basis"), target, program, effect_id,
+                                                     entry=effect.get("entry"))
             except NotImplementedError as exc:
                 return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
                         "reason": str(exc), "trace": trace}
@@ -8161,7 +8245,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
 
 
 def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], target: dict[str, Any],
-                        program: dict[str, Any], effect_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+                        program: dict[str, Any], effect_id: str, entry: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Step 1 of an effect-driven play (Core 354, 419.3): the card leaves its zone for the Chain as a
     Pending item, a new object (Core 124). The record on the chain entry says who granted the play,
     where the card came from - so a play cancelled at its legality check can be undone (358.5) - and
@@ -8196,11 +8280,24 @@ def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], targe
     # the player who plays a card controls it on the Chain (Core 419.1); its owner does not change
     working["objects"][card]["controller"] = controller
     identity_after = _bump_identity(working, card)
+    # 2026-09-28 (package 6, step 2): "If it's a unit, play it here." - the effect names where the unit it
+    # plays enters (Core 355.2.b): the source's Battlefield as this instruction executes (359.3.f.2). A source
+    # not at a Battlefield then gives no "here" (359.3.e.12): nothing is named, and the location is chosen as
+    # the play is finalized, as for any unit (355.2.a)
+    entry_note = None
+    if entry is not None and obj["kind"] == "unit":
+        try:
+            here = resolve_location_ref({"kind": "program_source_current_battlefield"}, working, program)
+            record["entry_location"] = {"kind": "battlefield", "battlefield": here}
+            entry_note = {"entry_location": dict(record["entry_location"]), "rule_locators": ["Core 355.2.b", "Core 359.3.f.2"]}
+        except SelectionBindingRefused as exc:
+            entry_note = {"entry_location": None, "reason": exc.reason_code, "rule_locators": ["Core 359.3.e.12", "Core 355.2.a"]}
     kind = cost_basis["kind"]
     event = {"op": "limited_play", "outcome": "applied", "completion": "full", "object_id": card,
              "chain_item_id": item_id, "controller": controller, "object_kind": obj["kind"],
              "identity_before": identity_before, "identity_after": identity_after,
              "play_started": copy.deepcopy(record), "play_completes_at": "finalization",
+             **({"entry": entry_note} if entry_note is not None else {}),
              "rule_locators": list(OP_RULES["limited_play"]) + [LIMITED_PLAY_COST_BASES[kind]]}
     return working, event
 

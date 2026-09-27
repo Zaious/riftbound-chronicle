@@ -1326,7 +1326,7 @@ def limited_play_unobtainable(state: dict[str, Any], actor: str, object_id: str,
     """2026-09-28 (package 6, Core 355.16; GPT 2026-09-25): why choosing `object_id` for an effect-driven
     play is certain to leave a cost that cannot be paid, or None. What the play would still cost - its
     printed cost (Core 206) less what the effect ignores (356.1.b) - is set against the most the actor
-    could have: the pool, restricted resources usable for that play (446.3), and each Rune they control
+    could have: the pool, restricted resources usable for that play, and each Rune they control
     on the Board, which can add 1 Energy while ready and 1 Power of its Domain by recycling itself
     (164.2.a, 164.2.b; a Rune whose Domain the state does not carry may be any). Add abilities of other
     permanents are not in the effect state, so this bound counts only the pool and the Runes."""

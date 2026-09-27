@@ -297,6 +297,13 @@ SUPPORTED_OPS = {
     # instruction so the content hash covers it; it changes nothing as the ability resolves -
     # apply_program only checks that the chain item's receipt says it was paid.
     "trigger_base_cost",
+    # 2026-09-27 package 6: "Spend any number of buffs." as an INSTRUCTION, not a cost (Albus
+    # Ferros: "When you play me, spend any number of buffs. For each buff spent, channel 1 rune
+    # exhausted."). Its player chooses, as it resolves (Core 355.17), any number of Units they
+    # control that have a buff (702.2.b.1, 702.2.b.2) - counters, not targets (704.1); each loses it
+    # (702.2.b). How many it spent
+    # is its receipt, which a linked later instruction counts (count_per linked_applied_count).
+    "spend_buffs",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -517,6 +524,7 @@ OP_RULES = {
     "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
     "remove_hidden": ["Core 323.7", "Core 811", "Core 124"],
     "trigger_base_cost": ["Core 204.3.a", "Core 383.3.b", "Core 383.3.b.1", "Core 403.1.b.1", "Core 404.2", "Core 740.4.a.2"],
+    "spend_buffs": ["Core 702.2.b", "Core 702.2.b.1", "Core 702.2.b.2", "Core 704", "Core 704.1", "Core 355.17"],
 }
 # The payments a triggered ability's base cost is made of (trigger_cost.py pays them): Energy
 # and Power, exhausting the ability's own source, spending a buff from a unit its controller
@@ -1842,12 +1850,29 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].player must be a player id, {{decision_ref}} or "
                               f"{{object_player: {{effect_id, relation}}}} with relation in {list(OBJECT_PLAYER_RELATIONS)}")
             if "count_per" in effect:
+                linked_count = isinstance(effect["count_per"], dict) and effect["count_per"].get("kind") == "linked_applied_count"
                 if not is_count_per(effect["count_per"]):
-                    errors.append(f"effects[{index}].count_per must be {{kind: units_you_control, mighty: true}}")
-                if effect.get("op") != "draw":
+                    errors.append(f"effects[{index}].count_per must be {{kind: units_you_control, mighty: true}} "
+                                  f"or {{kind: linked_applied_count, effect_id}}")
+                elif linked_count:
+                    earlier = next((e for e in effects[:index] if isinstance(e, dict)
+                                    and e.get("effect_id") == effect["count_per"]["effect_id"]), None)
+                    if earlier is None or earlier.get("op") not in LINKED_COUNT_OPS:
+                        errors.append(f"effects[{index}].count_per.effect_id must name an earlier instruction whose "
+                                      f"receipt is a count ({sorted(LINKED_COUNT_OPS)})")
+                if linked_count and effect.get("op") not in LINKED_COUNT_READERS:
+                    errors.append(f"effects[{index}].count_per linked_applied_count is read by {sorted(LINKED_COUNT_READERS)} only")
+                elif not linked_count and effect.get("op") != "draw":
                     errors.append(f"effects[{index}].count_per is read by draw only")
                 if not isinstance(effect.get("count"), int) or isinstance(effect.get("count"), bool) or effect.get("count", 0) < 1:
                     errors.append(f"effects[{index}].count_per multiplies a positive printed count")
+            if effect.get("op") == "spend_buffs":
+                extra = set(effect) - {"op", "effect_id", "player", "decision_ref", "order", EXECUTION_FIELD}
+                if extra:
+                    errors.append(f"effects[{index}].spend_buffs takes only player and decision_ref; not {sorted(extra)} "
+                                  "(what it spends is chosen as it resolves, Core 355.17)")
+                if not isinstance(effect.get("player"), str) or not effect.get("player"):
+                    errors.append(f"effects[{index}].spend_buffs names the player who spends")
             if "source_ref" in effect:
                 if not is_source_ref(effect["source_ref"]):
                     errors.append(f"effects[{index}].source_ref must be {{effect_id}}")
@@ -2190,7 +2215,17 @@ COUNT_PER_KINDS = {"units_you_control"}
 MIGHTY_AT = 5
 
 
+# 2026-09-27 package 6: "For each buff spent, channel 1 rune exhausted." - the count is how many an
+# EARLIER instruction of this program spent (its applied_count), a linked instruction (Core
+# 359.3.e.14): ignored when that one was ignored (359.3.e.14.a). Only instructions whose receipt is a
+# count of what they did are read (LINKED_COUNT_OPS); only these ops multiply by it.
+LINKED_COUNT_OPS = {"spend_buffs"}
+LINKED_COUNT_READERS = {"channel_rune", "draw"}
+
+
 def is_count_per(value: Any) -> bool:
+    if isinstance(value, dict) and value.get("kind") == "linked_applied_count":
+        return set(value) == {"kind", "effect_id"} and isinstance(value.get("effect_id"), str) and bool(value["effect_id"])
     return isinstance(value, dict) and value == {"kind": "units_you_control", "mighty": True}
 
 
@@ -3810,6 +3845,23 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         trace.update({"player": player_id, "requested_count": requested, "applied_count": len(objects), "objects": list(objects), "identities_after": identities,
                       "not_a_target": True, "selection": effect.get("selection_meta", {}),
                       "completion": "full" if len(objects) == requested else ("partial" if objects else "none")})
+        if not objects:
+            trace["outcome"] = "no_op"
+
+    elif op == "spend_buffs":
+        # Core 702.2.b: each chosen Unit loses its one buff; one it no longer has, or that its
+        # player does not control, cannot be spent from (702.2.b.1, 702.2.b.2)
+        player_id, objects = effect.get("player"), effect.get("objects")
+        if player_id not in new_state["players"] or not isinstance(objects, list):
+            raise ValueError("spend_buffs requires a known player and a resolved selection")
+        for object_id in objects:
+            obj = new_state["objects"].get(object_id) or {}
+            if not obj.get("buffed") or obj.get("controller") != player_id or zone_class(find_location(new_state, object_id)) != "board":
+                raise IllegalOperation(f"{player_id} cannot spend a buff from {object_id!r} (702.2.b.1, 702.2.b.2)")
+            del obj["buffed"]
+        trace.update({"player": player_id, "objects": list(objects), "applied_count": len(objects),
+                      "selection": effect.get("selection_meta", {}), "not_a_target": True,
+                      "completion": "full" if objects else "none"})
         if not objects:
             trace["outcome"] = "no_op"
 
@@ -6203,6 +6255,36 @@ def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: d
     return {**effect, "objects": chosen, "selection_meta": {"forced": False, "decision_id": meta["decision_id"], "choice": meta["choice"]}}
 
 
+def spend_buff_candidates(state: dict[str, Any], player_id: str) -> list[str]:
+    """The Units a player may spend a buff from: on the board, controlled by that player, with a buff
+    (Core 702.2.b.1, 702.2.b.2)."""
+    return sorted(o for o, obj in state["objects"].items()
+                  if obj.get("kind") == "unit" and obj.get("controller") == player_id and obj.get("buffed")
+                  and zone_class(find_location(state, o)) == "board")
+
+
+def _resolve_spend_buffs(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, Any]:
+    """Package 6: "Spend any number of buffs." - its player chooses, as it resolves (Core 355.17),
+    any number of the Units they could spend a buff from (a public choice: the buffs are on the
+    board). With none to choose from there is nothing to decide."""
+    player_id = effect.get("player")
+    if player_id not in state["players"]:
+        raise ValueError("spend_buffs requires a known player")
+    spec = {"selection_kind": "unordered_set", "count": {"any_number": True}, "from": "board", "by": player_id,
+            "criteria": {"kind": "unit"}, "visibility": "public", "identity_binding": True}
+    candidates = spend_buff_candidates(state, player_id)
+    if not candidates:
+        return {**effect, "objects": [], "selection_meta": {"forced": True, "reason": "no Unit its player controls has a buff"}}
+    ref = effect.get("decision_ref") or f"spend_buffs:{player_id}{execution_suffix(effect)}"
+    import engine_decisions as ed
+    supplied = ed.decision_entry(decisions, ref)
+    if supplied is not None and supplied.get("stage") != "resolution":
+        raise ValueError(f"decision {ref!r} must be a resolution-stage decision: buffs are counters, not targets "
+                         "(Core 704.1), so what is spent is chosen as the instruction resolves (355.17)")
+    chosen, meta = resolve_choice(state, spec, decision_ref=ref, decisions=decisions, controller=player_id, candidates=candidates)
+    return {**effect, "objects": chosen, "selection_meta": meta}
+
+
 def _resolve_choice_object(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, Any]:
     """An instruction whose single object comes from a `choice` (recycle_one
     from the trash, banish a card from hand): the chosen id becomes object_id."""
@@ -7043,6 +7125,32 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                                            "linked_effect_id": spec["effect_id"], "player": player_id,
                                            "read_as": "before_the_linked_instruction",
                                            "rule_locators": ["Core 359.3.e.14", "Core 355.10.d"]}
+        # 2026-09-27 package 6: "for each buff spent" - the count an earlier instruction's receipt says
+        if isinstance(effect.get("count_per"), dict) and effect["count_per"].get("kind") == "linked_applied_count":
+            linked_id = effect["count_per"]["effect_id"]
+            linked_event = next((e for e in trace if e.get("effect_id") == linked_id), None)
+            if linked_event is None or linked_event.get("outcome") in IGNORED_OUTCOMES:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "skipped_linked_dependency",
+                         "completion": "none", "linked_effect_id": linked_id,
+                         "reason": "the instruction whose count this one reads was ignored",
+                         "rule_locators": ["Core 359.3.e.14", "Core 359.3.e.14.a"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            found = int(linked_event.get("applied_count") or 0)
+            if found < 1:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "linked_count_zero", "linked_effect_id": linked_id,
+                         "rule_locators": ["Core 359.3.e.14"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            per = dict(effect["count_per"])
+            effect = {**{k: v for k, v in effect.items() if k != "count_per"}, "count": effect["count"] * found}
+            linked_reads["count_read"] = {"per": per, "linked_count": found, "printed_count": effect["count"] // found,
+                                          "rule_locators": ["Core 359.3.e.14"]}
         # 2026-09-27: "draw 1 for each of your [Mighty] units" - the count read now (708, 710)
         if effect.get("count_per") is not None:
             found, counted = count_per_value(current, effect["count_per"], program.get("controller"))
@@ -7206,9 +7314,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
         if effect.get("op") == "grant_keyword" and context is not None and context.get("combat") is not None:
             effect = {**effect, "combat_context": context["combat"]}
-        if effect.get("op") == "discard" or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS):
+        if effect.get("op") in {"discard", "spend_buffs"} or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS):
             try:
-                effect = _resolve_discard(current, effect, decisions) if effect.get("op") == "discard" else _resolve_choice_object(current, effect, program, decisions)
+                effect = (_resolve_discard(current, effect, decisions) if effect.get("op") == "discard"
+                          else _resolve_spend_buffs(current, effect, decisions) if effect.get("op") == "spend_buffs"
+                          else _resolve_choice_object(current, effect, program, decisions))
             except ChoiceRequired as exc:
                 # ADR-0011 §1: the summary lists options only for a public source.
                 return {

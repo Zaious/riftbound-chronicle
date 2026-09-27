@@ -232,6 +232,11 @@ jobs:
       - name: Granted cost discounts on tagged cards
         run: python3 skill/scripts/check_granted_cost_discounts.py
 
+      # "Spend any number of buffs." as an instruction (Core 702.2.b, 704.1, 355.17): its player chooses on
+      # resolution among the Units they control with a buff; a linked Channel / Draw counts how many were spent.
+      - name: Spend any number of buffs, and a count read off it
+        run: python3 skill/scripts/check_spend_buffs.py
+
       # A triggered ability's program runs with the identity its source had when it
       # triggered, recorded on the chain item; the relational "here" (location_ref)
       # resolves fresh at execution and refuses by name when the source left, changed
@@ -673,6 +678,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_trigger_cost.py"
           python3 "$REPO/skill/scripts/check_printed_costs.py"
           python3 "$REPO/skill/scripts/check_granted_cost_discounts.py"
+          python3 "$REPO/skill/scripts/check_spend_buffs.py"
           python3 "$REPO/skill/scripts/check_location_ref.py"
           python3 "$REPO/skill/scripts/check_token_minting.py"
           python3 "$REPO/skill/scripts/check_watch_wiring.py"

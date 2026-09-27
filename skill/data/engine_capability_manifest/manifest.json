@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:c8cdf61e1264a44027f2b86a",
-  "capability_set_id": "sha256:c8cdf61e1264a44027f2b86a518d541302140c10b2b90416dba44b3c9af78e22",
+  "manifest_id": "capability-manifest:71c6c9556fe54dddfff9ba34",
+  "capability_set_id": "sha256:71c6c9556fe54dddfff9ba341a73044c6448553db27adf432482e899281ecd41",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:b3be7d8c55d8542060aef527dc4cf9dd8cce5fff0462eeab9be14e8e9ae3b577",
+    "value": "sha256:c7db0e3e6df75f036da5e9c0d528abb0d4549c2b8aff7ef7a51b81f5232d26d8",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:cf2185aeddaba55770047c461b285bf843d8c200f703dcacf0c744cefe863c9c"
+        "sha256": "sha256:32b046abb361f86c1217e66e978a7ec43039f3226b26969ff33ba589bcf1bc22"
       },
       {
         "path": "resolution_bridge.py",
@@ -734,6 +734,17 @@
         "Core 424.2.a",
         "Core 424.3.a",
         "Core 431.1.c"
+      ]
+    },
+    {
+      "id": "spend_buffs",
+      "rule_locators": [
+        "Core 702.2.b",
+        "Core 702.2.b.1",
+        "Core 702.2.b.2",
+        "Core 704",
+        "Core 704.1",
+        "Core 355.17"
       ]
     },
     {
@@ -1705,6 +1716,11 @@
     "Core 485.7",
     "Core 487.7",
     "Core 702",
+    "Core 702.2.b",
+    "Core 702.2.b.1",
+    "Core 702.2.b.2",
+    "Core 704",
+    "Core 704.1",
     "Core 713–715.4",
     "Core 730.1",
     "Core 730.2",

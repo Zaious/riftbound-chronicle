@@ -144,6 +144,47 @@ def main() -> int:
     if object_tags(state(), "d1") != ["Dragon"] or object_tags(state(), "u1") != []:
         errors.append("object_tags did not read the printed tags")
 
+    # --- "While I'm at a battlefield, the Energy costs for spells you play is reduced by [1], to a minimum of [1]."
+    spell_discount = {"discount_id": "e", "applies_to": "energy", "amount": 1, "minimum": 1, "card_kind": "spell",
+                      "source_at": "battlefield"}
+
+    def apprentice_board(kind, cost, where=("p1", "bf1")):
+        s = state(energy_cost=cost, tags=())
+        s["objects"]["d1"]["kind"] = kind
+        s["objects"]["h1"]["granted_cost_discounts"] = [dict(spell_discount)]
+        s["objects"]["h1"]["owner"] = s["objects"]["h1"]["controller"] = where[0]
+        s["players"]["p1"]["zones"]["base"].remove("h1")
+        if where[1] == "base":
+            s["players"][where[0]]["zones"]["base"].append("h1")
+        else:
+            s["battlefields"][where[1]] = {"controller": where[0], "objects": ["h1"]}
+        return s
+
+    def paid_as(s, kind):
+        decl = declaration(s)
+        decl["chain_item"]["object_kind"] = kind
+        if kind == "spell":
+            decl.pop("entry_location")
+        result = pt.play_card(fixture(), s, decl)
+        return (10 - result["next_effect_state"]["players"]["p1"]["resources"]["energy"]) if result.get("committed") else None
+
+    for label, kind, cost, where, wanted in (("a spell costing 3, the source at a battlefield", "spell", 3, ("p1", "bf1"), 2),
+                                             ("a spell costing 1 (the minimum)", "spell", 1, ("p1", "bf1"), 1),
+                                             ("a unit costing 3", "unit", 3, ("p1", "bf1"), 3),
+                                             ("a spell costing 3, the source in its Base", "spell", 3, ("p1", "base"), 3),
+                                             ("a spell costing 3, the opponent's source at a battlefield", "spell", 3, ("p2", "bf2"), 3)):
+        got = paid_as(apprentice_board(kind, cost, where), kind)
+        if got != wanted:
+            errors.append(f"{label}: paid {got}, not {wanted} Energy")
+    bad = apprentice_board("spell", 3)
+    bad["objects"]["h1"]["granted_cost_discounts"][0]["source_at"] = "base"
+    if not validate_state(bad):
+        errors.append("validate_state accepted a source_at other than battlefield")
+    both = apprentice_board("spell", 3)
+    both["objects"]["h1"]["granted_cost_discounts"][0]["card_tag"] = "Dragon"
+    if not validate_state(both):
+        errors.append("validate_state accepted a discount naming both a tag and a kind")
+
     # --- the grammar ------------------------------------------------------------------------------------
     grammar = cg.load_grammar()
     one = cg.compile_clause("Your Dragons' Energy costs are reduced by :rb_energy_2:, to a minimum of :rb_energy_1:.", grammar)

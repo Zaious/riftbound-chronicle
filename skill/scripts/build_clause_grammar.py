@@ -805,6 +805,19 @@ LITERAL = [
      ["your dragons' power costs are reduced by [e2], to a minimum of [e1]", "your dragons' energy costs are reduced by [e2]",
       "dragons' energy costs are reduced by [e2], to a minimum of [e1]",
       "your dragon energy costs are reduced by [e2], to a minimum of [e1]"]),
+    ("while_im_at_a_battlefield_spells_you_play_cost_less",
+     r"while i'm at a battlefield, the energy costs for spells you play (?:is|are) reduced by \[e(?P<amount>\d+)\], "
+     r"to a minimum of \[e(?P<minimum>\d+)\]",
+     ["Core 364.3.a", "Core 356.4", "Core 356.4.a", "Core 356.4.b", "Core 356.4.e", "Core 356.6"], "passive",
+     ["evaluated_cost_modifications", "typed_cost_modification_input", "conditional_passives"],
+     ("While this permanent is at a Battlefield (not its Base), each spell its controller plays costs N Energy less, "
+      "never below M by this discount (356.4.e). Units, another player's spells, and Power are untouched; 'while I'm "
+      "attacking', or no minimum, is a different clause."),
+     ["While I'm at a battlefield, the Energy costs for spells you play are reduced by [E2], to a minimum of [E1]."],
+     ["while i'm at a battlefield, the energy costs for units you play is reduced by [e1], to a minimum of [e1]",
+      "while i'm in your base, the energy costs for spells you play is reduced by [e1], to a minimum of [e1]",
+      "the energy costs for spells you play is reduced by [e1], to a minimum of [e1]",
+      "while i'm at a battlefield, the energy costs for spells you play is reduced by [e1]"]),
     ("if_a_friendly_unit_would_die_kill_this_instead",
      r"if a friendly unit would die, kill this instead",
      ["Core 367", "Core 370.1.b", "Core 373.1"], "passive", ["replacement_effects", "kill"],

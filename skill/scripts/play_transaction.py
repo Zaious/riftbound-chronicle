@@ -944,14 +944,21 @@ def granted_cost_discounts(effect_state: dict[str, Any], card_id: str | None, ac
     for source_id, source in sorted(objects.items()):
         if not source.get("granted_cost_discounts") or source_id == card_id:
             continue
-        if zone_class(find_location(effect_state, source_id)) != "board" or source.get("controller") != actor:
+        where = find_location(effect_state, source_id)
+        if zone_class(where) != "board" or source.get("controller") != actor:
             continue
         for entry in source["granted_cost_discounts"]:
-            if entry["card_tag"] not in tags:
+            # the card it reaches: one of that tag, as printed, or one of that kind ("spells you play")
+            if ("card_tag" in entry and entry["card_tag"] not in tags) or \
+                    ("card_kind" in entry and objects[card_id].get("kind") != entry["card_kind"]):
+                continue
+            # 2026-09-27 package 6: "While I'm at a battlefield, ..." (Core 364.3.a) - read now, at 356.4
+            if entry.get("source_at") == "battlefield" and where[0] != "battlefield":
                 continue
             out.append({"id": f"granted:{source_id}:{entry['discount_id']}", "applies_to": entry["applies_to"],
                         "amount": entry["amount"], **({"minimum": entry["minimum"]} if "minimum" in entry else {}),
-                        "source": {"kind": "granted_by_permanent", "object": source_id, "card_tag": entry["card_tag"]}})
+                        "source": {"kind": "granted_by_permanent", "object": source_id,
+                                   **{k: entry[k] for k in ("card_tag", "card_kind", "source_at") if k in entry}}})
     return out
 
 

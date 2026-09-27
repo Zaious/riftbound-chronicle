@@ -1554,10 +1554,14 @@ def _granted_discount_errors(object_id: str, obj: dict[str, Any]) -> list[str]:
     errors, ids = [], set()
     for index, entry in enumerate(granted):
         label = f"objects.{object_id}.granted_cost_discounts[{index}]"
-        if not isinstance(entry, dict) or set(entry) - {"discount_id", "applies_to", "amount", "minimum", "card_tag"} \
-                or not {"discount_id", "applies_to", "amount", "card_tag"} <= set(entry):
-            errors.append(f"{label} must be {{discount_id, applies_to, amount, card_tag, minimum?}}")
+        if not isinstance(entry, dict) or set(entry) - {"discount_id", "applies_to", "amount", "minimum", "card_tag", "card_kind", "source_at"} \
+                or not {"discount_id", "applies_to", "amount"} <= set(entry) or len({"card_tag", "card_kind"} & set(entry)) != 1:
+            errors.append(f"{label} must be {{discount_id, applies_to, amount, card_tag | card_kind, minimum?, source_at?}}")
             continue
+        if "card_kind" in entry and entry["card_kind"] not in {"spell", "unit", "gear"}:
+            errors.append(f"{label}.card_kind must be spell, unit or gear")
+        if "source_at" in entry and entry["source_at"] != "battlefield":
+            errors.append(f"{label}.source_at may only be battlefield (the source's own location, 'while I'm at a battlefield')")
         if not isinstance(entry["discount_id"], str) or not entry["discount_id"] or entry["discount_id"] in ids:
             errors.append(f"{label}.discount_id must be a non-empty string no other discount of this object uses")
         ids.add(entry.get("discount_id"))
@@ -1567,7 +1571,7 @@ def _granted_discount_errors(object_id: str, obj: dict[str, Any]) -> list[str]:
             value = entry.get(field)
             if field in entry and (not isinstance(value, int) or isinstance(value, bool) or value < (1 if field == "amount" else 0)):
                 errors.append(f"{label}.{field} must be a {'positive' if field == 'amount' else 'non-negative'} integer")
-        if not isinstance(entry["card_tag"], str) or not entry["card_tag"]:
+        if "card_tag" in entry and (not isinstance(entry["card_tag"], str) or not entry["card_tag"]):
             errors.append(f"{label}.card_tag names the tag, as printed")
     return errors
 

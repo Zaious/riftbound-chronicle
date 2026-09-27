@@ -791,6 +791,16 @@ def _lower_granted_tag_discount(params):
             "ast": {"node": "passive", "kind": "granted_cost_discount", "params": {k: v for k, v in entry.items() if k != "discount_id"}}}
 
 
+def _lower_spell_discount_at_battlefield(params):
+    """2026-09-27 package 6: "While I'm at a battlefield, the Energy costs for spells you play is reduced by [N], to a
+    minimum of [M]." - a conditional passive (Core 364.3.a) of a permanent: while it is at a Battlefield, each spell
+    its controller plays costs N Energy less, never below M by this discount (356.4.a, 356.4.e)."""
+    entry = {"discount_id": "$clause_id", "applies_to": "energy", "amount": int(params["amount"]),
+             "minimum": int(params["minimum"]), "card_kind": "spell", "source_at": "battlefield"}
+    return {"object_fields": {"granted_cost_discounts": [entry]},
+            "ast": {"node": "passive", "kind": "granted_cost_discount", "params": {k: v for k, v in entry.items() if k != "discount_id"}}}
+
+
 def _lower_death_replacement(params):
     """Core 370.1.b: what happens instead of the death. The list starts with
     killing the source; a following clause of the same card adds to it, and
@@ -1066,6 +1076,7 @@ LOWERINGS = {
     "as_an_additional_cost_to_play_me_kill_a_friendly_unit": _lower_printed_cost(True),
     "as_you_play_me_you_may_pay_a_cost_as_an_additional_cost": _lower_printed_cost(False),
     "your_tags_energy_costs_are_reduced_to_a_minimum": _lower_granted_tag_discount,
+    "while_im_at_a_battlefield_spells_you_play_cost_less": _lower_spell_discount_at_battlefield,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,

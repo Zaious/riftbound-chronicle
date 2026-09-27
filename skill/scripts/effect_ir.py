@@ -1873,6 +1873,8 @@ def validate_program(program: Any) -> list[str]:
                                   "(what it spends is chosen as it resolves, Core 355.17)")
                 if not isinstance(effect.get("player"), str) or not effect.get("player"):
                     errors.append(f"effects[{index}].spend_buffs names the player who spends")
+                if "decision_ref" in effect and (not isinstance(effect.get("decision_ref"), str) or not effect.get("decision_ref")):
+                    errors.append(f"effects[{index}].spend_buffs.decision_ref names the resolution-stage choice")
             if "source_ref" in effect:
                 if not is_source_ref(effect["source_ref"]):
                     errors.append(f"effects[{index}].source_ref must be {{effect_id}}")
@@ -2220,6 +2222,9 @@ MIGHTY_AT = 5
 # 359.3.e.14): ignored when that one was ignored (359.3.e.14.a). Only instructions whose receipt is a
 # count of what they did are read (LINKED_COUNT_OPS); only these ops multiply by it.
 LINKED_COUNT_OPS = {"spend_buffs"}
+# ops whose own decision_ref is a choice made as they resolve, never a target (resolution_bridge keeps such a
+# resolution-stage selection apart from the targets bound at finalization)
+RESOLUTION_CHOICE_OPS = {"spend_buffs"}
 LINKED_COUNT_READERS = {"channel_rune", "draw"}
 
 

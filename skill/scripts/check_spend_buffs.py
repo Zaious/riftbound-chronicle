@@ -143,6 +143,34 @@ def main() -> int:
     if IR.validate_program(program()) or IR.validate_program(program(reader="draw")):
         errors.append(f"validate_program refused the well-formed program: {IR.validate_program(program())}")
 
+    # --- through the resolution bridge: a trigger's finalized target, and the spend chosen as it resolves
+    from check_trigger_finalization import PROGRAM_ID, TRIGGER, board, choose, enter, to_resolution, program as target_program
+    from resolution_bridge import dispatch_program, finalize_trigger, program_hash, resolve_with_program
+    combo = target_program()
+    combo["effects"] += [{"op": "spend_buffs", "effect_id": "sb", "player": "p1", "decision_ref": "sb"},
+                         {"op": "channel_rune", "effect_id": "ch", "player": "p1", "count": 1, "entry_state": "exhausted",
+                          "count_per": {"kind": "linked_applied_count", "effect_id": "sb"}}]
+    registry = {PROGRAM_ID: combo}
+    s = board(with_hash=False)
+    s["objects"]["c1"]["play_triggers"][0]["effect_program_hash"] = program_hash(combo)
+    s["objects"]["u1"]["buffed"] = True
+    timing, s = enter(s)
+    finalized = finalize_trigger(timing, s, registry, choose(s, "u2"))
+    if not finalized.get("committed"):
+        errors.append(f"bridge: the trigger did not finalize: {finalized.get('reason')}")
+    else:
+        ready = to_resolution(finalized["next_timing_state"])
+        dispatched, _ = dispatch_program(registry, ready["chain"]["items"][0])
+        done = resolve_with_program(ready, TRIGGER, s, dispatched, engine_decisions=chosen(s, ["u1"]))
+        after = done.get("next_effect_state") or {}
+        if not done.get("committed") or after["objects"]["u1"].get("buffed") \
+                or "r1" not in after["players"]["p1"]["zones"]["base"]:
+            errors.append(f"bridge: the resolution-stage spend beside a finalized target was not honoured: "
+                          f"{done.get('stage')} {done.get('reason')}")
+        again = resolve_with_program(ready, TRIGGER, s, dispatched, engine_decisions=choose(s, "u9", stage="resolution"))
+        if again.get("committed") or again.get("reason") != "target_changed_after_finalization":
+            errors.append(f"bridge: a target re-chosen at resolution was not refused: {again.get('reason')}")
+
     if errors:
         print("FAILED: spend any number of buffs")
         for error in errors:

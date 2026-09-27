@@ -3,9 +3,12 @@
 Regression gate: watchers wired into real play (2026-09-24).
 
 watchers.py could always decide whether an event falls inside a watch, but nothing in play
-asked it. Now the play transaction emits "played" once a card is Finalized (Core 419.4.a)
-and wakes the watchers, and every resolution wakes them on the events it produced, after
-its Cleanup (watchers.schedule_live).
+asked it. Now a card's play records its "played" event on its chain item, and the watchers
+that listen for plays wake when the card RESOLVES (Core 419.4.a, GPT 2026-09-27 - they trigger
+when the act of playing has been completed by the card's resolution; a countered card's play
+triggers nothing, 419.4.a.1); every resolution wakes them on the events it produced, after its
+Cleanup (watchers.schedule_live). Every played case below checks that nothing was scheduled at
+Finalize, then resolves the card.
 
 Must hold, each through play_card / resolve_with_program:
   - "When you play a spell": p1 playing a spell schedules the trigger; p1 playing a unit,
@@ -78,6 +81,19 @@ def play(state, card="c9", *, actor="p1", kind="spell", turn_player="p1", timing
     return play_card(window, state, decl)
 
 
+def play_resolved(state, card="c9", *, actor="p1", kind="spell", turn_player="p1", timing="default"):
+    """Play the card, then resolve it: (the play's result, the resolution's result or None)."""
+    played = play(state, card, actor=actor, kind=kind, turn_player=turn_player, timing=timing)
+    if not played.get("committed"):
+        return played, None
+    other = "p2" if actor == "p1" else "p1"
+    window = fixture(priority=other, items=[item(f"{kind}-9", actor, kind, "default", "finalized")], passes=["p1", "p2"])
+    window.update({"turn_player": turn_player, "turn_order": [turn_player] + [p for p in ("p1", "p2") if p != turn_player]})
+    body = None if kind == "unit" else {**program("played-card", {"op": "draw", "effect_id": "d", "player": actor, "count": 1}),
+                                        "controller": actor}
+    return played, resolve_with_program(window, f"{kind}-9", played["next_effect_state"], body)
+
+
 def scheduled_from(result, trigger_prefix="w@"):
     timing = result.get("next_timing_state") or {}
     return [i for i in timing.get("chain", {}).get("items", []) if str(i.get("id", "")).startswith(trigger_prefix)
@@ -96,41 +112,43 @@ def main() -> int:
     spell_watch = {"kinds": ["played"], "scope": "actor", "filter": {"object_kind": "spell"}}
 
     # --- played ------------------------------------------------------------------------------
-    got = play(playable(watcher(base_state(), spell_watch)))
-    items = scheduled_from(got)
-    if not got.get("committed") or len(items) != 1:
-        errors.append(f"p1 playing a spell did not schedule the watcher: {got.get('reason')} {items}")
+    at_play, got = play_resolved(playable(watcher(base_state(), spell_watch)))
+    if scheduled_from(at_play):
+        errors.append("the spell watcher was scheduled at Finalize, before the spell resolved (Core 419.4.a)")
+    items = scheduled_from(got or {})
+    if not (got or {}).get("committed") or len(items) != 1:
+        errors.append(f"p1's spell resolving did not schedule the watcher: {(got or at_play).get('reason')} {items}")
     elif items[0].get("source_identity") != object_identity(got["next_effect_state"], "w1") \
             or items[0].get("effect_program_hash") != HASH:
         errors.append(f"the scheduled trigger lost its source identity or program hash: {items[0]}")
-    for label, result in (
-            ("p1 playing a unit", play(playable(watcher(base_state(), spell_watch), kind="unit"), kind="unit")),
-            ("p2 playing a spell", play(playable(watcher(base_state(), spell_watch), actor="p2"), actor="p2", turn_player="p2")),
-            ("the watcher's card in a hand", play(playable(watcher(base_state(), spell_watch, where="hand"))))):
-        if not result.get("committed") or scheduled_from(result):
-            errors.append(f"{label} scheduled the spell watcher (or failed: {result.get('reason')})")
+    for label, (played, result) in (
+            ("p1 playing a unit", play_resolved(playable(watcher(base_state(), spell_watch), kind="unit"), kind="unit")),
+            ("p2 playing a spell", play_resolved(playable(watcher(base_state(), spell_watch), actor="p2"), actor="p2", turn_player="p2")),
+            ("the watcher's card in a hand", play_resolved(playable(watcher(base_state(), spell_watch, where="hand"))))):
+        if not (result or {}).get("committed") or scheduled_from(played) or scheduled_from(result):
+            errors.append(f"{label} scheduled the spell watcher (or failed: {(result or played).get('reason')})")
     turn_watch = {"kinds": ["played"], "scope": "actor", "filter": {"on_opponents_turn": True}}
-    mine = play(playable(watcher(base_state(), turn_watch)))
+    _, mine = play_resolved(playable(watcher(base_state(), turn_watch)))
     # a card played on the opponent's turn is a Reaction (Core 813.1), printed so
     reaction = playable(watcher(base_state(), turn_watch))
     reaction["objects"]["c9"]["play_timing"] = "reaction"
-    theirs = play(reaction, turn_player="p2", timing="reaction")
-    if scheduled_from(mine) or not scheduled_from(theirs):
-        errors.append(f"'on an opponent's turn' fired on p1's turn or not on p2's: {bool(scheduled_from(mine))} "
-                      f"{bool(scheduled_from(theirs))} ({theirs.get('reason')})")
+    _, theirs = play_resolved(reaction, turn_player="p2", timing="reaction")
+    if scheduled_from(mine or {}) or not scheduled_from(theirs or {}):
+        errors.append(f"'on an opponent's turn' fired on p1's turn or not on p2's: {bool(scheduled_from(mine or {}))} "
+                      f"{bool(scheduled_from(theirs or {}))} ({(theirs or {}).get('reason')})")
 
     # --- "a spell that costs [5] or more": the PRINTED cost (Core 206) ---------------------------
     costly_watch = {"kinds": ["played"], "scope": "actor", "filter": {"object_kind": "spell", "printed_energy_at_least": 5}}
     for printed, wanted in ((5, 1), (7, 1), (4, 0)):
         board = playable(watcher(base_state(), costly_watch))
         board["objects"]["c9"]["printed_cost"] = {"energy": printed, "power": {}}
-        result = play(board)
-        if not result.get("committed") or len(scheduled_from(result)) != wanted:
-            errors.append(f"a spell printed at {printed} scheduled {len(scheduled_from(result))} costly-spell trigger(s), "
-                          f"wanted {wanted} ({result.get('reason')})")
-    unknown = play(playable(watcher(base_state(), costly_watch)))
-    if unknown.get("committed") or unknown.get("reason_code") != "printed_cost_unknown":
-        errors.append(f"a spell with no printed cost was compared anyway: {unknown.get('reason_code')}")
+        _, result = play_resolved(board)
+        if not (result or {}).get("committed") or len(scheduled_from(result)) != wanted:
+            errors.append(f"a spell printed at {printed} scheduled {len(scheduled_from(result or {}))} costly-spell trigger(s), "
+                          f"wanted {wanted} ({(result or {}).get('reason')})")
+    _, unknown = play_resolved(playable(watcher(base_state(), costly_watch)))
+    if (unknown or {}).get("committed") or (unknown or {}).get("reason_code") != "printed_cost_unknown":
+        errors.append(f"a spell with no printed cost was compared anyway: {(unknown or {}).get('reason_code')}")
 
     # --- stunned: one or more, enemy, by you ---------------------------------------------------
     stun_watch = {"kinds": ["stunned"], "scope": "actor", "filter": {"object_controller_relation": "enemy"},
@@ -197,7 +215,7 @@ def main() -> int:
         for e in errors:
             print("  - " + e)
         return 1
-    print("OK: a play wakes 'When you play ...' watchers once Finalized, and only for the right card, player, turn and "
+    print("OK: a play wakes 'When you play ...' watchers when the card resolves (never at Finalize, Core 419.4.a), and only for the right card, player, turn and "
           "zone; a resolution wakes stun / death / recycle watchers on what it did - one or more is one trigger, the "
           "first death of a turn is the only one, a death reads the buff the unit had - and every trigger carries its "
           "source identity and program hash.")

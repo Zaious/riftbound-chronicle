@@ -125,7 +125,11 @@ def main() -> int:
         if p1["resources"] != {"energy": 1, "power": {"fury": 0}}:
             errors.append(f"pool not debited correctly: {p1['resources']}")
         chain_entry = (nxt.get("chain_items") or {}).get("spell-1")
-        placed = {k: v for k, v in (chain_entry or {}).items() if k != "cost_receipt"}
+        placed = {k: v for k, v in (chain_entry or {}).items() if k not in ("cost_receipt", "played_event")}
+        # Core 419.4.a: the play's event rides on the item until the card resolves
+        if ((chain_entry or {}).get("played_event") or {}).get("kind") != "played" \
+                or (chain_entry or {}).get("played_event", {}).get("object") != "c1":
+            errors.append(f"the chain item does not carry its play's event for resolution: {(chain_entry or {}).get('played_event')}")
         if "c1" in p1["zones"]["hand"] or "chain" in p1["zones"] or list(nxt.get("chain_items") or {}) != ["spell-1"]                 or placed != {"card": "c1", "controller": "p1", "effect_program_id": "spell-1-effects"}                 or object_identity(nxt, "c1") != "c1@1":
             errors.append(f"card did not move hand → shared chain with a new identity: {nxt.get('chain_items')}")
         # DP-93: and the item carries the receipt of the play that made it, so a

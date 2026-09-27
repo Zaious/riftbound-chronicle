@@ -302,6 +302,9 @@ def resolve_with_program(
     chain_card_trace = []
     entry_triggers: list[dict[str, Any]] = []
     chain_entry = (after_effect.get("chain_items") or {}).get(item_id)
+    # Core 419.4.a (GPT 2026-09-27): the play this item's card was made by is complete only now,
+    # by its resolution; the event recorded at Finalize wakes the play watchers below
+    played_event = copy.deepcopy((chain_entry or {}).get("played_event"))
     if chain_entry is not None and "card" not in chain_entry:
         # ADR-0011 §4 / Core 402: an activated ability has no card; it just
         # leaves the chain. Its source stays wherever the cost left it.
@@ -475,6 +478,12 @@ def resolve_with_program(
     # its Cleanup's - once Cleanup has run, as the batch after its death triggers.
     import watchers
     watched_events = list(effect_result.get("events") or []) + list(cleanup_result.get("events") or [])
+    if played_event is not None:
+        # Core 419.4.a: "abilities that trigger on playing cards" - the card's play, completed by
+        # this resolution (a countered card never gets here: 419.4.a.1)
+        watched_events.append({**played_event, "completed_by": f"resolve:{item_id}",
+                               "rule_locators": list(dict.fromkeys(list(played_event.get("rule_locators") or [])
+                                                                   + ["Core 419.4.a", "Core 419.4.a.1"]))})
     watch_triggers: list[dict[str, Any]] = []
     if watched_events:
         try:

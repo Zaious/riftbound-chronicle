@@ -661,7 +661,9 @@ def validate_state(state: Any) -> list[str]:
         # a cost comparison can read what that spell actually cost rather than
         # only what is printed on it.
         allowed = ({"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable", "cost_receipt"} if is_ability
-                   else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt"})
+                   else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt",
+                         # Core 419.4.a: the play's event, recorded at Finalize, read when the card resolves
+                         "played_event"})
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")

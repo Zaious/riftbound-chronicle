@@ -1568,9 +1568,12 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         working["chain_items"][item_id] = {**working["chain_items"][item_id],
                                            "cost_receipt": copy.deepcopy(receipt)}
     next_timing = insertion["next_state"]
-    # 2026-09-24: the play Finalized a card (419.4.a); the watchers that listen for a play
-    # ("When you play a spell", "... a gear", "... another unit", "... a card from [Hidden]",
-    # "... a card on an opponent's turn") wake now, and their triggers go on the Chain above it.
+    # The watchers that listen for a play ("When you play a spell", "... a gear", "... another
+    # unit", "... a card from [Hidden]", "... a card on an opponent's turn") do NOT wake here:
+    # Core 419.4.a - they trigger when the act of playing has been completed by the card's
+    # resolution, and a countered card's play triggers nothing (419.4.a.1; GPT 2026-09-27). The
+    # play's event is recorded on its chain item; resolution_bridge.resolve_with_program wakes the
+    # watchers with it once the card has resolved. Only what the costs did is watched now.
     watch_trace = None
     import game_events
 
@@ -1595,11 +1598,13 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                                                pay_events=pay_events, state=working) + cost_semantic["events"]
     death_batches = [[dict(t) for t in batch] for batch in cost_semantic["death_batches"]]
     cost_triggers = [t for batch in death_batches for t in batch]
-    played = [] if is_ability else [game_events.played_event(
-        play_id=declaration["play_id"], card=card, actor=actor,
-        object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
-        identity_after=identity_after, from_hidden=source_kind == "facedown",
-        turn_player=timing_state.get("turn_player"))]
+    if not is_ability and item_id in (working.get("chain_items") or {}):
+        working["chain_items"][item_id] = {**working["chain_items"][item_id], "played_event": game_events.played_event(
+            play_id=declaration["play_id"], card=card, actor=actor,
+            object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
+            identity_after=identity_after, from_hidden=source_kind == "facedown",
+            turn_player=timing_state.get("turn_player"))}
+    played: list[dict[str, Any]] = []      # woken at resolution (419.4.a), never at Finalize
     if cost_events or cost_triggers or played:
         import watchers
         from resolution_bridge import _settle_trigger_orders

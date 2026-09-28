@@ -13,6 +13,10 @@ Three typed references, each naming the earlier instruction by effect_id:
   amount_ref {kind: linked_card_printed_energy}   "Deal its Energy cost as damage ..." (Get Excited!)
                                                    - the discarded card's PRINTED Energy cost (206)
 
+Every read is bound by identity (GPT 2026-09-27, group 乙): the read names the identity of the object
+the linked instruction acted on, and a card that has moved on since (a new object, Core 124) is not
+read in its place - "its Energy cost" of a discarded card recycled before the Deal reads null.
+
 Must hold (each on a real apply_program run):
   Hidden Blade   an enemy unit killed: ITS controller (p2) draws 2, p1 draws nothing; a friendly
                  unit killed: p1 draws; a unit p1 controls but p2 owns: p1 (the controller it had
@@ -330,6 +334,25 @@ def main() -> int:
     if not got.get("committed") or event(got, "dmg").get("outcome") != "skipped_linked_dependency":
         errors.append(f"Get Excited!: an empty hand ignores the discard and the damage (422.4, 359.3.e.14.a): "
                       f"{[e.get('outcome') for e in got.get('trace') or []]}")
+    # bound by identity (GPT 2026-09-27, group 乙): the read names the identity it read ...
+    got = get_excited(copy.deepcopy(start), "h5")
+    bound = (event(got, "dmg").get("amount_read") or {}).get("bound_identity")
+    if not got.get("committed") or not isinstance(bound, str) or not bound.startswith("h5@"):
+        errors.append(f"Get Excited!: the read does not name the identity it read: {event(got, 'dmg').get('amount_read')}")
+    # ... and the discarded card, recycled before the Deal, is a new object: its cost reads null, the
+    # Deal does nothing - whatever card now sits at that id is never read in its place (Core 124, 359.3.e.12)
+    moved_on = copy.deepcopy(start)
+    discard = {"op": "discard", "effect_id": "d", "player": "p1", "count": 1, "decision_ref": "pick"}
+    recycle = {"op": "recycle", "effect_id": "rc", "player": "p1", "objects": ["h5"]}
+    deal = {"op": "deal_damage", "effect_id": "dmg", "amount_ref": {"kind": "linked_card_printed_energy", "effect_id": "d"},
+            "target": target(moved_on, "u2", location="battlefield")}
+    pick = [{"decision_id": "pick", "stage": "resolution", "kind": "card_selection", "controller": "p1",
+             "value": ["h5"], "selection_identities": {"h5": object_identity(moved_on, "h5") or "h5@0"}}]
+    got = run(moved_on, discard, recycle, deal, decisions=pick)
+    if not got.get("committed") or event(got, "dmg").get("reason") != "amount_ref_null" \
+            or got["next_state"]["objects"]["u2"]["damage"] != 0:
+        errors.append(f"Get Excited!: 'its Energy cost' read a card that had moved on since the discard: "
+                      f"{event(got, 'dmg').get('outcome')} {event(got, 'dmg').get('reason')} {got.get('reason') or got.get('errors')}")
     blank = copy.deepcopy(start)
     blank["objects"]["h5"].pop("printed_cost")
     got = get_excited(blank, "h5")

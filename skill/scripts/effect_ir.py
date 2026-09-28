@@ -2137,6 +2137,19 @@ def on_board_as_linked(state: dict[str, Any], snapshots: list[dict[str, Any]], o
             and object_identity(state, object_id) == (after_link.get(object_id) or {}).get("identity"))
 
 
+def linked_identity(snapshots: list[dict[str, Any]], object_id: str, linked_event: dict[str, Any], *, after: bool) -> str | None:
+    """The identity of the object the linked instruction acted on (GPT 2026-09-27, group 乙: "its"
+    is bound by identity, not only by which instruction came before) - as that instruction found it
+    (after=False) or as it left it (after=True)."""
+    at = linked_event.get("index")
+    if not isinstance(at, int):
+        return None
+    position = at + 1 if after else at
+    if not 0 <= position < len(snapshots):
+        return None
+    return (snapshots[position].get(object_id) or {}).get("identity")
+
+
 def linked_objects(trace: list[dict[str, Any]], effect_id: str) -> tuple[list[str] | None, dict[str, Any] | None]:
     """The objects an earlier instruction of this program acted on, and its trace event - or
     (None, event) when that instruction was ignored or acted on nothing (Core 359.3.e.14.a).
@@ -6953,6 +6966,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             linked_reads["player_read"] = {"relation": spec["relation"], "object_id": objects[0],
                                            "linked_effect_id": spec["effect_id"], "player": player_id,
                                            "read_as": "before_the_linked_instruction",
+                                           "bound_identity": record.get("identity"),
                                            "rule_locators": ["Core 359.3.e.14", "Core 355.10.d"]}
         # 2026-09-27: "draw 1 for each of your [Mighty] units" - the count read now (708, 710)
         if effect.get("count_per") is not None:
@@ -7622,15 +7636,22 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             if ref["kind"] == "linked_object_current_might":
                 read = effective_might(current, object_id) if on_board_as_linked(current, snapshots, object_id, amount_event) else None
                 read_from = {"kind": ref["kind"], "object_id": object_id, "linked_effect_id": ref["effect_id"], "might": read}
+                read_from["bound_identity"] = linked_identity(snapshots, object_id, amount_event, after=True)
             else:
-                printed = (current["objects"].get(object_id) or {}).get("printed_cost")
+                # bound by identity (GPT 2026-09-27): the card the linked instruction left, and only
+                # while the object at that id is still that card - a card that has since moved on is a
+                # new object (Core 124) and its cost reads null (359.3.e.12)
+                bound = linked_identity(snapshots, object_id, amount_event, after=True)
+                same = object_id in current["objects"] and bound is not None and object_identity(current, object_id) == bound
+                printed = (current["objects"].get(object_id) or {}).get("printed_cost") if same else None
                 energy = printed.get("energy") if isinstance(printed, dict) else None
-                if not isinstance(energy, int) or isinstance(energy, bool):
+                if same and (not isinstance(energy, int) or isinstance(energy, bool)):
                     return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
                             "reason": f"the printed Energy cost of {object_id!r} is not observed; 'its Energy cost' "
                                       f"is not guessed (Core 206)", "trace": trace}
-                read = energy
-                read_from = {"kind": ref["kind"], "object_id": object_id, "linked_effect_id": ref["effect_id"], "energy": read}
+                read = energy if same else None
+                read_from = {"kind": ref["kind"], "object_id": object_id, "linked_effect_id": ref["effect_id"], "energy": read,
+                             "bound_identity": bound}
             effect = {k: v for k, v in effect.items() if k != "amount_ref"}
             if read is None or read < 1:
                 event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
@@ -7643,6 +7664,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 continue
             effect["amount"] = read
             effect["amount_read_from"] = read_from
+            # on the event too: what was read, off which object, bound to which identity (GPT 2026-09-27)
+            linked_reads["amount_read"] = copy.deepcopy(read_from)
         # "equal to my Might": read now, on execution, once the target is known legal
         # (Core 359.3.f.2); an illegal target was already skipped above, unread
         if effect.get("amount_ref") is not None:

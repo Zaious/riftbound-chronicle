@@ -84,7 +84,11 @@ PAID_OUTCOMES = {"applied", "replaced_prevented", "replaced_modified_applied", "
 # "watchers": the triggers the costs and the play itself woke, placed on the Chain (2026-09-24/26)
 STAGES = ("declaration", "choices", "cost_determination", "payment", "legality", "watchers", "commit")
 DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required", "card_selection_required", "card_ordering_required",
-                    "trigger_order_required"}
+                    "trigger_order_required",
+                    # Core 416.5: a cost that recycles two or more cards to one Main Deck waits for the
+                    # external randomization receipt of their order (ADR-0010 §2); decision_controller
+                    # names that deck's owner, whose receipt it is - no player chooses the order
+                    "randomization_receipt_required"}
 
 RULES = {
     "choices": ["Core 355.1", "Core 355.1.a", "Core 355.2", "Core 355.5", "Core 355.9"],
@@ -807,7 +811,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
     exhaust) adds that run's semantic `events` and `pending_triggers` - a unit
     killed as a cost puts its own death triggers on the Chain (Core 428.1.a.1,
     428.1.a.1.b) - to `semantic`, for the caller to wake watchers and schedule."""
-    from effect_ir import ChoiceRequired, IllegalDecision, IllegalOperation, _recycle_batch, resolve_choice
+    from effect_ir import ChoiceRequired, ExternalInputRequired, IllegalDecision, IllegalOperation, _recycle_batch, resolve_choice
     actor = declaration["actor"]
     resources = working["players"][actor]["resources"]
     total = skeleton["total"]
@@ -930,6 +934,9 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                     events.append({"event_id": event_id, "kind": "pay_recycle_trash", "cost_id": comp["cost_id"], "objects": list(picked),
                                    "identities_before": identities_before, "identities_after": sub["identities_after"],
                                    "order_decision": sub["order_decision"], "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 416.3", "Core 416.5", "Core 124"]})
+            except ExternalInputRequired as exc:
+                raise PlayError("payment", "randomization_receipt_required", f"cost {comp['cost_id']!r}: {exc}", decision_ids=exc.decision_ids,
+                                decision_controller=actor, rule_locators=["Core 357.2", "Core 416.5"])
             except ChoiceRequired as exc:
                 raise PlayError("payment", exc.reason_code, f"cost {comp['cost_id']!r}: {exc}", decision_ids=exc.decision_ids, decision_controller=actor, choice=exc.summary,
                                 rule_locators=["Core 357.2", "Core 422.1.a"] if zone == "hand" else ["Core 357.2", "Core 416.3"])

@@ -3373,8 +3373,12 @@ def _reorder_deck(state: dict[str, Any], player_id: str, order: list[str], posit
 
 def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None, decisions: dict[str, Any] | None, order_ref: str, session: str, choice_session: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Core 416: Recycle several cards as one Game Action (303.2) — each to its
-    owner's Main Deck or Rune Deck bottom (416.1–416.2); two or more to the
-    same deck take the player's card_ordering (416.5); tokens cease to exist."""
+    owner's Main Deck or Rune Deck bottom (416.1–416.2). Two or more to the same
+    Main Deck go in a RANDOM order (416.5), which arrives as a randomization
+    receipt for `order_ref` naming that owner (ADR-0010 §2) - no player orders
+    them; two or more to the same Rune Deck go in the order of their OWNER's
+    choosing (416.5.a), whoever was told to recycle. Tokens cease to exist."""
+    import engine_decisions as ed
     order_used = None
     per_deck: dict[tuple[str, str], list[str]] = {}
     for object_id in ids:
@@ -3383,12 +3387,28 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
             per_deck.setdefault((obj["owner"], "rune_deck" if obj["kind"] == "rune" else "main_deck"), []).append(object_id)
     ordered_ids = list(ids)
     for (owner, deck), group in per_deck.items():
-        if len(group) >= 2:
-            chooser = player_id or owner
-            spec = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": chooser, "visibility": "private_to_chooser", "identity_binding": True}
-            order, meta = resolve_choice(state, spec, decision_ref=order_ref, decisions=decisions, controller=chooser, candidates=group, session=choice_session)
-            order_used = {"decision_id": meta.get("decision_id"), "forced": meta["forced"], "deck": f"{owner}.{deck}"}
-            ordered_ids = [c for c in ordered_ids if c not in set(group)] + list(order)
+        if len(group) < 2:
+            continue
+        if deck == "main_deck":
+            operation_id = order_ref if len([k for k in per_deck if k[1] == "main_deck" and len(per_deck[k]) >= 2]) == 1 else f"{order_ref}:{owner}"
+            receipt = ed.randomization_receipt(decisions, operation_id)
+            if receipt is None:
+                raise ExternalInputRequired(f"{len(group)} cards are recycled to {owner}'s Main Deck at once: they go to the bottom in a random order (Core 416.5), "
+                                            f"which must arrive as a randomization receipt for {operation_id}", [operation_id], None)
+            from randomization_receipt import permutation_matches
+            problem = permutation_matches(receipt, group)
+            if problem is None and receipt.get("operation") != "recycle_simultaneous":
+                problem = f"receipt {receipt['receipt_id']} is for {receipt.get('operation')!r}, not a simultaneous recycle (416.5)"
+            if problem is not None or receipt.get("player") != owner:
+                raise ValueError(problem or f"receipt {receipt['receipt_id']} names {receipt.get('player')!r}, not the Main Deck's owner {owner!r}")
+            order = list(receipt["permutation"])
+            order_used = {"randomization_receipt": receipt["receipt_id"], "operation_id": operation_id, "deck": f"{owner}.{deck}",
+                          "rule_locators": ["Core 416.5"]}
+        else:
+            spec = {"selection_kind": "ordered_permutation", "count": {"any_number": True}, "from": "revealed", "by": owner, "visibility": "private_to_chooser", "identity_binding": True}
+            order, meta = resolve_choice(state, spec, decision_ref=order_ref, decisions=decisions, controller=owner, candidates=group, session=choice_session)
+            order_used = {"decision_id": meta.get("decision_id"), "forced": meta["forced"], "deck": f"{owner}.{deck}", "rule_locators": ["Core 416.5.a"]}
+        ordered_ids = [c for c in ordered_ids if c not in set(group)] + list(order)
     identities: dict[str, str] = {}
     destinations: dict[str, str] = {}
     detached_all: list[dict[str, Any]] = []

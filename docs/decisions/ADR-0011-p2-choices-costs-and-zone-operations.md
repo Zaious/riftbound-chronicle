@@ -100,8 +100,8 @@ decision_ref | objects}` and `draw_it {player, object_id}` take a
 looked-at card into the hand as a new object (124); `draw_it` is a Draw
 (413) and emits the Draw event. `predict {player, count, recycle_ref,
 order_ref}` is the 436 composite — look, Recycle any number (a
-`card_selection` over the looked cards; two or more Recycled cards need
-their own `card_ordering` for the bottom, 416.5), put the rest back — with
+`card_selection` over the looked cards; two or more Recycled cards go to
+the bottom in a random order, 416.5), put the rest back — with
 no Burn Out for a short deck (436.4).
 
 ### 4. The cost catalogue, activated abilities, Repeat, Add and restrictions (DP-63)
@@ -158,8 +158,10 @@ Banishment (427.1, 427.2) as a new object (124); a token ceases to exist;
 Banish is not Kill nor Discard (427.2.a–b). `recycle {objects |
 decision_ref, order_ref?}` Recycles several cards as one Game Action
 (303.2): to the owner's Main Deck or Rune Deck bottom (416.1–416.2); two
-or more cards to one deck need the player's `card_ordering` for the bottom
-order (416.5); a single card needs none. `counter {chain_item_id, card_to}`
+or more cards to one Main Deck go in a random order that arrives as a
+randomization receipt (`operation: recycle_simultaneous`, ADR-0010 §2) - no
+player orders them (416.5, GPT 2026-09-27); two or more runes to one Rune
+Deck go in their owner's `card_ordering` (416.5.a); a single card needs none. `counter {chain_item_id, card_to}`
 clears the chain item (425.1): its card goes to the owner's trash (425.1.a)
 unless the countering effect names `card_to: hand`; it was not played
 (425.1.b) so no play trigger fires; no cost is refunded (425.1.c). The

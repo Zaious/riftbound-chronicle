@@ -8,7 +8,7 @@ instruction of the same program acting on what an earlier look left.
       may say it (a single, a board, a hand or an ordered choice with `all` is refused).
   Look, take one, recycle the rest (look_at_top 3, put_in_hand 1, recycle all):
       - the taken card is in the hand; the other two are at the bottom of the deck, in
-        the recycle's card_ordering, the rest of the deck unchanged above them; the
+        the randomization receipt's order (416.5), the rest of the deck unchanged above them; the
         recycle asks for no card_selection (and the card in hand is never a candidate);
       - a deck of two looks at two, takes one and recycles the other; a deck of one takes
         it and recycles nothing, without Burn Out (431.1.c, 431.1.c.1);
@@ -48,8 +48,18 @@ def deck_of(n):
     return state
 
 
-def envelope(state, *entries):
-    return {"schema_version": ed.DECISIONS_VERSION, "input_hash": hash_value(state), "decisions": list(entries)}
+def envelope(state, *entries, receipts=()):
+    value = {"schema_version": ed.DECISIONS_VERSION, "input_hash": hash_value(state), "decisions": list(entries)}
+    if receipts:
+        value["randomization_receipts"] = list(receipts)
+    return value
+
+
+def receipt(operation_id, permutation):
+    """Core 416.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
+    return {"schema_version": "randomization-receipt.v1", "receipt_id": f"rnd-{operation_id}", "operation": "recycle_simultaneous",
+            "operation_id": operation_id, "player": "p1", "permutation": list(permutation),
+            "provenance": {"provider": "chronicle-harness", "method": "fisher-yates", "seed": "7"}}
 
 
 def pick(decision_id, ids, state, kind="card_selection"):
@@ -95,11 +105,11 @@ def main() -> int:
     if validate_program(prog) or validate_state(state):
         errors.append(f"the take-one-recycle-rest body is not valid: {validate_program(prog)} {validate_state(state)}")
     asked = apply_program(state, prog, decisions=envelope(state, pick("pick", ["d2"], state)))
-    if asked.get("committed") or asked.get("reason_code") != "card_ordering_required" or asked.get("decision_ids") != ["rest-order"]:
-        errors.append(f"recycling the rest asked for something other than its bottom order: {asked.get('reason_code')} "
+    if asked.get("committed") or asked.get("reason_code") != "randomization_receipt_required" or asked.get("decision_ids") != ["rest-order"]:
+        errors.append(f"recycling the rest waited for something other than its random bottom order (416.5): {asked.get('reason_code')} "
                       f"{asked.get('decision_ids')}")
     done = apply_program(state, prog, decisions=envelope(state, pick("pick", ["d2"], state),
-                                                         pick("rest-order", ["d3", "d1"], state, "card_ordering")))
+                                                         receipts=[receipt("rest-order", ["d3", "d1"])]))
     zones = (done.get("next_state") or {}).get("players", {}).get("p1", {}).get("zones", {})
     if not done.get("committed") or zones.get("hand") != ["d2"] or zones.get("main_deck") != ["d4", "d5", "d3", "d1"]:
         errors.append(f"look 3 / take d2 / recycle the rest did not leave hand [d2] and deck [d4, d5, d3, d1]: "
@@ -132,11 +142,11 @@ def main() -> int:
         board = deck_of(4)
         mine = [pick("recycle-pick", chosen, board)] + ([pick("put-back-order", order, board, "card_ordering")] if len(order) > 1 else [])
         theirs = [pick("rc", chosen, board)] + ([pick("pb", order, board, "card_ordering")] if len(order) > 1 else [])
-        if len(chosen) > 1:
-            mine.append(pick("recycle-order", chosen, board, "card_ordering"))
-            theirs.append(pick("ro", chosen, board, "card_ordering"))
-        got = apply_program(board, body, decisions=envelope(board, *mine))
-        want = apply_program(board, predict, decisions=envelope(board, *theirs))
+        # 416.5: two or more recycled at once go in a random order - a receipt, not a player's ordering
+        mine_r = [receipt("recycle-order", chosen)] if len(chosen) > 1 else []
+        theirs_r = [receipt("ro", chosen)] if len(chosen) > 1 else []
+        got = apply_program(board, body, decisions=envelope(board, *mine, receipts=mine_r))
+        want = apply_program(board, predict, decisions=envelope(board, *theirs, receipts=theirs_r))
         deck = lambda r: ((r.get("next_state") or {}).get("players", {}).get("p1", {}).get("zones", {}).get("main_deck"))
         if not got.get("committed") or not want.get("committed") or deck(got) != deck(want):
             errors.append(f"recycling {chosen}: the three instructions left {deck(got)} "

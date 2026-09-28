@@ -15,7 +15,9 @@ from __future__ import annotations
 from typing import Any
 
 RANDOMIZATION_RECEIPT_VERSION = "randomization-receipt.v1"
-OPERATIONS = {"recycle_trash"}
+# recycle_trash: a Burn Out (431.2.b); recycle_simultaneous: two or more cards recycled to one Main
+# Deck at once (416.5)
+OPERATIONS = {"recycle_trash", "recycle_simultaneous"}
 _TOP = {"schema_version", "receipt_id", "operation", "operation_id", "player", "permutation", "provenance"}
 _PROVENANCE = {"provider", "method"}
 

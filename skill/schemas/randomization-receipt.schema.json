@@ -9,7 +9,7 @@
   "properties": {
     "schema_version": {"const": "randomization-receipt.v1"},
     "receipt_id": {"type": "string", "minLength": 1},
-    "operation": {"enum": ["recycle_trash"]},
+    "operation": {"enum": ["recycle_trash", "recycle_simultaneous"]},
     "operation_id": {"type": "string", "minLength": 1, "description": "The Burn Out this receipt serves, e.g. burn_out:<player>:<turn_id>:<n>; the consuming procedure names it in its decision_ids when the receipt is missing."},
     "player": {"type": "string", "minLength": 1},
     "permutation": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "description": "Every object id of the Trash at the moment of the Recycle, in the new Main Deck order (top first)."},

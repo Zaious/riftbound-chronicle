@@ -563,8 +563,9 @@ randomization receipt of Burn Out. The trace carries the ordering's hash and
 who may see it, never the order. `put_in_hand` and `draw_it` take a chosen
 looked-at card into the hand as a new object (124); `draw_it` is a Draw.
 `recycle` Recycles several cards as one Game Action (303.2), each to its
-owner's deck bottom; two or more to one deck need the player's
-`card_ordering` (416.5). `predict` is the 436 composite: look, Recycle any
+owner's deck bottom; two or more to one Main Deck go in a random order, a
+randomization receipt `recycle_simultaneous` (416.5); two or more runes to one
+Rune Deck in their owner's `card_ordering` (416.5.a). `predict` is the 436 composite: look, Recycle any
 number, put the rest back in the chosen order, no Burn Out.
 
 ## Costs, activated abilities, Repeat and restricted resources (ADR-0011 §4)

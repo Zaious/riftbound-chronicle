@@ -12,8 +12,9 @@ Must hold:
     not about an empty hand; a short hand is cost_unpayable (423.1.b); the
     receipt carries a pay_discard event with the identities, and a failure
     after payment restores the hand (358.5);
-  - a Recycle-from-trash cost is public, two cards need the card_ordering
-    (416.5), and the receipt carries pay_recycle_trash;
+  - a Recycle-from-trash cost is public, two cards wait for a randomization
+    receipt of their bottom order - never a player's card_ordering (416.5) -
+    and the receipt carries pay_recycle_trash;
   - an activated ability is a chain item of object_kind ability with
     activation {source_object, ability_id}: the declaration is invalid
     without it, illegal when the source is off the board or another
@@ -103,8 +104,17 @@ def hand_state(*cards, energy=1):
     return state
 
 
-def envelope(state, *decisions):
-    return {"schema_version": ed.DECISIONS_VERSION, "input_hash": hash_value(state), "decisions": list(decisions)}
+def envelope(state, *decisions, receipts=()):
+    value = {"schema_version": ed.DECISIONS_VERSION, "input_hash": hash_value(state), "decisions": list(decisions)}
+    if receipts:
+        value["randomization_receipts"] = list(receipts)
+    return value
+
+
+def receipt(operation_id, player, permutation):
+    """Core 416.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
+    return {"schema_version": "randomization-receipt.v1", "receipt_id": "rnd-1", "operation": "recycle_simultaneous", "operation_id": operation_id,
+            "player": player, "permutation": list(permutation), "provenance": {"provider": "chronicle-harness", "method": "fisher-yates", "seed": "7"}}
 
 
 def pick(decision_id, ids, state, controller="p1", stage="play_declaration", kind="card_selection"):
@@ -169,12 +179,16 @@ def main() -> int:
     trash_state["players"]["p1"]["zones"]["trash"] = ["c3", "c2"]
     rec_cost = {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "r", "mandatory": True, "payment": {"kind": "recycle_trash", "amount": 2}}]}
     rec = play_card(timing, trash_state, declaration(cost=rec_cost))
-    if rec.get("reason_code") != "card_ordering_required":
-        errors.append(f"recycling two cards as a cost did not ask for the bottom order: {rec.get('reason_code')} {rec.get('reason')}")
+    if rec.get("reason_code") != "randomization_receipt_required" or rec.get("decision_ids") != ["cost:play-1:r:order"]:
+        errors.append(f"recycling two cards as a cost did not wait for their random order (416.5): {rec.get('reason_code')} {rec.get('reason')}")
+    by_player = play_card(timing, trash_state, declaration(cost=rec_cost),
+                          engine_decisions=envelope(trash_state, pick("cost:play-1:r:order", ["c2", "c3"], trash_state, stage="resolution", kind="card_ordering")))
+    if by_player.get("committed") or by_player.get("reason_code") != "randomization_receipt_required":
+        errors.append(f"a player's card_ordering stood in for the random order of a recycle cost (416.5): {by_player.get('reason_code')}")
     ordered = play_card(timing, trash_state, declaration(cost=rec_cost),
-                        engine_decisions=envelope(trash_state, pick("cost:play-1:r:order", ["c2", "c3"], trash_state, stage="resolution", kind="card_ordering")))
+                        engine_decisions=envelope(trash_state, receipts=[receipt("cost:play-1:r:order", "p1", ["c2", "c3"])]))
     if not ordered.get("committed") or ordered["next_effect_state"]["players"]["p1"]["zones"]["main_deck"] != ["c2", "c3"]:
-        errors.append(f"the recycle cost did not bottom the cards in the chosen order: {ordered.get('reason_code')} {ordered.get('reason')}")
+        errors.append(f"the recycle cost did not bottom the cards in the receipt's random order: {ordered.get('reason_code')} {ordered.get('reason')}")
     else:
         ev = event(ordered, "pay_recycle_trash")
         if not ev or set(ev.get("objects", [])) != {"c2", "c3"} or validate_play_result(ordered):

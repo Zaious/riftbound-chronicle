@@ -1061,9 +1061,9 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
             return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",
                     "reason_code": exc.reason_code, "reason": str(exc)}
         watch_batch = max((t.get("batch_sequence", -1) for t in triggers + cleanup_triggers), default=-1) + 1
-        for trigger in watch_triggers:
-            trigger["batch_sequence"] = watch_batch
-            trigger["batch_id"] = f"watch:standard-move:{actor}"
+        # Core 383.3.d (GPT 2026-09-27): "When I move" and a watcher of the same Move trigger together
+        watchers.batch_with_same_action(watch_triggers, watched_events, triggers + cleanup_triggers,
+                                        own_sequence=watch_batch, own_id=f"watch:standard-move:{actor}")
     from resolution_bridge import _settle_trigger_orders
     failure = _settle_trigger_orders(triggers + cleanup_triggers + watch_triggers, engine_decisions, base)
     if failure is not None:

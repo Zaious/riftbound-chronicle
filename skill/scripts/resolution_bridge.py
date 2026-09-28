@@ -647,9 +647,9 @@ def resolve_with_program(
                     "reason": str(exc), "reason_code": exc.reason_code}
         watch_batch = max((t.get("batch_sequence", -1) for t in effect_triggers + cleanup_triggers + conditional_triggers),
                           default=-1) + 1
-        for trigger in watch_triggers:
-            trigger["batch_sequence"] = watch_batch
-            trigger["batch_id"] = f"watch:{item_id}"
+        # Core 383.3.d (GPT 2026-09-27): a watcher on the same action as other triggers joins their batch
+        watchers.batch_with_same_action(watch_triggers, watched_events, effect_triggers + cleanup_triggers + conditional_triggers,
+                                        own_sequence=watch_batch, own_id=f"watch:{item_id}")
     pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers + watch_triggers
     # Core 383.3.d: when one controller has several abilities triggered at
     # once, that controller orders them. The engine never picks: a missing or

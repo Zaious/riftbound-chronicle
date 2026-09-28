@@ -532,6 +532,28 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
     return scheduled, counted
 
 
+def batch_with_same_action(watch_triggers: list[dict[str, Any]], events: list[dict[str, Any]],
+                           others: list[dict[str, Any]], *, own_sequence: int, own_id: str) -> None:
+    """Core 383.3.d (GPT 2026-09-27, group 乙): abilities that trigger on the same action trigger at
+    the same time, and their controller orders them together. A watcher woken by an event of an
+    action (its action_id) whose own triggers are among `others` (their batch_id is that action)
+    joins that batch; any other watcher gets (own_sequence, own_id) - the batch after them, as
+    events at a different time. In place."""
+    # an event raised inside a Cleanup names the batch its own death triggers took (trigger_batch_id)
+    action_of = {event.get("event_id"): event.get("trigger_batch_id") or event.get("action_id") for event in events}
+    batch_of = {}
+    for trigger in others:
+        if trigger.get("batch_id") is not None and isinstance(trigger.get("batch_sequence"), int):
+            batch_of.setdefault(trigger["batch_id"], trigger["batch_sequence"])
+    for trigger in watch_triggers:
+        action = action_of.get(trigger.get("watched_event"))
+        if action is not None and action in batch_of:
+            trigger["batch_sequence"], trigger["batch_id"] = batch_of[action], action
+            trigger["same_action_as"] = action
+        else:
+            trigger["batch_sequence"], trigger["batch_id"] = own_sequence, own_id
+
+
 def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None = None, *, turn_id: str,
                     moment: str | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Returns (scheduled, dropped). A delayed trigger fires once, and one

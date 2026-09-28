@@ -6061,7 +6061,9 @@ def perform_lethal_cleanup(
             copied_trigger.setdefault("trigger_kind", "self_death")
             pending_triggers.append(copied_trigger)
         killed_objects.extend(batch.get("killed_objects", []))
-        events.extend(copy.deepcopy(batch.get("events") or []))
+        # Core 383.3.d (GPT 2026-09-27): a watcher of one of these deaths triggers with the death
+        # triggers of the same Cleanup iteration - the events name that batch
+        events.extend({**copy.deepcopy(e), "trigger_batch_id": batch_id} for e in batch.get("events") or [])
         iterations += 1
         if hash_value(current) == before_iteration_hash:
             stable_prevented = batch.get("prevented_objects", [])

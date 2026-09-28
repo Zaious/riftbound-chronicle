@@ -27,6 +27,10 @@ resolve_battlefield_control after a decided Combat, begin_ending_step):
     performances; unlike 383.3.e); two units with that watch moved in one Standard Move
     (Core 144.3) trigger once each, and the controller orders them (383.3.d);
   - a Unit's own move_triggers still fire exactly as before, alongside a watch;
+  - one action, one batch (Core 383.3.d, GPT 2026-09-27 group 乙): "When I move" and "the first
+    time I move each turn" on one unit, both met by one Move, trigger together and their
+    controller orders them - not two fixed batches; a unit that dies in a Move's Cleanup with a
+    death trigger, and a friendly "when a unit dies" watcher on that same death, likewise;
   - a Legend in p1's Legend Zone with a controller-scoped conquer trigger ("When you conquer",
     Core 383.4.c.2.b): p1's Conquer schedules it with the Score's batch; the same Legend
     banished, the opponent's Conquer, a unit_here descriptor on the Legend, and a control change
@@ -321,6 +325,32 @@ def main() -> int:
     ids = [i["id"] for i in (moved.get("next_timing_state") or {}).get("chain", {}).get("items", [])]
     if ids != ["y-on-move"]:
         errors.append(f"a first Move of a unit with 'When I move' and a third-move watch scheduled {ids}")
+
+    # one action, one batch (Core 383.3.d, GPT 2026-09-27 group 乙): both met by the same Move
+    same = mover_board(FIRST)
+    same["objects"]["y1"]["move_triggers"] = [descriptor("y-on-move", "y1")]
+    together = smove(same, "y1", TO_BF1)
+    if together.get("committed") or together.get("reason_code") != "trigger_order_required" \
+            or sorted(t.split("@")[0] for t in together.get("trigger_ids") or []) != ["y-on-move", "y-watch"]:
+        errors.append(f"'When I move' and a first-move watch met by one Move were not ordered together by p1 (383.3.d): "
+                      f"{together.get('reason_code')} {together.get('trigger_ids')}")
+    # a death in the Move's Cleanup: the dying unit's own death trigger and a watcher of that death
+    knell = mover_board()
+    knell["objects"]["z1"] = {"owner": "p1", "controller": "p1", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                              "damage": 2, "exhausted": False, "death_triggers": [descriptor("z-knell", "z1")]}
+    knell["players"]["p1"]["zones"]["base"].append("z1")
+    knell["objects"]["w1"] = {"owner": "p1", "controller": "p1", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                              "damage": 0, "exhausted": True,
+                              "event_triggers": [descriptor("w-died", "w1", watch={"kinds": ["died"], "scope": "any"})]}
+    knell["players"]["p1"]["zones"]["base"].append("w1")
+    if validate_state(knell):
+        errors.append(f"the one-death board is invalid: {validate_state(knell)[:2]}")
+    else:
+        died = smove(knell, "y1", TO_BF1)
+        if died.get("committed") or died.get("reason_code") != "trigger_order_required" \
+                or sorted(t.split("@")[0] for t in died.get("trigger_ids") or []) != ["w-died", "z-knell"]:
+            errors.append(f"a death trigger and a watcher of the same death were not ordered together by p1 (383.3.d): "
+                          f"{died.get('reason_code')} {died.get('trigger_ids')} {died.get('reason')}")
 
     # --- a Legend in its Legend Zone: "When you conquer" ----------------------------------------------
     def with_legend(field, scope, zone="legend_zone"):

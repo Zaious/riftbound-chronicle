@@ -6511,23 +6511,28 @@ def resolve_location_ref(ref: dict[str, Any], state: dict[str, Any], program: di
     against whatever sits there now (Core 355.7's own principle - a reference
     does not silently retarget to a substitute)."""
     source = program.get("source_object")
+    declared = program.get("source_identity")
     if not isinstance(source, str) or source not in state["objects"]:
+        if isinstance(source, str) and source and isinstance(declared, str) and declared:
+            # GPT 2026-09-27 ruling 10: a source bound by identity and gone (a token ceased to exist,
+            # 186.1) has no location - 'here' reads null (359.3.e.12); the instruction is ignored
+            raise SourceUnavailable(
+                f"the program's source {declared!r} is no longer in the state; 'here' reads null", LOCATION_REF_ABSENT)
         raise SelectionBindingRefused(
             f"the program declares source_object {source!r}, which the state does not contain; "
             f"'here' with no source is refused, never guessed", LOCATION_REF_ABSENT)
-    declared = program.get("source_identity")
     if not isinstance(declared, str) or not declared:
         raise SelectionBindingRefused(
             f"the program declares no source_identity; 'here' requires one, unlike "
             f"resolve_object_ref's own optional one", LOCATION_REF_ABSENT)
     now = object_identity(state, source)
     if declared != now:
-        raise SelectionBindingRefused(
+        raise SourceUnavailable(
             f"the program's source was {declared!r} and is now {now!r}; 'here' is not about "
             f"whatever object now sits at that id", LOCATION_REF_IDENTITY_CHANGED)
     location = find_location(state, source)
     if location is None or location[0] != "battlefield":
-        raise SelectionBindingRefused(
+        raise SourceUnavailable(
             f"the source {source!r} is not at a Battlefield right now ({location}); 'here' (Core "
             f"053.3) names a Battlefield specifically - Base or anywhere else the source could be "
             f"is not a Battlefield to mean (Core 359.3.f.2's own worked example)",
@@ -7301,6 +7306,20 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 # 359.3.f.2), never bound earlier and reused.
                 try:
                     battlefield_ids = [resolve_location_ref(criteria["location_ref"], current, program)]
+                except SourceUnavailable as exc:
+                    # GPT 2026-09-27 ruling 10: the source is gone or not at a Battlefield, so "here"
+                    # reads null (359.3.e.12) - THIS instruction cannot be followed and is ignored
+                    # (359.3.e.6), with any instruction linked to it (359.3.e.14.a); the rest of the
+                    # ability resolves. Not a refusal of the whole resolution: a paid trigger would
+                    # otherwise stay on the Chain.
+                    event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": SOURCE_UNAVAILABLE_OUTCOME,
+                             "completion": "none", "reason": exc.reason_code, "message": str(exc),
+                             "source_object": program.get("source_object"),
+                             "rule_locators": list(SOURCE_UNAVAILABLE_RULES) + ["Core 359.3.e.12"],
+                             "before_state_hash": before_hash, "after_state_hash": before_hash}
+                    trace.append(event)
+                    outcomes[effect_id] = event["outcome"]
+                    continue
                 except SelectionBindingRefused as exc:
                     return {**base, "valid": True, "committed": False, "applied": False,
                             "reason_code": exc.reason_code, "reason": str(exc),

@@ -111,6 +111,18 @@ def hit(done: dict) -> list[str] | None:
     return sorted(event.get("affected_objects") or [])
 
 
+def ignored_code(done: dict) -> str | None:
+    """The reason an instruction was ignored for its source (GPT 2026-09-27 ruling 10), if the
+    resolution committed with one."""
+    result = done["result"]
+    if not result.get("committed") or not isinstance(result.get("trace"), dict):
+        return None
+    for event in result["trace"].get("effect") or []:
+        if event.get("outcome") == effect_ir.SOURCE_UNAVAILABLE_OUTCOME:
+            return event.get("reason")
+    return None
+
+
 def refusal_code(done: dict) -> str | None:
     result = done["result"]
     return ((result.get("effect_result") or {}).get("reason_code") or result.get("reason_code")
@@ -152,18 +164,20 @@ def main() -> int:
     def to_base(s):
         s["battlefields"]["bf1"]["objects"].remove("u1")
         s["players"]["p1"]["zones"]["base"].append("u1")
+    # GPT 2026-09-27 ruling 10: the "here" instruction is ignored (359.3.e.12, 359.3.e.6) and the
+    # trigger still resolves - it does not stay on the Chain
     done = run(state, before_resolution=to_base)
-    if done["result"].get("committed") or refusal_code(done) != effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD:
-        errors.append(f"base: expected {effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD}, got "
-                      f"committed={done['result'].get('committed')} {refusal_code(done)}")
+    if ignored_code(done) != effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD:
+        errors.append(f"base: expected the 'here' instruction ignored for {effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD}, got "
+                      f"committed={done['result'].get('committed')} {refusal_code(done)} {ignored_code(done)}")
 
     # a new object at the same id before resolution
     def new_generation(s):
         s["objects"]["u1"]["identity"] = "u1@9"
     done = run(state, before_resolution=new_generation)
-    if done["result"].get("committed") or refusal_code(done) != effect_ir.LOCATION_REF_IDENTITY_CHANGED:
-        errors.append(f"new object: expected {effect_ir.LOCATION_REF_IDENTITY_CHANGED}, got "
-                      f"committed={done['result'].get('committed')} {refusal_code(done)}")
+    if ignored_code(done) != effect_ir.LOCATION_REF_IDENTITY_CHANGED:
+        errors.append(f"new object: expected the 'here' instruction ignored for {effect_ir.LOCATION_REF_IDENTITY_CHANGED}, got "
+                      f"committed={done['result'].get('committed')} {refusal_code(done)} {ignored_code(done)}")
 
     # a template forging another identity
     forged = {**program(), "source_identity": "u1@7"}
@@ -183,8 +197,9 @@ def main() -> int:
             print(f"  - {problem}")
         return 1
     print("trigger source identity: the chain item keeps the descriptor's identity and the program runs with it - "
-          "'here' resolves at bf1, re-reads bf2 after a move, and refuses by name after a move to Base, a new "
-          "object at the same id, a forged template identity, and a descriptor that recorded none.")
+          "'here' resolves at bf1, re-reads bf2 after a move; after a move to Base or with a new object at the "
+          "same id the 'here' instruction is ignored and the trigger still resolves (GPT 2026-09-27 ruling 10); "
+          "a forged template identity and a descriptor that recorded none are refused by name.")
     return 0
 
 

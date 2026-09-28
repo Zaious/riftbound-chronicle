@@ -223,9 +223,48 @@ def main() -> int:
     left_real = copy.deepcopy(state)
     left_real["battlefields"]["bf1"]["objects"].remove("u1")
     left_real["players"]["p1"]["zones"]["base"].append("u1")
+    # GPT 2026-09-27 ruling 10: "here" reads null (359.3.e.12) - THIS instruction is ignored
+    # (359.3.e.6) and the rest of the ability resolves; nothing at any battlefield is hit
+    def expect_ignored(label, result, code, *, drew=None):
+        if result.get("committed") is not True:
+            return fail(label, f"expected the 'here' instruction ignored and the rest resolved, got a refusal: "
+                               f"{result.get('reason_code')} {result.get('reason') or result.get('errors')}")
+        event = next((e for e in result["trace"] if e.get("op") == "deal_damage"), {})
+        if event.get("outcome") != effect_ir.SOURCE_UNAVAILABLE_OUTCOME or event.get("reason") != code:
+            return fail(label, f"the 'here' instruction was {event.get('outcome')} {event.get('reason')}, not ignored for {code}")
+        hurt = [o for o, v in result["next_state"]["objects"].items() if v.get("damage", 0) != left_real["objects"].get(o, {}).get("damage", 0)]
+        if hurt:
+            return fail(label, f"an ignored 'here' instruction still dealt damage to {hurt}")
+        if drew is not None and result["next_state"]["players"]["p1"]["zones"]["hand"] != drew:
+            return fail(label, f"the other instruction did not resolve: hand {result['next_state']['players']['p1']['zones']['hand']}, expected {drew}")
+
+    draw_one = {"op": "draw", "effect_id": "drw", "player": "p1", "count": 1}
     left_prog = with_source_identity(left_real, program_with_source("u1", deal_damage_here()))
-    expect_refusal("real bulk effect, source moved to Base (Yasuo's own mistarget)",
+    expect_ignored("real bulk effect, source moved to Base (Yasuo's own mistarget)",
                    apply_program(left_real, left_prog), effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD)
+    both = with_source_identity(left_real, program_with_source("u1", deal_damage_here(), draw_one))
+    expect_ignored("source moved to Base: the 'here' instruction ignored, the draw after it resolved",
+                   apply_program(left_real, both), effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD, drew=["c1"])
+    renewed = copy.deepcopy(state)
+    renewed["objects"]["u1"]["identity"] = "u1@9"
+    expect_ignored("a new object at the source's id: 'here' is not about it",
+                   apply_program(renewed, {**program_with_source("u1", deal_damage_here(), draw_one), "source_identity": "u1@0"}),
+                   effect_ir.LOCATION_REF_IDENTITY_CHANGED, drew=["c1"])
+    # the double counterexample: a death trigger's source is in the trash by design - its other
+    # instructions resolve normally (Deathknell is not "source gone, ignore everything"), only the
+    # instruction that must read the source's current Battlefield is ignored
+    died = copy.deepcopy(state)
+    died["battlefields"]["bf1"]["objects"].remove("u1")
+    died["players"]["p1"]["zones"]["trash"].append("u1")
+    knell = {**program_with_source("u1", draw_one, deal_damage_here()), "source_identity": source_identity(died)}
+    expect_ignored("a death-triggered program: the draw resolves, the 'here' instruction alone is ignored",
+                   apply_program(died, knell), effect_ir.LOCATION_REF_NOT_AT_BATTLEFIELD, drew=["c1"])
+    only_draw = apply_program(died, {**program_with_source("u1", draw_one), "source_identity": source_identity(died)})
+    if only_draw.get("committed") is not True or only_draw["next_state"]["players"]["p1"]["zones"]["hand"] != ["c1"]:
+        fail("a death-triggered draw with its source in the trash", f"did not resolve normally: {only_draw.get('reason') or only_draw.get('errors')}")
+    # a malformed program is still refused whole, never read as "source gone"
+    expect_refusal("a 'here' program with no declared source identity",
+                   apply_program(left_real, program_with_source("u1", deal_damage_here(), draw_one)), effect_ir.LOCATION_REF_ABSENT)
 
     # --- real apply_program, the establish_selection "board" choice path
     # (Crackshot Corsair / Leona's single-target shape) --------------------------
@@ -419,7 +458,7 @@ def main() -> int:
             print(f"  - {problem}")
         return 1
     print("relational location_ref: resolves fresh at instruction execution (positive, moved-to-another-battlefield); "
-          "named refusals for Base/off-board, changed identity, and missing identity (mandatory, unlike "
+          "named reasons for Base/off-board and changed identity (the instruction ignored and the rest resolved, a death-triggered program's other instructions included - GPT 2026-09-27 ruling 10), and a refusal for missing identity (mandatory, unlike "
           "resolve_object_ref's own optional one); full apply_program on the bulk 'affected' path; the targeted "
           "single-target path end to end for deal_damage, stun and modify_might (hit at the source's battlefield, "
           "refused elsewhere at finalization, a committed mistarget after the source moves); establish_selection's "

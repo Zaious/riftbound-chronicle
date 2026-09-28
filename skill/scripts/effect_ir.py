@@ -768,7 +768,9 @@ def validate_state(state: Any) -> list[str]:
         allowed = ({"source_object", "ability_id", "controller", "effect_program_id", "mode_selection", "repeat", "counterable", "cost_receipt", "played_targets"} if is_ability
                    else {"card", "controller", "effect_program_id", "entry_location", "mode_selection", "repeat", "counterable", "cost_receipt", "played_targets",
                          # Core 419.4.a: the play's event, recorded at Finalize, read when the card resolves
-                         "played_event"})
+                         "played_event",
+                         # Core 811.1.d.3: the battlefield the card was played from Hidden at
+                         "played_from_hidden"})
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
@@ -3947,6 +3949,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # decision, no default. The candidates travel with the request, from the board.
             import engine_decisions as _ed
             candidates = token_play_locations(new_state, controller, token_kind)
+            if token_kind == "unit" and effect.get("hidden_battlefield"):
+                # Core 811.1.d.3: played from Hidden, the unit must be played at that battlefield
+                candidates = [c for c in candidates if c == f"battlefield:{effect['hidden_battlefield']}"]
+                if not candidates:
+                    raise ValueError(f"the unit token must be played at {effect['hidden_battlefield']!r}, where the card was "
+                                     f"hidden (Core 811.1.d.3), and it cannot be played there")
             entry = next((e for e in _ed.entries(decisions, kind="location_selection")
                           if e["decision_id"] == destination["decision_ref"]), None)
             if entry is None:
@@ -8020,6 +8028,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = "applied" if event["outcome"] == "replaced_modified_applied" else event["outcome"]
             continue
+        if effect.get("op") == "play_token" and (context or {}).get("hidden_battlefield"):
+            # Core 811.1.d.3 (GPT 2026-09-27): a unit this hidden card makes its controller play is
+            # played at the battlefield it was hidden at
+            effect = {**effect, "hidden_battlefield": context["hidden_battlefield"]}
         try:
             current, event = _apply_one(current, effect, decisions=decisions,
                                         controller=program.get("controller"))

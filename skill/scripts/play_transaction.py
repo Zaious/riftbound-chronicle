@@ -1768,7 +1768,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
     # not complete until payment is.
     if item_id in (working.get("chain_items") or {}):
         working["chain_items"][item_id] = {**working["chain_items"][item_id],
-                                           "cost_receipt": copy.deepcopy(receipt)}
+                                           "cost_receipt": copy.deepcopy(receipt),
+                                           # Core 811.1.d.3 (GPT 2026-09-27): where a card played from Hidden was hidden
+                                           **({"played_from_hidden": hidden_battlefield} if hidden_battlefield else {})}
     next_timing = insertion["next_state"]
     # The watchers that listen for a play ("When you play a spell", "... a gear", "... another
     # unit", "... a card from [Hidden]", "... a card on an opponent's turn") do NOT wake here:

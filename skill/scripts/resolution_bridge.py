@@ -421,6 +421,9 @@ def resolve_with_program(
         context = {**(context or {}), "mode_selection": dict(recorded_mode)}
     if entry_before.get("repeat") is not None:
         context = {**(context or {}), "repeat": copy.deepcopy(entry_before["repeat"])}  # ADR-0011 §4: paid Repeats
+    if entry_before.get("played_from_hidden"):
+        # Core 811.1.d.3 (GPT 2026-09-27): the battlefield this card was played from Hidden at
+        context = {**(context or {}), "hidden_battlefield": entry_before["played_from_hidden"]}
     # 2026-09-27: a base cost paid as the ability was finalized (Core 383.3.b.1) - the chain
     # item's receipt is what apply_program checks; resolution pays nothing again
     paid_cost = chain_item.get("trigger_cost_receipt")

@@ -226,6 +226,8 @@ SUPPORTED_OPS = {
     "emit_reflexive",
     # C-16 (ADR-0005 §6, §8): three distinct events, not one "move".
     "return_to_hand",
+    # Core 103.2.a.3, 108.3.c.1 (Hallowed Tomb, GPT 2026-09-27 ruling 15)
+    "return_to_champion_zone",
     "recall",
     "channel_rune",
     # C-21 (ADR-0007 §6): a "this turn" effect such as Confront's, expiring at 317.2.
@@ -485,6 +487,7 @@ OP_RULES = {
     "kill": ["Core 428"],
     "emit_reflexive": ["Core 386–388"],
     "return_to_hand": ["Core 124", "Core 124.1", "Core 446.2"],
+    "return_to_champion_zone": ["Core 103.2.a.3", "Core 108.3.c", "Core 108.3.c.1", "Core 124"],
     "recall": ["Core 455", "Core 456.1", "Core 458.1"],
     "channel_rune": ["Core 430.1", "Core 430.2.a", "Core 430.3", "Core 124"],
     "grant_turn_effect": ["Core 369.3", "Core 317.2.c"],
@@ -1035,6 +1038,10 @@ def validate_state(state: Any) -> list[str]:
                 errors.append(f"objects.{object_id} is a legend; a legend exists only in a Legend Zone or Banishment (Core 107.4.d), not {where}")
         if "champion_legend" in obj and not isinstance(obj["champion_legend"], bool):
             errors.append(f"objects.{object_id}.champion_legend must be boolean when supplied (Core 107.4.d)")
+        if "champion_unit" in obj and not isinstance(obj["champion_unit"], bool):
+            errors.append(f"objects.{object_id}.champion_unit must be boolean when supplied (Core 103.2.a.2)")
+        if "name" in obj and (not isinstance(obj["name"], str) or not obj["name"]):
+            errors.append(f"objects.{object_id}.name must be a non-empty string when supplied")
         for field in ("base_might", "damage"):
             if not isinstance(obj.get(field), int) or obj.get(field, -1) < 0:
                 errors.append(f"objects.{object_id}.{field} must be a non-negative integer")
@@ -1976,7 +1983,9 @@ def validate_program(program: Any) -> list[str]:
 
 
 MULTI_TARGET_OPS = {"deal_damage", "heal_damage", "ready", "exhaust", "move_board_object", "kill", "modify_might", "recycle_one", "return_to_hand", "recall", "grant_replacement", "heal_all_damage", "grant_keyword"}
-SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref", "any_of"}
+SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref", "any_of",
+                   # Core 103.2.a.3: a Champion Unit named as its controller's Chosen Champion
+                   "chosen_champion"}
 # 2026-09-27 (Fading Memories, "a unit at a battlefield or a gear"): one chosen object that fits ONE of
 # the alternatives; each names a kind and may narrow the location and the controller relation
 ANY_OF_FIELDS = {"kind", "location", "controller_relation"}
@@ -2250,6 +2259,8 @@ def _selector_errors(selector: Any) -> list[str]:
             errors.append("any_of chooses among objects on the board")
     if "zone_owner_relation" in selector and selector["zone_owner_relation"] not in {"own", "opponent"}:
         errors.append("zone_owner_relation is invalid")
+    if "chosen_champion" in selector and selector["chosen_champion"] is not True:
+        errors.append("chosen_champion is true when present (Core 103.2.a.3)")
     if "targeted" in selector and selector["targeted"] != derive_targeted(selector):
         errors.append("targeted is derived from the selector and cannot be overridden")
     if "bound_identity" in selector and (not isinstance(selector["bound_identity"], str) or "@" not in selector["bound_identity"]):
@@ -2854,6 +2865,11 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
         return False, "target_zone_owner_requirement_failed"
     if zone_owner_relation == "opponent" and friendly_players(controller, zone_owner):
         return False, "target_zone_owner_requirement_failed"
+    if target.get("chosen_champion"):
+        # Core 103.2.a.3: the card chosen for the slot, and any Champion Unit with its name
+        chosen_name = (state["players"].get(controller) or {}).get("chosen_champion")
+        if not (chosen_name and obj.get("champion_unit") is True and obj.get("kind") == "unit" and obj.get("name") == chosen_name):
+            return False, "target_chosen_champion_requirement_failed"
     if target.get("object_id") != target.get("bound_object_id", target.get("object_id")):
         return False, "target_identity_changed"
     # ADR-0005 §3 / Core 359.3.e.4: the same physical card back in the same zone
@@ -3616,6 +3632,31 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if detached:
             trace["detached"] = detached  # Core 435.4.b: to the host's last board location
             trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 435.4", "Core 435.4.b"]))
+
+    elif op == "return_to_champion_zone":
+        # Core 103.2.a.3 / 108.3.c.1 (Hallowed Tomb, GPT 2026-09-27 ruling 15): a Chosen Champion from its
+        # owner's trash to its owner's Champion Zone - only into an empty one, checked as this executes
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("return_to_champion_zone requires a known object")
+        obj = new_state["objects"][object_id]
+        source = find_location(new_state, object_id)
+        if source != ("player", obj["owner"], "trash"):
+            raise IllegalOperation(f"return_to_champion_zone takes a card from its owner's trash; {object_id!r} is at {source}")
+        zone = new_state["players"][obj["owner"]]["zones"].setdefault("champion_zone", [])
+        if zone:
+            trace.update({"outcome": "no_op", "object_id": object_id, "reason": "champion_zone_occupied",
+                          "occupied_by": list(zone), "rule_locators": ["Core 108.3.c.1"]})
+        else:
+            _remove_from_location(new_state, object_id)
+            obj["damage"] = 0
+            obj["might_modifiers"] = []
+            obj["exhausted"] = False
+            for transient in ("statuses", "counters", "combat_designation"):
+                obj.pop(transient, None)
+            zone.append(object_id)
+            trace.update({"object_id": object_id, "from": source, "destination": f"{obj['owner']}.champion_zone",
+                          "identity_after": _bump_identity(new_state, object_id), "not_a_move": True})
 
     elif op == "recall":
         # DP-06 / Q2: relocation to the current controller's Base (455); not a

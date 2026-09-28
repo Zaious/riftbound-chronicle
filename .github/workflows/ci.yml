@@ -243,6 +243,8 @@ jobs:
         run: python3 skill/scripts/check_move_count_and_legend_triggers.py
       - name: A watcher listens where its card's text makes it work (a trash-active trigger, Core 383.2.c.1)
         run: python3 skill/scripts/check_watch_active_zone.py
+      - name: A Chosen Champion returns from the trash to an empty Champion Zone (Core 103.2.a.3, 108.3.c.1)
+        run: python3 skill/scripts/check_chosen_champion.py
       - name: A Might change over every unit of a side, Base and Battlefield
         run: python3 skill/scripts/check_bulk_might.py
 
@@ -670,6 +672,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_play_trigger_timing.py"
           python3 "$REPO/skill/scripts/check_move_count_and_legend_triggers.py"
           python3 "$REPO/skill/scripts/check_watch_active_zone.py"
+          python3 "$REPO/skill/scripts/check_chosen_champion.py"
           python3 "$REPO/skill/scripts/check_bulk_might.py"
           python3 "$REPO/skill/scripts/check_static_auras.py"
           python3 "$REPO/skill/scripts/check_keyword_auras.py"

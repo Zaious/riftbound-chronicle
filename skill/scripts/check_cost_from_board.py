@@ -10,8 +10,11 @@ control." (Core 356.4.e and 206 use this very card; 8 Energy):
     Unit in its Base counts (355.9.a.1: a unit is on the board, Base or Battlefield), and a
     9-Might Unit brings the cost to 0, not below (356.6);
   - an opponent's Units do not count; a Unit card in the trash does not count;
-  - 356.4.e's own example: a declared reduction of 1 to a minimum of 1 applied first, then a
-    7-Might Unit - the cost is 0;
+  - 356.4.e's own example, the player choosing the order (356.4.c.1; GPT 2026-09-27, group 乙): with
+    a declared reduction of 1 to a minimum of 1 beside it, the orders give different costs, so the
+    play stops for discount_order (p1's); that reduction first, then the 7-Might Unit - the cost is
+    0; the Unit first, then that reduction - the cost is 1; a discount_order naming other discounts
+    is invalid; two plain reductions (order changes nothing) ask for no order;
   - mutations: without the per-each the reduction is 1; the per-each shape is closed.
 
 Spoils of War, "If an enemy unit has died this turn, this costs [2] less." (4 Energy):
@@ -90,10 +93,12 @@ def board(fields, energy, *, units=(), their_units=(), trash_units=(), gear=()):
     return state
 
 
-def play(state, energy_cost, *, discounts=None):
+def play(state, energy_cost, *, discounts=None, order=None):
     cost = {"base": {"energy": energy_cost, "power": {}}}
     if discounts:
         cost["discounts"] = discounts
+    if order is not None:
+        cost["discount_order"] = order
     return PT.play_card(fixture(), state, {
         "schema_version": PT.DECLARATION_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
         "play_id": "play-1", "actor": "p1", "card": "c1",
@@ -143,11 +148,29 @@ def main() -> int:
     if left(play(modified, 8)) != 7:
         errors.append(f"Sky Splitter: a 4-Might Unit given +3 did not take 7 off (the layered Might): {left(play(modified, 8))}")
     # 356.4.e: "reduced by 1, to a minimum of 1" first (declared), then the 7-Might Unit: 0
+    # 356.4.c.1 (GPT 2026-09-27, group 乙): the order is the player's, not the engine's
     eager = board(sky, 8, units=(("a", 7, "bf1"),))
-    got = play(eager, 8, discounts=[{"id": "eager", "applies_to": "energy", "amount": 1, "minimum": 1}])
+    minimum_one = [{"id": "eager", "applies_to": "energy", "amount": 1, "minimum": 1}]
+    own = f"self:{sky['printed_cost_modifications'][0]['modification_id']}"
+    asked = play(eager, 8, discounts=minimum_one)
+    if asked.get("committed") or asked.get("reason_code") != "discount_order_required" or asked.get("decision_controller") != "p1":
+        errors.append(f"Sky Splitter, 356.4.e: two discounts whose order changes the cost did not stop for p1's order: "
+                      f"{asked.get('reason_code')} {asked.get('decision_controller')}")
+    got = play(eager, 8, discounts=minimum_one, order=["eager", own])
     if left(got) != 8:
         errors.append(f"Sky Splitter, 356.4.e: a 1-to-minimum-1 reduction then a 7-Might Unit did not make the cost 0: "
-                      f"{left(got)} left ({got.get('reason_code')})")
+                      f"{left(got)} left ({got.get('reason_code')} {got.get('reason')})")
+    got = play(eager, 8, discounts=minimum_one, order=[own, "eager"])
+    if left(got) != 7:
+        errors.append(f"Sky Splitter, 356.4.e: the 7-Might Unit then a 1-to-minimum-1 reduction did not make the cost 1: "
+                      f"{left(got)} left ({got.get('reason_code')} {got.get('reason')})")
+    wrong = play(eager, 8, discounts=minimum_one, order=["eager"])
+    if wrong.get("committed") or wrong.get("valid") is not False:
+        errors.append(f"a discount_order that does not name every applying discount was accepted: {wrong.get('reason_code')}")
+    plain = play(board(sky, 8, units=(("a", 3, "bf1"),)), 8, discounts=[{"id": "flat", "applies_to": "energy", "amount": 1}])
+    if left(plain) != 4:
+        errors.append(f"two plain reductions, whose order changes nothing, asked for an order or cost wrong: "
+                      f"{left(plain)} left ({plain.get('reason_code')})")
     flat = board({"printed_cost_modifications": [{"modification_id": "own-text", "kind": "energy_reduction", "amount": 1}]},
                  8, units=base_units)
     if left(play(flat, 8)) == 4:
@@ -222,7 +245,8 @@ def main() -> int:
         print("FAILED: cost read off the board" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
     print("OK: Sky Splitter's Energy cost falls by the highest layered Might among its player's Units on the board "
-          "(Base or Battlefield), never below 0 (356.6), after a declared minimum-1 reduction as in 356.4.e; an "
+          "(Base or Battlefield), never below 0 (356.6); with a minimum-1 reduction beside it the player orders them "
+          "(356.4.c.1, 356.4.e: 0 or 1), and needs no order when it changes nothing; an "
           "opponent's Units and a Unit card in the trash do not count. Spoils of War costs 2 less once an enemy Unit "
           "died this turn - by a kill, as a token, or in a Cleanup - and not for a friendly death, last turn's death, a "
           "return to hand or a Gear.")

@@ -85,6 +85,9 @@ PAID_OUTCOMES = {"applied", "replaced_prevented", "replaced_modified_applied", "
 STAGES = ("declaration", "choices", "cost_determination", "payment", "legality", "watchers", "commit")
 DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required", "add_window_confirmation_required", "resource_allocation_required", "mode_selection_required", "card_selection_required", "card_ordering_required",
                     "trigger_order_required",
+                    # Core 356.4.c.1 / 356.4.d.1 / 356.4.e (GPT 2026-09-27): discounts whose order changes the
+                    # cost wait for the player's discount_order
+                    "discount_order_required",
                     # Core 416.5: a cost that recycles two or more cards to one Main Deck waits for the
                     # external randomization receipt of their order (ADR-0010 §2); decision_controller
                     # names that deck's owner, whose receipt it is - no player chooses the order
@@ -189,7 +192,9 @@ def validate_declaration(value: Any) -> list[str]:
         if item.get("ability_kind", None) not in {"standard", "add", None}:
             errors.append("chain_item.ability_kind is invalid")
     cost = value.get("cost")
-    if not isinstance(cost, dict) or "base" not in cost or set(cost) - {"base", "base_modifications", "additional", "increases", "discounts", "total_modifications"}:
+    if not isinstance(cost, dict) or "base" not in cost or set(cost) - {"base", "base_modifications", "additional", "increases", "discounts", "total_modifications",
+                                                                   # 356.4.c.1 / 356.4.d.1: the player's order of the discounts
+                                                                   "discount_order"}:
         return errors + ["cost must carry base and only the typed modification lists"]
     if not _is_resource_cost(cost["base"]):
         errors.append("cost.base must be {energy, power{domain: n}} with non-negative integers")
@@ -354,6 +359,40 @@ def _apply_discount(amount: int, discount: dict[str, Any]) -> tuple[int, dict[st
                      "rule_locators": ["Core 356.4.e"] if "minimum" in discount else ["Core 356.4"]}
 
 
+def _discount_order_problem(cost: dict[str, Any], intents: dict[str, bool], actor: str) -> "PlayError | None":
+    """Core 356.4.c.1 / 356.4.d.1 / 356.4.e (GPT 2026-09-27): the player orders the discounts of a tier.
+    A declared discount_order must name exactly the discounts that apply (after the card's own and
+    the turn's were added and their conditions evaluated); with none declared, every order of each
+    tier must give the same cost, else the play stops for the order."""
+    import itertools
+
+    discounts = cost.get("discounts", []) or []
+    ids = [d["id"] for d in discounts]
+    declared = cost.get("discount_order")
+    if declared is not None:
+        if not isinstance(declared, list) or len(set(declared)) != len(declared) or sorted(declared) != sorted(ids):
+            return PlayError("cost_determination", "invalid_input", f"discount_order {declared!r} must name exactly the discounts that apply: {sorted(ids)}",
+                             invalid=True, errors=[f"discount_order must name exactly {sorted(ids)}"])
+        return None
+    tiers = {"component": [d for d in discounts if d["applies_to"] != "total"], "total": [d for d in discounts if d["applies_to"] == "total"]}
+    for tier, members in tiers.items():
+        if len(members) < 2 or len(members) > 6:
+            continue
+        others = [d for d in discounts if d not in members]
+        totals = set()
+        for perm in itertools.permutations(members):
+            trial = {**copy.deepcopy(cost), "discounts": copy.deepcopy(list(perm) + others)}
+            got = determine_total_cost(trial, intents, actor=actor)["total"]
+            totals.add(json.dumps(got, sort_keys=True))
+        if len(totals) > 1:
+            return PlayError("cost_determination", "discount_order_required",
+                             f"the {tier} discounts {sorted(d['id'] for d in members)} give different costs in different orders; "
+                             f"{actor} chooses the order (Core 356.4.c.1, 356.4.d.1, 356.4.e) - declare cost.discount_order",
+                             decision_ids=["discount_order"], decision_controller=actor,
+                             rule_locators=["Core 356.4.c.1", "Core 356.4.d.1", "Core 356.4.e"])
+    return None
+
+
 def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, actor: str = "controller") -> dict[str, Any]:
     """Core 356 in order: base modifications, additional costs, increases,
     component discounts in declared order, total discounts on the aggregate
@@ -410,10 +449,13 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
             comp["final"] += inc["amount"]
             comp["increases"].append({"increase_id": inc["id"], "amount": inc["amount"], "source": inc.get("source"), "rule_locators": ["Core 356.3"]})
 
-    # 356.4: component discounts in the declared (player-confirmed) order
-    # (356.4.c), then total discounts on the aggregate Energy (356.4.d). Each
-    # minimum belongs to its own discount (356.4.e).
+    # 356.4: component discounts in the player's order (356.4.c.1: cost.discount_order, else the
+    # order given, which the caller only allows when the order cannot change the cost), then total
+    # discounts on the aggregate Energy (356.4.d). Each minimum belongs to its own discount (356.4.e).
     discounts = cost.get("discounts", []) or []
+    if cost.get("discount_order"):
+        rank = {discount_id: position for position, discount_id in enumerate(cost["discount_order"])}
+        discounts = sorted(discounts, key=lambda d: rank.get(d["id"], len(rank)))
     order = []
     for disc in discounts:
         if disc["applies_to"] == "total":
@@ -465,7 +507,9 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
     return {
         "base": base, "after_base_modifications": after_base, "components": components,
         "aggregate": {"energy": {"before_total_discounts": aggregate_before, "reductions": aggregate_reductions, "final": aggregate}},
-        "discount_order": order, "order_provenance": f"declaration order, confirmed by {actor}",
+        "discount_order": order,
+        "order_provenance": (f"discount_order declared by {actor} (Core 356.4.c.1, 356.4.d.1)" if cost.get("discount_order")
+                             else "every order gives the same cost (Core 356.4.c.1, 356.4.d.1)"),
         "total": total,
     }
 
@@ -1589,6 +1633,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if evaluated:
             trace.append({"stage": "cost_determination", "outcome": "applied", "evaluated_cost_modifications": evaluated,
                           "rule_locators": ["Core 356.3", "Core 356.4"]})
+        order_problem = _discount_order_problem(cost, intents, actor)
+        if order_problem is not None:
+            raise order_problem
         skeleton = determine_total_cost(cost, intents, actor=actor)
         trace.append({"stage": "cost_determination", "outcome": "applied", "total": copy.deepcopy(skeleton["total"]), "rule_locators": RULES["cost"]})
         locators += RULES["cost"]

@@ -602,6 +602,12 @@
             }
           }
         },
+        "discount_order": {
+          "description": "Core 356.4.c.1 / 356.4.d.1 / 356.4.e: the player's order of the discounts that apply (their ids, including the card's own self:... and this turn's turn:... ones); required when the orders of one tier give different costs",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
         "total_modifications": {
           "type": "array",
           "items": {

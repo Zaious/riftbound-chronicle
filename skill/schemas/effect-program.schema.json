@@ -196,7 +196,8 @@
           "dependency_mode": {
             "enum": [
               "if_applied",
-              "always"
+              "always",
+              "unless_ignored"
             ]
           },
           "replacement_order": {
@@ -571,6 +572,11 @@
               ]
             },
             "description": "copy_object: the copyable traits to apply (Core 477.1). A trait the model does not carry is refused as copy_unmodelled_traits."
+          },
+          "division_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Core 355.14 (package 5): a deal_damage whose fixed amount is split among the Targets of its one targets.decision_ref (which then carries min and no max - the amount is the cap, 355.14.c); the division is a resolution-stage damage_division decision with this id (355.14.e-h)."
           }
         }
       },

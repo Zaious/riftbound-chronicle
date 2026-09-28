@@ -45,7 +45,9 @@ STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
 # ADR-0011 §2–3: mode_selection names a modal option by its stable id;
 # card_ordering is the player's permutation of the looked-at / revealed cards
 # that remain: complete whenever any card is left, empty when none is.
-KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering")
+KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering",
+         # 2026-09-27 package 5, Core 355.14.e: how a split deal's damage is divided, at resolution
+         "damage_division")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -137,8 +139,18 @@ def validate_engine_decisions(value: Any) -> list[str]:
                 errors.append(f"{label}.selection_identities values must be identity tokens")
             if item["stage"] != "procedure":
                 errors.append(f"{label}: damage_assignment is a procedure-stage decision")
+        elif kind == "damage_division":
+            # Core 355.14.e-g: every Target kept gets a positive amount; the identities bind them
+            if not isinstance(val, dict) or not val or any(not isinstance(k, str) or not k or isinstance(n, bool)
+                                                           or not isinstance(n, int) or n < 1 for k, n in val.items()):
+                errors.append(f"{label}.value must map each Target kept to a positive amount of damage (Core 355.14.g)")
+            identities = item.get("selection_identities")
+            if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, dict) else []):
+                errors.append(f"{label}.selection_identities must bind every Target in the division exactly once")
+            if item["stage"] != "resolution":
+                errors.append(f"{label}: damage_division is decided as the split resolves (Core 355.14.e)")
         elif "selection_identities" in item:
-            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering or damage_assignment")
+            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering, damage_assignment or damage_division")
         # selection-binding.v1: a decision that ESTABLISHES a selection later
         # instructions refer to carries the binding it was made under, so a
         # changed candidate set, rule, visibility or origin is refused by name
@@ -174,8 +186,11 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must be the stable option id of the chosen mode (not an index)")
         if kind == "mode_selection" and item["stage"] not in ("play_declaration", "trigger_finalization"):
             errors.append(f"{label}: mode_selection is chosen while playing or at trigger finalization (Core 402.2)")
-        if kind == "card_selection" and item["stage"] not in ("resolution", "play_declaration"):
-            errors.append(f"{label}: card_selection is decided at resolution, or while paying a cost at play (Core 357.2)")
+        # 2026-09-27: or while paying a triggered ability's base cost as it is finalized (Core 404.1,
+        # 383.3.b.1) - which unit spends its buff (trigger_cost.py)
+        if kind == "card_selection" and item["stage"] not in ("resolution", "play_declaration", "trigger_finalization"):
+            errors.append(f"{label}: card_selection is decided at resolution, or while paying a cost at play (Core 357.2) "
+                          f"or at trigger finalization (Core 404.1)")
         if kind in ("replacement_order", "replacement_choice", "trigger_order") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
         if kind == "player_selection" and (not isinstance(val, str) or not val):
@@ -278,7 +293,10 @@ CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "battle
 EXCLUDABLE_KINDS = ("unit", "gear", "spell", "rune", "legend")
 CHOICE_VISIBILITY = ("public", "private_to_chooser")
 CHOICE_BY = ("controller", "opponent", "each_player")
-COUNT_FORMS = ("exactly", "up_to", "any_number", "one")
+# package 5 (2026-09-27): `all` - every card an earlier instruction of the same program marked
+# and still marked ("recycle the rest", Core 416.4, 424.4.a): no choice is made, so it is
+# forced; only an unordered set drawn from `revealed` may say it
+COUNT_FORMS = ("exactly", "up_to", "any_number", "one", "all")
 PRIVATE_SOURCES = {"hand", "main_deck_top", "revealed"}
 DEFAULT_ENUMERABLE_CAP = 64
 CHOICE_FIELDS = {"selection_kind", "count", "from", "by", "visibility", "identity_binding", "enumerable_cap", "criteria", "players", "top"}
@@ -295,13 +313,15 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append(f"choice.selection_kind must be one of {SELECTION_KINDS}")
     count = spec.get("count", {"one": True} if spec["selection_kind"] == "single" else None)
     if not isinstance(count, dict) or len(count) != 1 or next(iter(count)) not in COUNT_FORMS:
-        errors.append("choice.count must be one of {exactly: n}, {up_to: n}, {any_number: true}, {one: true}")
+        errors.append("choice.count must be one of {exactly: n}, {up_to: n}, {any_number: true}, {one: true}, {all: true}")
     else:
         form, value = next(iter(count.items()))
         if form in {"exactly", "up_to"} and (not isinstance(value, int) or isinstance(value, bool) or value < 1):
             errors.append(f"choice.count.{form} must be a positive integer")
-        if form in {"any_number", "one"} and value is not True:
+        if form in {"any_number", "one", "all"} and value is not True:
             errors.append(f"choice.count.{form} must be true")
+        if form == "all" and (spec["selection_kind"] != "unordered_set" or spec["from"] != "revealed"):
+            errors.append("choice.count.all takes every card still marked: an unordered_set from revealed only")
         if spec["selection_kind"] == "single" and form != "one":
             errors.append("a single choice counts one")
         if spec["selection_kind"] == "ordered_permutation" and form != "any_number":
@@ -406,6 +426,8 @@ def forced_choice(spec: dict[str, Any], candidates: list[str]) -> list[str] | No
     if spec["selection_kind"] == "ordered_permutation" and len(candidates) == 1:
         return list(candidates)
     if form == "exactly" and len(candidates) <= (n or 0):
+        return list(candidates)
+    if form == "all":
         return list(candidates)
     return None
 

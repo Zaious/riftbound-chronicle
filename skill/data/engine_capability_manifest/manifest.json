@@ -1,34 +1,34 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:299ec4596f73f5ca339529f5",
-  "capability_set_id": "sha256:299ec4596f73f5ca339529f5d22208c380b3312bf63d2e98fff065db7c00c848",
+  "manifest_id": "capability-manifest:c8cdf61e1264a44027f2b86a",
+  "capability_set_id": "sha256:c8cdf61e1264a44027f2b86a518d541302140c10b2b90416dba44b3c9af78e22",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:4a8d2aec85a9fb33e5587de55fc335647d31beb2500375ce36deec2d7cece627",
+    "value": "sha256:b1d77e9ac1ea279740f7027f363494dfa5fe60e4844ee14da46bb301a6e79589",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:2fa173f0ebb49a2608d9383147c6e75763325f4bb6129078e84f5ca3c04e3ac5"
+        "sha256": "sha256:a66f58a50389d3b9f54eda28575157b78f6ad21301cd21114625249517b84e4b"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:98ddf6226e6501e6739da770a48660d06ad2f78832f5719c71131c26aefa6a35"
+        "sha256": "sha256:74414dce8ce970dbe19bff29c2f60f0c8fcf4ad27d23d1890f0c35267db4f39c"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:1d9a8aa6eb85b0d660cb42cc5acfd92f2958042f5911378f3a231be44a212419"
+        "sha256": "sha256:2f868951071e338eab8448e8a42747e7620a0ff99645338fcb87d3018c4ff68f"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:f334dec7c3a8686d8d6483bc8c1f7d0da7fd44d26004eac9cfe697f7dc7c8a5c"
+        "sha256": "sha256:233657211e93f8fd6889dc2a1c1bd02547d66af7049102f63c1111a11c148b92"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:ac746ce8b6e4fc73831877b2dfe373d08ae0f2db8de0f4afc79eb40e693a52cb"
+        "sha256": "sha256:5ae8e04f38a47bcbfd3bf9a96398f6b8fc3361f92af7707e8244ca573bb8353e"
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:83ca835f2dc9885e1518cb5341eb68ce607a763bc371d4ca2949cedb6e8f4204"
+        "sha256": "sha256:b1399f18e48bc343db6dce6525e851d41f2f6e0a04463c0514627809b3676a94"
       },
       {
         "path": "terminal.py",
@@ -36,7 +36,7 @@
       },
       {
         "path": "turn_cycle.py",
-        "sha256": "sha256:32935440a1fa14cbb7bcbdf04d0ca3709387c9d79db21892641a79cdd1bf0654"
+        "sha256": "sha256:135c22062bdf2b3bf73c5283a613192ead379854662d120b2a763cb627692d3e"
       },
       {
         "path": "hidden.py",
@@ -321,7 +321,8 @@
         "standard_move",
         "ganking",
         "move_triggers",
-        "bounded_cleanup"
+        "bounded_cleanup",
+        "watched_triggers"
       ],
       "unsupported_scope": [
         "non_standard_moves",
@@ -754,6 +755,17 @@
         "Core 135.2.e.3",
         "Core 370.1.a",
         "Core 373.2"
+      ]
+    },
+    {
+      "id": "trigger_base_cost",
+      "rule_locators": [
+        "Core 204.3.a",
+        "Core 383.3.b",
+        "Core 383.3.b.1",
+        "Core 403.1.b.1",
+        "Core 404.2",
+        "Core 740.4.a.2"
       ]
     }
   ],
@@ -1437,6 +1449,7 @@
     "Core 194.1.d",
     "Core 194.2–194.2.b",
     "Core 196",
+    "Core 204.3.a",
     "Core 303.2",
     "Core 308.1.a",
     "Core 309.1.a",
@@ -1548,6 +1561,8 @@
     "Core 383.3",
     "Core 383.3.a",
     "Core 383.3.a–383.3.a.3",
+    "Core 383.3.b",
+    "Core 383.3.b.1",
     "Core 383.3.c–383.3.d.1",
     "Core 383.3.e",
     "Core 383.4.c–383.4.d",
@@ -1555,6 +1570,8 @@
     "Core 383.4.f",
     "Core 386–388",
     "Core 402–402.1",
+    "Core 403.1.b.1",
+    "Core 404.2",
     "Core 413",
     "Core 413.2.a",
     "Core 413.4",
@@ -1693,6 +1710,7 @@
     "Core 730.2",
     "Core 740.2.a",
     "Core 740.2.c",
+    "Core 740.4.a.2",
     "Core 806–807",
     "Core 807",
     "Core 809.1.c.1",

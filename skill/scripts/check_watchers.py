@@ -7,7 +7,12 @@ Must hold:
     lists could not express: a Unit whose ability watches for a friendly Unit
     dying fires when its neighbour dies, and the scope really filters —
     `self` sees only its own events, `controller` only its controller's,
-    `location` only what happens where it is;
+    `location` only what happens where it is; a death in a Cleanup (lethal
+    damage, Core 428) wakes it through the resolution bridge as a Kill does,
+    and so does a death in the Combat Cleanup (Combat Damage, 466.1 - p2's
+    "first time a friendly unit dies each turn" wakes, p1's does not, and a
+    later Cleanup death that turn is not the first) and in a Beginning- or
+    Ending-Phase Cleanup (turn_cycle.run_cleanup) (2026-09-28);
   - the visibility boundary of ADR-0013 §3 holds at the watch: a watcher may
     react to a public fact, but one whose condition would read a card its
     controller may not see is refused by name (`watch_beyond_visibility`)
@@ -74,8 +79,70 @@ def kill(state, object_id):
     return apply_program(state, program("k", {"op": "kill", "effect_id": "k", "object_id": object_id}))
 
 
+FIRST_FRIENDLY_DEATH = {"kinds": ["died"], "scope": "any", "occurrence": "first_each_turn",
+                        "filter": {"object_kind": "unit", "object_controller_relation": "friendly"}}
+
+
+def cleanup_death_cases(errors: list[str]) -> None:
+    """A death in ANY Cleanup wakes the watchers (Core 428.1.a.2, 323.5) - the Combat Cleanup's
+    (Combat Damage, 466.1) and a turn's Cleanup in the Beginning or the Ending Phase, not only a
+    resolution's or a Standard Move's (2026-09-28: those two scheduled death triggers only)."""
+    from check_combat_damage_assignment import add_unit, closed_combat
+    from combat import assign_combat_damage, combat_cleanup, deal_combat_damage
+    from turn_cycle import run_cleanup
+
+    def woke(result):
+        return [i["id"] for i in (result.get("next_timing_state") or {}).get("chain", {}).get("items", [])]
+
+    # the Combat Cleanup: u1 (p1, Might 5) deals 5 to d1 (p2, Might 3). p2's u2 in its Base has "the
+    # first time a friendly unit dies each turn"; p1's u1 has the same (d1 is not its friend)
+    t, e = closed_combat([("d1", {})], attacker_might=5)
+    e["objects"]["u2"]["event_triggers"] = [descriptor("u2-first", "u2", [], "any", controller="p2")]
+    e["objects"]["u2"]["event_triggers"][0]["watch"] = copy.deepcopy(FIRST_FRIENDLY_DEATH)
+    e["objects"]["u1"]["event_triggers"] = [descriptor("u1-first", "u1", [], "any")]
+    e["objects"]["u1"]["event_triggers"][0]["watch"] = copy.deepcopy(FIRST_FRIENDLY_DEATH)
+    add_unit(e, "d2", "p2", "base:p2", might=2)
+    assigned = assign_combat_damage(t, e)
+    dealt = deal_combat_damage(assigned["next_timing_state"], assigned["next_effect_state"]) if assigned.get("committed") else assigned
+    cleaned = combat_cleanup(dealt["next_timing_state"], dealt["next_effect_state"]) if dealt.get("committed") else dealt
+    ids = woke(cleaned)
+    if not cleaned.get("committed") or "d1" not in cleaned["next_effect_state"]["players"]["p2"]["zones"]["trash"] \
+            or [i.split("@")[0] for i in ids] != ["u2-first"] or cleaned["trace"].get("watch_triggers") != ids:
+        errors.append(f"a death from Combat Damage did not wake p2's 'first time a friendly unit dies' watcher (and "
+                      f"only it) in the Combat Cleanup: {ids} {cleaned.get('reason_code')} {cleaned.get('reason')}")
+    else:
+        # the same turn, a second friendly death in a later Cleanup: 'the first time' was the combat's
+        later = copy.deepcopy(cleaned["next_effect_state"])
+        later["objects"]["d2"]["damage"] = 5
+        later["mode"] = {"victory_score": 8}
+        for obj in later["objects"].values():
+            obj.pop("combat_designation", None)
+        task = fixture()
+        task["outstanding_tasks"] = ["cleanup"]
+        second = run_cleanup(task, later)
+        if not second.get("committed") or woke(second):
+            errors.append(f"the combat death was not counted as the turn's first friendly death: a later Cleanup "
+                          f"death woke {woke(second)} ({second.get('reason')})")
+
+    # a turn's Cleanup in the Beginning and in the Ending Phase: u2 carries lethal damage
+    for phase in ("beginning", "ending"):
+        timing = fixture()
+        timing.update({"outstanding_tasks": ["cleanup"], "phase": phase, "priority": None})
+        board_state = board()
+        board_state["mode"] = {"victory_score": 8}
+        board_state["objects"]["u2"]["damage"] = 9
+        board_state["objects"]["u1"]["event_triggers"] = [descriptor("u1-any", "u1", ["died"], "any")]
+        ran = run_cleanup(timing, board_state)
+        step3 = next((s for s in (ran.get("trace") or {}).get("iterations", [{}])[0].get("steps", []) if s.get("step") == 3), {})
+        if not ran.get("committed") or "u2" not in ran["next_effect_state"]["players"]["p2"]["zones"]["trash"] \
+                or [i.split("@")[0] for i in woke(ran)] != ["u1-any"] or step3.get("watch_triggers") != woke(ran):
+            errors.append(f"a death in the {phase.title()} Phase Cleanup did not wake the 'when a unit dies' watcher: "
+                          f"{woke(ran)} {ran.get('reason_code')} {ran.get('reason')}")
+
+
 def main() -> int:
     errors: list[str] = []
+    cleanup_death_cases(errors)
 
     # --- a watcher reacts to another object's event ------------------------------------------
     state = board()
@@ -110,6 +177,20 @@ def main() -> int:
     enemy_any = kill(anything, "u2")
     if [entry["trigger_id"] for entry in w.schedule_watchers(enemy_any["next_state"], enemy_any["events"], turn_id=TURN)] != ["u1-any"]:
         errors.append("negative mutation failed: widening the scope to `any` did not change what matched, so the scope filter is vacuous")
+
+    # a death in a Cleanup is a death (Core 428): the lethal-damage kill batch's events reach the
+    # watchers - a spell dealing 9 to u2 wakes the `any` watcher through the resolution bridge, as a
+    # Kill does. perform_lethal_cleanup dropped those events, so it never woke (2026-09-28)
+    from check_rules_core import item
+    from resolution_bridge import resolve_with_program
+    chain = fixture(priority="p2", items=[item("spell-1", "p1", "spell", "default", "finalized")], passes=["p1", "p2"])
+    for label, effect in (("dealt lethal damage", {"op": "deal_damage", "effect_id": "d", "object_id": "u2", "amount": 9}),
+                          ("killed", {"op": "kill", "effect_id": "k", "object_id": "u2"})):
+        done = resolve_with_program(chain, "spell-1", anything, program("s", effect))
+        woke = [i["id"] for i in (done.get("next_timing_state") or {}).get("chain", {}).get("items", [])]
+        if not done.get("committed") or woke != ["u1-any@resolve:spell-1"]:
+            errors.append(f"u2 {label} by a resolving spell did not wake the 'when a unit dies' watcher once: "
+                          f"{woke} {done.get('reason')}")
 
     # a watcher that only reacts to the kind, with no condition, may watch a
     # private event: the fact is public even when the card is not.

@@ -268,6 +268,17 @@ def _lower_draw_if_few_in_hand(params):
                     "if": condition}}
 
 
+def _lower_draw_per_mighty_unit(params):
+    """Core 413 with a count read on execution: N for each Mighty unit the controller controls
+    (708, 710). effect_ir count_per."""
+    count = int(params["count"])
+    per = {"kind": "units_you_control", "mighty": True}
+    return {"program_effects": [{"op": "draw", "effect_id": "dr", "player": "$controller", "count": count,
+                                 "count_per": dict(per)}],
+            "ast": {"node": "instruction", "op": "draw", "params": {"count": count, "player": "$controller",
+                                                                     "for_each": dict(per)}}}
+
+
 def _lower_discard(params):
     """Core 422.1: the controller discards N from their own hand, chosen privately; 422.4: a
     shorter hand discards what it has, an empty one ignores the instruction."""
@@ -349,6 +360,23 @@ def _lower_deal_enemy_unit_here(params):
                                                             "location_ref": dict(_HERE)}}}}
 
 
+def _lower_deal_split_among_enemy_units_here(params):
+    """"Deal N damage split among any number of enemy units here." (Volibear - Furious) - Core
+    355.14: each chosen Unit is a Target (355.14.a), chosen as the ability is finalized (355.14.b),
+    at most N of them (355.14.c: the amount caps them, so the targets carry no max), each at the
+    source's current Battlefield (359.3.f.2); how the N is divided is decided at resolution
+    (355.14.e), a positive amount to each Target kept (355.14.f, 355.14.g, 355.14.h)."""
+    amount = int(params["amount"])
+    restrictions = {"chosen_zone_class": "board", "kind": "unit", "controller_relation": "enemy",
+                    "location_ref": dict(_HERE)}
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": amount,
+                                 "targets": {"decision_ref": "t", "min": 0, "restrictions": restrictions},
+                                 "division_ref": "t-division"}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount": amount, "split": True, "targets": {"min": 0, "max": "amount",
+                                                                            "restrictions": dict(restrictions)}}}}
+
+
 def _lower_deal_my_might_to_enemy_unit_here(params):
     ref = {"kind": "program_source_current_might"}
     return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount_ref": dict(ref), "target": _here_target()}],
@@ -426,6 +454,46 @@ def _lower_units_enter_ready(params):
                     "params": {"turn_effect_kind": "entry_state_for_played_units", "value": "ready"}}}
 
 
+def _lower_opponents_cant_play_cards(params):
+    """"Opponents can't play cards this turn." - a turn effect of its controller's: each of their
+    opponents is refused a card play for the rest of the turn (Core 054.1, 052, 317.2.c)."""
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "cards_play_prohibited", "value": "opponents",
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "cards_play_prohibited", "value": "opponents"}}}
+def _lower_temporary_unit_at_battlefield_or_gear(params):
+    """"Give a unit at a battlefield or a gear [Temporary]." (Fading Memories): one chosen object fitting
+    either alternative (effect_ir any_of), granted Temporary with no duration (Core 816.1.a, 801.3.a.3)."""
+    target = {"decision_ref": "t", "chosen_zone_class": "board",
+              "any_of": [{"kind": "unit", "location": "battlefield"}, {"kind": "gear"}]}
+    return {"program_effects": [{"op": "grant_keyword", "effect_id": "kw", "keyword": "temporary", "duration": "permanent",
+                                 "source": "$chain_item", "target": target}],
+            "ast": {"node": "instruction", "op": "grant_keyword",
+                    "params": {"keyword": "temporary", "duration": "permanent", "target": dict(target)}}}
+
+
+def _lower_next_spell_discount(params):
+    """"The next spell you play this turn costs [N] less." (Raging Firebrand) - a turn effect the
+    play transaction reads as a discount on the next spell and spends (Core 391, 356.4)."""
+    amount = int(params["amount"])
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "next_spell_cost_reduction", "value": amount,
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "next_spell_cost_reduction", "value": amount}}}
+
+
+def _lower_next_unit_enters_ready(params):
+    """"The next unit you play this turn enters ready." (Sun Disc) - bound to that one play as an
+    entry replacement, then spent (Core 391, 369.3)."""
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "entry_state_for_next_played_unit", "value": "ready",
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "entry_state_for_next_played_unit", "value": "ready"}}}
+
+
 def _lower_self_cost_reduction(params):
     """Round H: "If <condition>, this costs N less." — the card's own text,
     a fixed Energy amount, a registered condition leaf. The program is not an
@@ -464,6 +532,27 @@ def _lower_self_cost_reduction_per_trash(params):
                 "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
                 "per_each": {"kind": "zone_count_at_least", "zone": "trash"}}]},
             "ast": {"node": "self_cost_reduction", "amount": amount, "per_each": {"zone": "trash"}}}
+
+
+def _lower_self_cost_reduction_highest_might(params):
+    """"This spell's Energy cost is reduced by the highest Might among units you control." -
+    1 Energy per point of the highest Might among the Units its player controls on the board,
+    read as the cost is determined (356.4; 356.6 keeps it at 0 or above)."""
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": 1,
+                "per_each": {"kind": "highest_might_among_units_you_control"}}]},
+            "ast": {"node": "self_cost_reduction", "amount": 1, "per_each": {"kind": "highest_might_among_units_you_control"}}}
+
+
+def _lower_self_cost_reduction_unit_died(params):
+    """"If an enemy unit has died this turn, this costs N less." - the card's own text, a fixed
+    Energy amount, gated by a Unit of that side having died this turn (356.4, 428.1)."""
+    amount = int(params["amount"])
+    condition = {"kind": "unit_died_this_turn", "controller_relation": params["relation"]}
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
+                "condition": dict(condition)}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "condition": dict(condition)}}
 
 
 def _lower_empty(params):
@@ -662,6 +751,25 @@ def _lower_open_permission(params):
     }
 
 
+def _lower_granted_open_permission(params):
+    """Core 355.2.b, 170.11.c: while this permanent is on the board, the unit cards its side plays
+    may enter an open Battlefield (Miss Fortune - Buccaneer)."""
+    grant = {"permission": "open_battlefield", "kind": "unit", "controller_relation": "friendly"}
+    return {
+        "object_fields": {"granted_play_permissions": [dict(grant)]},
+        "ast": {"node": "passive", "kind": "granted_play_permission", "params": dict(grant)},
+    }
+
+
+def _lower_enters_exhausted(params):
+    """Core 369.3: a printed replacement on how this permanent enters - exhausted, where a Gear
+    would enter ready (359.2.d). resolution_bridge.entry_state_for applies it at entry."""
+    return {
+        "object_fields": {"entry_replacements": [{"mode": "entry_state", "value": "exhausted"}]},
+        "ast": {"node": "passive", "kind": "entry_replacement", "params": {"entry_state": "exhausted"}},
+    }
+
+
 AURA_HERE = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True, "at_source_battlefield": True}
 
 
@@ -690,6 +798,96 @@ def _lower_battlefield_aura(params):
                                                                          "on": "battlefield"}}}
 
 
+# 2026-09-27: printed keyword auras (Core 477.2, 477.2.b) and a card's own conditional
+# keywords / Might (364.3.a). A keyword granted this
+# way is a keyword_grant in the Ability layer, read by whatever uses the keyword off the computed
+# characteristics (effect_ir.STATIC_AURA_KEYWORDS).
+AURA_OTHER_FRIENDLY = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True}
+
+
+def _lower_keyword_aura(on, criteria):
+    def lower(params):
+        keyword = params["keyword"]
+        aura = {"aura_id": f"{'here' if criteria.get('at_source_battlefield') or on == 'battlefield' else 'all'}-{keyword}",
+                "keyword": keyword, "criteria": dict(criteria)}
+        field = "battlefield_fields" if on == "battlefield" else "object_fields"
+        return {field: {"static_auras": [aura]},
+                "ast": {"node": "passive", "kind": "static_keyword_aura",
+                        "params": {"keyword": keyword, "criteria": dict(criteria), **({"on": "battlefield"} if on == "battlefield" else {})}}}
+    return lower
+
+
+KEYWORD_LIST_ITEM = re.compile(r"\[([a-z]+)\]")
+
+
+def _listed_keywords(text: str) -> list[str] | None:
+    """"[a]", "[a] and [b]", "[a], [b], and [c]" - bare keywords, each once, each one the engine
+    reads off the computed characteristics; None otherwise."""
+    from effect_ir import STATIC_AURA_KEYWORDS
+    found = KEYWORD_LIST_ITEM.findall(text)
+    if not found or len(found) != len(set(found)) or any(k not in STATIC_AURA_KEYWORDS for k in found):
+        return None
+    return found
+
+
+def _lower_conditional_keywords(condition):
+    def lower(params):
+        keywords = _listed_keywords(params["keywords"])
+        if keywords is None:
+            return {"ast": {"node": "conditional_keywords", "keywords": params["keywords"], "condition": dict(condition)},
+                    "known_unsupported": "keyword_not_implemented"}
+        return {"object_fields": {"conditional_keywords": [
+                    {"modifier_id": f"own-text-{keyword}", "keyword": keyword, "condition": dict(condition)} for keyword in keywords]},
+                "ast": {"node": "conditional_keywords", "keywords": keywords, "condition": dict(condition)}}
+    return lower
+
+
+def _lower_while_buffed_might(params):
+    amount = int(params["amount"])
+    return {"passive": {"object_fields": {"conditional_might": [
+                {"modifier_id": "clause", "amount": amount, "condition": {"kind": "is_buffed"}}]}},
+            "ast": {"node": "conditional_might", "amount": amount, "condition": {"kind": "is_buffed"}}}
+
+
+def _lower_might_per(kind, fixed_amount=None):
+    def lower(params):
+        amount = int(params["amount"]) if fixed_amount is None else fixed_amount
+        return {"object_fields": {"dynamic_might": [{"modifier_id": "own-text", "amount": amount, "per": {"kind": kind}}]},
+                "ast": {"node": "dynamic_might", "per": kind, "amount": amount}}
+    return lower
+
+
+def _lower_conditional_enter_ready(condition_of):
+    """"If <condition>, I enter ready." - a conditional replacement of the card's own entry state
+    (364.3.a, 369.3), its condition read as it enters."""
+    def lower(params):
+        condition = condition_of(params)
+        return {"object_fields": {"entry_replacements": [
+                    {"replacement_id": "own-text", "mode": "entry_state", "value": "ready", "condition": condition}]},
+                "ast": {"node": "passive", "kind": "conditional_entry", "params": {"value": "ready", "condition": dict(condition)}}}
+    return lower
+def _lower_battlefield_bonus_damage(params):
+    """Core 713-715 (package 5, 2026-09-27): a Battlefield's printed Bonus Damage to the
+    Units at it. effect_ir.bonus_damage reads a `location` scope on the affected Unit's current
+    Battlefield and ignores whose spell or ability deals; the entry's controller is only the
+    state's bookkeeping (a source-backed entry names one)."""
+    amount = int(params["amount"])
+    return {"state_lists": {"damage_modifiers": [{
+                "modifier_id": "$clause_id", "source_object": "$source_object", "controller": "$controller",
+                "amount": amount, "scope": {"kind": "location", "battlefield": "$source_object"}}]},
+            "ast": {"node": "passive", "kind": "bonus_damage",
+                    "params": {"amount": amount, "scope": "location", "on": "battlefield"}}}
+
+
+def _lower_additional_facedown_card(params):
+    """Core 107.3.b, 107.3.b.1 (package 5, 2026-09-27): this Battlefield's Facedown Zone holds
+    one card more than 107.3.b's one. hidden.hide_card refuses a hide into a full zone
+    (facedown_zone_full); the zone still starts empty."""
+    return {"battlefield_fields": {"facedown": {"capacity": 2, "cards": []}},
+            "ast": {"node": "passive", "kind": "facedown_capacity",
+                    "params": {"base": 1, "additional": 1, "on": "battlefield"}}}
+
+
 def _lower_move_restriction(params):
     """Core 359.3.e.6: printed on the Battlefield, and read by both Move paths
     - the Standard Move it forbids outright, and the effect-induced Move whose
@@ -706,9 +904,28 @@ LOWERINGS = {
     "units_cant_move_from_here_to_base": _lower_move_restriction,
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "you_may_play_me_to_an_open_battlefield": _lower_open_permission,
+    "friendly_units_may_be_played_to_open_battlefields": _lower_granted_open_permission,
+    "this_enters_exhausted": _lower_enters_exhausted,
     "other_friendly_units_have_might_here": _lower_aura_here,
     "other_buffed_friendly_units_at_my_battlefield_have_might": _lower_buffed_aura_here,
     "units_here_have_might": _lower_battlefield_aura,
+    # 2026-09-27: keyword auras, conditional keywords and Might, Might per count
+    "units_here_have_keyword": _lower_keyword_aura("battlefield", {"kind": "unit"}),
+    "other_friendly_units_here_have_keyword": _lower_keyword_aura("object", AURA_HERE),
+    "other_friendly_units_have_keyword": _lower_keyword_aura("object", AURA_OTHER_FRIENDLY),
+    "while_im_buffed_i_have_keywords": _lower_conditional_keywords({"kind": "is_buffed"}),
+    "if_you_discarded_a_card_this_turn_i_have_keywords": _lower_conditional_keywords(
+        {"kind": "cards_discarded_this_turn_at_least", "count": 1}),
+    "while_im_mighty_i_have_keywords": _lower_conditional_keywords({"kind": "might_at_least", "count": 5}),
+    "while_im_buffed_i_have_an_additional_might": _lower_while_buffed_might,
+    "i_get_might_for_each_buffed_friendly_unit_at_my_battlefield": _lower_might_per("buffed_friendly_units_at_source_battlefield"),
+    "my_might_is_increased_by_the_number_of_cards_in_your_trash": _lower_might_per("controller_trash_count", 1),
+    "if_an_opponents_score_is_within_n_i_enter_ready": _lower_conditional_enter_ready(
+        lambda params: {"kind": "score_within_of_victory", "count": int(params["within"])}),
+    "if_an_opponent_controls_a_battlefield_i_enter_ready": _lower_conditional_enter_ready(
+        lambda params: {"kind": "controls_a_battlefield", "controller_relation": "enemy"}),
+    "spells_and_abilities_deal_n_bonus_damage_to_units_here": _lower_battlefield_bonus_damage,
+    "you_may_hide_an_additional_card_here": _lower_additional_facedown_card,
     "choose_an_opponent": _lower_choose_an_opponent,
     "they_reveal_their_hand": _lower_they_reveal_their_hand,
     "choose_a_non_unit_card_from_it_and_recycle_that_card": _lower_recycle_a_non_unit_from_the_reveal,
@@ -717,6 +934,7 @@ LOWERINGS = {
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
+    "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
     "discard_n": _lower_discard,
     "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
@@ -725,6 +943,7 @@ LOWERINGS = {
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
+    "deal_n_damage_split_among_any_number_of_enemy_units_here": _lower_deal_split_among_enemy_units_here,
     "stun_an_enemy_unit_here": _lower_stun_enemy_unit_here,
     "deal_damage_equal_to_my_might_to_an_enemy_unit_here": _lower_deal_my_might_to_enemy_unit_here,
     "give_an_enemy_unit_here_might_this_turn": _lower_give_enemy_unit_here_might,
@@ -734,11 +953,17 @@ LOWERINGS = {
     "return_a_unit_from_your_trash_to_your_hand": _lower_return_from_trash,
     "while_you_have_n_runes_i_have_might": _lower_while_runes_might,
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
+    "opponents_cant_play_cards_this_turn": _lower_opponents_cant_play_cards,
+    "the_next_spell_you_play_this_turn_costs_n_less": _lower_next_spell_discount,
+    "give_a_unit_at_a_battlefield_or_a_gear_temporary": _lower_temporary_unit_at_battlefield_or_gear,
+    "the_next_unit_you_play_this_turn_enters_ready": _lower_next_unit_enters_ready,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
     "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,
     "my_might_is_increased_by_your_points": _lower_might_by_points,
     "self_cost_reduction_per_trash_card": _lower_self_cost_reduction_per_trash,
+    "self_cost_reduction_highest_might": _lower_self_cost_reduction_highest_might,
+    "self_cost_reduction_unit_died": _lower_self_cost_reduction_unit_died,
 }
 
 # Productions that wrap another clause: "When you play me, <inner>."
@@ -748,6 +973,11 @@ TRIGGER_WRAPPERS = {
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
     "at_the_start_of_your_beginning_phase": ("beginning_phase_triggers", "on-beginning", {"scope": "your_beginning_phase"}),
+    # 2026-09-27 (Mushroom Pouch): the conditional statement right after the trigger condition is
+    # part of the trigger condition (Core 383.2.a.1) - on the descriptor, not a predicate of the effect
+    "at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield": (
+        "beginning_phase_triggers", "on-beginning",
+        {"scope": "your_beginning_phase", "condition": {"kind": "controls_facedown_card_at_battlefield"}}),
     # Core 469.1: the unit conquering is the one at the Battlefield being
     # scored. That is the engine's default scope for a conquer trigger; the
     # clause states it rather than relying on the default.
@@ -765,6 +995,10 @@ TRIGGER_WRAPPERS = {
     # both fields carry the same trigger_id, so it goes on the Chain at most once per
     # Combat (383.4.e.2.a, 383.4.f.2.a).
     "when_i_attack_or_defend": (("attack_triggers", "defend_triggers"), "on-attack-or-defend", None),
+    # 2026-09-27: one ability, two conditions of different kinds - a Play Effect (Core 383.4.a,
+    # 419.4.a) and a Conquer Effect (383.4.c.2.a). The conquer field's default scope is the
+    # Unit's own (unit_here, battlefield_control._score_triggers), so no extra is shared.
+    "when_im_played_and_when_i_conquer": (("play_triggers", "conquer_triggers"), "on-play-and-conquer", None),
     # 2026-09-24: watched triggers - a typed watch over the semantic events (watchers.py),
     # woken by the play transaction's "played" and by every resolution's events. The player
     # "you" is the event's actor; each fact the text names is a named filter, nothing else.
@@ -803,6 +1037,18 @@ TRIGGER_WRAPPERS = {
     "the_first_time_a_friendly_unit_dies_each_turn": ("event_triggers", "on-first-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "occurrence": "first_each_turn"}}),
+    # 2026-09-27: "the Nth time I move" - the card's own Moves this turn, a Standard Move or one an
+    # effect makes (Core 420.2, 446.1), counted per object (Core 124); the count reaching N
+    # triggers it once (Core 383.1, 383.1.b). A Recall is not a Move (446.1) and emits no `moved`
+    "the_first_time_i_move_each_turn": ("event_triggers", "on-first-move", {"watch": {
+        "kinds": ["moved"], "scope": "self", "occurrence": "first_each_turn"}}),
+    "the_third_time_i_move_in_a_turn": ("event_triggers", "on-third-move", {"watch": {
+        "kinds": ["moved"], "scope": "self", "occurrence": "nth_each_turn", "nth": 3}}),
+    # 2026-09-27: a player-level Conquer Effect (Core 383.4.c.2.b): it references the player who
+    # Conquered, so it fires from any source that player controls where its abilities work - a
+    # board object or a Legend in its Legend Zone (battlefield_control._score_triggers). Distinct
+    # from a Unit's "When I conquer" (unit_here) and a Battlefield's "When you conquer here"
+    "when_you_conquer": ("conquer_triggers", "on-you-conquer", {"scope": "controller"}),
 }
 
 # A Battlefield's own trigger is a different shape from an object's - Core

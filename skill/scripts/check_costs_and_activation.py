@@ -26,6 +26,14 @@ Must hold:
     are named in the receipt;
   - a paid [Repeat] adds one execution with its own suffixed choices
     (820.1.d, 820.2.a); declining leaves one; a mandatory Repeat is invalid;
+    the Repeat is the outer program's: "deal 1 to each of up to two units" with
+    one Repeat deals 1 + 1, a Deal augmented with a draw deals 1 + 1 and draws
+    2, and a kill replaced with a draw draws 2 - a per-object application or a
+    replacement's events do not run once per execution again (2026-09-28);
+    a choice with no decision_ref ("discard 1", "recycle a card from your
+    trash") repeated: the copy is answered under its own suffixed default ref
+    and asks for it when absent - it never reuses the first execution's
+    choice (820.2.a, 2026-09-28);
   - a restricted Add resource lands in resources.restricted, is spent first
     for a matching use (the event names the restriction), and cannot be
     spent otherwise — cost_unpayable naming it, while the same pool with a
@@ -276,6 +284,95 @@ def main() -> int:
         errors.append("declining the Repeat still recorded an extra execution")
     elif [e["effect_id"] for e in resolved_once["trace"]["effect"]] != ["d"]:
         errors.append(f"negative mutation failed: declining the Repeat still executed twice: {[e['effect_id'] for e in resolved_once['trace']['effect']]}")
+    # 2026-09-28: the Repeat is the outer program's - an instruction applied per object, or a
+    # replacement's events, run once per execution, not once per execution again (nested_context).
+    # "Deal 1 to each of up to two units." with one Repeat paid: 1 + 1 to u2, not 4
+    multi_program = program("sp", {"op": "deal_damage", "effect_id": "d", "amount": 1,
+                                   "targets": {"selectors": [{"object_id": "u2", "chosen_zone_class": "board", "kind": "unit"}],
+                                               "min": 0, "max": 2}})
+    decl = declaration(cost=repeat_cost, effect_program_id="sp")
+    played = play_card(timing, deck, decl, engine_decisions=envelope(deck, intent("rep", True)), effect_program=multi_program)
+    if played.get("committed"):
+        fin = finalize_oldest_pending(played["next_timing_state"])["next_state"]
+        fin["chain"]["consecutive_passes"] = ["p1", "p2"]
+        multi = resolve_with_program(fin, "spell-1", played["next_effect_state"], multi_program)
+        dealt_twice = (multi.get("next_effect_state") or {}).get("objects", {}).get("u2", {}).get("damage", 0) \
+            - played["next_effect_state"]["objects"]["u2"].get("damage", 0)
+        if not multi.get("committed") or dealt_twice != 2:
+            errors.append(f"'deal 1 to each of up to two units' with one Repeat dealt {dealt_twice} to u2, not 1 + 1 "
+                          f"(820.1.d): {multi.get('reason')}")
+    else:
+        errors.append(f"the multi-target Repeat spell was not played: {played.get('reason_code')} {played.get('reason')}")
+    augmenting = hand_state("c1", energy=0)
+    augmenting["objects"]["u2"]["damage"] = 0
+    augmenting["players"]["p1"]["zones"]["main_deck"] = ["c2", "c3"]
+    augmenting["players"]["p1"]["zones"]["trash"] = []
+    augmenting["replacement_effects"] = [{"replacement_id": "and-draw", "controller": "p1", "source_object": "u1",
+                                          "mode": "augment_with", "event_op": "deal_damage", "optional": False,
+                                          "uses_remaining": 2, "target_object_id": "u2",
+                                          "replacement_effects": [{"op": "draw", "player": "p1", "count": 1}]}]
+    hand_before = len(augmenting["players"]["p1"]["zones"]["hand"])
+    augmented = apply_program(augmenting, program("aug", {"op": "deal_damage", "effect_id": "d", "object_id": "u2", "amount": 1}),
+                              context={"repeat": {"executions": 2}})
+    after = augmented.get("next_state") or augmenting
+    if not augmented.get("committed") or after["objects"]["u2"]["damage"] != 2 \
+            or len(after["players"]["p1"]["zones"]["hand"]) != hand_before + 2:
+        errors.append(f"a Deal augmented with a draw, repeated once: 1 + 1 dealt and 2 drawn, got "
+                      f"{after['objects']['u2']['damage']} dealt, {len(after['players']['p1']['zones']['hand']) - hand_before} drawn "
+                      f"({augmented.get('reason') or augmented.get('errors')})")
+    # 820.2.a: a choice with no decision_ref of its own is answered under a default ref - the copy's
+    # default carries the execution suffix, so it asks for its own choice and never reads the first
+    # execution's ("discard:p1" / "discard:p1#1"; "choice:trash:p1" / "choice:trash:p1#1")
+    chooser_state = hand_state("c1", energy=0)
+    for card, zone in (("k1", "hand"), ("k2", "hand"), ("t1", "trash"), ("t2", "trash")):
+        chooser_state["objects"][card] = {"owner": "p1", "controller": "p1", "kind": "spell", "base_might": 0,
+                                          "might_modifiers": [], "damage": 0, "exhausted": False}
+        chooser_state["players"]["p1"]["zones"][zone].append(card)
+
+    def picks(*rows):
+        return {"schema_version": "engine-decisions.v1", "input_hash": hash_value(chooser_state), "decisions": [
+            {"decision_id": ref, "stage": "resolution", "kind": "card_selection", "controller": "p1", "value": [card],
+             "selection_identities": {card: object_identity(chooser_state, card)}} for ref, card in rows]}
+
+    twice = {"repeat": {"executions": 2}}
+    discard_twice = apply_program(chooser_state, program("dc", {"op": "discard", "effect_id": "d", "player": "p1", "count": 1}),
+                                  decisions=picks(("discard:p1", "k1"), ("discard:p1#1", "k2")), context=twice)
+    if not discard_twice.get("committed") or not {"k1", "k2"} <= set(discard_twice["next_state"]["players"]["p1"]["zones"]["trash"]):
+        errors.append(f"'discard 1' repeated with no decision_ref: k1 then k2 should both be discarded, each by its own "
+                      f"choice: {discard_twice.get('reason_code')} {discard_twice.get('reason') or discard_twice.get('errors')}")
+    asks = apply_program(chooser_state, program("dc", {"op": "discard", "effect_id": "d", "player": "p1", "count": 1}),
+                         decisions=picks(("discard:p1", "k1")), context=twice)
+    if asks.get("committed") or asks.get("decision_ids") != ["discard:p1#1"]:
+        errors.append(f"'discard 1' repeated with only the first choice supplied did not ask for the copy's own "
+                      f"(discard:p1#1): {asks.get('reason_code')} {asks.get('decision_ids')}")
+    recycle_twice = apply_program(chooser_state, program("rc", {"op": "recycle_one", "effect_id": "r", "player": "p1",
+                                                               "choice": {"selection_kind": "single", "from": "trash", "by": "controller"}}),
+                                  decisions=picks(("choice:trash:p1", "t1"), ("choice:trash:p1#1", "t2")), context=twice)
+    if not recycle_twice.get("committed") or recycle_twice["next_state"]["players"]["p1"]["zones"]["main_deck"][-2:] != ["t1", "t2"]:
+        errors.append(f"'recycle a card from your trash' repeated with no decision_ref: t1 then t2 should be recycled: "
+                      f"{recycle_twice.get('reason_code')} {recycle_twice.get('reason') or recycle_twice.get('errors')}")
+    # the execution mark is engine-internal: suffix_decision_refs also composes a card's parts (the
+    # overlay's compile_card_program), and a composed program must not carry it
+    from effect_ir import suffix_decision_refs
+    composed = suffix_decision_refs([{"op": "discard", "effect_id": "d", "player": "p1", "count": 1}], "-1")
+    if any(key.startswith("_") for effect in composed for key in effect):
+        errors.append(f"suffix_decision_refs wrote an engine-internal field into a composed program: {composed}")
+    # a kill replaced with a draw, repeated once: the replacement's draw happens once per execution
+    replacing = copy.deepcopy(augmenting)
+    for n in range(4):
+        replacing["objects"][f"deck{n}"] = {"owner": "p1", "controller": "p1", "kind": "spell", "base_might": 0,
+                                            "might_modifiers": [], "damage": 0, "exhausted": False}
+        replacing["players"]["p1"]["zones"]["main_deck"].append(f"deck{n}")
+    replacing["replacement_effects"] = [{"replacement_id": "instead-draw", "controller": "p1", "source_object": "u1",
+                                         "mode": "replace_with", "event_op": "kill", "optional": False,
+                                         "uses_remaining": 2, "target_object_id": "u2",
+                                         "replacement_effects": [{"op": "draw", "player": "p1", "count": 1}]}]
+    replaced = apply_program(replacing, program("rep", {"op": "kill", "effect_id": "k", "object_id": "u2"}),
+                             context={"repeat": {"executions": 2}})
+    after = replaced.get("next_state") or replacing
+    if not replaced.get("committed") or len(after["players"]["p1"]["zones"]["hand"]) != hand_before + 2:
+        errors.append(f"a kill replaced with a draw, repeated once: 2 drawn, got "
+                      f"{len(after['players']['p1']['zones']['hand']) - hand_before} ({replaced.get('reason') or replaced.get('errors')})")
 
     # --- restricted Add resources ------------------------------------------------------------------------
     granted = apply_program(hand_state("c1", energy=0),

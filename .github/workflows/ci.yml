@@ -214,6 +214,13 @@ jobs:
       - name: Trigger finalization binds targets and dispatches the program by content
         run: python3 skill/scripts/check_trigger_finalization.py
 
+      # A triggered ability's base cost ("[do X] to [do Y]" opening its effect, Core 204.3.a,
+      # 383.3.b) is paid as it is finalized, with the play transaction's cost machinery;
+      # declined or unpayable, the ability leaves the Chain unfinalized and nothing is paid
+      # (404.2, 203.3); resolution reads the receipt and pays nothing again.
+      - name: Trigger base cost paid at finalization
+        run: python3 skill/scripts/check_trigger_cost.py
+
       # A triggered ability's program runs with the identity its source had when it
       # triggered, recorded on the chain item; the relational "here" (location_ref)
       # resolves fresh at execution and refuses by name when the source left, changed
@@ -232,11 +239,19 @@ jobs:
         run: python3 skill/scripts/check_watch_wiring.py
       - name: play watchers wake when the card resolves, never when it is countered (Core 419.4.a)
         run: python3 skill/scripts/check_play_trigger_timing.py
+      - name: A Standard Move wakes watchers, the Nth time I move, and a Legend's Conquer and end-of-turn triggers
+        run: python3 skill/scripts/check_move_count_and_legend_triggers.py
       - name: A Might change over every unit of a side, Base and Battlefield
         run: python3 skill/scripts/check_bulk_might.py
 
       - name: Printed static auras - a unit's over the other friendly units at its Battlefield, a Battlefield's over the units at it
         run: python3 skill/scripts/check_static_auras.py
+      - name: Printed keyword auras - Ganking at a Battlefield, Assault / Shield here, Vision to the other friendly units (817.2)
+        run: python3 skill/scripts/check_keyword_auras.py
+      - name: Conditional passives - buffed, discarded this turn, Mighty from the layers in progress (476.3); Might per count
+        run: python3 skill/scripts/check_conditional_passives.py
+      - name: Conditional entry - "If an opponent's score is within N / controls a battlefield, I enter ready." (364.3.a, 369.3)
+        run: python3 skill/scripts/check_conditional_entry.py
 
       # Every engine check is listed in this workflow; one that is not has never run.
       - name: CI lists every engine check
@@ -514,12 +529,48 @@ jobs:
         run: python3 skill/scripts/check_cost_comparison.py
       - name: chosen Move destination (Core 428)
         run: python3 skill/scripts/check_move_destination.py
+      - name: printed Battlefield passives - Bonus Damage to units here, an additional facedown card (Core 713-715, 107.3.b.1)
+        run: python3 skill/scripts/check_battlefield_passives.py
+      - name: a look's own sets - recycle the rest, recycle up to both and put the others back (Core 416.4, 424.4.a, 436.1.a)
+        run: python3 skill/scripts/check_look_session_sets.py
+      - name: a trigger's own board choice is made as it resolves, not a re-chosen target (Core 355.10.f)
+        run: python3 skill/scripts/check_resolution_choice.py
       - name: two instructions joined by 'and' are independent steps (Core 422.4)
         run: python3 skill/scripts/check_sequence_steps.py
+      - name: target counts and two target slots, held where the targets are chosen (Core 355.8, 355.13)
+        run: python3 skill/scripts/check_target_counts.py
+      - name: an instruction its controller may perform, decided as it resolves (Core 355.12)
+        run: python3 skill/scripts/check_optional_instruction.py
       - name: watched triggers - one per stunned enemy, one per discard batch (Core 383.3.a)
         run: python3 skill/scripts/check_watch_each_and_discard.py
       - name: player referent bound to a reveal (Sabotage)
         run: python3 skill/scripts/check_player_ref_and_reveal.py
+      - name: a card's own Energy reduction read off the board - highest Might, a death this turn (Core 356.4, 428.1)
+        run: python3 skill/scripts/check_cost_from_board.py
+      - name: opponents can't play cards this turn - refuses their card plays, not their abilities (Core 054.1, 052)
+        run: python3 skill/scripts/check_play_prohibition.py
+      - name: a linked 'then move it to a battlefield' - same object, skipped with an ignored earlier instruction (Core 359.3.e.14.a)
+        run: python3 skill/scripts/check_linked_move.py
+      - name: a permanent's granted play permission - friendly units to open battlefields (Core 355.2.b, 170.11.c)
+        run: python3 skill/scripts/check_granted_play_permission.py
+      - name: split damage - Targets at finalization capped by the damage, the division at resolution (Core 355.14)
+        run: python3 skill/scripts/check_split_damage.py
+      - name: a granted Temporary with no duration on a unit at a battlefield or a gear (Core 816, 801.3.a.3)
+        run: python3 skill/scripts/check_granted_temporary.py
+      - name: a Beginning Phase trigger's own condition - a facedown card at a battlefield (Core 383.2.a.1)
+        run: python3 skill/scripts/check_phase_trigger_condition.py
+      - name: granted Assault (Core 807.2, Cleave)
+        run: python3 skill/scripts/check_grant_assault.py
+      - name: linked instructions - its controller / owner / Might / Energy cost (Core 359.3.e.14)
+        run: python3 skill/scripts/check_linked_references.py
+      - name: the next spell / unit you play this turn (Core 390.4, 391)
+        run: python3 skill/scripts/check_next_card_effects.py
+      - name: draw N for each of your Mighty units (Core 708, 710)
+        run: python3 skill/scripts/check_draw_per_each.py
+      - name: When I'm played and when I conquer - one ability, a Play and a Conquer condition
+        run: python3 skill/scripts/check_played_and_conquer_trigger.py
+      - name: This enters exhausted - a printed entry replacement (Core 369.3)
+        run: python3 skill/scripts/check_enters_exhausted.py
       - name: stun.v1 (DP-94, Core 423)
         run: python3 skill/scripts/check_stun.py
       - name: occupied_enemy_battlefield (DP-95, Core 355.2)
@@ -610,12 +661,17 @@ jobs:
           python3 "$REPO/skill/scripts/check_op_dispatch.py"
           python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
+          python3 "$REPO/skill/scripts/check_trigger_cost.py"
           python3 "$REPO/skill/scripts/check_location_ref.py"
           python3 "$REPO/skill/scripts/check_token_minting.py"
           python3 "$REPO/skill/scripts/check_watch_wiring.py"
           python3 "$REPO/skill/scripts/check_play_trigger_timing.py"
+          python3 "$REPO/skill/scripts/check_move_count_and_legend_triggers.py"
           python3 "$REPO/skill/scripts/check_bulk_might.py"
           python3 "$REPO/skill/scripts/check_static_auras.py"
+          python3 "$REPO/skill/scripts/check_keyword_auras.py"
+          python3 "$REPO/skill/scripts/check_conditional_passives.py"
+          python3 "$REPO/skill/scripts/check_conditional_entry.py"
           python3 "$REPO/skill/scripts/check_trigger_source_identity.py"
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"
@@ -683,9 +739,27 @@ jobs:
           python3 "$REPO/skill/scripts/check_replacement_subject.py"
           python3 "$REPO/skill/scripts/check_cost_comparison.py"
           python3 "$REPO/skill/scripts/check_move_destination.py"
+          python3 "$REPO/skill/scripts/check_battlefield_passives.py"
+          python3 "$REPO/skill/scripts/check_look_session_sets.py"
+          python3 "$REPO/skill/scripts/check_resolution_choice.py"
           python3 "$REPO/skill/scripts/check_sequence_steps.py"
+          python3 "$REPO/skill/scripts/check_target_counts.py"
+          python3 "$REPO/skill/scripts/check_optional_instruction.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
+          python3 "$REPO/skill/scripts/check_cost_from_board.py"
+          python3 "$REPO/skill/scripts/check_play_prohibition.py"
+          python3 "$REPO/skill/scripts/check_linked_move.py"
+          python3 "$REPO/skill/scripts/check_granted_play_permission.py"
+          python3 "$REPO/skill/scripts/check_split_damage.py"
+          python3 "$REPO/skill/scripts/check_granted_temporary.py"
+          python3 "$REPO/skill/scripts/check_phase_trigger_condition.py"
+          python3 "$REPO/skill/scripts/check_grant_assault.py"
+          python3 "$REPO/skill/scripts/check_linked_references.py"
+          python3 "$REPO/skill/scripts/check_next_card_effects.py"
+          python3 "$REPO/skill/scripts/check_draw_per_each.py"
+          python3 "$REPO/skill/scripts/check_played_and_conquer_trigger.py"
+          python3 "$REPO/skill/scripts/check_enters_exhausted.py"
           python3 "$REPO/skill/scripts/check_stun.py"
           python3 "$REPO/skill/scripts/check_play_destination.py"
           python3 "$REPO/skill/scripts/check_move_restriction.py"

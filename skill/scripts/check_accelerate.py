@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Regression gate for `accelerate.v1` (Round H, DP-92; Core 805, 806).
+"""Regression gate for `accelerate.v1` (Round H, DP-92; Core 805).
 
 The rule, in its own words:
 
-    805.2.a  "Accelerate is a Unit ability."
-    805.2.b  "Accelerate is functionally short for 'As you play me, you may pay
+    805.1    "Accelerate is a Unit ability."
+    805.1.a  "Accelerate is functionally short for 'As you play me, you may pay
               [1][C] as an additional cost. If you do, I enter ready.'"
              The Power portion can be paid only with a Power matching one of
              the unit's Domains; with no Domain, any Domain's Power.
-    806.1.a  the cost "cannot be paid while the unit is on the board, only as
+    805.2.a  the cost "cannot be paid while the unit is on the board, only as
               part of the steps of playing a card".
-    806.1.b  "Paying the cost generates a delayed Replacement Effect. Even if
+    805.2.b  "Paying the cost generates a delayed Replacement Effect. Even if
               the unit loses the accelerate keyword during the finalization
               process, as long as the cost was paid, that unit will still enter
               ready."
@@ -26,9 +26,9 @@ Must hold, including Codex's four contracts on the ruling:
     `optional_cost_intent_required`, however full the pool is;
   - the Power must match a Domain: a Calm unit cannot pay from a Fury-only
     pool, and the negative mutation gives the same unit that Domain and it can;
-  - 806.1.b: the keyword removed after payment still enters ready; **negative
+  - 805.2.b: the keyword removed after payment still enters ready; **negative
     mutation**: not paying and removing it enters exhausted;
-  - 806.1.a: a Unit already on the board is offered nothing;
+  - 805.2.a: a Unit already on the board is offered nothing;
   - multiple instances are redundant: one cost, charged once;
   - **the binding is to this card and this play**: a delayed replacement
     naming another card is refused by the state validator, and one bound to
@@ -185,19 +185,19 @@ def main() -> int:
     if asked.get("committed") and component(asked, "accelerate") is not None:
         errors.append("a card with no Domain data was charged an Accelerate cost")
 
-    # --- 806.1.b: paid survives losing the keyword ---------------------------------------------------
+    # --- 805.2.b: paid survives losing the keyword ---------------------------------------------------
     lost = copy.deepcopy(paid["next_effect_state"])
     lost["objects"]["c1"]["keywords"] = []
     after, trace, _ = complete_permanent_play(lost, "unit-1")
     if trace.get("error") or after["objects"]["c1"]["exhausted"]:
-        errors.append(f"a paid Accelerate did not survive losing the keyword (806.1.b): {trace.get('entry_state')}")
+        errors.append(f"a paid Accelerate did not survive losing the keyword (805.2.b): {trace.get('entry_state')}")
     lost_unpaid = copy.deepcopy(declined["next_effect_state"])
     lost_unpaid["objects"]["c1"]["keywords"] = []
     after_unpaid, _, _ = complete_permanent_play(lost_unpaid, "unit-1")
     if not after_unpaid["objects"]["c1"]["exhausted"]:
         errors.append("negative mutation failed: an unpaid Accelerate entered ready once the keyword was removed")
 
-    # --- 806.1.a: nothing on the board -----------------------------------------------------------------
+    # --- 805.2.a: nothing on the board -----------------------------------------------------------------
     board_offer, board_reason = pt.accelerate_offer(accel_state(on_board=True), "c1")
     if board_offer is None and board_reason is None:
         pass  # the keyword is still on the object; the offer only exists inside a play
@@ -206,7 +206,7 @@ def main() -> int:
         # a board card never reaches the intent loop
         played_from_board = play(accel_state(on_board=True), paid=True)
         if played_from_board.get("committed"):
-            errors.append("a Unit already on the board paid an Accelerate cost (806.1.a)")
+            errors.append("a Unit already on the board paid an Accelerate cost (805.2.a)")
 
     # --- multiple instances are redundant ----------------------------------------------------------------
     twice = accel_state()

@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 OUT = ROOT / "skill" / "data" / "clause_grammar" / "clause_grammar.json"
 CATALOGUE = ROOT / "skill" / "data" / "keyword_catalog" / "keyword_catalog.json"
 sys.path.insert(0, str(ROOT / "skill" / "scripts"))
-from effect_ir import GRANTABLE_KEYWORDS  # noqa: E402
+from effect_ir import GRANTABLE_KEYWORDS, UNTIMED_GRANTABLE_KEYWORDS  # noqa: E402
 
 N = "clause-grammar.v1/normalize"
 
@@ -49,7 +49,8 @@ def grantable_alternatives() -> dict:
     catalogue = {e["name"].lower() for e in json.loads(CATALOGUE.read_text(encoding="utf-8"))["entries"]}
     return {
         keyword: {"pattern": rf"\[{keyword}(?: (?P<{keyword}_grant_value>\d+))?\]", "value": {"keyword": keyword}}
-        for keyword in sorted(GRANTABLE_KEYWORDS & catalogue)
+        # 2026-09-27: Temporary is granted with no duration (Core 801.3.a.3) by its own rows, not here
+        for keyword in sorted((GRANTABLE_KEYWORDS - UNTIMED_GRANTABLE_KEYWORDS) & catalogue)
     }
 
 
@@ -169,11 +170,20 @@ PRODUCTIONS = [
             "Give that unit [Ganking] this turn.", "Give that unit [Backline] this turn.",
             "Give a unit [Shield 1] this combat.", "Give me [Tank] this combat.",
             "Give friendly units [Ganking] this combat.", "Give an enemy unit [Backline] this combat.",
+            # 2026-09-27: Assault is grantable (Core 807.2's own example is "Give a unit [Assault 3]
+            # this turn."); a bare [Assault] is Assault 1 (807.1.b.3)
+            "Give a unit [Assault 3] this turn.", "Give a friendly unit [Assault 2] this turn.",
+            "Give an enemy unit [Assault] this turn.", "Give friendly units [Assault 1] this turn.",
+            "Give enemy units [Assault 2] this turn.", "Give me [Assault 2] this turn.",
+            "Give another unit [Assault 3] this turn.", "Give another friendly unit [Assault 1] this turn.",
+            "Give it [Assault 2] this turn.", "Give that unit [Assault 3] this turn.",
+            "Give a unit [Assault 2] this combat.",
         ],
         "negative": [
-            "Give a unit [Assault 3] this turn.",
+            "Give a unit [Assault 3] permanently.",
             "Give the strongest unit [Tank] this turn.",
             "Give a unit [Tank] permanently.",
+            "Give a unit [Temporary] this turn.",
         ],
     },
     {
@@ -369,6 +379,14 @@ LITERAL = [
      "A draw that happens only if the controller holds at most one card when it executes. Another count or zone is a different clause.",
      ["Draw 1 if you have one or fewer cards in your hand."],
      ["draw 1 if you have two or fewer cards in your hand", "draw 1 if an opponent has one or fewer cards in their hand", "draw 1"]),
+    # 2026-09-27 (Kadregrin the Infernal): a draw counted as it executes - the printed number for
+    # each unit its controller controls that is Mighty, Might 5 or greater (Core 708, 710)
+    ("draw_n_for_each_of_your_mighty_units", r"draw (?P<count>\d+) for each of your \[mighty\] units",
+     ["Core 413", "Core 708", "Core 710"], "instruction", ["draw"],
+     "The controller draws the number times how many units they control are Mighty when it executes; none is no draw. "
+     "Another quality, or another player's units, is a different clause.",
+     ["Draw 1 for each of your [Mighty] units."],
+     ["draw 1 for each of your units", "draw 1 for each enemy [mighty] unit", "draw 1 if you control a [mighty] unit"]),
     # 2026-09-25: the controller discards N from their own hand, chosen privately (Core 422.1);
     # a hand shorter than N discards what it has, an empty hand ignores it (422.4). Returned
     # now that ", then" no longer makes the next instruction depend on it (GPT 2026-09-25).
@@ -418,6 +436,18 @@ LITERAL = [
     # Literal rows, not a selector alternative: the selector table is pinned by the
     # signed binding specs, and "here" is not a selector phrase in every production.
     # Crackshot Corsair, Leona - Determined and Ahri - Inquisitive are the real cards.
+    # 2026-09-27 package 5 (Volibear - Furious): a split deal - the Targets chosen at finalization,
+    # no more than the damage, each at the source's current Battlefield; the division at resolution
+    ("deal_n_damage_split_among_any_number_of_enemy_units_here",
+     r"deal (?P<amount>\d+) damage split among any number of enemy units here",
+     ["Core 417", "Core 355.14", "Core 355.14.a", "Core 355.14.b", "Core 355.14.c", "Core 355.14.e",
+      "Core 355.14.f", "Core 355.14.h", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
+     ("Up to N chosen enemy Units at the source's current Battlefield, the N divided among them at resolution, a "
+      "positive amount each. Damage to every enemy Unit here, one chosen Unit, a split at a chosen Battlefield, or a "
+      "split whose amount is read off the board is a different production."),
+     ["Deal 5 damage split among any number of enemy units here."],
+     ["deal 5 damage split among any number of enemy units at a battlefield", "deal 5 to all enemy units here",
+      "deal 5 to an enemy unit here", "deal damage equal to its might split among enemy units at battlefields"]),
     ("deal_n_to_an_enemy_unit_here", r"deal (?P<amount>\d+) to an enemy unit here",
      ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or "
@@ -475,11 +505,48 @@ LITERAL = [
      "A condition on the controller's own Runes on the board.",
      ["While you have 8+ runes, I have +4 [M]."],
      ["while i'm attacking or defending alone, i have +2 [m]", "while you have 8+ runes, i have [tank]"]),
+    # 2026-09-27 package 5: a turn-long prohibition on the opponents' card plays (Brynhir
+    # Thundersong). Cards are Main Deck cards (Core 052), so an activated ability is untouched;
+    # Can't beats Can (054.1); it expires with the turn (317.2.c).
+    ("opponents_cant_play_cards_this_turn", r"opponents can't play cards this turn",
+     ["Core 054.1", "Core 052", "Core 317.2.c"], "instruction", ["grant_turn_effect"],
+     ("A turn effect its controller creates: each opponent of that player can't play a card for the rest of "
+      "the turn. The controller's own plays, an activated ability, a later turn, and a prohibition on one kind "
+      "of card are outside it."),
+     ["Opponents can't play cards this turn."],
+     ["opponents can't play spells this turn", "you can't play cards this turn",
+      "opponents can't play cards", "opponents can't activate abilities this turn"]),
+    # 2026-09-27 (Fading Memories): one chosen permanent - a unit at a battlefield OR a gear - is granted
+    # Temporary with no duration, so while it stays on the board (Core 816.1.a, 801.3.a.3)
+    ("give_a_unit_at_a_battlefield_or_a_gear_temporary", r"give a unit at (?:a )?battlefield or a gear \[temporary\]",
+     ["Core 816", "Core 816.1.a", "Core 801.3.a.3", "Core 355.9"], "instruction", ["grant_keyword", "targeting"],
+     "One chosen object that is a unit at a battlefield or a gear anywhere on the board gains Temporary for as long "
+     "as it stays there. A unit in a base, a duration, or another keyword is a different clause.",
+     ["Give a unit at a battlefield or a gear [Temporary]."],
+     ["give a unit or a gear [temporary]", "give a unit at a battlefield or a gear [temporary] this turn",
+      "give a unit at a battlefield or a gear [tank]"]),
     ("units_you_play_this_turn_enter_ready", r"units you play this turn enter ready",
      ["Core 317.2", "Core 419.4"], "instruction", ["grant_turn_effect"],
      "Entry state for this turn's own plays.",
      ["Units you play this turn enter ready."],
      ["units you play this turn enter exhausted", "i enter ready"]),
+    # 2026-09-27: delayed passives for the NEXT card of a kind played this turn, spent by that play
+    # (Core 390.4, 391): a discount on the next spell's cost (356.4), and the next unit's entry state
+    ("the_next_spell_you_play_this_turn_costs_n_less",
+     r"the next spell you play this turn costs \[e(?P<amount>\d+)\] less",
+     ["Core 390.4", "Core 391", "Core 356.4", "Core 356.6"], "instruction", ["grant_turn_effect"],
+     "One discount of a fixed Energy amount on the next spell its controller plays this turn, spent by that play "
+     "whether or not it lowered anything. Every spell, a Power amount, or a unit is a different clause.",
+     ["The next spell you play this turn costs :rb_energy_5: less."],
+     ["spells you play this turn cost :rb_energy_1: less", "the next unit you play this turn costs :rb_energy_2: less",
+      "the next spell you play this turn costs :rb_rune_rainbow: less"]),
+    ("the_next_unit_you_play_this_turn_enters_ready", r"the next unit you play this turn enters ready",
+     ["Core 390.4", "Core 391", "Core 369.3", "Core 143.4"], "instruction", ["grant_turn_effect"],
+     "The next unit its controller plays this turn enters ready: bound to that play as an entry replacement, "
+     "then spent. Every unit this turn is 'Units you play this turn enter ready.'",
+     ["The next unit you play this turn enters ready."],
+     ["units you play this turn enter ready", "the next spell you play this turn enters ready",
+      "the next unit you play this turn enters exhausted"]),
     ("self_cost_reduction_score",
      r"if an opponent's score is within (?P<within>\d+) points? of the victory score, this costs \[e(?P<amount>\d+)\] less",
      ["Core 356.4", "Core 194.1"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
@@ -503,6 +570,33 @@ LITERAL = [
      "The card's own text, a fixed Energy amount per card in its controller's trash; 356.6 keeps the Energy cost at 0 or above. Another zone, or a count of something else, is a different clause.",
      ["I cost :rb_energy_1: less for each card in your trash."],
      ["i cost :rb_energy_1: less for each card in your hand", "i cost :rb_energy_1: less for each unit you control"]),
+    # 2026-09-27 package 5: a spell's own Energy reduction by a value read off the board as the
+    # cost is determined - the highest Might among the Units its player controls (Core 356.4.e's
+    # and 206's own example card). 1 per point, 0 with no Unit, never below 0 (356.6).
+    ("self_cost_reduction_highest_might",
+     r"this spell's energy cost is reduced by the highest might among units you control",
+     ["Core 356.4", "Core 356.4.b", "Core 356.4.e", "Core 356.6", "Core 355.9.a.1", "Core 206"],
+     "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text: its Energy cost reduced by the highest Might among the Units its player controls on the "
+      "board, read as the cost is determined. The sum of their Might, an opponent's Units, a Power reduction or a "
+      "unit's printed Might are different clauses."),
+     ["This spell's Energy cost is reduced by the highest Might among units you control."],
+     ["this spell's energy cost is reduced by the highest might among units your opponents control",
+      "this spell's energy cost is reduced by the total might of units you control",
+      "this spell's power cost is reduced by the highest might among units you control"]),
+    # 2026-09-27 package 5: a card's own fixed Energy reduction gated by a death this turn (Core
+    # 356.4, 428.1): a Unit on the named side of its player died this turn.
+    ("self_cost_reduction_unit_died",
+     r"if an? (?P<relation>enemy|friendly) unit has died this turn, this costs \[e(?P<amount>\d+)\] less",
+     ["Core 356.4", "Core 356.4.b", "Core 428.1", "Core 428.2.a"], "self_cost_reduction",
+     ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text, a fixed Energy amount, gated by a Unit of the named side having died this turn - the "
+      "side as it was when it died. A unit that died last turn, a unit that left the board another way, or a "
+      "Power reduction is a different clause."),
+     ["If an enemy unit has died this turn, this costs :rb_energy_2: less."],
+     ["if an enemy unit has died this turn, this costs :rb_rune_rainbow: less",
+      "if an enemy unit died last turn, this costs :rb_energy_2: less",
+      "if an enemy unit has been banished this turn, this costs :rb_energy_2: less"]),
     # 2026-09-24: a unit's printed static aura - a continuous Might effect over the other
     # friendly units at its own Battlefield, read live off the object while it is on the
     # board (effect_ir.printed_aura_effects; check_static_auras.py).
@@ -530,6 +624,135 @@ LITERAL = [
       "in play. A keyword instead of Might, or 'friendly' / 'enemy' units, is a different clause."),
      ["Units here have +1 :rb_might:."],
      ["units here have [ganking]", "friendly units here have +1 :rb_might:", "units have +1 :rb_might:"]),
+    # 2026-09-27: printed keyword auras - a keyword granted in the Ability layer (477.2, 477.2.b),
+    # read live off the source (effect_ir.printed_aura_effects; check_keyword_auras.py). Each
+    # admits only the keywords its gate exercises.
+    ("units_here_have_keyword",
+     r"units here have \[(?P<keyword>ganking)\]",
+     ["Core 365.1", "Core 190.6", "Core 476", "Core 477.2", "Core 477.2.b", "Core 810.1.b"], "passive", ["might_aura", "layer_engine"],
+     ("A Battlefield's printed keyword aura: every Unit at it, whoever controls it, has the keyword while it is "
+      "there. A Might amount, 'friendly' / 'enemy' units, a keyword with a value, or a timed grant is a different clause."),
+     ["Units here have [Ganking]."],
+     ["units here have +1 :rb_might:", "friendly units here have [ganking]", "units have [ganking]",
+      "units here have [ganking] this turn"]),
+    ("other_friendly_units_here_have_keyword",
+     r"other friendly units here have \[(?P<keyword>assault|shield)\]",
+     ["Core 365.1", "Core 476", "Core 477.2", "Core 477.2.b", "Core 807.2", "Core 814.2"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura over every other friendly Unit at the Battlefield where the source is, while the source "
+      "is on the board; values are summed with the Unit's own (807.2, 814.2). A Might amount, the source itself, "
+      "a whole-board aura or a keyword with a value is a different clause."),
+     ["Other friendly units here have [Assault].", "Other friendly units here have [Shield]."],
+     ["other friendly units here have +1 :rb_might:", "friendly units here have [assault]",
+      "other friendly units have [assault]", "other friendly units here have [assault 2]"]),
+    ("other_friendly_units_have_keyword",
+     r"other friendly units have \[(?P<keyword>vision)\]",
+     ["Core 365.1", "Core 476", "Core 477.2", "Core 477.2.b", "Core 817.2"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura over every other friendly Unit on the board, while the source is there. Each "
+      "instance of Vision triggers separately (817.2), so a Unit with its own Vision played under this aura "
+      "triggers twice. 'here', the source itself, or another keyword is a different clause."),
+     ["Other friendly units have [Vision]."],
+     ["other friendly units here have [vision]", "friendly units have [vision]", "other friendly units have [tank]"]),
+    # 2026-09-27: a card's own conditional keywords (364.3.a), each a keyword_grant on the card
+    # itself that applies only while its condition holds; the condition is evaluated in the
+    # Ability layer - for Mighty (708) from the layer result in progress (476.2, 476.3).
+    ("while_im_buffed_i_have_keywords",
+     r"while i'm buffed, i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 477.2", "Core 702.2.a"], "conditional_keywords",
+     ["continuous_effects", "condition_v1", "conditional_passives", "buff_counters"],
+     ("The card's own keywords while it has a Buff counter (702.2.a); spent, it no longer has them. Another "
+      "object's Buff, a Might amount, or a keyword with a value is a different clause."),
+     ["While I'm buffed, I have [Ganking]."],
+     ["while i'm buffed, i have an additional +1 :rb_might:", "while a friendly unit is buffed, i have [ganking]",
+      "while i'm buffed, i have [ganking 2]"]),
+    ("if_you_discarded_a_card_this_turn_i_have_keywords",
+     r"if you've discarded a card this turn, i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 477.2", "Core 422.1"], "conditional_keywords",
+     ["continuous_effects", "condition_v1", "conditional_passives", "private_discard"],
+     ("The card's own keywords while its controller has discarded at least one card this turn - by an "
+      "instruction or as a cost (422.1, 422.3). An opponent's discard, another turn, or a count other than one "
+      "is a different clause."),
+     ["If you've discarded a card this turn, I have [Assault] and [Ganking]."],
+     ["if an opponent has discarded a card this turn, i have [assault]", "if you've discarded two cards this turn, i have [assault]",
+      "when you discard a card, i have [assault]"]),
+    ("while_im_mighty_i_have_keywords",
+     r"while i'm \[mighty\], i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 476.2", "Core 476.3", "Core 477.2", "Core 708"], "conditional_keywords",
+     ["continuous_effects", "condition_v1", "conditional_passives", "layer_engine"],
+     ("The card's own keywords while its own Might is 5 or more (708), read from the layers in progress: a Buff "
+      "added in the Arithmetic layer makes it Mighty and the Ability layer is evaluated again (476.2); once the "
+      "grant is disqualified it is not re-applied (476.3). Another unit's Might is a different clause."),
+     ["While I'm [Mighty], I have [Deflect], [Ganking], and [Shield]."],
+     ["while a friendly unit is [mighty], i have [ganking]", "while i'm [mighty], i have +2 :rb_might:",
+      "when i become [mighty], i have [ganking]"]),
+    ("while_im_buffed_i_have_an_additional_might",
+     r"while i'm buffed, i have an additional \+(?P<amount>\d+) \[m\]",
+     ["Core 364.3", "Core 364.3.a", "Core 702.2.a", "Core 703", "Core 477.3"], "conditional_might",
+     ["continuous_effects", "condition_v1", "conditional_passives", "buff_counters"],
+     ("+N Might on the card itself while it has a Buff counter, on top of the Buff's own +1 (703). Another "
+      "object's Buff or a keyword is a different clause."),
+     ["While I'm buffed, I have an additional +1 :rb_might:."],
+     ["while i'm buffed, i have [ganking]", "while a friendly unit is buffed, i have an additional +1 :rb_might:",
+      "while i'm buffed, i have +1 :rb_might:"]),
+    ("i_get_might_for_each_buffed_friendly_unit_at_my_battlefield",
+     r"i get \+(?P<amount>\d+) \[m\] for each buffed friendly unit at my battlefield",
+     ["Core 364.1", "Core 477.3", "Core 477.3.b", "Core 702.2.a"], "dynamic_might", ["continuous_effects", "buff_counters"],
+     ("A passive increase of the card's own Might by the number of Units with a Buff counter, friendly to its "
+      "controller, at the Battlefield it is at - itself included ('friendly', not 'other'); none while it is in "
+      "a Base. Computed fresh each time (477.3.b). Enemy or unbuffed units, or 'here' elsewhere, are a different clause."),
+     ["I get +1 :rb_might: for each buffed friendly unit at my battlefield."],
+     ["i get +1 :rb_might: for each friendly unit at my battlefield", "i get +1 :rb_might: for each buffed enemy unit at my battlefield",
+      "i get +1 :rb_might: for each other buffed friendly unit at my battlefield"]),
+    ("my_might_is_increased_by_the_number_of_cards_in_your_trash",
+     r"my might is increased by the number of cards in your trash",
+     ["Core 364.1", "Core 477.3", "Core 477.3.b", "Core 108.2.b"], "dynamic_might", ["continuous_effects"],
+     ("A passive increase of the card's own Might by the number of cards in its controller's Trash, a public "
+      "zone, computed fresh each time (477.3.b). An opponent's Trash, or another zone, is a different clause."),
+     ["My Might is increased by the number of cards in your trash."],
+     ["my might is increased by the number of cards in your hand", "my might is increased by your points",
+      "my might is increased by the number of cards in your opponent's trash"]),
+    # 2026-09-27: a card's own conditional entry (364.3.a, 369.3) - an
+    # entry_replacements entry whose condition resolution_bridge.entry_state_for reads as it enters
+    ("if_an_opponents_score_is_within_n_i_enter_ready",
+     r"if an opponent's score is within (?P<within>\d+) points? of the victory score, i enter ready",
+     ["Core 364.3.a", "Core 369.3", "Core 143.4", "Core 194.3"], "passive", ["entry_replacements", "condition_v1"],
+     ("The card enters ready when, as it enters, its one opponent's score is within N of the Victory Score of the "
+      "Mode of Play; otherwise exhausted (143.4). Teams, several opponents, or a Mode that does not state its "
+      "Victory Score are refused by name, not guessed."),
+     ["If an opponent's score is within 3 points of the Victory Score, I enter ready."],
+     ["if an opponent's score is within 3 points of the victory score, this costs :rb_energy_2: less",
+      "if your score is within 3 points of the victory score, i enter ready", "i enter ready"]),
+    ("if_an_opponent_controls_a_battlefield_i_enter_ready",
+     r"if an opponent controls a battlefield, i enter ready",
+     ["Core 364.3.a", "Core 369.3", "Core 143.4", "Core 190.2.b"], "passive", ["entry_replacements", "condition_v1"],
+     ("The card enters ready when, as it enters, a Battlefield is controlled by a player who is not on its "
+      "controller's side; otherwise exhausted (143.4). 'You control', or a named Battlefield, is a different clause."),
+     ["If an opponent controls a battlefield, I enter ready."],
+     ["if you control a battlefield, i enter ready", "if an opponent controls a battlefield, i enter exhausted",
+      "i enter ready"]),
+    # 2026-09-27 (package 5): a Battlefield's printed Bonus Damage over the Units at it - every
+    # Deal of a spell or ability, whoever controls it, to a Unit there (effect_ir.bonus_damage,
+    # scope `location`); check_battlefield_passives.py
+    ("spells_and_abilities_deal_n_bonus_damage_to_units_here",
+     r"spells and abilities deal (?P<amount>\d+) bonus damage to units here",
+     ["Core 713", "Core 714", "Core 715.1", "Core 715.2"], "passive", ["bonus_damage"],
+     ("A Battlefield's printed Bonus Damage: each Deal of any player's spell or ability adds N to the damage it "
+      "deals to a Unit at this Battlefield, and only to such a Unit (715.2: each target separately), while the "
+      "Battlefield is in play. 'Your spells and abilities' (a controller's sources) or 'enemy units here' is a "
+      "different clause."),
+     ["Spells and abilities deal 1 Bonus Damage to units here."],
+     ["your spells and abilities deal 1 bonus damage", "spells and abilities deal 1 bonus damage to enemy units here",
+      "spells deal 1 bonus damage to units here", "spells and abilities deal 1 bonus damage to units"]),
+    # 2026-09-27 (package 5): a Battlefield's printed Facedown Zone occupancy of one more card
+    # (107.3.b.1); hidden.hide_card reads the capacity; check_battlefield_passives.py
+    ("you_may_hide_an_additional_card_here",
+     r"you may hide an additional card here",
+     ["Core 107.3.b", "Core 107.3.b.1", "Core 107.3.c", "Core 421.1"], "passive", ["facedown_zone", "hide_action"],
+     ("A Battlefield's printed statement: its Facedown Zone holds one card more than the one of 107.3.b - two - "
+      "while it is in play. Only this Battlefield's zone; hiding still needs control of it (107.3.c). 'Two "
+      "additional cards', or a statement on another object, is a different clause."),
+     ["You may hide an additional card here."],
+     ["you may hide a card here", "you may hide an additional card", "you may hide two additional cards here",
+      "you may play an additional card here"]),
     ("you_may_pay_own_domain_power_as_additional_cost_to_play_me",
      r"you may pay \[c\] as additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"], "passive", ["card_self_optional_cost", "domain_power"],
@@ -611,6 +834,29 @@ LITERAL = [
      ["you may play me to an occupied enemy battlefield",
       "friendly units may be played to open battlefields",
       "you may play a unit to an open battlefield"]),
+    # 2026-09-27 package 5: a permanent's printed grant to its side's unit plays (Miss Fortune -
+    # Buccaneer), read while it is on the board (Core 355.2.b, 170.11.c)
+    ("friendly_units_may_be_played_to_open_battlefields",
+     r"friendly units may be played to open battlefields",
+     ["Core 355.2.a", "Core 355.2.b", "Core 170.11.c"], "passive", ["open_battlefield"],
+     ("A permission this permanent grants while it is on the board: a unit card its controller's side plays may "
+      "enter an open Battlefield. An enemy's unit, a gear, an occupied or controlled Battlefield, and the permanent "
+      "off the board are outside it."),
+     ["Friendly units may be played to open battlefields."],
+     ["friendly units may be played to occupied enemy battlefields", "you may play me to an open battlefield",
+      "enemy units may be played to open battlefields"]),
+    # 2026-09-27: a printed replacement on how this permanent enters (Core 369.3). A Gear would
+    # otherwise enter ready (359.2.d); a Unit already enters exhausted (143.4, 359.2.c).
+    ("this_enters_exhausted",
+     r"this enters exhausted",
+     ["Core 369.3", "Core 359.2.d", "Core 143.4"], "passive", ["entry_replacements"],
+     ("The permanent's own entry replacement: it enters the board exhausted (resolution_bridge."
+      "entry_state_for reads it). A timed or granted form ('units you play this turn enter exhausted'), "
+      "or 'ready', is a different clause and stays unparsed."),
+     ["This enters exhausted."],
+     ["this enters ready",
+      "units you play enter exhausted",
+      "i enter ready"]),
     ("units_cant_move_from_here_to_base",
      r"units can't move from here to base",
      ["Core 144.4.b", "Core 359.3.e.6", "Core 190.6.a"], "passive", ["move_restriction"],
@@ -683,8 +929,26 @@ WRAPPERS = [
      ["attack_triggers"],
      ["When I attack or defend, draw 1."],
      ["when i attack, draw 1", "when i defend, draw 1", "when you attack or defend, draw 1"]),
+    # 2026-09-27: one Unit ability with two trigger conditions of different kinds - a Play Effect
+    # (Core 383.4.a, 419.4.a: on play completion) and a Conquer Effect (383.4.c, 383.4.c.2.a: the
+    # Unit present at the Battlefield Conquered). The same descriptor in play_triggers and
+    # conquer_triggers; the two events are different, so each schedules it at most once.
+    ("when_im_played_and_when_i_conquer", r"when i'm played and when i conquer, (?P<inner>.+)",
+     ["Core 383.4.a", "Core 419.4.a", "Core 383.4.c", "Core 383.4.c.2.a", "Core 469.1"],
+     ["play_triggers", "conquer_triggers"],
+     ["When I'm played and when I conquer, draw 1."],
+     ["when i'm played, draw 1", "when i conquer, draw 1", "when i'm played or when i hold, draw 1"]),
     # 2026-09-25 (Jinx - Loose Cannon): a Beginning Phase trigger (turn_cycle schedules it with
     # the Beginning Step's other effects, Core 315.2.a); both printed spellings
+    # 2026-09-27 (Mushroom Pouch): BEFORE the plain row, which would take the condition as its inner
+    # instruction and refuse it. The condition is the trigger's (Core 383.2.a.1), not the effect's
+    ("at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield",
+     r"at (?:the )?start of your beginning phase, if you control a facedown card at a battlefield, (?P<inner>.+)",
+     ["Core 315.2.a", "Core 383.2.a.1", "Core 355.9.a.3", "Core 107.3.f"], ["beginning_phase_triggers"],
+     ["At the start of your Beginning Phase, if you control a facedown card at a battlefield, draw 1."],
+     ["at the start of your beginning phase, draw 1 if you control a facedown card at a battlefield",
+      "at the start of your beginning phase, if you control a unit at a battlefield, draw 1",
+      "at the start of each player's beginning phase, if you control a facedown card at a battlefield, draw 1"]),
     ("at_the_start_of_your_beginning_phase", r"at (?:the )?start of your beginning phase, (?P<inner>.+)",
      ["Core 315.2.a", "Core 315.2.a.1", "Core 383.1"], ["beginning_phase_triggers"],
      ["At the start of your Beginning Phase, draw 1.", "At start of your Beginning Phase, draw 1."],
@@ -733,6 +997,25 @@ WRAPPERS = [
      ["Core 383.1", "Core 417", "Core 383.3.e"], ["event_triggers"],
      ["The first time a friendly unit dies each turn, draw 1."],
      ["when a friendly unit dies, draw 1", "the first time an enemy unit dies each turn, draw 1"]),
+    # 2026-09-27: "the Nth time I move" - a watch over the card's own `moved` events (a Standard
+    # Move or an effect's, Core 420.2, 446.1), counted per turn and per object; the count reaching
+    # N triggers it once (Core 383.1, 383.1.b)
+    ("the_first_time_i_move_each_turn", r"the first time i move each turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.1.b", "Core 420.2", "Core 446.1"], ["event_triggers"],
+     ["The first time I move each turn, draw 1."],
+     ["the first time a friendly unit dies each turn, draw 1", "when i move, draw 1",
+      "the third time i move in a turn, draw 1", "the first time i move each combat, draw 1"]),
+    ("the_third_time_i_move_in_a_turn", r"the third time i move in a turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.1.b", "Core 420.2", "Core 446.1"], ["event_triggers"],
+     ["The third time I move in a turn, draw 1."],
+     ["the first time i move each turn, draw 1", "the second time i move in a turn, draw 1",
+      "when i move, draw 1", "the third time a unit moves in a turn, draw 1"]),
+    # 2026-09-27: a player-level Conquer Effect (Core 383.4.c.2.b) - any source the Conquering
+    # player controls where its abilities work, a Legend in its Legend Zone included
+    ("when_you_conquer", r"when you conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.4.c", "Core 383.4.c.2.b"],
+     ["conquer_triggers"], ["When you conquer, draw 1."],
+     ["when you conquer here, draw 1", "when i conquer, draw 1", "when you hold, draw 1",
+      "when an opponent conquers, draw 1"]),
 ]
 
 

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
+from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_triggers, perform_lethal_cleanup, validate_state, zone_class
 from rules_core import apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
@@ -109,6 +109,8 @@ def finalize_trigger(
     engine_decisions: dict[str, Any] | None = None,
     *,
     perform_optional_trigger: bool | None = None,
+    pay_trigger_cost: bool | None = None,
+    payment_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Finalize the oldest Pending triggered ability: dispatch its program, bind its targets.
 
@@ -118,7 +120,17 @@ def finalize_trigger(
     and Core 355.5 is one of those steps. So this is where a target is chosen, and it
     is the only place: the selection is recorded on the chain item, and resolution
     uses the record (Core 359.3.e - a target illegal by then is mistargeted, never
-    re-chosen)."""
+    re-chosen).
+
+    2026-09-27: a program that opens with a `trigger_base_cost` (Core 204.3.a, 383.3.b,
+    403.1.b.1) has that cost paid here, after its targets are bound (402 before 404), and
+    only here (383.3.b.1, 740.4.a.2). Its controller says whether to pay
+    (`pay_trigger_cost`; `payment_context` confirms the Add window for a resource cost, Core
+    429.3). Declined, or not payable (Core 203.3), the ability leaves the Chain and never
+    becomes a Finalized Chain Item (404.2) - not a counter (404.2.a) - and nothing is paid.
+    Paid, the chain item keeps the cost receipt resolution checks, the effect state after
+    payment is returned, and what the costs did wakes the watchers (a recycle as a cost is
+    a recycle, 416.2.a) - their triggers go on the Chain after this one."""
     from play_transaction import PlayError, _check_play_targets  # late: play_transaction imports effect_ir too
     from rules_core import finalize_oldest_pending, next_procedure
     base = {"schema_version": "riftbound-trigger-finalization-result.v1",
@@ -146,6 +158,14 @@ def finalize_trigger(
     if engine_decisions is not None and engine_decisions.get("input_hash") != hash_value(effect_state):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "reason": "stale decision envelope"}
     declining = item.get("optional_at_finalize") is True and perform_optional_trigger is False
+    import trigger_cost as TC
+    cost = TC.base_cost(program)
+    if cost is None and pay_trigger_cost is not None:
+        return {**base, "valid": True, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
+                "reason": "unexpected_trigger_cost_choice", "rule_locators": ["Core 403.1.b"]}
+    if declining and pay_trigger_cost:
+        return {**base, "valid": False, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
+                "reason": "declined_trigger_cannot_pay_its_cost", "rule_locators": ["Core 383.3.a.2"]}
     recorded: list[dict[str, Any]] = []
     if not declining:
         try:
@@ -160,19 +180,111 @@ def finalize_trigger(
                 return {**base, "valid": True, "committed": False, "stage": "target_binding", "item_id": item["id"],
                         "reason": "target_selection_required", "decision_ids": [ref], "rule_locators": locators}
             recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
+    paid = None
+    choosing_first = item.get("optional_at_finalize") is True and perform_optional_trigger is None
+    if cost is not None and not declining and not choosing_first:
+        # Core 403.1.b.1 / 404: the ability's base cost, paid now or never (383.3.b.1)
+        cost_rules = locators + TC.RULES
+        if pay_trigger_cost is None:
+            return {**base, "valid": True, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
+                    "reason": "trigger_cost_choice_required", "choices": ["pay", "decline"],
+                    "decision_controller": item["controller"], "base_cost": copy.deepcopy(cost["payment"]),
+                    "rule_locators": cost_rules + ["Core 404.2"]}
+        if pay_trigger_cost is False:
+            return _trigger_left_unpaid(base, timing_state, effect_state, item, "trigger_cost_declined",
+                                        "its controller declined to pay the base cost", TC.DECLINE_RULES)
+        try:
+            paid = TC.pay_base_cost(effect_state, item, program, engine_decisions, payment_context)
+        except TC.TriggerCostError as exc:
+            if exc.kind == "unpayable":
+                return _trigger_left_unpaid(base, timing_state, effect_state, item, "trigger_cost_unpayable", str(exc),
+                                            list(dict.fromkeys(TC.UNPAYABLE_RULES + list(exc.extra.get("rule_locators") or []))))
+            extra = {k: v for k, v in exc.extra.items() if k != "rule_locators"}
+            return {**base, "valid": exc.kind != "invalid", "committed": False, "stage": "trigger_cost", "item_id": item["id"],
+                    "reason": exc.reason_code, "message": str(exc), **extra,
+                    "rule_locators": list(dict.fromkeys(cost_rules + list(exc.extra.get("rule_locators") or [])))}
     timing_result = finalize_oldest_pending(timing_state, perform_optional_trigger=perform_optional_trigger)
     if timing_result.get("applied") is not True:
         return {**base, "valid": timing_result.get("valid", True), "committed": False, "stage": "timing",
                 "reason": timing_result.get("reason_code", "finalize_failed"), "timing_result": timing_result}
     next_timing = timing_result["next_state"]
+    next_effect = effect_state
     for candidate in next_timing["chain"]["items"]:
         if candidate["id"] == item["id"]:
             candidate["finalized_targets"] = recorded
             candidate.setdefault("effect_program_hash", program_hash(registered))
+            if paid is not None:
+                candidate["trigger_cost_receipt"] = {"cost_hash": paid["cost_hash"], "receipt": copy.deepcopy(paid["receipt"])}
+    cost_trace = None
+    if paid is not None:
+        next_effect = paid["state"]
+        scheduled = _schedule_cost_watchers(base, next_timing, next_effect, paid, engine_decisions, item["id"])
+        if "failure" in scheduled:
+            return scheduled["failure"]
+        next_timing, next_effect = scheduled["timing"], scheduled["effect"]
+        cost_trace = {"stage": "trigger_cost", "outcome": "paid", "cost_hash": paid["cost_hash"],
+                      "payment_events": [e["event_id"] for e in paid["pay_events"]],
+                      **({"spend_buff": paid["buff_choice"]} if paid.get("buff_choice") else {}),
+                      "events": [e["event_id"] for e in paid["events"]], "scheduled": scheduled["scheduled"],
+                      "rule_locators": TC.RULES + ["Core 357.1", "Core 357.2"]}
+        locators = list(dict.fromkeys(locators + TC.RULES))
     return {**base, "valid": True, "committed": True, "item_id": item["id"], "next_timing_state": next_timing,
             "next_timing_state_hash": state_hash(next_timing), "finalized_targets": recorded,
+            "next_effect_state": next_effect, "next_effect_state_hash": hash_value(next_effect),
+            **({"trigger_cost": cost_trace, "cost_receipt": paid["receipt"]} if paid is not None else {}),
             "effect_program_id": item["effect_program_id"], "effect_program_hash": program_hash(program),
             "transition": timing_result.get("transition"), "rule_locators": locators}
+
+
+def _trigger_left_unpaid(base: dict[str, Any], timing_state: dict[str, Any], effect_state: dict[str, Any],
+                         item: dict[str, Any], kind: str, why: str, rule_locators: list[str]) -> dict[str, Any]:
+    """Core 404.2: a triggered ability whose base cost is not paid - declined, or not payable
+    (203.3) - leaves the Chain and never becomes a Finalized Chain Item; it is not countered
+    (404.2.a). Nothing was paid, so the effect state is the one given."""
+    removal = remove_chain_item(timing_state, item["id"], reason=kind)
+    if removal.get("applied") is not True:
+        return {**base, "valid": removal.get("valid", True), "committed": False, "stage": "trigger_cost", "item_id": item["id"],
+                "reason": removal.get("reason_code") or "chain_item_removal_failed", "timing_result": removal}
+    next_timing = removal["next_state"]
+    return {**base, "valid": True, "committed": True, "removed": True, "item_id": item["id"],
+            "next_timing_state": next_timing, "next_timing_state_hash": state_hash(next_timing),
+            "next_effect_state": effect_state, "next_effect_state_hash": hash_value(effect_state), "finalized_targets": [],
+            "transition": {"type": kind, "item_id": item["id"], "never_finalized": True, "countered": False, "why": why},
+            "rule_locators": rule_locators}
+
+
+def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], next_effect: dict[str, Any],
+                            paid: dict[str, Any], engine_decisions: dict[str, Any] | None, item_id: str) -> dict[str, Any]:
+    """What the base cost did happened while the ability was finalized: a card recycled as a cost
+    (Core 416.2.a), a permanent exhausted as one. The watchers those events wake go on the Chain
+    as Pending items after the finalized ability (Core 383.3), one batch, the way the play
+    transaction schedules what its costs woke."""
+    import watchers
+    events = paid["events"]
+    if paid["death_batches"]:   # no payment kind of trigger_cost.py kills; a hand-built one is not modelled
+        return {"failure": {**base, "valid": True, "committed": False, "unsupported": True, "stage": "trigger_cost",
+                            "item_id": item_id, "reason": "trigger_cost_death_triggers_not_modelled"}}
+    if not events:
+        return {"timing": next_timing, "effect": next_effect, "scheduled": []}
+    try:
+        woken, next_effect = watchers.schedule_live(next_effect, events, turn_id=next_effect.get("turn_id", "turn-0"),
+                                                    batch_label=f"trigger-cost:{item_id}")
+    except watchers.WatchUnsupported as exc:
+        return {"failure": {**base, "valid": True, "committed": False, "unsupported": True, "stage": "trigger_cost",
+                            "item_id": item_id, "reason": exc.reason_code, "message": str(exc)}}
+    if not woken:
+        return {"timing": next_timing, "effect": next_effect, "scheduled": []}
+    for trigger in woken:
+        trigger.update({"batch_sequence": 0, "batch_id": f"trigger-cost:{item_id}"})
+    ordering = _settle_trigger_orders(woken, engine_decisions, base)
+    if ordering is not None:
+        return {"failure": {**ordering, "stage": "trigger_cost", "item_id": item_id}}
+    scheduled = schedule_triggered_items(next_timing, woken)
+    if scheduled.get("applied") is not True:
+        return {"failure": {**base, "valid": scheduled.get("valid", True), "committed": False, "stage": "trigger_cost",
+                            "item_id": item_id, "reason": scheduled.get("reason_code") or "trigger_schedule_failed",
+                            "trigger_result": scheduled}}
+    return {"timing": scheduled["next_state"], "effect": next_effect, "scheduled": [t["trigger_id"] for t in woken]}
 
 
 def resolve_with_program(
@@ -260,15 +372,43 @@ def resolve_with_program(
     if finalized is not None:
         recorded = {entry["decision_id"]: entry for entry in finalized}
         supplied = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") == "target_selection"]
+        # package 5 (2026-09-27): a board choice the program makes AS IT RESOLVES is not a target -
+        # "You must recycle one of your runes." is chosen then (Core 355.10.f) - so a resolution-stage
+        # selection for a choice's own decision_ref, never a target selector's, is not a re-chosen target
+        effects = [e for e in (program or {}).get("effects") or [] if isinstance(e, dict)]
+        target_refs = {s.get("decision_ref") for e in effects for s in (e.get("target"), e.get("targets"))
+                       if isinstance(s, dict) and s.get("decision_ref")}
+        choice_refs = {e.get("decision_ref") for e in effects if isinstance(e.get("choice"), dict) and e.get("decision_ref")} - target_refs
+        resolution_choices = [entry for entry in supplied if entry.get("stage") == "resolution"
+                              and entry.get("decision_id") in choice_refs and entry.get("decision_id") not in recorded]
         for entry in supplied:
+            if entry in resolution_choices:
+                continue
             kept = recorded.get(entry.get("decision_id"))
             if kept is None or entry.get("value") != kept.get("value") or (entry.get("selection_identities") or {}) != (kept.get("selection_identities") or {}):
                 return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_finalization",
                         "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 359.3.e.2", "Core 359.3.e.9"]}
-        others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"]
+        others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"] + resolution_choices
         if finalized or others:
             engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
                                 "decisions": [copy.deepcopy(entry) for entry in finalized] + others}
+    # The same for a card's or an activated ability's own targets, chosen as it was played
+    # (Core 355.5) and recorded on its chain entry: they cannot be changed after that step
+    # (355.15). A selection supplied now for one of them must BE the recorded one; when none
+    # is supplied the record is what the program runs with. Other decisions pass through.
+    played = ((effect_state.get("chain_items") or {}).get(item_id) or {}).get("played_targets")
+    if finalized is None and played:
+        recorded = {entry["decision_id"]: entry for entry in played}
+        supplied = list((engine_decisions or {}).get("decisions") or [])
+        for entry in supplied:
+            kept = recorded.get(entry.get("decision_id"))
+            if kept is not None and (entry.get("kind") != "target_selection" or entry.get("value") != kept.get("value")
+                                     or (entry.get("selection_identities") or {}) != (kept.get("selection_identities") or {})):
+                return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_play",
+                        "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 355.15", "Core 359.3.e.2"]}
+        others = [entry for entry in supplied if entry.get("decision_id") not in recorded]
+        engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
+                            "decisions": [copy.deepcopy(entry) for entry in played] + others}
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
     # ADR-0008 §5: a 'this combat' grant binds to the Combat in progress, which
     # only the timing state knows.
@@ -281,6 +421,18 @@ def resolve_with_program(
         context = {**(context or {}), "mode_selection": dict(recorded_mode)}
     if entry_before.get("repeat") is not None:
         context = {**(context or {}), "repeat": copy.deepcopy(entry_before["repeat"])}  # ADR-0011 §4: paid Repeats
+    # 2026-09-27: a base cost paid as the ability was finalized (Core 383.3.b.1) - the chain
+    # item's receipt is what apply_program checks; resolution pays nothing again
+    paid_cost = chain_item.get("trigger_cost_receipt")
+    if program and paid_cost is not None:
+        context = {**(context or {}), "trigger_base_cost_paid": paid_cost.get("cost_hash")}
+    # The target selections the program runs with from the chain item's record were counted where
+    # they were chosen (Core 355.14.c: a split's Targets against the damage available then, its
+    # Bonus Damage included, 715.3); resolution does not count them again against a changed amount.
+    counted = [entry["decision_id"] for entry in (finalized if finalized is not None else (played or []))
+               if isinstance(entry, dict) and isinstance(entry.get("decision_id"), str)]
+    if program and counted:
+        context = {**(context or {}), "targets_counted_when_chosen": counted}
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:
@@ -607,13 +759,23 @@ def entry_state_for(
     default = "exhausted" if obj["kind"] == "unit" else "ready"
     candidates: list[dict[str, Any]] = []
     for index, replacement in enumerate(obj.get("entry_replacements", []) or []):
-        # Core 806.1.b: a replacement bound to one play belongs to that play.
+        # Core 805.2.b: a replacement bound to one play belongs to that play.
         # An unbound one (a printed entry replacement) applies as it always did.
         bound = replacement.get("chain_item")
         if bound is not None and bound != chain_item:
             continue
         if replacement.get("card") is not None and replacement["card"] != card:
             continue
+        if replacement.get("condition") is not None:
+            # 2026-09-27, Core 364.3.a / 369.3: "If an opponent controls a battlefield, I enter
+            # ready." - a conditional replacement, read as the unit enters; one that cannot be
+            # read is refused by name, never guessed
+            from effect_ir import ConditionUnsupported, evaluate_condition
+            try:
+                if not evaluate_condition(state, replacement["condition"], controller=controller, object_id=card):
+                    continue
+            except ConditionUnsupported as exc:
+                return default, default, [], {"error": f"the entry replacement's condition cannot be read here: {exc}"}
         if replacement.get("mode") == "entry_state" and replacement.get("value") in {"ready", "exhausted"}:
             candidates.append({"replacement_id": replacement.get("replacement_id", f"entry:{card}:{index}"),
                                "source": card, "mode": "entry_state", "value": replacement["value"], "rule_locators": ["Core 369.3"]})
@@ -672,6 +834,10 @@ def complete_permanent_play(
     if entry_problem is not None:
         return state, entry_problem, []
     obj["exhausted"] = final == "exhausted"
+    # 2026-09-28: a replacement bound to this play (Accelerate, "the next unit you play enters ready")
+    # is this play's and is done with once the card has entered; kept on the object, it applied
+    # again to the same card played later under a reused chain item id - a new object (Core 124)
+    drop_play_bound_replacements(obj, item_id)
     trace: dict[str, Any] = {"card": card, "chain_item_id": item_id, "kind": obj["kind"], "default_entry_state": default,
                              "entry_replacements": replacements, "entry_state": final, "not_a_move": True,
                              "rule_locators": ["Core 359.2", "Core 359.2.a", "Core 143.4", "Core 124", "Core 446.2"]}
@@ -757,8 +923,14 @@ def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any]
         obj = effect_state["objects"][object_id]
         for descriptor in object_triggers(effect_state, object_id, "end_of_turn_triggers"):
             record = {"trigger_id": descriptor["trigger_id"], "source_object": object_id, "controller": descriptor["controller"], "scheduled": False}
-            if obj.get("controller") != turn_player or zone_class(find_location(effect_state, object_id)) != "board":
-                record["reason"] = "not the turn player's board object"
+            # a board object, or (2026-09-27, Annie - Dark Child) a Legend in its controller's
+            # Legend Zone, where a Legend's abilities work (Core 107.4, 174.7) - the same test
+            # turn_cycle._phase_triggers makes for the Beginning Phase
+            location = find_location(effect_state, object_id)
+            in_legend_zone = (location is not None and location[0] == "player" and location[2] == "legend_zone"
+                              and obj.get("kind") == "legend")
+            if obj.get("controller") != turn_player or not (zone_class(location) == "board" or in_legend_zone):
+                record["reason"] = "not the turn player's board object or Legend"
                 evaluated.append(record); continue
             condition = descriptor.get("condition")
             if condition is not None and condition["kind"] == "at_battlefield":

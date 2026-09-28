@@ -110,6 +110,10 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # --- chain -----------------------------------------------------------
     "countered": {"about": "chain", "rules": ["Core 425"]},
     "burned": {"about": "chain", "rules": ["Core 440"]},
+    # 2026-09-27: a triggered ability's base cost, paid as it was finalized (Core 383.3.b.1). The
+    # payment's own events (a recycle, an exhaust) are emitted when it is paid; the instruction's
+    # step at resolution records the payment and is not performed, so nothing derives this kind.
+    "trigger_cost_paid": {"about": "chain", "rules": ["Core 383.3.b.1", "Core 740.4.a.2"]},
     "reflexive_emitted": {"about": "chain", "rules": ["Core 355.13"]},
 }
 
@@ -165,6 +169,7 @@ OP_PRIMARY: dict[str, str] = {
     "hide_card": "hidden_away",
     "create_delayed_trigger": "delayed_trigger_created",
     "remove_hidden": "hidden_removed",
+    "trigger_base_cost": "trigger_cost_paid",
 }
 
 # Actions performed outside an effect program, so their op is not in

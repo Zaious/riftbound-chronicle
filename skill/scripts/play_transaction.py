@@ -50,9 +50,9 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
-    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, derive_targeted, evaluate_target,
+    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, deflect_total, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
-    record_finalized_card, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
+    play_prohibition, record_discarded_cards, record_finalized_card, split_target_cap, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
 )
 from effect_ir import ConditionUnsupported  # noqa: E402
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
@@ -540,7 +540,7 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
     matching one of the unit's Domains, so a card whose data does not say what
     its Domains are cannot be offered a payable Accelerate at all.
 
-    806.1.a keeps this to the play: nothing here reads a card on the board.
+    805.2.a keeps this to the play: nothing here reads a card on the board.
     """
     from effect_ir import has_keyword
 
@@ -548,7 +548,7 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
     if not isinstance(obj, dict) or not has_keyword(effect_state, card_id, "accelerate"):
         return None, None
     if obj.get("kind") != "unit":
-        return None, "accelerate_is_a_unit_ability"          # 805.2.a
+        return None, "accelerate_is_a_unit_ability"          # 805.1
     domains = obj.get("domains")
     if domains is None:
         return None, "accelerate_domain_not_observed"        # the data does not say
@@ -562,12 +562,12 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
         "payment": payment,
         "energy": ACCELERATE_ENERGY,
         "source": {"kind": "keyword", "keyword": "accelerate", "object": card_id},
-        "rule_locators": ["Core 805.2.b", "Core 805.4", "Core 806.1.a"],
+        "rule_locators": ["Core 805.1.a", "Core 805.4", "Core 805.2.a"],
     }, None
 
 
 def accelerate_entry_replacement(card_id: str, item_id: str) -> dict[str, Any]:
-    """Core 806.1.b: paying generates a delayed Replacement Effect. It is bound
+    """Core 805.2.b: paying generates a delayed Replacement Effect. It is bound
     to the card that paid and to the play that paid it, so a later loss of the
     keyword cannot take it back and another card's payment cannot borrow it."""
     return {"replacement_id": f"accelerate:{item_id}", "mode": "entry_state", "value": "ready",
@@ -666,7 +666,10 @@ def battlefield_entry_paths(effect_state: dict[str, Any], card: str, actor: str,
     controller = battlefield.get("controller")
     objects = effect_state.get("objects") or {}
     present = [o for o in battlefield.get("objects", []) if (objects.get(o) or {}).get("kind") == "unit"]
-    permissions = (objects.get(card) or {}).get("play_permissions", []) or []
+    permissions = list((objects.get(card) or {}).get("play_permissions", []) or [])
+    # 2026-09-27 package 5: a permission a friendly permanent on the board grants (Core 355.2.b)
+    from effect_ir import granted_play_permissions
+    permissions += [p for p in granted_play_permissions(effect_state, card, actor) if p not in permissions]
     friendly_units = [o for o in present if (objects.get(o) or {}).get("controller") == actor]
     return {
         "controlled": controller == actor,
@@ -721,6 +724,20 @@ def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> l
                 entry["condition"].setdefault("object", card_id)
         reductions.append(entry)
     return reductions
+
+
+def next_card_turn_effects(effect_state: dict[str, Any], actor: str, object_kind: str) -> list[dict[str, Any]]:
+    """2026-09-27 (Core 390.4, 391): this turn's delayed passives that apply to the NEXT card of
+    one kind the actor plays - "the next spell you play this turn costs [5] less" (Raging
+    Firebrand), "the next unit you play this turn enters ready" (Sun Disc). They apply to this
+    play and are spent by it, whether or not they changed anything (it is still the next one).
+    Only a card played through this transaction is "played" here; a token an effect plays is
+    not read (the same boundary "Units you play this turn enter ready" has)."""
+    import effect_ir as _ir
+    turn_id = effect_state.get("turn_id", _ir.DEFAULT_TURN_ID)
+    return [copy.deepcopy(e) for e in effect_state.get("turn_effects", []) or []
+            if _ir.NEXT_CARD_TURN_EFFECT_KINDS.get(e.get("kind")) == object_kind
+            and e.get("controller") == actor and e.get("turn_id") == turn_id]
 
 
 def affordability(resources: dict[str, Any], total: dict[str, Any], use: str) -> dict[str, Any]:
@@ -899,6 +916,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                         owner = working["objects"][object_id]["owner"]
                         working["players"][owner]["zones"]["trash"].append(object_id)
                         identities[object_id] = _bump_identity(working, object_id)
+                    # Core 422.3 (2026-09-27): a Discard paid as a cost is a discard this turn too
+                    record_discarded_cards(working, actor, list(picked))
                     events.append({"event_id": event_id, "kind": "pay_discard", "cost_id": comp["cost_id"], "objects": list(picked),
                                    "identities_before": identities_before, "identities_after": identities,
                                    "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 422.1", "Core 422.1.a", "Core 422.2.a", "Core 422.3", "Core 124"]})
@@ -1096,6 +1115,22 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
             if entry["controller"] != actor:
                 raise PlayError("choices", "decision_controller_mismatch", f"target selection {ref!r} was made by {entry['controller']!r}, not the card's controller", rule_locators=["Core 355.5"])
             identities = entry.get("selection_identities") or {}
+            if effect.get("division_ref") is not None and isinstance(effect.get("targets"), dict) \
+                    and ref == effect["targets"].get("decision_ref"):
+                # 2026-09-27 package 5, Core 355.14.b-c: a split's Targets are chosen now, no more of
+                # them than the damage available as it is played or finalized - the printed amount
+                # with the Bonus Damage its Deal has now (715.3: the bonus is added to the amount split)
+                try:
+                    cap = split_target_cap(effect_state, effect, actor,
+                                           [o for o in entry["value"] if isinstance(o, str) and o in effect_state["objects"]])
+                except NotImplementedError as exc:
+                    raise PlayError("choices", "bonus_damage_unsupported", str(exc), unsupported=True,
+                                    rule_locators=["Core 713", "Core 715.3"]) from exc
+                if not (effect["targets"].get("min", 0) <= len(entry["value"]) <= cap):
+                    raise PlayError("choices", "target_count_illegal",
+                                    f"target selection {ref!r} chose {len(entry['value'])} Targets for {cap} "
+                                    f"damage to split (Core 355.14.c, 715.3)",
+                                    rule_locators=["Core 355.14.b", "Core 355.14.c", "Core 715.3"])
             for object_id in entry["value"]:
                 current_identity = entity_identity(effect_state, object_id)
                 if object_id in identities and current_identity is not None and identities[object_id] != current_identity:
@@ -1118,7 +1153,76 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                         raise PlayError("choices", "target_illegal_at_play", f"effects[{index}] target {object_id!r}: {reason}", rule_locators=["Core 355.9"])
                     if selector.get("kind") != "battlefield" and object_id in effect_state["objects"]:
                         chosen_objects.append(object_id)
+        _check_target_bounds(effect, index, decisions, effect_state)
     return chosen_objects
+
+
+def _played_target_record(effects: list[dict[str, Any]], decisions: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """The target selections these instructions were played with, as they were supplied:
+    one entry per decision a `target`, `targets` or `units` slot defers to."""
+    refs: list[str] = []
+    for effect in effects:
+        for field in ("target", "targets"):
+            selector = effect.get(field)
+            if isinstance(selector, dict) and isinstance(selector.get("decision_ref"), str):
+                refs.append(selector["decision_ref"])
+        for unit in effect.get("units") or []:
+            if isinstance(unit, dict) and isinstance(unit.get("decision_ref"), str):
+                refs.append(unit["decision_ref"])
+    recorded = []
+    for ref in dict.fromkeys(refs):
+        entry = ed.target_selection(decisions, ref)
+        if entry is not None:
+            recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
+    return recorded
+
+
+def _check_target_bounds(effect: dict[str, Any], index: int, decisions: dict[str, Any] | None,
+                         effect_state: dict[str, Any]) -> None:
+    """How MANY targets an instruction was given, and whether its slots are different
+    objects - asked where the targets are chosen (play, or a trigger's finalization), after
+    each chosen object has been found legal on its own (the loop above).
+
+    Core 355.8: a spell or ability goes on the Chain only with valid choices for all its
+    targets. An instruction over a bounded number of targets (`targets` min..max: "up to
+    two" is 0..2, Core 355.13; "two" is 2..2) with a count outside its bounds is refused
+    here, not discovered when it resolves.
+
+    A composite instruction's two Units (`units`: "They deal damage equal to their Mights to
+    each other") are two target slots; GPT 2026-09-25: both must be legal AND different
+    objects when they are chosen, so one object in both slots never finalizes. Resolution
+    re-checks them and chooses nothing again (the pair's executor)."""
+    spec = effect.get("targets")
+    # a split deal's Targets have a min and no max: no more of them than the damage, checked as
+    # they are chosen (_check_play_targets above, Core 355.14.c)
+    if isinstance(spec, dict) and isinstance(spec.get("decision_ref"), str) and effect.get("division_ref") is None:
+        entry = ed.target_selection(decisions, spec["decision_ref"])
+        if entry is not None and not (spec["min"] <= len(entry["value"]) <= spec["max"]):
+            raise PlayError("choices", "target_count_out_of_range",
+                            f"effects[{index}] target selection {spec['decision_ref']!r} chose {len(entry['value'])} "
+                            f"object(s); this instruction takes {spec['min']}..{spec['max']}",
+                            rule_locators=["Core 355.8", "Core 355.13"])
+    units = effect.get("units")
+    if isinstance(units, list) and len(units) == 2:
+        slots: list[str | None] = []
+        for sel in units:
+            if not isinstance(sel, dict) or "selection_ref" in sel:
+                slots.append(None)
+                continue
+            if isinstance(sel.get("decision_ref"), str):
+                entry = ed.target_selection(decisions, sel["decision_ref"])
+                value = list((entry or {}).get("value") or [])
+                if len(value) != 1:
+                    raise PlayError("choices", "target_count_out_of_range",
+                                    f"effects[{index}] unit slot {sel['decision_ref']!r} names {len(value)} object(s); "
+                                    f"each slot of the pair is exactly one Unit", rule_locators=["Core 355.8"])
+                slots.append(value[0])
+            else:
+                slots.append(sel.get("object_id") if isinstance(sel.get("object_id"), str) else None)
+        if slots[0] is not None and slots[0] == slots[1]:
+            raise PlayError("choices", "target_slots_not_distinct",
+                            f"effects[{index}] names {slots[0]!r} in both unit slots; the pair's two targets are "
+                            f"different objects (GPT 2026-09-25)", rule_locators=["Core 355.8"])
 
 
 def _same_team(state: dict[str, Any], left: str | None, right: str | None) -> bool:
@@ -1139,9 +1243,11 @@ def deflect_costs(state: dict[str, Any], actor: str, chosen_objects: list[str]) 
     seen: dict[str, int] = {}
     for object_id in chosen_objects:
         obj = state["objects"].get(object_id, {})
-        if "deflect" not in (obj.get("keywords") or []) or _same_team(state, actor, obj.get("controller")):
+        # 2026-09-27: Deflect is read off the computed characteristics (809.3), so a granted one
+        # ("While I'm [Mighty], I have [Deflect]") imposes its cost too; values summed (809.2)
+        value = deflect_total(state, object_id) if object_id in state["objects"] else 0
+        if not value or _same_team(state, actor, obj.get("controller")):
             continue
-        value = obj.get("deflect_value", 1)
         seen[object_id] = seen.get(object_id, 0) + 1
         costs.append({"cost_id": f"deflect:{object_id}:{seen[object_id]}", "mandatory": True, "payment": {"kind": "power_any", "amount": value}, "source": object_id})
     return costs
@@ -1262,6 +1368,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                     raise PlayError("choices", "play_source_not_permitted", f"playing from {source_kind} needs a permission an effect granted (Core 349)", rule_locators=["Core 349"])
             if effect_state["objects"][card]["kind"] != declaration["chain_item"]["object_kind"]:
                 raise PlayError("choices", "object_kind_mismatch", f"{card!r} is a {effect_state['objects'][card]['kind']}; the chain item says {declaration['chain_item']['object_kind']}", invalid=True)
+            # 2026-09-27 package 5 (Brynhir Thundersong): "opponents can't play cards this turn" -
+            # a card play by a forbidden player is refused before anything is chosen or paid;
+            # Can't beats Can (Core 054.1). An activated ability is not a card (052): not here.
+            prohibition = play_prohibition(effect_state, actor)
+            if prohibition is not None:
+                raise PlayError("legality", "play_prohibited",
+                                f"{actor} can't play cards this turn: {prohibition['effect_id']} (granted by "
+                                f"{prohibition['controller']}, source {prohibition.get('source')!r})",
+                                rule_locators=["Core 054.1", "Core 052"])
 
         # --- 355.2: the Unit's location is chosen now. Own Base, a Battlefield
         # the controller controls, or — with the compiled permission — an open
@@ -1341,9 +1456,11 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # own choices, made now like the first (820.2).
         repeat_paid = [add["cost_id"] for add in declaration["cost"].get("additional", []) or [] if add.get("repeat") and intents.get(add["cost_id"])]
         repeat_record = None
+        played_targets: list[dict[str, Any]] = []
         if effect_program is not None:
             effects, mode = _play_mode(actor, effect_program, engine_decisions)
             chosen_objects = _check_play_targets(effect_state, actor, effect_program, engine_decisions, effects)
+            played_targets += _played_target_record(effects, engine_decisions)
             repeat_modes = [mode] if mode else []
             for k, _ in enumerate(repeat_paid, start=1):
                 program_k = effect_program
@@ -1351,6 +1468,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                     program_k = {**effect_program, "modal": {**effect_program["modal"], "decision_ref": effect_program["modal"]["decision_ref"] + f"#{k}"}}
                 effects_k, mode_k = _play_mode(actor, program_k, engine_decisions)
                 chosen_objects += _check_play_targets(effect_state, actor, effect_program, engine_decisions, suffix_decision_refs(effects_k, f"#{k}"))
+                played_targets += _played_target_record(suffix_decision_refs(effects_k, f"#{k}"), engine_decisions)
                 if mode_k:
                     repeat_modes.append(mode_k)
             if repeat_paid:
@@ -1429,6 +1547,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         own = self_cost_reductions(effect_state, declaration.get("card"))
         if own:
             cost["discounts"] = list(cost.get("discounts", []) or []) + own
+        # 2026-09-27: "the next spell you play this turn costs [N] less" - a discount on the
+        # spell's cost as a whole (356.4.d; 356.4.f.1's own example lets such a discount reach
+        # an optional additional cost), spent by this play (Core 391)
+        next_card = [] if is_ability else next_card_turn_effects(effect_state, actor, declaration["chain_item"]["object_kind"])
+        for turn_effect in next_card:
+            if turn_effect["kind"] == "next_spell_cost_reduction":
+                cost["discounts"] = list(cost.get("discounts", []) or []) + [
+                    {"id": f"turn:{turn_effect['effect_id']}", "applies_to": "total", "amount": turn_effect["value"],
+                     "source": {"kind": "turn_effect", "effect_id": turn_effect["effect_id"]}}]
         evaluated: list[dict[str, Any]] = []
         for key in ("increases", "discounts"):
             kept = []
@@ -1487,8 +1614,13 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             entry["mode_selection"] = dict(mode)  # ADR-0011 §2: the mode rides with the chain entry to resolution
         if repeat_record is not None:
             entry["repeat"] = copy.deepcopy(repeat_record)  # ADR-0011 §4: paid Repeats ride to resolution
+        if played_targets:
+            # Core 355.5 / 355.15: the targets chosen now ride with the chain entry, so the
+            # resolution that reads them is the one they were chosen for - re-checked there
+            # (359.3.e), never chosen again (the resolution bridge refuses a different one)
+            entry["played_targets"] = played_targets
         if accelerate_entry is not None and intents.get(ACCELERATE_COST_ID):
-            # 806.1.b: paid, so the card enters ready even if it loses the
+            # 805.2.b: paid, so the card enters ready even if it loses the
             # keyword during finalization. Bound to this card and this play.
             working["objects"][card].setdefault("entry_replacements", []).append(
                 accelerate_entry_replacement(card, item_id))
@@ -1498,6 +1630,23 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # Core 419.4.b / 812.1.c: this card is Finalized by this play; a
             # Legion reads that, even if the card is later countered.
             record_finalized_card(working, actor, card)
+        if next_card:
+            # 2026-09-27 (Core 391): the next-card effects this play is the "next" of are spent;
+            # an entry state one becomes an entry replacement bound to THIS play (the same shape
+            # a paid Accelerate makes, 805.2.b), applied when the unit enters (369.3)
+            spent = {e["effect_id"] for e in next_card}
+            working["turn_effects"] = [e for e in working.get("turn_effects", []) or [] if e.get("effect_id") not in spent]
+            if not working["turn_effects"]:
+                working.pop("turn_effects")
+            for turn_effect in next_card:
+                if turn_effect["kind"] == "entry_state_for_next_played_unit":
+                    working["objects"][card].setdefault("entry_replacements", []).append(
+                        {"replacement_id": f"turn:{turn_effect['effect_id']}", "mode": "entry_state",
+                         "value": turn_effect["value"], "source": str(turn_effect.get("source") or "turn_effect"),
+                         "chain_item": item_id, "card": card})
+            trace.append({"stage": "cost_determination", "outcome": "applied",
+                          "next_card_turn_effects_spent": sorted(spent),
+                          "rule_locators": ["Core 390.4", "Core 391"]})
         state_errors = validate_state(working)
         if state_errors:
             raise PlayError("payment", "invalid_working_state", "; ".join(state_errors), invalid=True)

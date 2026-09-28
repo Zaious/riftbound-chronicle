@@ -80,7 +80,11 @@ TURN_MOMENTS = {"end_of_turn", "beginning_of_turn"}
 MAX_CAUSAL_DEPTH = 1
 
 DESCRIPTOR_FIELDS = {"trigger_id", "controller", "source_object", "controller_order", "effect_program_id",
-                     "optional_at_finalize", "watch", "per_turn_limit", "ability_id", "effect_program_hash"}
+                     "optional_at_finalize", "watch", "per_turn_limit", "ability_id", "effect_program_hash",
+                     "active_zone"}
+# GPT 2026-09-27 (group 乙): the zones a card's text can make a triggered ability work from, besides
+# the board and the Legend Zone ("... play me from your trash", Core 383.2.c.1)
+ACTIVE_ZONES = {"trash"}
 DELAYED_FIELDS = {"delayed_id", "controller", "source_object", "source_identity", "target_object", "target_identity",
                   "waits_for", "effect_program_id", "optional_at_finalize", "controller_order", "snapshot",
                   "created_turn"}
@@ -178,6 +182,8 @@ def validate_watch_state(state: dict[str, Any]) -> list[str]:
             seen_triggers.add(descriptor["trigger_id"])
             errors.extend(_watch_errors(descriptor["watch"], f"{path}.watch"))
             errors.extend(_limit_errors(descriptor.get("per_turn_limit"), f"{path}.per_turn_limit"))
+            if "active_zone" in descriptor and descriptor["active_zone"] not in ACTIVE_ZONES:
+                errors.append(f"{path}.active_zone must be one of {sorted(ACTIVE_ZONES)}")
 
     delayed = state.get("delayed_triggers", [])
     if not isinstance(delayed, list):
@@ -338,15 +344,21 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
     return True
 
 
-def source_active(state: dict[str, Any], source_object: str | None) -> bool:
+def source_active(state: dict[str, Any], source_object: str | None, active_zone: str | None = None) -> bool:
     """A watcher listens only while its source is where its abilities work: on the board
     (a Base or a Battlefield) or in its controller's Legend Zone. A card in a hand, a deck
-    or a trash has no triggered abilities working (2026-09-24)."""
+    or a trash has no triggered abilities working (2026-09-24) - unless its text makes the
+    ability work from there: `active_zone: "trash"` listens exactly while the source is in its
+    owner's trash, and not on the board (GPT 2026-09-27, group 乙; Core 383.2.c.1: a source that
+    enters that zone in the same event that meets the condition is evaluated there)."""
     from effect_ir import find_location, zone_class
 
     if source_object not in (state.get("objects") or {}):
         return False
     location = find_location(state, source_object)
+    if active_zone is not None:
+        return location is not None and location[0] == "player" and location[2] == active_zone \
+            and location[1] == state["objects"][source_object].get("owner")
     return zone_class(location) == "board" or (location is not None and location[0] == "player"
                                                and location[2] == "legend_zone")
 
@@ -499,7 +511,7 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
     occurrences = counted.setdefault("watch_occurrences", {})
     for object_id in sorted(state.get("objects") or {}):
         for descriptor in state["objects"][object_id].get("event_triggers", []) or []:
-            if not source_active(state, descriptor["source_object"]):
+            if not source_active(state, descriptor["source_object"], descriptor.get("active_zone")):
                 continue
             watch = descriptor["watch"]
             matched = [event for event in events

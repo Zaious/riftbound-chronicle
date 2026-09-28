@@ -3968,6 +3968,30 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         modifiers = copy.deepcopy(effect.get("event_modifiers", {}))
         default_entry_state = "exhausted" if token_kind == "unit" else "ready"
         entry_state = modifiers.get("entry_state", default_entry_state)
+        # Core 350.2 (GPT 2026-09-27, group 乙): a unit token is Played, so this turn's entry-state
+        # effects for units its controller plays apply to it as to a card - and "the next unit you
+        # play" is spent by it
+        token_turn_effects: list[dict[str, Any]] = []
+        if token_kind == "unit":
+            current_turn = new_state.get("turn_id", DEFAULT_TURN_ID)
+            token_turn_effects = [e for e in new_state.get("turn_effects", []) or []
+                                  if e.get("kind") in {"entry_state_for_played_units", "entry_state_for_next_played_unit"}
+                                  and e.get("controller") == controller and e.get("turn_id") == current_turn
+                                  and e.get("value") in {"ready", "exhausted"}]
+            # the next unit is ONE unit: the first such effect is spent by this token
+            nexts = [e for e in token_turn_effects if e["kind"] == "entry_state_for_next_played_unit"]
+            token_turn_effects = [e for e in token_turn_effects if e["kind"] == "entry_state_for_played_units"] + nexts
+            values = {e["value"] for e in token_turn_effects} | ({modifiers["entry_state"]} if "entry_state" in modifiers else set())
+            if len(values) > 1:
+                raise ValueError(f"the token's entry state is disputed by {sorted(values)} ({[e['effect_id'] for e in token_turn_effects]}); "
+                                 f"their order is its controller's (Core 369.3) and is not guessed")
+            if token_turn_effects:
+                entry_state = next(iter(values))
+                spent = {e["effect_id"] for e in nexts}
+                if spent:
+                    new_state["turn_effects"] = [e for e in new_state.get("turn_effects", []) or [] if e.get("effect_id") not in spent]
+                    if not new_state["turn_effects"]:
+                        new_state.pop("turn_effects")
         keywords = modifiers.get("result_keywords", []) if token_kind == "unit" else []
         new_state["objects"][object_id] = {
             "owner": owner,
@@ -3993,6 +4017,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             apply_arrival_contested(new_state, destination["battlefield"], object_id)
         else:
             raise ValueError("play_token destination is unknown")
+        if token_turn_effects:
+            trace["entry_turn_effects"] = [{"effect_id": e["effect_id"], "kind": e["kind"], "value": e["value"],
+                                            **({"spent": True} if e["kind"] == "entry_state_for_next_played_unit" else {})}
+                                           for e in token_turn_effects]
+            trace.setdefault("rule_locators", list(OP_RULES[op]))
+            trace["rule_locators"] = list(trace["rule_locators"]) + ["Core 350.2", "Core 369.3", "Core 390.4", "Core 391"]
         trace.update({
             "object_id": object_id,
             "token_kind": token_kind,

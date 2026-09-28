@@ -779,8 +779,7 @@ def next_card_turn_effects(effect_state: dict[str, Any], actor: str, object_kind
     one kind the actor plays - "the next spell you play this turn costs [5] less" (Raging
     Firebrand), "the next unit you play this turn enters ready" (Sun Disc). They apply to this
     play and are spent by it, whether or not they changed anything (it is still the next one).
-    Only a card played through this transaction is "played" here; a token an effect plays is
-    not read (the same boundary "Units you play this turn enter ready" has)."""
+    A unit token an effect plays reads and spends them in play_token (Core 350.2, GPT 2026-09-27)."""
     import effect_ir as _ir
     turn_id = effect_state.get("turn_id", _ir.DEFAULT_TURN_ID)
     return [copy.deepcopy(e) for e in effect_state.get("turn_effects", []) or []

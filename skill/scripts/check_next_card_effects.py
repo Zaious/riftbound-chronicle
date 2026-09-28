@@ -22,6 +22,11 @@ Must hold, through real play_card (and resolve_with_program for units):
                   enters exhausted, and so does the next unit that entered ready, was bounced and
                   is played again under the same id (the replacement ends with the play it was
                   bound to, 2026-09-28)
+  tokens          (Core 350.2, GPT 2026-09-27 group 乙) a unit token an effect plays is a unit its
+                  controller plays: it enters ready and spends the next-unit effect, so a card
+                  unit played after it enters exhausted; "units you play this turn enter ready"
+                  readies a token too; an opponent's token does not spend it; a gear token is
+                  not a unit and does not
   ids             a second next-spell grant after a spent next-unit effect does not reuse the
                   live grant's id; both discounts apply and are spent (review 5 R2-7)
   validator       a next-spell discount with no positive Energy value is refused
@@ -267,6 +272,36 @@ def main() -> int:
                 or kinds(both["next_effect_state"], "next_spell_cost_reduction"):
             errors.append(f"a second next-spell grant after a spent next-unit effect reused a live id, or the two "
                           f"discounts did not both apply and both get spent: {ids} {both.get('reason')}")
+
+    # --- tokens are played too (Core 350.2, GPT 2026-09-27 group 乙) -------------------------------
+    def token(state, controller="p1", kind="unit", object_id="tk1"):
+        return apply_program(state, program("tok", {"op": "play_token", "effect_id": "pt", "object_id": object_id, "owner": controller,
+                                                    "controller": controller, "token_kind": kind, "base_might": 1 if kind == "unit" else 0,
+                                                    "destination": {"kind": "base", "player": controller}}))
+    disc = granted(board(), ready)
+    first = token(disc)
+    if not first.get("committed") or first["next_state"]["objects"]["tk1"]["exhausted"] is not False \
+            or kinds(first["next_state"], "entry_state_for_next_played_unit"):
+        errors.append(f"a unit token played after 'the next unit enters ready' did not enter ready and spend it: "
+                      f"{first.get('reason') or first.get('errors')}")
+    else:
+        after_token = copy.deepcopy(first["next_state"])
+        after_token["players"]["p1"]["resources"]["energy"] = 4
+        card_after = run(after_token, "un1", "unit", 2)
+        if not card_after.get("committed") or enters(card_after["next_effect_state"], "un1", "item-un1")[1] is not True:
+            errors.append("the card unit played after the token that spent 'the next unit' still entered ready")
+    theirs = token(disc, controller="p2", object_id="tk2")
+    if not theirs.get("committed") or theirs["next_state"]["objects"]["tk2"]["exhausted"] is not True \
+            or not kinds(theirs["next_state"], "entry_state_for_next_played_unit"):
+        errors.append("the opponent's token spent p1's 'next unit' effect or entered ready")
+    gear = token(disc, kind="gear", object_id="tg1")
+    if not gear.get("committed") or not kinds(gear["next_state"], "entry_state_for_next_played_unit"):
+        errors.append("a gear token spent 'the next unit you play'")
+    all_units = granted(board(), [{"op": "grant_turn_effect", "effect_id": "ga", "turn_effect_kind": "entry_state_for_played_units",
+                                   "value": "ready", "controller": "p1", "source": "x"}])
+    many = token(all_units)
+    if not many.get("committed") or many["next_state"]["objects"]["tk1"]["exhausted"] is not False:
+        errors.append(f"'units you play this turn enter ready' did not ready a unit token: {many.get('reason') or many.get('errors')}")
 
     bad = program("bad", {"op": "grant_turn_effect", "effect_id": "g", "turn_effect_kind": "next_spell_cost_reduction",
                           "value": "ready", "controller": "p1", "source": "x"})

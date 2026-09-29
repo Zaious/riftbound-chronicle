@@ -393,8 +393,9 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.effect_program_hash must be a sha256 content hash")
             if "source_identity" in item and not (isinstance(item["source_identity"], str) and item["source_identity"]):
                 errors.append(f"{label}.source_identity must be a non-empty identity token")
-            if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") == "target_selection" for e in item["finalized_targets"])):
-                errors.append(f"{label}.finalized_targets must be trigger_finalization target selections")
+            # GPT 2026-09-29 (Core 355.4): a Move destination chosen at finalization is recorded with the targets
+            if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") in ("target_selection", "location_selection") for e in item["finalized_targets"])):
+                errors.append(f"{label}.finalized_targets must be trigger_finalization target selections and Move destinations")
             if "finalized_targets" in item and item.get("status") != "finalized":
                 errors.append(f"{label}.finalized_targets on an item that is not finalized")
             if "trigger_cost_receipt" in item:

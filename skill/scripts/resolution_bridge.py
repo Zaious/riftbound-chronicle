@@ -167,6 +167,23 @@ def finalize_trigger(
         return {**base, "valid": False, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
                 "reason": "declined_trigger_cannot_pay_its_cost", "rule_locators": ["Core 383.3.a.2"]}
     recorded: list[dict[str, Any]] = []
+    performing = not declining and (item.get("optional_at_finalize") is not True or perform_optional_trigger is True)
+    if performing and (lacking := _lacking_choices(effect_state, item["controller"], program)):
+        # GPT 2026-09-29, Core 402.4: not enough options to make its legal choices - it leaves the Chain now,
+        # never becomes a Finalized Chain Item, and is not countered (402.4.a)
+        removal = remove_chain_item(timing_state, item["id"], reason="no_legal_choices")
+        if removal.get("applied") is not True:
+            return {**base, "valid": removal.get("valid", True), "committed": False, "stage": "target_binding",
+                    "item_id": item["id"], "reason": removal.get("reason_code") or "chain_item_removal_failed",
+                    "timing_result": removal}
+        next_timing = removal["next_state"]
+        return {**base, "valid": True, "committed": True, "removed": True, "item_id": item["id"],
+                "next_timing_state": next_timing, "next_timing_state_hash": state_hash(next_timing),
+                "next_effect_state": effect_state, "next_effect_state_hash": hash_value(effect_state),
+                "finalized_targets": [], "lacking_choices": lacking,
+                "transition": {"type": "no_legal_choices", "item_id": item["id"], "never_finalized": True,
+                               "countered": False, "why": f"no legal options for {lacking}"},
+                "rule_locators": ["Core 402.2", "Core 402.4", "Core 402.4.a"]}
     if not declining:
         try:
             _check_play_targets(effect_state, item["controller"], program, engine_decisions, stage="trigger_finalization")
@@ -180,6 +197,14 @@ def finalize_trigger(
                 return {**base, "valid": True, "committed": False, "stage": "target_binding", "item_id": item["id"],
                         "reason": "target_selection_required", "decision_ids": [ref], "rule_locators": locators}
             recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
+        # GPT 2026-09-29 (Core 355.4, 355.15): the Move destination chosen now is recorded with the targets
+        from play_transaction import destination_refs
+        for ref in dict.fromkeys(destination_refs(program.get("effects") or [])):
+            entry = next((e for e in _ed.entries(engine_decisions, kind="location_selection") if e["decision_id"] == ref), None)
+            if entry is None:   # _check_play_targets already refuses this
+                return {**base, "valid": True, "committed": False, "stage": "target_binding", "item_id": item["id"],
+                        "reason": "move_destination_required", "decision_ids": [ref], "rule_locators": locators + ["Core 355.4"]}
+            recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value") if k in entry})
     paid = None
     choosing_first = item.get("optional_at_finalize") is True and perform_optional_trigger is None
     if cost is not None and not declining and not choosing_first:
@@ -285,6 +310,32 @@ def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], n
                             "item_id": item_id, "reason": scheduled.get("reason_code") or "trigger_schedule_failed",
                             "trigger_result": scheduled}}
     return {"timing": scheduled["next_state"], "effect": next_effect, "scheduled": [t["trigger_id"] for t in woken]}
+
+
+def _lacking_choices(effect_state: dict[str, Any], controller: str, program: dict[str, Any]) -> list[str]:
+    """Core 402.4: the choices this triggered ability must make now for which there are not enough legal
+    options - a target with no legal object, a set of targets with fewer than its minimum, a pair of slots
+    with no two different legal objects. The legality test is the one finalization applies to a choice
+    (play_transaction._check_play_targets); only its answer to "is there any" is asked here."""
+    from play_transaction import legal_target_options
+    lacking = []
+    for effect in program.get("effects") or []:
+        target = effect.get("target")
+        if isinstance(target, dict) and isinstance(target.get("decision_ref"), str) and "selection_ref" not in target:
+            if not legal_target_options(effect_state, controller, program, target):
+                lacking.append(target["decision_ref"])
+        targets = effect.get("targets")
+        if isinstance(targets, dict) and isinstance(targets.get("decision_ref"), str):
+            restrictions = dict(targets.get("restrictions") or {})
+            restrictions.setdefault("chosen_zone_class", "board")
+            if len(legal_target_options(effect_state, controller, program, restrictions)) < int(targets.get("min", 0) or 0):
+                lacking.append(targets["decision_ref"])
+        units = [u for u in effect.get("units") or [] if isinstance(u, dict) and isinstance(u.get("decision_ref"), str)]
+        if units:
+            options = [legal_target_options(effect_state, controller, program, u) for u in units]
+            if any(not o for o in options) or len({x for o in options for x in o}) < len(units):
+                lacking += [u["decision_ref"] for u in units]
+    return list(dict.fromkeys(lacking))
 
 
 def _envelope_extras(engine_decisions: dict[str, Any] | None) -> dict[str, Any]:
@@ -395,7 +446,14 @@ def resolve_with_program(
             if kept is None or entry.get("value") != kept.get("value") or (entry.get("selection_identities") or {}) != (kept.get("selection_identities") or {}):
                 return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_finalization",
                         "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 359.3.e.2", "Core 359.3.e.9"]}
-        others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"] + resolution_choices
+        for entry in ((engine_decisions or {}).get("decisions") or []):
+            kept = recorded.get(entry.get("decision_id"))
+            if entry.get("kind") == "location_selection" and kept is not None and entry.get("value") != kept.get("value"):
+                # GPT 2026-09-29, Core 355.15: the Move destination was chosen as the ability was finalized
+                return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "destination_changed_after_finalization",
+                        "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.4", "Core 355.15"]}
+        others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"
+                  and entry.get("decision_id") not in recorded] + resolution_choices
         if finalized or others:
             # the rebuilt envelope keeps what else it carried - a randomization receipt (Core 416.5) is
             # not a decision, and dropping it left a trigger that recycles two cards unable to resolve
@@ -412,6 +470,12 @@ def resolve_with_program(
         supplied = list((engine_decisions or {}).get("decisions") or [])
         for entry in supplied:
             kept = recorded.get(entry.get("decision_id"))
+            if kept is not None and kept.get("kind") == "location_selection":
+                if entry.get("kind") != "location_selection" or entry.get("value") != kept.get("value"):
+                    # GPT 2026-09-29, Core 355.15: the Move destination was chosen as the card was played
+                    return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "destination_changed_after_play",
+                            "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.4", "Core 355.15"]}
+                continue
             if kept is not None and (entry.get("kind") != "target_selection" or entry.get("value") != kept.get("value")
                                      or (entry.get("selection_identities") or {}) != (kept.get("selection_identities") or {})):
                 return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_play",

@@ -780,12 +780,19 @@ def validate_state(state: Any) -> list[str]:
             continue
         if "counterable" in entry and not isinstance(entry["counterable"], bool):
             errors.append(f"chain_items.{item_id}.counterable must be boolean (ADR-0011 §5)")
-        # Core 355.5 / 355.15: the targets chosen at play ride with the entry to resolution
+        # Core 355.5 / 355.15: the targets chosen at play ride with the entry to resolution; GPT 2026-09-29
+        # (Core 355.4): so do the Move destinations chosen there, each a location token
         played = entry.get("played_targets")
-        if played is not None and (not isinstance(played, list) or not played or any(
-                not isinstance(e, dict) or e.get("stage") != "play_declaration" or e.get("kind") != "target_selection"
-                or not isinstance(e.get("decision_id"), str) or not isinstance(e.get("value"), list) for e in played)):
-            errors.append(f"chain_items.{item_id}.played_targets must be the play_declaration target selections it was played with")
+
+        def _played_entry_ok(e):
+            if not isinstance(e, dict) or e.get("stage") != "play_declaration" or not isinstance(e.get("decision_id"), str):
+                return False
+            if e.get("kind") == "target_selection":
+                return isinstance(e.get("value"), list)
+            return e.get("kind") == "location_selection" and isinstance(e.get("value"), str) and ":" in e["value"]
+        if played is not None and (not isinstance(played, list) or not played or not all(_played_entry_ok(e) for e in played)):
+            errors.append(f"chain_items.{item_id}.played_targets must be the play_declaration target selections and Move "
+                          f"destinations it was played with")
         if "cost_receipt" in entry:
             errors.extend(f"chain_items.{item_id}.cost_receipt {e}" for e in _receipt_errors(entry["cost_receipt"]))
         repeat = entry.get("repeat")
@@ -2751,6 +2758,22 @@ def token_play_locations(state: dict[str, Any], controller: str, token_kind: str
     return locations
 
 
+def move_destination_candidates(state: dict[str, Any], object_id: str, destination: dict[str, Any]) -> list[str]:
+    """The legal destinations of THIS Move (Core 355.4.a): legal_move_destinations, narrowed by the
+    instruction's own restriction - "to a battlefield" offers only Battlefields; "to or from its base" is its
+    own Base from a Battlefield and a Battlefield from its Base (144.4.b). One definition, read where the
+    destination is chosen (play, finalization) and again where the Move executes."""
+    candidates = legal_move_destinations(state, object_id)
+    if destination.get("restriction") == "battlefield":
+        candidates = [c for c in candidates if c.startswith("battlefield:")]
+    if destination.get("restriction") == "to_or_from_own_base":
+        own_base = f"base:{state['objects'][object_id]['owner']}"
+        at = location_token(find_location(state, object_id))
+        candidates = ([c for c in candidates if c == own_base] if at != own_base
+                      else [c for c in candidates if c.startswith("battlefield:")])
+    return candidates
+
+
 def legal_move_destinations(state: dict[str, Any], object_id: str) -> list[str]:
     """Core 420.1 / 355.4.a: a Move goes from one board Location to *another*.
     The candidates are every Battlefield and every Base except the one the
@@ -3514,16 +3537,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # Charm: "Move an enemy unit." The player chooses where, from the
             # destinations this board actually offers.
             import engine_decisions as _ed
-            candidates = legal_move_destinations(new_state, object_id)
-            if destination.get("restriction") == "battlefield":
-                candidates = [c for c in candidates if c.startswith("battlefield:")]
-            if destination.get("restriction") == "to_or_from_own_base":
-                # "Move a friendly unit to or from its base." (2026-09-25): from a Battlefield the
-                # only destination is its own Base; from its Base, a Battlefield (Core 355.4.a, 144.4.b)
-                own_base = f"base:{new_state['objects'][object_id]['owner']}"
-                at = location_token(find_location(new_state, object_id))
-                candidates = ([c for c in candidates if c == own_base] if at != own_base
-                              else [c for c in candidates if c.startswith("battlefield:")])
+            candidates = move_destination_candidates(new_state, object_id, destination)
             entry = next((e for e in _ed.entries(decisions, kind="location_selection")
                           if e["decision_id"] == destination["decision_ref"]), None)
             if entry is None:
@@ -3533,6 +3547,16 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             if entry["controller"] != controller:
                 raise IllegalDecision(f"location selection {destination['decision_ref']!r} was made by "
                                       f"{entry['controller']!r}, not the program controller")
+            if entry["value"] not in candidates and entry.get("stage") in ("play_declaration", "trigger_finalization"):
+                # GPT 2026-09-29, Core 355.4 / 355.15 / 359.3.e.9: a destination chosen as the card was played
+                # or the ability finalized stands; if it is no longer a legal destination when the Move would
+                # execute, that Move is not carried out - it is never re-chosen - and the rest of the program runs
+                trace.update({"outcome": "skipped_illegal_destination", "completion": "none", "object_id": object_id,
+                              "chosen_destination": entry["value"], "legal_destinations_now": list(candidates),
+                              "reason": "move_destination_no_longer_legal",
+                              "rule_locators": list(dict.fromkeys(trace["rule_locators"] + ["Core 355.4.a", "Core 355.15",
+                                                                                            "Core 359.3.e.9"]))})
+                return new_state, trace
             if entry["value"] not in candidates:
                 raise ValueError(f"location selection {destination['decision_ref']!r} names "
                                  f"{entry['value']!r}; the legal Move destinations are {candidates}")

@@ -199,15 +199,18 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}: player_selection is a resolution- or procedure-stage decision")
         if kind == "location_selection" and (not isinstance(val, str) or not val):
             errors.append(f"{label}.value must be a battlefield id, or a board location token at resolution")
-        if kind == "location_selection" and item["stage"] not in ("procedure", "resolution"):
-            errors.append(f"{label}: location_selection is a procedure- or resolution-stage decision")
+        if kind == "location_selection" and item["stage"] not in ("procedure", "resolution", "play_declaration",
+                                                                 "trigger_finalization"):
+            errors.append(f"{label}: location_selection is a procedure-, resolution-, play- or finalization-stage decision")
         # A procedure names a Battlefield by id (opening a Combat, staging a
         # Showdown). A Move at resolution may also name a Base, so it names the
         # location in full - "battlefield:<id>" or "base:<player>" - and the
         # bare-id form stays where it already means something.
-        if kind == "location_selection" and item["stage"] == "resolution" and isinstance(val, str) \
-                and not _LOCATION_TOKEN.match(val):
-            errors.append(f"{label}.value must be 'battlefield:<id>' or 'base:<player>' at resolution")
+        # GPT 2026-09-29 (Core 355.4): a Move's destination is chosen as the card is played or the ability
+        # finalized, and named in full there too
+        if kind == "location_selection" and item["stage"] in ("resolution", "play_declaration", "trigger_finalization") \
+                and isinstance(val, str) and not _LOCATION_TOKEN.match(val):
+            errors.append(f"{label}.value must be 'battlefield:<id>' or 'base:<player>' at {item['stage']}")
     return errors
 
 

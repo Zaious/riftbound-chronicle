@@ -1204,7 +1204,93 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                     if selector.get("kind") != "battlefield" and object_id in effect_state["objects"]:
                         chosen_objects.append(object_id)
         _check_target_bounds(effect, index, decisions, effect_state)
+        _check_move_destination(effect, index, decisions, effect_state, actor, program, stage)
     return chosen_objects
+
+
+def moved_object(effect: dict[str, Any], decisions: dict[str, Any] | None, program: dict[str, Any]) -> str | None:
+    """The object a move_board_object instruction moves, as known where its choices are made: its chosen
+    target, a concrete object, or the program's own source. None when it is decided later."""
+    target = effect.get("target")
+    if isinstance(target, dict) and isinstance(target.get("decision_ref"), str):
+        entry = ed.target_selection(decisions, target["decision_ref"])
+        value = (entry or {}).get("value") or []
+        return value[0] if len(value) == 1 and isinstance(value[0], str) else None
+    if isinstance(target, dict) and isinstance(target.get("object_id"), str):
+        return target["object_id"]
+    if isinstance(effect.get("object_id"), str):
+        return effect["object_id"]
+    if isinstance(effect.get("object_id"), dict) and effect["object_id"].get("object_ref") == "program_source":
+        return program.get("source_object")
+    return None
+
+
+def _check_move_destination(effect: dict[str, Any], index: int, decisions: dict[str, Any] | None,
+                            effect_state: dict[str, Any], actor: str, program: dict[str, Any], stage: str) -> None:
+    """GPT 2026-09-29, Core 355.4 / 355.15: a Move's destination is chosen at this step - as the card is
+    played, or the triggered ability finalized - for the object it moves, among the legal destinations
+    (355.4.a), and cannot be changed after it."""
+    if effect.get("op") != "move_board_object":
+        return
+    destination = effect.get("destination")
+    if not (isinstance(destination, dict) and isinstance(destination.get("decision_ref"), str)):
+        return
+    ref = destination["decision_ref"]
+    entry = next((e for e in ed.entries(decisions, kind="location_selection") if e["decision_id"] == ref), None)
+    if entry is None:
+        raise PlayError("choices", "move_destination_required",
+                        f"the Move destination {ref!r} is chosen at {stage} (Core 355.4) and was not supplied",
+                        decision_ids=[ref], decision_controller=actor, rule_locators=["Core 355.4", "Core 355.15"])
+    if entry["stage"] != stage:
+        raise PlayError("choices", "decision_stage_mismatch",
+                        f"the Move destination {ref!r} was supplied for stage {entry['stage']!r}, not {stage} (Core 355.4)",
+                        invalid=True, rule_locators=["Core 355.4", "Core 355.15"])
+    if entry["controller"] != actor:
+        raise PlayError("choices", "decision_controller_mismatch",
+                        f"the Move destination {ref!r} was chosen by {entry['controller']!r}, not the card's controller",
+                        rule_locators=["Core 355.4"])
+    object_id = moved_object(effect, decisions, program)
+    if object_id in effect_state["objects"]:
+        from effect_ir import move_destination_candidates
+        candidates = move_destination_candidates(effect_state, object_id, destination)
+        if entry["value"] not in candidates:
+            raise PlayError("choices", "move_destination_illegal",
+                            f"effects[{index}]: {entry['value']!r} is not a legal Move destination for {object_id!r} "
+                            f"(Core 355.4.a); the legal ones are {candidates}", rule_locators=["Core 355.4", "Core 355.4.a"])
+
+
+def legal_target_options(effect_state: dict[str, Any], actor: str, program: dict[str, Any], template: dict[str, Any]) -> list[str]:
+    """Every object (or Battlefield) this chosen-target selector admits now, by the test _check_play_targets
+    applies to a supplied choice - Core 402.4 asks only whether there are enough of them. A selector the
+    test cannot read counts as an option, so an ability is never removed on a doubt."""
+    pool = list(effect_state.get("battlefields") or {}) if template.get("kind") == "battlefield" else list(effect_state["objects"])
+    options = []
+    for object_id in pool:
+        selector = {k: v for k, v in template.items() if k not in {"decision_ref", "object_id"}}
+        selector["object_id"] = object_id
+        try:
+            if program.get("source_object") in effect_state["objects"]:
+                selector = _bind_source_exclusion(selector, effect_state, program)
+            selector = _bind_location_ref(selector, effect_state, program)
+            if "location_ref_refused" in selector:
+                # "here" that cannot be bound is refused by name where the choice is checked, not read as
+                # "no legal options" (check_location_ref.py: location_ref_source_absent at finalization)
+                return [object_id]
+            selector.setdefault("chosen_zone_class", "board" if template.get("kind") == "battlefield"
+                                else (zone_class(find_location(effect_state, object_id)) or "non_board"))
+            ok, _reason = evaluate_target(effect_state, selector, actor)
+        except Exception:  # noqa: BLE001 - see the docstring
+            ok = True
+        if ok:
+            options.append(object_id)
+    return options
+
+
+def destination_refs(effects: list[dict[str, Any]]) -> list[str]:
+    """The Move destinations these instructions choose where the card is played or the ability finalized."""
+    return [e["destination"]["decision_ref"] for e in effects
+            if e.get("op") == "move_board_object" and isinstance(e.get("destination"), dict)
+            and isinstance(e["destination"].get("decision_ref"), str)]
 
 
 def _played_target_record(effects: list[dict[str, Any]], decisions: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -1224,6 +1310,12 @@ def _played_target_record(effects: list[dict[str, Any]], decisions: dict[str, An
         entry = ed.target_selection(decisions, ref)
         if entry is not None:
             recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
+    # GPT 2026-09-29 (Core 355.4, 355.15): a Move's destination is recorded with the targets, so resolution
+    # runs with the destination chosen at play and a different one supplied later is refused
+    for ref in dict.fromkeys(destination_refs(effects)):
+        entry = next((e for e in ed.entries(decisions, kind="location_selection") if e["decision_id"] == ref), None)
+        if entry is not None:
+            recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value") if k in entry})
     return recorded
 
 

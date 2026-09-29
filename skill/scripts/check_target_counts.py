@@ -311,6 +311,40 @@ def main() -> int:
         if not distinct.get("committed"):
             errors.append(f"a trigger with two different Units was not finalized: {distinct.get('reason')} {distinct.get('message')}")
 
+    # 2026-09-28: the bridge rebuilds the decision envelope around the recorded targets; it must keep what
+    # else the envelope carries. A spell played with a target that also recycles two looked-at cards to its
+    # Main Deck (Core 416.5: a random order, a randomization receipt) resolves with the receipt it was given.
+    deck_board = board()
+    for card in ("d1", "d2", "d3"):
+        deck_board["objects"][card] = {"owner": "p1", "controller": "p1", "kind": "spell", "base_might": 0,
+                                       "might_modifiers": [], "damage": 0, "exhausted": False}
+    deck_board["players"]["p1"]["zones"]["main_deck"] = ["d1", "d2", "d3", "c2"]
+    recycle_two = [{"op": "stun", "effect_id": "st", "target": {"decision_ref": "t", "chosen_zone_class": "board",
+                                                                  "kind": "unit", "controller_relation": "enemy"}},
+                   {"op": "look_at_top", "effect_id": "look", "player": "p1", "count": 2},
+                   {"op": "recycle", "effect_id": "rc", "player": "p1", "decision_ref": "pick", "order_ref": "rc-order",
+                    "choice": {"selection_kind": "unordered_set", "count": {"up_to": 2}, "from": "revealed",
+                               "by": "controller", "visibility": "private_to_chooser"}}]
+    played_two = played_with(deck_board, recycle_two, t=["u2"])
+    if not played_two.get("committed"):
+        errors.append(f"the targeted recycle spell could not be played: {played_two.get('reason')}")
+    else:
+        after_play = played_two["next_effect_state"]
+        receipt = {"schema_version": "randomization-receipt.v1", "receipt_id": "rc-order:rnd", "operation": "recycle_simultaneous",
+                   "operation_id": "rc-order", "player": "p1", "permutation": ["d2", "d1"],
+                   "provenance": {"provider": "gate", "method": "listed-order"}}
+        envelope = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(after_play),
+                    "decisions": [{"decision_id": "pick", "stage": "resolution", "kind": "card_selection", "controller": "p1",
+                                   "value": ["d1", "d2"],
+                                   "selection_identities": {c: object_identity(after_play, c) for c in ("d1", "d2")}}],
+                    "randomization_receipts": [receipt]}
+        timing = fixture(priority="p2", items=[item("spell-1", "p1", "spell", "default", "finalized")], passes=["p1", "p2"])
+        done = resolve_with_program(timing, "spell-1", after_play, spell_program(recycle_two), engine_decisions=envelope)
+        deck = (done.get("next_effect_state") or {}).get("players", {}).get("p1", {}).get("zones", {}).get("main_deck")
+        if not done.get("committed") or deck != ["d3", "c2", "d2", "d1"]:
+            errors.append(f"a spell with a recorded target lost its randomization receipt when the bridge rebuilt the "
+                          f"envelope: {done.get('reason') or done.get('errors')} deck {deck}")
+
     if errors:
         print("FAILED: target counts and target slots")
         for problem in errors:

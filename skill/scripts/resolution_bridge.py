@@ -287,6 +287,13 @@ def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], n
     return {"timing": scheduled["next_state"], "effect": next_effect, "scheduled": [t["trigger_id"] for t in woken]}
 
 
+def _envelope_extras(engine_decisions: dict[str, Any] | None) -> dict[str, Any]:
+    """What an engine-decisions envelope carries besides its decisions (randomization receipts, the
+    chain item it is for), kept when the bridge rebuilds its decisions around recorded targets."""
+    return {k: copy.deepcopy(v) for k, v in (engine_decisions or {}).items()
+            if k not in ("schema_version", "input_hash", "decisions")}
+
+
 def resolve_with_program(
     timing_state: dict[str, Any],
     item_id: str,
@@ -390,7 +397,10 @@ def resolve_with_program(
                         "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 359.3.e.2", "Core 359.3.e.9"]}
         others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"] + resolution_choices
         if finalized or others:
-            engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
+            # the rebuilt envelope keeps what else it carried - a randomization receipt (Core 416.5) is
+            # not a decision, and dropping it left a trigger that recycles two cards unable to resolve
+            engine_decisions = {**_envelope_extras(engine_decisions), "schema_version": "engine-decisions.v1",
+                                "input_hash": hash_value(effect_state),
                                 "decisions": [copy.deepcopy(entry) for entry in finalized] + others}
     # The same for a card's or an activated ability's own targets, chosen as it was played
     # (Core 355.5) and recorded on its chain entry: they cannot be changed after that step
@@ -407,7 +417,8 @@ def resolve_with_program(
                 return {**base, "valid": True, "committed": False, "stage": "engine_decision", "reason": "target_changed_after_play",
                         "decision_id": entry.get("decision_id"), "rule_locators": ["Core 355.5", "Core 355.15", "Core 359.3.e.2"]}
         others = [entry for entry in supplied if entry.get("decision_id") not in recorded]
-        engine_decisions = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(effect_state),
+        engine_decisions = {**_envelope_extras(engine_decisions), "schema_version": "engine-decisions.v1",
+                            "input_hash": hash_value(effect_state),
                             "decisions": [copy.deepcopy(entry) for entry in played] + others}
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
     # ADR-0008 §5: a 'this combat' grant binds to the Combat in progress, which

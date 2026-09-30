@@ -47,7 +47,10 @@ STAGES = ("play_declaration", "trigger_finalization", "resolution", "procedure")
 # that remain: complete whenever any card is left, empty when none is.
 KINDS = ("target_selection", "replacement_order", "replacement_choice", "optional_choice", "trigger_order", "card_selection", "resource_allocation", "location_selection", "damage_assignment", "player_selection", "mode_selection", "card_ordering",
          # 2026-09-27 package 5, Core 355.14.e: how a split deal's damage is divided, at resolution
-         "damage_division")
+         "damage_division",
+         # 2026-09-27 package 6: a named option a player chooses as the instruction resolves ("Each
+         # other player chooses Cards or Runes."), by that player - not a mode of the card (402.2)
+         "option_selection")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -182,6 +185,10 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}: resource_allocation is decided while paying at play")
         if kind == "card_ordering" and item["stage"] not in ("resolution", "play_declaration"):
             errors.append(f"{label}: card_ordering is decided at resolution, or while paying a cost at play (Core 357.2)")
+        if kind == "option_selection" and (not isinstance(val, str) or not val):
+            errors.append(f"{label}.value must be the name of the chosen option")
+        if kind == "option_selection" and item["stage"] != "resolution":
+            errors.append(f"{label}: option_selection is chosen as the instruction resolves")
         if kind == "mode_selection" and (not isinstance(val, str) or not val):
             errors.append(f"{label}.value must be the stable option id of the chosen mode (not an index)")
         if kind == "mode_selection" and item["stage"] not in ("play_declaration", "trigger_finalization"):
@@ -357,8 +364,19 @@ def validate_choice_spec(spec: Any) -> list[str]:
     if "criteria" in spec and spec["from"] == "revealed" and set(spec["criteria"]) - {"excluded_kinds"}:
         errors.append("a revealed choice's criteria carries excluded_kinds and nothing else")
     if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict)
-                                    or set(spec["criteria"]) - {"kind", "controller_relation", "location", "location_ref", "zone_owner_relation"}):
-        errors.append("choice.from board needs criteria {kind?, controller_relation?, location? or location_ref?, zone_owner_relation?}")
+                                    or set(spec["criteria"]) - {"kind", "controller_relation", "location", "location_ref",
+                                                                "zone_owner_relation", "not_controlled_by"}):
+        errors.append("choice.from board needs criteria {kind?, controller_relation?, location? or location_ref?, "
+                      "zone_owner_relation?, not_controlled_by?}")
+    # package 6 (2026-09-27): the relation is read from the CHOOSER - "own" is controlled by the chooser
+    # ("one of their units"), not a teammate's; not_controlled_by names a player ("a unit you don't
+    # control", you being the program's controller). An unknown relation was read as no filter at all.
+    if isinstance(spec.get("criteria"), dict) and "controller_relation" in spec["criteria"] \
+            and spec["criteria"]["controller_relation"] not in {"friendly", "enemy", "own"}:
+        errors.append("choice.criteria.controller_relation must be friendly, enemy or own")
+    if isinstance(spec.get("criteria"), dict) and "not_controlled_by" in spec["criteria"] \
+            and (not isinstance(spec["criteria"]["not_controlled_by"], str) or not spec["criteria"]["not_controlled_by"]):
+        errors.append("choice.criteria.not_controlled_by must name a player")
     # GPT 2026-09-23: `location_ref` ("here" - the resolving program's own
     # source's current Battlefield) is a typed reference, never a bare string
     # like `location`'s vocabulary - the two never both name a card's spot.
@@ -492,6 +510,10 @@ def check_choice_entry(spec: dict[str, Any], entry: dict[str, Any], chooser: str
             if c in bound and identities.get(c) is not None and bound[c] != identities[c]:
                 return [], "invalid", f"decision {entry.get('decision_id')!r} was bound to {bound[c]!r}; {c} is now {identities[c]!r}"
     return chosen, None, ""
+
+
+def option_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:
+    return next((item for item in entries(decisions, kind="option_selection") if item["decision_id"] == decision_id), None)
 
 
 def mode_selection(decisions: dict[str, Any] | None, decision_id: str) -> dict[str, Any] | None:

@@ -69,7 +69,8 @@
               "player_selection",
               "mode_selection",
               "card_ordering",
-              "damage_division"
+              "damage_division",
+              "option_selection"
             ]
           },
           "controller": {

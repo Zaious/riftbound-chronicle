@@ -796,12 +796,106 @@ def affordability(resources: dict[str, Any], total: dict[str, Any], use: str) ->
     inapplicable = [r for r in resources.get("restricted", []) if use not in r["uses"]]
     general_specific = {d: max(0, a - sum(r["amount"] for r in _restricted_entries(resources, use, "power", d)))
                         for d, a in total["power"].items()}
-    short = (resources["energy"] + restricted_energy < total["energy"]
-             or any(resources["power"].get(d, 0) < a for d, a in general_specific.items())
-             or sum(resources["power"].values()) - sum(general_specific.values()) < any_amount)
+    universal = universal_available(resources, use)
+    if universal:
+        # 2026-09-27: Universal Power pays a Power cost of any Domain (Core 135.2.e.5.b, 163.2.b) and an
+        # any-Domain cost (135.2.e.5.a). Short only when even every Universal Power spent where the
+        # Domain's own Power runs out cannot cover the rest. A pool with none is read exactly as before
+        pool = resources["power"]
+        deficit = sum(max(0, a - pool.get(d, 0)) for d, a in general_specific.items())
+        leftover = sum(max(0, n - general_specific.get(d, 0)) for d, n in pool.items())
+        short = (resources["energy"] + restricted_energy < total["energy"]
+                 or deficit + max(0, any_amount - leftover) > universal)
+    else:
+        short = (resources["energy"] + restricted_energy < total["energy"]
+                 or any(resources["power"].get(d, 0) < a for d, a in general_specific.items())
+                 or sum(resources["power"].values()) - sum(general_specific.values()) < any_amount)
     return {"short": short, "inapplicable": inapplicable, "general_specific": general_specific,
             "restricted_energy": restricted_energy, "power_any": any_amount,
-            "nonzero": total["energy"] > 0 or any(a > 0 for a in total["power"].values()) or any_amount > 0}
+            "nonzero": total["energy"] > 0 or any(a > 0 for a in total["power"].values()) or any_amount > 0,
+            **({"universal": universal} if universal else {})}
+
+
+def _universal_entries(resources: dict[str, Any], use: str) -> list[dict[str, Any]]:
+    """Restricted Universal Power this use may spend (ADR-0011 §4; Core 135.2.e.5.b)."""
+    return [r for r in resources.get("restricted", []) if r["kind"] == "power" and r.get("universal") is True and use in r["uses"]]
+
+
+def universal_available(resources: dict[str, Any], use: str) -> int:
+    """2026-09-27: the Universal Power ([A] Added, Core 135.2.e.5.b, 163.2.b) this use may spend - the
+    general pool's and every restricted entry whose uses name it."""
+    return resources.get("universal_power", 0) + sum(r["amount"] for r in _universal_entries(resources, use))
+
+
+def _universal_allocations(resources: dict[str, Any], total: dict[str, Any], use: str,
+                           general_specific: dict[str, int], universal: int) -> list[dict[str, int]]:
+    """Every legal way to spend Universal Power on this total: {domain or "any": amount}. For each Domain
+    the rest is its own Power (restricted first, as always); for the any-Domain part, the rest is the
+    general pool's Power left over (as the any-Domain allocation reads it). Bounded, like _allocations."""
+    pool = resources["power"]
+    keys = [d for d, a in sorted(total["power"].items()) if a] + (["any"] if total.get("power_any", 0) else [])
+    out: list[dict[str, int]] = []
+
+    def legal(current: dict[str, int]) -> bool:
+        if sum(current.values()) > universal:
+            return False
+        used = {}
+        for d, a in total["power"].items():
+            specific = a - current.get(d, 0)
+            restricted = a - general_specific.get(d, a)
+            general = max(0, specific - restricted)
+            if general > pool.get(d, 0):
+                return False
+            used[d] = general
+        rest = total.get("power_any", 0) - current.get("any", 0)
+        return rest <= sum(max(0, n - used.get(d, 0)) for d, n in pool.items())
+
+    def walk(index: int, current: dict[str, int]) -> None:
+        if len(out) > 64:
+            return
+        if index == len(keys):
+            if legal(current):
+                out.append({k: n for k, n in current.items() if n})
+            return
+        key = keys[index]
+        top = total.get("power_any", 0) if key == "any" else total["power"][key]
+        for take in range(min(top, universal) + 1):
+            current[key] = take
+            walk(index + 1, current)
+        current.pop(key, None)
+
+    walk(0, {})
+    return out
+
+
+def _pay_universal(resources: dict[str, Any], amount: int, use: str, paid_for: str) -> list[dict[str, Any]]:
+    """Spend `amount` Universal Power on the `paid_for` part of the cost (a Domain, or "any"): a matching
+    restricted entry first (ADR-0011 §4), then the general pool. Unique events with before / after."""
+    events: list[dict[str, Any]] = []
+    due = amount
+    for entry in _universal_entries(resources, use):
+        take = min(entry["amount"], due)
+        if take <= 0:
+            continue
+        before = entry["amount"]
+        entry["amount"] -= take
+        due -= take
+        events.append({"event_id": f"pay:power_universal:{paid_for}:restricted:{entry['restriction_id']}", "kind": "pay_power",
+                       "domain": "universal", "paid_for": paid_for, "amount": take, "before": before, "after": entry["amount"],
+                       "restricted_from": entry["restriction_id"], "use": use,
+                       "rule_locators": ["Core 357.1", "Core 135.2.e.5.b", "Core 163.2.b"]})
+    resources["restricted"] = [r for r in resources.get("restricted", []) if r["amount"] > 0]
+    if not resources["restricted"]:
+        del resources["restricted"]
+    if due > 0:
+        before = resources.get("universal_power", 0)
+        resources["universal_power"] = before - due
+        events.append({"event_id": f"pay:power_universal:{paid_for}", "kind": "pay_power", "domain": "universal",
+                       "paid_for": paid_for, "amount": due, "before": before, "after": resources["universal_power"],
+                       "rule_locators": ["Core 357.1", "Core 135.2.e.5.b", "Core 163.2.b"]})
+        if not resources["universal_power"]:
+            del resources["universal_power"]
+    return events
 
 
 def _allocate(events: list[dict[str, Any]], components: list[dict[str, Any]]) -> None:
@@ -882,6 +976,31 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
     def chosen(c):
         return c["mandatory"] or c["intent"] is True
 
+    # 2026-09-27: Universal Power in the pool (Core 135.2.e.5.b, 163.2.b). Where it pays is the payer's
+    # choice (ADR-0007 §11): one legal allocation proceeds, several need a resource_allocation decision.
+    # A pool with none allocates nothing, and everything below is exactly as before
+    spend_universal: dict[str, int] = {}
+    universal_decision = None
+    if verdict.get("universal"):
+        options = _universal_allocations(resources, total, use, general_specific, verdict["universal"])
+        decision_id = f"universal_power:{declaration['play_id']}"
+        universal_decision = next((e for e in ed.entries(decisions, kind="resource_allocation") if e["decision_id"] == decision_id), None)
+        if universal_decision is not None:
+            if universal_decision["controller"] != actor:
+                raise PlayError("payment", "decision_controller_mismatch", f"the Universal Power allocation was supplied by "
+                                f"{universal_decision['controller']!r}, not the paying player", rule_locators=["Core 135.2.e.5.b"])
+            wanted = {k: n for k, n in (universal_decision["value"] or {}).items() if n}
+            if wanted not in options:
+                raise PlayError("payment", "invalid_resource_allocation", f"Universal Power allocation {wanted} is not one of "
+                                f"the legal ways to pay {total}: {options}", invalid=True)
+            spend_universal = wanted
+        elif len(options) == 1:
+            spend_universal = options[0]
+        else:
+            raise PlayError("payment", "resource_allocation_required", f"{actor} must say where Universal Power pays "
+                            f"{total} ({len(options)} legal ways)", decision_ids=[decision_id], decision_controller=actor,
+                            rule_locators=["Core 135.2.e.5.b", "Core 163.2.b", "Core 357.1"])
+
     if total["energy"]:
         energy_events = _pay_resource(resources, "energy", total["energy"], use)
         events.extend(energy_events)
@@ -889,9 +1008,19 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
     for domain, amount in sorted(total["power"].items()):
         if not amount:
             continue
-        power_events = _pay_resource(resources, "power", amount, use, domain)
+        from_universal = spend_universal.get(domain, 0)
+        power_events = _pay_resource(resources, "power", amount - from_universal, use, domain) if amount - from_universal else []
+        if from_universal:
+            power_events += [{**e, "decided_by": universal_decision["decision_id"] if universal_decision else "sole_legal_allocation"}
+                             for e in _pay_universal(resources, from_universal, use, domain)]
         events.extend(power_events)
         _allocate(power_events, [c for c in skeleton["components"] if c["kind"] == "power" and c.get("domain") == domain and chosen(c)])
+    if spend_universal.get("any"):
+        universal_events = [{**e, "decided_by": universal_decision["decision_id"] if universal_decision else "sole_legal_allocation"}
+                            for e in _pay_universal(resources, spend_universal["any"], use, "any")]
+        events.extend(universal_events)
+        _allocate(universal_events, [c for c in skeleton["components"] if c["kind"] == "power_any" and chosen(c)])
+        any_amount -= spend_universal["any"]
     if any_amount:
         # Core 809.1.c.1: any-domain Power. The allocation is the player's; the
         # engine spends nothing in an arbitrary order (ADR-0007 §11). One legal

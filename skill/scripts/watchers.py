@@ -37,7 +37,11 @@ from typing import Any
 # "player": the player the event happened to - "When YOU discard" is about whose hand the card
 # left (the event's `player`), not whose effect it was nor the card's controller field
 # (2026-09-26; Core 422.1: a player's hand into their trash)
-WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
+# "responsible" (2026-09-27): the player responsible for the event's game action - "When YOU kill ..." is
+# a kill you are responsible for (Core 411.4): a Kill instruction's controller (428.5.b), the player whose
+# damage a Cleanup kill is attributed to (428.5.c.1, 428.5.c.2); a kill nobody is responsible for (411.2)
+# matches no one. Only a `died` event carries it (game_events: responsible_player)
+WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "responsible"}
 # 2026-09-24: typed facts of the EVENT a watch may require, each named, none guessed.
 #   object_kind              the object the event is about is a spell / unit / gear
 #   object_controller_relation   that object is the watcher controller's (friendly) or not (enemy)
@@ -73,6 +77,14 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
 #                            friendly Unit at the same location (Core 740.2.a) - "attacks or
 #                            defends alone" (383.4.e.2.b, 383.4.f.2.b: checked as the designation
 #                            is gained)
+#   object_might_at_least    (2026-09-27) the Unit's CURRENT Might is at least N - "a [Mighty] unit"
+#                            is N = 5 (Core 708: Mighty while its Might is 5 or greater; 710: read
+#                            as it is now, every modifier included). Read off the object where it
+#                            is when the event is matched - for "played", the moment the play
+#                            Finalized (game_events.played_event); an object that is no Unit is not
+#                            Mighty; one no zone holds is refused by name, never guessed
+#   object_was_stunned       (2026-09-27) the object was stunned when the event happened (a death reads
+#                            the object as it was, as object_was_buffed does; Core 423)
 WATCH_FILTERS = {
     "object_kind": {"spell", "unit", "gear"},
     "object_controller_relation": {"friendly", "enemy"},
@@ -88,6 +100,8 @@ WATCH_FILTERS = {
     "killed_by_your_spell": {True},
     "at_battlefield_you_control": {True},
     "alone": {True},
+    "object_might_at_least": set(range(1, 21)),
+    "object_was_stunned": {True},
 }
 # 2026-09-27 (package 6): where a triggered ability works when that is not the board. Core 385.1-385.2:
 # an ability of a card outside the board says where it works, and works there and nowhere else - a
@@ -159,7 +173,12 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
             problems.append(f"{path}.filter must be a non-empty object")
         else:
             for key, value in event_filter.items():
-                if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key]:
+                # a count is an integer, never a boolean that happens to equal 1; a flag is `true`, never 1
+                # (2026-09-27)
+                counted = key in ("printed_energy_at_least", "object_might_at_least")
+                flag = WATCH_FILTERS.get(key) == {True}
+                if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key] or (counted and isinstance(value, bool)) \
+                        or (flag and value is not True):
                     problems.append(f"{path}.filter.{key} = {value!r} is not a named event fact")
     if watch.get("grouping", "each") not in WATCH_GROUPINGS:
         problems.append(f"{path}.grouping must be one of {sorted(WATCH_GROUPINGS)}")
@@ -342,6 +361,12 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
     elif scope == "player":
         if event.get("player") != controller:
             return False
+    elif scope == "responsible":
+        if "responsible_player" not in event:
+            raise WatchUnsupported(f"event {event.get('event_id')!r} ({event.get('kind')}) records no responsible player; "
+                                   f"'you' is not guessed (Core 411.4)", "responsibility_not_recorded")
+        if event["responsible_player"] is None or event["responsible_player"] != controller:
+            return False
     elif scope == "location":
         # The event's Location, before or after: a Unit that died at my
         # Battlefield died there even though it now sits in the Trash.
@@ -386,6 +411,13 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
         elif key == "object_was_buffed":
             if event.get("was_buffed") is not True:
                 return False
+        elif key == "object_was_stunned":
+            # 2026-09-27: read off the object as it was when the event happened, like the buff (Core 423)
+            if "was_stunned" not in event:
+                raise WatchUnsupported(f"event {event.get('event_id')!r} ({event.get('kind')}) records no stun; "
+                                       f"it is not guessed (Core 423)", "stun_not_recorded")
+            if event["was_stunned"] is not True:
+                return False
         elif key == "destination_zone":
             after = event.get("location_after") or {}
             if after.get("kind") != "player_zone" or after.get("zone") != wanted:
@@ -423,6 +455,17 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                 return False
         elif key == "alone":
             if event.get("alone") is not True:
+                return False
+        elif key == "object_might_at_least":
+            # Core 708, 710: the Unit's current Might, every modifier included (effect_ir's own reader).
+            # Only a Unit has Might to be Mighty (708); an object no zone holds cannot be read
+            from effect_ir import effective_might, find_location
+            if (event.get("object_kind") or obj.get("kind")) != "unit":
+                return False
+            if subject not in (state.get("objects") or {}) or find_location(state, subject) is None:
+                raise WatchUnsupported(f"{subject!r} is in no zone of the game; its Might cannot be read "
+                                       f"(Core 708, 710)", "might_not_readable")
+            if effective_might(state, subject) < wanted:
                 return False
         else:
             return False

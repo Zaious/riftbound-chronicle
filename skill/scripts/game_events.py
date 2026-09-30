@@ -333,6 +333,8 @@ def snapshot(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
         # dies" reads of a token that has ceased to exist by then (Core 186.1, 133.8, 187.1)
         record["kind"] = obj.get("kind")
         record["tags"] = object_tags(state, object_id)
+        # 2026-09-27: whether it was stunned (Core 423) - what "a stunned enemy unit" reads, as it was
+        record["stunned"] = bool(obj.get("stunned"))
         record["exists"] = True
     for record in out.values():
         record.setdefault("location", None)
@@ -459,6 +461,12 @@ class EventLog:
             # exist (Core 186.1) and still died a unit (428.1); None: tags never observed
             event["object_kind"] = before.get("kind")
             event["object_tags"] = before.get("tags")
+            # 2026-09-27: and whether it was stunned; and who is responsible for the kill (Core 411.4:
+            # "when you kill" is a kill you are responsible for). A Kill instruction's is its
+            # program's controller (428.5.b, 411.1); a Cleanup's kill has none here - the caller
+            # that knows the damage's source names it (428.5.c.1, 428.5.c.2), else nobody (411.2)
+            event["was_stunned"] = bool(before.get("stunned"))
+            event["responsible_player"] = self.actor
         if extra:
             event.update(extra)
         self.events.append(event)

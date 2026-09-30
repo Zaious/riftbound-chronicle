@@ -3202,6 +3202,34 @@
       ]
     },
     {
+      "production_id": "when_you_play_a_mighty_unit",
+      "form": "When you play a [Mighty] unit, draw 1.",
+      "template": "when you play a \\[mighty\\] unit, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a",
+        "Core 708",
+        "Core 710"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a [Mighty] unit, draw 1."
+      ],
+      "negative": [
+        "when you play a unit, draw 1",
+        "when you play another unit, draw 1",
+        "when an opponent plays a [mighty] unit, draw 1",
+        "when a unit becomes [mighty], draw 1",
+        "when you play a [mighty] gear, draw 1"
+      ]
+    },
+    {
       "production_id": "when_you_play_a_card_on_an_opponents_turn",
       "form": "When you play a card on an opponent's turn, draw 1.",
       "template": "when you play a card on an opponent's turn, (?P<inner>.+)",
@@ -3366,6 +3394,36 @@
       "negative": [
         "when a friendly unit dies, draw 1",
         "when a buffed enemy unit dies, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_kill_a_stunned_enemy_unit",
+      "form": "When you kill a stunned enemy unit, draw 1.",
+      "template": "when you kill a stunned enemy unit, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 411.4",
+        "Core 428.5.b",
+        "Core 428.5.c.1",
+        "Core 428.5.c.2",
+        "Core 423"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you kill a stunned enemy unit, draw 1."
+      ],
+      "negative": [
+        "when you kill an enemy unit, draw 1",
+        "when a stunned enemy unit dies, draw 1",
+        "when you kill a stunned unit, draw 1",
+        "when you stun an enemy unit, draw 1",
+        "when an opponent kills a stunned enemy unit, draw 1"
       ]
     },
     {

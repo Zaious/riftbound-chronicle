@@ -306,6 +306,11 @@
           },
           "allocation_of": {
             "type": "string"
+          },
+          "paid_for": {
+            "type": "string",
+            "minLength": 1,
+            "description": "2026-09-27: Universal Power spent (domain 'universal', Core 135.2.e.5.b, 163.2.b): the part of the cost it paid - a Domain, or 'any' for an any-Domain part."
           }
         }
       }

@@ -1104,6 +1104,10 @@ TRIGGER_WRAPPERS = {
         "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "gear"}}}),
     "when_you_play_another_unit": ("event_triggers", "on-play-another-unit", {"watch": {
         "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit", "exclude_source": True}}}),
+    # 2026-09-27 (Volibear - Relentless Storm): "a [Mighty] unit" is a Unit whose current Might is 5 or
+    # greater (Core 708, 710), read off the played Unit when the play wakes the watch
+    "when_you_play_a_mighty_unit": ("event_triggers", "on-play-mighty-unit", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit", "object_might_at_least": 5}}}),
     "when_you_play_a_card_on_an_opponents_turn": ("event_triggers", "on-play-opponents-turn", {"watch": {
         "kinds": ["played"], "scope": "actor", "filter": {"on_opponents_turn": True}}}),
     "when_you_play_a_card_from_hidden": ("event_triggers", "on-play-from-hidden", {"watch": {
@@ -1126,6 +1130,11 @@ TRIGGER_WRAPPERS = {
     "when_a_buffed_friendly_unit_dies": ("event_triggers", "on-buffed-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any",
         "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "object_was_buffed": True}}}),
+    # 2026-09-27 (Solari Shrine): "you kill" is a kill you are responsible for (Core 411.4, 428.5.b, 428.5.c.1,
+    # 428.5.c.2 - the died event's responsible_player); "a stunned enemy unit" is read off the unit as it was
+    "when_you_kill_a_stunned_enemy_unit": ("event_triggers", "on-kill-stunned-enemy", {"watch": {
+        "kinds": ["died"], "scope": "responsible",
+        "filter": {"object_kind": "unit", "object_controller_relation": "enemy", "object_was_stunned": True}}}),
     "the_first_time_a_friendly_unit_dies_each_turn": ("event_triggers", "on-first-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "occurrence": "first_each_turn"}}),

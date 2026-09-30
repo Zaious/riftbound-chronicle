@@ -99,6 +99,10 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # attacks ..." and "When a friendly unit attacks or defends alone" watch.
     "attacked": {"about": "object", "rules": ["Core 464.2.c.3", "Core 383.4.e", "Core 383.4.e.2.a"]},
     "defended": {"about": "object", "rules": ["Core 464.2.c.3", "Core 383.4.f", "Core 383.4.f.2.a"]},
+    # 2026-09-28 (package 6): an effect-driven play's step 1 - the card moved to the Chain as a
+    # Pending item while the effect resolves (Core 354, 419.3). Not "played": the play is complete
+    # only when its steps are, and the play transaction emits that event then (419.4.a).
+    "play_started": {"about": "object", "rules": ["Core 354", "Core 419.3"]},
     # --- player ----------------------------------------------------------
     # Sabotage: the instruction that only chooses. The event is what every
     # later instruction of the same program reads instead of choosing again.
@@ -190,6 +194,7 @@ OP_PRIMARY: dict[str, str] = {
     "each_player": "players_iterated",
     "choose_objects": "objects_chosen",
     "choose_option": "option_chosen",
+    "limited_play": "play_started",
 }
 
 # Actions performed outside an effect program, so their op is not in

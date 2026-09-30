@@ -221,6 +221,13 @@ jobs:
       - name: Trigger base cost paid at finalization
         run: python3 skill/scripts/check_trigger_cost.py
 
+      # An effect-driven play (Core 419.3): the instruction takes the play's step 1 - the card to
+      # the Chain, Pending (354) - and the play transaction takes steps 2 to 5 from there once the
+      # effect has resolved (354.3), with the effect's permission and cost change; an unpayable
+      # play is cancelled (358.5) and the effect's earlier instructions stand (GPT 2026-09-25).
+      - name: Effect-driven play through the play transaction
+        run: python3 skill/scripts/check_limited_play.py
+
       # A triggered ability's program runs with the identity its source had when it
       # triggered, recorded on the chain item; the relational "here" (location_ref)
       # resolves fresh at execution and refuses by name when the source left, changed
@@ -692,6 +699,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_permanent_play.py"
           python3 "$REPO/skill/scripts/check_trigger_finalization.py"
           python3 "$REPO/skill/scripts/check_trigger_cost.py"
+          python3 "$REPO/skill/scripts/check_limited_play.py"
           python3 "$REPO/skill/scripts/check_location_ref.py"
           python3 "$REPO/skill/scripts/check_token_minting.py"
           python3 "$REPO/skill/scripts/check_watch_wiring.py"

@@ -561,6 +561,8 @@ jobs:
         run: python3 skill/scripts/check_granted_play_permission.py
       - name: split damage - Targets at finalization capped by the damage, the division at resolution (Core 355.14)
         run: python3 skill/scripts/check_split_damage.py
+      - name: a state a target or a set must be in, buffs over several objects, here / at-a-battlefield conditions (Core 414.2, 415.2, 142, 355.13, 426.1, 383.2.a.1)
+        run: python3 skill/scripts/check_state_predicates_and_buff_sets.py
       - name: a granted Temporary with no duration on a unit at a battlefield or a gear (Core 816, 801.3.a.3)
         run: python3 skill/scripts/check_granted_temporary.py
       - name: a Beginning Phase trigger's own condition - a facedown card at a battlefield (Core 383.2.a.1)
@@ -761,6 +763,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_linked_move.py"
           python3 "$REPO/skill/scripts/check_granted_play_permission.py"
           python3 "$REPO/skill/scripts/check_split_damage.py"
+          python3 "$REPO/skill/scripts/check_state_predicates_and_buff_sets.py"
           python3 "$REPO/skill/scripts/check_granted_temporary.py"
           python3 "$REPO/skill/scripts/check_phase_trigger_condition.py"
           python3 "$REPO/skill/scripts/check_grant_assault.py"

@@ -22,11 +22,16 @@ each edge of it:
       * no decision at all stops with target_decision_required;
   - the literal path is untouched: `object_id` alone still commits, and a
     second Buff on the same Unit is still the 426.1.b no_op;
-  - no new semantics: `affected` and `targets` on buff/empower/disempower are
-    refused at validation, so "Buff all friendly units." stays a blocker;
+  - no new semantics: `affected` and `targets` on empower/disempower are
+    refused at validation;
   - the grammar and the validator agree again: buff_selector's program for
-    "Buff a friendly unit." validates, and clause-grammar.v1 still returns
-    unsupported for "Buff all friendly units.".
+    "Buff a friendly unit." validates.
+
+2026-09-27 package 6: `buff` over a set (`affected`) or a bounded set of Targets
+(`targets`) is now accepted - each object is buffed by the one-object path above
+(check_state_predicates_and_buff_sets.py holds what it does). This gate now holds
+the other side of that edge: buff over a set validates and "Buff all friendly
+units." is its grammar row, while empower and disempower stay one-object ops.
 """
 
 from __future__ import annotations
@@ -110,8 +115,11 @@ def main() -> int:
     # --- no new semantics: one object only --------------------------------------------------------
     for op_name in ("buff", "empower", "disempower"):
         over_set = program({"op": op_name, "effect_id": "x", "affected": {"criteria": {"kind": "unit", "controller_relation": "friendly", "location": "any_battlefield"}}})
-        if not any("one object" in e for e in validate_program(over_set)):
-            errors.append(f"{op_name} over `affected` was accepted; 'Buff all ...' must stay refused")
+        refused = any("one object" in e for e in validate_program(over_set))
+        if op_name != "buff" and not refused:
+            errors.append(f"{op_name} over `affected` was accepted; only buff acts on a set (package 6)")
+        if op_name == "buff" and validate_program(over_set):
+            errors.append(f"buff over `affected` is refused, though package 6 accepts it: {validate_program(over_set)}")
         bare = program({"op": op_name, "effect_id": "x"})
         if not any("needs the object it acts on" in e for e in validate_program(bare)):
             errors.append(f"{op_name} with neither object_id nor target was accepted")
@@ -125,8 +133,8 @@ def main() -> int:
         from_grammar = program(*copy.deepcopy(parsed["program_effects"]))
         if validate_program(from_grammar):
             errors.append(f"buff_selector's own program still fails validate_program: {validate_program(from_grammar)}")
-    if not cg.compile_clause("Buff all friendly units.", grammar).get("unsupported"):
-        errors.append("clause-grammar.v1 now claims 'Buff all friendly units.'; that must remain unsupported")
+    if cg.compile_clause("Buff all friendly units.", grammar).get("production_id") != "buff_all_friendly_units":
+        errors.append("clause-grammar.v1 does not read 'Buff all friendly units.' as buff_all_friendly_units (package 6)")
 
     if errors:
         print("FAILED: buff decision_ref target")
@@ -134,7 +142,8 @@ def main() -> int:
             print(f"  - {e}")
         return 1
     print("buff / empower / disempower accept a typed decision_ref target; wrong decisions are refused each in its own way; "
-          "the literal path and the 426.1.b no_op are unchanged; affected/targets stay refused; buff_selector's program validates")
+          "the literal path and the 426.1.b no_op are unchanged; empower/disempower stay one-object; buff over a set validates "
+          "(package 6); buff_selector's program validates")
     return 0
 
 

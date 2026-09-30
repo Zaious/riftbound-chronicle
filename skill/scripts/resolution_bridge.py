@@ -81,12 +81,32 @@ def bind_source_identity(program: dict[str, Any], chain_item: dict[str, Any]) ->
     the instructions only)."""
     recorded = chain_item.get("source_identity")
     if recorded is None:
-        return program, None
+        return bind_trigger_event(program, chain_item)
     declared = program.get("source_identity")
     if declared is not None and declared != recorded:
         return None, {"reason": "effect_program_source_identity_mismatch",
                       "expected_source_identity": recorded, "received_source_identity": declared}
-    return {**program, "source_identity": recorded}, None
+    return bind_trigger_event({**program, "source_identity": recorded}, chain_item)
+
+
+def bind_trigger_event(program: dict[str, Any], chain_item: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """2026-09-28: the program as it runs for this chain item, carrying the event that met its
+    trigger condition - the object that event is about and the identity it had then - as the chain
+    item recorded it (watchers.trigger_event_of, rules_core.schedule_triggered_items). This is what
+    `{object_ref: trigger_event_object}` ("give IT +1 Might") resolves against (effect_ir.
+    resolve_object_ref, Core 359.3.f.3). Only the engine supplies it: a template that declares
+    another (or one where the chain item recorded none) is refused rather than overridden, and with
+    no record the program is unchanged, so a referent in it is refused by name as it executes. Not
+    part of the content hash."""
+    recorded = chain_item.get("trigger_event")
+    declared = program.get("trigger_event")
+    if declared is not None and declared != recorded:
+        return None, {"reason": "effect_program_trigger_event_mismatch",
+                      "why": "only the engine binds a triggered ability's event; a program may not bring its own",
+                      "received_trigger_event": declared, "expected_trigger_event": recorded}
+    if recorded is None:
+        return program, None
+    return {**program, "trigger_event": dict(recorded)}, None
 
 
 def _target_refs(program: dict[str, Any]) -> list[str]:
@@ -313,7 +333,8 @@ def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], n
         return {"timing": next_timing, "effect": next_effect, "scheduled": []}
     try:
         woken, next_effect = watchers.schedule_live(next_effect, events, turn_id=next_effect.get("turn_id", "turn-0"),
-                                                    batch_label=f"trigger-cost:{item_id}")
+                                                    batch_label=f"trigger-cost:{item_id}",
+                                                    turn_player=next_timing.get("turn_player"))
     except watchers.WatchUnsupported as exc:
         return {"failure": {**base, "valid": True, "committed": False, "unsupported": True, "stage": "trigger_cost",
                             "item_id": item_id, "reason": exc.reason_code, "message": str(exc)}}
@@ -638,8 +659,13 @@ def resolve_with_program(
     if combat_record is not None and combat_record.get("status") in ("open", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined"):
         from combat import sync_designations
         sync_index = int(combat_record.get("sync_count", 0))
-        after_effect, next_record, combat_sync_trace, combat_sync_triggers = sync_designations(
-            combat_record, after_effect, f"combat:{combat_record['combat_id']}:sync:{sync_index}", 0)
+        import watchers
+        try:
+            after_effect, next_record, combat_sync_trace, combat_sync_triggers = sync_designations(
+                combat_record, after_effect, f"combat:{combat_record['combat_id']}:sync:{sync_index}", 0)
+        except watchers.WatchUnsupported as exc:
+            return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",
+                    "reason": str(exc), "reason_code": exc.reason_code}
         next_record["sync_count"] = sync_index + 1
         next_timing_for_schedule = copy.deepcopy(next_timing_for_schedule)
         next_timing_for_schedule["combat"] = next_record
@@ -743,7 +769,7 @@ def resolve_with_program(
         try:
             watch_triggers, final_effect_state = watchers.schedule_live(
                 final_effect_state, watched_events, turn_id=final_effect_state.get("turn_id", "turn-0"),
-                batch_label=f"resolve:{item_id}")
+                batch_label=f"resolve:{item_id}", turn_player=timing_state.get("turn_player"))
         except watchers.WatchUnsupported as exc:
             return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",
                     "reason": str(exc), "reason_code": exc.reason_code}

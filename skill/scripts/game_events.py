@@ -93,6 +93,12 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # 2026-09-24: a card played - Finalized by its play (Core 419.4.a). Emitted by the play
     # transaction, not by an effect program, so no op names it (PLAY_EVENT_KINDS).
     "played": {"about": "object", "rules": ["Core 419.4.a"]},
+    # 2026-09-28: a Unit gains the Attacker / Defender designation for the first time in a combat
+    # (Core 464.2.c.3, 464.2.c.3.a; 383.4.e, 383.4.f). Emitted by combat.open_combat and
+    # combat.sync_designations, not by an op (COMBAT_EVENT_KINDS); what "When an enemy unit
+    # attacks ..." and "When a friendly unit attacks or defends alone" watch.
+    "attacked": {"about": "object", "rules": ["Core 464.2.c.3", "Core 383.4.e", "Core 383.4.e.2.a"]},
+    "defended": {"about": "object", "rules": ["Core 464.2.c.3", "Core 383.4.f", "Core 383.4.f.2.a"]},
     # --- player ----------------------------------------------------------
     # Sabotage: the instruction that only chooses. The event is what every
     # later instruction of the same program reads instead of choosing again.
@@ -180,6 +186,32 @@ OP_PRIMARY: dict[str, str] = {
 NON_PROGRAM_OPS = {"hide_card"}
 # Events no op emits at all: the play transaction's own (2026-09-24).
 PLAY_EVENT_KINDS = {"played"}
+# 2026-09-28: the combat procedures' own - a designation gained (combat.open_combat /
+# sync_designations), never an instruction's
+COMBAT_EVENT_KINDS = {"attacked", "defended"}
+DESIGNATION_EVENT_KINDS = {"attacker": "attacked", "defender": "defended"}
+
+
+def designation_event(*, combat_id: str, role: str, unit: str, identity: str, controller: str,
+                      battlefield: str, battlefield_controller: str | None, alone: bool,
+                      turn_player: str | None = None) -> dict[str, Any]:
+    """The event of one Unit gaining a combat designation (Core 464.2.c.3) - once per object
+    identity per combat, as its own Attack / Defend triggers are (383.4.e.2.a, 383.4.f.2.a).
+    It carries what a watch's other requirements read at that moment (383.4.e.2.b, 383.4.f.2.b):
+    the Battlefield's controller then (during a combat control does not change, 190.4.b) and
+    whether the Unit is alone - no other friendly Unit at the same location (740.2.a). The Unit
+    stays where it is: identity and location are the same before and after. Public: the
+    designations are on the board for all to see."""
+    kind = DESIGNATION_EVENT_KINDS[role]
+    where = {"kind": "battlefield", "battlefield": battlefield}
+    return {"schema_version": EVENT_VERSION, "event_id": f"{combat_id}#{kind}:{unit}", "action_id": combat_id,
+            "kind": kind, "source": {"object": None, "kind": "rule"}, "actor": controller, "controller": controller,
+            "object": unit, "player": controller, "identity_before": identity, "identity_after": identity,
+            "location_before": dict(where), "location_after": dict(where), "causal_parent": None,
+            "visibility": {"fact": "public", "identity": "public"},
+            "rule_locators": list(EVENT_KINDS[kind]["rules"]) + ["Core 740.2.a"],
+            "object_kind": "unit", "battlefield": battlefield, "battlefield_controller": battlefield_controller,
+            "alone": bool(alone), "role": role, "turn_player": turn_player}
 
 
 def played_event(*, play_id: str, card: str, actor: str, object_kind: str, identity_before: str | None,

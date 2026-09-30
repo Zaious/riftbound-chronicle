@@ -249,6 +249,8 @@ jobs:
         run: python3 skill/scripts/check_move_destination_at_choice.py
       - name: Where a triggered ability works (the trash), the Nth card played this turn, a non-Recruit death
         run: python3 skill/scripts/check_trigger_zones.py
+      - name: A watched trigger's "it" is its event's object as it was; designations and a Unit leaving a Battlefield wake watchers
+        run: python3 skill/scripts/check_trigger_referent.py
       - name: A Might change over every unit of a side, Base and Battlefield
         run: python3 skill/scripts/check_bulk_might.py
 
@@ -681,6 +683,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_chosen_champion.py"
           python3 "$REPO/skill/scripts/check_move_destination_at_choice.py"
           python3 "$REPO/skill/scripts/check_trigger_zones.py"
+          python3 "$REPO/skill/scripts/check_trigger_referent.py"
           python3 "$REPO/skill/scripts/check_bulk_might.py"
           python3 "$REPO/skill/scripts/check_static_auras.py"
           python3 "$REPO/skill/scripts/check_keyword_auras.py"

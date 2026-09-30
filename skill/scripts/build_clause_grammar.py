@@ -1107,6 +1107,32 @@ WRAPPERS = [
      ["When you kill a unit with a spell, draw 1."],
      ["when you kill a unit, draw 1", "when a unit dies, draw 1", "when an opponent kills a unit with a spell, draw 1",
       "when you kill a gear with a spell, draw 1"]),
+    # 2026-09-28: watches over a Unit gaining a combat designation (combat emits `attacked` /
+    # `defended`, Core 464.2.c.3), their other requirements read then (383.4.e.2.b, 383.4.f.2.b).
+    # The inner clause's "it" is the Unit the event is about (REFERENT_WRAPPERS, Core 359.3.f.3)
+    ("when_an_enemy_unit_attacks_a_battlefield_you_control",
+     r"when an enemy unit attacks a battlefield you control, (?P<inner>.+)",
+     ["Core 383.4.e", "Core 383.4.e.2.b", "Core 464.2.c.3", "Core 190.4.b", "Core 359.3.f.3"],
+     ["event_triggers", "combat_designations", "trigger_referent"],
+     ["When an enemy unit attacks a battlefield you control, draw 1.",
+      "When an enemy unit attacks a battlefield you control, give it -2 :rb_might: this turn, to a minimum of 1 :rb_might:."],
+     ["when an enemy unit attacks, draw 1", "when a friendly unit attacks a battlefield you control, draw 1",
+      "when an enemy unit defends a battlefield you control, draw 1", "when you attack a battlefield, draw 1"]),
+    ("when_a_friendly_unit_attacks_or_defends_alone", r"when a friendly unit attacks or defends alone, (?P<inner>.+)",
+     ["Core 383.4.e", "Core 383.4.f", "Core 383.4.e.2.b", "Core 383.4.f.2.b", "Core 740.2.a", "Core 359.3.f.3"],
+     ["event_triggers", "combat_designations", "trigger_referent"],
+     ["When a friendly unit attacks or defends alone, draw 1.",
+      "When a friendly unit attacks or defends alone, give it +2 :rb_might: this turn."],
+     ["when a friendly unit attacks or defends, draw 1", "when a friendly unit attacks alone, draw 1",
+      "when an enemy unit attacks or defends alone, draw 1", "when i attack or defend alone, draw 1"]),
+    # a Battlefield's own: a Unit's Move whose location before was this Battlefield (Core 446.1); the
+    # Battlefield's controller controls it, or, uncontrolled, the Turn Player (190.6.a, 190.6.b)
+    ("when_a_unit_moves_from_here", r"when a unit moves from here, (?P<inner>.+)",
+     ["Core 383.1", "Core 446.1", "Core 190.6.a", "Core 190.6.b", "Core 359.3.f.3"],
+     ["move_from_triggers", "trigger_referent"],
+     ["When a unit moves from here, draw 1.", "When a unit moves from here, give it +2 :rb_might: this turn."],
+     ["when a unit moves here, draw 1", "when a unit moves to here, draw 1", "when i move from here, draw 1",
+      "when a friendly unit moves from here, draw 1"]),
 ]
 
 
@@ -1137,6 +1163,7 @@ CAPABILITY_ALIAS = {
     "occupied_enemy_battlefield": "occupied_enemy_battlefield_permission",
     "open_battlefield": "open_battlefield_permission",
     "event_triggers": "watched_triggers",
+    "move_from_triggers": "battlefield_move_from_triggers",
 }
 
 

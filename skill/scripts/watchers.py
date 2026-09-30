@@ -65,6 +65,14 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player"}
 #                            read off the object as it was (a death, Core 428.1), a token's by the rule
 #                            that makes it (Core 187.1); an object whose tags were never observed is
 #                            refused by name, never guessed
+#   at_battlefield_you_control  (2026-09-28) a designation event at a Battlefield the watcher's
+#                            controller controlled when the designation was gained - "attacks a
+#                            battlefield you control" (Core 383.4.e.2.b; control does not change
+#                            while the combat lasts, 190.4.b)
+#   alone                    (2026-09-28) the Unit was alone when the event happened - no other
+#                            friendly Unit at the same location (Core 740.2.a) - "attacks or
+#                            defends alone" (383.4.e.2.b, 383.4.f.2.b: checked as the designation
+#                            is gained)
 WATCH_FILTERS = {
     "object_kind": {"spell", "unit", "gear"},
     "object_controller_relation": {"friendly", "enemy"},
@@ -78,6 +86,8 @@ WATCH_FILTERS = {
     "card_played_ordinal": set(range(1, 21)),
     "object_not_tagged": {"Recruit"},
     "killed_by_your_spell": {True},
+    "at_battlefield_you_control": {True},
+    "alone": {True},
 }
 # 2026-09-27 (package 6): where a triggered ability works when that is not the board. Core 385.1-385.2:
 # an ability of a card outside the board says where it works, and works there and nowhere else - a
@@ -87,6 +97,12 @@ WATCH_FILTERS = {
 # spell whose kill it watches) and one that leaves it at the same time does not (383.2.c.2). A
 # descriptor without it works where every other ability works: the board, or a Legend's Legend Zone.
 FUNCTIONS_FROM_ZONES = {"trash"}
+# 2026-09-28: a Battlefield's own watch whose meaning is fixed by the field it lives in, the way
+# hold_triggers / conquer_triggers / defend_triggers are - "When a unit moves from here": a `moved`
+# event of a Unit whose location before was this Battlefield. The descriptor names no controller:
+# the Battlefield's controller controls it when it triggers (Core 190.6.a), or, uncontrolled, the
+# Turn Player (190.6.b).
+BATTLEFIELD_WATCH_FIELDS = {"move_from_triggers": {"kinds": ["moved"], "object_kind": "unit"}}
 # "each": one trigger per matching event (Core 383.3.a); "one_or_more": one per batch of
 # simultaneous events however many match ("When you stun one or more enemy units").
 WATCH_GROUPINGS = {"each", "one_or_more"}
@@ -400,6 +416,14 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                                        f"not known (Core 133.8); refused rather than guessed", "object_tags_unknown")
             if wanted in tags:
                 return False
+        elif key == "at_battlefield_you_control":
+            # read off the event, as it was when the designation was gained - never off the board now
+            if "battlefield_controller" not in event or event.get("battlefield_controller") != controller \
+                    or controller is None:
+                return False
+        elif key == "alone":
+            if event.get("alone") is not True:
+                return False
         else:
             return False
     return True
@@ -538,9 +562,27 @@ def _scheduled(descriptor: dict[str, Any], event: dict[str, Any], *, trigger_kin
         entry["per_turn_limit"] = descriptor["per_turn_limit"]
     if descriptor.get("ability_id") is not None:
         entry["ability_id"] = descriptor["ability_id"]
+    referent = trigger_event_of(event)
+    if referent is not None:
+        entry["trigger_event"] = referent
     if extra:
         entry.update(extra)
     return entry
+
+
+def trigger_event_of(event: dict[str, Any]) -> dict[str, Any] | None:
+    """2026-09-28: what the trigger's own "it" names - the object the event that met its condition
+    is about, bound to the identity it had once that event was processed (Core 383.2.c, 359.3.f.3:
+    information from the trigger condition is taken when the condition is met; 124: a zone change
+    to or from a non-board zone makes a new object). The chain item carries it; resolution hands it
+    to the program (resolution_bridge.bind_trigger_event), and effect_ir resolves
+    {object_ref: trigger_event_object} against it. None for an event about no object."""
+    subject = event.get("object")
+    identity = event.get("identity_after") if event.get("identity_after") is not None else event.get("identity_before")
+    if not isinstance(subject, str) or not subject or not isinstance(identity, str) or not identity:
+        return None
+    return {"event_id": str(event.get("event_id")), "kind": str(event.get("kind")), "object": subject,
+            "identity": identity}
 
 
 def schedule_watchers(state: dict[str, Any], events: list[dict[str, Any]], *, turn_id: str) -> list[dict[str, Any]]:
@@ -573,7 +615,7 @@ def occurrence_nth(watch: dict[str, Any]) -> int | None:
 
 
 def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_id: str,
-                  batch_label: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+                  batch_label: str, turn_player: str | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """The watchers one batch of events wakes in real play (2026-09-24). Returns (the
     trigger descriptors to schedule, the state with this batch's occurrences counted).
 
@@ -620,6 +662,7 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
                 if descriptor.get("effect_program_hash"):
                     entry["effect_program_hash"] = descriptor["effect_program_hash"]
                 scheduled.append(entry)
+    scheduled += _battlefield_watches(state, events, batch_label=batch_label, turn_player=turn_player)
     if not occurrences:
         counted.pop("watch_occurrences", None)
     return scheduled, counted
@@ -645,6 +688,47 @@ def batch_with_same_action(watch_triggers: list[dict[str, Any]], events: list[di
             trigger["same_action_as"] = action
         else:
             trigger["batch_sequence"], trigger["batch_id"] = own_sequence, own_id
+
+
+def _battlefield_watches(state: dict[str, Any], events: list[dict[str, Any]], *, batch_label: str,
+                         turn_player: str | None) -> list[dict[str, Any]]:
+    """2026-09-28: a Battlefield's own watches (BATTLEFIELD_WATCH_FIELDS) - "When a unit moves from
+    here": one trigger per Unit whose Move left this Battlefield (Core 383.3.a), its source the
+    Battlefield, its controller the Battlefield's controller as the trigger is scheduled (Core
+    190.6.a; a Battlefield's control changes only in a later Cleanup, 190.4.c) or, uncontrolled,
+    the Turn Player (190.6.b) - and none is guessed when neither is known. A Battlefield is always
+    on the board, so it always listens."""
+    from effect_ir import battlefield_identity
+
+    scheduled: list[dict[str, Any]] = []
+    for battlefield_id in sorted(state.get("battlefields") or {}):
+        battlefield = state["battlefields"][battlefield_id]
+        for field, fixed in BATTLEFIELD_WATCH_FIELDS.items():
+            descriptors = battlefield.get(field) or []
+            if not descriptors:
+                continue
+            here = {"kind": "battlefield", "battlefield": battlefield_id}
+            obj_kind = lambda e: e.get("object_kind") or ((state.get("objects") or {}).get(e.get("object")) or {}).get("kind")
+            matched = [event for event in events if event.get("kind") in fixed["kinds"]
+                       and event.get("location_before") == here and obj_kind(event) == fixed["object_kind"]]
+            if not matched:
+                continue
+            controller = battlefield.get("controller") or turn_player
+            if controller is None:
+                raise WatchUnsupported(
+                    f"{battlefield_id}'s {field} triggered while it has no controller and no Turn Player was supplied "
+                    f"(Core 190.6.b); its controller is not guessed", "battlefield_trigger_controller_unknown")
+            identity = battlefield_identity(state, battlefield_id) or f"{battlefield_id}@0"
+            for descriptor in descriptors:
+                for index, event in enumerate(matched):
+                    entry = _scheduled({**descriptor, "controller": controller, "source_object": battlefield_id},
+                                       event, trigger_kind="watched")
+                    entry["trigger_id"] = f"{descriptor['trigger_id']}@{batch_label}" + (f"#{index}" if index else "")
+                    entry["source_identity"] = identity
+                    if descriptor.get("effect_program_hash"):
+                        entry["effect_program_hash"] = descriptor["effect_program_hash"]
+                    scheduled.append(entry)
+    return scheduled
 
 
 def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None = None, *, turn_id: str,

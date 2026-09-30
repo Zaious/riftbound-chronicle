@@ -210,6 +210,18 @@ def _open_after_empty_chain(state: dict[str, Any], origin: str | None) -> dict[s
     return state
 
 
+TRIGGER_EVENT_FIELDS = ("event_id", "kind", "object", "identity")
+
+
+def trigger_event_errors(value: Any) -> list[str]:
+    """2026-09-28: a triggered item's `trigger_event` - the event that met its condition, the
+    object it is about and that object's identity then - is exactly four non-empty strings."""
+    if not isinstance(value, dict) or set(value) != set(TRIGGER_EVENT_FIELDS) \
+            or any(not isinstance(value[k], str) or not value[k] for k in TRIGGER_EVENT_FIELDS):
+        return ["trigger_event must be {event_id, kind, object, identity}, each a non-empty string"]
+    return []
+
+
 def validate_state(state: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     if state.get("schema_version") != SCHEMA_VERSION:
@@ -393,6 +405,8 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.effect_program_hash must be a sha256 content hash")
             if "source_identity" in item and not (isinstance(item["source_identity"], str) and item["source_identity"]):
                 errors.append(f"{label}.source_identity must be a non-empty identity token")
+            if "trigger_event" in item and trigger_event_errors(item["trigger_event"]):
+                errors.append(f"{label}.trigger_event must be {{event_id, kind, object, identity}} strings")
             # GPT 2026-09-29 (Core 355.4): a Move destination chosen at finalization is recorded with the targets
             if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") in ("target_selection", "location_selection") for e in item["finalized_targets"])):
                 errors.append(f"{label}.finalized_targets must be trigger_finalization target selections and Move destinations")
@@ -1048,6 +1062,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             descriptor_errors.append(f"descriptor {index}.effect_program_hash must be a sha256 content hash")
         if "source_identity" in descriptor and not (isinstance(descriptor["source_identity"], str) and descriptor["source_identity"]):
             descriptor_errors.append(f"descriptor {index}.source_identity must be a non-empty identity token")
+        if "trigger_event" in descriptor and trigger_event_errors(descriptor["trigger_event"]):
+            descriptor_errors.append(f"descriptor {index}.trigger_event must be {{event_id, kind, object, identity}} strings")
         batch_sequence = descriptor.get("batch_sequence", 0)
         batch_id = descriptor.get("batch_id", f"batch-{batch_sequence}")
         if not isinstance(batch_sequence, int) or batch_sequence < 0 or not isinstance(batch_id, str) or not batch_id:
@@ -1104,6 +1120,10 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             # relational "here" (location_ref) can check the source is still that
             # object; the registered template never carries it.
             **({"source_identity": descriptor["source_identity"]} if descriptor.get("source_identity") else {}),
+            # 2026-09-28: the object the event that met a watched trigger's condition is about, and
+            # the identity it had then (watchers.trigger_event_of) - what the ability's "it" names
+            # (Core 359.3.f.3); resolution hands it to the program (resolution_bridge.bind_trigger_event)
+            **({"trigger_event": dict(descriptor["trigger_event"])} if descriptor.get("trigger_event") else {}),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),
             "trigger_kind": descriptor.get("trigger_kind", "triggered"),
             "batch_sequence": descriptor["batch_sequence"],

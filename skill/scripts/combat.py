@@ -222,6 +222,46 @@ def _designation_triggers(effect_state: dict[str, Any], record: dict[str, Any], 
     return descriptors, identity
 
 
+def _watchers():
+    import watchers  # local: watchers imports effect_ir lazily, and this module is imported by it indirectly
+    return watchers
+
+
+def _alone(effect_state: dict[str, Any], unit: str, battlefield_id: str) -> bool:
+    """Core 740.2.a: no other friendly Unit (same controller or a teammate's, 740.1.a) at the same
+    location."""
+    controller = effect_state["objects"][unit]["controller"]
+    for other in effect_state["battlefields"][battlefield_id]["objects"]:
+        obj = effect_state["objects"].get(other, {})
+        if other != unit and obj.get("kind") == "unit" and same_side(effect_state, obj.get("controller"), controller):
+            return False
+    return True
+
+
+def _designation_watchers(effect_state: dict[str, Any], record: dict[str, Any], battlefield_id: str,
+                          gained_first: list[tuple[str, str, str]], *, batch_label: str, turn_player: str | None,
+                          batch_of) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """2026-09-28: the watchers woken by Units gaining a combat designation for the first time this
+    combat (game_events.designation_event) - read as each designation is gained (Core 383.4.e.2.b,
+    383.4.f.2.b): the Battlefield's controller then, and whether the Unit is alone. Returns (the
+    trigger descriptors, each in the batch `batch_of(its controller)` names; the effect state with
+    their occurrences counted). No Unit newly designated: nothing, and the state unchanged."""
+    import game_events
+    if not gained_first:
+        return [], effect_state
+    controller_now = effect_state["battlefields"][battlefield_id].get("controller")
+    events = [game_events.designation_event(
+        combat_id=record["combat_id"], role=role, unit=unit, identity=identity,
+        controller=effect_state["objects"][unit]["controller"], battlefield=battlefield_id,
+        battlefield_controller=controller_now, alone=_alone(effect_state, unit, battlefield_id), turn_player=turn_player)
+        for unit, role, identity in gained_first]
+    woken, counted = _watchers().schedule_live(effect_state, events, turn_id=effect_state.get("turn_id", "turn-0"),
+                                               batch_label=batch_label, turn_player=turn_player)
+    for trigger in woken:
+        trigger["batch_id"], trigger["batch_sequence"] = batch_of(trigger["controller"])
+    return woken, counted
+
+
 def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
     """Core 464.2: open the staged Combat — attacker is the player who applied
     Contested (464.2.c.1), the defender the other participant; a new Combat
@@ -261,6 +301,7 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     next_record.update({"status": "open", "attacker": attacker, "defender": defender, "opened_with": opened_with})
     designations = []
     descriptors: list[dict[str, Any]] = []
+    gained_first: list[tuple[str, str, str]] = []
     for role, player in (("attacker", attacker), ("defender", defender)):
         for object_id in present.get(player, []):
             next_effect["objects"][object_id]["combat_designation"] = {"combat_id": record["combat_id"], "role": role}
@@ -268,8 +309,23 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             found, identity = _designation_triggers(next_effect, next_record, object_id, role, f"combat:{record['combat_id']}:open:{role}", group)
             if identity is not None:
                 next_record["triggered_identities"][role].append(identity)
+                gained_first.append((object_id, role, identity))
             descriptors += found
             designations.append({"object_id": object_id, "role": role, "identity": object_identity(next_effect, object_id) or f"{object_id}@0", "triggers": [d["trigger_id"] for d in found]})
+    # 2026-09-28: the same designations, as events a watch reads ("When an enemy unit attacks a
+    # battlefield you control", "When a friendly unit attacks or defends alone"): all gained at
+    # once (464.2.c.3), their triggers put on the Chain with the Attack and Defend triggers,
+    # each in the group of the player who controls it (464.2.e.1)
+    try:
+        watch_triggers, next_effect = _designation_watchers(
+            next_effect, next_record, battlefield_id, gained_first, batch_label=f"combat:{record['combat_id']}:open",
+            turn_player=timing_state.get("turn_player"),
+            batch_of=lambda controller: ((f"combat:{record['combat_id']}:open:attacker", 0) if controller == attacker
+                                         else (f"combat:{record['combat_id']}:open:defender", 2) if controller == defender
+                                         else (f"combat:{record['combat_id']}:open:other", 1)))
+    except _watchers().WatchUnsupported as exc:
+        return _unsupported(base, exc.reason_code, str(exc), ["Core 383.1", "Core 464.2.e"])
+    descriptors += watch_triggers
     # ADR-0008 §4 / Core 190.6: the Battlefield's own "When you attack/defend
     # here" — "you" is the Battlefield's controller, who must be the player
     # gaining that designation; uncontrolled, "you" refers to no one (190.6.d).
@@ -325,6 +381,7 @@ def sync_designations(record: dict[str, Any], effect_state: dict[str, Any], batc
     battlefield_id = record["battlefield"]
     roles = {record["attacker"]: "attacker", record["defender"]: "defender"}
     gained, lost, descriptors = [], [], []
+    gained_first: list[tuple[str, str, str]] = []
     for object_id in sorted(next_effect["objects"]):
         obj = next_effect["objects"][object_id]
         location = find_location(next_effect, object_id)
@@ -341,9 +398,17 @@ def sync_designations(record: dict[str, Any], effect_state: dict[str, Any], batc
         found, identity = _designation_triggers(next_effect, next_record, object_id, desired["role"], batch_id, batch_sequence)
         if identity is not None:
             next_record["triggered_identities"][desired["role"]].append(identity)
+            gained_first.append((object_id, desired["role"], identity))
         descriptors += found
         gained.append({"object_id": object_id, "role": desired["role"], "was": current, "identity": object_identity(next_effect, object_id) or f"{object_id}@0",
                        "triggers": [d["trigger_id"] for d in found], "already_triggered_identity": identity is None})
+    # 2026-09-28: a Unit that becomes present mid-combat gains its designation in this Cleanup
+    # (464.2.c.3.a); a watch reading that designation wakes here, in this sync's own batch. Raises
+    # watchers.WatchUnsupported (a watch the engine will not answer) for the caller to report.
+    watch_triggers, next_effect = _designation_watchers(
+        next_effect, next_record, battlefield_id, gained_first, batch_label=batch_id, turn_player=None,
+        batch_of=lambda _controller: (batch_id, batch_sequence))
+    descriptors += watch_triggers
     return next_effect, next_record, {"gained": gained, "lost": lost}, descriptors
 
 
@@ -358,7 +423,10 @@ def sync_combat_designations(timing_state: dict[str, Any], effect_state: dict[st
     if record is None or record["status"] not in IN_PROGRESS:
         return _refuse(base, "combat_not_in_progress", "designations are synchronized only while a Combat is in progress (323.2)", ["Core 323.2"])
     sync_index = int(record.get("sync_count", 0))
-    next_effect, next_record, trace, descriptors = sync_designations(record, effect_state, f"combat:{record['combat_id']}:sync:{sync_index}", 0)
+    try:
+        next_effect, next_record, trace, descriptors = sync_designations(record, effect_state, f"combat:{record['combat_id']}:sync:{sync_index}", 0)
+    except _watchers().WatchUnsupported as exc:
+        return _unsupported(base, exc.reason_code, str(exc), ["Core 383.1", "Core 323.2"])
     next_record["sync_count"] = sync_index + 1
     from resolution_bridge import _settle_trigger_orders
     failure = _settle_trigger_orders(descriptors, engine_decisions, base)
@@ -726,7 +794,10 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     # arrived during the Showdown becomes a Defender — Shield, alone — before
     # lethal damage is judged), then 3a death triggers / 3b kills.
     sync_index = int(record.get("sync_count", 0))
-    synced, next_record, sync_trace, sync_triggers = sync_designations(record, effect_state, f"combat:{record['combat_id']}:cleanup:step2", 0)
+    try:
+        synced, next_record, sync_trace, sync_triggers = sync_designations(record, effect_state, f"combat:{record['combat_id']}:cleanup:step2", 0)
+    except _watchers().WatchUnsupported as exc:
+        return _unsupported(base, exc.reason_code, str(exc), ["Core 383.1", "Core 323.2"])
     sides_before = combat_sides(next_record, synced)
     by_object = {unit: list(sides_before["defender"]) for unit in sides_before["attacker"]}
     by_object.update({unit: list(sides_before["attacker"]) for unit in sides_before["defender"]})
@@ -763,7 +834,10 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     # this Cleanup's step 2.
     follow_up = None
     if recalled:
-        working, next_record, follow_up, follow_up_triggers = sync_designations(next_record, working, f"combat:{record['combat_id']}:cleanup:follow-up", 2)
+        try:
+            working, next_record, follow_up, follow_up_triggers = sync_designations(next_record, working, f"combat:{record['combat_id']}:cleanup:follow-up", 2)
+        except _watchers().WatchUnsupported as exc:
+            return _unsupported(base, exc.reason_code, str(exc), ["Core 383.1", "Core 323.2"])
         follow_up = {"cleanup": "324.2 follow-up", **follow_up, "scheduled_triggers": [t["trigger_id"] for t in follow_up_triggers]}
         sync_triggers += follow_up_triggers
     next_record["sync_count"] = sync_index + 1
@@ -783,7 +857,7 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
         try:
             watch_triggers, working = watchers.schedule_live(
                 working, list(cleanup["events"]), turn_id=working.get("turn_id", "turn-0"),
-                batch_label=f"combat:{record['combat_id']}:cleanup")
+                batch_label=f"combat:{record['combat_id']}:cleanup", turn_player=timing_state.get("turn_player"))
         except watchers.WatchUnsupported as exc:
             return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",
                     "reason_code": exc.reason_code, "reason": str(exc)}
@@ -1056,7 +1130,8 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
         try:
             watch_triggers, final_effect = watchers.schedule_live(
                 final_effect, watched_events, turn_id=final_effect.get("turn_id", "turn-0"),
-                batch_label=f"standard-move:{actor}:{base['input_hash'][7:19]}")
+                batch_label=f"standard-move:{actor}:{base['input_hash'][7:19]}",
+                turn_player=timing_state.get("turn_player"))
         except watchers.WatchUnsupported as exc:
             return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",
                     "reason_code": exc.reason_code, "reason": str(exc)}

@@ -704,7 +704,8 @@ def validate_state(state: Any) -> list[str]:
         # ADR-0008 §4: a Battlefield's own Attack / Defend triggers (Fortified
         # Position). Their controller is the Battlefield's controller at the
         # time they trigger (190.6.a), so the descriptor names none.
-        for trigger_field in ("attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers"):
+        # 2026-09-28: and its "When a unit moves from here" (watchers.BATTLEFIELD_WATCH_FIELDS)
+        for trigger_field in ("attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers", "move_from_triggers"):
             triggers = battlefield.get(trigger_field, [])
             if not isinstance(triggers, list):
                 errors.append(f"battlefields.{battlefield_id}.{trigger_field} must be an array")
@@ -1584,6 +1585,13 @@ def validate_program(program: Any) -> list[str]:
         errors.append("program_id must be non-empty")
     errors.extend(_receipt_errors(program.get("cost_receipt")))
     errors.extend(_offer_binding_errors(program))
+    # 2026-09-28: the event a watched trigger's chain item recorded, bound in by the engine at
+    # resolution (resolution_bridge.bind_trigger_event) - four non-empty strings, nothing else
+    trigger_event = program.get("trigger_event")
+    if trigger_event is not None and (
+            not isinstance(trigger_event, dict) or set(trigger_event) != {"event_id", "kind", "object", "identity"}
+            or any(not isinstance(v, str) or not v for v in trigger_event.values())):
+        errors.append("trigger_event must be {event_id, kind, object, identity}, each a non-empty string")
     conditional = program.get("conditional_triggers")
     if conditional is not None:
         effect_ids = {e.get("effect_id", f"effect-{i}") for i, e in enumerate(program.get("effects") or []) if isinstance(e, dict)}
@@ -2056,7 +2064,23 @@ SOURCE_IDENTITY_SENTINEL = "$source_identity"
 # a string: a decision artifact, a mapping's expected IR, a hand-edited program.
 # The engine is the only thing that may resolve this shape, and the decision
 # validator refuses it outright, so an artifact cannot inject one.
-OBJECT_REF_KINDS = ("program_source",)
+OBJECT_REF_KINDS = ("program_source", "trigger_event_object")
+# 2026-09-28: "When a friendly unit attacks alone, give IT +1 Might this turn." - the object the
+# event that met a watched trigger's condition is about, as it was then: the identity it had once
+# that event was processed (Core 383.2.c; 359.3.f.3: information referenced from the trigger
+# condition is checked when the condition is fulfilled). The chain item records it
+# (watchers.trigger_event_of) and resolution hands it to the program as `trigger_event`
+# (resolution_bridge.bind_trigger_event); it is never chosen, so it is not a target (Core 355.7 -
+# nothing is selected). As the instruction executes it must still be that object on the board: one
+# that left the board or became a new object (Core 124) cannot be followed, and the instruction is
+# ignored (359.3.e.6, 359.3.f.2.a). Its own op adoption, separate from program_source's: each op
+# proved by its own fixture (engine check_trigger_referent.py).
+TRIGGER_EVENT_OBJECT = "trigger_event_object"
+TRIGGER_EVENT_OBJECT_OPS = {"modify_might"}
+OBJECT_REF_NO_TRIGGER_EVENT = "object_ref_no_trigger_event"
+OBJECT_REF_REFERENT_ABSENT = "object_ref_referent_absent"
+OBJECT_REF_REFERENT_IDENTITY_CHANGED = "object_ref_referent_identity_changed"
+OBJECT_REF_REFERENT_LEFT_PLAY = "object_ref_referent_left_play"
 # Which ops may carry it. Codex's boundary: adoption is proved per op with an
 # executor audit AND a real resolution fixture. `ready` working says nothing
 # about `kill`, so an op is added here only once its fixture exists.
@@ -6668,6 +6692,8 @@ def resolve_object_ref(effect: dict[str, Any], state: dict[str, Any],
         raise SelectionBindingRefused(
             f"unknown object_ref {ref['object_ref']!r}; the engine resolves "
             f"{list(OBJECT_REF_KINDS)}", OBJECT_REF_ABSENT)
+    if ref["object_ref"] == TRIGGER_EVENT_OBJECT:
+        return resolve_trigger_event_object(effect, state, program)
     if effect.get("op") not in OBJECT_REF_OPS:
         raise SelectionBindingRefused(
             f"op {effect.get('op')!r} has no reviewed object_ref adoption. Each op needs its own "
@@ -6713,6 +6739,58 @@ def resolve_object_ref(effect: dict[str, Any], state: dict[str, Any],
 
     return ({**effect, "object_id": source, "subject_identity": now},
             {"object_ref": "program_source", "resolved_to": source, "bound_identity": now})
+
+
+def resolve_trigger_event_object(effect: dict[str, Any], state: dict[str, Any],
+                                 program: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """`{"object_ref": "trigger_event_object"}` - the triggered ability's "it": the object the event
+    that met its trigger condition is about (TRIGGER_EVENT_OBJECT above). Returns (effect with a
+    concrete object_id and subject_identity, meta).
+
+    Refused whole (SelectionBindingRefused) - a malformed program, not a game event: an op with no
+    reviewed adoption of this reference, an instruction that also names a target (it would be
+    talking about something else), a program run with no `trigger_event` (it is not a watched
+    trigger's program, or it was not run through its chain item), and a referent that is not a
+    permanent. Ignored (SourceUnavailable, the instruction is recorded as not followed and the rest
+    resolves - Core 359.3.e.6, 359.3.f.2.a): the object is no longer in the state, is a new object
+    at that id (Core 124), or is off the board."""
+    if effect.get("op") not in TRIGGER_EVENT_OBJECT_OPS:
+        raise SelectionBindingRefused(
+            f"op {effect.get('op')!r} has no reviewed adoption of the trigger's referent; each op needs its "
+            f"own fixture (adopted: {sorted(TRIGGER_EVENT_OBJECT_OPS)})", OBJECT_REF_OP_NOT_ADOPTED)
+    for field in ("target", "targets", "affected", "decision_ref"):
+        if effect.get(field) is not None:
+            raise SelectionBindingRefused(
+                f"the instruction carries {field!r} beside the trigger's referent; 'it' names the object the "
+                f"trigger event was about and chooses nothing", OBJECT_REF_NOT_SELF)
+    event = program.get("trigger_event")
+    if not isinstance(event, dict) or not isinstance(event.get("object"), str) or not isinstance(event.get("identity"), str):
+        raise SelectionBindingRefused(
+            "the program carries no trigger_event: 'it' names the object of the event that met a watched "
+            "trigger's condition, which only that trigger's chain item records (resolution_bridge."
+            "bind_trigger_event); it is never guessed", OBJECT_REF_NO_TRIGGER_EVENT)
+    referent, bound = event["object"], event["identity"]
+    if referent not in state["objects"]:
+        raise SourceUnavailable(
+            f"the trigger's referent {bound!r} is no longer in the state (a token that left the board ceased "
+            f"to exist, Core 186.1); 'it' cannot be acted on", OBJECT_REF_REFERENT_ABSENT)
+    now = object_identity(state, referent)
+    obj = state["objects"][referent]
+    if obj.get("kind") not in OBJECT_REF_PERMANENT_KINDS:
+        raise SelectionBindingRefused(
+            f"the trigger's referent is a {obj.get('kind')!r}, not a permanent; only a permanent is wired for "
+            f"this reference", OBJECT_REF_REFERENT_LEFT_PLAY)
+    if now != bound:
+        raise SourceUnavailable(
+            f"the trigger's referent was {bound!r} when its condition was met and is now {now!r}; the object "
+            f"at that id is a new one (Core 124), not the one the trigger saw", OBJECT_REF_REFERENT_IDENTITY_CHANGED)
+    if zone_class(find_location(state, referent)) != "board":
+        raise SourceUnavailable(
+            f"the trigger's referent {referent!r} is not on the board any more; the instruction cannot be "
+            f"followed (Core 359.3.e.6)", OBJECT_REF_REFERENT_LEFT_PLAY)
+    return ({**effect, "object_id": referent, "subject_identity": now},
+            {"object_ref": TRIGGER_EVENT_OBJECT, "resolved_to": referent, "bound_identity": now,
+             "trigger_event": event.get("event_id")})
 
 
 def resolve_amount_ref(ref: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> tuple[int, str]:

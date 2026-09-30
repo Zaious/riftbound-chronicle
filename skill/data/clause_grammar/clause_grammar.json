@@ -3471,6 +3471,117 @@
         "when you hold, draw 1",
         "when an opponent conquers, draw 1"
       ]
+    },
+    {
+      "production_id": "when_you_play_your_second_card_in_a_turn",
+      "form": "When you play your second card in a turn, draw 1.",
+      "template": "when you play your second card in a turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a",
+        "Core 419.4.b"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play your second card in a turn, draw 1."
+      ],
+      "negative": [
+        "when you play a card, draw 1",
+        "when you play your third card in a turn, draw 1",
+        "when an opponent plays their second card in a turn, draw 1",
+        "when you play a spell, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_another_non_recruit_unit_you_control_dies",
+      "form": "When another non-Recruit unit you control dies, draw 1.",
+      "template": "when another non-recruit unit you control dies, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.2.c.2",
+        "Core 428",
+        "Core 133.8",
+        "Core 187.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When another non-Recruit unit you control dies, draw 1."
+      ],
+      "negative": [
+        "when another unit you control dies, draw 1",
+        "when a non-recruit unit you control dies, draw 1",
+        "when another non-recruit unit an opponent controls dies, draw 1",
+        "when a buffed friendly unit dies, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_discard_me",
+      "form": "When you discard me, draw 1.",
+      "template": "when you discard me, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.2.c.1",
+        "Core 385.2",
+        "Core 422.1",
+        "Core 422.1.b"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you discard me, draw 1."
+      ],
+      "negative": [
+        "when you discard one or more cards, draw 1",
+        "when i am discarded, draw 1",
+        "when an opponent discards me, draw 1",
+        "when you discard a card, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_kill_a_unit_with_a_spell",
+      "form": "When you kill a unit with a spell, draw 1.",
+      "template": "when you kill a unit with a spell, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 428.5",
+        "Core 428.5.b",
+        "Core 428.5.c",
+        "Core 428.5.c.1",
+        "Core 428.5.d"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you kill a unit with a spell, draw 1."
+      ],
+      "negative": [
+        "when you kill a unit, draw 1",
+        "when a unit dies, draw 1",
+        "when an opponent kills a unit with a spell, draw 1",
+        "when you kill a gear with a spell, draw 1"
+      ]
     }
   ]
 }

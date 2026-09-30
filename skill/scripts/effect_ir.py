@@ -635,6 +635,14 @@ def validate_state(state: Any) -> list[str]:
         if died is not None and (not isinstance(died, dict) or any(not isinstance(k, str) or not k or not isinstance(v, int)
                                                                   or isinstance(v, bool) or v < 1 for k, v in died.items())):
             errors.append(f"players.{player_id}.units_died_this_turn must map turn ids to a positive count (Core 428.1)")
+        # 2026-09-27 (package 6): how many cards this player played this turn, one per play
+        # Finalized (Core 419.4.b) - a count, since the same card played twice is two plays
+        played_count = player.get("cards_played_count_this_turn")
+        if played_count is not None and (not isinstance(played_count, dict) or any(
+                not isinstance(k, str) or not k or not isinstance(v, int) or isinstance(v, bool) or v < 1
+                for k, v in played_count.items())):
+            errors.append(f"players.{player_id}.cards_played_count_this_turn must map turn ids to a positive count "
+                          f"(Core 419.4.b)")
 
     for battlefield_id, battlefield in battlefields.items():
         if not isinstance(battlefield, dict) or not isinstance(battlefield.get("objects"), list):
@@ -1167,6 +1175,17 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope must be your_beginning_phase or your_main_phase (ADR-0010 §8)")
                 elif "scope" in trigger and trigger_field not in {"conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers"}:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].scope is not a field of this trigger kind")
+                elif "functions_from" in trigger:
+                    # 2026-09-27 (package 6, Core 385.2): a player-level Conquer Effect of a card
+                    # outside the board ("When you conquer, ... this from your trash ...") - the
+                    # only typed field read from a zone that is not the board (battlefield_control
+                    # ._score_triggers); watched triggers carry it in event_triggers (watchers.py)
+                    import watchers as _watchers
+                    if trigger_field != "conquer_triggers" or trigger.get("scope") != "controller":
+                        errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}].functions_from is read only on a "
+                                      f"conquer trigger of scope controller (Core 383.4.c.2.b, 385.2)")
+                    else:
+                        errors.extend(_watchers.functions_from_errors(trigger, obj, f"objects.{object_id}.{trigger_field}[{trigger_index}]"))
         entry_ids: set[str] = set()
         for r_index, replacement in enumerate(obj.get("entry_replacements", []) or []):
             if not isinstance(replacement, dict) or replacement.get("mode") != "entry_state" or replacement.get("value") not in {"ready", "exhausted"} or set(replacement) - {"replacement_id", "mode", "value", "source", "chain_item", "card", "condition"}:
@@ -1309,6 +1328,12 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.pending_recall must be {{reason: detached_gear_at_battlefield, battlefield}} (Core 435.4.a)")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
+        # 2026-09-27 (package 6): the tags the object has (Core 133.8), when they were observed -
+        # what "a non-Recruit unit" reads (watchers.WATCH_FILTERS object_not_tagged)
+        tags = obj.get("tags")
+        if tags is not None and (not isinstance(tags, list) or len(tags) != len(set(tags))
+                                 or any(not isinstance(t, str) or not t for t in tags)):
+            errors.append(f"objects.{object_id}.tags must be a unique array of non-empty tag names (Core 133.8)")
         # ADR-0012 §1 / Core 825.3: Unique is a deck-construction constraint,
         # not a play restriction; the engine only records the characteristic.
         effect_text = obj.get("effect_text")
@@ -5352,6 +5377,44 @@ def units_died_this_turn(state: dict[str, Any], player: str) -> int:
     """Core 428.1: how many Units `player` controlled when they died, this turn."""
     ledger = (state["players"].get(player) or {}).get("units_died_this_turn") or {}
     return int(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), 0))
+
+
+def cards_played_count_this_turn(state: dict[str, Any], player: str) -> int:
+    """2026-09-27 (package 6): how many cards `player` has played this turn - one per play Finalized
+    (Core 419.4.b), so a card played twice in a turn counts twice. An activated ability is not a card."""
+    ledger = (state["players"].get(player) or {}).get("cards_played_count_this_turn") or {}
+    return int(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), 0))
+
+
+def record_card_played(state: dict[str, Any], player: str) -> int:
+    """Called once, when a card play is Finalized (Core 419.4.b), beside record_finalized_card. Returns the
+    play's ordinal this turn - what "When you play your second card in a turn" reads off the `played`
+    event (watchers card_played_ordinal). Only this turn's entry is kept."""
+    turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+    ordinal = cards_played_count_this_turn(state, player) + 1
+    state["players"][player]["cards_played_count_this_turn"] = {turn_id: ordinal}
+    return ordinal
+
+
+# 2026-09-27 (package 6): the tags a token has by the rule that describes it (Core 187 lists each token's
+# characteristics beyond the ones its maker states), keyed by the catalogued token it was played as (play_token's
+# token_id, ADR-0012 §6). Only catalogued tokens: a token not named here has no observed tags.
+TOKEN_RULE_TAGS = {"recruit": ["Recruit"],   # Core 187.1
+                   "sprite": ["Fae"]}        # Core 187.2
+
+
+def object_tags(state: dict[str, Any], object_id: str) -> list[str] | None:
+    """The object's tags (Core 133.8): the ones it carries, or - a token that carries none - the ones
+    the rule for that token gives it (TOKEN_RULE_TAGS). None when never observed: a caller that needs
+    them refuses rather than guessing."""
+    obj = (state.get("objects") or {}).get(object_id)
+    if not isinstance(obj, dict):
+        return None
+    if isinstance(obj.get("tags"), list):
+        return list(obj["tags"])
+    if obj.get("is_token") and obj.get("token_id") in TOKEN_RULE_TAGS:
+        return list(TOKEN_RULE_TAGS[obj["token_id"]])
+    return None
 
 
 def record_unit_death(state: dict[str, Any], controller: str) -> None:

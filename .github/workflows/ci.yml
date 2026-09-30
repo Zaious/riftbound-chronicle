@@ -247,6 +247,8 @@ jobs:
         run: python3 skill/scripts/check_chosen_champion.py
       - name: A Move's destination is chosen at play or finalization, never at resolution (Core 355.4, 355.15); a trigger with no legal option leaves the Chain (Core 402.4)
         run: python3 skill/scripts/check_move_destination_at_choice.py
+      - name: Where a triggered ability works (the trash), the Nth card played this turn, a non-Recruit death
+        run: python3 skill/scripts/check_trigger_zones.py
       - name: A Might change over every unit of a side, Base and Battlefield
         run: python3 skill/scripts/check_bulk_might.py
 
@@ -678,6 +680,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_watch_active_zone.py"
           python3 "$REPO/skill/scripts/check_chosen_champion.py"
           python3 "$REPO/skill/scripts/check_move_destination_at_choice.py"
+          python3 "$REPO/skill/scripts/check_trigger_zones.py"
           python3 "$REPO/skill/scripts/check_bulk_might.py"
           python3 "$REPO/skill/scripts/check_static_auras.py"
           python3 "$REPO/skill/scripts/check_keyword_auras.py"

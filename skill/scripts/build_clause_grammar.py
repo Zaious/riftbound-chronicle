@@ -1076,6 +1076,37 @@ WRAPPERS = [
      ["conquer_triggers"], ["When you conquer, draw 1."],
      ["when you conquer here, draw 1", "when i conquer, draw 1", "when you hold, draw 1",
       "when an opponent conquers, draw 1"]),
+    # 2026-09-27 (package 6): the Nth card a player plays in a turn - every play of the turn counts,
+    # one per play Finalized (Core 419.4.b), the ones before the watching card was on the board too
+    ("when_you_play_your_second_card_in_a_turn", r"when you play your second card in a turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 419.4.a", "Core 419.4.b"], ["event_triggers"],
+     ["When you play your second card in a turn, draw 1."],
+     ["when you play a card, draw 1", "when you play your third card in a turn, draw 1",
+      "when an opponent plays their second card in a turn, draw 1", "when you play a spell, draw 1"]),
+    # 2026-09-27 (package 6): a death watched with the dying unit's tags as it was (Core 133.8, 417;
+    # a Recruit token has the Recruit tag by Core 187.1); the watching card must still be on the board
+    # after the death (Core 383.2.c.2: dying with it, it does not trigger)
+    ("when_another_non_recruit_unit_you_control_dies",
+     r"when another non-recruit unit you control dies, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.2.c.2", "Core 428", "Core 133.8", "Core 187.1"], ["event_triggers"],
+     ["When another non-Recruit unit you control dies, draw 1."],
+     ["when another unit you control dies, draw 1", "when a non-recruit unit you control dies, draw 1",
+      "when another non-recruit unit an opponent controls dies, draw 1", "when a buffed friendly unit dies, draw 1"]),
+    # 2026-09-27 (package 6): "When you discard me" works from the trash, the zone discarding puts the
+    # card in (Core 422.1, 422.1.b): it is evaluated as the card enters it (383.2.c.1) - from the hand
+    # it could not be, since the card leaves the hand as the condition is met (383.2.c.2)
+    ("when_you_discard_me", r"when you discard me, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.2.c.1", "Core 385.2", "Core 422.1", "Core 422.1.b"], ["event_triggers"],
+     ["When you discard me, draw 1."],
+     ["when you discard one or more cards, draw 1", "when i am discarded, draw 1",
+      "when an opponent discards me, draw 1", "when you discard a card, draw 1"]),
+    # 2026-09-27 (package 6): a kill attributed to a spell (Core 428.5.b, 428.5.c, 428.5.d) its controller
+    # is responsible for (428.5.c.1)
+    ("when_you_kill_a_unit_with_a_spell", r"when you kill a unit with a spell, (?P<inner>.+)",
+     ["Core 383.1", "Core 428.5", "Core 428.5.b", "Core 428.5.c", "Core 428.5.c.1", "Core 428.5.d"], ["event_triggers"],
+     ["When you kill a unit with a spell, draw 1."],
+     ["when you kill a unit, draw 1", "when a unit dies, draw 1", "when an opponent kills a unit with a spell, draw 1",
+      "when you kill a gear with a spell, draw 1"]),
 ]
 
 

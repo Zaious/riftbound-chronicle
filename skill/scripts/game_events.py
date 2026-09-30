@@ -183,16 +183,22 @@ PLAY_EVENT_KINDS = {"played"}
 
 
 def played_event(*, play_id: str, card: str, actor: str, object_kind: str, identity_before: str | None,
-                 identity_after: str | None, from_hidden: bool, turn_player: str | None) -> dict[str, Any]:
+                 identity_after: str | None, from_hidden: bool, turn_player: str | None,
+                 play_ordinal: int | None = None) -> dict[str, Any]:
     """The event a card's play emits once the play has Finalized it (Core 419.4.a) - what
     "When you play a spell / a gear / another unit / a card from [Hidden] / a card on an
-    opponent's turn" reads. Public: a played card is on the Chain for all to see."""
-    return {"schema_version": EVENT_VERSION, "event_id": f"play:{play_id}#played", "action_id": f"play:{play_id}",
-            "kind": "played", "source": {"object": card, "kind": "object"}, "actor": actor, "controller": actor,
-            "object": card, "player": actor, "identity_before": identity_before, "identity_after": identity_after,
-            "location_before": None, "location_after": None, "causal_parent": None,
-            "visibility": {"fact": "public", "identity": "public"}, "rule_locators": list(EVENT_KINDS["played"]["rules"]),
-            "object_kind": object_kind, "from_hidden": from_hidden, "turn_player": turn_player}
+    opponent's turn" reads. Public: a played card is on the Chain for all to see.
+    `play_ordinal` (2026-09-27): which of the actor's plays this turn it is (Core 419.4.b) -
+    "When you play your second card in a turn"."""
+    event = {"schema_version": EVENT_VERSION, "event_id": f"play:{play_id}#played", "action_id": f"play:{play_id}",
+             "kind": "played", "source": {"object": card, "kind": "object"}, "actor": actor, "controller": actor,
+             "object": card, "player": actor, "identity_before": identity_before, "identity_after": identity_after,
+             "location_before": None, "location_after": None, "causal_parent": None,
+             "visibility": {"fact": "public", "identity": "public"}, "rule_locators": list(EVENT_KINDS["played"]["rules"]),
+             "object_kind": object_kind, "from_hidden": from_hidden, "turn_player": turn_player}
+    if play_ordinal is not None:
+        event["play_ordinal"] = play_ordinal
+    return event
 
 # The zone-change costs a player pays by choosing cards (Core 357.2): the semantic event each
 # card's move is, where it was, where it went, and the rules that make a cost's move that action.
@@ -281,6 +287,8 @@ def snapshot(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
         if isinstance(mark, dict) and isinstance(mark.get("object_id"), str):
             visible = mark.get("visible_to")
             out.setdefault(mark["object_id"], {})["revealed_to"] = "all" if visible == "all" else sorted(visible or [])
+    from effect_ir import object_tags
+
     for object_id, obj in (state.get("objects") or {}).items():
         record = out.setdefault(object_id, {})
         record.setdefault("location", None)
@@ -289,6 +297,10 @@ def snapshot(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
         record["controller"] = obj.get("controller")
         # whether it had a buff (Core 426) - what "a buffed unit dies" reads, as it was
         record["buffed"] = bool(obj.get("buffed"))
+        # 2026-09-27 (package 6): its kind and tags as they were - what "another non-Recruit unit
+        # dies" reads of a token that has ceased to exist by then (Core 186.1, 133.8, 187.1)
+        record["kind"] = obj.get("kind")
+        record["tags"] = object_tags(state, object_id)
         record["exists"] = True
     for record in out.values():
         record.setdefault("location", None)
@@ -411,6 +423,10 @@ class EventLog:
             # a death is read off the object as it was (Core 417): "When a buffed friendly unit
             # dies" asks about the buff it had, not the card now in the trash (2026-09-24)
             event["was_buffed"] = bool(before.get("buffed"))
+            # 2026-09-27 (package 6): so are its kind and tags - a unit token that died has ceased to
+            # exist (Core 186.1) and still died a unit (428.1); None: tags never observed
+            event["object_kind"] = before.get("kind")
+            event["object_tags"] = before.get("tags")
         if extra:
             event.update(extra)
         self.events.append(event)

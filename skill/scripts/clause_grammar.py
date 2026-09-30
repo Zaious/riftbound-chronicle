@@ -1141,6 +1141,25 @@ TRIGGER_WRAPPERS = {
     # board object or a Legend in its Legend Zone (battlefield_control._score_triggers). Distinct
     # from a Unit's "When I conquer" (unit_here) and a Battlefield's "When you conquer here"
     "when_you_conquer": ("conquer_triggers", "on-you-conquer", {"scope": "controller"}),
+    # 2026-09-27 (package 6): "your second card in a turn" - the play's ordinal, stamped by the play
+    # transaction as each play is Finalized (Core 419.4.b), every play of the turn counted
+    "when_you_play_your_second_card_in_a_turn": ("event_triggers", "on-play-second-card", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"card_played_ordinal": 2}}}),
+    # 2026-09-27 (package 6): "another non-Recruit unit you control" - the dying unit's kind and tags
+    # as it was (a token has ceased to exist, Core 186.1; a Recruit token is tagged by Core 187.1)
+    "when_another_non_recruit_unit_you_control_dies": ("event_triggers", "on-non-recruit-death", {"watch": {
+        "kinds": ["died"], "scope": "any",
+        "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "exclude_source": True,
+                   "object_not_tagged": "Recruit"}}}),
+    # 2026-09-27 (package 6): works from the trash, the zone discarding puts the card in (Core 422.1,
+    # 383.2.c.1, 385.2) - watchers.source_active reads `functions_from`, and nothing else does
+    "when_you_discard_me": ("event_triggers", "on-discard-me", {"watch": {
+        "kinds": ["discarded"], "scope": "self"}, "functions_from": ["trash"]}),
+    # 2026-09-27 (package 6): a unit's death attributed to a spell its controller is responsible for
+    # (Core 428.5.b-d; resolution_bridge.kill_attributed). Where the ability works is the card's own
+    # business: Immortal Phoenix says "from your trash" (Core 385.2) - its descriptor adds functions_from
+    "when_you_kill_a_unit_with_a_spell": ("event_triggers", "on-spell-kill", {"watch": {
+        "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "killed_by_your_spell": True}}}),
 }
 
 # A Battlefield's own trigger is a different shape from an object's - Core

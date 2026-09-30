@@ -557,6 +557,12 @@ def resolve_with_program(
     if program and contains_each_player(program):
         context = {**(context or {}), "turn": {"turn_player": timing_state.get("turn_player"),
                                                "turn_order": list(timing_state.get("turn_order") or [])}}
+    # 2026-09-27 package 6 (Core 359.3.e.16): this turn's Ending Step has begun (begin_ending_step
+    # moved the turn to the Ending phase) - a delayed trigger "at the end of this turn" made now is
+    # not generated
+    ending_step = timing_state.get("ending_step") or {}
+    if program and timing_state.get("phase") == "ending" and ending_step.get("turn_id") == effect_state.get("turn_id", DEFAULT_TURN_ID):
+        context = {**(context or {}), "ending_step_begun": ending_step["turn_id"]}
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:
@@ -929,6 +935,10 @@ def entry_state_for(
             candidates.append({"replacement_id": effect["effect_id"], "source": effect.get("source"),
                                "mode": "entry_state_for_played_units", "value": effect["value"],
                                "turn_id": effect.get("turn_id"), "rule_locators": ["Core 369.3"]})
+    # 2026-09-27 package 6: what a permanent on the board grants the other Units its side plays
+    # ("Other friendly units enter ready.", Core 369.3, 365.1)
+    from effect_ir import granted_entry_states
+    candidates.extend(granted_entry_states(state, card, obj["kind"], controller))
     if len({candidate["value"] for candidate in candidates}) > 1:
         order_map, _ = _ed.replacement_maps(engine_decisions)
         replacement_ids = [candidate["replacement_id"] for candidate in candidates]
@@ -1012,6 +1022,16 @@ def complete_permanent_play(
             from effect_ir import evaluate_condition
             if not evaluate_condition(working, condition, controller=controller, object_id=card):
                 inactive.append({"trigger_id": descriptor["trigger_id"], "reason": "legion_not_active", "rule_locators": ["Core 812.1.c"]})
+                continue
+            descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
+        elif condition is not None and condition.get("kind") == "controls_units":
+            # 2026-09-27 package 6 (Poro Herder): "if you control a Poro" right after the trigger
+            # condition is part of it (Core 383.2.a.1) - read as the play completes; not met, the
+            # ability does not trigger. Once on the Chain it resolves whatever happens to the Poro.
+            from effect_ir import evaluate_condition
+            if not evaluate_condition(working, condition, controller=controller, object_id=card):
+                inactive.append({"trigger_id": descriptor["trigger_id"], "reason": "trigger_condition_not_met",
+                                 "rule_locators": ["Core 383.2.a.1"]})
                 continue
             descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
         copied = copy.deepcopy(descriptor)

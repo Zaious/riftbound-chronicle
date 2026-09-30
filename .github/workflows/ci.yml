@@ -262,6 +262,16 @@ jobs:
         run: python3 skill/scripts/check_conditional_passives.py
       - name: Conditional entry - "If an opponent's score is within N / controls a battlefield, I enter ready." (364.3.a, 369.3)
         run: python3 skill/scripts/check_conditional_entry.py
+      - name: A printed decrease over Stunned enemy units here, with its floor recomputed each time (423.1.a, 477.3.b)
+        run: python3 skill/scripts/check_stunned_aura.py
+      - name: Other friendly units enter ready - a permanent's entry grant to its side's cards and tokens (369.3, 365.1)
+        run: python3 skill/scripts/check_granted_entry_state.py
+      - name: A delayed trigger at the end of this turn carrying its own program (390.2, 355.5.b, 359.3.e.16)
+        run: python3 skill/scripts/check_delayed_this_turn.py
+      - name: Printed tags, and a play trigger conditioned on controlling a tag (133.8, 383.2.a.1)
+        run: python3 skill/scripts/check_object_tags.py
+      - name: Recruit unit tokens played here, and the Legion ability over them (187.1, 359.3.f.2, 812.1.b.1)
+        run: python3 skill/scripts/check_recruit_tokens_here.py
 
       # Every engine check is listed in this workflow; one that is not has never run.
       - name: CI lists every engine check
@@ -697,6 +707,11 @@ jobs:
           python3 "$REPO/skill/scripts/check_keyword_auras.py"
           python3 "$REPO/skill/scripts/check_conditional_passives.py"
           python3 "$REPO/skill/scripts/check_conditional_entry.py"
+          python3 "$REPO/skill/scripts/check_stunned_aura.py"
+          python3 "$REPO/skill/scripts/check_granted_entry_state.py"
+          python3 "$REPO/skill/scripts/check_delayed_this_turn.py"
+          python3 "$REPO/skill/scripts/check_object_tags.py"
+          python3 "$REPO/skill/scripts/check_recruit_tokens_here.py"
           python3 "$REPO/skill/scripts/check_trigger_source_identity.py"
           python3 "$REPO/skill/scripts/check_selection_granularity.py"
           python3 "$REPO/skill/scripts/check_grammar_builder_paths.py"

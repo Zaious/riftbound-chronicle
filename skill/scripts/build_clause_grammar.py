@@ -624,6 +624,43 @@ LITERAL = [
       "in play. A keyword instead of Might, or 'friendly' / 'enemy' units, is a different clause."),
      ["Units here have +1 :rb_might:."],
      ["units here have [ganking]", "friendly units here have +1 :rb_might:", "units have +1 :rb_might:"]),
+    # 2026-09-27 package 6: Recruit unit tokens played at the source's current Battlefield ("here",
+    # location_ref read as it executes) - what a [Legion] over "When you play me, ..." needs to read
+    ("play_n_might_recruit_unit_tokens_here",
+     r"play (?P<count>a|two|three|four) (?P<might>\d+) \[m\] recruit unit tokens? here",
+     ["Core 185.2", "Core 187.1", "Core 359.3.f.2"], "instruction", ["play_token"],
+     ("One to four catalogued Recruit unit tokens (187.1) with the printed Might, each played at the Battlefield the "
+      "program's source is at when it executes (359.3.f.2); none if it is not at one. 'In your base', a token "
+      "without a place, or another token is a different clause."),
+     ["Play two 1 :rb_might: Recruit unit tokens here.", "Play a 1 :rb_might: Recruit unit token here."],
+     ["play two 1 :rb_might: recruit unit tokens into your base", "play two 1 :rb_might: recruit unit tokens",
+      "play a 3 :rb_might: sprite unit token here", "play five 1 :rb_might: recruit unit tokens here"]),
+    # 2026-09-27 package 6: a permanent's printed replacement on how the OTHER Units of its side
+    # enter the board (369.3) - played cards and tokens alike - while it is on the board (365.1);
+    # effect_ir.granted_entry_states, check_granted_entry_state.py
+    ("other_friendly_units_enter_ready",
+     r"other friendly units enter ready",
+     ["Core 369.3", "Core 365.1", "Core 143.4"], "passive", ["entry_replacements"],
+     ("While the source is on the board, each other Unit that enters the board under its controller's side - a "
+      "Unit card played, or a Unit token - enters ready instead of exhausted (143.4). The source's own entry, an "
+      "opponent's Units, a timed grant ('this turn'), or 'exhausted' is a different clause."),
+     ["Other friendly units enter ready."],
+     ["units you play this turn enter ready", "i enter ready", "other friendly units enter exhausted",
+      "other units enter ready", "friendly units enter ready"]),
+    # 2026-09-27 package 6: a printed decrease over the Stunned enemy units at the source's
+    # Battlefield, with its own floor - re-applied each time Might is computed (a passive does not
+    # snapshot, 477.3.b); effect_ir.printed_aura_effects, check_stunned_aura.py
+    ("stunned_enemy_units_here_have_might_to_a_minimum",
+     r"stunned enemy units here have -(?P<amount>\d+) \[m\], to a minimum of (?P<floor>\d+) \[m\]",
+     ["Core 365.1", "Core 423.1.a", "Core 476", "Core 477.3", "Core 477.3.b", "Core 479"], "passive", ["might_aura"],
+     ("A printed aura: -N Might, to a minimum of M, to every enemy Unit at the Battlefield where the source is that "
+      "is Stunned right now (423.1.a), while the source is on the board. The floor is applied fresh each time the "
+      "Might is computed (477.3.b). Friendly or unstunned units, a decrease without the floor, or a whole-board "
+      "aura is a different clause."),
+     ["Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:."],
+     ["stunned enemy units here have -8 :rb_might:", "enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:",
+      "stunned friendly units here have -8 :rb_might:, to a minimum of 1 :rb_might:",
+      "stunned enemy units have -8 :rb_might:, to a minimum of 1 :rb_might:"]),
     # 2026-09-27: printed keyword auras - a keyword granted in the Ability layer (477.2, 477.2.b),
     # read live off the source (effect_ir.printed_aura_effects; check_keyword_auras.py). Each
     # admits only the keywords its gate exercises.
@@ -939,6 +976,13 @@ LITERAL = [
 ]
 
 WRAPPERS = [
+    # 2026-09-27 package 6 (Poro Herder): before when_you_play_me, which would take the condition for
+    # the instruction; the tag is a closed alternation (clause_grammar.PRINTED_TAGS)
+    ("when_you_play_me_if_you_control_a_tag", r"when you play me, if you control an? (?P<tag>poro), (?P<inner>.+)",
+     ["Core 383.1", "Core 419.4.a", "Core 383.2.a.1", "Core 133.8.a"], ["play_triggers", "condition_v1"],
+     ["When you play me, if you control a Poro, draw 1."],
+     ["when you play me, draw 1 if you control a poro", "when you play me, if you control a unit, draw 1",
+      "when you play a poro, draw 1", "when i move, if you control a poro, draw 1"]),
     ("when_you_play_me", r"when you play me, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
      ["When you play me, channel 1 rune exhausted.", "When you play me, draw 1."],
      ["when you play a unit, draw 1", "when i move, draw 1"]),

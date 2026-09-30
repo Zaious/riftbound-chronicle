@@ -1836,10 +1836,15 @@ def limited_play_unobtainable(state: dict[str, Any], actor: str, object_id: str,
     """2026-09-28 (package 6, Core 355.16; GPT 2026-09-25): why choosing `object_id` for an effect-driven
     play is certain to leave a cost that cannot be paid, or None. What the play would still cost - its
     printed cost (Core 206) less what the effect ignores (356.1.b) - is set against the most the actor
-    could have: the pool, restricted resources usable for that play, and each Rune they control
-    on the Board, which can add 1 Energy while ready and 1 Power of its Domain by recycling itself
-    (164.2.a, 164.2.b; a Rune whose Domain the state does not carry may be any). Add abilities of other
-    permanents are not in the effect state, so this bound counts only the pool and the Runes."""
+    could have: the pool, restricted resources usable for that play, each Rune they control on the
+    Board, which can add 1 Energy while ready and 1 Power of its Domain by recycling itself (164.2.a,
+    164.2.b; a Rune whose Domain the state does not carry may be any), and the Add abilities of the
+    other permanents and legends they control (357.1.a; GPT 2026-09-27: the later payment steps count,
+    Add Reactions available then included). An object records its Add abilities as `add_abilities`
+    (what each adds: {"energy": n} / {"power": {domain: n}} / {"universal": n}; [] observed none); a ready
+    one's are counted. While any of the actor's permanents or legends records none, what they could add
+    is unknown, so the choice is not certain to fail and None is returned (a play that then cannot be
+    paid is cancelled at payment, 358.5)."""
     obj = state["objects"].get(object_id) or {}
     printed = obj.get("printed_cost")
     if not isinstance(printed, dict):
@@ -1853,13 +1858,22 @@ def limited_play_unobtainable(state: dict[str, Any], actor: str, object_id: str,
     use = f"play_{obj.get('kind')}"
     runes = [o for o, rune in state["objects"].items() if rune.get("kind") == "rune" and rune.get("controller") == actor
              and zone_class(find_location(state, o)) == "board"]
+    others = [o for o, other in state["objects"].items() if other.get("controller") == actor and other.get("kind") in ("unit", "gear", "legend")
+              and (zone_class(find_location(state, o)) == "board" or (find_location(state, o) or (None,))[-1] == "legend")]
+    if any(not isinstance(state["objects"][o].get("add_abilities"), list) for o in others):
+        return None                      # an Add ability nobody observed could pay: not certain (355.16)
+    adds = [a for o in others if not state["objects"][o].get("exhausted") for a in state["objects"][o]["add_abilities"]
+            if isinstance(a, dict)]
     most_energy = (resources["energy"] + sum(r["amount"] for r in _restricted_entries(resources, use, "energy"))
-                   + sum(1 for o in runes if not state["objects"][o].get("exhausted")))
+                   + sum(1 for o in runes if not state["objects"][o].get("exhausted"))
+                   + sum(int(a.get("energy") or 0) for a in adds))
     if energy > most_energy:
         return f"energy: {energy} due, at most {most_energy} obtainable"
     for domain, amount in sorted(power.items()):
         most = (resources["power"].get(domain, 0) + sum(r["amount"] for r in _restricted_entries(resources, use, "power", domain))
-                + sum(1 for o in runes if state["objects"][o].get("domains") in (None, [domain])))
+                + resources.get("universal_power", 0)
+                + sum(1 for o in runes if state["objects"][o].get("domains") in (None, [domain]))
+                + sum(int((a.get("power") or {}).get(domain) or 0) + int(a.get("universal") or 0) for a in adds))
         if amount > most:
             return f"power {domain}: {amount} due, at most {most} obtainable"
     return None

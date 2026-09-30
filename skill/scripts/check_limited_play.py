@@ -40,9 +40,11 @@ Held here:
                       the Add window not confirmed: a decision, nothing changed
   C2 target changed   the card left the trash and came back before the spell resolved (359.3.e.4):
                       the instruction is ignored, nothing is played, the card stays in the trash
-  C3 355.16           a unit whose Power could never be paid (pool and Runes counted) may not be
-                      chosen; with a Rune of its Domain on the board it may; with its cost ignored
-                      it may
+  C3 355.16           a unit whose Power could never be paid (pool, Runes and the Add abilities the
+                      actor's permanents record counted) may not be chosen; with a Rune of its Domain
+                      on the board it may; with a ready unit that records an Add of that Domain it may,
+                      exhausted it may not; with a unit whose Add abilities are not recorded it may (not
+                      certain, GPT 2026-09-27: Add Reactions count, 357.1.a); with its cost ignored it may
   C4 forged           timing_source limited_play on a card in hand; a lower cost.base; another
                       cost_override; another permission; a limited play that is not the oldest
                       Pending item; an ability declared as a limited play - each refused
@@ -430,6 +432,8 @@ def check_target_changed() -> None:
 
 def check_355_16() -> None:
     state = board(power=0)
+    # p1's unit in its Base records no Add ability (observed), so the bound is certain
+    state["objects"]["u1"]["add_abilities"] = []
     refused = play_harrowing(state)
     if refused.get("committed") or refused.get("reason_code") != "limited_play_cost_unobtainable":
         fail("C3 refused", f"a unit whose Power could never be paid was chosen: {refused.get('reason_code')}")
@@ -445,6 +449,19 @@ def check_355_16() -> None:
     other_rune["objects"]["r1"]["domains"] = ["calm"]
     if play_harrowing(other_rune).get("reason_code") != "limited_play_cost_unobtainable":
         fail("C3 rune", "a Rune of another Domain counted for this Power")
+    # an Add ability of that Domain on a ready permanent could pay it (357.1.a); exhausted, it could not
+    adder = copy.deepcopy(state)
+    adder["objects"]["u1"]["add_abilities"] = [{"power": {"chaos": 1}}]
+    if not play_harrowing(adder).get("committed"):
+        fail("C3 add", "a ready unit's recorded Add of the unit's Domain did not count")
+    adder["objects"]["u1"]["exhausted"] = True
+    if play_harrowing(adder).get("reason_code") != "limited_play_cost_unobtainable":
+        fail("C3 add", "an exhausted unit's Add counted")
+    # a permanent whose Add abilities nobody recorded: the choice is not certain to fail, so it is made
+    unknown = copy.deepcopy(state)
+    del unknown["objects"]["u1"]["add_abilities"]
+    if play_harrowing(unknown).get("reason_code") == "limited_play_cost_unobtainable":
+        fail("C3 unknown", "a choice was refused as certain to fail while a permanent's Add abilities were unknown")
     ignoring = program("harrowing-effects", "harrowing", [play_it("ignore_all")])
     if not play_harrowing(state, prog=ignoring).get("committed"):
         fail("C3 ignore", "a unit whose cost the effect ignores was refused")

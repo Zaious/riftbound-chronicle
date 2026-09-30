@@ -315,6 +315,13 @@ SUPPORTED_OPS = {
     # until the resolving effect is done (354.3) and runs through the play transaction
     # (resolution_bridge.finalize_limited_play). It never puts a card on the board itself.
     "limited_play",
+    # 2026-09-27 package 6: "Spend any number of buffs." as an INSTRUCTION, not a cost (Albus
+    # Ferros: "When you play me, spend any number of buffs. For each buff spent, channel 1 rune
+    # exhausted."). Its player chooses, as it resolves (Core 355.17), any number of Units they
+    # control that have a buff (702.2.b.1, 702.2.b.2) - counters, not targets (704.1); each loses it
+    # (702.2.b). How many it spent
+    # is its receipt, which a linked later instruction counts (count_per linked_applied_count).
+    "spend_buffs",
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
@@ -649,6 +656,7 @@ OP_RULES = {
     "choose_objects": ["Core 355.10.e", "Core 359.3.e"],
     "choose_option": ["Core 355.10.e"],
     "limited_play": ["Core 419.3", "Core 419.3.a", "Core 419.3.b", "Core 354", "Core 354.3", "Core 124"],
+    "spend_buffs": ["Core 702.2.b", "Core 702.2.b.1", "Core 702.2.b.2", "Core 704", "Core 704.1", "Core 355.17"],
 }
 # 2026-09-28 (package 6): what an effect-driven play changes about the card's cost (Core 356.1):
 # "ignoring its Energy cost" / "ignoring its Power cost" set that base cost to zero and leave the
@@ -1268,6 +1276,8 @@ def validate_state(state: Any) -> list[str]:
         offer_ids = [o.get("cost_offer_id") for o in (obj.get("optional_additional_costs") or []) if isinstance(o, dict)]
         if len(offer_ids) != len(set(offer_ids)):
             errors.append(f"objects.{object_id}.optional_additional_costs have duplicate cost_offer_ids")
+        errors.extend(_printed_cost_errors(object_id, obj, offer_ids))
+        errors.extend(_granted_discount_errors(object_id, obj))
 
         # Round H / Core 805: a card's printed Domains. Absent means the data
         # does not say, which is not the same as "no Domain" - an empty list
@@ -1698,6 +1708,114 @@ def validate_state(state: Any) -> list[str]:
     return errors
 
 
+# 2026-09-27 package 6: a card's own printed NON-RESOURCE additional costs (Core 356.2.a.1,
+# 356.2.b.1, 356.7) - "As an additional cost to play me, kill a friendly unit", "As you play me,
+# you may discard 1 as an additional cost" - and the cost modifications a paid offer switches on
+# ("If you do, reduce my cost by [2]", "If you do, ignore this spell's cost", "Reduce my cost by
+# [C] for each killed this way"). The payment is a typed kind; what it is paid WITH (which unit,
+# which card) is the payer's choice as the card is played (Core 355.1.a, 357.2.a's own example).
+PRINTED_COST_KINDS = {"kill", "exhaust", "spend_buff", "discard"}
+# the kinds whose object is a Unit on the board (kill / exhaust: a friendly unit; spend_buff: a unit
+# its payer controls with a buff, Core 702.2.b.1-b.2); discard names cards in the payer's hand
+PRINTED_COST_UNIT_KINDS = {"kill", "exhaust", "spend_buff"}
+OFFER_LINK_KINDS = {"energy_reduction", "ignore_base_cost", "power_reduction_per_paid"}
+
+
+def _printed_cost_errors(object_id: str, obj: dict[str, Any], resource_offer_ids: list[Any]) -> list[str]:
+    errors: list[str] = []
+    printed = obj.get("printed_additional_costs")
+    if printed is not None and not isinstance(printed, list):
+        return [f"objects.{object_id}.printed_additional_costs must be a list"]
+    offers: dict[str, dict[str, Any]] = {}
+    for index, offer in enumerate(printed or []):
+        label = f"objects.{object_id}.printed_additional_costs[{index}]"
+        if not isinstance(offer, dict) or set(offer) != {"cost_offer_id", "mandatory", "payment"}:
+            errors.append(f"{label} must be {{cost_offer_id, mandatory, payment}}")
+            continue
+        offer_id, payment = offer["cost_offer_id"], offer["payment"]
+        if not isinstance(offer_id, str) or not offer_id or offer_id in offers or offer_id in resource_offer_ids:
+            errors.append(f"{label}.cost_offer_id must be a non-empty string no other offer of this card uses")
+            continue
+        if not isinstance(offer["mandatory"], bool):
+            errors.append(f"{label}.mandatory must be boolean")
+            continue
+        if not isinstance(payment, dict) or payment.get("kind") not in PRINTED_COST_KINDS:
+            errors.append(f"{label}.payment.kind must be one of {sorted(PRINTED_COST_KINDS)}")
+            continue
+        if payment.get("any_number") is True:
+            # "any number" (Core 355.13) is a count the payer chooses; only an optional offer of a
+            # Unit kind prints it, and a mandatory cost of "any number" would be no cost at all
+            if set(payment) != {"kind", "any_number"} or payment["kind"] not in PRINTED_COST_UNIT_KINDS or offer["mandatory"]:
+                errors.append(f"{label}.payment {{kind, any_number: true}} is an optional offer of a unit kind")
+                continue
+        elif set(payment) != {"kind", "amount"} or not isinstance(payment["amount"], int) or isinstance(payment["amount"], bool) \
+                or payment["amount"] < 1 or (payment["kind"] in PRINTED_COST_UNIT_KINDS and payment["amount"] != 1):
+            errors.append(f"{label}.payment must be {{kind, amount}} (discard N >= 1; one unit for a unit kind) "
+                          "or {kind, any_number: true}")
+            continue
+        offers[offer_id] = offer
+    links = obj.get("offer_linked_cost_modifications")
+    if links is not None and not isinstance(links, list):
+        return errors + [f"objects.{object_id}.offer_linked_cost_modifications must be a list"]
+    for index, link in enumerate(links or []):
+        label = f"objects.{object_id}.offer_linked_cost_modifications[{index}]"
+        if not isinstance(link, dict) or link.get("kind") not in OFFER_LINK_KINDS:
+            errors.append(f"{label}.kind must be one of {sorted(OFFER_LINK_KINDS)}")
+            continue
+        offer = offers.get(link.get("cost_offer_id"))
+        if offer is None or offer["mandatory"]:
+            # "If you do" reads the decision to pay an OPTIONAL cost (356.4.f.1); a mandatory one is always paid
+            errors.append(f"{label}.cost_offer_id must name an optional printed offer of this card")
+            continue
+        any_number = offer["payment"].get("any_number") is True
+        wanted = {"energy_reduction": {"cost_offer_id", "kind", "amount"}, "ignore_base_cost": {"cost_offer_id", "kind"},
+                  "power_reduction_per_paid": {"cost_offer_id", "kind", "domain", "amount"}}[link["kind"]]
+        if set(link) != wanted:
+            errors.append(f"{label} must be exactly {sorted(wanted)}")
+        elif "amount" in link and (not isinstance(link["amount"], int) or isinstance(link["amount"], bool) or link["amount"] < 1):
+            errors.append(f"{label}.amount must be a positive integer")
+        elif link["kind"] == "power_reduction_per_paid" and (not any_number or not isinstance(link["domain"], str) or not link["domain"]):
+            errors.append(f"{label} counts what an 'any number' offer paid, per Domain")
+        elif link["kind"] != "power_reduction_per_paid" and any_number:
+            errors.append(f"{label} applies once, so it links an offer of one payment")
+    return errors
+
+
+def _granted_discount_errors(object_id: str, obj: dict[str, Any]) -> list[str]:
+    """2026-09-27 package 6: a permanent's printed discount on its controller's cards of one tag ("Your
+    Dragons' Energy costs are reduced by [2], to a minimum of [1]" - Core 356.4.a, 356.4.b, 356.4.e).
+    Read only while its source is on the board (a passive works there, Core 363); the tag is as
+    printed (object_tags)."""
+    granted = obj.get("granted_cost_discounts")
+    if granted is None:
+        return []
+    if not isinstance(granted, list):
+        return [f"objects.{object_id}.granted_cost_discounts must be a list"]
+    errors, ids = [], set()
+    for index, entry in enumerate(granted):
+        label = f"objects.{object_id}.granted_cost_discounts[{index}]"
+        if not isinstance(entry, dict) or set(entry) - {"discount_id", "applies_to", "amount", "minimum", "card_tag", "card_kind", "source_at"} \
+                or not {"discount_id", "applies_to", "amount"} <= set(entry) or len({"card_tag", "card_kind"} & set(entry)) != 1:
+            errors.append(f"{label} must be {{discount_id, applies_to, amount, card_tag | card_kind, minimum?, source_at?}}")
+            continue
+        if "card_kind" in entry and entry["card_kind"] not in {"spell", "unit", "gear"}:
+            errors.append(f"{label}.card_kind must be spell, unit or gear")
+        if "source_at" in entry and entry["source_at"] != "battlefield":
+            errors.append(f"{label}.source_at may only be battlefield (the source's own location, 'while I'm at a battlefield')")
+        if not isinstance(entry["discount_id"], str) or not entry["discount_id"] or entry["discount_id"] in ids:
+            errors.append(f"{label}.discount_id must be a non-empty string no other discount of this object uses")
+        ids.add(entry.get("discount_id"))
+        if entry["applies_to"] != "energy":
+            errors.append(f"{label}.applies_to must be energy; nothing else is modelled")
+        for field in ("amount", "minimum"):
+            value = entry.get(field)
+            if field in entry and (not isinstance(value, int) or isinstance(value, bool) or value < (1 if field == "amount" else 0)):
+                errors.append(f"{label}.{field} must be a {'positive' if field == 'amount' else 'non-negative'} integer")
+        if "card_tag" in entry and (not isinstance(entry["card_tag"], str) or not entry["card_tag"]):
+            errors.append(f"{label}.card_tag names the tag, as printed")
+    return errors
+
+
 def _offer_binding_errors(program: dict[str, Any]) -> list[str]:
     """Round H: a `cost_paid` naming a card-self offer must be reading *this*
     card's receipt for *this* play. Codex's three-way binding - source_object,
@@ -2094,12 +2212,31 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].player must be a player id, {{decision_ref}} or "
                               f"{{object_player: {{effect_id, relation}}}} with relation in {list(OBJECT_PLAYER_RELATIONS)}")
             if "count_per" in effect:
+                linked_count = isinstance(effect["count_per"], dict) and effect["count_per"].get("kind") == "linked_applied_count"
                 if not is_count_per(effect["count_per"]):
-                    errors.append(f"effects[{index}].count_per must be {{kind: units_you_control, mighty: true}}")
-                if effect.get("op") != "draw":
+                    errors.append(f"effects[{index}].count_per must be {{kind: units_you_control, mighty: true}} "
+                                  f"or {{kind: linked_applied_count, effect_id}}")
+                elif linked_count:
+                    earlier = next((e for e in effects[:index] if isinstance(e, dict)
+                                    and e.get("effect_id") == effect["count_per"]["effect_id"]), None)
+                    if earlier is None or earlier.get("op") not in LINKED_COUNT_OPS:
+                        errors.append(f"effects[{index}].count_per.effect_id must name an earlier instruction whose "
+                                      f"receipt is a count ({sorted(LINKED_COUNT_OPS)})")
+                if linked_count and effect.get("op") not in LINKED_COUNT_READERS:
+                    errors.append(f"effects[{index}].count_per linked_applied_count is read by {sorted(LINKED_COUNT_READERS)} only")
+                elif not linked_count and effect.get("op") != "draw":
                     errors.append(f"effects[{index}].count_per is read by draw only")
                 if not isinstance(effect.get("count"), int) or isinstance(effect.get("count"), bool) or effect.get("count", 0) < 1:
                     errors.append(f"effects[{index}].count_per multiplies a positive printed count")
+            if effect.get("op") == "spend_buffs":
+                extra = set(effect) - {"op", "effect_id", "player", "decision_ref", "order", EXECUTION_FIELD}
+                if extra:
+                    errors.append(f"effects[{index}].spend_buffs takes only player and decision_ref; not {sorted(extra)} "
+                                  "(what it spends is chosen as it resolves, Core 355.17)")
+                if not isinstance(effect.get("player"), str) or not effect.get("player"):
+                    errors.append(f"effects[{index}].spend_buffs names the player who spends")
+                if "decision_ref" in effect and (not isinstance(effect.get("decision_ref"), str) or not effect.get("decision_ref")):
+                    errors.append(f"effects[{index}].spend_buffs.decision_ref names the resolution-stage choice")
             if "source_ref" in effect:
                 if not is_source_ref(effect["source_ref"]):
                     errors.append(f"effects[{index}].source_ref must be {{effect_id}}")
@@ -2551,7 +2688,21 @@ COUNT_PER_KINDS = {"units_you_control"}
 MIGHTY_AT = 5
 
 
+# 2026-09-27 package 6: "For each buff spent, channel 1 rune exhausted." - the count is how many an
+# EARLIER instruction of this program spent (its applied_count), a linked instruction (Core
+# 359.3.e.14): ignored when that one was ignored (359.3.e.14.a). Only instructions whose receipt is a
+# count of what they did are read (LINKED_COUNT_OPS); only these ops multiply by it.
+LINKED_COUNT_OPS = {"spend_buffs"}
+# ops whose own decision_ref is a choice made as they resolve, never a target (resolution_bridge keeps such a
+# resolution-stage selection apart from the targets bound at finalization). Named apart from package 6 f1's
+# RESOLUTION_CHOICE_OPS (kill / return_to_hand whose `choice` is made as they resolve, Core 355.10.e)
+DECISION_REF_CHOICE_OPS = {"spend_buffs"}
+LINKED_COUNT_READERS = {"channel_rune", "draw"}
+
+
 def is_count_per(value: Any) -> bool:
+    if isinstance(value, dict) and value.get("kind") == "linked_applied_count":
+        return set(value) == {"kind", "effect_id"} and isinstance(value.get("effect_id"), str) and bool(value["effect_id"])
     return isinstance(value, dict) and value == {"kind": "units_you_control", "mighty": True}
 
 
@@ -4324,6 +4475,23 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # package 6: the whole hand, as it stood when the instruction executed (Core 422.1)
             trace["whole_hand"] = True
             trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 422.4"]))
+        if not objects:
+            trace["outcome"] = "no_op"
+
+    elif op == "spend_buffs":
+        # Core 702.2.b: each chosen Unit loses its one buff; one it no longer has, or that its
+        # player does not control, cannot be spent from (702.2.b.1, 702.2.b.2)
+        player_id, objects = effect.get("player"), effect.get("objects")
+        if player_id not in new_state["players"] or not isinstance(objects, list):
+            raise ValueError("spend_buffs requires a known player and a resolved selection")
+        for object_id in objects:
+            obj = new_state["objects"].get(object_id) or {}
+            if not obj.get("buffed") or obj.get("controller") != player_id or zone_class(find_location(new_state, object_id)) != "board":
+                raise IllegalOperation(f"{player_id} cannot spend a buff from {object_id!r} (702.2.b.1, 702.2.b.2)")
+            del obj["buffed"]
+        trace.update({"player": player_id, "objects": list(objects), "applied_count": len(objects),
+                      "selection": effect.get("selection_meta", {}), "not_a_target": True,
+                      "completion": "full" if objects else "none"})
         if not objects:
             trace["outcome"] = "no_op"
 
@@ -6896,6 +7064,36 @@ def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: d
     return {**effect, "objects": chosen, "selection_meta": {"forced": False, "decision_id": meta["decision_id"], "choice": meta["choice"]}}
 
 
+def spend_buff_candidates(state: dict[str, Any], player_id: str) -> list[str]:
+    """The Units a player may spend a buff from: on the board, controlled by that player, with a buff
+    (Core 702.2.b.1, 702.2.b.2)."""
+    return sorted(o for o, obj in state["objects"].items()
+                  if obj.get("kind") == "unit" and obj.get("controller") == player_id and obj.get("buffed")
+                  and zone_class(find_location(state, o)) == "board")
+
+
+def _resolve_spend_buffs(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, Any]:
+    """Package 6: "Spend any number of buffs." - its player chooses, as it resolves (Core 355.17),
+    any number of the Units they could spend a buff from (a public choice: the buffs are on the
+    board). With none to choose from there is nothing to decide."""
+    player_id = effect.get("player")
+    if player_id not in state["players"]:
+        raise ValueError("spend_buffs requires a known player")
+    spec = {"selection_kind": "unordered_set", "count": {"any_number": True}, "from": "board", "by": player_id,
+            "criteria": {"kind": "unit"}, "visibility": "public", "identity_binding": True}
+    candidates = spend_buff_candidates(state, player_id)
+    if not candidates:
+        return {**effect, "objects": [], "selection_meta": {"forced": True, "reason": "no Unit its player controls has a buff"}}
+    ref = effect.get("decision_ref") or f"spend_buffs:{player_id}{execution_suffix(effect)}"
+    import engine_decisions as ed
+    supplied = ed.decision_entry(decisions, ref)
+    if supplied is not None and supplied.get("stage") != "resolution":
+        raise ValueError(f"decision {ref!r} must be a resolution-stage decision: buffs are counters, not targets "
+                         "(Core 704.1), so what is spent is chosen as the instruction resolves (355.17)")
+    chosen, meta = resolve_choice(state, spec, decision_ref=ref, decisions=decisions, controller=player_id, candidates=candidates)
+    return {**effect, "objects": chosen, "selection_meta": meta}
+
+
 def _resolve_choice_object(state: dict[str, Any], effect: dict[str, Any], program: dict[str, Any], decisions: dict[str, Any] | None) -> dict[str, Any]:
     """An instruction whose single object comes from a `choice` (recycle_one
     from the trash, banish a card from hand): the chosen id becomes object_id."""
@@ -7945,6 +8143,32 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                                            "read_as": "before_the_linked_instruction",
                                            "bound_identity": record.get("identity"),
                                            "rule_locators": ["Core 359.3.e.14", "Core 355.10.d"]}
+        # 2026-09-27 package 6: "for each buff spent" - the count an earlier instruction's receipt says
+        if isinstance(effect.get("count_per"), dict) and effect["count_per"].get("kind") == "linked_applied_count":
+            linked_id = effect["count_per"]["effect_id"]
+            linked_event = next((e for e in trace if e.get("effect_id") == linked_id), None)
+            if linked_event is None or linked_event.get("outcome") in IGNORED_OUTCOMES:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "skipped_linked_dependency",
+                         "completion": "none", "linked_effect_id": linked_id,
+                         "reason": "the instruction whose count this one reads was ignored",
+                         "rule_locators": ["Core 359.3.e.14", "Core 359.3.e.14.a"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            found = int(linked_event.get("applied_count") or 0)
+            if found < 1:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "linked_count_zero", "linked_effect_id": linked_id,
+                         "rule_locators": ["Core 359.3.e.14"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            per = dict(effect["count_per"])
+            effect = {**{k: v for k, v in effect.items() if k != "count_per"}, "count": effect["count"] * found}
+            linked_reads["count_read"] = {"per": per, "linked_count": found, "printed_count": effect["count"] // found,
+                                          "rule_locators": ["Core 359.3.e.14"]}
         # 2026-09-27: "draw 1 for each of your [Mighty] units" - the count read now (708, 710)
         if effect.get("count_per") is not None:
             found, counted = count_per_value(current, effect["count_per"], program.get("controller"))
@@ -8114,9 +8338,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         # procedure knows; a delayed trigger "at the end of this turn" is then not generated
         if effect.get("op") == "create_delayed_trigger" and context is not None and context.get("ending_step_begun") is not None:
             effect = {**effect, "ending_step_context": context["ending_step_begun"]}
-        if effect.get("op") == "discard" or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS | RESOLUTION_CHOICE_OPS):
+        if effect.get("op") in {"discard", "spend_buffs"} or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS | RESOLUTION_CHOICE_OPS):
             try:
-                effect = _resolve_discard(current, effect, decisions) if effect.get("op") == "discard" else _resolve_choice_object(current, effect, program, decisions)
+                effect = (_resolve_discard(current, effect, decisions) if effect.get("op") == "discard"
+                          else _resolve_spend_buffs(current, effect, decisions) if effect.get("op") == "spend_buffs"
+                          else _resolve_choice_object(current, effect, program, decisions))
                 if effect.get("op") in RESOLUTION_CHOICE_OPS:
                     # package 6: an object chosen as the instruction resolves (Core 355.10.e) is chosen
                     # then - a decision made for another stage is not that choice

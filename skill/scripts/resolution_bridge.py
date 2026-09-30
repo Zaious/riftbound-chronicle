@@ -478,6 +478,11 @@ def resolve_with_program(
         target_refs = {s.get("decision_ref") for e in effects for s in (e.get("target"), e.get("targets"))
                        if isinstance(s, dict) and s.get("decision_ref")}
         choice_refs = {e.get("decision_ref") for e in effects if isinstance(e.get("choice"), dict) and e.get("decision_ref")} - target_refs
+        # package 6 (2026-09-27): "Spend any number of buffs." chooses as it resolves by its own decision_ref too -
+        # buffs are counters, not targets (Core 704.1, 355.17)
+        from effect_ir import DECISION_REF_CHOICE_OPS
+        choice_refs |= {e.get("decision_ref") for e in effects if e.get("op") in DECISION_REF_CHOICE_OPS
+                        and e.get("decision_ref")} - target_refs
         resolution_choices = [entry for entry in supplied if entry.get("stage") == "resolution"
                               and entry.get("decision_id") in choice_refs and entry.get("decision_id") not in recorded]
         for entry in supplied:

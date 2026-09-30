@@ -800,6 +800,61 @@ LITERAL = [
      ["you may pay [a] as additional cost to play me",
       "you may pay [c] as additional cost to play another unit",
       "pay [c] as additional cost to play me"]),
+    # 2026-09-27 (package 6): a card's own printed non-resource additional costs (Core 356.2.a.1,
+    # 356.2.b.1, 356.7); play_transaction.printed_cost_components pays them; check_printed_costs.py
+    ("as_an_additional_cost_to_play_me_kill_a_friendly_unit",
+     r"as an additional cost to play me, (?P<cost>kill a friendly unit)",
+     ["Core 356.2.a", "Core 356.2.a.1", "Core 356.7", "Core 357.2", "Core 355.10.c"], "passive",
+     ["card_self_optional_cost", "kill"],
+     ("A MANDATORY additional cost the card prints for its own play: killing one friendly Unit on the board, "
+      "chosen by the payer as the card is played and killed as the cost is paid (not a target, 355.10.c). "
+      "No friendly Unit, no play (203.3). 'You may', another object's play, or another kind of unit is a "
+      "different clause."),
+     ["As an additional cost to play me, kill a friendly unit."],
+     ["as an additional cost to play me, kill an enemy unit", "as an additional cost to play me, kill a unit",
+      "as an additional cost to play another unit, kill a friendly unit", "as you play me, kill a friendly unit"]),
+    ("as_you_play_me_you_may_pay_a_cost_as_an_additional_cost",
+     r"as you play (?:me|this), you may (?P<cost>discard (?P<amount>\d+)|spend a buff|kill any number of friendly units"
+     r"|spend any number of buffs) as an additional cost",
+     ["Core 356.2.b", "Core 356.2.b.1", "Core 355.1.a", "Core 356.7", "Core 357.2", "Core 355.13"], "passive",
+     ["card_self_optional_cost", "discard_recycle_costs", "spend_costs", "kill"],
+     ("An OPTIONAL additional cost the card prints for its own play: discard N cards, spend one buff, or kill / "
+      "spend any number (355.13) of friendly Units / buffs. Paying it is the controller's choice as the card is "
+      "played (355.1.a); what it switches on is the clause after it ('If you do, ...', 'Reduce my cost by ... for "
+      "each ...'). Without 'you may', or without 'as an additional cost', it is a different clause."),
+     ["As you play me, you may discard 2 as an additional cost.", "As you play this, you may spend a buff as an additional cost.",
+      "As you play me, you may kill any number of friendly units as an additional cost.",
+      "As you play me, you may spend any number of buffs as an additional cost."],
+     ["as you play me, discard 1 as an additional cost", "as you play me, you may discard 1",
+      "as you play me, you may kill any number of enemy units as an additional cost",
+      "when you play me, you may discard 1 as an additional cost",
+      "as you play me, you may spend any number of buffs"]),
+    # 2026-09-27 (package 6): a permanent's discount on its controller's cards of one tag
+    # (play_transaction.granted_cost_discounts); check_granted_cost_discounts.py
+    ("your_tags_energy_costs_are_reduced_to_a_minimum",
+     r"your (?P<tag>[a-z]+)s' energy costs are reduced by \[e(?P<amount>\d+)\], to a minimum of \[e(?P<minimum>\d+)\]",
+     ["Core 356.4", "Core 356.4.a", "Core 356.4.b", "Core 356.4.e", "Core 356.6", "Core 133.8"], "passive",
+     ["evaluated_cost_modifications", "typed_cost_modification_input"],
+     ("While this permanent is on the board, each card its controller plays that has the tag (as printed) costs "
+      "N Energy less, never below M by this discount (356.4.e). Another player's card, a card without the tag, "
+      "and Power are untouched. 'Cost [N] less' with no minimum, or 'your units', is a different clause."),
+     ["Your Poros' Energy costs are reduced by [E1], to a minimum of [E1]."],
+     ["your dragons' power costs are reduced by [e2], to a minimum of [e1]", "your dragons' energy costs are reduced by [e2]",
+      "dragons' energy costs are reduced by [e2], to a minimum of [e1]",
+      "your dragon energy costs are reduced by [e2], to a minimum of [e1]"]),
+    ("while_im_at_a_battlefield_spells_you_play_cost_less",
+     r"while i'm at a battlefield, the energy costs for spells you play (?:is|are) reduced by \[e(?P<amount>\d+)\], "
+     r"to a minimum of \[e(?P<minimum>\d+)\]",
+     ["Core 364.3.a", "Core 356.4", "Core 356.4.a", "Core 356.4.b", "Core 356.4.e", "Core 356.6"], "passive",
+     ["evaluated_cost_modifications", "typed_cost_modification_input", "conditional_passives"],
+     ("While this permanent is at a Battlefield (not its Base), each spell its controller plays costs N Energy less, "
+      "never below M by this discount (356.4.e). Units, another player's spells, and Power are untouched; 'while I'm "
+      "attacking', or no minimum, is a different clause."),
+     ["While I'm at a battlefield, the Energy costs for spells you play are reduced by [E2], to a minimum of [E1]."],
+     ["while i'm at a battlefield, the energy costs for units you play is reduced by [e1], to a minimum of [e1]",
+      "while i'm in your base, the energy costs for spells you play is reduced by [e1], to a minimum of [e1]",
+      "the energy costs for spells you play is reduced by [e1], to a minimum of [e1]",
+      "while i'm at a battlefield, the energy costs for spells you play is reduced by [e1]"]),
     ("if_a_friendly_unit_would_die_kill_this_instead",
      r"if a friendly unit would die, kill this instead",
      ["Core 367", "Core 370.1.b", "Core 373.1"], "passive", ["replacement_effects", "kill"],

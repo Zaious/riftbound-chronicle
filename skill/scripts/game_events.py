@@ -75,6 +75,8 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "empowered": {"about": "object", "rules": ["Core 441"]},
     "disempowered": {"about": "object", "rules": ["Core 442"]},
     "buffed": {"about": "object", "rules": ["Core 426"]},
+    # 2026-09-27 package 6: a buff spent by an instruction (702.2.b) - one event per Unit it left
+    "buff_spent": {"about": "object", "rules": ["Core 702.2.b"]},
     "attached": {"about": "object", "rules": ["Core 434", "Core 435"]},
     "detached": {"about": "object", "rules": ["Core 435.4"]},
     "copied": {"about": "object", "rules": ["Core 477.1"]},
@@ -185,6 +187,7 @@ OP_PRIMARY: dict[str, str] = {
     "empower": "empowered",
     "disempower": "disempowered",
     "buff": "buffed",
+    "spend_buffs": "buff_spent",
     "gain_xp": "xp_gained",
     "gain_point": "point_gained",
     "hide_card": "hidden_away",

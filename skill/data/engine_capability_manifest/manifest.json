@@ -1,34 +1,34 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:872995e9e474fbb907f6b051",
-  "capability_set_id": "sha256:872995e9e474fbb907f6b05169205b36ed3c980c4aed6d74e9be165922457a84",
+  "manifest_id": "capability-manifest:c2034977667ad115704fc67a",
+  "capability_set_id": "sha256:c2034977667ad115704fc67aaca9790f417e1609abe1362e7a7e079b7b3791d0",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:3042a172af61ee6a7022586ddbef7da37056d979cbd2003c5b7241207a77bfe7",
+    "value": "sha256:ed32a73919c5548f2386d1354633546905743e7b30ffa49393ef445c54022433",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:6c38ae29583b6e19aacf0d06afe17a688508cfe08dedaaa87286428ec5a252bf"
+        "sha256": "sha256:996ad56c3d863121e2738b485f186d1ff214035a524a194333970ae4833d95f8"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:89c319d59019f21d62afd5a5b8c203ee0c9920065ae9d068e05a6f8f8cd7a9a0"
+        "sha256": "sha256:49eac3a8e8febaf501be24a204e295728bdd21b80a07f12cf01ee4dda5e56e2f"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:0956db98f03c522d1afd224c12e805b5458bd8a2f77bbde9900f2de146f31096"
+        "sha256": "sha256:6944eed9d8b0ebcb36f8a29b65ef6d9c2397de70f44271b02d988fd42990f252"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:233657211e93f8fd6889dc2a1c1bd02547d66af7049102f63c1111a11c148b92"
+        "sha256": "sha256:9cb980fdca22849161e946ca3228d8b1b69e462679aaf13caab786e32280ad1d"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:b4de5e31df0c46a1d46cd098ca8372454dfad783792a739f4eece79cd61c6991"
+        "sha256": "sha256:a4da372ef453dabfc64080730b3edac2db05277d51f550e74cbbb30c33cdabb4"
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:b1399f18e48bc343db6dce6525e851d41f2f6e0a04463c0514627809b3676a94"
+        "sha256": "sha256:f901bd671e0e9d879b0f678e1c5b83528a266818780b1adbd9562f24728ea92c"
       },
       {
         "path": "terminal.py",
@@ -77,6 +77,7 @@
         "combat_designations",
         "attack_defend_triggers",
         "battlefield_defend_triggers",
+        "designation_watchers",
         "combat_showdown_close",
         "combat_damage_assignment",
         "tank_backline_priority",
@@ -301,6 +302,8 @@
         "permanent_entry",
         "play_triggers",
         "watched_triggers",
+        "trigger_referent",
+        "battlefield_move_from_triggers",
         "burn_out_draw",
         "terminal_event_bridge",
         "counter_chain_removal"
@@ -322,7 +325,8 @@
         "ganking",
         "move_triggers",
         "bounded_cleanup",
-        "watched_triggers"
+        "watched_triggers",
+        "battlefield_move_from_triggers"
       ],
       "unsupported_scope": [
         "non_standard_moves",
@@ -444,6 +448,19 @@
       ]
     },
     {
+      "id": "choose_objects",
+      "rule_locators": [
+        "Core 355.10.e",
+        "Core 359.3.e"
+      ]
+    },
+    {
+      "id": "choose_option",
+      "rule_locators": [
+        "Core 355.10.e"
+      ]
+    },
+    {
       "id": "choose_player",
       "rule_locators": [
         "Core 355.1",
@@ -521,6 +538,14 @@
         "Core 413",
         "Core 428.5",
         "Core 124"
+      ]
+    },
+    {
+      "id": "each_player",
+      "rule_locators": [
+        "Core 303.2",
+        "Core 303.2.a",
+        "Core 411.1"
       ]
     },
     {
@@ -608,6 +633,17 @@
       "id": "kill",
       "rule_locators": [
         "Core 428"
+      ]
+    },
+    {
+      "id": "limited_play",
+      "rule_locators": [
+        "Core 419.3",
+        "Core 419.3.a",
+        "Core 419.3.b",
+        "Core 354",
+        "Core 354.3",
+        "Core 124"
       ]
     },
     {
@@ -746,6 +782,17 @@
       ]
     },
     {
+      "id": "spend_buffs",
+      "rule_locators": [
+        "Core 702.2.b",
+        "Core 702.2.b.1",
+        "Core 702.2.b.2",
+        "Core 704",
+        "Core 704.1",
+        "Core 355.17"
+      ]
+    },
+    {
       "id": "stun",
       "rule_locators": [
         "Core 423",
@@ -779,6 +826,17 @@
     }
   ],
   "procedures": [
+    {
+      "id": "add_limited_play_items",
+      "rule_locators": [
+        "Core 354",
+        "Core 354.2",
+        "Core 354.3",
+        "Core 419.3",
+        "Core 419.3.a",
+        "Core 312.1.b.1"
+      ]
+    },
     {
       "id": "add_pending_item",
       "rule_locators": [
@@ -952,6 +1010,14 @@
         "Core 190.6.a",
         "Core 190.6.d",
         "Core 383.4.f"
+      ]
+    },
+    {
+      "id": "battlefield_move_from_triggers",
+      "rule_locators": [
+        "Core 190.6.a",
+        "Core 190.6.b",
+        "Core 446.1"
       ]
     },
     {
@@ -1151,6 +1217,15 @@
         "Core 809.1.c–809.1.d",
         "Core 809.2",
         "Core 356.2.a.2"
+      ]
+    },
+    {
+      "id": "designation_watchers",
+      "rule_locators": [
+        "Core 464.2.c.3",
+        "Core 383.4.e.2.b",
+        "Core 383.4.f.2.b",
+        "Core 740.2.a"
       ]
     },
     {
@@ -1379,6 +1454,15 @@
       ]
     },
     {
+      "id": "trigger_referent",
+      "rule_locators": [
+        "Core 359.3.f.3",
+        "Core 383.2.c",
+        "Core 124",
+        "Core 359.3.e.6"
+      ]
+    },
+    {
       "id": "turn_start_state_machine",
       "rule_locators": [
         "Core 315",
@@ -1457,16 +1541,19 @@
     "Core 190.4.a",
     "Core 190.4.c",
     "Core 190.6.a",
+    "Core 190.6.b",
     "Core 190.6.d",
     "Core 194.1.d",
     "Core 194.2–194.2.b",
     "Core 196",
     "Core 204.3.a",
     "Core 303.2",
+    "Core 303.2.a",
     "Core 308.1.a",
     "Core 309.1.a",
     "Core 310.1.a",
     "Core 312",
+    "Core 312.1.b.1",
     "Core 312.2.a",
     "Core 313",
     "Core 313.1",
@@ -1529,6 +1616,9 @@
     "Core 348–348.1",
     "Core 348–348.2",
     "Core 349",
+    "Core 354",
+    "Core 354.2",
+    "Core 354.3",
     "Core 354–358",
     "Core 355.1",
     "Core 355.1.a",
@@ -1536,6 +1626,7 @@
     "Core 355.10.b",
     "Core 355.10.c",
     "Core 355.10.d",
+    "Core 355.10.e",
     "Core 355.17",
     "Core 355.1–355.17",
     "Core 355.2.a–355.2.b",
@@ -1559,6 +1650,8 @@
     "Core 359.3.e.2",
     "Core 359.3.e.4",
     "Core 359.3.e.5",
+    "Core 359.3.e.6",
+    "Core 359.3.f.3",
     "Core 364.3",
     "Core 365.1",
     "Core 369.3",
@@ -1578,12 +1671,15 @@
     "Core 383.3.c–383.3.d.1",
     "Core 383.3.e",
     "Core 383.4.c–383.4.d",
+    "Core 383.4.e.2.b",
     "Core 383.4.e–383.4.f.3",
     "Core 383.4.f",
+    "Core 383.4.f.2.b",
     "Core 386–388",
     "Core 402–402.1",
     "Core 403.1.b.1",
     "Core 404.2",
+    "Core 411.1",
     "Core 413",
     "Core 413.2.a",
     "Core 413.4",
@@ -1603,6 +1699,9 @@
     "Core 417.6.b.4",
     "Core 417.6.c–417.6.c.1",
     "Core 418",
+    "Core 419.3",
+    "Core 419.3.a",
+    "Core 419.3.b",
     "Core 419.4.a",
     "Core 420",
     "Core 422.1",
@@ -1674,6 +1773,7 @@
     "Core 442.1.a.1",
     "Core 445",
     "Core 446",
+    "Core 446.1",
     "Core 446.2",
     "Core 455",
     "Core 456.1",
@@ -1681,6 +1781,7 @@
     "Core 460–462",
     "Core 464.2.b–464.2.g",
     "Core 464.2.c.1.a–464.2.c.1.b",
+    "Core 464.2.c.3",
     "Core 464.2.c.3–464.2.c.3.a",
     "Core 464.2.e.1",
     "Core 465.1–465.2.c.4.a",
@@ -1717,6 +1818,11 @@
     "Core 485.7",
     "Core 487.7",
     "Core 702",
+    "Core 702.2.b",
+    "Core 702.2.b.1",
+    "Core 702.2.b.2",
+    "Core 704",
+    "Core 704.1",
     "Core 713–715.4",
     "Core 730.1",
     "Core 730.2",

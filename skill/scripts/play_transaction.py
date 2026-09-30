@@ -2287,10 +2287,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # Core 419.4.b / 812.1.c: this card is Finalized by this play; a
             # Legion reads that, even if the card is later countered.
             record_finalized_card(working, actor, card)
-            # 2026-09-27 (package 6): and it is this player's Nth play this turn - what
-            # "When you play your second card in a turn" reads off the played event
-            from effect_ir import record_card_played
-            play_ordinal = record_card_played(working, actor)
+            # (which of this player's plays it is - "your second card in a turn" - is counted when the play
+            # completes, as the card resolves: a countered card was not played (Core 419.4.a.1; GPT
+            # 2026-09-27). resolution_bridge stamps it on the played event there.)
         if next_card:
             # 2026-09-27 (Core 391): the next-card effects this play is the "next" of are spent;
             # an entry state one becomes an entry replacement bound to THIS play (the same shape

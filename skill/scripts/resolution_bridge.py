@@ -785,7 +785,11 @@ def resolve_with_program(
                                      responsible=chain_item.get("controller"))
     if played_event is not None:
         # Core 419.4.a: "abilities that trigger on playing cards" - the card's play, completed by
-        # this resolution (a countered card never gets here: 419.4.a.1)
+        # this resolution (a countered card never gets here: 419.4.a.1). It is counted here too - which
+        # of its player's plays this turn it is ("your second card in a turn"): a countered card was
+        # not played, so it is never counted (GPT 2026-09-27, package 3 section 7 item 1)
+        from effect_ir import record_card_played
+        played_event["play_ordinal"] = record_card_played(final_effect_state, played_event["actor"])
         watched_events.append({**played_event, "completed_by": f"resolve:{item_id}",
                                "rule_locators": list(dict.fromkeys(list(played_event.get("rule_locators") or [])
                                                                    + ["Core 419.4.a", "Core 419.4.a.1"]))})

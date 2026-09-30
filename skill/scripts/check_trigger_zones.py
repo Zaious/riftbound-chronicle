@@ -24,11 +24,12 @@ resolve_battlefield_control after a decided Combat):
   - a controller-scoped conquer trigger with functions_from trash on a spell in p1's trash fires
     on p1's Conquer with the Score's batch; in p1's hand, in p2's trash on p1's Conquer, and on a
     unit on p1's board it does not; the same spell in p2's trash fires on p2's own Conquer;
-  - card_played_ordinal (Core 419.4.b): every play Finalized counts, the ones before the watcher
-    was on the board too; the watch with ordinal 2 triggers on the second play and not on the
-    first or the third; the opponent's second play does not; the same card played twice counts
-    twice; a new turn counts from zero; the watching card played as the second card is on the
-    Chain when its play is Finalized and does not trigger for itself;
+  - card_played_ordinal (Core 419.4.a): every play completed by its card's resolution counts, the
+    ones before the watcher was on the board too; the watch with ordinal 2 triggers on the second
+    play and not on the first or the third; the opponent's second play does not; the same card
+    played twice counts twice; a new turn counts from zero; a countered play is not counted (GPT
+    2026-09-27: a countered earlier card was not played); the watching card played as the second
+    card triggers for itself (GPT 2026-09-27, package 3 section 7 item 1);
   - object_not_tagged Recruit: a friendly non-Recruit unit (tags observed) dying triggers; a
     Recruit token (tagged by Core 187.1 through its catalogued token_id), a unit tagged Recruit,
     an enemy unit and the watching card itself do not; a unit whose tags were never observed is
@@ -354,6 +355,26 @@ def main() -> int:
             counts, _ = plays(back["next_effect_state"], ["a1"], errors)
             if counts != [1]:
                 errors.append(f"the same card played again as the second play scheduled {counts}, wanted [1]")
+    # a countered play is not a card played (Core 419.4.a.1; GPT 2026-09-27): a1 played and countered on the
+    # Chain, then a2 is the FIRST play completed - it schedules nothing - and a3 the second
+    countered_board = play_board()
+    first, decl = play(countered_board, "a1", play_id="p0-a1")
+    if committed(first, "playing a1 (to be countered)", errors):
+        on_chain = first["next_effect_state"]
+        # p2's spell on top of a1's chain item counters it (Core 425.1)
+        a1_item = decl["chain_item"]["id"]
+        timing = fixture(priority="p1", items=[item(a1_item, "p1", "unit", "default", "finalized"),
+                                               item("spell-1", "p2", "spell", "default", "finalized")],
+                         passes=["p1", "p2"])
+        gone = resolve_with_program(timing, "spell-1", on_chain, {**program("counter", {
+            "op": "counter", "effect_id": "c", "chain_item_id": a1_item}), "controller": "p2"})
+        if committed(gone, "countering a1", errors):
+            if "a1" not in gone["next_effect_state"]["players"]["p1"]["zones"]["trash"]:
+                errors.append("the countered a1 is not in p1's trash")
+            counts, _ = plays(gone["next_effect_state"], ["a2", "a3"], errors)
+            if counts != [0, 1]:
+                errors.append(f"a1 countered, then a2 and a3 scheduled {counts}, wanted [0, 1] (a countered card "
+                              f"was not played)")
     # a new turn counts from zero
     _counts, once = plays(play_board(), ["a1"], errors)
     if once is not None:

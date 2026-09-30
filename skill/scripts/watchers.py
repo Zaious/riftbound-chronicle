@@ -57,8 +57,9 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "res
 #                            purpose uses its printed (or copied) cost, never what was paid
 #   card_played_ordinal      (2026-09-27, package 6) the card played is the Nth card its player has
 #                            played this turn - "When you play your second card in a turn"; counted
-#                            when each play is Finalized (Core 419.4.b), every play of the turn, the
-#                            ones before the watching card was on the board included
+#                            when each play completes as the card resolves (Core 419.4.a; a countered
+#                            card was not played, 419.4.a.1 - GPT 2026-09-27), every play of the turn,
+#                            the ones before the watching card was on the board included
 #   killed_by_your_spell     (2026-09-27, package 6) a death the watcher's controller is responsible for,
 #                            attributed to a spell (Core 428.5: a spell's own Kill instruction, a
 #                            Cleanup death of a unit it dealt damage to, or an ability originating from

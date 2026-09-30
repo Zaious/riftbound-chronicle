@@ -6082,16 +6082,18 @@ def units_died_this_turn(state: dict[str, Any], player: str) -> int:
 
 
 def cards_played_count_this_turn(state: dict[str, Any], player: str) -> int:
-    """2026-09-27 (package 6): how many cards `player` has played this turn - one per play Finalized
-    (Core 419.4.b), so a card played twice in a turn counts twice. An activated ability is not a card."""
+    """2026-09-27 (package 6): how many cards `player` has played this turn - one per play completed by the
+    card's resolution (Core 419.4.a; a countered card was not played, 419.4.a.1 - GPT 2026-09-27), so a card
+    played twice in a turn counts twice. An activated ability is not a card."""
     ledger = (state["players"].get(player) or {}).get("cards_played_count_this_turn") or {}
     return int(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), 0))
 
 
 def record_card_played(state: dict[str, Any], player: str) -> int:
-    """Called once, when a card play is Finalized (Core 419.4.b), beside record_finalized_card. Returns the
-    play's ordinal this turn - what "When you play your second card in a turn" reads off the `played`
-    event (watchers card_played_ordinal). Only this turn's entry is kept."""
+    """Called once, when a card's play completes as the card resolves (resolution_bridge; Core 419.4.a) -
+    never for a countered card (419.4.a.1). Returns the play's ordinal this turn - what "When you play your
+    second card in a turn" reads off the `played` event (watchers card_played_ordinal). Only this turn's
+    entry is kept."""
     turn_id = state.get("turn_id", DEFAULT_TURN_ID)
     ordinal = cards_played_count_this_turn(state, player) + 1
     state["players"][player]["cards_played_count_this_turn"] = {turn_id: ordinal}

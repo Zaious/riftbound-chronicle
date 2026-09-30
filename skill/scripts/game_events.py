@@ -240,8 +240,9 @@ def played_event(*, play_id: str, card: str, actor: str, object_kind: str, ident
     """The event a card's play emits once the play has Finalized it (Core 419.4.a) - what
     "When you play a spell / a gear / another unit / a card from [Hidden] / a card on an
     opponent's turn" reads. Public: a played card is on the Chain for all to see.
-    `play_ordinal` (2026-09-27): which of the actor's plays this turn it is (Core 419.4.b) -
-    "When you play your second card in a turn"."""
+    `play_ordinal` (2026-09-27): which of the actor's plays this turn it is - "When you play your second
+    card in a turn"; stamped by resolution_bridge when the play completes (Core 419.4.a), never for a
+    countered card (419.4.a.1)."""
     event = {"schema_version": EVENT_VERSION, "event_id": f"play:{play_id}#played", "action_id": f"play:{play_id}",
              "kind": "played", "source": {"object": card, "kind": "object"}, "actor": actor, "controller": actor,
              "object": card, "player": actor, "identity_before": identity_before, "identity_after": identity_after,

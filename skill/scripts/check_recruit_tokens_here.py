@@ -14,6 +14,10 @@ Must hold:
   - the Legion clause lowers to a play trigger carrying the Legion condition, and the keyword;
   - executed with its source at bf1: N new Recruit tokens at bf1, the source's controller's, exhausted
     (Core 143.4: units enter exhausted); with its source in its Base, no token is placed there;
+  - departure (GPT 2026-09-27, package 3 section 7 item 4): the source dead before the trigger resolves (in
+    the trash: no Battlefield is 'here', Core 359.3.e.12, 359.3.f.2), and the source gone with a NEW object of
+    the same card back at bf1 (another identity, Core 124 - not the source the ability names) - no token
+    is placed at bf1 in either;
   - negatives stay unparsed: five tokens, 'into your base', no place, another token;
   - mutation caught: a lowering that places the tokens in the Base.
 """
@@ -41,17 +45,24 @@ def program_of(text):
 
 
 def run(effects, *, source_at="bf1"):
-    """The effects run as the program of p1's src, a Unit at bf1 (p1's) or in p1's Base."""
+    """The effects run as the program of p1's src, a Unit at bf1 (p1's) or in p1's Base; "trash": the source
+    died after the ability triggered at bf1; "renewed": it left and a new object of the card is at bf1."""
     state = base_state()
     state["objects"]["src"] = {"owner": "p1", "controller": "p1", "kind": "unit", "base_might": 3, "might_modifiers": [],
                                "damage": 0, "exhausted": False}
-    state["battlefields"]["bf1"] = {"controller": "p1", "objects": ["src"] if source_at == "bf1" else []}
-    if source_at != "bf1":
+    state["battlefields"]["bf1"] = {"controller": "p1", "objects": ["src"] if source_at in ("bf1", "renewed") else []}
+    if source_at == "base":
         state["players"]["p1"]["zones"]["base"].append("src")
+    elif source_at == "trash":
+        state["players"]["p1"]["zones"]["trash"].append("src")
+    # the identity the ability was triggered by: the object at bf1, before it died or was replaced
+    identity = IR.object_identity(state, "src") or "src@0"
+    if source_at == "renewed":
+        state["objects"]["src"]["identity"] = "src@1"      # a new object of the same card (Core 124)
     bound = [{**copy.deepcopy(e), "owner": "p1", "controller": "p1"} for e in effects]
     program = {"schema_version": IR.PROGRAM_VERSION, "ruleset": {"core": IR.CORE_RULESET, "faq_as_of": IR.FAQ_AS_OF},
                "program_id": "src-on-play-effects", "controller": "p1", "source_object": "src",
-               "source_identity": IR.object_identity(state, "src") or "src@0", "effects": bound}
+               "source_identity": identity, "effects": bound}
     done = IR.apply_program(state, program)
     if not done.get("committed"):
         return "refused"
@@ -85,6 +96,10 @@ def main() -> int:
     home = run(two, source_at="base")
     if home not in ([], "refused"):
         errors.append(f"with its source in its Base, tokens were placed: {home}")
+    for departed, label in (("trash", "dead before the trigger resolved"), ("renewed", "replaced by a new object at bf1")):
+        gone = run(two, source_at=departed)
+        if gone not in ([], "refused") and any(where == "battlefield" for where, *_rest in gone):
+            errors.append(f"with its source {label}, tokens were placed at a Battlefield: {gone}")
     for text in ("Play five 1 :rb_might: Recruit unit tokens here.", "Play two 1 :rb_might: Recruit unit tokens into your base.",
                  "Play two 1 :rb_might: Recruit unit tokens.", "Play a 3 :rb_might: Sprite unit token here."):
         if program_of(text) is not None and CG.compile_clause(text, CG.load_grammar()).get("production_id") == \
@@ -112,7 +127,7 @@ def main() -> int:
             print("  - " + e)
         return 1
     print("OK: 'Play two 1 [M] Recruit unit tokens here.' lowers to two catalogued Recruit play_tokens at the source's "
-          "current Battlefield (359.3.f.2), exhausted, none from a Base; the Legion ability over it lowers to a gated play "
+          "current Battlefield (359.3.f.2), exhausted, none from a Base, none once the source died or is a new object; the Legion ability over it lowers to a gated play "
           "trigger (812.1.b.1); near misses stay unparsed; a Base-placing lowering is caught.")
     return 0
 

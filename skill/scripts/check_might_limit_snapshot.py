@@ -33,6 +33,8 @@ What must hold:
   - a -4 taken at 5 Might stays -4 when the buff falls away, landing on 0;
   - a passive limited effect has no snapshot and is recomputed;
   - a change the floor eats entirely leaves no event and no entry (370.1.a);
+  - a floor limits a decrease and a cap an increase, never reversing it: "-8 to a min of 1" on a 0 Might
+    Unit leaves it at 0 (GPT 2026-10-02, Leona - Zealot);
   - the state schema refuses a passive entry carrying a snapshot, and a
     snapshot with no limitation to snapshot.
 
@@ -140,6 +142,31 @@ def main() -> int:
         failures.append(f"a passive limitation was not recomputed on a 9 Might Unit: got "
                         f"{IR.effective_might(lifted, 'u1')}, expected 5 (477.3.b: a passive "
                         f"ability does not snapshot)")
+
+    # --- a floor limits a decrease; it never raises (GPT 2026-10-02, Leona - Zealot) ----------------
+    # "Stunned enemy units here have -8 [M], to a minimum of 1 [M]" on a Unit another effect already put at 0
+    zero = copy.deepcopy(passive)
+    zero["objects"]["u1"]["base_might"] = 0
+    zero["continuous_effects"][0]["value"] = {"amount": -8, "mode": "delta", "minimum": 1}
+    if IR.effective_might(zero, "u1") != 0:
+        failures.append(f"a passive '-8 to a min of 1' on a 0 Might Unit gave {IR.effective_might(zero, 'u1')}; a "
+                        f"floor limits the decrease, it does not add Might (expected 0)")
+    zero["objects"]["u1"]["base_might"] = 1
+    if IR.effective_might(zero, "u1") != 1:
+        failures.append(f"a passive '-8 to a min of 1' on a 1 Might Unit gave {IR.effective_might(zero, 'u1')}, expected 1")
+    # the same for an instruction's own floor: "-1 [M], to a minimum of 1" on a 0 Might Unit moves nothing
+    result = apply(unit_at(0), floor_effect("stupefy-at-zero", -1, 1))
+    if IR.effective_might(result["next_state"], "u1") != 0 or result["trace"][0].get("outcome") != "no_op":
+        failures.append(f"'-1 to a min of 1' on a 0 Might Unit moved it to {IR.effective_might(result['next_state'], 'u1')}; "
+                        f"a decrease the floor stops moves nothing (370.1.a)")
+    # and a cap limits an increase without lowering: "+3, to a maximum of 2" on a 4 Might Unit
+    capped = copy.deepcopy(passive)
+    capped["objects"]["u1"]["base_might"] = 4
+    capped["continuous_effects"][0]["value"] = {"amount": 3, "mode": "delta", "maximum": 2}
+    capped["continuous_effects"][0]["sublayer"] = "increase"
+    if IR.effective_might(capped, "u1") != 4:
+        failures.append(f"a passive '+3 to a max of 2' on a 4 Might Unit gave {IR.effective_might(capped, 'u1')}; a cap "
+                        f"limits the increase, it does not remove Might (expected 4)")
 
     # --- 370.1.a still holds: eaten entirely, so no event and no entry ------
     result = apply(unit_at(3), floor_effect("stupefy", -9, 3))

@@ -13,6 +13,8 @@ Must hold, each through play_card with the watch the grammar itself lowers:
     object_might_at_least 5}; its near misses ("a unit", "another unit", an opponent's play, "becomes
     Mighty", a Mighty gear) are not this production;
   - p1 playing a Unit printed at 5 or 7 schedules one trigger; printed at 4 schedules none;
+  - read as the play completes (GPT 2026-10-02): a 4-Might Unit with a friendly +1 aura on the board, once it
+    has entered, schedules one; a 3-Might one does not;
   - current Might, not printed (Core 710): printed 4 with a +1 modifier schedules; printed 5 with
     a -1 modifier does not;
   - the played Unit is what is read, not the watcher: a 6-Might watcher and a 4-Might Unit played
@@ -134,7 +136,22 @@ def cases(watch: dict) -> list[tuple[str, dict, int]]:
     run("the Legend banished", in_hand(with_watcher(base_state(), watch, kind="legend", where="banishment"), "hb", might=5),
         "hb", 0)
     run("the watcher card in a hand", in_hand(with_watcher(base_state(), watch, where="hand"), "hh", might=5), "hh", 0)
+    # GPT 2026-10-02: Mighty is read as the play completes and the watch wakes - the Unit has entered, so an aura in
+    # effect there counts: a 4-Might Unit with a friendly "+1 Might" aura on the board is Mighty; a 3-Might one is not
+    run("printed 4, a friendly +1 aura on the board (read after it entered)",
+        in_hand(with_aura(with_watcher(base_state(), watch)), "h4a", might=4), "h4a", 1)
+    run("printed 3, the same aura (4: not Mighty)", in_hand(with_aura(with_watcher(base_state(), watch)), "h3a", might=3), "h3a", 0)
     return out
+
+
+def with_aura(state: dict) -> dict:
+    """A friendly gear in p1's Base giving p1's Units +1 Might (a static aura, read live)."""
+    state["objects"]["au1"] = {"owner": "p1", "controller": "p1", "kind": "gear", "base_might": 0, "might_modifiers": [],
+                               "damage": 0, "exhausted": False,
+                               "static_auras": [{"aura_id": "plus-one", "amount": 1,
+                                                 "criteria": {"kind": "unit", "controller_relation": "friendly"}}]}
+    state["players"]["p1"]["zones"]["base"].append("au1")
+    return state
 
 
 def main() -> int:

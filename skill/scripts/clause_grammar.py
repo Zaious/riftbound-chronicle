@@ -421,9 +421,10 @@ def _lower_buff_exhausted_friendly_unit(params):
 
 
 def _lower_ready_something_else_exhausted(params):
-    """"Ready something else that's exhausted." - one chosen object of any type on the board, not the
-    source, Exhausted when chosen and when readied (Core 415.1, 414.2)."""
-    target = {"decision_ref": "t", "chosen_zone_class": "board", "exhausted": True,
+    """"Ready something else that's exhausted." - one chosen object of any type on the board or a Legend in
+    its Legend Zone (GPT 2026-10-02: Core 107.4, 355.9.a.4), not the source, Exhausted when chosen and when
+    readied (Core 415.1, 414.2)."""
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "include_legend_zone": True, "exhausted": True,
               "exclude_source_identity": "$source_identity"}
     return {"program_effects": [{"op": "ready", "effect_id": "rd", "target": dict(target)}],
             "ast": {"node": "instruction", "op": "ready", "params": {"target": {"exhausted": True, "other": True}}}}

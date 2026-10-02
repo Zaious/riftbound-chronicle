@@ -2755,7 +2755,7 @@
         "ready",
         "typed_selectors"
       ],
-      "boundary": "One chosen object of any type on the board, not the source itself, that is Exhausted when chosen and when readied. The source included, a Ready object, or one type only is a different clause.",
+      "boundary": "One chosen object of any type on the board, or a Legend in its Legend Zone (GPT 2026-10-02), not the source itself, that is Exhausted when chosen and when readied. The source included, a Ready object, or one type only is a different clause.",
       "golden": [
         "Ready something else that's exhausted."
       ],

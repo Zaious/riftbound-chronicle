@@ -480,6 +480,21 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
             targets = [by_id["base:energy"]]
         else:
             targets = [c for c in components if c["cost_id"] == f"base:{disc['applies_to']}"]
+        if disc.get("spans_optional_additional") and disc["applies_to"].startswith("power:"):
+            # the base Power of the Domain first, then each chosen optional additional cost of it (Core 356.4.f) -
+            # what is left of the discount carries on; one Domain's Power, so the order cannot change what is paid
+            domain = disc["applies_to"].split(":", 1)[1]
+            targets = targets + [c for c in components if not c["mandatory"] and c["intent"] is True
+                                 and c["kind"] == "power" and c.get("domain") == domain]
+            left = disc["amount"]
+            for comp in targets:
+                if left <= 0:
+                    break
+                comp["final"], record = _apply_discount(comp["final"], {**disc, "amount": left})
+                record["rule_locators"] = record["rule_locators"] + ["Core 356.4.f"]
+                comp["reductions"].append(record)
+                left -= record["amount"]
+            continue
         for comp in targets:
             comp["final"], record = _apply_discount(comp["final"], disc)
             comp["reductions"].append(record)
@@ -846,8 +861,10 @@ def printed_cost_components(effect_state: dict[str, Any], entries: list[dict[str
                 discounts.append({"id": f"offer:{entry['cost_offer_id']}", "applies_to": "energy", "amount": link["amount"],
                                   "source": source})
             elif count:
+                # GPT 2026-10-02 (Kraken Hunter): "Reduce my cost by [C] for each ..." reduces the whole cost of that
+                # Domain - an optional additional cost chosen (Accelerate) included (Core 356.4.f)
                 discounts.append({"id": f"offer:{entry['cost_offer_id']}", "applies_to": f"power:{link['domain']}",
-                                  "amount": link["amount"] * count, "source": source})
+                                  "amount": link["amount"] * count, "source": source, "spans_optional_additional": True})
             applied.append({**link, **({"count": count} if link["kind"] == "power_reduction_per_paid" else {})})
         records.append({"cost_id": entry["cost_id"], "chosen": True, "paid_with": paid_with,
                         **({"decided_by": decided_by} if decided_by else {}), "count": count, "linked": applied})
@@ -1172,7 +1189,7 @@ def _pay_resource(resources: dict[str, Any], kind: str, amount: int, use: str, d
         entry["amount"] -= take
         due -= take
         events.append({"event_id": f"pay:{kind}{':' + domain if domain else ''}:restricted:{entry['restriction_id']}", "kind": f"pay_{kind}", **({"domain": domain} if domain else {}),
-                       "amount": take, "before": before, "after": entry["amount"], "restricted_from": entry["restriction_id"], "use": use, "rule_locators": ["Core 357.1", "Core 446.3", "Core 447.2"]})
+                       "amount": take, "before": before, "after": entry["amount"], "restricted_from": entry["restriction_id"], "use": use, "rule_locators": ["Core 357.1", "Core 166.2"]})
     resources["restricted"] = [r for r in resources.get("restricted", []) if r["amount"] > 0]
     if not resources["restricted"]:
         del resources["restricted"]
@@ -1215,7 +1232,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                         decision_ids=[f"add_window:{declaration['play_id']}"], decision_controller=actor, rule_locators=["Core 429.3", "Core 357.1.a"])
     if short:
         note = f"; {sum(r['amount'] for r in inapplicable)} restricted resource(s) cannot be spent on {use} ({sorted({u for r in inapplicable for u in r['uses']})})" if inapplicable else ""
-        raise PlayError("payment", "cost_unpayable", f"{actor} cannot pay {total} from {resources} with the Add window closed{note}", rule_locators=["Core 357.1"] + (["Core 446.3"] if inapplicable else []),
+        raise PlayError("payment", "cost_unpayable", f"{actor} cannot pay {total} from {resources} with the Add window closed{note}", rule_locators=["Core 357.1"] + (["Core 166.2"] if inapplicable else []),
                         **({"restricted_not_applicable": [r["restriction_id"] for r in inapplicable]} if inapplicable else {}))
 
     events: list[dict[str, Any]] = []

@@ -973,8 +973,9 @@ LITERAL = [
       "buff all exhausted friendly units"]),
     ("ready_something_else_thats_exhausted", r"ready something else that's exhausted",
      ["Core 415.1", "Core 414.2", "Core 355.9.a", "Core 359.3.e.2"], "instruction", ["ready", "targeting"],
-     "One chosen object of any type on the board, not the source itself, that is Exhausted when chosen and when "
-     "readied. The source included, a Ready object, or one type only is a different clause.",
+     "One chosen object of any type on the board, or a Legend in its Legend Zone (GPT 2026-10-02), not the source "
+     "itself, that is Exhausted when chosen and when readied. The source included, a Ready object, or one type only "
+     "is a different clause.",
      ["Ready something else that's exhausted."],
      ["ready something that's exhausted", "ready another unit", "ready something else",
       "ready a unit that's exhausted"]),

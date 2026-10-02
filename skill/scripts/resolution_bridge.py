@@ -568,6 +568,10 @@ def resolve_with_program(
     ending_step = timing_state.get("ending_step") or {}
     if program and timing_state.get("phase") == "ending" and ending_step.get("turn_id") == effect_state.get("turn_id", DEFAULT_TURN_ID):
         context = {**(context or {}), "ending_step_begun": ending_step["turn_id"]}
+    # GPT 2026-10-02 (package 6): a delayed trigger made by this resolution is this chain item's - two finalized
+    # abilities of one source in one turn (two Conquers of Targon's Peak) make two, never one id twice
+    if program and any(isinstance(e, dict) and e.get("op") == "create_delayed_trigger" for e in program.get("effects") or []):
+        context = {**(context or {}), "creating_chain_item": item_id}
     if program:
         effect_result = apply_program(effect_state, program, decisions=engine_decisions, context=context)
     else:

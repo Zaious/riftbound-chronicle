@@ -291,6 +291,27 @@ def main() -> int:
                    with_decisions=decisions(many, intent("self_offer:m", True), pick(many, "self_offer:m", ["u1", "u5"])))
     if not floored.get("committed") or floored["cost_receipt"]["total"]["power"].get("order") != 0:
         errors.append(f"a reduction larger than the Power cost did not stop at 0 (356.6): {floored.get('reason_code')}")
+    # GPT 2026-10-02 (Kraken Hunter): the per-each reduction is not only the base cost's - Accelerate, an optional
+    # additional cost the player chose, is reduced by what is left of it, to 0 (Core 356.4.f)
+    accel = state(MANY, energy=6, power={}, printed=(5, {"order": 1}), extra_units=[("u5", "p1", "base", {})])
+    accel["objects"]["c1"]["keywords"] = ["accelerate"]
+    both = play(accel, printed=(5, {"order": 1}),
+                with_decisions=decisions(accel, intent("self_offer:m", True), pick(accel, "self_offer:m", ["u1", "u5"]),
+                                         intent("accelerate", True), intent("accelerate:energy", True)))
+    if not both.get("committed") or both["cost_receipt"]["total"]["power"].get("order") != 0 \
+            or (component(both, "accelerate") or {}).get("final") != 0:
+        errors.append(f"two kills did not reduce the base Order AND the chosen Accelerate's Order (356.4.f): "
+                      f"{both.get('reason_code')} {(both.get('cost_receipt') or {}).get('total')}")
+    one = play(accel, printed=(5, {"order": 1}),
+               with_decisions=decisions(accel, intent("self_offer:m", True), pick(accel, "self_offer:m", ["u1"]),
+                                        intent("accelerate", True), intent("accelerate:energy", True)))
+    if one.get("committed"):
+        errors.append("one kill paid both the base Order and Accelerate's Order with no Power in the pool")
+    declined = play(accel, printed=(5, {"order": 1}),
+                    with_decisions=decisions(accel, intent("self_offer:m", True), pick(accel, "self_offer:m", ["u1", "u5"]),
+                                             intent("accelerate", False), intent("accelerate:energy", False)))
+    if not declined.get("committed") or (component(declined, "accelerate") or {}).get("reductions"):
+        errors.append(f"a declined Accelerate was reduced: {declined.get('reason_code')}")
 
     # --- shapes ---------------------------------------------------------------------------------------
     for label, fields in (

@@ -49,7 +49,8 @@ UNIT = {"owner": None, "controller": None, "kind": "unit", "base_might": 3, "mig
 BUFF_EXHAUSTED = {"op": "buff", "effect_id": "bf", "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
                                                               "controller_relation": "friendly", "exhausted": True}}
 READY_SOMETHING_ELSE = {"op": "ready", "effect_id": "rd", "target": {"decision_ref": "t", "chosen_zone_class": "board",
-                                                                     "exhausted": True, "exclude_source_identity": "$source_identity"}}
+                                                                     "include_legend_zone": True, "exhausted": True,
+                                                                     "exclude_source_identity": "$source_identity"}}
 PUMP_IF_READY_ENEMY_HERE = {"op": "modify_might", "effect_id": "mm", "object_id": {"object_ref": "program_source"}, "amount": 2,
                             "duration": "this_turn", "source": "$chain_item",
                             "predicate": {"kind": "state_holds", "condition": {"kind": "controls_units", "count": 1,
@@ -206,6 +207,26 @@ def main() -> int:
           and illegal(done), str(outcomes(done)))
     done = run(state, [READY_SOMETHING_ELSE], t=["u5"])
     check("'that's exhausted': a ready unit is not a legal target", illegal(done), str(outcomes(done)))
+    # GPT 2026-10-02: "something" is not only Units - an exhausted Legend in its Legend Zone is a Game Object that
+    # can be readied (Core 107.4, 355.9.a.4, 415.1); a Ready one is not "that's exhausted"
+    legends = copy.deepcopy(state)
+    for legend, owner, tired in (("lg1", "p1", True), ("lg2", "p2", False)):
+        legends["objects"][legend] = {"owner": owner, "controller": owner, "kind": "legend", "base_might": 0,
+                                      "might_modifiers": [], "damage": 0, "exhausted": tired, "champion_legend": True}
+        legends["players"][owner]["zones"].setdefault("legend_zone", []).append(legend)
+    done = run(legends, [READY_SOMETHING_ELSE], t=["lg1"])
+    check("something else that's exhausted: an exhausted Legend (lg1, in its Legend Zone) is readied",
+          done.get("committed") and not done["next_state"]["objects"]["lg1"].get("exhausted"), str(outcomes(done)))
+    done = run(legends, [READY_SOMETHING_ELSE], t=["lg2"])
+    check("'that's exhausted': a Ready Legend is not a legal target", illegal(done), str(outcomes(done)))
+    narrow = copy.deepcopy(READY_SOMETHING_ELSE)
+    narrow["target"].pop("include_legend_zone")
+    done = run(legends, [narrow], t=["lg1"])
+    check("without include_legend_zone a board target never reaches a Legend (ADR-0012 §5)", illegal(done), str(outcomes(done)))
+    for bad in ({"include_legend_zone": False}, {"kind": "unit"}, {"chosen_zone_class": "non_board"}):
+        wrong = copy.deepcopy(READY_SOMETHING_ELSE)
+        wrong["target"].update(bad)
+        check(f"refused include_legend_zone with {bad}", bool(validate_program(program("p1", wrong))), "validated")
 
     # --- a set narrowed by a state: "Kill all damaged enemy units here." ------------------------
     done = run(state, [KILL_DAMAGED_HERE])

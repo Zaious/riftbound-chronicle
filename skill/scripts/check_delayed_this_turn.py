@@ -12,15 +12,17 @@ if this turn's Ending Step had already begun when the instruction ran, the delay
 generated and the instruction is ignored (Core 359.3.e.16, whose example is this card too).
 
 Must hold, through the engine's own procedures:
-  - created: the delayed entry is bound to this turn, to its source, and to the hash of the
-    program the instruction carried;
+  - created: the delayed entry is bound to this turn, to its source, to the hash of the program the
+    instruction carried, and to the chain item that made it (its id carries the trigger instance - GPT
+    2026-10-02: two Conquers of one Targon's Peak in one turn make two delayed triggers, never one id twice);
   - the Ending Step fires it once, with that hash on the chain item; it is disarmed;
   - finalized with two of p1's exhausted runes chosen and resolved: those two are ready, p1's
     third rune and p2's rune stay exhausted; nothing was chosen when it was created;
   - zero runes chosen: nothing readies (355.13); three chosen: refused at finalization;
   - a registry that offers different instructions under the same id is refused
     (effect_program_hash_mismatch);
-  - an opponent's rune chosen: refused (friendly runes only);
+  - an opponent's rune chosen: it readies ("ready up to 2 runes" names no controller - GPT 2026-10-02);
+  - two creations in one turn (two chain items): two delayed triggers, both fire at the end of the turn;
   - resolved during this turn's Ending Phase after the Ending Step began: not generated, nothing
     armed, the instruction ignored (359.3.e.16); resolved in the Main Phase it is generated;
   - a delayed trigger of this turn does not fire at the end of another turn;
@@ -46,7 +48,8 @@ from resolution_bridge import begin_ending_step, finalize_trigger, program_hash,
 RULESET = {"core": IR.CORE_RULESET, "faq_as_of": IR.FAQ_AS_OF}
 READY_UP_TO_TWO = [{"op": "ready", "effect_id": "rd", "targets": {
     "min": 0, "max": 2, "decision_ref": "t",
-    "restrictions": {"chosen_zone_class": "board", "kind": "rune", "controller_relation": "friendly"}}}]
+    "restrictions": {"chosen_zone_class": "board", "kind": "rune"}}}]
+FIRED = "peak-end@spell-1"     # the delayed_id with the creating chain item's id (GPT 2026-10-02)
 CREATE = {"op": "create_delayed_trigger", "effect_id": "dt",
           "delayed": {"delayed_id": "peak-end", "controller": "p1", "source_object": "bf1",
                       "waits_for": {"kind": "turn", "moment": "end_of_turn", "turn": "this_turn"},
@@ -72,14 +75,14 @@ def creating_program(effect=None):
             "effects": [copy.deepcopy(effect or CREATE)]}
 
 
-def resolve_creation(state, *, ending=False, effect=None):
+def resolve_creation(state, *, ending=False, effect=None, item_id="spell-1"):
     """The creating instruction resolves as a finalized chain item - in the Main Phase, or during this
     turn's Ending Phase after begin_ending_step (its `ending_step` record for this turn)."""
-    timing = fixture(priority="p2", items=[item("spell-1", "p1", "spell", "default", "finalized")], passes=["p1", "p2"])
+    timing = fixture(priority="p2", items=[item(item_id, "p1", "spell", "default", "finalized")], passes=["p1", "p2"])
     if ending:
         timing = {**timing, "phase": "ending",
                   "ending_step": {"status": "triggers_scheduled", "turn_id": state.get("turn_id", IR.DEFAULT_TURN_ID)}}
-    return resolve_with_program(timing, "spell-1", state, creating_program(effect))
+    return resolve_with_program(timing, item_id, state, creating_program(effect))
 
 
 def choose(state, value):
@@ -96,7 +99,7 @@ def end_of_turn(state, runes, registry=None):
     if not began.get("committed"):
         return f"ending refused: {began.get('reason')}", None
     items = began["next_timing_state"]["chain"]["items"]
-    if [i["id"] for i in items] != ["peak-end"]:
+    if [i["id"] for i in items] != [FIRED]:
         return f"fired {[i['id'] for i in items]}", None
     timing, effects = began["next_timing_state"], began["next_effect_state"]
     finalized = finalize_trigger(timing, effects, registry or {"peak-end-effects": NESTED}, choose(effects, runes))
@@ -107,7 +110,7 @@ def end_of_turn(state, runes, registry=None):
         if RC.next_procedure(timing).get("procedure") == "resolve_newest_finalized":
             break
         timing = RC.pass_priority(timing, timing["priority"])["next_state"]
-    done = resolve_with_program(timing, "peak-end", finalized["next_effect_state"], NESTED)
+    done = resolve_with_program(timing, FIRED, finalized["next_effect_state"], NESTED)
     if not done.get("committed"):
         return f"resolve refused: {done.get('reason') or done.get('reason_code')}", None
     return "resolved", done["next_effect_state"]
@@ -134,7 +137,15 @@ def run_cases():
     label, after = end_of_turn(armed, [])
     out["none_chosen"] = exhausted(after) if after else label
     out["three_chosen"] = end_of_turn(armed, ["pr1", "pr2", "pr3"])[0]
-    out["an_opponents_rune"] = end_of_turn(armed, ["qr1"])[0]
+    label, after = end_of_turn(armed, ["qr1"])
+    out["an_opponents_rune"] = exhausted(after) if after else label
+    # two Conquers in one turn: two chain items resolve, each making its own delayed trigger
+    second = resolve_creation(armed, item_id="spell-2")
+    if second.get("committed"):
+        # both armed (the Ending Step then asks p1 to order the two, Core 383.3.d)
+        out["two_creations"] = sorted(d["delayed_id"] for d in second["next_effect_state"].get("delayed_triggers") or [])
+    else:
+        out["two_creations"] = f"refused: {second.get('reason') or second.get('errors')}"
     other = {**NESTED, "effects": [{"op": "ready", "effect_id": "rd", "targets": {
         "min": 0, "max": 3, "decision_ref": "t", "restrictions": {"chosen_zone_class": "board", "kind": "rune"}}}]}
     out["other_instructions_registered"] = end_of_turn(armed, ["pr1"], registry={"peak-end-effects": other})[0]
@@ -152,14 +163,15 @@ def run_cases():
 
 def expected(turn):
     return {
-        "created": {"delayed_id": "peak-end", "source_object": "bf1", "created_turn": turn,
+        "created": {"delayed_id": FIRED, "source_object": "bf1", "created_turn": turn,
                     "waits_for": {"kind": "turn", "moment": "end_of_turn", "turn_id": turn},
                     "effect_program_hash": program_hash(NESTED)},
-        "fired": ([("peak-end", program_hash(NESTED))], False),
+        "fired": ([(FIRED, program_hash(NESTED))], False),
         "two_chosen": {"pr1": False, "pr2": False, "pr3": True, "qr1": True},
         "none_chosen": {"pr1": True, "pr2": True, "pr3": True, "qr1": True},
         "three_chosen": "finalize refused: target_count_out_of_range",
-        "an_opponents_rune": "finalize refused: target_illegal_at_play",
+        "an_opponents_rune": {"pr1": True, "pr2": True, "pr3": True, "qr1": False},
+        "two_creations": ["peak-end@spell-1", "peak-end@spell-2"],
         "other_instructions_registered": "finalize refused: effect_program_hash_mismatch",
         "created_in_the_ending_step": ([], ["no_op"]),
         "another_turns_end": [],
@@ -209,7 +221,8 @@ def main() -> int:
         return 1
     print("OK: a delayed trigger 'at the end of this turn' is bound to its turn and to the hash of the program its "
           "instruction carried; the Ending Step fires it once; its up-to-2 rune targets are chosen as it is finalized "
-          "(355.5.b) and only friendly runes; other instructions under its id are refused; made after the Ending Step "
+          "(355.5.b), any player's runes; its id carries the chain item that made it (two in one turn are two); other "
+          "instructions under its id are refused; made after the Ending Step "
           "began it is not generated (359.3.e.16); two engine mutations are caught.")
     return 0
 

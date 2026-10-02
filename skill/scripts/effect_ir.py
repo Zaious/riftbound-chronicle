@@ -2565,7 +2565,10 @@ SELECTOR_STATE_FIELDS = ("exhausted", "damaged")
 AFFECTED_NARROWING_FIELDS = (*SELECTOR_STATE_FIELDS, "exclude_source_identity")
 SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref", "any_of", *SELECTOR_STATE_FIELDS,
                    # Core 103.2.a.3: a Champion Unit named as its controller's Chosen Champion
-                   "chosen_champion"}
+                   "chosen_champion",
+                   # GPT 2026-10-02: a kind-less board target that also admits a Legend in its Legend Zone
+                   # ("Ready something else that's exhausted" - Core 107.4, 355.9.a.4, 415.1)
+                   "include_legend_zone"}
 # 2026-09-27 (Fading Memories, "a unit at a battlefield or a gear"): one chosen object that fits ONE of
 # the alternatives; each names a kind and may narrow the location and the controller relation
 ANY_OF_FIELDS = {"kind", "location", "controller_relation"}
@@ -2871,6 +2874,11 @@ def _selector_errors(selector: Any) -> list[str]:
         errors.append("zone_owner_relation is invalid")
     if "chosen_champion" in selector and selector["chosen_champion"] is not True:
         errors.append("chosen_champion is true when present (Core 103.2.a.3)")
+    if "include_legend_zone" in selector and (selector["include_legend_zone"] is not True
+                                              or selector.get("chosen_zone_class") != "board" or "kind" in selector
+                                              or "location" in selector):
+        errors.append("include_legend_zone is true when present, on a kind-less board target with no location: it adds "
+                      "a Legend in its Legend Zone to the objects on the board (Core 107.4, 355.9.a.4)")
     if "targeted" in selector and selector["targeted"] != derive_targeted(selector):
         errors.append("targeted is derived from the selector and cannot be overridden")
     if "bound_identity" in selector and (not isinstance(selector["bound_identity"], str) or "@" not in selector["bound_identity"]):
@@ -3503,7 +3511,8 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
         return False, "target_object_missing"
     location = find_location(state, object_id)
     current_class = zone_class(location)
-    if current_class != target.get("chosen_zone_class"):
+    in_legend_zone = location is not None and location[0] == "player" and location[2] == "legend_zone"
+    if current_class != target.get("chosen_zone_class") and not (target.get("include_legend_zone") is True and in_legend_zone):
         return False, "target_changed_board_zone_class"
     required_kind = target.get("kind")
     if required_kind is not None and obj.get("kind") != required_kind:
@@ -3673,12 +3682,19 @@ def _floored_might_amount(current: int, amount: int, effect: dict[str, Any]) -> 
     """How much a Might change actually moves, after the card's own floor or cap.
 
     "Give a Unit -1 Might, to a minimum of 1" moves nothing on a 1 Might Unit,
-    and Core 370.1.a leaves no event where nothing moved."""
-    minimum, maximum = _bound(effect, "minimum"), _bound(effect, "maximum")
-    if minimum is not None and current + amount < minimum:
-        amount = minimum - current
-    if maximum is not None and current + amount > maximum:
-        amount = maximum - current
+    and Core 370.1.a leaves no event where nothing moved. A floor limits a
+    decrease and a cap an increase; neither turns the change around - a Unit
+    already at 0 given "-8, to a minimum of 1" stays at 0 (GPT 2026-10-02)."""
+    return _bounded_amount(current, amount, _bound(effect, "minimum"), _bound(effect, "maximum"))
+
+
+def _bounded_amount(current: int, amount: int, minimum: int | None, maximum: int | None) -> int:
+    """The part of `amount` a floor / cap lets through: a decrease stops at the floor (never below 0 moved), an
+    increase stops at the cap (never above 0 moved). The direction of the change is never reversed."""
+    if minimum is not None and amount < 0 and current + amount < minimum:
+        amount = min(0, minimum - current)
+    if maximum is not None and amount > 0 and current + amount > maximum:
+        amount = max(0, maximum - current)
     return amount
 
 
@@ -4661,8 +4677,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if object_id not in new_state["objects"]:
             raise ValueError(f"{op} requires a known object")
         location = find_location(new_state, object_id)
-        if location is None or not (location[0] == "battlefield" or location[2] == "base"):
-            raise ValueError(f"{op} applies only to board objects")
+        # a Legend is exhausted and readied in its Legend Zone (Core 107.4, 415.1; GPT 2026-10-02)
+        if location is None or not (location[0] == "battlefield" or location[2] in ("base", "legend_zone")):
+            raise ValueError(f"{op} applies only to board objects and a Legend in its Legend Zone")
         desired = op == "exhaust"
         before = new_state["objects"][object_id]["exhausted"]
         new_state["objects"][object_id]["exhausted"] = desired
@@ -4694,7 +4711,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             resources.setdefault("restricted", []).append(entry)
             trace.update({"player": player_id, "resource": resource, "amount": amount, "restricted": {k: v for k, v in entry.items()},
                           **({"universal": True} if universal else {"domain": effect["domain"]} if resource == "power" else {})})
-            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 446.3", "Core 447.2"]
+            trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 166.1", "Core 168"]
                                                         + (["Core 135.2.e.5.b", "Core 163.2.b"] if universal else [])))
         elif resource == "energy":
             resources["energy"] += amount
@@ -5263,6 +5280,10 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if waits.get("turn") == "this_turn":
             # the end of the turn it is created in, bound now (Core 390.2)
             spec["waits_for"] = {"kind": "turn", "moment": "end_of_turn", "turn_id": this_turn}
+        if effect.get("instance_context"):
+            # GPT 2026-10-02 (package 6): the trigger instance that makes it is part of its id - the same source can
+            # legally trigger twice in one turn, and each makes its own delayed trigger
+            spec["delayed_id"] = f"{spec['delayed_id']}@{effect['instance_context']}"
         if any(entry["delayed_id"] == spec["delayed_id"] for entry in new_state.get("delayed_triggers", [])):
             raise ValueError(f"delayed trigger {spec['delayed_id']!r} already exists")
         spec["source_identity"] = object_identity(new_state, spec["source_object"]) or spec["source_object"]
@@ -5767,12 +5788,8 @@ def _applied_amount(effect: dict[str, Any], current: int) -> int:
         return max(0, value["amount"] - current)
     if "snapshot_amount" in value:
         return value["snapshot_amount"]
-    amount = value["amount"]
-    if "minimum" in value and current + amount < value["minimum"]:
-        amount = value["minimum"] - current
-    if "maximum" in value and current + amount > value["maximum"]:
-        amount = value["maximum"] - current
-    return amount
+    # a floor limits a decrease and a cap an increase, never reversing it (GPT 2026-10-02, Leona - Zealot)
+    return _bounded_amount(current, value["amount"], value.get("minimum"), value.get("maximum"))
 
 
 # ------------------------------------------------------------------ condition.v1 --
@@ -8340,6 +8357,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         # procedure knows; a delayed trigger "at the end of this turn" is then not generated
         if effect.get("op") == "create_delayed_trigger" and context is not None and context.get("ending_step_begun") is not None:
             effect = {**effect, "ending_step_context": context["ending_step_begun"]}
+        # GPT 2026-10-02: the chain item whose resolution makes the delayed trigger - its instance in the id
+        if effect.get("op") == "create_delayed_trigger" and context is not None and context.get("creating_chain_item"):
+            effect = {**effect, "instance_context": context["creating_chain_item"]}
         if effect.get("op") in {"discard", "spend_buffs"} or (effect.get("choice") is not None and effect.get("op") in CHOICE_OPS | RESOLUTION_CHOICE_OPS):
             try:
                 effect = (_resolve_discard(current, effect, decisions) if effect.get("op") == "discard"

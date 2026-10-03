@@ -50,8 +50,7 @@
                     "decision_ref": "t",
                     "restrictions": {
                       "chosen_zone_class": "board",
-                      "kind": "rune",
-                      "controller_relation": "friendly"
+                      "kind": "rune"
                     }
                   }
                 }
@@ -115,7 +114,78 @@
                   "Core 421"
                 ]
               },
-              "why": "'up to 2': the controller chooses at most two of their runes and those ready; the third stays exhausted. Stale card: the Legend source is a stand-in gear and no status derives from this run.",
+              "why": "'up to 2': the controller chooses at most two runes and those ready; the third stays exhausted. Stale card: the Legend source is a stand-in gear and no status derives from this run.",
+              "bindings": {
+                "controller": "p1",
+                "opponent": "p2",
+                "card": "c1",
+                "chain_item": "spell-1",
+                "source_object": "g1"
+              }
+            },
+            {
+              "fixture_id": "annie - dark child (starter)#223039b2:positive_opponent_rune",
+              "kind": "positive",
+              "setup": [
+                {
+                  "add": "g1",
+                  "owner": "p1",
+                  "kind": "gear",
+                  "to": "base:p1"
+                },
+                {
+                  "add_runes": "p1",
+                  "count": 1,
+                  "exhausted": true
+                },
+                {
+                  "add_runes": "p2",
+                  "count": 2,
+                  "exhausted": true,
+                  "prefix": "or"
+                }
+              ],
+              "compiled_targets": {
+                "effect_id": "rd",
+                "object_ids": [
+                  "rr1",
+                  "or1"
+                ]
+              },
+              "expected": {
+                "outcome": "supported",
+                "assert": [
+                  {
+                    "field": [
+                      "objects",
+                      "rr1",
+                      "exhausted"
+                    ],
+                    "equals": false
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "or1",
+                      "exhausted"
+                    ],
+                    "equals": false
+                  },
+                  {
+                    "field": [
+                      "objects",
+                      "or2",
+                      "exhausted"
+                    ],
+                    "equals": true
+                  }
+                ],
+                "rule_locators": [
+                  "Core 355.13",
+                  "Core 421"
+                ]
+              },
+              "why": "'ready up to 2 runes' names no controller (GPT 2026-10-02, the same wording on Targon's Peak), so an opponent's rune is a legal choice beside one's own; the unchosen one stays exhausted. Stale card: the Legend source is a stand-in gear and no status derives from this run.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",

@@ -99,7 +99,7 @@ SUPPORTED_PROCEDURES = {
         "Core 383.3", "Core 383.3.c–383.3.d.1", "Core 428.1.a.1.b",
     ],
     # 2026-09-28 (package 6): the cards an effect's resolution played (Core 419.3), each put on the
-    # Chain as a Pending item by the play's step 1 (354, 354.2) whatever the state and Priority -
+    # Chain, Pending, by the play's step 1 (354, 354.2) whatever the state and Priority -
     # a Limited Action, taken when instructed (419.3.a, 312.1.b.1, 410.2.b)
     "add_limited_play_items": [
         "Core 354", "Core 354.2", "Core 354.3", "Core 419.3", "Core 419.3.a", "Core 312.1.b.1",

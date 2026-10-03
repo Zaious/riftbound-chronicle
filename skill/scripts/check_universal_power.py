@@ -2,9 +2,9 @@
 """
 Gate: Universal Power - "[Add] [A]" (2026-09-27; Kai'Sa - Daughter of the Void, Malzahar - Fanatic).
 
-[A] is Power of any Domain (Core 135.2.e.5). Added to a Rune Pool it can be spent to pay a Power
-cost of any Domain (135.2.e.5.b; 163.2.b: some Power is Universal), and it pays an any-Domain cost
-too (135.2.e.5.a). The engine keeps it apart from the Domains' own Power: `universal_power` in the
+[A] is Power of any Domain (Core 135.2.e.5). Once in a player's Rune Pool it settles a Power cost
+whatever that cost's Domain (135.2.e.5.b; 163.2.b: Universal Power), and an any-Domain cost as well
+(135.2.e.5.a). The engine keeps it apart from the Domains' own Power: `universal_power` in the
 general pool, `universal: true` on a restricted entry (ADR-0011 §4). add_resource writes it with
 `{resource: power, universal: true}` and names no Domain.
 

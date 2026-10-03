@@ -2,10 +2,10 @@
 """
 Gate: "When you kill a stunned enemy unit" (2026-09-27, Solari Shrine) - who is responsible for a kill.
 
-If an ability triggers when "you" do something, it triggers when a game action you are responsible for
-happens (Core 411.4). A Kill instruction kills (428.5.b) and its controller performs it (411.1); a Unit
-killed in a Cleanup is attributed to the spell or ability that resolved just before and dealt it damage,
-and that deal's player is responsible (428.5.c, 428.5.c.1); a Combat Cleanup's kills belong to the
+A trigger worded around "you" listens for the game actions its controller is responsible for (Core 411.4).
+A Kill instruction kills (428.5.b) and its controller performs it (411.1); a Unit that dies in a Cleanup
+counts as killed by the last spell or ability to resolve before that Cleanup when that one damaged it, and
+the player who made that damage is responsible (428.5.c, 428.5.c.1); a Combat Cleanup's kills belong to the
 Combat Damage's sources and their controller (428.5.c.2). A game action performed by the game's own
 procedures is nobody's (411.2). Every `died` event now carries `responsible_player` and `was_stunned`
 (the unit as it was, like `was_buffed`); the watch scope `responsible` and the fact `object_was_stunned`

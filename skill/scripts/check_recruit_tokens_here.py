@@ -76,9 +76,12 @@ def run(effects, *, source_at="bf1"):
 def main() -> int:
     errors: list[str] = []
     two = program_of(TWO)
-    want = [{"op": "play_token", "effect_id": f"tok{i}", "owner": "$controller", "controller": "$controller",
-             "token_kind": "unit", "base_might": 1, "token_id": "recruit", "object_id_ref": {"kind": "fresh"},
-             "destination": HERE} for i in (1, 2)]
+    # package 7: the lowering carries the Recruit card's printed tags from the reviewed catalogue (none until
+    # the owner's amendment adds them)
+    from token_catalog import carry_tags
+    want = carry_tags([{"op": "play_token", "effect_id": f"tok{i}", "owner": "$controller", "controller": "$controller",
+                        "token_kind": "unit", "base_might": 1, "token_id": "recruit", "object_id_ref": {"kind": "fresh"},
+                        "destination": HERE} for i in (1, 2)])
     if two != want:
         errors.append(f"'{TWO}' lowered to {two}")
     one = program_of("Play a 1 :rb_might: Recruit unit token here.")

@@ -134,7 +134,9 @@ def main() -> int:
     # the entry's. A catalogued sprite played at 999 Might, as a gear, or without its printed
     # [Temporary] fails; the catalogued sprite as catalogued passes
     sprite = entry_of(catalog, "sprite")
+    # (package 7: with the catalogue's tags carried, as the compile step carries them)
     faithful = {"op": "play_token", "effect_id": "s", "object_id": "s1", "owner": "p1", "controller": "p1",
+                **({"tags": list(sprite["tags"])} if sprite.get("tags") else {}),
                 "token_kind": sprite["kind"], "base_might": sprite["base_might"], "token_id": "sprite",
                 "destination": {"kind": "base", "player": "p1"},
                 "event_modifiers": {"entry_state": "ready", "result_keywords": list(sprite["keywords"])}}

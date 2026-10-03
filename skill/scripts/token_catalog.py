@@ -14,15 +14,24 @@ at runtime: `play_token` still carries the characteristics it applies, plus the
 `token_id` they were compiled from, so a program's provenance can be checked
 against this file without the engine reading data at transition time.
 
+Package 7 (GPT 2026-10-02, PACKAGE6 §7 question 3): an entry may carry the
+token card's printed `tags` (Recruit, Fae), and a compiled `play_token` carries
+them from here (`carry_tags`) onto the token it makes. A tag added to an entry
+already promoted is an amendment: `amend` needs its own review record, keeps
+the original review, and appends the amendment's to `amendments`.
+
 CLI:
   token_catalog.py validate [path]        shape, hashes and review records
   token_catalog.py promote <entry.json>   add one reviewed entry (refuses without a review)
+  token_catalog.py amend <amendment.json> add tags to one promoted entry (refuses without a review)
+  token_catalog.py carry-pack <pack.json> write the catalogue's tags onto a hand-written pack's play_tokens
   token_catalog.py verify-pack <pack.json>  every play_token names a catalogued token
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime
 import hashlib
 import json
@@ -39,7 +48,8 @@ CATALOG_VERSION = "token-catalog.v1"
 DEFAULT_PATH = SKILL_DIR / "data" / "token_catalog" / "token_catalog.json"
 SCHEMA_PATH = SKILL_DIR / "schemas" / "token-catalog.schema.json"
 REQUIRED_ENTRY = {"token_id", "name", "kind", "base_might", "keywords", "text", "text_sha256", "source_cards", "review"}
-OPTIONAL_ENTRY = {"effect_program_id"}
+OPTIONAL_ENTRY = {"effect_program_id", "tags", "amendments"}
+AMENDABLE = {"tags"}
 KINDS = {"unit", "gear", "battlefield"}
 
 
@@ -83,8 +93,18 @@ def validate_catalog(value: Any) -> list[str]:
     for index, entry in enumerate(entries):
         label = f"entries[{index}]"
         if not isinstance(entry, dict) or not REQUIRED_ENTRY <= set(entry) or set(entry) - REQUIRED_ENTRY - OPTIONAL_ENTRY:
-            errors.append(f"{label} must carry exactly {sorted(REQUIRED_ENTRY)} (and optionally effect_program_id)")
+            errors.append(f"{label} must carry exactly {sorted(REQUIRED_ENTRY)} (and optionally {sorted(OPTIONAL_ENTRY)})")
             continue
+        if "tags" in entry and (not isinstance(entry["tags"], list) or len(entry["tags"]) != len(set(entry["tags"]))
+                                or any(not isinstance(t, str) or not t for t in entry["tags"])):
+            errors.append(f"{label}.tags must be a unique array of non-empty strings")
+        for i, amendment in enumerate(entry.get("amendments", []) if isinstance(entry.get("amendments", []), list) else [None]):
+            if not isinstance(amendment, dict) or set(amendment) != {"fields", "review"} \
+                    or not isinstance(amendment["fields"], list) or not amendment["fields"] \
+                    or set(amendment["fields"]) - AMENDABLE or review_problem(amendment["review"]):
+                errors.append(f"{label}.amendments[{i}] must be {{fields (of {sorted(AMENDABLE)}), review}} with a full review record")
+            elif any(field not in entry for field in amendment["fields"]):
+                errors.append(f"{label}.amendments[{i}] amends a field the entry does not carry")
         token_id = entry["token_id"]
         if not isinstance(token_id, str) or not token_id or token_id in seen:
             errors.append(f"{label}.token_id is invalid or duplicated")
@@ -102,16 +122,23 @@ def validate_catalog(value: Any) -> list[str]:
         sources = entry["source_cards"]
         if not isinstance(sources, list) or not sources or any(not isinstance(s, dict) or set(s) != {"name", "locator"} or not all(isinstance(v, str) and v for v in s.values()) for s in sources):
             errors.append(f"{label}.source_cards must name at least one card with a locator")
-        review = entry["review"]
-        if not isinstance(review, dict) or not {"reviewer", "date", "source"} <= set(review) or set(review) - {"reviewer", "date", "source", "note"}:
-            errors.append(f"{label}.review must carry reviewer, date and source (note optional)")
-        elif not all(isinstance(review[k], str) and review[k] for k in ("reviewer", "date", "source")):
-            errors.append(f"{label}.review fields must be non-empty strings")
-        elif not is_real_date(review["date"]):
-            # a placeholder like "YYYY-MM-DD" has the right length and dashes but is not a
-            # date; it slipped past a check that only looked at those two things
-            errors.append(f"{label}.review.date must be an actual YYYY-MM-DD calendar date, not a placeholder")
+        problem = review_problem(entry["review"])
+        if problem:
+            errors.append(f"{label}.review{problem}")
     return errors
+
+
+def review_problem(review: Any) -> str | None:
+    """Why a review record is not one (a suffix for '<label>.review'), or None."""
+    if not isinstance(review, dict) or not {"reviewer", "date", "source"} <= set(review) or set(review) - {"reviewer", "date", "source", "note"}:
+        return " must carry reviewer, date and source (note optional)"
+    if not all(isinstance(review[k], str) and review[k] for k in ("reviewer", "date", "source")):
+        return " fields must be non-empty strings"
+    if not is_real_date(review["date"]):
+        # a placeholder like "YYYY-MM-DD" has the right length and dashes but is not a
+        # date; it slipped past a check that only looked at those two things
+        return ".date must be an actual YYYY-MM-DD calendar date, not a placeholder"
+    return None
 
 
 def entry_of(catalog: dict[str, Any], token_id: str) -> dict[str, Any] | None:
@@ -135,6 +162,64 @@ def promote(catalog: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
     if problems:
         raise ValueError("the promoted entry would make the catalogue invalid: " + "; ".join(problems))
     return updated
+
+
+def amend(catalog: dict[str, Any], amendment: dict[str, Any]) -> dict[str, Any]:
+    """Add the printed `tags` to one promoted entry (package 7). Refuses an amendment without its own
+    review record, for an entry not in the catalogue, or one that changes nothing; the entry's original
+    review stays, and this one is appended to `amendments`."""
+    if not isinstance(amendment, dict) or set(amendment) != {"token_id", "tags", "review"}:
+        raise ValueError("an amendment is exactly {token_id, tags, review}")
+    problem = review_problem(amendment["review"])
+    if problem:
+        raise ValueError(f"an amendment needs its own review record naming the reviewer, the date and the source: review{problem}")
+    entry = entry_of(catalog, amendment["token_id"])
+    if entry is None:
+        raise ValueError(f"token_id {amendment['token_id']!r} is not in the catalogue; promote it first")
+    if entry.get("tags") == amendment["tags"]:
+        raise ValueError(f"token {amendment['token_id']!r} already carries {amendment['tags']}; nothing to amend")
+    amended = {**copy.deepcopy(entry), "tags": list(amendment["tags"])}
+    amended["amendments"] = amended.get("amendments", []) + [{"fields": ["tags"], "review": dict(amendment["review"])}]
+    updated = {**catalog, "entries": [amended if e is entry else e for e in catalog["entries"]]}
+    problems = validate_catalog(updated)
+    if problems:
+        raise ValueError("the amendment would make the catalogue invalid: " + "; ".join(problems))
+    return updated
+
+
+_CACHE: dict[tuple, dict[str, Any]] = {}
+
+
+def _committed_catalog() -> dict[str, Any]:
+    """The committed catalogue, read again whenever the file changes (a compile calls carry_tags per instruction)."""
+    stat = DEFAULT_PATH.stat()
+    key = (str(DEFAULT_PATH), stat.st_mtime_ns, stat.st_size)
+    if key not in _CACHE:
+        _CACHE.clear()
+        _CACHE[key] = load_catalog()
+    return _CACHE[key]
+
+
+def carry_tags(effects: Any, catalog: dict[str, Any] | None = None) -> Any:
+    """The program with every play_token naming a catalogued token that has `tags` carrying them (a copy).
+    The compile step calls this, so the engine reads the tags off the instruction, not off this file."""
+    catalog = catalog if catalog is not None else _committed_catalog()
+    out = copy.deepcopy(effects)
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if node.get("op") == "play_token" and node.get("token_id"):
+                entry = entry_of(catalog, node["token_id"])
+                if entry is not None and entry.get("tags"):
+                    node["tags"] = list(entry["tags"])
+            for child in node.values():
+                walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(out)
+    return out
 
 
 def program_token_ids(value: Any) -> list[tuple[str, str | None]]:
@@ -177,6 +262,10 @@ def verify_pack(pack: Any, catalog: dict[str, Any]) -> list[str]:
             errors.append(f"{path}: token {token_id!r} has {entry['base_might']} Might, the program plays {node.get('base_might')!r}")
         if printed != sorted(entry["keywords"]):
             errors.append(f"{path}: token {token_id!r} has keywords {sorted(entry['keywords'])}, the program plays {printed}")
+        # package 7: the printed tags travel with the instruction (carry_tags) - none missing, none invented
+        if sorted(node.get("tags") or []) != sorted(entry.get("tags") or []):
+            errors.append(f"{path}: token {token_id!r} has tags {sorted(entry.get('tags') or [])}, the program plays "
+                          f"{sorted(node.get('tags') or [])}")
     return errors
 
 
@@ -196,6 +285,12 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("promote")
     p.add_argument("entry", type=Path)
     p.add_argument("--catalog", type=Path, default=DEFAULT_PATH)
+    a = sub.add_parser("amend")
+    a.add_argument("amendment", type=Path)
+    a.add_argument("--catalog", type=Path, default=DEFAULT_PATH)
+    c = sub.add_parser("carry-pack")
+    c.add_argument("pack", type=Path)
+    c.add_argument("--catalog", type=Path, default=DEFAULT_PATH)
     w = sub.add_parser("verify-pack")
     w.add_argument("pack", type=Path)
     w.add_argument("--catalog", type=Path, default=DEFAULT_PATH)
@@ -215,6 +310,24 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         args.catalog.write_text(json.dumps(updated, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"promoted; the catalogue now holds {len(updated['entries'])} token(s)")
+        return 0
+    if args.command == "amend":
+        catalog = load_catalog(args.catalog)
+        try:
+            amendment = json.loads(args.amendment.read_text(encoding="utf-8"))
+            updated = amend(catalog, amendment)
+        except ValueError as exc:
+            print(f"FAILED: {exc}", file=sys.stderr)
+            return 1
+        args.catalog.write_text(json.dumps(updated, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"amended {amendment['token_id']!r}: tags {amendment['tags']}")
+        return 0
+    if args.command == "carry-pack":
+        # a hand-written card pack (r3a1_programs.json) takes the catalogue's tags onto its play_tokens
+        pack = json.loads(args.pack.read_text(encoding="utf-8"))
+        carried = carry_tags(pack, load_catalog(args.catalog))
+        args.pack.write_text(json.dumps(carried, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"{args.pack.name}: {sum(1 for _p, t in program_token_ids(carried) if t)} play_token(s) carry the catalogue's tags")
         return 0
     problems = verify_pack(json.loads(args.pack.read_text(encoding="utf-8")), load_catalog(args.catalog))
     for problem in problems:

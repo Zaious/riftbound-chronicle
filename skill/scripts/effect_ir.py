@@ -2442,6 +2442,10 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].play_token requires controller and unit/gear token_kind")
                 if not isinstance(effect.get("base_might"), int) or effect.get("base_might", -1) < 0:
                     errors.append(f"effects[{index}].play_token requires non-negative base_might")
+                tags = effect.get("tags")
+                if tags is not None and (not isinstance(tags, list) or not tags or len(tags) != len(set(tags))
+                                         or any(not isinstance(t, str) or not t for t in tags)):
+                    errors.append(f"effects[{index}].play_token tags must be a non-empty unique array of tag names")
                 chosen_place = isinstance(destination, dict) and set(destination) == {"decision_ref"} \
                     and isinstance(destination["decision_ref"], str) and bool(destination["decision_ref"])
                 if chosen_place:
@@ -4825,6 +4829,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             # which catalogued token this is, on the object itself (ADR-0012 §6), so a later
             # rule can ask what the token is - not only the trace of its making
             **({"token_id": effect["token_id"]} if effect.get("token_id") else {}),
+            # package 7 (GPT 2026-10-02): the token card's printed tags, carried by the instruction from the
+            # reviewed catalogue (token_catalog.carry_tags), so object_tags reads them like any printed tag
+            **({"tags": list(effect["tags"])} if effect.get("tags") else {}),
         }
         if destination.get("kind") == "base" and destination.get("player") in new_state["players"]:
             new_state["players"][destination["player"]]["zones"]["base"].append(object_id)
@@ -6114,24 +6121,16 @@ def record_card_played(state: dict[str, Any], player: str) -> int:
     return ordinal
 
 
-# 2026-09-27 (package 6): the tags a token has by the rule that describes it (Core 187 lists each token's
-# characteristics beyond the ones its maker states), keyed by the catalogued token it was played as (play_token's
-# token_id, ADR-0012 §6). Only catalogued tokens: a token not named here has no observed tags.
-TOKEN_RULE_TAGS = {"recruit": ["Recruit"],   # Core 187.1
-                   "sprite": ["Fae"]}        # Core 187.2
-
-
 def object_tags(state: dict[str, Any], object_id: str) -> list[str] | None:
-    """The object's tags (Core 133.8): the ones it carries, or - a token that carries none - the ones
-    the rule for that token gives it (TOKEN_RULE_TAGS). None when never observed: a caller that needs
-    them refuses rather than guessing."""
+    """The object's tags (Core 133.8), as it carries them. A token gets its printed tags from the
+    instruction that played it (play_token's `tags`, carried from the reviewed token catalogue - package 7;
+    the TOKEN_RULE_TAGS table of package 6 is gone). None when never observed: a caller that needs them
+    refuses rather than guessing."""
     obj = (state.get("objects") or {}).get(object_id)
     if not isinstance(obj, dict):
         return None
     if isinstance(obj.get("tags"), list):
         return list(obj["tags"])
-    if obj.get("is_token") and obj.get("token_id") in TOKEN_RULE_TAGS:
-        return list(TOKEN_RULE_TAGS[obj["token_id"]])
     return None
 
 

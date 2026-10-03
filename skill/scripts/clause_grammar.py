@@ -1028,7 +1028,9 @@ def _lower_recruit_tokens_here(params):
                 "object_id_ref": {"kind": "fresh"},
                 "destination": {"kind": "battlefield", "location_ref": {"kind": "program_source_current_battlefield"}}}
                for i in range(count)]
-    return {"program_effects": effects,
+    # package 7: the Recruit card's printed tag rides on each instruction, from the reviewed catalogue
+    from token_catalog import carry_tags
+    return {"program_effects": carry_tags(effects),
             "ast": {"node": "instruction", "op": "play_token", "params": {"count": count, "might": might,
                                                                           "token_id": "recruit", "where": "here"}}}
 

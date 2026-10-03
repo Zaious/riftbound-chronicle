@@ -22,6 +22,11 @@ Must hold:
     keyword) fails too;
   - the committed card packs pass verify-pack against the committed
     catalogue;
+  - package 7 (GPT 2026-10-02): tags reach a promoted entry only by `amend`
+    with its own real-dated review, which keeps the original review; a
+    play_token carries the entry's tags (`carry_tags`), puts them on the
+    token it plays, and verify-pack refuses a missing or invented tag; a
+    token played without tags reads as untagged (no engine table);
   - the effect scope names the boundary (token_not_in_catalogue) and
     `play_token` accepts the provenance field; the CLI exits non-zero on a
     bad catalogue; determinism.
@@ -41,9 +46,10 @@ SKILL_DIR = SCRIPT_DIR.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state, program  # noqa: E402
-from effect_ir import apply_program, validate_program  # noqa: E402
+from effect_ir import apply_program, object_tags, validate_program  # noqa: E402
 from engine_check import KIND_CONFIG  # noqa: E402
-from token_catalog import DEFAULT_PATH, entry_of, load_catalog, promote, text_hash, validate_catalog, verify_pack  # noqa: E402
+from token_catalog import (DEFAULT_PATH, amend, carry_tags, entry_of, load_catalog, promote, text_hash,  # noqa: E402
+                           validate_catalog, verify_pack)
 
 REVIEWED = {
     "token_id": "sand-soldier",
@@ -141,6 +147,50 @@ def main() -> int:
     played = apply_program(base_state(), catalogued)
     if not played.get("committed") or played["trace"][0].get("token_id") != "sand-soldier":
         errors.append(f"play_token did not record the catalogue provenance: {played.get('reason') or played.get('errors')}")
+    # --- package 7: printed tags, amended into a promoted entry, carried by play_token -------------------------
+    review = {"reviewer": "GPT", "date": "2026-10-03", "source": "the token card's printed tags"}
+    for label, bad in (("without a review", {"token_id": "sand-soldier", "tags": ["Soldier"], "review": {}}),
+                       ("with a placeholder date", {"token_id": "sand-soldier", "tags": ["Soldier"],
+                                                    "review": {**review, "date": "YYYY-MM-DD"}}),
+                       ("for a token not in the catalogue", {"token_id": "nobody", "tags": ["Soldier"], "review": review})):
+        try:
+            amend(promoted, bad)
+            errors.append(f"an amendment {label} was accepted")
+        except ValueError:
+            pass
+    tagged = amend(promoted, {"token_id": "sand-soldier", "tags": ["Soldier"], "review": review})
+    soldier = entry_of(tagged, "sand-soldier")
+    if soldier.get("tags") != ["Soldier"] or soldier["review"] != entry_of(promoted, "sand-soldier")["review"] \
+            or soldier.get("amendments") != [{"fields": ["tags"], "review": review}] or validate_catalog(tagged):
+        errors.append(f"amend did not add the tags, keep the original review and record its own: {soldier}")
+    try:
+        amend(tagged, {"token_id": "sand-soldier", "tags": ["Soldier"], "review": review})
+        errors.append("an amendment that changes nothing was accepted")
+    except ValueError:
+        pass
+    forged = copy.deepcopy(tagged)
+    entry_of(forged, "sand-soldier")["amendments"][0]["review"] = {"reviewer": "GPT"}
+    if not validate_catalog(forged):
+        errors.append("an amendment without a full review record passed validation")
+    carried = carry_tags(catalogued, tagged)
+    if carried["effects"][0].get("tags") != ["Soldier"] or "tags" in catalogued["effects"][0]:
+        errors.append("carry_tags did not copy the entry's tags onto a copy of the play_token")
+    if verify_pack(carried, tagged):
+        errors.append(f"a play_token carrying the entry's tags failed verify-pack: {verify_pack(carried, tagged)}")
+    for label, pack in (("without the entry's tags", catalogued),
+                        ("with an invented tag", program("tok", {**token_effect, "tags": ["Soldier", "Mech"]}))):
+        if not verify_pack(pack, tagged):
+            errors.append(f"a play_token {label} passed verify-pack")
+    made = apply_program(base_state(), carried)
+    if not made.get("committed") or object_tags(made["next_state"], "t1") != ["Soldier"]:
+        errors.append(f"the played token does not carry its tags: {made.get('reason') or made.get('errors')}")
+    untagged = apply_program(base_state(), catalogued)
+    if untagged.get("committed") and object_tags(untagged["next_state"], "t1") is not None:
+        errors.append("a token played without tags reads as tagged; the engine table must be gone")
+    if not validate_program(program("tok", {**token_effect, "tags": []})) \
+            or not validate_program(program("tok", {**token_effect, "tags": ["Soldier", "Soldier"]})):
+        errors.append("play_token accepted an empty or repeated tags list")
+
     from pack_locator import pack_files
     for pack in pack_files("r3a1_programs.json"):
         found = verify_pack(json.loads(pack.read_text(encoding="utf-8")), catalog)

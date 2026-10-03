@@ -31,9 +31,10 @@ resolve_battlefield_control after a decided Combat):
     2026-09-27: a countered earlier card was not played); the watching card played as the second
     card triggers for itself (GPT 2026-09-27, package 3 section 7 item 1);
   - object_not_tagged Recruit: a friendly non-Recruit unit (tags observed) dying triggers; a
-    Recruit token (tagged by Core 187.1 through its catalogued token_id), a unit tagged Recruit,
+    Recruit token (tagged Recruit by the play_token that made it, from the reviewed catalogue -
+    package 7), a unit tagged Recruit,
     an enemy unit and the watching card itself do not; a unit whose tags were never observed is
-    refused by name (object_tags_unknown), never guessed;
+    refused by name (object_tags_unknown), never guessed - a Recruit token without tags too;
   - killed_by_your_spell (Core 428.5): the resolution stamps the deaths it caused - a Kill
     instruction of the resolving spell (428.5.b), a Cleanup death of a unit it dealt damage to
     (428.5.c), an ability whose source is a spell (428.5.d) - with the killer and the responsible
@@ -391,21 +392,28 @@ def main() -> int:
             extra(state)
         return state
 
-    def recruit_token(state):
+    # package 7: a token carries the printed tags play_token brought from the reviewed catalogue
+    # (token_catalog.carry_tags); there is no engine table to fall back on
+    def recruit_token(state, tags=("Recruit",)):
         state["objects"]["t1"] = {"owner": "p1", "controller": "p1", "kind": "unit", "is_token": True, "token_id": "recruit",
-                                  "base_might": 1, "might_modifiers": [], "damage": 0, "exhausted": False}
+                                  "base_might": 1, "might_modifiers": [], "damage": 0, "exhausted": False,
+                                  **({"tags": list(tags)} if tags is not None else {})}
         state["players"]["p1"]["zones"]["base"].append("t1")
 
     def sprite_token(state):
         state["objects"]["t2"] = {"owner": "p1", "controller": "p1", "kind": "unit", "is_token": True, "token_id": "sprite",
-                                  "base_might": 3, "might_modifiers": [], "damage": 0, "exhausted": False}
+                                  "base_might": 3, "might_modifiers": [], "damage": 0, "exhausted": False, "tags": ["Fae"]}
         state["players"]["p1"]["zones"]["base"].append("t2")
 
     def recruit_card(state):
         card(state, "rc", "base", tags=["Recruit", "Noxus"])
 
     if object_tags(viktor(recruit_token), "t1") != ["Recruit"] or object_tags(viktor(sprite_token), "t2") != ["Fae"]:
-        errors.append("a catalogued token's tags are not the ones its rule gives it (Core 187.1, 187.2)")
+        errors.append("a token's tags are not the ones its play_token carried")
+    bare = resolve(viktor(lambda state: recruit_token(state, tags=None)), [{"op": "kill", "effect_id": "k", "object_id": "t1"}])
+    if bare.get("committed") or bare.get("reason_code") != "object_tags_unknown":
+        errors.append(f"a Recruit token played without its tags died and the watch did not refuse by name (no engine "
+                      f"table may supply them): {bare.get('committed')} {bare.get('reason_code')}")
     for label, extra, victim, wanted in (("a friendly non-Recruit unit", None, "u1", 1),
                                          ("a Sprite token (a non-Recruit unit token)", sprite_token, "t2", 1),
                                          ("a Recruit token", recruit_token, "t1", 0),

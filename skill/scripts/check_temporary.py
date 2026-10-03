@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Regression gate for Temporary (Core 816; 315.2).
 
-    816.1.b  short for "At the start of this permanent's controller's Beginning Phase,
-             before scoring, kill this."
+    816.1.b  the permanent is killed at the start of its controller's Beginning
+             Phase, ahead of that phase's scoring
     816.1.c  the trigger condition is the controller's Beginning Phase starting
     816.2.a  however many instances, it triggers once
     816.3    Temporary is a characteristic

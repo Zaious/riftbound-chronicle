@@ -222,7 +222,7 @@ def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_d
     next_timing["turn_order"] = order
     was_turn_player = timing_state["turn_player"] == player
     if was_turn_player:
-        # 652.5.b: play proceeds in Turn Order to the next available player.
+        # 652.5.b: the next available player in Turn Order takes over.
         position = timing_state["turn_order"].index(player)
         following = timing_state["turn_order"][position + 1:] + timing_state["turn_order"][:position]
         next_timing["turn_player"] = next(p for p in following if p != player)

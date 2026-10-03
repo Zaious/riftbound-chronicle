@@ -2,7 +2,7 @@
 """Regression gate for Vision (Core 817; 436).
 
     817.1.b  short for "When this is played, predict."
-    817.1.c  the trigger is the permanent entering the Board
+    817.1.c  it triggers when its permanent enters the Board
     817.2.a  the player chooses to recycle or not
     817.3    Vision is a characteristic
     436.1    Predict with no number is Predict 1

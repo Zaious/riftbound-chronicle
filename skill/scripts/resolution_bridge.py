@@ -53,9 +53,9 @@ def dispatch_program(registry: dict[str, Any], chain_item: dict[str, Any]) -> tu
     """The registered program a chain item is bound to, or why there is none.
 
     A chain item binds `effect_program_id`, and - when its trigger descriptor carried
-    one - `effect_program_hash`. The caller does not get to choose the program: it is
-    looked up by the ID the engine put on the Chain, and refused if its content is not
-    the content the descriptor named."""
+    one - `effect_program_hash`. The caller does not get to choose the program: the
+    engine finds it by the ID it recorded on the Chain item, and refuses it when its
+    content differs from the content the descriptor named."""
     program_id = chain_item.get("effect_program_id")
     program = (registry or {}).get(program_id) if isinstance(program_id, str) else None
     if not isinstance(program, dict):
@@ -321,8 +321,8 @@ def kill_attributed(effect_events: list[dict[str, Any]], cleanup_events: list[di
 def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], next_effect: dict[str, Any],
                             paid: dict[str, Any], engine_decisions: dict[str, Any] | None, item_id: str) -> dict[str, Any]:
     """What the base cost did happened while the ability was finalized: a card recycled as a cost
-    (Core 416.2.a), a permanent exhausted as one. The watchers those events wake go on the Chain
-    as Pending items after the finalized ability (Core 383.3), one batch, the way the play
+    (Core 416.2.a), a permanent exhausted as one. The watchers those events wake join the Chain,
+    Pending, behind the finalized ability (Core 383.3), one batch, the way the play
     transaction schedules what its costs woke."""
     import watchers
     events = paid["events"]

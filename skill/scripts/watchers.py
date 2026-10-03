@@ -11,8 +11,8 @@ moment in the turn.
 Four rules of the trigger chapter live here, each as behaviour rather than
 prose:
 
-  * 383.3.e — a trigger marked "once each turn" or "N times each turn" does
-    not trigger at all once it has been performed that many times this turn.
+  * 383.3.e — a trigger limited to once (or N times) a turn stops triggering
+    for the rest of the turn once it has been performed that often.
   * 383.3.e.2.b — declining a "you may" at finalization means the ability was
     *not* performed, so it has not spent its use and can trigger again.
   * 124 — a delayed trigger is bound to the identities it was created with; a

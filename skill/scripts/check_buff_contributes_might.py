@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regression gate: a Buff counter contributes its +1 Might.
 
-Core 703: "Each Buff individually contributes +1 Might to a Unit." The engine
+Core 703: every Buff on a Unit adds +1 to its Might. The engine
 set a `buffed` flag on the object and stopped. `Buff a unit.` reported applied,
 the flag went true, and the Unit's Might did not move - a signed mapping that
 validates and then does less than the card says, which is the one failure mode
@@ -9,8 +9,8 @@ the whole mapping-review apparatus exists to catch.
 
 476.3's own worked example is what it costs. Fiora, Victorious has printed
 Might 4 and reads "While I'm Mighty, I have Deflect, Ganking, and Shield". The
-rule walks through a player placing a buff on her: her Might is increased in
-the Arithmetic layer, the Ability-Altering layer is then re-checked, and she
+rule walks through a player placing a buff on her: the +1 lands in the
+Arithmetic layer, the Ability-Altering layer is then re-checked, and she
 finalises at 5 Might WITH the three keywords. Miss the +1 and three keywords
 silently stay off.
 

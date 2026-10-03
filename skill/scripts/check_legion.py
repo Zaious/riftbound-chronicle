@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Regression gate for Legion (Core 812; 727.1; 419.4.b).
 
-    812.1.b.1  Legion is short for "If you have played another card this turn, this card
-               gains [Text]."
+    812.1.b.1  Legion grants [Text] to this card when its controller has already played
+               some other card this turn
     812.1.c    active as long as a card different from the one with Legion has been
                Finalized by you this turn
     812.2      one card satisfies every Legion that player controls

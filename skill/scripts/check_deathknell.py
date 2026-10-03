@@ -3,15 +3,14 @@
 
 Codex's ruling: Deathknell has to be shown bound to the engine's real death
 event, identity and timing — not parsed into a label that happens to sit on an
-object. The rule, in its own words:
+object. The rule, cited by locator and said in our words:
 
-    808.1  "Deathknell is a Triggered Ability keyword… formatted as
-            '[Deathknell][>] [Effect]'."
-    808.2  "It is functionally short for 'When I die, [Effect].'"
-    808.3  "Each instance of Deathknell a Permanent may have will trigger
-            separately. The controller will choose the order…"
-           "Deathknell… is a characteristic of the permanent and may be checked
-            or referenced by other Game Effects."
+    808.1  Deathknell is a Triggered Ability keyword, printed
+           '[Deathknell][>] [Effect]'.
+    808.2  it means: when this dies, [Effect].
+    808.3  every Deathknell a Permanent has triggers on its own, in an order
+           its controller picks; the keyword is a characteristic of the
+           permanent that other Game Effects can look at.
     323 step 3a  the ability is added as a Pending Item, noting the card's
             location and attributes, **before** step 3b moves it to the Trash.
 
@@ -22,8 +21,8 @@ Must hold:
     exists in the same result that moved the card, and the trigger's source
     identity is the one the card had while it lived (Core 124);
   - **negative mutation**: the same object without the keyword still schedules
-    its death trigger — 323 step 3a covers "other abilities that trigger on
-    their own death" — but it is not marked as Deathknell. So the marking
+    its death trigger — 323 step 3a covers any ability that triggers on its
+    own object's death — but it is not marked as Deathknell. So the marking
     tracks the keyword, and the keyword is not what makes a death trigger fire;
   - each instance triggers separately (808.3): two Deathknell abilities on one
     permanent give two scheduled triggers, not one;

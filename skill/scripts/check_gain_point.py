@@ -15,8 +15,8 @@ or the Conquer that triggered the ability. The point the card gives is an
 ADDITIONAL one. So the op is the Gain alone, and it is named gain_point rather
 than score so that nobody reads it as running 471.2.
 
-471.1.a.1 settles the other half: "points Gained from sources that are not
-Conquer are not beholden to these restrictions", so the Final Point conditions
+471.1.a.1 settles the other half: those restrictions bind only the points a
+Conquer gives, so the Final Point conditions
 of 471.1.b do not reach it, and 470's once-per-Battlefield limit has no
 Battlefield to count.
 

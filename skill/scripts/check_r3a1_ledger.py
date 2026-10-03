@@ -7,7 +7,7 @@ Must hold:
   - the ledger covers exactly the inventory's R3-A1 cards and exactly their
     R3-A1 clauses — nothing dropped, nothing invented;
   - every clause carries at least one Core locator in `Core NNN[.x]` form with
-    a non-empty excerpt, a source id that exists in the registry, and a
+    a non-empty gist in the engine's own words, a source id that exists in the registry, and a
     decision point from the fixed vocabulary;
   - every clause has all four fixture drafts;
   - no draft, anywhere, carries an expected outcome, expected state, program,
@@ -73,8 +73,8 @@ def main() -> int:
             if not any(loc["locator"].startswith("Core ") for loc in cl["locators"]):
                 errors.append(f"{cl['clause_id']} has no Core locator")
             for loc in cl["locators"]:
-                if not LOCATOR.match(loc["locator"]) or not loc["excerpt"].strip():
-                    errors.append(f"{cl['clause_id']} locator malformed or without excerpt: {loc['locator']!r}")
+                if not LOCATOR.match(loc["locator"]) or not loc["gist"].strip():
+                    errors.append(f"{cl['clause_id']} locator malformed or without gist: {loc['locator']!r}")
                 if loc["source_id"] not in source_ids:
                     errors.append(f"{cl['clause_id']} cites unregistered source {loc['source_id']!r}")
             for p in cl["packets"]:

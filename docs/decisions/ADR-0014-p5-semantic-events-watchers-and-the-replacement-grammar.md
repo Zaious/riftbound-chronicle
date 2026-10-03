@@ -65,8 +65,8 @@ the snapshot of anything its instructions need. It fires once; a target whose
 identity changed no longer matches (124), and the delayed trigger is removed
 with its reason.
 
-**Counters**: a trigger or replacement marked `once each turn` or
-`N times each turn` carries a per-turn count keyed by source identity, ability
+**Counters**: a trigger or replacement limited to once a turn, or to
+N times a turn, carries a per-turn count keyed by source identity, ability
 id and turn id. A trigger that has already been performed that many times does
 not trigger at all (383.3.e), and a "you may" the controller declines at
 finalization was **not** performed, so it may still trigger later that turn
@@ -79,27 +79,24 @@ beyond the declared bound is `unsupported: trigger_multiplier_depth`.
 
 ### 3. The replacement grammar follows the Core ordering law (DP-77, as modified)
 
-The rules text this implements, verbatim, because the printed numbering is
-ambiguous in the source PDF:
+The rules this implements are Core 372-373 (372, 372.1, 372.2; 373, 373.1,
+373.2). The printed numbering is ambiguous in the source PDF, so the reading is
+stated here in our own words (the licensed text stays in the private overlay):
 
-> "If more than one Replacement Effect applies to the same event being
-> executed, then the controller of the object being acted on determines the
-> order the Replacement Effects will apply. If it is a player being acted on,
-> that player decides the order… If the affected object is an Uncontrolled
-> Battlefield then the Current Turn Player decides the order…"
-
-> "If more than one event occurs simultaneously that Replacement Effects could
-> apply to, each event is treated separately and individually… Replacement
-> Effects with the same controller are applied in the order of their
-> controller's choosing… If multiple applied Replacement Effects with
-> different controllers would execute simultaneously, they execute in turn
-> order."
+- Core 372-372.2: when several Replacement Effects apply to one event, the
+  controller of the affected object chooses their order; an affected player
+  chooses for itself; for an Uncontrolled Battlefield the Current Turn Player
+  chooses.
+- Core 373-373.1: simultaneous events are each handled on their own; a
+  controller chooses the order of its own Replacement Effects; applied
+  Replacement Effects of different controllers that would execute at once
+  execute in Turn Order.
 
 So ordering is three questions, and each goes to a different player. A
 controller with more than one Replacement Effect in the batch orders its own
 sequences; a Replacement Effect's controller orders the qualifying events of
-its own sequence; and the controller of the object being acted on orders the
-Replacement Effects that apply to that event — the Current Turn Player when
+its own sequence; and the player controlling the affected object picks the
+order of the Replacement Effects on that event — the Current Turn Player when
 the affected object is an Uncontrolled Battlefield. Execution across
 controllers is Turn Order. The engine asks the right player for each, and a
 batch that would need a Turn Order without being given one fails closed.

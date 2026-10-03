@@ -50,8 +50,8 @@ RESOURCE_USES = ("play_spell", "play_unit", "play_gear", "activate_unit_ability"
 # mandatory any-domain Power cost on opponents' spells that choose the object.
 # ADR-0008 §5: Shield, Tank, Ganking (and Backline, required by the Tank
 # contract) are characteristics printed on the object.
-# Core 808 (last paragraph): Deathknell "is a characteristic of the permanent
-# and may be checked or referenced by other Game Effects", so it is carried
+# Core 808 (last paragraph): Deathknell is a characteristic of the permanent,
+# one other Game Effects can look at, so it is carried
 # like any other keyword; its behaviour is the object's death triggers.
 # Core 805 (last lines) does the same for Accelerate: it is a characteristic
 # that may be checked, even though it only has a function while playing.
@@ -197,14 +197,14 @@ REQUIRES_CHOSEN_FIELD = "requires_chosen"
 # a buff too. Optional, and only meaningful on a modify_might replacement.
 MIGHT_DIRECTION_FIELD = "event_might_direction"
 MIGHT_DIRECTIONS = {"decrease", "increase"}
-# Core 828.1.b.1 / 828.1.c: "[Empowered][>] [Text]" is short for "While I have
-# the Empowered status, this card gains [Text]", and the Dependent Ability is
+# Core 828.1.b.1 / 828.1.c: "[Empowered][>] [Text]" grants [Text] for as long as
+# this card has the Empowered status, and the Dependent Ability is
 # active only as long as that status lasts. A Replacement Effect written this
 # way is therefore not merely source-backed: losing the status turns it off
 # without the source leaving the board.
 DEPENDENT_ON_EMPOWERED_FIELD = "requires_source_empowered"
-# Core 370.1.a: an event is the singular moment that results from a Game Action
-# or a state change. An action that changes nothing produces no event, so there
+# Core 370.1.a: an event is what one Game Action or one state change produces,
+# at a single instant. An action that changes nothing produces no event, so there
 # is nothing for a Replacement Effect to replace: a Might change floored to
 # zero, or a Stun on a Unit that is already Stunned.
 ZERO_MAGNITUDE_OPS = {"modify_might"}
@@ -280,9 +280,8 @@ SUPPORTED_OPS = {
     # Battlefield that Scored - and these cards have no Battlefield: "When I
     # hold, you score 1 point" is an ADDITIONAL point beside the one the Hold
     # already scored. So what the card does is the first half only, and
-    # 471.1.a.1 says the restrictions on the Final Point do not reach it:
-    # "points Gained from sources that are not Conquer are not beholden to
-    # these restrictions". Named for what it does rather than for the word on
+    # 471.1.a.1 says the restrictions on the Final Point do not reach it: they
+    # bind only the points a Conquer gives. Named for what it does rather than for the word on
     # the card, so that nobody reads it as running 471.2.
     "gain_point",
     # C-55 (ADR-0014 §2): a resolving effect creates a trigger that waits.
@@ -3700,8 +3699,8 @@ def _bounded_amount(current: int, amount: int, minimum: int | None, maximum: int
 
 def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
                              applied: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
-    """`applied` is the sequence memory of Core 370.2: a Replacement Effect can
-    only be applied once to an event, or to the events that replace it."""
+    """`applied` is the sequence memory of Core 370.2: one Replacement Effect never
+    applies twice to the same event, nor to an event that replaced it."""
     object_id = effect.get("object_id")
     obj = state["objects"].get(object_id) if object_id is not None else None
     turn_id = state.get("turn_id", DEFAULT_TURN_ID)
@@ -3728,8 +3727,8 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
             continue
         if "granted" in replacement and not replacement_active(state, replacement):
             continue
-        # Core 828.1.b.1, 828.1.c: "[Empowered][>] …" is short for "While I have
-        # the Empowered status, this card gains …", so the ability is switched
+        # Core 828.1.b.1, 828.1.c: "[Empowered][>] …" grants its text only while
+        # the card has the Empowered status, so the ability is switched
         # off the moment the source is Disempowered - and on again if it is
         # Empowered anew, which is why this is read here and not at pruning.
         if replacement.get(DEPENDENT_ON_EMPOWERED_FIELD):
@@ -5093,8 +5092,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             trace["outcome"] = "no_op"
 
     elif op == "counter":
-        # Core 425: the item does nothing and is cleared from the chain; its
-        # card goes to the trash (425.1.a) unless the effect returns it; it
+        # Core 425: a countered item has no effect and leaves the chain; its
+        # card is put in the trash (425.1.a) unless the effect returns it; it
         # was not played (425.1.b) and no cost is refunded (425.1.c). The
         # timing chain is the caller's to update in the same commit.
         item_id = effect.get("chain_item_id")
@@ -5244,9 +5243,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         trace.update({"player": player_id, "amount": amount, "before": before, "after": before + amount})
 
     elif op == "remove_hidden":
-        # Core 323 step 5: "Remove all Hidden cards from all Battlefields that
-        # are not controlled by the same player and place them in their owner's
-        # Trash." It leaves a hidden zone for a public one, so the card becomes
+        # Core 323 step 5: a Hidden card at a Battlefield its controller does not
+        # also control goes to its owner's Trash. It leaves a hidden zone for a public one, so the card becomes
         # known here and the event says so.
         object_id = effect.get("object_id")
         location = find_location(new_state, object_id) if object_id in new_state["objects"] else None
@@ -5772,9 +5770,8 @@ def _applied_amount(effect: dict[str, Any], current: int) -> int:
     now; a player never increases by a negative amount (477.3.c).
 
     477.3.b is the subtle half. A limited arithmetic effect whose source is NOT
-    a passive ability "is limited at the time of its application, and is
-    'remembered' at that limited level for the duration of its effect" - Riot
-    calls this snapshotting. So once such an effect has a `snapshot_amount`,
+    a passive ability takes its limit once, when it is applied, and keeps that
+    limited amount for as long as it lasts - Riot calls this snapshotting. So once such an effect has a `snapshot_amount`,
     that is what it contributes, and the board moving afterwards cannot change
     it. Recomputing the bound on every evaluation is a different game: a Unit
     that was at 5 when "-4 to a minimum of 1" hit it keeps the whole -4 when a
@@ -5825,7 +5822,7 @@ CONDITION_LEAVES = {
     # Round H: the first leaf of the narrow self-card cost reduction. Every
     # fact it needs is on the state the play is being judged against.
     "score_within_of_victory": {"count", "who"},
-    # Legion (Core 812.1.b.1, 812.1.c): "if you have played another card this turn" -
+    # Legion (Core 812.1.b.1, 812.1.c): some other card already played by you this turn -
     # a card other than `object` Finalized by `player` this turn (419.4.b).
     "another_card_finalized_this_turn": {"object", "player"},
     # 2026-09-27: "While I'm buffed" - the object has a Buff counter (702.2.a)
@@ -6053,8 +6050,8 @@ def cards_finalized_this_turn(state: dict[str, Any], player: str) -> list[str]:
 
 
 def another_card_finalized_this_turn(state: dict[str, Any], player: str, card: str | None) -> bool:
-    """Core 812.1.c: Legion is active once a card different from the one with
-    the Legion ability has been Finalized by its controller this turn. 812.2:
+    """Core 812.1.c: Legion is on once its controller has Finalized some other
+    card this turn. 812.2:
     one such card satisfies every Legion that player controls."""
     return any(other != card for other in cards_finalized_this_turn(state, player))
 
@@ -6239,7 +6236,7 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     obj = state["objects"][object_id]
     effects = [e for e in canonical_effects(state) + printed_aura_effects(state)
                if _effect_applies_to(state, e, object_id) and _effect_active(state, e)[0]]
-    # Core 703: "Each Buff individually contributes +1 Might to a Unit." A Buff
+    # Core 703: every Buff on a Unit adds +1 to its Might. A Buff
     # is a counter, not a continuous effect, so it is not in the effect list at
     # all - it has to be added here or it contributes nothing. 476.3's own
     # example is exactly this: a buffed Fiora, Victorious is 4 printed + 1 = 5,
@@ -6469,7 +6466,7 @@ def vision_program(state: dict[str, Any], object_id: str, controller: str) -> di
 
 
 def vision_triggers(state: dict[str, Any], object_id: str, controller: str) -> list[dict[str, Any]]:
-    """Core 817.1.c: the trigger is the permanent entering the Board; the engine
+    """Core 817.1.c: Vision triggers when its permanent enters the Board; the engine
     models the entry of a PLAYED permanent only (see below). Read from the computed
     characteristics, so a granted Vision counts too. The
     descriptor binds the program's content hash, so dispatch refuses any other
@@ -6529,8 +6526,8 @@ TEMPORARY_PROGRAM_PREFIX = "keyword:temporary"
 
 
 def temporary_program(state: dict[str, Any], object_id: str, controller: str) -> dict[str, Any]:
-    """Core 816.1.b: Temporary is short for "At the start of this permanent's
-    controller's Beginning Phase, before scoring, kill this." The program is the
+    """Core 816.1.b: Temporary kills the permanent at the start of its controller's
+    Beginning Phase, ahead of that phase's scoring. The program is the
     engine's: the keyword is the whole ability."""
     return {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
             "program_id": f"{TEMPORARY_PROGRAM_PREFIX}:{object_id}", "controller": controller, "source_object": object_id,
@@ -6728,7 +6725,7 @@ def apply_simultaneous_kill_batch(
         }
     # ADR-0014 §3: the Core ordering law, in the two layers the rules write it
     # in. *Who orders* the Replacement Effects that apply to one event is the
-    # controller of the object being acted on; *when* the sequences of
+    # player controlling the affected object; *when* the sequences of
     # different controllers execute is Turn Order. Each Replacement Effect is
     # applied in exactly one sequence (374), and inside a sequence its own
     # replacing events may be replaced by others (370.2) — that recursion, and
@@ -6767,8 +6764,8 @@ def apply_simultaneous_kill_batch(
     # Replacement Effect may apply to any number of the qualifying events, and
     # once that sequence ends it may not start another.
     turn_position = {player: index for index, player in enumerate(turn_order or controllers)}
-    # "Replacement Effects with the same controller are applied in the order of
-    # their controller's choosing": with more than one of its own in the batch,
+    # Core 373: a controller picks the order of its own Replacement Effects:
+    # with more than one of its own in the batch,
     # that controller must say which sequence runs first.
     by_controller: dict[str, list[str]] = {}
     for replacement_id, item in descriptors.items():
@@ -6861,7 +6858,7 @@ def apply_simultaneous_kill_batch(
                 if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(ids):
                     return {
                         **base, "valid": True, "committed": False, "replacement_decision_required": True,
-                        "reason": "the controller of the object being acted on orders the Replacement Effects that apply to it",
+                        "reason": "the player controlling the affected object picks the order of the Replacement Effects on it",
                         "replacement_ids": sorted(ids), "event_ids": [object_id],
                         "decision_controller": decider, "trace": trace,
                     }

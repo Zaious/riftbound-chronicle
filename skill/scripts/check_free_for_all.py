@@ -2,11 +2,9 @@
 """Regression gate for C-59 (ADR-0015 §3): free-for-all play and the Removal
 of a Player.
 
-The rule, in its own words: "A player may concede at any time. When a player
-concedes, they are removed from the game in progress. If only one other player
-is remaining after a player has conceded, the player remaining Wins. If more
-than one player remains after a concession, follow the steps for the Removal
-of a Player."
+The rule (Core 651-651.2), in our words: conceding is allowed at any moment
+and takes the player out of the game; with a single opponent left that player
+wins, and with more left the game goes through the Removal of a Player.
 
 Must hold:
   - three and four players run as free-for-all: the Turn Order cycles through

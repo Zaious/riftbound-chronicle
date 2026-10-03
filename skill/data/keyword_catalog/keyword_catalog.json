@@ -18,12 +18,12 @@
         "module": "play_transaction",
         "symbol": "accelerate_offer",
         "layer": "cost",
-        "note": "805.1.a is short for \"As you play me, you may pay [1][C] as an additional cost. If you do, I enter ready\"; the offer joins the declared optional costs before the intent loop, so it needs the same explicit choice, and paying writes the 805.2.b delayed replacement bound to this card and this play"
+        "note": "805.1.a offers an optional [1][C] additional cost while the unit is played, and a paid one makes it enter ready; the offer joins the declared optional costs before the intent loop, so it needs the same explicit choice, and paying writes the 805.2.b delayed replacement bound to this card and this play"
       },
       "active_zone": "chain",
       "boundary": {
         "identity": "bound to the card that paid and the play that paid it, so losing the keyword afterwards does not take the ready entry back (805.2.b)",
-        "duration": "for that play only; Accelerate has no function while on the board (805.3)"
+        "duration": "for that play only; on the board Accelerate does nothing (805.3)"
       },
       "review": {
         "reviewer": "claude",
@@ -420,7 +420,7 @@
         "module": "effect_ir",
         "symbol": "temporary_triggers",
         "layer": "ability",
-        "note": "816.1.b makes Temporary short for \"At the start of this permanent's controller's Beginning Phase, before scoring, kill this.\": entering that Beginning Phase schedules one trigger per Temporary permanent (816.2.a) with the Beginning Step's triggers, before the Scoring Step; its program is the engine's Kill of that permanent, bound by content hash; read from the computed characteristics, so a granted Temporary counts"
+        "note": "816.1.b: Temporary kills the permanent at the start of its controller's Beginning Phase, ahead of that phase's scoring; entering that Beginning Phase schedules one trigger per Temporary permanent (816.2.a) with the Beginning Step's triggers, before the Scoring Step; its program is the engine's Kill of that permanent, bound by content hash; read from the computed characteristics, so a granted Temporary counts"
       },
       "active_zone": "board",
       "boundary": {

@@ -426,7 +426,7 @@
                   "Core 446.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers when the act of playing has been completed by the resolution of the card; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -5679,7 +5679,7 @@
                   "Core 446.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers when the act of playing has been completed by the resolution of the card; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -6930,7 +6930,7 @@
                   "Core 358.5"
                 ]
               },
-              "why": "414.4: an exhausted friendly unit may not be exhausted again as the additional cost; the cost cannot be paid (203.3) and the whole play is undone (358.5).",
+              "why": "414.4: a friendly unit that is already exhausted cannot be exhausted a second time to pay the additional cost; the cost cannot be paid (203.3) and the whole play is undone (358.5).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10034,7 +10034,7 @@
                   "Core 446.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers when the act of playing has been completed by the resolution of the card; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10289,7 +10289,7 @@
                   "Core 446.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers when the act of playing has been completed by the resolution of the card; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",

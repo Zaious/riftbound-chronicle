@@ -3,8 +3,8 @@
 
 "You may kill up to one gear. Draw 1." chooses its target as the spell is played - zero or
 one gear (Core 355.13) - whatever its controller will later decide; the decision to perform
-the kill is separate and is made as the spell resolves (Core 355.12: all choices are targeted
-and chosen independently of the decision to perform the Game Action). So the instruction
+the kill is separate and is made as the spell resolves (Core 355.12: the targets are chosen,
+and are targets, apart from the later decision whether to perform the Game Action). So the instruction
 carries `optional {decision_ref}`, answered by an optional_choice decision at the resolution
 stage, by the program's controller:
 

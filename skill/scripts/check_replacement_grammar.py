@@ -19,8 +19,8 @@ Must hold:
   - the ordering law is asked in three places, and each names the right
     player: the controller with several Replacement Effects orders its own
     sequences, a Replacement Effect's controller orders its qualifying events,
-    and the controller of the object being acted on orders the Replacement
-    Effects that apply to it. Across controllers the batch runs in Turn Order,
+    and the player controlling the affected object picks the order of the
+    Replacement Effects on it. Across controllers the batch runs in Turn Order,
     and a batch that would need one without being given it fails closed;
   - Core 372: a "once each turn" Replacement Effect spends its use only when
     it is applied, and declining leaves the use for a later event that turn;
@@ -103,8 +103,8 @@ def soraka_state():
                                              {"kind": "same_location_as", "as": "u1"},
                                              {"kind": "might_less_than", "than": "u1"}]},
          "replacement_effects": copy.deepcopy(saved)},
-        # Guardian Angel appends: "If I would die, kill Guardian Angel
-        # instead. Heal me, exhaust me, and recall me."
+        # Guardian Angel appends a replacement: when I would die, Guardian Angel
+        # dies in my place, and I am healed, exhausted and recalled.
         {"replacement_id": "guardian-angel", "controller": "p1", "source_object": "u1",
          "mode": "replace_with", "event_op": "kill", "optional": False, "uses_remaining": None,
          "target_object_id": "u1",

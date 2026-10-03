@@ -324,8 +324,8 @@ def main() -> int:
     # C-56 (ADR-0014 §3): a batch with several descriptors used to fail closed.
     # It now resolves under the ordering law, and asks the two questions the
     # rules ask: the replacement's controller orders its own qualifying events,
-    # and the controller of the object being acted on orders the Replacement
-    # Effects that apply to it.
+    # and the player controlling the affected object picks the order of the
+    # Replacement Effects on it.
     multi_descriptor = perform_lethal_cleanup(multi_descriptor_state)
     if multi_descriptor.get("committed") or multi_descriptor.get("replacement_decision_required") is not True:
         failures.append(f"multi-descriptor batch did not ask for the event order: {multi_descriptor.get('reason')}")

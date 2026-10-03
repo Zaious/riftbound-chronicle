@@ -583,8 +583,8 @@ def _restricted_entries(resources: dict[str, Any], use: str, kind: str, domain: 
 # Accelerate (Core 805, 806) — Round H
 # --------------------------------------------------------------------------
 
-# 805.2.b: "As you play me, you may pay [1][C] as an additional cost. If you
-# do, I enter ready."
+# 805.1.a, 805.2.b: an optional [1][C] additional cost while playing the unit; paid,
+# it makes the unit enter ready.
 ACCELERATE_ENERGY = 1
 ACCELERATE_POWER = 1
 ACCELERATE_COST_ID = "accelerate"

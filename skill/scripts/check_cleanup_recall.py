@@ -2,10 +2,10 @@
 """Regression gate for C-58 (ADR-0015 §2): Cleanup step 5 on the P3
 attachment and facedown topology.
 
-The rule, in its own words: "Recall all Unattached non-Unit Gear and non-Unit
-Runes at Battlefields, and all Permanents and Runes in Bases other than their
-controller's. Remove all Hidden cards from all Battlefields that are not
-controlled by the same player and place them in their owner's Trash."
+The rule (Core 323 step 5), in our words: Gear and Runes (other than Units) at
+Battlefields that nothing holds attached are Recalled, and so is anything in a
+Base that belongs to another controller; a Hidden card at a Battlefield its
+controller does not control goes to its owner's Trash.
 
 Must hold:
   - an unattached non-Unit Gear or Rune at a Battlefield is Recalled to its

@@ -404,9 +404,9 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
 def _step_five(effect_state: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], int]:
     """Core 323 step 5, read off the P3 topology rather than guessed.
 
-    Returns (recalls, removals, still_hidden): the unattached non-Unit Gear and
-    non-Unit Runes at Battlefields and the Permanents and Runes sitting in a
-    Base that is not their controller's, then the Hidden cards whose
+    Returns (recalls, removals, still_hidden): what step 5 Recalls (loose
+    non-Unit Gear and Runes at Battlefields, and anything in a Base that is
+    not its controller's), then the Hidden cards whose
     Battlefield their controller does not control — and a count of the Hidden
     cards that stay facedown, which the public trace may know the size of but
     never the identity of.

@@ -39,10 +39,9 @@ import watchers  # noqa: E402
 MODE_CATALOGUE = {
     "duel": {"players": 2, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["second"], "skip_draw": []}, "rule_locators": ["Core 485.2", "Core 485.3", "Core 485.7"]},
     "skirmish": {"players": 3, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["last"], "skip_draw": ["first"]}, "rule_locators": ["Core 487.2", "Core 487.3", "Core 487.7"]},
-    # C-59 (ADR-0015 §3): War's First Turn Process, in its own words — "The
-    # player going first does not draw a card during their first Draw Phase of
-    # the game. The player going last channels an extra Rune from their Rune
-    # Deck during their first Channel Phase."
+    # C-59 (ADR-0015 §3): War's First Turn Process (Core 487.7), in our words -
+    # the first player skips the draw of their first Draw Phase, and the last
+    # player channels one Rune more in their first Channel Phase.
     "war": {"players": 4, "victory_score": 8, "teams": False,
             "first_turn": {"extra_channel": ["last"], "skip_draw": ["first"]},
             "rule_locators": ["Core 488.2", "Core 488.3"]},

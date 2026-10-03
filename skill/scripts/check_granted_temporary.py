@@ -2,8 +2,8 @@
 """A granted [Temporary] with no duration, on "a unit at a battlefield or a gear" (Fading Memories).
 
   Core 816.1.a  Temporary is present on Permanents - a Unit or a Gear may be granted it;
-  Core 816.1.b  short for "At the start of this permanent's controller's Beginning Phase, before
-                scoring, kill this" - read from the computed characteristics, so a granted one counts;
+  Core 816.1.b  the permanent is killed at the start of its controller's Beginning Phase, ahead
+                of that phase's scoring - read from the computed characteristics, so a granted one counts;
   Core 801.3.a.3 a grant that states no duration lasts as long as the object stays on the board.
 
 The engine grammar lowers the sentence to one grant_keyword {temporary, permanent} on a target

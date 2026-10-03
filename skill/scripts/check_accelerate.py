@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 """Regression gate for `accelerate.v1` (Round H, DP-92; Core 805).
 
-The rule, in its own words:
+The rule, cited by locator and said in our words:
 
-    805.1    "Accelerate is a Unit ability."
-    805.1.a  "Accelerate is functionally short for 'As you play me, you may pay
-              [1][C] as an additional cost. If you do, I enter ready.'"
+    805.1    Accelerate is an ability of Units.
+    805.1.a  it offers an optional additional cost of [1][C] while the unit is
+             played; a unit whose cost was paid enters ready.
              The Power portion can be paid only with a Power matching one of
              the unit's Domains; with no Domain, any Domain's Power.
-    805.2.a  the cost "cannot be paid while the unit is on the board, only as
-              part of the steps of playing a card".
-    805.2.b  "Paying the cost generates a delayed Replacement Effect. Even if
-              the unit loses the accelerate keyword during the finalization
-              process, as long as the cost was paid, that unit will still enter
-              ready."
-             "Accelerate has no function while on the board."
-             "Multiple instances of Accelerate are redundant."
+    805.2.a  the cost is paid only while playing the card, never with the unit
+             already on the board.
+    805.2.b  paying it creates a delayed Replacement Effect, so the unit enters
+             ready once paid even if it loses the keyword while being finalized.
+    805.3    on the board the keyword does nothing.
+             Several instances of Accelerate add nothing to one.
 
 Must hold, including Codex's four contracts on the ruling:
 

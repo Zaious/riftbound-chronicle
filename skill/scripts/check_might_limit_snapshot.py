@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Regression gate: a limited Might change is remembered, not recomputed.
 
-Core 477.3.b: "When an arithmetic effect from a source that is not a passive
-ability has a limitation that applies, it is limited at the time of its
-application, and is 'remembered' at that limited level for the duration of its
-effect. This process is called 'snapshotting'." Its own example: an effect
-giving a Unit "-4 [M] to a min of 1 this turn", choosing a Unit with 2 [M],
-generates -1 [M] this turn.
+Core 477.3.b, in our words: a limited arithmetic effect whose source is not a
+passive ability takes its limit once, when applied, and keeps that amount for
+as long as it lasts ("snapshotting"). The rule's example: -4 [M] with a floor of
+1 [M], given this turn to a Unit at 2 [M], comes to -1 [M] this turn.
 
 The engine applied the bound afresh on every evaluation of the layers. That
 agrees with the rule whenever the board does not move, which is why it read as

@@ -2211,7 +2211,7 @@
         "entry_replacements",
         "typed_conditions"
       ],
-      "boundary": "The card enters ready when, as it enters, its one opponent's score is within N of the Victory Score of the Mode of Play; otherwise exhausted (143.4). Teams, several opponents, or a Mode that does not state its Victory Score are refused by name, not guessed.",
+      "boundary": "The card enters ready when, as it enters, its one opponent's score is within N of the Mode of Play's Victory Score; otherwise exhausted (143.4). Teams, several opponents, or a Mode that does not state its Victory Score are refused by name, not guessed.",
       "golden": [
         "If an opponent's score is within 3 points of the Victory Score, I enter ready."
       ],

@@ -313,9 +313,9 @@ program and cannot be safely inferred from isolated examples.
   (C-20: area Deal over criteria-found units, each with its own Bonus Damage,
   715.2; the rest remain.)
 - [x] Player-targeted and uncontrolled-Battlefield replacement ordering.
-  (C-56, ADR-0014 §3: the controller of the object being acted on orders the
-  Replacement Effects that apply to that event, a player being acted on
-  decides for itself, and an Uncontrolled Battlefield is the Current Turn
+  (C-56, ADR-0014 §3: the player controlling the affected object picks the
+  order of the Replacement Effects on that event, an affected player picks
+  for itself, and an Uncontrolled Battlefield is the Current Turn
   Player's call.)
 
 ### Continuous effects, triggers, and replacement still required

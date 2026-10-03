@@ -752,8 +752,8 @@ LITERAL = [
     ("if_an_opponents_score_is_within_n_i_enter_ready",
      r"if an opponent's score is within (?P<within>\d+) points? of the victory score, i enter ready",
      ["Core 364.3.a", "Core 369.3", "Core 143.4", "Core 194.3"], "passive", ["entry_replacements", "condition_v1"],
-     ("The card enters ready when, as it enters, its one opponent's score is within N of the Victory Score of the "
-      "Mode of Play; otherwise exhausted (143.4). Teams, several opponents, or a Mode that does not state its "
+     ("The card enters ready when, as it enters, its one opponent's score is within N of the Mode of Play's "
+      "Victory Score; otherwise exhausted (143.4). Teams, several opponents, or a Mode that does not state its "
       "Victory Score are refused by name, not guessed."),
      ["If an opponent's score is within 3 points of the Victory Score, I enter ready."],
      ["if an opponent's score is within 3 points of the victory score, this costs :rb_energy_2: less",
@@ -1074,16 +1074,16 @@ WRAPPERS = [
      ["When I hold, draw 1."], ["when you hold here, draw 1", "when i conquer, draw 1", "when i move, draw 1"]),
     ("when_i_conquer", r"when i conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.1"], ["conquer_triggers"],
      ["When I conquer, draw 1."], ["when you conquer, draw 1", "when i hold, draw 1", "when i move, draw 1"]),
-    # A Unit's own Attack Trigger (Core 383.4.e): it goes on the Chain once the Unit gains the
-    # Attacker designation for the first time this combat (383.4.e.2, .2.a), attacker before
+    # A Unit's own Attack Trigger (Core 383.4.e): it goes on the Chain the first time this
+    # combat the Unit becomes an Attacker (383.4.e.2, .2.a), attacker before
     # defender (464.2.e.1). Distinct from the player-level "When you attack" (not modelled).
     ("when_i_attack", r"when i attack, (?P<inner>.+)",
      ["Core 383.4.e", "Core 383.4.e.1", "Core 383.4.e.2", "Core 383.4.e.2.a", "Core 464.2.e", "Core 464.2.e.1"],
      ["attack_triggers"],
      ["When I attack, draw 1."], ["when you attack, draw 1", "when i defend, draw 1", "when i conquer, draw 1"]),
     # One Unit ability with two trigger conditions (Core 383.4.e, 383.4.f): it goes on the
-    # Chain when the Unit gains the Attacker designation, or the Defender designation, for
-    # the first time this Combat - never both, since a Unit holds one per Combat.
+    # Chain the first time this Combat the Unit becomes an Attacker, or a Defender - never
+    # both, since a Unit holds one designation per Combat.
     ("when_i_attack_or_defend", r"when i attack or defend, (?P<inner>.+)",
      ["Core 383.4.e", "Core 383.4.e.2.a", "Core 383.4.f", "Core 383.4.f.2.a", "Core 464.2.e", "Core 464.2.e.1"],
      ["attack_triggers"],

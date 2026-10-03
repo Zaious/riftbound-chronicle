@@ -185,8 +185,8 @@ def main() -> int:
         errors.append(f"a short hand did not discard what it had as partial (422.4): {ev(short)}")
     # --- "then" is sequence, not a condition (Core 422.4) ------------------------------------
     # Core 422.4's own example is Undercover Agent, "Discard 2, then draw 2": with no cards in
-    # hand the whole discard instruction is ignored, and "regardless of how many cards they
-    # discard, they then draw 2". A bare "then" carries no backward reference, so it is not a
+    # hand the whole discard instruction is ignored, and the draw of 2 happens however many
+    # cards were discarded. A bare "then" carries no backward reference, so it is not a
     # Core 359.3.e.14 linked instruction and the draw takes no predicate. This fixture used to
     # put an action_performed predicate on exactly this pattern and assert the draw was
     # skipped - the opposite of 422.4 (corrected 2026-09-19).

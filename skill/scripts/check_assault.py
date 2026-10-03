@@ -2,7 +2,7 @@
 """Regression gate for Assault (Core 807).
 
     807.1.b  formatted "Assault [X]"; X omitted is 1
-    807.1.c  short for "While I am an attacker, I have +X [M]."
+    807.1.c  an attacking unit with it has +X [M]
     807.1.d.1  in effect as long as the Unit keeps the Attacker designation
     807.2    Assault values from several sources are summed
     807.3    Assault is a characteristic other effects can check

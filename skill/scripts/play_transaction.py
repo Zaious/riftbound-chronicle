@@ -69,8 +69,11 @@ SELF_COSTS = {"kill_this", "recall_self", "banish_self"}
 # ADR-0012 §1: where a card is played from. The hand is the default; the
 # Champion Zone plays as normal (108.3.e); a trash source needs a granted
 # permission. Facedown arrives with C-45.
-PLAY_SOURCES = {"hand", "champion_zone", "trash", "facedown"}
-PERMISSION_REQUIRED_SOURCES = {"trash"}
+PLAY_SOURCES = {"hand", "champion_zone", "trash", "facedown",
+                # package 8 (2026-10-04): a card an effect banished and then plays (limited_play linked) - only with that
+                # effect's permission, like the trash (PERMISSION_REQUIRED_SOURCES)
+                "banishment"}
+PERMISSION_REQUIRED_SOURCES = {"trash", "banishment"}
 # ADR-0012 §3: playing a hidden card needs no separate permission — the
 # Hidden keyword itself grants it from the next turn (811.1).
 HIDDEN_TARGETING = {"restricted", "free_by_restriction"}
@@ -82,14 +85,23 @@ OVERRIDE_MODIFICATION = {"ignore_base_cost": "ignore_all", "ignore_energy": "ign
 # 2026-09-28 (package 6): an effect-driven play's cost basis (effect_ir.LIMITED_PLAY_COST_BASES) as the
 # cost_override its play transaction declares
 LIMITED_PLAY_OVERRIDE = {"ignore_all": "ignore_base_cost", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power",
-                         # 2026-10-04 (package 8): the effect changes nothing about the cost - no override is declared
-                         "printed": None}
+                         # 2026-10-04 (package 8): the effect changes nothing about the base cost - no override is declared
+                         "printed": None, "discount_energy": None}
 
 
 def limited_play_override(record: dict[str, Any]) -> dict[str, Any] | None:
     """The cost_override an effect-driven play's declaration carries, or None when it pays its printed cost."""
     kind = LIMITED_PLAY_OVERRIDE[record["cost_basis"]["kind"]]
     return {"kind": kind, "source": record["granted_by"]} if kind is not None else None
+
+
+def limited_play_discounts(record: dict[str, Any], item_id: str) -> list[dict[str, Any]]:
+    """The discount an effect-driven play's declaration carries (package 8, GPT ruling 6): "reducing its cost by
+    [N]" is an Energy discount of N in the discount step (Core 356.4.b; 356.6: not below 0), no other."""
+    basis = record["cost_basis"]
+    if basis["kind"] != "discount_energy":
+        return []
+    return [{"id": f"limited:{item_id}", "applies_to": "energy", "amount": basis["amount"], "source": record["granted_by"]}]
 # ADR-0011 §4: costs paid by the payer's card choice at play stage.
 CHOICE_COSTS = {"discard", "recycle_trash"}
 # Costs whose sources live in P4 (XP, Buff, Empower): typed, refused by name.
@@ -1845,6 +1857,9 @@ def _limited_play_checks(timing_state: dict[str, Any], effect_state: dict[str, A
         problems.append(f"source_permission {declaration.get('source_permission')} is not the effect's ({record['granted_by']})")
     if declaration.get("cost_override") != wanted:
         problems.append(f"cost_override {declaration.get('cost_override')} is not the effect's {wanted}")
+    if list(declaration["cost"].get("discounts") or []) != limited_play_discounts(record, item_id):
+        problems.append(f"cost.discounts {declaration['cost'].get('discounts')} are not the effect's "
+                        f"{limited_play_discounts(record, item_id)} (Core 356.4)")
     if declaration["cost"].get("base") != printed:
         problems.append(f"cost.base {declaration['cost'].get('base')} is not the card's printed cost {printed} (Core 206)")
     if declaration["chain_item"].get("timing") != "default":
@@ -1876,6 +1891,8 @@ def limited_play_unobtainable(state: dict[str, Any], actor: str, object_id: str,
         return "printed_cost_not_observed"
     kind = cost_basis.get("kind")
     energy = 0 if kind in {"ignore_energy", "ignore_all"} else printed["energy"]
+    if kind == "discount_energy":
+        energy = max(0, energy - cost_basis["amount"])      # Core 356.4.b, 356.6
     power = {} if kind in {"ignore_power", "ignore_all"} else {d: n for d, n in printed["power"].items() if n}
     if not energy and not power:
         return None

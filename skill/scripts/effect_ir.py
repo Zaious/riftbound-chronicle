@@ -253,6 +253,8 @@ SUPPORTED_OPS = {
     # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
     # taking a looked-at card, Recycle as one action, Predict.
     "look_at_top",
+    # 2026-10-04 (package 8): "reveal cards from the top of your Main Deck until you reveal a unit" (Dazzling Aurora)
+    "reveal_until",
     "stun",
     "choose_player",
     "reveal",
@@ -356,9 +358,11 @@ EACH_PLAYER_SENTINEL = "$each_player"
 EACH_PLAYER_FIELD = "_each_player"
 # validate_program's marker on the synthetic program it checks an each_player's instructions as
 EACH_PLAYER_BODY = "_each_player_body"
-EACH_PLAYER_SETS = ("all", "others")
+EACH_PLAYER_SETS = ("all", "others", "opponents")
 EACH_PLAYER_ORDERS = ("turn_order", "after_controller")
-EACH_PLAYER_NESTED_OPS = {"kill", "return_to_hand", "discard", "draw", "channel_rune", "choose_objects", "choose_option"}
+EACH_PLAYER_NESTED_OPS = {"kill", "return_to_hand", "discard", "draw", "channel_rune", "choose_objects", "choose_option",
+                          # 2026-10-04 (package 8): "Each opponent reveals the top card of their Main Deck." (Blind Fury)
+                          "reveal"}
 EACH_PLAYER_RULES = ["Core 303.2", "Core 303.2.a", "Core 355.10.e", "Core 411.1"]
 # "Each player chooses ..." / "each other player chooses a unit ... that hasn't been chosen for this
 # spell": the objects chosen go into a GROUP of this program (ephemeral, like the selection bindings);
@@ -384,7 +388,9 @@ def each_player_order(state: dict[str, Any], program: dict[str, Any], context: d
     turn_order         Turn Order starting with the current Turn Player (Core 303.2.a)
     after_controller   Turn Order starting with the player after the program's controller
                        ("Starting with the next player")
-    players others     every player but the program's controller ("each other player")"""
+    players others     every player but the program's controller ("each other player")
+    players opponents  every player not on the controller's side ("each opponent", Core 303.2 order kept;
+                       a teammate is not an opponent - package 8)"""
     turn = (context or {}).get("turn") or {}
     order, turn_player = turn.get("turn_order"), turn.get("turn_player")
     if not isinstance(order, list) or len(order) != len(set(order)) or set(order) != set(state["players"]) \
@@ -403,6 +409,8 @@ def each_player_order(state: dict[str, Any], program: dict[str, Any], context: d
     rotated = order[at:] + order[:at]
     if effect.get("players") == "others":
         rotated = [p for p in rotated if p != controller]
+    if effect.get("players") == "opponents":
+        rotated = [p for p in rotated if not same_side(state, controller, p)]
     return rotated
 
 
@@ -630,6 +638,7 @@ OP_RULES = {
     "swap_might": ["Core 477.3.a", "Core 477.3.e.1.a", "Core 477.3.e.2.a", "Core 135.2.e.3",
                    "Core 370.1.a", "Core 373.2"],
     "look_at_top": ["Core 128.4", "Core 431.1.c", "Core 431.1.c.1"],
+    "reveal_until": ["Core 424", "Core 431.1.c", "Core 128"],
     "reveal": ["Core 424.1", "Core 424.2", "Core 424.2.a", "Core 424.3.a", "Core 431.1.c"],
     "put_back": ["Core 424.2", "Core 436.1.a", "Core 355.10.a"],
     "put_in_hand": ["Core 424.4", "Core 128.2.a", "Core 124"],
@@ -666,10 +675,19 @@ LIMITED_PLAY_COST_BASES = {"ignore_energy": "Core 356.1.b.2", "ignore_power": "C
                            # 2026-10-04 (package 8, GPT ruling 1): "you may pay X to play me" - X is the trigger's
                            # base cost paid at finalization, and the card is then played paying its own cost: the
                            # effect changes nothing about it, the steps are the normal ones (Core 419.3.b)
-                           "printed": "Core 419.3.b"}
+                           "printed": "Core 419.3.b",
+                           # 2026-10-04 (package 8, GPT ruling 6): "play it, reducing its cost by [5]" (Reinforce) - an
+                           # Energy discount of `amount` (Core 356.4.b), applied in the discount step, Energy not below 0
+                           # (356.6), the Power cost still paid; the base cost is the printed one
+                           "discount_energy": "Core 356.4.b"}
 # 2026-10-04 (package 8): "play me" - the card is the program's own source, in the zone its triggered ability
 # works from (Core 383.2.c.1); not chosen, so not a target (355.7)
 LIMITED_PLAY_SELF_ZONES = {"trash"}
+# 2026-10-04 (package 8, group 3): "... banish it, then play it" (Baited Hook, Reinforce, Dazzling Aurora, Blind Fury) -
+# the card an EARLIER instruction of the same program banished, played from its owner's Banishment (Core 427: banished
+# cards go to their owner's Banishment; 127.1: the owner does not change). Bound by that instruction's result, never
+# chosen again: it is not a target (355.7)
+LIMITED_PLAY_LINKED_OPS = {"banish"}
 # where an effect-driven play may take a card from: a public zone, so the card is a target chosen as
 # the effect is played or finalized (GPT 2026-09-25; Core 355.10.a, 355.9.a). A private zone (the
 # hand) is a choice made as the effect resolves, which this instruction does not model yet.
@@ -1899,6 +1917,11 @@ def _trigger_base_cost_errors(effect: dict[str, Any], index: int, count: int) ->
 
 
 def _limited_play_cost_basis_errors(value: Any) -> list[str]:
+    if isinstance(value, dict) and value.get("kind") == "discount_energy":
+        if set(value) != {"kind", "amount"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool) \
+                or value["amount"] < 1:
+            return ["cost_basis discount_energy must be {kind, amount} with a positive integer amount (Core 356.4.b)"]
+        return []
     if not isinstance(value, dict) or set(value) != {"kind"} or value.get("kind") not in LIMITED_PLAY_COST_BASES:
         return [f"cost_basis must be {{kind}} with kind in {sorted(LIMITED_PLAY_COST_BASES)} (Core 356.1.b)"]
     return []
@@ -1910,17 +1933,26 @@ def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
     changes about the card's cost. Nothing else - an entry location is chosen as the play itself is
     finalized (Core 355.2), and a card chosen from a private zone is not this instruction."""
     errors: list[str] = []
-    extra = set(effect) - {"op", "effect_id", "target", "choice", "self", "decision_ref", "card_filter", "entry", "cost_basis",
-                           "depends_on", "dependency_mode", "predicate", "_execution"}
+    extra = set(effect) - {"op", "effect_id", "target", "choice", "self", "linked", "decision_ref", "card_filter", "entry",
+                           "cost_basis", "depends_on", "dependency_mode", "predicate", "_execution"}
     if extra:
         errors.append(f"carries only its target, choice or self, entry and cost_basis, not {sorted(extra)}")
     errors.extend(_limited_play_cost_basis_errors(effect.get("cost_basis")))
     entry = effect.get("entry")
     if entry is not None and (not isinstance(entry, dict) or set(entry) != {"kind"} or entry.get("kind") not in LIMITED_PLAY_ENTRY_KINDS):
         errors.append(f"entry must be {{kind}} with kind in {sorted(LIMITED_PLAY_ENTRY_KINDS)} (Core 355.2.b)")
-    if sum(field in effect for field in ("target", "choice", "self")) != 1:
+    if sum(field in effect for field in ("target", "choice", "self", "linked")) != 1:
         return errors + ["needs exactly one of target (a card in a public zone, Core 355.10.a), choice (a card in "
-                         "a private zone, chosen as the effect resolves) or self (the program's own source card)"]
+                         "a private zone, chosen as the effect resolves), self (the program's own source card) or linked "
+                         "(the card an earlier banish of the program moved)"]
+    if "linked" in effect:
+        linked = effect["linked"]
+        if not isinstance(linked, dict) or set(linked) != {"effect_id", "from"} or linked.get("from") != "banishment" \
+                or not isinstance(linked.get("effect_id"), str) or not linked["effect_id"]:
+            errors.append("linked must be {effect_id, from: banishment}: the earlier banish whose card is played")
+        if "decision_ref" in effect or "card_filter" in effect:
+            errors.append("linked chooses nothing: no decision_ref or card_filter")
+        return errors
     if "self" in effect:
         if not isinstance(effect["self"], dict) or set(effect["self"]) != {"from"} or effect["self"]["from"] not in LIMITED_PLAY_SELF_ZONES:
             errors.append(f"self must be {{from}} with from in {sorted(LIMITED_PLAY_SELF_ZONES)}: the zone the source card "
@@ -1967,8 +1999,9 @@ def _limited_play_record_errors(record: Any, players: dict[str, Any]) -> list[st
     for key in ("granted_by", "program_id", "effect_id"):
         if not isinstance(record[key], str) or not record[key]:
             errors.append(f"{key} must be a non-empty string")
-    if record["source_zone"] not in LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES:
-        errors.append(f"source_zone must be one of {sorted(LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES)}")
+    # package 8: a card banished by the effect and then played from its owner's Banishment (limited_play linked)
+    if record["source_zone"] not in LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES | {"banishment"}:
+        errors.append(f"source_zone must be one of {sorted(LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES | {'banishment'})}")
     entry = record.get("entry_location")
     if entry is not None and (not isinstance(entry, dict) or set(entry) != {"kind", "battlefield"} or entry.get("kind") != "battlefield"
                               or not isinstance(entry.get("battlefield"), str) or not entry["battlefield"]):
@@ -2402,6 +2435,13 @@ def validate_program(program: Any) -> list[str]:
                 errors.extend(f"effects[{index}].{op_name} {e}" for e in _zone_op_errors(effect))
             if op_name in {"look_at_top", "reveal", "put_back", "put_in_hand", "draw_it", "recycle", "predict"}:
                 errors.extend(f"effects[{index}].{op_name} {e}" for e in _reveal_op_errors(effect))
+            if op_name == "reveal_until":
+                if not isinstance(effect.get("player"), str) or not effect.get("player"):
+                    errors.append(f"effects[{index}].reveal_until requires a player")
+                if effect.get("until") not in ({"kind": "unit"}, {"kind": "gear"}, {"kind": "spell"}):
+                    errors.append(f"effects[{index}].reveal_until until must be {{kind}} of a card kind")
+                if set(effect) - {"op", "effect_id", "player", "until", "depends_on", "dependency_mode", "predicate", "_execution"}:
+                    errors.append(f"effects[{index}].reveal_until carries only player and until")
             if effect.get("op") == "discard":
                 # package 6: "discards their hand" - every card in it, however many there are at
                 # execution (whole_hand, no count); an empty hand discards nothing (Core 422.4)
@@ -2962,9 +3002,13 @@ def _zone_op_errors(effect: dict[str, Any]) -> list[str]:
     op = effect.get("op")
     errors: list[str] = []
     if op == "banish":
-        holders = [k for k in ("object_id", "objects", "target", "targets", "choice") if effect.get(k) is not None]
+        holders = [k for k in ("object_id", "objects", "target", "targets", "choice", "linked") if effect.get(k) is not None]
         if len(holders) != 1:
-            errors.append("needs exactly one of object_id, objects, target, targets or choice")
+            errors.append("needs exactly one of object_id, objects, target, targets, choice or linked")
+        linked = effect.get("linked")
+        if linked is not None and (not isinstance(linked, dict) or set(linked) != {"effect_id"}
+                                   or not isinstance(linked["effect_id"], str) or not linked["effect_id"]):
+            errors.append("linked must be {effect_id}: the earlier reveal_until whose card is banished")
         if effect.get("objects") is not None and (not isinstance(effect["objects"], list) or not effect["objects"]
                                                   or any(not isinstance(o, str) or not o for o in effect["objects"]) or len(effect["objects"]) != len(set(effect["objects"]))):
             errors.append("objects must be a non-empty unique array")
@@ -4904,6 +4948,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # board (a token ceases to exist below, 186.1, and still died)
         died_as_unit = characteristics(new_state, object_id).get("kind") == "unit"
         controller_at_death = obj.get("controller")
+        # 2026-10-04 (package 8, GPT ruling 7): the Might it had as it died, for an instruction that compares with "the
+        # killed unit" afterwards (Core 359.3.e.12: information about an object that changed zones is its last known)
+        might_at_death = effective_might(new_state, object_id) if died_as_unit else None
         detached = detach_records(new_state, object_id, _last_board_location(location), host_left_board=True)
         _remove_from_location(new_state, object_id)
         if died_as_unit:
@@ -4924,6 +4971,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 435.4", "Core 435.4.b"]))
         trace.update({
             "object_id": object_id,
+            **({"might_at_death": might_at_death} if might_at_death is not None else {}),
             "kill_mode": effect.get("kill_mode", "active"),
             "destination": destination,
             "attributed_sources": effect.get("attributed_sources", []),
@@ -4993,6 +5041,29 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                       "visible_to": "all", "zone_unchanged": True, "burn_out": False,
                       **({"requested_count": effect["count"]} if zone == "main_deck" else {}),
                       "completion": "full" if (zone == "hand" or len(revealed) == effect["count"]) else ("partial" if revealed else "none")})
+        if not revealed:
+            trace["outcome"] = "no_op"
+
+    elif op == "reveal_until":
+        # 2026-10-04 (package 8): the Main Deck's top card, then the next, and so on, until one of the kind is revealed
+        # - it included - or the deck runs out (Core 431.1.c: as many as there are). Revealed to all (424); nothing
+        # moves: what happens to them is the instructions after this one's
+        player_id = resolve_player_ref(effect.get("player"), decisions, new_state, controller)
+        if player_id not in new_state["players"]:
+            raise ValueError("reveal_until requires a known player")
+        deck = new_state["players"][player_id]["zones"]["main_deck"]
+        wanted, found = [], None
+        for object_id in deck:
+            wanted.append(object_id)
+            if (new_state["objects"].get(object_id) or {}).get("kind") == effect["until"]["kind"]:
+                found = object_id
+                break
+        revealed = _mark_reveals(new_state, player_id, "main_deck", wanted, "all", effect.get("effect_id", "reveal_until"), "reveal")
+        trace.update({"player": player_id, "until": dict(effect["until"]),
+                      "revealed": [{"object_id": o, "identity": object_identity(new_state, o)} for o in revealed],
+                      "found": found, **({"found_identity": object_identity(new_state, found)} if found else {}),
+                      "visible_to": "all", "zone_unchanged": True,
+                      "completion": "full" if found else ("partial" if revealed else "none")})
         if not revealed:
             trace["outcome"] = "no_op"
 
@@ -7175,6 +7246,16 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
         if excluded:
             ids = [object_id for object_id in ids
                    if state["objects"].get(object_id, {}).get("kind") not in excluded]
+        # 2026-10-04 (package 8): "a unit from among them" - the kind; "that has Might up to N" - a ceiling on the
+        # card's printed Might (a card off the board has no other, Core 359.3.e.12). A ceiling resolved to None
+        # (its reference is null: no unit was killed, GPT ruling 7) admits nothing
+        criteria = spec.get("criteria") or {}
+        if "kind" in criteria:
+            ids = [o for o in ids if state["objects"].get(o, {}).get("kind") == criteria["kind"]]
+        if "max_might" in criteria:
+            ceiling = criteria["max_might"]
+            ids = [] if ceiling is None else [o for o in ids if isinstance(state["objects"].get(o, {}).get("base_might"), int)
+                                              and state["objects"][o]["base_might"] <= ceiling]
     elif source == "board":
         criteria = spec.get("criteria") or {}
         resolved_battlefield = None
@@ -8670,6 +8751,35 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     continue
                 target = {"object_id": source}
                 legal, reason = True, "ok"
+            elif effect.get("linked") is not None:
+                # 2026-10-04 (package 8, group 3): the card the named earlier banish moved - exactly one, still the object
+                # it became in its owner's Banishment (Core 124, 427). Nothing banished, or the card moved on since:
+                # nothing is played (419.3.c, 359.3.e.6); the instruction never picks another card
+                ref = effect["linked"]["effect_id"]
+                source_event = next((e for e in trace if e.get("effect_id") == ref), None)
+                if source_event is None or source_event.get("op") not in LIMITED_PLAY_LINKED_OPS:
+                    return {**base, "valid": False, "committed": False, "failed_effect_index": index, "trace": trace,
+                            "errors": [f"effects[{index}].limited_play linked names {ref!r}, which is not an earlier "
+                                       f"{sorted(LIMITED_PLAY_LINKED_OPS)} instruction of this program"]}
+                moved = [o for o in source_event.get("objects") or [] if o in (source_event.get("identities_after") or {})]
+                card = moved[0] if len(moved) == 1 else None
+                card_obj = current["objects"].get(card) if card else None
+                owner = (card_obj or {}).get("owner")
+                here = (card_obj is not None and owner in current["players"]
+                        and card in current["players"][owner]["zones"].get("banishment", [])
+                        and object_identity(current, card) == source_event["identities_after"][card])
+                if not here:
+                    event = {"index": index, "effect_id": effect_id, "op": "limited_play", "outcome": "no_op",
+                             "completion": "none",
+                             "reason": ("nothing_banished" if not moved else "more_than_one_banished" if len(moved) > 1
+                                        else "linked_card_moved"),
+                             "linked": dict(effect["linked"]), "rule_locators": ["Core 419.3.c", "Core 359.3.e.6", "Core 124"],
+                             "before_state_hash": before_hash, "after_state_hash": before_hash}
+                    trace.append(event)
+                    outcomes[effect_id] = event["outcome"]
+                    continue
+                target = {"object_id": card}
+                legal, reason = True, "ok"
             elif effect.get("choice") is not None:
                 # 2026-09-28 (package 6, step 2): a card of the controller's hand, chosen now (Core 355.10.a) - or
                 # none: a player cannot be made to take a card of a named quality from a hidden zone (128.6)
@@ -9434,6 +9544,29 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = "applied" if event["outcome"] == "replaced_modified_applied" else event["outcome"]
             continue
+        if effect.get("op") == "banish" and effect.get("linked") is not None:
+            # 2026-10-04 (package 8): "... until you reveal a unit and banish it" - the card the named reveal_until stopped
+            # at, while it is still that object in its Main Deck (Core 124); none found, or moved since: nothing banished
+            ref = effect["linked"]["effect_id"]
+            source_event = next((e for e in trace if e.get("effect_id") == ref and e.get("op") == "reveal_until"), None)
+            if source_event is None:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index, "trace": trace,
+                        "errors": [f"effects[{index}].banish linked names {ref!r}, which is not an earlier reveal_until"]}
+            found = source_event.get("found")
+            still = (found is not None and found in current["objects"]
+                     and object_identity(current, found) == source_event.get("found_identity")
+                     and find_location(current, found) == ("player", current["objects"][found]["owner"], "main_deck"))
+            effect = {k: v for k, v in effect.items() if k != "linked"}
+            effect["objects"] = [found] if still else []
+        ceiling_of = ((effect.get("choice") or {}).get("criteria") or {}).get("max_might_of")
+        if ceiling_of is not None:
+            # 2026-10-04 (package 8, GPT ruling 7): "up to N more than the killed unit" - the Might the named earlier
+            # Kill's unit had as it died; no unit killed by it (replaced, or nothing to kill) -> null, nothing admitted
+            killed = next((e for e in trace if e.get("effect_id") == ceiling_of.get("effect_id") and e.get("op") == "kill"
+                           and e.get("outcome") == "applied" and isinstance(e.get("might_at_death"), int)), None)
+            criteria = {k: v for k, v in effect["choice"]["criteria"].items() if k != "max_might_of"}
+            criteria["max_might"] = killed["might_at_death"] + ceiling_of.get("plus", 0) if killed else None
+            effect = {**effect, "choice": {**effect["choice"], "criteria": criteria}}
         if effect.get("op") == "play_token" and (context or {}).get("hidden_battlefield"):
             # Core 811.1.d.3 (GPT 2026-09-27): a unit this hidden card makes its controller play is
             # played at the battlefield it was hidden at

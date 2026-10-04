@@ -361,8 +361,22 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append("choice.enumerable_cap must be a positive integer")
     if "criteria" in spec and spec["from"] not in {"board", "revealed"}:
         errors.append("choice.criteria applies to a board or revealed source")
-    if "criteria" in spec and spec["from"] == "revealed" and set(spec["criteria"]) - {"excluded_kinds"}:
-        errors.append("a revealed choice's criteria carries excluded_kinds and nothing else")
+    # package 8 (2026-10-04): "a unit from among them" - kind; "that has Might up to 1 more than the killed unit" -
+    # max_might_of {effect_id, plus}, resolved off the program's own earlier Kill (GPT ruling 7)
+    if "criteria" in spec and spec["from"] == "revealed":
+        criteria = spec["criteria"]
+        if not isinstance(criteria, dict) or set(criteria) - {"excluded_kinds", "kind", "max_might_of", "max_might"}:
+            errors.append("a revealed choice's criteria carries excluded_kinds, kind, max_might_of and max_might and nothing else")
+        elif "max_might" in criteria and not (criteria["max_might"] is None or (isinstance(criteria["max_might"], int)
+                                                                              and not isinstance(criteria["max_might"], bool))):
+            errors.append("max_might is an integer ceiling on printed Might, or null (its reference had no value)")
+        elif "kind" in criteria and criteria["kind"] not in {"unit", "gear", "spell"}:
+            errors.append("a revealed choice's criteria kind is a card kind")
+        elif "max_might_of" in criteria and (not isinstance(criteria["max_might_of"], dict)
+                                             or set(criteria["max_might_of"]) - {"effect_id", "plus"}
+                                             or not isinstance(criteria["max_might_of"].get("effect_id"), str)
+                                             or not isinstance(criteria["max_might_of"].get("plus", 0), int)):
+            errors.append("max_might_of is {effect_id, plus?}: an earlier Kill of the program and an integer")
     if spec["from"] == "board" and (not isinstance(spec.get("criteria"), dict)
                                     or set(spec["criteria"]) - {"kind", "controller_relation", "location", "location_ref",
                                                                 "zone_owner_relation", "not_controlled_by"}):

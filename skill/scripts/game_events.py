@@ -175,6 +175,7 @@ OP_PRIMARY: dict[str, str] = {
     "establish_selection": "selection_established",
     "look_at_top": "looked_at",
     "reveal": "revealed",
+    "reveal_until": "revealed",
     "put_back": "cards_put_back",
     "put_in_hand": "put_in_hand",
     "predict": "predicted",

@@ -63,8 +63,9 @@ Held here:
                       only a card with [Hidden]; choosing none is allowed (128.6), and with none in hand nothing is
                       asked (419.3.c); a unit enters the source's Battlefield though its player does not control it
                       (355.2.b), and no other location is taken; a gear enters its Base; the source gone from the
-                      Battlefield names no location, which is then chosen (355.2.a); a cancelled play puts the card
-                      back in the hand at its place
+                      Battlefield gives no "here", and the unit branch is refused by name (limited_play_here_absent,
+                      GPT 2026-10-04 ruling 3 - never its Base by default nor another Battlefield), while a gear
+                      chosen then still enters its Base; a cancelled play puts the card back in the hand at its place
 
     python skill/scripts/check_limited_play.py
 """
@@ -705,10 +706,20 @@ def check_hand_choice() -> None:
     if not gear_done.get("committed") or "hid-gear" not in gear_done["next_effect_state"]["players"]["p1"]["zones"]["base"]:
         fail("H gear", f"{gear_done.get('reason')} {gear_done.get('message')}")
     # the source gone from the Battlefield: no 'here'; the location is the player's choice (355.2.a)
+    # 2026-10-04 (package 8, GPT ruling 3): the source gone from the Battlefield gives no "here"; the unit is not
+    # put in its Base or at a Battlefield chosen instead - the unit branch is refused by name, nothing is played
     away = ava_resolved(state, ["hid-unit"], move_away=True)["done"]
-    ask = finalize_limited_play(away["next_timing_state"], away["next_effect_state"], payment_context=CLOSED)
-    if ask.get("reason") != "entry_location_required":
-        fail("H here gone", f"{ask.get('reason')}")
+    away_effect = away.get("effect_result") or {}
+    if away.get("committed") or not away_effect.get("unsupported") \
+            or "limited_play_here_absent" not in str(away_effect.get("reason") or away.get("reason")):
+        fail("H here gone", f"the unit with no 'here' was not refused by name: {away.get('committed')} "
+                            f"{away_effect.get('reason') or away.get('reason')}")
+    # ... and the card's other branch is its own: a gear chosen with no 'here' enters its Base as any gear does
+    gear_away = ava_resolved(state, ["hid-gear"], move_away=True)["done"]
+    gear_done = complete_limited_play(gear_away["next_timing_state"], gear_away["next_effect_state"], payment_context=CLOSED) \
+        if gear_away.get("committed") else {}
+    if not gear_done.get("committed") or "hid-gear" not in (gear_done.get("next_effect_state") or {}).get("players", {}).get("p1", {}).get("zones", {}).get("base", []):
+        fail("H here gone, a gear", f"the non-unit branch did not enter its Base: {gear_away.get('reason')} {gear_done.get('reason')}")
     # cancelled (the player cannot play cards): back in the hand at its place
     prohibited = copy.deepcopy(done["next_effect_state"])
     prohibited["turn_effects"] = [{"effect_id": "stop", "kind": "cards_play_prohibited", "controller": "p2",

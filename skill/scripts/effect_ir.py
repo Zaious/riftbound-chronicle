@@ -9598,17 +9598,23 @@ def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], targe
     working["objects"][card]["controller"] = controller
     identity_after = _bump_identity(working, card)
     # 2026-09-28 (package 6, step 2): "If it's a unit, play it here." - the effect names where the unit it
-    # plays enters (Core 355.2.b): the source's Battlefield as this instruction executes (359.3.f.2). A source
-    # not at a Battlefield then gives no "here" (359.3.e.12): nothing is named, and the location is chosen as
-    # the play is finalized, as for any unit (355.2.a)
+    # plays enters (Core 355.2.b): the source's Battlefield as this instruction executes (359.3.f.2).
+    # 2026-10-04 (package 8, GPT ruling 3): a source no longer at a Battlefield gives no "here", and the unit may
+    # NOT be put in its Base by default or at another Battlefield chosen instead - the engine does not model
+    # what the rules make of that legal situation, so the unit branch is refused by name (unsupported:
+    # limited_play_here_absent), never resolved some other way. The card's other branch (a non-unit) is not
+    # touched: it enters where it would.
     entry_note = None
     if entry is not None and obj["kind"] == "unit":
         try:
             here = resolve_location_ref({"kind": "program_source_current_battlefield"}, working, program)
-            record["entry_location"] = {"kind": "battlefield", "battlefield": here}
-            entry_note = {"entry_location": dict(record["entry_location"]), "rule_locators": ["Core 355.2.b", "Core 359.3.f.2"]}
         except SelectionBindingRefused as exc:
-            entry_note = {"entry_location": None, "reason": exc.reason_code, "rule_locators": ["Core 359.3.e.12", "Core 355.2.a"]}
+            raise NotImplementedError(
+                f"limited_play_here_absent: the effect plays the unit {card!r} 'here', and its source is at no "
+                f"Battlefield ({exc.reason_code}); putting it elsewhere is not what the card says, and what the rules "
+                f"make of this is not modelled (GPT 2026-10-04, PACKAGE8_INVENTORY ruling 3)") from exc
+        record["entry_location"] = {"kind": "battlefield", "battlefield": here}
+        entry_note = {"entry_location": dict(record["entry_location"]), "rule_locators": ["Core 355.2.b", "Core 359.3.f.2"]}
     kind = cost_basis["kind"]
     event = {"op": "limited_play", "outcome": "applied", "completion": "full", "object_id": card,
              "chain_item_id": item_id, "controller": controller, "object_kind": obj["kind"],

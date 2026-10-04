@@ -73,7 +73,23 @@
         "source": "riftcodex raw card data: token cards ogn-271/272/273-298 (supertype Token, Unit, Might 1, no rules text); the thirteen Set 1 producers above; re-derived by scripts/check_token_entries.py",
         "note": "Approved for owner promotion in the first-set big package review (2026-09-25): Unit, Might 1, empty text, 13 producers, re-derivable by the source gate."
       },
-      "text_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "text_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tags": [
+        "Recruit"
+      ],
+      "amendments": [
+        {
+          "fields": [
+            "tags"
+          ],
+          "review": {
+            "reviewer": "GPT",
+            "date": "2026-10-03",
+            "source": "riftcodex raw card data: token cards ogn-271/272/273-298 (Recruit (271/272/273) // Buff), every printing tagged Recruit; re-derived by scripts/check_token_entries.py",
+            "note": "Package 7 (GPT 2026-10-02, PACKAGE6 section 7 question 3): the token card's printed tag, carried by play_token from the catalogue (token_catalog.carry_tags); replaces the engine's TOKEN_RULE_TAGS table. The date is the approval's, written by the owner's sign-off script."
+          }
+        }
+      ]
     },
     {
       "token_id": "sprite",
@@ -99,7 +115,23 @@
         "date": "2026-09-22",
         "source": "riftcodex raw card data: token card ogn-274-298 (supertype Token, Unit, Might 3); Set 1 producers Sprite Mother ogn-106-298, Sprite Call ogn-094-298; re-derived by scripts/check_token_entries.py"
       },
-      "text_sha256": "sha256:1cdaa7f40351a423b30ec9d5504502549634cccb1679c8e13c812484d157a50f"
+      "text_sha256": "sha256:1cdaa7f40351a423b30ec9d5504502549634cccb1679c8e13c812484d157a50f",
+      "tags": [
+        "Fae"
+      ],
+      "amendments": [
+        {
+          "fields": [
+            "tags"
+          ],
+          "review": {
+            "reviewer": "GPT",
+            "date": "2026-10-03",
+            "source": "riftcodex raw card data: token card ogn-274-298 (Sprite (274) // Buff), tagged Fae; re-derived by scripts/check_token_entries.py",
+            "note": "Package 7 (GPT 2026-10-02, PACKAGE6 section 7 question 3): the token card's printed tag, carried by play_token from the catalogue (token_catalog.carry_tags); replaces the engine's TOKEN_RULE_TAGS table. The date is the approval's, written by the owner's sign-off script."
+          }
+        }
+      ]
     }
   ]
 }

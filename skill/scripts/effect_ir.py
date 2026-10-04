@@ -662,7 +662,14 @@ OP_RULES = {
 # other (356.1.b.2); "ignoring its cost" sets both to zero (356.1.b.1). Each is a base cost
 # modification the play transaction applies before Core 356 runs.
 LIMITED_PLAY_COST_BASES = {"ignore_energy": "Core 356.1.b.2", "ignore_power": "Core 356.1.b.2",
-                           "ignore_all": "Core 356.1.b.1"}
+                           "ignore_all": "Core 356.1.b.1",
+                           # 2026-10-04 (package 8, GPT ruling 1): "you may pay X to play me" - X is the trigger's
+                           # base cost paid at finalization, and the card is then played paying its own cost: the
+                           # effect changes nothing about it, the steps are the normal ones (Core 419.3.b)
+                           "printed": "Core 419.3.b"}
+# 2026-10-04 (package 8): "play me" - the card is the program's own source, in the zone its triggered ability
+# works from (Core 383.2.c.1); not chosen, so not a target (355.7)
+LIMITED_PLAY_SELF_ZONES = {"trash"}
 # where an effect-driven play may take a card from: a public zone, so the card is a target chosen as
 # the effect is played or finalized (GPT 2026-09-25; Core 355.10.a, 355.9.a). A private zone (the
 # hand) is a choice made as the effect resolves, which this instruction does not model yet.
@@ -1903,17 +1910,24 @@ def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
     changes about the card's cost. Nothing else - an entry location is chosen as the play itself is
     finalized (Core 355.2), and a card chosen from a private zone is not this instruction."""
     errors: list[str] = []
-    extra = set(effect) - {"op", "effect_id", "target", "choice", "decision_ref", "card_filter", "entry", "cost_basis", "depends_on",
-                           "dependency_mode", "predicate", "_execution"}
+    extra = set(effect) - {"op", "effect_id", "target", "choice", "self", "decision_ref", "card_filter", "entry", "cost_basis",
+                           "depends_on", "dependency_mode", "predicate", "_execution"}
     if extra:
-        errors.append(f"carries only its target or choice, entry and cost_basis, not {sorted(extra)}")
+        errors.append(f"carries only its target, choice or self, entry and cost_basis, not {sorted(extra)}")
     errors.extend(_limited_play_cost_basis_errors(effect.get("cost_basis")))
     entry = effect.get("entry")
     if entry is not None and (not isinstance(entry, dict) or set(entry) != {"kind"} or entry.get("kind") not in LIMITED_PLAY_ENTRY_KINDS):
         errors.append(f"entry must be {{kind}} with kind in {sorted(LIMITED_PLAY_ENTRY_KINDS)} (Core 355.2.b)")
-    if ("target" in effect) == ("choice" in effect):
-        return errors + ["needs exactly one of target (a card in a public zone, Core 355.10.a) or choice (a card in "
-                         "a private zone, chosen as the effect resolves)"]
+    if sum(field in effect for field in ("target", "choice", "self")) != 1:
+        return errors + ["needs exactly one of target (a card in a public zone, Core 355.10.a), choice (a card in "
+                         "a private zone, chosen as the effect resolves) or self (the program's own source card)"]
+    if "self" in effect:
+        if not isinstance(effect["self"], dict) or set(effect["self"]) != {"from"} or effect["self"]["from"] not in LIMITED_PLAY_SELF_ZONES:
+            errors.append(f"self must be {{from}} with from in {sorted(LIMITED_PLAY_SELF_ZONES)}: the zone the source card "
+                          f"is played from")
+        if "decision_ref" in effect or "card_filter" in effect:
+            errors.append("self chooses nothing: no decision_ref or card_filter")
+        return errors
     if "choice" in effect:
         choice = effect["choice"]
         if (not isinstance(choice, dict) or choice.get("from") not in LIMITED_PLAY_CHOICE_ZONES
@@ -8633,7 +8647,30 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             # instruction is ignored and nothing is played (359.3.e.6, 419.3.c). Legal, this is the
             # play's step 1 (Core 354): the card moves to the Chain as a Pending item and is a new
             # object (124); the rest of the play waits until this effect has finished resolving (354.3).
-            if effect.get("choice") is not None:
+            if effect.get("self") is not None:
+                # 2026-10-04 (package 8): "play me" from the zone the triggered ability works from (Immortal
+                # Phoenix, Flame Chompers). The card is the program's own source as the chain item recorded it
+                # (bind_source_identity): gone from that zone, or back as a new object (Core 124), it is no longer
+                # the "me" the ability is about, and nothing is played (359.3.e.6, 419.3.c) - never another card
+                source = program.get("source_object")
+                declared = program.get("source_identity")
+                source_obj = current["objects"].get(source) if isinstance(source, str) else None
+                owner = (source_obj or {}).get("owner")
+                in_zone = (source_obj is not None and owner in current["players"]
+                           and source in current["players"][owner]["zones"].get(effect["self"]["from"], []))
+                same = not declared or object_identity(current, source) == declared
+                if not (in_zone and same):
+                    event = {"index": index, "effect_id": effect_id, "op": "limited_play", "outcome": "no_op",
+                             "completion": "none",
+                             "reason": "source_not_in_zone" if not in_zone else "source_identity_changed",
+                             "source_object": source, "rule_locators": ["Core 124", "Core 359.3.e.6", "Core 419.3.c"],
+                             "before_state_hash": before_hash, "after_state_hash": before_hash}
+                    trace.append(event)
+                    outcomes[effect_id] = event["outcome"]
+                    continue
+                target = {"object_id": source}
+                legal, reason = True, "ok"
+            elif effect.get("choice") is not None:
                 # 2026-09-28 (package 6, step 2): a card of the controller's hand, chosen now (Core 355.10.a) - or
                 # none: a player cannot be made to take a card of a named quality from a hidden zone (128.6)
                 controller = program.get("controller")

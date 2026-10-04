@@ -906,7 +906,7 @@ def finalize_limited_play(
     the Chain - never Finalized, not countered. What the effect did before it stays (GPT 2026-09-25).
     Any other refusal is of a choice supplied for the play (an entry location the rules refuse), which
     its player makes again: nothing changes."""
-    from play_transaction import DECISION_REASONS, DECLARATION_VERSION, LIMITED_PLAY_OVERRIDE, play_card
+    from play_transaction import DECISION_REASONS, DECLARATION_VERSION, limited_play_override, play_card
     from rules_core import finalize_oldest_pending, next_procedure
     from effect_ir import CORE_RULESET, FAQ_AS_OF
     base = {"schema_version": "riftbound-limited-play-result.v1",
@@ -946,7 +946,7 @@ def finalize_limited_play(
         "chain_item": {"id": item["id"], "object_kind": kind, "timing": "default"},
         "cost": {"base": copy.deepcopy(effect_state["objects"][card].get("printed_cost"))},
         "source": {"kind": record["source_zone"]}, "source_permission": {"granted_by": record["granted_by"]},
-        "cost_override": {"kind": LIMITED_PLAY_OVERRIDE[record["cost_basis"]["kind"]], "source": record["granted_by"]},
+        **({"cost_override": limited_play_override(record)} if limited_play_override(record) is not None else {}),
         "timing_source": "limited_play",
         **({"payment_context": copy.deepcopy(payment_context)} if payment_context is not None else {}),
         **({"entry_location": copy.deepcopy(entry_location)} if entry_location is not None else {}),

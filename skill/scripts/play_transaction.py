@@ -81,7 +81,15 @@ COST_OVERRIDE_KINDS = {"ignore_base_cost", "for_cost", "ignore_energy", "ignore_
 OVERRIDE_MODIFICATION = {"ignore_base_cost": "ignore_all", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power"}
 # 2026-09-28 (package 6): an effect-driven play's cost basis (effect_ir.LIMITED_PLAY_COST_BASES) as the
 # cost_override its play transaction declares
-LIMITED_PLAY_OVERRIDE = {"ignore_all": "ignore_base_cost", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power"}
+LIMITED_PLAY_OVERRIDE = {"ignore_all": "ignore_base_cost", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power",
+                         # 2026-10-04 (package 8): the effect changes nothing about the cost - no override is declared
+                         "printed": None}
+
+
+def limited_play_override(record: dict[str, Any]) -> dict[str, Any] | None:
+    """The cost_override an effect-driven play's declaration carries, or None when it pays its printed cost."""
+    kind = LIMITED_PLAY_OVERRIDE[record["cost_basis"]["kind"]]
+    return {"kind": kind, "source": record["granted_by"]} if kind is not None else None
 # ADR-0011 §4: costs paid by the payer's card choice at play stage.
 CHOICE_COSTS = {"discard", "recycle_trash"}
 # Costs whose sources live in P4 (XP, Buff, Empower): typed, refused by name.
@@ -1829,7 +1837,7 @@ def _limited_play_checks(timing_state: dict[str, Any], effect_state: dict[str, A
                         f"{item_id!r} is not the oldest Pending item; the next procedure is {step.get('procedure')!r} "
                         f"for {step.get('subject')!r} (Core 337.1, 337.1.b)", rule_locators=["Core 337.1", "Core 337.1.b"])
     printed = (effect_state["objects"].get(card) or {}).get("printed_cost")
-    wanted = {"kind": LIMITED_PLAY_OVERRIDE[record["cost_basis"]["kind"]], "source": record["granted_by"]}
+    wanted = limited_play_override(record)
     problems = []
     if (declaration.get("source") or {}).get("kind") != record["source_zone"]:
         problems.append(f"source {declaration.get('source')} is not the zone the effect took the card from ({record['source_zone']})")

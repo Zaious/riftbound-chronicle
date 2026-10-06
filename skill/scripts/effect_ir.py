@@ -2404,6 +2404,16 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].choose_objects needs the decision_ref that answers it")
                 if effect.get("distinct_in_group") not in (None, True):
                     errors.append(f"effects[{index}].choose_objects.distinct_in_group is true when present")
+            if effect.get("only_if_chose") is not None:
+                # package 9 (Qiyana - Victorious): this instruction runs only if the controller's recorded option, made
+                # by an EARLIER choose_option of this program, is this option
+                only = effect["only_if_chose"]
+                earlier = [e for e in effects[:index] if isinstance(e, dict) and e.get("op") == "choose_option"
+                           and e.get("record") == (only or {}).get("record") if isinstance(only, dict)]
+                if not isinstance(only, dict) or set(only) != {"record", "option"} or not earlier \
+                        or only["option"] not in (earlier[-1].get("options") or []):
+                    errors.append(f"effects[{index}].only_if_chose must be {{record, option}} naming an earlier "
+                                  f"choose_option's record and one of its options")
             if effect.get("op") == "choose_option":
                 options = effect.get("options")
                 if not isinstance(options, list) or len(options) < 2 or len(options) != len(set(options)) \
@@ -2788,6 +2798,8 @@ OBJECT_PLAYER_RELATIONS = ("controller", "owner")
 # (359.3.e.6). A REPLACED instruction still counts as executed for the link (359.3.e.14.b).
 IGNORED_OUTCOMES = frozenset({"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency",
                               "ignored_subject_changed", "skipped_after_terminal", "skipped_restricted_move",
+                              # package 9: the branch its controller did not choose (only_if_chose)
+                              "skipped_option_not_chosen",
                               "declined", SOURCE_UNAVAILABLE_OUTCOME})
 LINKED_IGNORED_OUTCOMES = IGNORED_OUTCOMES
 # "draw 1 for each of your [Mighty] units" (Kadregrin the Infernal): a draw whose count is its
@@ -8128,6 +8140,21 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        only = effect.get("only_if_chose")
+        if only is not None:
+            # package 9: the branch runs only if the controller chose it (recorded by an earlier choose_option)
+            record = recorded_options.get(only["record"])
+            if record is None:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "option_record_unbound",
+                        "reason": f"no instruction of this program recorded the options {only['record']!r}",
+                        "failed_effect_index": index, "trace": trace}
+            if record.get(program.get("controller")) != only["option"]:
+                event = {"index": index, "effect_id": effect_id, "op": effect.get("op"), "outcome": "skipped_option_not_chosen",
+                         "completion": "none", "only_if_chose": dict(only), "rule_locators": ["Core 355.10.e"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
         predicate = effect.get("predicate")
         if predicate is not None:
             try:

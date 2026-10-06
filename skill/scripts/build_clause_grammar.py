@@ -449,6 +449,25 @@ LITERAL = [
      ["banish a friendly unit, then play it to your base, ignoring its cost",
       "banish an enemy unit, then its owner plays it to their base, ignoring its cost",
       "banish a friendly unit, then its owner plays it, ignoring its energy cost"]),
+    # 2026-10-06 package 9 (Caitlyn - Patrolling, GPT ruling 4): the card's own statement of the Backline shape - an
+    # attacker assigns it combat damage only after every other defender has lethal (Core 465.2.c.7)
+    ("i_must_be_assigned_combat_damage_last", r"i must be assigned combat damage last",
+     ["Core 465.2.c.7", "Core 365.1"], "passive", ["keyword_catalogue_v1"],
+     "The card's own combat-damage order: last, as [Backline]. 'First' is [Tank]'s; another object's order is a "
+     "different production.",
+     ["I must be assigned combat damage last."],
+     ["i must be assigned combat damage first", "other friendly units must be assigned combat damage last",
+      "i must be assigned damage last"]),
+    # 2026-10-06 package 9 (Caitlyn - Patrolling, GPT ruling 4): one chosen Unit at a Battlefield takes damage equal to
+    # the source's Might as the instruction executes; a source no longer on the board has no Might, and nothing is dealt
+    ("deal_damage_equal_to_my_might_to_a_unit_at_a_battlefield",
+     r"deal damage equal to my might to a unit at (?:a )?battlefield",
+     ["Core 417", "Core 355.9", "Core 359.3.e.12"], "instruction", ["deal_damage", "targeting"],
+     "One chosen Unit at a Battlefield, of either side, takes damage equal to the source's Might when the instruction "
+     "executes. 'An enemy unit here', 'its Might' or a printed number are different productions.",
+     ["Deal damage equal to my Might to a unit at a battlefield."],
+     ["deal damage equal to my might to an enemy unit here", "deal damage equal to its might to a unit at a battlefield",
+      "deal 3 to a unit at a battlefield"]),
     # 2026-10-06 package 9 (The Grand Plaza): an effect that instructs its controller to win (Core 195); the game
     # ends at once (196)
     ("you_win_the_game", r"you win the game", ["Core 195", "Core 196"], "instruction", ["win_game"],

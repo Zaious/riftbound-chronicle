@@ -1224,6 +1224,56 @@
       ]
     },
     {
+      "production_id": "i_must_be_assigned_combat_damage_last",
+      "form": "I must be assigned combat damage last.",
+      "template": "i must be assigned combat damage last",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 465.2.c.7",
+        "Core 365.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "keyword_catalog"
+      ],
+      "boundary": "The card's own combat-damage order: last, as [Backline]. 'First' is [Tank]'s; another object's order is a different production.",
+      "golden": [
+        "I must be assigned combat damage last."
+      ],
+      "negative": [
+        "i must be assigned combat damage first",
+        "other friendly units must be assigned combat damage last",
+        "i must be assigned damage last"
+      ]
+    },
+    {
+      "production_id": "deal_damage_equal_to_my_might_to_a_unit_at_a_battlefield",
+      "form": "Deal damage equal to my Might to a unit at a battlefield.",
+      "template": "deal damage equal to my might to a unit at (?:a )?battlefield",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 417",
+        "Core 355.9",
+        "Core 359.3.e.12"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "typed_selectors"
+      ],
+      "boundary": "One chosen Unit at a Battlefield, of either side, takes damage equal to the source's Might when the instruction executes. 'An enemy unit here', 'its Might' or a printed number are different productions.",
+      "golden": [
+        "Deal damage equal to my Might to a unit at a battlefield."
+      ],
+      "negative": [
+        "deal damage equal to my might to an enemy unit here",
+        "deal damage equal to its might to a unit at a battlefield",
+        "deal 3 to a unit at a battlefield"
+      ]
+    },
+    {
       "production_id": "you_win_the_game",
       "form": "You win the game.",
       "template": "you win the game",

@@ -310,6 +310,23 @@ def _lower_banish_then_owner_plays(params):
                  "params": {"linked": "ban", "player": "owner", "entry": "their base", "cost": "ignore_all"}}]}}
 
 
+def _lower_assigned_combat_damage_last(params):
+    # package 9 (Caitlyn - Patrolling): the Backline shape on the card itself (combat.py reads the keyword)
+    return {"passive": {"object_fields": {"keywords": ["backline"]}},
+            "ast": {"node": "passive", "kind": "combat_damage_order", "params": {"order": "last", "keyword": "backline"}}}
+
+
+def _lower_deal_my_might_to_unit_at_battlefield(params):
+    # package 9 (Caitlyn - Patrolling): amount_ref program_source_current_might - read as it executes; refused by name
+    # (amount_ref_source_absent) when the source is no longer on the board
+    ref = {"kind": "program_source_current_might"}
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount_ref": dict(ref),
+                                 "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
+                                            "location": "battlefield"}}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount_ref": dict(ref), "target": {"kind": "unit", "location": "battlefield"}}}}
+
+
 def _lower_win_game(params):
     # package 9 (The Grand Plaza): Core 195 - the instruction's controller wins; 196 - the game ends
     return {"program_effects": [{"op": "win_game", "effect_id": "win", "player": "$controller"}],
@@ -1282,6 +1299,8 @@ LOWERINGS = {
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "you_win_the_game": _lower_win_game,
+    "i_must_be_assigned_combat_damage_last": _lower_assigned_combat_damage_last,
+    "deal_damage_equal_to_my_might_to_a_unit_at_a_battlefield": _lower_deal_my_might_to_unit_at_battlefield,
     "banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost": _lower_banish_then_owner_plays,
     "choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit":
         _lower_raise_might_to_match,

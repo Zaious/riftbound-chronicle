@@ -327,6 +327,12 @@ def _lower_deal_my_might_to_unit_at_battlefield(params):
                     "params": {"amount_ref": dict(ref), "target": {"kind": "unit", "location": "battlefield"}}}}
 
 
+def _lower_any_number_of_buffs(params):
+    # package 9 (Lee Sin - Ascetic): effect_ir any_number_of_buffs / buff_count
+    return {"passive": {"object_fields": {"any_number_of_buffs": True}},
+            "ast": {"node": "passive", "kind": "buff_permission", "params": {"buffs": "any number"}}}
+
+
 def _lower_win_game(params):
     # package 9 (The Grand Plaza): Core 195 - the instruction's controller wins; 196 - the game ends
     return {"program_effects": [{"op": "win_game", "effect_id": "win", "player": "$controller"}],
@@ -1299,6 +1305,7 @@ LOWERINGS = {
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "you_win_the_game": _lower_win_game,
+    "i_can_have_any_number_of_buffs": _lower_any_number_of_buffs,
     "i_must_be_assigned_combat_damage_last": _lower_assigned_combat_damage_last,
     "deal_damage_equal_to_my_might_to_a_unit_at_a_battlefield": _lower_deal_my_might_to_unit_at_battlefield,
     "banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost": _lower_banish_then_owner_plays,
@@ -1404,6 +1411,12 @@ TRIGGER_WRAPPERS = {
         "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit", "exclude_source": True}}}),
     # 2026-09-27 (Volibear - Relentless Storm): "a [Mighty] unit" is a Unit whose current Might is 5 or
     # greater (Core 708, 710), read off the played Unit when the play wakes the watch
+    # 2026-10-06 package 9 (Volibear - Imposing, GPT ruling 14): an opponent's Move - a Standard Move they make or one an
+    # effect they control makes (Core 411.1, 411.4) - to a Battlefield the source is not at; one per batch of Moves
+    "when_an_opponent_moves_to_a_battlefield_other_than_mine": ("event_triggers", "on-opponent-move", {"watch": {
+        "kinds": ["moved"], "scope": "opponent_actor",
+        "filter": {"destination_kind": "battlefield", "destination_not_source_battlefield": True},
+        "grouping": "one_or_more"}}),
     "when_you_play_a_mighty_unit": ("event_triggers", "on-play-mighty-unit", {"watch": {
         "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit", "object_might_at_least": 5}}}),
     "when_you_play_a_card_on_an_opponents_turn": ("event_triggers", "on-play-opponents-turn", {"watch": {

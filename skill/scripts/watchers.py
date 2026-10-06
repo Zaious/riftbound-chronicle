@@ -41,7 +41,9 @@ from typing import Any
 # a kill you are responsible for (Core 411.4): a Kill instruction's controller (428.5.b), the player whose
 # damage a Cleanup kill is attributed to (428.5.c.1, 428.5.c.2); a kill nobody is responsible for (411.2)
 # matches no one. Only a `died` event carries it (game_events: responsible_player)
-WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "responsible"}
+# "opponent_actor" (2026-10-06, package 9, Volibear - Imposing): "When an OPPONENT moves ..." - the event's actor is a
+# player other than the watcher's controller (Core 411.1, 411.4: the player who performs the Move is responsible for it)
+WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "responsible", "opponent_actor"}
 # 2026-09-24: typed facts of the EVENT a watch may require, each named, none guessed.
 #   object_kind              the object the event is about is a spell / unit / gear
 #   object_controller_relation   that object is the watcher controller's (friendly) or not (enemy)
@@ -103,6 +105,9 @@ WATCH_FILTERS = {
     "alone": {True},
     "object_might_at_least": set(range(1, 21)),
     "object_was_stunned": {True},
+    # 2026-10-06 (package 9, Volibear - Imposing): "to a battlefield other than mine" - the Battlefield the event's object
+    # went to is not the one the watcher's source is at now; a source at no Battlefield has no "mine" (refused by name)
+    "destination_not_source_battlefield": {True},
 }
 # 2026-09-27 (package 6): where a triggered ability works when that is not the board. Core 385.1-385.2:
 # an ability of a card outside the board says where it works, and works there and nowhere else - a
@@ -372,6 +377,9 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
     elif scope == "actor":
         if event.get("actor") != controller:
             return False
+    elif scope == "opponent_actor":
+        if event.get("actor") in (None, controller) or event.get("actor") not in (state.get("players") or {}):
+            return False
     elif scope == "player":
         if event.get("player") != controller:
             return False
@@ -438,6 +446,15 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                 return False
         elif key == "destination_kind":
             if (event.get("location_after") or {}).get("kind") != wanted:
+                return False
+        elif key == "destination_not_source_battlefield":
+            mine = _location_of(state, source_object) or {}
+            if mine.get("kind") != "battlefield":
+                raise WatchUnsupported(f"{source_object!r} is at no Battlefield, so 'a battlefield other than mine' names "
+                                       f"none of them; it is not guessed (GPT 2026-10-06 ruling 14)",
+                                       "source_not_at_battlefield")
+            after = event.get("location_after") or {}
+            if after.get("kind") != "battlefield" or after.get("battlefield") == mine.get("battlefield"):
                 return False
         elif key == "printed_energy_at_least":
             printed = (obj.get("printed_cost") or {}).get("energy")

@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:021858b9b7ad5d81fd121209",
-  "capability_set_id": "sha256:021858b9b7ad5d81fd121209d3c418a49e4238e8bf8ce170006778c36458baee",
+  "manifest_id": "capability-manifest:b3a43419c03e01210a506256",
+  "capability_set_id": "sha256:b3a43419c03e01210a5062560b3e1822362ee8f62ecee5c87516ea8621b13aea",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:4d4f682be8549f1fec1686917931d5753808755affbb14dd59c7eb43da9b56a5",
+    "value": "sha256:16d0afd90e4c3b43bc3c5dc8a69cd0228555e072cbea9d1c4c676e26f1817b91",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,11 +12,11 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:1cb0767204520d84b85f4a9d7f690a8cb9432570aa01c8cb2d1c8e5e222c5792"
+        "sha256": "sha256:41a5f163d2c7aafca36bb922e823d4d2d33db74892cd8734752722ab58c55158"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:105898b655cc9293ba81cdb50de6319872bb69b3db7e462f92b1e3c3ec48b644"
+        "sha256": "sha256:bb0968fe5bcda632ba379b65bbe9e7b2744507c92c8d57bcb90709fd90b8796c"
       },
       {
         "path": "engine_check.py",
@@ -763,6 +763,14 @@
       "id": "recycle_one",
       "rule_locators": [
         "Core 416"
+      ]
+    },
+    {
+      "id": "recycle_when_leaving_chain",
+      "rule_locators": [
+        "Core 390.3.a",
+        "Core 416",
+        "Core 124"
       ]
     },
     {
@@ -1713,6 +1721,7 @@
     "Core 383.4.f",
     "Core 383.4.f.2.b",
     "Core 386–388",
+    "Core 390.3.a",
     "Core 402–402.1",
     "Core 403.1.b.1",
     "Core 404.2",

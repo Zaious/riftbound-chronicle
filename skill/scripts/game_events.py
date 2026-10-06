@@ -158,6 +158,7 @@ OP_PRIMARY: dict[str, str] = {
     # op is never `event_kind_unknown` (Core 477).
     "swap_might": "might_modified",
     "raise_might_to_match": "might_modified",
+    "recycle_when_leaving_chain": "replacement_created",
     "heal_damage": "healed",
     "heal_all_damage": "healed",
     "ready": "readied",

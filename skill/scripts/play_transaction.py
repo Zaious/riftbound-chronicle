@@ -1424,7 +1424,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                     raise PlayError("payment", "cost_unpayable", f"{object_id!r} has no Buff counter to spend (702.2.b)", rule_locators=["Core 702.2.b", "Core 203.3"])
                 if unit.get("controller") != actor:
                     raise PlayError("payment", "cost_unpayable", f"{actor} does not control {object_id!r}; a spender must control the object the counter is on (702.2)", rule_locators=["Core 702.2"])
-                del working["objects"][object_id]["buffed"]
+                from effect_ir import spend_one_buff
+                spend_one_buff(working["objects"][object_id])
                 events.append({"event_id": event_id, "kind": "pay_spend_buff", "cost_id": comp["cost_id"], "object_id": object_id,
                                "rule_locators": ["Core 357.2", "Core 702.2.b"]})
             else:

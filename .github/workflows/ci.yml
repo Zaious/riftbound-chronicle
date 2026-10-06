@@ -243,6 +243,12 @@ jobs:
         run: python3 skill/scripts/check_raise_might.py
       - name: The next spell played this turn deals Bonus Damage (package 9, Ravenborn Tome)
         run: python3 skill/scripts/check_next_spell_bonus.py
+      - name: A spell played from the trash recycled as it leaves the Chain (package 9, Kai'Sa)
+        run: python3 skill/scripts/check_chain_leave_recycle.py
+      - name: An opponent's Move to another Battlefield (package 9, Volibear - Imposing)
+        run: python3 skill/scripts/check_opponent_move_watch.py
+      - name: Any number of buffs (package 9, Lee Sin - Ascetic)
+        run: python3 skill/scripts/check_buff_count.py
       # A card's printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7): a mandatory
       # kill of a chosen friendly unit or no play; an optional discard / buff / any-number offer is
       # the player's choice and switches on its linked cost reduction (356.1.b.1, 356.4, 356.6).
@@ -739,6 +745,9 @@ jobs:
           python3 "$REPO/skill/scripts/check_owner_play.py"
           python3 "$REPO/skill/scripts/check_raise_might.py"
           python3 "$REPO/skill/scripts/check_next_spell_bonus.py"
+          python3 "$REPO/skill/scripts/check_chain_leave_recycle.py"
+          python3 "$REPO/skill/scripts/check_opponent_move_watch.py"
+          python3 "$REPO/skill/scripts/check_buff_count.py"
           python3 "$REPO/skill/scripts/check_printed_costs.py"
           python3 "$REPO/skill/scripts/check_granted_cost_discounts.py"
           python3 "$REPO/skill/scripts/check_spend_buffs.py"

@@ -633,9 +633,17 @@ def resolve_with_program(
         if not after_effect["chain_items"]:
             del after_effect["chain_items"]
         owner = after_effect["objects"][card]["owner"]
-        after_effect["players"][owner]["zones"]["trash"].append(card)
-        chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.trash",
-                                 "identity_after": _bump_identity(after_effect, card), "rule_locators": ["Core 157", "Core 124"]})
+        if (chain_entry.get("leave_replacement") or {}).get("kind") == "recycle":
+            # package 9 (Kai'Sa - Evolutionary, GPT 2026-10-04 ruling 2): Core 390.3.a - its resolution done, it would
+            # leave the Chain for the trash (157); it is recycled instead, to the bottom of its owner's Main Deck (416)
+            after_effect["players"][owner]["zones"]["main_deck"].append(card)
+            chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.main_deck",
+                                     "recycled_instead": True, "identity_after": _bump_identity(after_effect, card),
+                                     "rule_locators": ["Core 390.3.a", "Core 416", "Core 124"]})
+        else:
+            after_effect["players"][owner]["zones"]["trash"].append(card)
+            chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.trash",
+                                     "identity_after": _bump_identity(after_effect, card), "rule_locators": ["Core 157", "Core 124"]})
     # ADR-0011 §5 / Core 425.1: a countered item leaves the timing chain in the
     # same commit as the effect state that cleared it.
     countered = effect_result.get("countered_chain_items") or []

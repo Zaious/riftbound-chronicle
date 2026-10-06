@@ -259,6 +259,8 @@ SUPPORTED_OPS = {
     "swap_might",
     # 2026-10-06 package 9 (Convergent Mutation): "increase its Might to the Might of another friendly unit"
     "raise_might_to_match",
+    # 2026-10-06 package 9 (Kai'Sa - Evolutionary): "Then recycle it." - a leave replacement bound to the Chain item
+    "recycle_when_leaving_chain",
     # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
     # taking a looked-at card, Recycle as one action, Predict.
     "look_at_top",
@@ -650,6 +652,7 @@ OP_RULES = {
     "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
     "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
     "raise_might_to_match": ["Core 477.3.a", "Core 355.8", "Core 359.3.e.5", "Core 370.1.a"],
+    "recycle_when_leaving_chain": ["Core 390.3.a", "Core 416", "Core 124"],
     "swap_might": ["Core 477.3.a", "Core 477.3.e.1.a", "Core 477.3.e.2.a", "Core 135.2.e.3",
                    "Core 370.1.a", "Core 373.2"],
     "look_at_top": ["Core 128.4", "Core 431.1.c", "Core 431.1.c.1"],
@@ -1011,13 +1014,19 @@ def validate_state(state: Any) -> list[str]:
                          "played_event",
                          # Core 811.1.d.3: the battlefield the card was played from Hidden at
                          "played_from_hidden",
-                         "limited_play"})
+                         "limited_play",
+                         # 2026-10-06 package 9 (Kai'Sa - Evolutionary): Core 390.3.a, bound by recycle_when_leaving_chain
+                         "leave_replacement"})
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
             continue
         if "counterable" in entry and not isinstance(entry["counterable"], bool):
             errors.append(f"chain_items.{item_id}.counterable must be boolean (ADR-0011 §5)")
+        leave = entry.get("leave_replacement")
+        if leave is not None and (not isinstance(leave, dict) or set(leave) != {"kind", "created_by", "effect_id"}
+                                  or leave.get("kind") != "recycle" or not isinstance(leave.get("created_by"), str)):
+            errors.append(f"chain_items.{item_id}.leave_replacement must be {{kind: recycle, created_by, effect_id}} (Core 390.3.a)")
         # Core 355.5 / 355.15: the targets chosen at play ride with the entry to resolution; GPT 2026-09-29
         # (Core 355.4): so do the Move destinations chosen there, each a location token
         played = entry.get("played_targets")
@@ -1611,9 +1620,15 @@ def validate_state(state: Any) -> list[str]:
         if effect_text is not None and (not isinstance(effect_text, dict) or not effect_text
                                         or any(field not in APPENDABLE_TRIGGER_FIELDS or not isinstance(rows, list) or not rows for field, rows in effect_text.items())):
             errors.append(f"objects.{object_id}.effect_text must map appendable ability lists to non-empty descriptor arrays (Core 477.2)")
-        for flag in ("empowered", "buffed"):
+        for flag in ("empowered", "buffed", "any_number_of_buffs"):
             if flag in obj and not isinstance(obj[flag], bool):
                 errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 441.1.a, 426.1.b)")
+        # 2026-10-06 package 9 (Lee Sin - Ascetic): more than one buff, only with the permission (Core 426.1.b.2)
+        if "buff_count" in obj and (not isinstance(obj["buff_count"], int) or isinstance(obj["buff_count"], bool)
+                                    or obj["buff_count"] < 2 or obj.get("buffed") is not True
+                                    or obj.get("any_number_of_buffs") is not True):
+            errors.append(f"objects.{object_id}.buff_count must be an integer of at least 2, on a buffed object that may "
+                          f"have any number of buffs (Core 426.1.b.2)")
         limit = obj.get(EMPOWER_LIMIT_FIELD, DEFAULT_EMPOWER_LIMIT)
         if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
             errors.append(f"objects.{object_id}.{EMPOWER_LIMIT_FIELD} must be an integer of at least 1 "
@@ -2190,6 +2205,14 @@ def validate_program(program: Any) -> list[str]:
                               for e in _trigger_base_cost_errors(effect, index, len(effects)))
             if effect.get("op") == "limited_play":
                 errors.extend(f"effects[{index}].limited_play {e}" for e in _limited_play_errors(effect))
+            if effect.get("op") == "recycle_when_leaving_chain":
+                linked = effect.get("linked")
+                earlier = {e.get("effect_id"): e for e in effects[:index] if isinstance(e, dict)}
+                if set(effect) - {"op", "effect_id", "linked", "depends_on", "dependency_mode", "_execution"} \
+                        or not isinstance(linked, dict) or set(linked) != {"effect_id"} \
+                        or (earlier.get(linked.get("effect_id")) or {}).get("op") != "limited_play":
+                    errors.append(f"effects[{index}].recycle_when_leaving_chain carries only linked {{effect_id}}: an "
+                                  f"earlier limited_play of this program, whose card it binds (Core 390.3.a)")
             if effect.get("op") == "swap_might":
                 units = effect.get("units")
                 if not isinstance(units, list) or len(units) != 2:
@@ -2717,7 +2740,9 @@ SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zon
                    "chosen_champion",
                    # GPT 2026-10-02: a kind-less board target that also admits a Legend in its Legend Zone
                    # ("Ready something else that's exhausted" - Core 107.4, 355.9.a.4, 415.1)
-                   "include_legend_zone"}
+                   "include_legend_zone",
+                   # 2026-10-06 package 9 (Kai'Sa - Evolutionary): "with Energy cost less than your points"
+                   "energy_cost_below_points"}
 # 2026-09-27 (Fading Memories, "a unit at a battlefield or a gear"): one chosen object that fits ONE of
 # the alternatives; each names a kind and may narrow the location and the controller relation
 ANY_OF_FIELDS = {"kind", "location", "controller_relation"}
@@ -3046,6 +3071,8 @@ def _selector_errors(selector: Any) -> list[str]:
     if "max_cost" in selector:
         from cost_comparison import validate_limit  # standalone module; no cycle
         errors.extend(f"max_cost {e}" for e in validate_limit(selector["max_cost"]))
+    if "energy_cost_below_points" in selector and selector["energy_cost_below_points"] is not True:
+        errors.append("energy_cost_below_points is true when present (the printed Energy cost below the controller's points)")
     return errors
 
 
@@ -3740,6 +3767,14 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
     max_might = target.get("max_might")
     if max_might is not None and effective_might(state, object_id) > max_might:
         return False, "target_might_requirement_failed"
+    if target.get("energy_cost_below_points") is True:
+        # package 9 (Kai'Sa - Evolutionary): Core 206 - the PRINTED Energy cost, against the controller's points now
+        printed = ((state["objects"].get(object_id) or {}).get("printed_cost") or {}).get("energy")
+        if not isinstance(printed, int) or isinstance(printed, bool):
+            return False, "target_cost_not_observed:printed_energy"
+        points = int((state["players"].get(controller) or {}).get("points", 0)) if controller else 0
+        if printed >= points:
+            return False, "target_energy_cost_not_below_points"
     limit = target.get("max_cost")
     if limit is not None:
         from cost_comparison import compare  # standalone module; no cycle
@@ -4683,7 +4718,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             obj = new_state["objects"].get(object_id) or {}
             if not obj.get("buffed") or obj.get("controller") != player_id or zone_class(find_location(new_state, object_id)) != "board":
                 raise IllegalOperation(f"{player_id} cannot spend a buff from {object_id!r} (702.2.b.1, 702.2.b.2)")
-            del obj["buffed"]
+            spend_one_buff(obj)
         trace.update({"player": player_id, "objects": list(objects), "applied_count": len(objects),
                       "selection": effect.get("selection_meta", {}), "not_a_target": True,
                       "completion": "full" if objects else "none"})
@@ -4826,6 +4861,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
 
     elif op == "raise_might_to_match":
         raise ValueError("raise_might_to_match is resolved by apply_program as one Might change over one snapshot")
+
+    elif op == "recycle_when_leaving_chain":
+        raise ValueError("recycle_when_leaving_chain is bound by apply_program to the chain item its linked play started")
 
     elif op == "trigger_base_cost":
         # paid at finalization (trigger_cost.py); apply_program only checks the receipt
@@ -5353,6 +5391,15 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                       "countered_chain_items": [item_id]})
         if card is None:
             trace.update({"ability_id": entry.get("ability_id"), "source_object": entry.get("source_object"), "no_card": True, "destination": None})
+        elif (entry.get("leave_replacement") or {}).get("kind") == "recycle":
+            # package 9 (Kai'Sa - Evolutionary): Core 390.3.a - it leaves the Chain other than by its own instructions,
+            # so it is recycled instead: the bottom of its owner's Main Deck (416), a new object (124)
+            owner = new_state["objects"][card]["owner"]
+            new_state["players"][owner]["zones"]["main_deck"].append(card)
+            drop_play_bound_replacements(new_state["objects"][card], item_id)
+            trace.update({"card": card, "destination": f"{owner}.main_deck", "recycled_instead": True,
+                          "identity_after": _bump_identity(new_state, card),
+                          "rule_locators": list(dict.fromkeys(trace["rule_locators"] + ["Core 390.3.a", "Core 416"]))})
         else:
             owner = new_state["objects"][card]["owner"]
             zone = "trash" if destination == "trash" else "hand"
@@ -5447,6 +5494,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         obj = new_state["objects"][object_id]
         if obj.get("kind") != "unit" or zone_class(find_location(new_state, object_id)) != "board":
             raise IllegalOperation(f"Buffs are counters on Units on the board; {object_id!r} is not one (702)")
+        if obj.get("buffed") and obj.get("any_number_of_buffs") is True:
+            # package 9 (Lee Sin - Ascetic): permission to be Buffed several times (Core 426.1.b.2) - one more
+            obj["buff_count"] = buff_count(obj) + 1
+            trace.update({"object_id": object_id, "was_buffed": True, "already_buffed": True,
+                          "buff_count": obj["buff_count"], "rule_locators": list(trace.get("rule_locators") or []) + ["Core 426.1.b.2"]})
+            return new_state, trace
         if obj.get("buffed"):
             trace.update({"object_id": object_id, "outcome": "no_op", "completion": "none", "already_buffed": True,
                           "was_buffed": False, "reason": "the Unit already has a Buff counter (426.1.b)"})
@@ -6506,7 +6559,7 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     # permission to be Buffed several times; no card in the pinned corpus does,
     # and when one appears this needs a count the way Empower needed
     # empowered_count, not a second boolean.
-    buffs = 1 if obj.get("buffed") else 0
+    buffs = buff_count(obj)
     result = {"might": obj["base_might"] + buffs,
               "keywords": {k: (obj.get(f"{k}_value") or 1) if k in VALUED_KEYWORDS else None for k in (obj.get("keywords") or [])},
               "kind": obj.get("kind"), "triggers": {}, "applied": [], "passes": 0,
@@ -7338,6 +7391,25 @@ def _resolve_discard(state: dict[str, Any], effect: dict[str, Any], decisions: d
     return {**effect, "objects": chosen, "selection_meta": {"forced": False, "decision_id": meta["decision_id"], "choice": meta["choice"]}}
 
 
+def buff_count(obj: dict[str, Any]) -> int:
+    """How many buffs the object has (Core 702.3; 426.1.b.2 with any_number_of_buffs): 0, 1, or its buff_count."""
+    if not obj.get("buffed"):
+        return 0
+    return obj.get("buff_count", 1) if obj.get("any_number_of_buffs") is True else 1
+
+
+def spend_one_buff(obj: dict[str, Any]) -> None:
+    """Spend ONE of the object's buffs (Core 702.2.b): the count drops by one; the last one removes the flag."""
+    count = buff_count(obj)
+    if count > 2:
+        obj["buff_count"] = count - 1
+    elif count == 2:
+        obj.pop("buff_count", None)
+    else:
+        obj.pop("buff_count", None)
+        del obj["buffed"]
+
+
 def spend_buff_candidates(state: dict[str, Any], player_id: str) -> list[str]:
     """The Units a player may spend a buff from: on the board, controlled by that player, with a buff
     (Core 702.2.b.1, 702.2.b.2)."""
@@ -7358,6 +7430,11 @@ def _resolve_spend_buffs(state: dict[str, Any], effect: dict[str, Any], decision
     candidates = spend_buff_candidates(state, player_id)
     if not candidates:
         return {**effect, "objects": [], "selection_meta": {"forced": True, "reason": "no Unit its player controls has a buff"}}
+    several = [o for o in candidates if buff_count(state["objects"][o]) > 1]
+    if several:
+        # package 9: a Unit with more than one buff (426.1.b.2) could spend several; the choice here is one per Unit
+        raise NotImplementedError(f"spend_buffs_several_on_one_unit: {several} have more than one buff; spending any "
+                                  f"number of them from one Unit is not modelled")
     ref = effect.get("decision_ref") or f"spend_buffs:{player_id}{execution_suffix(effect)}"
     import engine_decisions as ed
     supplied = ed.decision_entry(decisions, ref)
@@ -8961,6 +9038,29 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                      "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
             for _, meta in pair:
                 event.update(meta)
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "recycle_when_leaving_chain":
+            # package 9 (Kai'Sa - Evolutionary, GPT 2026-10-04 ruling 2): the card the linked play put on the Chain is
+            # recycled instead of leaving it other than by its own instructions, once it is Finalized (Core 390.3.a)
+            started = next((e for e in reversed(trace) if e.get("effect_id") == effect["linked"]["effect_id"]
+                            and e.get("op") == "limited_play" and e.get("outcome") == "applied"), None)
+            item = (started or {}).get("chain_item_id")
+            if item is None or item not in (current.get("chain_items") or {}):
+                event = {"index": index, "effect_id": effect_id, "op": "recycle_when_leaving_chain", "outcome": "no_op",
+                         "completion": "none", "reason": "nothing_played", "player": program.get("controller"),
+                         "rule_locators": ["Core 390.3.a", "Core 419.3.c"], "before_state_hash": before_hash,
+                         "after_state_hash": before_hash}
+            else:
+                current = copy.deepcopy(current)
+                current["chain_items"][item]["leave_replacement"] = {
+                    "kind": "recycle", "created_by": str(program.get("program_id")), "effect_id": effect_id}
+                event = {"index": index, "effect_id": effect_id, "op": "recycle_when_leaving_chain", "outcome": "applied",
+                         "completion": "full", "chain_item_id": item, "card": current["chain_items"][item].get("card"),
+                         "player": program.get("controller"), "replacement_id": f"leave:{item}",
+                         "rule_locators": list(OP_RULES["recycle_when_leaving_chain"]),
+                         "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue

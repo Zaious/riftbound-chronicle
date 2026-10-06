@@ -1274,6 +1274,31 @@
       ]
     },
     {
+      "production_id": "i_can_have_any_number_of_buffs",
+      "form": "I can have any number of buffs.",
+      "template": "i can have any number of buffs",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 426.1.b.2",
+        "Core 702.3",
+        "Core 703"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "buff"
+      ],
+      "boundary": "The card itself may have any number of buffs; each adds +1 Might. Another unit's, or a number of buffs, is a different production.",
+      "golden": [
+        "I can have any number of buffs."
+      ],
+      "negative": [
+        "other friendly units can have any number of buffs",
+        "i can have two buffs",
+        "i can't be buffed"
+      ]
+    },
+    {
       "production_id": "you_win_the_game",
       "form": "You win the game.",
       "template": "you win the game",
@@ -3648,6 +3673,32 @@
       "negative": [
         "when you play a unit, draw 1",
         "when you play me, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_an_opponent_moves_to_a_battlefield_other_than_mine",
+      "form": "When an opponent moves to a battlefield other than mine, draw 1.",
+      "template": "when an opponent moves to a battlefield other than mine, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 420",
+        "Core 411.1",
+        "Core 411.4"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When an opponent moves to a battlefield other than mine, draw 1."
+      ],
+      "negative": [
+        "when an opponent moves to my battlefield, draw 1",
+        "when you move to a battlefield other than mine, draw 1",
+        "when an opponent moves to a battlefield, draw 1"
       ]
     },
     {

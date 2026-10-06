@@ -468,6 +468,13 @@ LITERAL = [
      ["Deal damage equal to my Might to a unit at a battlefield."],
      ["deal damage equal to my might to an enemy unit here", "deal damage equal to its might to a unit at a battlefield",
       "deal 3 to a unit at a battlefield"]),
+    # 2026-10-06 package 9 (Lee Sin - Ascetic, GPT ruling 12): the card's permission to be Buffed several times
+    ("i_can_have_any_number_of_buffs", r"i can have any number of buffs",
+     ["Core 426.1.b.2", "Core 702.3", "Core 703"], "passive", ["buff"],
+     "The card itself may have any number of buffs; each adds +1 Might. Another unit's, or a number of buffs, is a "
+     "different production.",
+     ["I can have any number of buffs."],
+     ["other friendly units can have any number of buffs", "i can have two buffs", "i can't be buffed"]),
     # 2026-10-06 package 9 (The Grand Plaza): an effect that instructs its controller to win (Core 195); the game
     # ends at once (196)
     ("you_win_the_game", r"you win the game", ["Core 195", "Core 196"], "instruction", ["win_game"],
@@ -1213,6 +1220,13 @@ WRAPPERS = [
      ["event_triggers"], ["When you play a gear, draw 1."], ["when you play a spell, draw 1", "when you play me, draw 1"]),
     ("when_you_play_another_unit", r"when you play another unit, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
      ["event_triggers"], ["When you play another unit, draw 1."], ["when you play a unit, draw 1", "when you play me, draw 1"]),
+    # 2026-10-06 package 9 (Volibear - Imposing): an opponent's Move to a Battlefield the source is not at
+    ("when_an_opponent_moves_to_a_battlefield_other_than_mine",
+     r"when an opponent moves to a battlefield other than mine, (?P<inner>.+)",
+     ["Core 383.1", "Core 420", "Core 411.1", "Core 411.4"], ["event_triggers"],
+     ["When an opponent moves to a battlefield other than mine, draw 1."],
+     ["when an opponent moves to my battlefield, draw 1", "when you move to a battlefield other than mine, draw 1",
+      "when an opponent moves to a battlefield, draw 1"]),
     # 2026-09-27: "a [Mighty] unit" - a Unit whose current Might is 5 or greater (Core 708, 710)
     ("when_you_play_a_mighty_unit", r"when you play a \[mighty\] unit, (?P<inner>.+)",
      ["Core 383.1", "Core 419.4.a", "Core 708", "Core 710"], ["event_triggers"],

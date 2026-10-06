@@ -193,7 +193,8 @@ def main() -> int:
     lethal_first = assign_combat_damage(t2, e2, both(t2, e2, {"d1": 1, "d2": 2}))
     if not accepted(lethal_first):
         errors.append(f"c.5: lethal to the unprotected Unit then the rest to the protected one was refused: {lethal_first.get('reason')}")
-    unknown = copy.deepcopy(e); unknown["replacement_effects"][0].update({"mode": "prevent_event"}); del unknown["replacement_effects"][0]["prevent_remaining"]
+    # (package 9: prevent_event is previewable now - the whole Deal prevented; replace_with is still not)
+    unknown = copy.deepcopy(e); unknown["replacement_effects"][0].update({"mode": "replace_with", "replacement_effects": [{"op": "exhaust", "effect_id": "x", "object_id": "$affected"}]}); del unknown["replacement_effects"][0]["prevent_remaining"]
     blocked = assign_combat_damage(t, unknown)
     if blocked.get("committed") or blocked.get("unsupported") is not True or blocked.get("reason_code") != "assignment_replacement_not_previewable":
         errors.append(f"a replacement the preview cannot evaluate was ignored or guessed: {blocked.get('reason_code')}")

@@ -239,6 +239,9 @@ SUPPORTED_OPS = {
     "discard",
     # C-24 (ADR-0007 §12): a replacement created by an effect, bound to a target's identity for this turn.
     "grant_replacement",
+    # package 9 (Unyielding Spirit: "Prevent all spell and ability damage this turn."): a replacement an effect
+    # creates for the rest of this turn, applying to any object - typed and closed (create_turn_replacement)
+    "create_turn_replacement",
     "heal_all_damage",
     # C-27 (ADR-0008 §5): a granted characteristic (Shield X, Tank, ...) for this combat or this turn.
     "grant_keyword",
@@ -636,6 +639,7 @@ OP_RULES = {
     "grant_turn_effect": ["Core 369.3", "Core 317.2.c"],
     "discard": ["Core 422.1", "Core 422.1.a", "Core 422.4", "Core 124"],
     "grant_replacement": ["Core 370", "Core 355.10.c", "Core 124", "Core 317.2.c"],
+    "create_turn_replacement": ["Core 370", "Core 417.6.a", "Core 417.6.b.3", "Core 417.6.c", "Core 317.2.c"],
     "heal_all_damage": ["Core 418"],
     "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
     "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
@@ -1669,12 +1673,28 @@ def validate_state(state: Any) -> list[str]:
         # ability, active while it is on the board) or granted by an effect to
         # one object's identity for this turn — exactly one of the two.
         source_backed, granted = "source_object" in replacement, "granted" in replacement
-        if source_backed == granted:
-            errors.append(f"{label} must be exactly one of source-backed (source_object) or granted (granted)")
+        created = "created" in replacement     # package 9: an effect's replacement for this turn, any object
+        if source_backed + granted + created != 1:
+            errors.append(f"{label} must be exactly one of source-backed (source_object), granted (granted) or "
+                          f"created (created)")
             continue
+        if created:
+            made = replacement["created"]
+            if not isinstance(made, dict) or set(made) != {"duration", "turn_id", "created_by"} or made.get("duration") != "this_turn" \
+                    or not isinstance(made.get("turn_id"), str) or not made.get("turn_id") or not isinstance(made.get("created_by"), str):
+                errors.append(f"{label}.created must carry duration this_turn, turn_id, created_by")
+            if replacement.get("mode") != "prevent_event" or replacement.get("event_op") != "deal_damage" \
+                    or replacement.get("damage_sources") != ["spell", "ability"]:
+                errors.append(f"{label}: a created replacement is the typed spell-and-ability damage prevention only")
+        if "damage_sources" in replacement and (replacement.get("event_op") != "deal_damage" or not isinstance(
+                replacement["damage_sources"], list) or not replacement["damage_sources"]
+                or set(replacement["damage_sources"]) - {"spell", "ability"}):
+            errors.append(f"{label}.damage_sources is a non-empty subset of [spell, ability] on a deal_damage replacement")
         if replacement.get("controller") not in players:
             errors.append(f"{label} has unknown controller")
-        if source_backed:
+        if created:
+            pass
+        elif source_backed:
             if replacement.get("source_object") not in objects:
                 errors.append(f"{label} has unknown source")
             elif objects[replacement["source_object"]].get("controller") != replacement.get("controller"):
@@ -2432,6 +2452,14 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].gain_xp needs a player")
                 if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1:
                     errors.append(f"effects[{index}].gain_xp needs a positive amount")
+            if op_name == "create_turn_replacement":
+                spec = effect.get("replacement")
+                if not isinstance(spec, dict) or spec != {"mode": "prevent_event", "event_op": "deal_damage",
+                                                          "damage_sources": ["spell", "ability"]}:
+                    errors.append(f"effects[{index}].create_turn_replacement takes exactly {{mode prevent_event, event_op "
+                                  f"deal_damage, damage_sources [spell, ability]}} (the one typed shape)")
+                if not isinstance(effect.get("controller"), str) or not effect.get("controller"):
+                    errors.append(f"effects[{index}].create_turn_replacement needs its controller")
             if op_name == "win_game":
                 if not isinstance(effect.get("player"), str) or not effect.get("player"):
                     errors.append(f"effects[{index}].win_game needs the player it makes win")
@@ -3705,6 +3733,9 @@ def replacement_active(state: dict[str, Any], replacement: dict[str, Any]) -> bo
     """Source-backed: the source is on the board. Granted: the target still
     exists on the board with the identity it had when granted (ADR-0007 §12);
     a used-up granted replacement is gone."""
+    if "created" in replacement:
+        # package 9: an effect's replacement for this turn - active on that turn only
+        return replacement["created"].get("turn_id") == state.get("turn_id", DEFAULT_TURN_ID)
     if "granted" in replacement:
         grant = replacement["granted"]
         target = grant["target_object"]
@@ -3838,6 +3869,13 @@ def _applicable_replacements(state: dict[str, Any], effect: dict[str, Any],
                 continue
         required_object = replacement.get("target_object_id")
         if required_object is not None and required_object != object_id:
+            continue
+        sources = replacement.get("damage_sources")
+        if sources is not None and (effect.get("source_kind") == "unit" or effect.get("combat")):
+            # package 9 (Core 417.6.b.3, 417.6.c): a Deal whose source is a Unit - named by the spell, or assigned in
+            # combat - is not the spell's or ability's damage; only a Deal the game effect itself makes is (417.6.a)
+            continue
+        if "created" in replacement and not replacement_active(state, replacement):
             continue
         relation = replacement.get("target_controller_relation")
         if relation is not None:
@@ -4637,6 +4675,25 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError(f"replacement {granted['replacement_id']!r} already exists")
         new_state["replacement_effects"].append(granted)
         trace.update({"object_id": object_id, "replacement_id": granted["replacement_id"], "granted": copy.deepcopy(granted["granted"])})
+
+    elif op == "create_turn_replacement":
+        # package 9 (Unyielding Spirit): the replacement lasts the rest of this turn and applies to any object, a
+        # spell played later this turn included (GPT 2026-10-06 ruling 9); it is neither a permanent's own ability
+        # (source_object) nor granted to one object (granted): `created`, cleared by the turn's Expiration Step
+        controller, spec = effect.get("controller"), effect.get("replacement")
+        if controller not in new_state["players"] or not isinstance(spec, dict):
+            raise ValueError("create_turn_replacement requires its controller and the replacement")
+        turn_id = new_state.get("turn_id", DEFAULT_TURN_ID)
+        created = {"replacement_id": f"created:{effect.get('created_by') or 'effect'}:{effect.get('effect_id')}:{turn_id}",
+                   "controller": controller, "mode": spec["mode"], "event_op": spec["event_op"], "optional": False,
+                   "uses_remaining": None, "damage_sources": list(spec["damage_sources"]),
+                   "created": {"duration": "this_turn", "turn_id": turn_id,
+                               "created_by": effect.get("created_by") or str(effect.get("effect_id"))}}
+        if any(r["replacement_id"] == created["replacement_id"] for r in new_state["replacement_effects"]):
+            raise ValueError(f"replacement {created['replacement_id']!r} already exists")
+        new_state["replacement_effects"].append(created)
+        trace.update({"player": controller, "replacement_id": created["replacement_id"],
+                      "created": copy.deepcopy(created["created"])})
 
     elif op == "grant_keyword":
         # ADR-0008 §5 (Fortified Position: "It gains [Shield 2] this combat."):
@@ -5963,8 +6020,11 @@ CONDITION_LEAVES = {
     # Read off the per-turn ledger the Kill action writes (units_died_this_turn); a death a
     # Replacement Effect replaced never happened (370.1.a.1) and is not in it.
     "unit_died_this_turn": {"controller_relation"},
+    # package 9 (Kayn - Unleashed): "If I have moved twice this turn" - the object's real Moves this turn
+    # (moves_this_turn, per identity), at least `count`
+    "moved_this_turn_at_least": {"count", "object"},
 }
-CONDITION_REQUIRED = {"runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
+CONDITION_REQUIRED = {"moved_this_turn_at_least": {"count"}, "runes_at_least": {"count"}, "controls_units": {"count"}, "might_at_least": {"count"},
                       "has_keyword": {"keyword"}, "xp_at_least": {"count"}, "battlefield_controlled": {"battlefield"},
                       "zone_count_at_least": {"zone", "count"}, "same_location_as": {"as"},
                       "might_less_than": {"than"}, "object_kind": {"value"},
@@ -6120,6 +6180,13 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
         # in a Base, off the board, or unknown is not at one
         where = find_location(state, subject) if subject in state["objects"] else None
         return where is not None and where[0] == "battlefield"
+    if kind == "moved_this_turn_at_least":
+        # package 9 (Kayn - Unleashed, GPT ruling 8): the object's real Moves this turn, counted per identity (Core 124:
+        # a new object with the same id starts at zero); a Recall or a change of zone is not a Move
+        identity = object_identity(state, subject) if subject in state["objects"] else None
+        turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+        moved = int(((state.get("moves_this_turn") or {}).get(turn_id) or {}).get(identity or "", 0))
+        return moved >= condition["count"]
     if kind == "controls_units":
         location = condition.get("location", "board")
         relation = condition.get("controller_relation", "friendly")

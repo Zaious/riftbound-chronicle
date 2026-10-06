@@ -81,6 +81,8 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "detached": {"about": "object", "rules": ["Core 435.4"]},
     "copied": {"about": "object", "rules": ["Core 477.1"]},
     "replacement_granted": {"about": "object", "rules": ["Core 370", "Core 124"]},
+    # package 9 (Unyielding Spirit): a replacement an effect created for this turn, for any object
+    "replacement_created": {"about": "player", "rules": ["Core 370", "Core 417.6"]},
     "revealed": {"about": "object", "rules": ["Core 424.2"]},
     "looked_at": {"about": "object", "rules": ["Core 424.1"]},
     # DP-94: only a Stun that actually happened. Stunning an already Stunned
@@ -170,6 +172,7 @@ OP_PRIMARY: dict[str, str] = {
     "grant_turn_effect": "turn_effect_granted",
     "discard": "discarded",
     "grant_replacement": "replacement_granted",
+    "create_turn_replacement": "replacement_created",
     "grant_keyword": "keyword_granted",
     "stun": "stunned",
     "choose_player": "player_chosen",
@@ -644,6 +647,7 @@ class EventLog:
             "cards_put_back": ("player", "count", "position"),
             "looked_at": ("player", "looked_count"),
             "replacement_granted": ("replacement_id",),
+            "replacement_created": ("replacement_id",),
             "delayed_trigger_created": ("delayed_id", "waits_for", "target_object", "target_identity"),
         }.get(kind, ())
         return {field: entry[field] for field in carried if field in entry}

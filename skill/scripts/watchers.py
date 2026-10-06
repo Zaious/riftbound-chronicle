@@ -306,6 +306,13 @@ def validate_watch_state(state: dict[str, Any]) -> list[str]:
     if not isinstance(seen_events, dict) or any(not isinstance(v, int) or isinstance(v, bool) or v < 0
                                                 for v in seen_events.values()):
         errors.append("watch_occurrences must map a use key to a non-negative count")
+    # package 9: the per-turn Move ledger, {turn_id: {identity: count}}
+    moves = state.get("moves_this_turn", {})
+    if not isinstance(moves, dict) or any(
+            not isinstance(per, dict) or any(not isinstance(k, str) or "@" not in k or not isinstance(v, int)
+                                             or isinstance(v, bool) or v < 1 for k, v in per.items())
+            for per in moves.values()):
+        errors.append("moves_this_turn must map a turn id to {identity: a positive count}")
 
     multipliers = state.get("trigger_multipliers", [])
     if not isinstance(multipliers, list):
@@ -681,6 +688,14 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
 
     scheduled: list[dict[str, Any]] = []
     counted = copy.deepcopy(state)
+    # package 9 (Kayn - Unleashed): every real Move of the batch, counted per object identity for the turn (Core 124:
+    # a new object starts at zero); a Recall is its own event kind, not a moved one, and does not count
+    moves = [e for e in events if e.get("kind") == "moved" and (e.get("identity_after") or e.get("identity_before"))]
+    if moves:
+        ledger = counted.setdefault("moves_this_turn", {}).setdefault(turn_id, {})
+        for event in moves:
+            identity = event.get("identity_after") or event.get("identity_before")
+            ledger[identity] = int(ledger.get(identity, 0)) + 1
     occurrences = counted.setdefault("watch_occurrences", {})
     for object_id in sorted(state.get("objects") or {}):
         for descriptor in state["objects"][object_id].get("event_triggers", []) or []:

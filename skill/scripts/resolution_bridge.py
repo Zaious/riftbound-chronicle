@@ -1352,8 +1352,11 @@ def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, An
         else:
             kept_effects.append(effect)
     working["continuous_effects"] = kept_effects
-    expired_granted = [r["replacement_id"] for r in working["replacement_effects"] if "granted" in r and r["granted"].get("turn_id") == turn_id]
-    working["replacement_effects"] = [r for r in working["replacement_effects"] if not ("granted" in r and r["granted"].get("turn_id") == turn_id)]
+    # package 9: an effect's created replacement for this turn expires with it, as a granted one does
+    def _this_turns(r):
+        return ("granted" in r and r["granted"].get("turn_id") == turn_id) or ("created" in r and r["created"].get("turn_id") == turn_id)
+    expired_granted = [r["replacement_id"] for r in working["replacement_effects"] if _this_turns(r)]
+    working["replacement_effects"] = [r for r in working["replacement_effects"] if not _this_turns(r)]
     expired_effects = [e for e in working.get("turn_effects", []) if e.get("turn_id") == turn_id]
     # Core 317.2.d / 423.2: a Stun is a "this turn" effect, so 3d is where it
     # ends. The status comes off with the entry that owned it, in the same

@@ -444,7 +444,9 @@ def sync_combat_designations(timing_state: dict[str, Any], effect_state: dict[st
 # ------------------------------------------------------ Combat Damage assignment --
 
 ASSIGNMENT_RECEIPT_VERSION = "riftbound-combat-assignment-receipt.v1"
-PREVIEW_MODES = {"reduce_damage"}
+PREVIEW_MODES = {"reduce_damage", "prevent_event"}   # package 9: a whole Deal prevented (Kayn - Unleashed)
+# package 9: the raw "minimum lethal" of a lone opposing Unit no assignment can make lethal - it takes everything
+UNREACHABLE_LETHAL = 10 ** 6
 
 
 def combat_sides(record: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, list[str]]:
@@ -481,7 +483,10 @@ def _preview_replacements(effect_state: dict[str, Any], unit: str, event_id: str
     assignment event and answers optional ones by replacement_choice.
     Returns (ordered descriptors, problem) where problem is a result stub."""
     from effect_ir import _applicable_replacements
-    applicable = _applicable_replacements(effect_state, {"op": "deal_damage", "object_id": unit})
+    # package 9 (Core 417.6.c): damage assigned in combat has the units as its source - a replacement that prevents only
+    # a spell's or ability's damage does not apply to it
+    applicable = _applicable_replacements(effect_state, {"op": "deal_damage", "object_id": unit, "source_kind": "unit",
+                                                         "combat": True})
     if not applicable:
         return [], None
     unknown = [r["replacement_id"] for r in applicable if r["mode"] not in PREVIEW_MODES]
@@ -518,7 +523,8 @@ def preview_assignment(descriptors: list[dict[str, Any]], raw: int) -> tuple[int
     each consumed at most once: (applied, prevented, consumed)."""
     remaining, prevented, consumed = raw, 0, []
     for descriptor in descriptors:
-        take = min(remaining, descriptor.get("prevent_remaining", 0))
+        # package 9: prevent_event prevents the whole Deal (Core 370, 205) - nothing of the assignment is applied
+        take = remaining if descriptor.get("mode") == "prevent_event" else min(remaining, descriptor.get("prevent_remaining", 0))
         if take > 0:
             consumed.append({"replacement_id": descriptor["replacement_id"], "mode": descriptor["mode"], "prevented": take})
             remaining -= take
@@ -543,10 +549,20 @@ def assignment_candidates(record: dict[str, Any], effect_state: dict[str, Any], 
         might, damage = effective_might(effect_state, unit), obj["damage"]
         need = might - damage if might > damage else (0 if damage > 0 else 1)  # 143.2.a: nonzero damage at or above Might
         raw = need
+        reachable = True
         while need > 0 and preview_assignment(descriptors, raw)[0] < need:
             raw += 1
             if raw > need + 64:
+                reachable = False
+                break
+        if not reachable:
+            if len(opposing) != 1:
+                # whether a Unit no amount can make lethal must take everything before another Unit gets any is
+                # not settled here (465.2.c.3-c.4); refused by name, never guessed
                 return None, {"unsupported": True, "reason_code": "assignment_lethal_not_reachable", "reason": f"no raw assignment within 64 above the need makes {unit} take lethal damage under its replacements", "unit": unit}
+            # package 9 (Kayn - Unleashed): the only opposing Unit - no further Units remain (465.2.c.4), so it is
+            # assigned everything; the preview prevents what its replacements prevent
+            raw = UNREACHABLE_LETHAL
         requirements = [k for k in ("tank", "backline") if has_keyword(effect_state, unit, k)]
         candidates.append({"unit": unit, "identity": object_identity(effect_state, unit) or f"{unit}@0", "might": might, "damage": damage,
                            "min_lethal_applied": need, "min_lethal_raw": raw, "requirements": requirements, "event_id": event_id,

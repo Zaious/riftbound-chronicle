@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:657bc66a923be12e108d0c67",
-  "capability_set_id": "sha256:657bc66a923be12e108d0c67ba3c9b43d5cf8ed03c22e386e365cf3073aa8f93",
+  "manifest_id": "capability-manifest:7b94125bce303262c4ab66a6",
+  "capability_set_id": "sha256:7b94125bce303262c4ab66a6f79a858b275c38e897612b6681899ceba17a0543",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:1b7a9c288a32ba4822c62c125941f68b63492c73c7403f699a5cebaf0d598afb",
+    "value": "sha256:2e92014aff967e848309755664df9a381c3b621408bc6e06bd26c6b4f490d95b",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,11 +12,11 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:2e28263e60f711895d74a86b3f3e70be6ab5a21134408c560ad9887739597356"
+        "sha256": "sha256:9e81ed6efad75d5116babe2e48cd2ece5cffe0e2778863997adca61c03b6e51d"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:4ebe32c753b19f2dbff6585996ef74c126877fe071cbcd9ac17b0ea16047026b"
+        "sha256": "sha256:105898b655cc9293ba81cdb50de6319872bb69b3db7e462f92b1e3c3ec48b644"
       },
       {
         "path": "engine_check.py",
@@ -24,7 +24,7 @@
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:a4da372ef453dabfc64080730b3edac2db05277d51f550e74cbbb30c33cdabb4"
+        "sha256": "sha256:c46cda68ab42ce0e10ef6f820f16f6668ada6d70dc79446461bd170362884afd"
       },
       {
         "path": "battlefield_control.py",
@@ -491,6 +491,16 @@
         "Core 383.1",
         "Core 383.3",
         "Core 124"
+      ]
+    },
+    {
+      "id": "create_turn_replacement",
+      "rule_locators": [
+        "Core 370",
+        "Core 417.6.a",
+        "Core 417.6.b.3",
+        "Core 417.6.c",
+        "Core 317.2.c"
       ]
     },
     {
@@ -1711,9 +1721,11 @@
     "Core 417",
     "Core 417.1.a",
     "Core 417.1.d",
+    "Core 417.6.a",
     "Core 417.6.b.3",
     "Core 417.6.b.3–417.6.b.4",
     "Core 417.6.b.4",
+    "Core 417.6.c",
     "Core 417.6.c–417.6.c.1",
     "Core 418",
     "Core 419.3",

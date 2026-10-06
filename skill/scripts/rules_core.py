@@ -36,7 +36,7 @@ COMBAT_STATUSES = {"staged", "open", "showdown_closed", "damage_assigned", "dama
 COMBAT_STEP_PENDING = {"showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved"}
 # ADR-0010 §3: the game's end. Derived reasons are written by the engine only;
 # declared reasons are recorded from the caller and never derived.
-DERIVED_TERMINAL_REASONS = {"victory_score", "burn_out_victory"}
+DERIVED_TERMINAL_REASONS = {"victory_score", "burn_out_victory", "effect_victory"}
 DECLARED_TERMINAL_REASONS = {"concession", "external"}
 TERMINAL_REASONS = DERIVED_TERMINAL_REASONS | DECLARED_TERMINAL_REASONS
 TERMINAL_EVENT_KIND = "terminal_event"
@@ -149,6 +149,7 @@ def summarize_result(result: dict[str, Any]) -> dict[str, Any]:
 
 TERMINAL_LOCATORS = {"victory_score": ["Core 194.2", "Core 194.2.a", "Core 196", "Core 323.1", "Core 472"],
                      "burn_out_victory": ["Core 431.3.c", "Core 431.3.c.1", "Core 196"],
+                     "effect_victory": ["Core 195", "Core 196"],
                      "concession": ["Core 196"], "external": ["Core 196"]}
 
 

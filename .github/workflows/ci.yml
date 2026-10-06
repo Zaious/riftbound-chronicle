@@ -231,6 +231,8 @@ jobs:
         run: python3 skill/scripts/check_limited_play_self.py
       - name: A card from a Main Deck banished, then played from Banishment
         run: python3 skill/scripts/check_limited_play_deck.py
+      - name: Effect victory (The Grand Plaza, Core 195-196)
+        run: python3 skill/scripts/check_effect_victory.py
       # A card's printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7): a mandatory
       # kill of a chosen friendly unit or no play; an optional discard / buff / any-number offer is
       # the player's choice and switches on its linked cost reduction (356.1.b.1, 356.4, 356.6).
@@ -721,6 +723,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_limited_play.py"
           python3 "$REPO/skill/scripts/check_limited_play_self.py"
           python3 "$REPO/skill/scripts/check_limited_play_deck.py"
+          python3 "$REPO/skill/scripts/check_effect_victory.py"
           python3 "$REPO/skill/scripts/check_printed_costs.py"
           python3 "$REPO/skill/scripts/check_granted_cost_discounts.py"
           python3 "$REPO/skill/scripts/check_spend_buffs.py"

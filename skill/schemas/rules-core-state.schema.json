@@ -95,10 +95,10 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["status", "reason", "winner", "final_points", "turn_id", "derived", "rule_locators"],
-      "description": "ADR-0010 §3: the game ended and the snapshot is frozen (Core 196). victory_score and burn_out_victory are derived by the engine; concession and external are declared by the caller.",
+      "description": "ADR-0010 §3: the game ended and the snapshot is frozen (Core 196). victory_score, burn_out_victory and effect_victory are derived by the engine; concession and external are declared by the caller.",
       "properties": {
         "status": {"const": "ended"},
-        "reason": {"enum": ["victory_score", "burn_out_victory", "concession", "external"]},
+        "reason": {"enum": ["victory_score", "burn_out_victory", "effect_victory", "concession", "external"]},
         "winner": {"type": ["string", "null"]},
         "final_points": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
         "turn_id": {"type": "string", "minLength": 1},

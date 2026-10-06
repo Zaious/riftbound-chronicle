@@ -1,18 +1,18 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:b554013c636fc440ee9bf19c",
-  "capability_set_id": "sha256:b554013c636fc440ee9bf19c45512bba700449c8ff879adcfa16c080a5f0aee3",
+  "manifest_id": "capability-manifest:657bc66a923be12e108d0c67",
+  "capability_set_id": "sha256:657bc66a923be12e108d0c67ba3c9b43d5cf8ed03c22e386e365cf3073aa8f93",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:03037abd657ad00878e7d3fbf5ad03db47995135ea862ab5d1a04b90ab6fb3ae",
+    "value": "sha256:1b7a9c288a32ba4822c62c125941f68b63492c73c7403f699a5cebaf0d598afb",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:706ff365f16ca011e35b93e2f29c2b9044368a6c109e905e6ed6a8d199840591"
+        "sha256": "sha256:82c7b3df82880f1b824fb1df0127f60eece81495757e6f56a48c5aac3744b6c0"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:712bc51c872fb10919255be38b69785e2fbf2d2da2ea458ffcac7da86db09485"
+        "sha256": "sha256:2e28263e60f711895d74a86b3f3e70be6ab5a21134408c560ad9887739597356"
       },
       {
         "path": "resolution_bridge.py",
@@ -28,11 +28,11 @@
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:46c7646c0e2cd465fbeadd06e91dcd14311efcb593d27fecdaf159f88ea81509"
+        "sha256": "sha256:614b75edbac5ba4152038c6afd35493eb52bb94ff198070349da3f29358f5485"
       },
       {
         "path": "terminal.py",
-        "sha256": "sha256:7a4ab5a521bc1d863a1cdadc4d7580e16df54b0ade020d8205b19af74e4da20b"
+        "sha256": "sha256:f149ecb93a311d5606de3b91a222eccc39801287ba7d560cecd1a9c11a3d0521"
       },
       {
         "path": "turn_cycle.py",
@@ -831,6 +831,13 @@
         "Core 404.2",
         "Core 740.4.a.2"
       ]
+    },
+    {
+      "id": "win_game",
+      "rule_locators": [
+        "Core 195",
+        "Core 196"
+      ]
     }
   ],
   "procedures": [
@@ -1554,6 +1561,7 @@
     "Core 190.6.d",
     "Core 194.1.d",
     "Core 194.2–194.2.b",
+    "Core 195",
     "Core 196",
     "Core 204.3.a",
     "Core 303.2",

@@ -115,6 +115,7 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # Battlefield being Scored - a card that says "you score 1 point" names no
     # Battlefield, so 471.2's Score abilities have nothing to trigger at.
     "point_gained": {"about": "player", "rules": ["Core 471.1", "Core 471.1.a.1"]},
+    "game_won": {"about": "player", "rules": ["Core 195", "Core 196"]},
     "burned_out": {"about": "player", "rules": ["Core 431.2"]},
     "cards_put_back": {"about": "player", "rules": ["Core 424.3"]},
     "predicted": {"about": "player", "rules": ["Core 436"]},
@@ -191,6 +192,7 @@ OP_PRIMARY: dict[str, str] = {
     "spend_buffs": "buff_spent",
     "gain_xp": "xp_gained",
     "gain_point": "point_gained",
+    "win_game": "game_won",
     "hide_card": "hidden_away",
     "create_delayed_trigger": "delayed_trigger_created",
     "remove_hidden": "hidden_removed",

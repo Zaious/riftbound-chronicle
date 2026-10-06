@@ -286,6 +286,10 @@ SUPPORTED_OPS = {
     # bind only the points a Conquer gives. Named for what it does rather than for the word on
     # the card, so that nobody reads it as running 471.2.
     "gain_point",
+    # package 9 (The Grand Plaza): an effect that instructs a player to win (Core 195); the game ends (196), right
+    # away - not at the next Cleanup's victory check (194.2). The instruction emits a terminal_event, as a Burn Out
+    # victory does; the effects after it are skipped.
+    "win_game",
     # C-55 (ADR-0014 §2): a resolving effect creates a trigger that waits.
     "create_delayed_trigger",
     # C-58 (ADR-0015 §2): the Cleanup's step 5 removal of a Hidden card whose
@@ -655,6 +659,7 @@ OP_RULES = {
     "buff": ["Core 426.1", "Core 426.1.b", "Core 426.1.c", "Core 702"],
     "gain_xp": ["Core 730.1", "Core 730.2"],
     "gain_point": ["Core 471.1", "Core 471.1.a.1", "Core 471.2"],
+    "win_game": ["Core 195", "Core 196"],
     "attach": ["Core 434.1", "Core 434.2.a", "Core 434.2.b", "Core 434.4", "Core 434.5.a", "Core 136.2.c"],
     "detach": ["Core 435.1", "Core 435.4", "Core 435.4.a", "Core 435.4.b", "Core 136.2.c"],
     "create_delayed_trigger": ["Core 383.1", "Core 383.3", "Core 124"],
@@ -913,7 +918,19 @@ def validate_state(state: Any) -> list[str]:
                         isinstance(trigger["effect_program_hash"], str) and trigger["effect_program_hash"].startswith("sha256:")):
                     errors.append(f"battlefields.{battlefield_id}.{trigger_field}[{trigger_index}].effect_program_hash must be a sha256 content hash")
                     continue
-                if (not isinstance(trigger, dict) or set(trigger) - {"effect_program_hash"} != {"trigger_id", "controller_order", "effect_program_id", "optional_at_finalize"}
+                # package 9 (The Grand Plaza, Core 383.2.a.1): "When you hold here, if you have 7+ units here" - the
+                # conditional statement right after the Condition is part of it, read as the Hold is processed;
+                # only on a hold trigger, only {kind controls_units, count, location here}
+                if isinstance(trigger, dict) and "condition" in trigger:
+                    cond = trigger["condition"]
+                    bad = (trigger_field != "hold_triggers" or not isinstance(cond, dict) or cond.get("kind") != "controls_units"
+                           or set(cond) != {"kind", "count", "location"} or cond.get("location") != "here"
+                           or bool(validate_condition(cond)))
+                    if bad:
+                        errors.append(f"battlefields.{battlefield_id}.{trigger_field}[{trigger_index}].condition is read only on a "
+                                      f"hold trigger, as {{kind: controls_units, count, location: here}} (Core 383.2.a.1)")
+                        continue
+                if (not isinstance(trigger, dict) or set(trigger) - {"effect_program_hash", "condition"} != {"trigger_id", "controller_order", "effect_program_id", "optional_at_finalize"}
                         or not isinstance(trigger["trigger_id"], str) or not trigger["trigger_id"] or not isinstance(trigger["controller_order"], int) or trigger["controller_order"] < 0
                         or not isinstance(trigger["effect_program_id"], str) or not trigger["effect_program_id"] or not isinstance(trigger["optional_at_finalize"], bool)):
                     errors.append(f"battlefields.{battlefield_id}.{trigger_field}[{trigger_index}] must carry trigger_id, controller_order, effect_program_id, optional_at_finalize (the controller is the Battlefield's, 190.6.a)")
@@ -2415,6 +2432,11 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"effects[{index}].gain_xp needs a player")
                 if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1:
                     errors.append(f"effects[{index}].gain_xp needs a positive amount")
+            if op_name == "win_game":
+                if not isinstance(effect.get("player"), str) or not effect.get("player"):
+                    errors.append(f"effects[{index}].win_game needs the player it makes win")
+                if set(effect) - {"op", "effect_id", "player", "order"}:
+                    errors.append(f"effects[{index}].win_game takes only a player")
             if op_name == "gain_point":
                 if not isinstance(effect.get("player"), str) or not effect.get("player"):
                     errors.append(f"effects[{index}].gain_point needs a player")
@@ -5326,6 +5348,17 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                               "Battlefield was Scored, so no Score ability triggers (471.2) and "
                               "the once-per-Battlefield limit of 470 does not apply"})
 
+    elif op == "win_game":
+        # Core 195: an effect that instructs a player to win makes them win; 196: the game ends. The terminal
+        # event is handed to the caller's two-state commit (resolution_bridge), exactly as a Burn Out victory's is.
+        player_id = effect.get("player")
+        if player_id not in new_state["players"]:
+            raise ValueError("win_game requires a known player")
+        trace.update({"player": player_id,
+                      "terminal_event": {"kind": "terminal_event", "reason": "effect_victory", "winner": player_id,
+                                         "immediate": True, "source": effect.get("effect_id"),
+                                         "rule_locators": ["Core 195", "Core 196"]}})
+
     elif op == "gain_xp":
         player_id, amount = effect.get("player"), effect.get("amount")
         if player_id not in new_state["players"] or not isinstance(amount, int) or isinstance(amount, bool) or amount < 1:
@@ -6091,7 +6124,10 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
         location = condition.get("location", "board")
         relation = condition.get("controller_relation", "friendly")
         here = None
-        if location == "here":
+        if location == "here" and subject in (state.get("battlefields") or {}):
+            # package 9 (The Grand Plaza): a Battlefield's own condition - "here" is that Battlefield
+            here = subject
+        elif location == "here":
             # 2026-09-27 package 6: the Battlefield the condition's object stands at NOW (Core
             # 359.3.f.2); an object not at one has no "here", and no unit is there (359.3.e.12)
             at = find_location(state, subject) if subject in state["objects"] else None

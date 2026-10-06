@@ -4,11 +4,12 @@ The terminal state — ADR-0010 §3–4 (G3).
 
 `check_terminal` is Cleanup step 1 (Core 323.1, 194.2): the one player at or
 above the Victory Score with more points than every other player wins and
-the game ends (196); a tie at the threshold continues (194.2.b). Two reasons
+the game ends (196); a tie at the threshold continues (194.2.b). Three reasons
 are derived and only the engine writes them (`victory_score`,
-`burn_out_victory`); two are declared by the caller through
+`burn_out_victory`, and since package 9 `effect_victory` - an effect that
+instructs a player to win, Core 195); two are declared by the caller through
 `declare_terminal` (`concession`, `external`) and recorded, never derived.
-`apply_terminal_event` is the bridge every Draw entry uses to write a typed
+`apply_terminal_event` is the bridge every Draw entry (and a win_game instruction) uses to write a typed
 terminal_event into the timing state inside its own two-state commit (§2).
 After the terminal the snapshot is frozen: the timing kernel and the shared
 two-state validators refuse every procedure as `game_over`.

@@ -140,6 +140,15 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
     controller = battlefield.get("controller")
     if controller == player:
         for descriptor in battlefield.get(field, []) or []:
+            condition = descriptor.get("condition")
+            if condition is not None:
+                # package 9 (Core 383.2.a.1, The Grand Plaza): the conditional statement right after "When you hold
+                # here" is part of the Trigger Condition, read now - the Hold just processed; not met, it does not
+                # trigger. Once on the Chain it resolves whatever happens to the count.
+                from effect_ir import evaluate_condition
+                if not evaluate_condition(effect_state, condition, controller=controller, object_id=battlefield_id):
+                    continue
+                descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
             descriptors.append({**descriptor, "controller": controller, "source_object": battlefield_id, "trigger_kind": "triggered", "batch_id": batch_id, "batch_sequence": 0,
                                 "scored_battlefield": battlefield_id, "how": how, "scope": "battlefield", "source_identity": battlefield_identity(effect_state, battlefield_id) or f"{battlefield_id}@0"})
     return descriptors

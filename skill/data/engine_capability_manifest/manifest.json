@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:7b94125bce303262c4ab66a6",
-  "capability_set_id": "sha256:7b94125bce303262c4ab66a6f79a858b275c38e897612b6681899ceba17a0543",
+  "manifest_id": "capability-manifest:021858b9b7ad5d81fd121209",
+  "capability_set_id": "sha256:021858b9b7ad5d81fd121209d3c418a49e4238e8bf8ce170006778c36458baee",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:34c4b2cab7ba4a2af73fea09feb1fb9ee57a58688958bb6e388fdb6c7fb51664",
+    "value": "sha256:4d4f682be8549f1fec1686917931d5753808755affbb14dd59c7eb43da9b56a5",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,7 +12,7 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:52fed699ca0ef28eff9bd32bca343ef06901ab6512e093e63aec193536a30cf5"
+        "sha256": "sha256:1cb0767204520d84b85f4a9d7f690a8cb9432570aa01c8cb2d1c8e5e222c5792"
       },
       {
         "path": "resolution_bridge.py",
@@ -724,6 +724,15 @@
         "Core 424.4",
         "Core 128.2.a",
         "Core 124"
+      ]
+    },
+    {
+      "id": "raise_might_to_match",
+      "rule_locators": [
+        "Core 477.3.a",
+        "Core 355.8",
+        "Core 359.3.e.5",
+        "Core 370.1.a"
       ]
     },
     {
@@ -1660,6 +1669,7 @@
     "Core 355.5.a",
     "Core 355.5.b",
     "Core 355.7–355.10.d.2",
+    "Core 355.8",
     "Core 356.1–356.7",
     "Core 356.2.a.2",
     "Core 356.2.b.1",

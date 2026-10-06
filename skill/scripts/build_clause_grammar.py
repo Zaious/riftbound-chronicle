@@ -410,6 +410,45 @@ LITERAL = [
      ["If I have moved twice this turn, I don't take damage."],
      ["if i have moved this turn, i don't take damage", "i don't take damage",
       "if i have moved twice this turn, i have +2 might"]),
+    # 2026-10-06 package 9 (Highlander, GPT ruling 11): one friendly Unit chosen as the spell is played; the next time
+    # it would die this turn, the death is replaced - all its damage removed, exhausted, recalled to its Base (a Recall
+    # is not a Move) - once; unused, it ends with the turn (317.2.c). Bound to the identity chosen (124)
+    ("choose_a_friendly_unit_the_next_time_it_would_die_this_turn_heal_exhaust_and_recall_it_instead",
+     r"choose a friendly unit\. the next time it would die this turn, heal it, exhaust it, and recall it instead",
+     ["Core 370", "Core 355.5", "Core 355.10.c", "Core 124", "Core 317.2.c"], "instruction",
+     ["grant_replacement", "targeting"],
+     "One friendly Unit chosen at play; a one-use death replacement granted to it for this turn. Another "
+     "replacement ('kill this instead'), another duration, or an enemy Unit is a different production.",
+     ["Choose a friendly unit. The next time it would die this turn, heal it, exhaust it, and recall it instead."],
+     ["choose an enemy unit. the next time it would die this turn, heal it, exhaust it, and recall it instead",
+      "choose a friendly unit. the next time it would die, heal it, exhaust it, and recall it instead",
+      "heal it, exhaust it, and recall it"]),
+    # 2026-10-06 package 9 (Convergent Mutation, GPT ruling 7): two different friendly Units chosen at play; at
+    # resolution the first's Might is raised, this turn, to the second's - an increase only, read once
+    ("choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit",
+     r"choose a friendly unit\. this turn, increase its might to the might of another friendly unit",
+     ["Core 477.3.a", "Core 355.8", "Core 359.3.e.5", "Core 370.1.a"], "instruction",
+     ["raise_might_to_match", "targeting"],
+     "Two different friendly Units chosen at play; the first gets, this turn, the difference when the second's Might "
+     "is higher, read once at resolution - never a decrease. 'Set its Might', an enemy Unit, or a lasting change is a "
+     "different production.",
+     ["Choose a friendly unit. This turn, increase its Might to the Might of another friendly unit."],
+     ["choose a friendly unit. this turn, increase its might to the might of an enemy unit",
+      "choose a friendly unit. increase its might to the might of another friendly unit",
+      "this turn, increase its might to the might of another friendly unit"]),
+    # 2026-10-06 package 9 (Portal Rescue, GPT ruling 2): a friendly Unit chosen at play is banished (a new object in
+    # its owner's Banishment, Core 427), then its OWNER plays it - and so controls it (127.1, 419.1) - to their own
+    # Base (355.2.b), its base cost's Energy and Power ignored (356.1.b.1), any additional cost offered as usual
+    ("banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost",
+     r"banish a friendly unit, then its owner plays it to their base, ignoring its cost",
+     ["Core 427", "Core 419.3", "Core 127.1", "Core 419.1", "Core 355.2.b", "Core 356.1.b.1"], "instruction",
+     ["banish", "limited_play", "targeting"],
+     "One friendly Unit chosen at play, banished, then played by its owner to their Base ignoring its cost. 'You play "
+     "it', 'here', or 'ignoring its Energy cost' are different productions.",
+     ["Banish a friendly unit, then its owner plays it to their base, ignoring its cost."],
+     ["banish a friendly unit, then play it to your base, ignoring its cost",
+      "banish an enemy unit, then its owner plays it to their base, ignoring its cost",
+      "banish a friendly unit, then its owner plays it, ignoring its energy cost"]),
     # 2026-10-06 package 9 (The Grand Plaza): an effect that instructs its controller to win (Core 195); the game
     # ends at once (196)
     ("you_win_the_game", r"you win the game", ["Core 195", "Core 196"], "instruction", ["win_game"],

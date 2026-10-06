@@ -157,6 +157,7 @@ OP_PRIMARY: dict[str, str] = {
     # each of those emits its own might_modified. The mapping is here so the
     # op is never `event_kind_unknown` (Core 477).
     "swap_might": "might_modified",
+    "raise_might_to_match": "might_modified",
     "heal_damage": "healed",
     "heal_all_damage": "healed",
     "ready": "readied",

@@ -1139,6 +1139,91 @@
       ]
     },
     {
+      "production_id": "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_heal_exhaust_and_recall_it_instead",
+      "form": "Choose a friendly unit. The next time it would die this turn, heal it, exhaust it, and recall it instead.",
+      "template": "choose a friendly unit\\. the next time it would die this turn, heal it, exhaust it, and recall it instead",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 370",
+        "Core 355.5",
+        "Core 355.10.c",
+        "Core 124",
+        "Core 317.2.c"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_replacement",
+        "typed_selectors"
+      ],
+      "boundary": "One friendly Unit chosen at play; a one-use death replacement granted to it for this turn. Another replacement ('kill this instead'), another duration, or an enemy Unit is a different production.",
+      "golden": [
+        "Choose a friendly unit. The next time it would die this turn, heal it, exhaust it, and recall it instead."
+      ],
+      "negative": [
+        "choose an enemy unit. the next time it would die this turn, heal it, exhaust it, and recall it instead",
+        "choose a friendly unit. the next time it would die, heal it, exhaust it, and recall it instead",
+        "heal it, exhaust it, and recall it"
+      ]
+    },
+    {
+      "production_id": "choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit",
+      "form": "Choose a friendly unit. This turn, increase its Might to the Might of another friendly unit.",
+      "template": "choose a friendly unit\\. this turn, increase its might to the might of another friendly unit",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 477.3.a",
+        "Core 355.8",
+        "Core 359.3.e.5",
+        "Core 370.1.a"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "raise_might_to_match",
+        "typed_selectors"
+      ],
+      "boundary": "Two different friendly Units chosen at play; the first gets, this turn, the difference when the second's Might is higher, read once at resolution - never a decrease. 'Set its Might', an enemy Unit, or a lasting change is a different production.",
+      "golden": [
+        "Choose a friendly unit. This turn, increase its Might to the Might of another friendly unit."
+      ],
+      "negative": [
+        "choose a friendly unit. this turn, increase its might to the might of an enemy unit",
+        "choose a friendly unit. increase its might to the might of another friendly unit",
+        "this turn, increase its might to the might of another friendly unit"
+      ]
+    },
+    {
+      "production_id": "banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost",
+      "form": "Banish a friendly unit, then its owner plays it to their base, ignoring its cost.",
+      "template": "banish a friendly unit, then its owner plays it to their base, ignoring its cost",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 427",
+        "Core 419.3",
+        "Core 127.1",
+        "Core 419.1",
+        "Core 355.2.b",
+        "Core 356.1.b.1"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "banish",
+        "limited_play",
+        "typed_selectors"
+      ],
+      "boundary": "One friendly Unit chosen at play, banished, then played by its owner to their Base ignoring its cost. 'You play it', 'here', or 'ignoring its Energy cost' are different productions.",
+      "golden": [
+        "Banish a friendly unit, then its owner plays it to their base, ignoring its cost."
+      ],
+      "negative": [
+        "banish a friendly unit, then play it to your base, ignoring its cost",
+        "banish an enemy unit, then its owner plays it to their base, ignoring its cost",
+        "banish a friendly unit, then its owner plays it, ignoring its energy cost"
+      ]
+    },
+    {
       "production_id": "you_win_the_game",
       "form": "You win the game.",
       "template": "you win the game",

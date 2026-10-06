@@ -268,6 +268,48 @@ def _lower_no_damage_after_two_moves(params):
     }
 
 
+def _lower_next_death_heal_exhaust_recall(params):
+    # package 9 (Highlander): the public choice is the grant's target, chosen at play (Core 355.5); the grant is bound
+    # to that identity, applies once, this turn (effect_ir grant_replacement); each play's grant is its own
+    # (granted_by is the chain item), so two of them on one Unit are two replacements
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly"}
+    instead = [{"op": "heal_all_damage", "object_id": "$granted_target"},
+               {"op": "exhaust", "object_id": "$granted_target"},
+               {"op": "recall", "object_id": "$granted_target"}]
+    return {"program_effects": [{"op": "grant_replacement", "effect_id": "grant", "target": target,
+                                 "controller": "$controller", "granted_by": "$chain_item",
+                                 "replacement": {"mode": "replace_with", "event_op": "kill",
+                                                 "replacement_effects": instead}}],
+            "ast": {"node": "instruction", "op": "grant_replacement",
+                    "params": {"selector": "friendly unit", "event_op": "kill", "duration": "this_turn", "uses": 1,
+                               "instead": ["heal_all_damage", "exhaust", "recall"]}}}
+
+
+def _lower_raise_might_to_match(params):
+    # package 9 (Convergent Mutation): the pair of slots - "it" (the public choice, chosen at play) and "another
+    # friendly unit" (a second, different target, play_transaction's distinct slots); effect_ir raise_might_to_match
+    unit = {"chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly"}
+    return {"program_effects": [{"op": "raise_might_to_match", "effect_id": "raise",
+                                 "units": [{"decision_ref": "t", **unit}, {"decision_ref": "t2", **unit}],
+                                 "duration": "this_turn", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "raise_might_to_match",
+                    "params": {"selector": "friendly unit", "to": "another friendly unit", "duration": "this_turn"}}}
+
+
+def _lower_banish_then_owner_plays(params):
+    # package 9 (Portal Rescue): the banish's target chosen at play; the play is limited_play linked to that banish,
+    # by the card's owner, to their Base, ignore_all (effect_ir LIMITED_PLAY_PLAYERS, unit_at_players_base)
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly"}
+    return {"program_effects": [{"op": "banish", "effect_id": "ban", "target": target},
+                                {"op": "limited_play", "effect_id": "lp", "linked": {"effect_id": "ban", "from": "banishment"},
+                                 "player": "owner", "entry": {"kind": "unit_at_players_base"},
+                                 "cost_basis": {"kind": "ignore_all"}}],
+            "ast": {"node": "sequence", "of": [
+                {"node": "instruction", "op": "banish", "params": {"selector": "friendly unit"}},
+                {"node": "instruction", "op": "limited_play",
+                 "params": {"linked": "ban", "player": "owner", "entry": "their base", "cost": "ignore_all"}}]}}
+
+
 def _lower_win_game(params):
     # package 9 (The Grand Plaza): Core 195 - the instruction's controller wins; 196 - the game ends
     return {"program_effects": [{"op": "win_game", "effect_id": "win", "player": "$controller"}],
@@ -1240,6 +1282,11 @@ LOWERINGS = {
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "you_win_the_game": _lower_win_game,
+    "banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost": _lower_banish_then_owner_plays,
+    "choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit":
+        _lower_raise_might_to_match,
+    "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_heal_exhaust_and_recall_it_instead":
+        _lower_next_death_heal_exhaust_recall,
     "if_i_have_moved_twice_this_turn_i_dont_take_damage": _lower_no_damage_after_two_moves,
     "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
     "discard_n": _lower_discard,

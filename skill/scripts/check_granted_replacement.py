@@ -28,7 +28,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state, program, settle_contested  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
-from effect_ir import apply_program, object_identity, validate_state  # noqa: E402
+from effect_ir import apply_program, hash_value, object_identity, validate_state  # noqa: E402
 from resolution_bridge import run_expiration_step  # noqa: E402
 
 HIGHLANDER = {"op": "grant_replacement", "object_id": "u1", "controller": "p1", "granted_by": "highlander", "effect_id": "grant",
@@ -120,6 +120,38 @@ def main() -> int:
     two = apply_program(guarded, program("kill4", {"op": "kill", "object_id": "u1", "effect_id": "k4"}))
     if two.get("committed") or two.get("replacement_decision_required") is not True or sorted(two.get("replacement_ids", [])) != sorted([grant["replacement_id"], "guard"]):
         errors.append(f"a granted and a source-backed replacement did not go through the order decision: {two.get('reason')} {two.get('replacement_ids')}")
+    # package 9 (Highlander, GPT 2026-10-06 ruling 11): the engine grammar's row for the whole card - the friendly
+    # unit chosen at play (a target decision), granted_by each play's own chain item - two plays on one unit are
+    # two grants; one death uses one, the next death uses the other
+    import clause_grammar as CG
+    row = CG.compile_clause("Choose a friendly unit. The next time it would die this turn, heal it, exhaust it, and "
+                            "recall it instead.", CG.load_grammar())
+    choice = {"schema_version": "engine-decisions.v1", "input_hash": None, "decisions": [
+        {"decision_id": "t", "stage": "play_declaration", "kind": "target_selection", "controller": "p1",
+         "value": ["u1"], "selection_identities": {"u1": object_identity(state, "u1")}}]}
+    twice = state
+    for item in ("spell-a", "spell-b"):
+        effects = [{**copy.deepcopy(e), "granted_by": item, "controller": "p1"} for e in row.get("program_effects") or []]
+        choice["input_hash"] = hash_value(twice)
+        run = apply_program(twice, program(f"highlander-{item}", *effects), decisions=choice)
+        if not run.get("committed"):
+            errors.append(f"the grammar row's grant did not commit: {run.get('reason') or run.get('errors')}")
+            break
+        twice = run["next_state"]
+    else:
+        grants = [r for r in twice["replacement_effects"] if "granted" in r]
+        if len(grants) != 2 or {g["target_object_id"] for g in grants} != {"u1"}:
+            errors.append(f"two plays on one unit did not make two grants: {[g['replacement_id'] for g in grants]}")
+        saved_once = apply_program(twice, program("k5", {"op": "kill", "object_id": "u1", "effect_id": "k5"}),
+                                   decisions={"schema_version": "engine-decisions.v1", "input_hash": hash_value(twice), "decisions": [
+                                       {"decision_id": "k5", "stage": "resolution", "kind": "replacement_order", "controller": "p1",
+                                        "value": {"k5": [g["replacement_id"] for g in grants]}}]})
+        if not saved_once.get("committed") or "u1" not in saved_once["next_state"]["players"]["p1"]["zones"]["base"]:
+            errors.append(f"the first death with two grants was not replaced: {saved_once.get('reason')} {saved_once.get('errors')} {saved_once.get('replacement_ids')}")
+        else:
+            left = [r for r in saved_once["next_state"]["replacement_effects"] if "granted" in r]
+            if [r["replacement_id"] for r in left] != [grants[1]["replacement_id"]]:
+                errors.append(f"the first death did not use exactly the first grant: {[r['replacement_id'] for r in left]}")
     snap = copy.deepcopy(state)
     if state != snap or apply_program(state, program("highlander", HIGHLANDER)) != granted:
         errors.append("grant_replacement mutated its input or is not deterministic")

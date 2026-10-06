@@ -99,14 +99,18 @@ TURN_EFFECT_KINDS = {"entry_state_for_played_units", "stunned_unit", "cards_play
                      # costs [N] less" (Raging Firebrand; value = the Energy discount, read by the
                      # play transaction's cost step, 356.4) and "the next unit you play this turn
                      # enters ready" (Sun Disc; bound to that play as an entry replacement, 369.3)
-                     "next_spell_cost_reduction", "entry_state_for_next_played_unit"}
+                     "next_spell_cost_reduction", "entry_state_for_next_played_unit",
+                     # 2026-10-06 package 9 (Ravenborn Tome): "the next spell you play this turn deals N Bonus
+                     # Damage" - value N; spent by that play, it becomes a Bonus Damage bound to the spell (713)
+                     "next_spell_bonus_damage"}
 # The values a granted turn effect may carry, per kind. 2026-09-27 package 5 (Brynhir Thundersong,
 # "opponents can't play cards this turn"): cards_play_prohibited forbids the granting player's
 # opponents to play cards - Main Deck cards (Core 052), not activated abilities - for the rest of
 # the turn it is granted in; Can't beats Can (054.1). It expires with that turn (317.2.c).
 TURN_EFFECT_VALUES = {"entry_state_for_played_units": {"ready", "exhausted"}, "cards_play_prohibited": {"opponents"}}
 # what each kind's `value` may be; a kind not listed here takes ready | exhausted
-NEXT_CARD_TURN_EFFECT_KINDS = {"next_spell_cost_reduction": "spell", "entry_state_for_next_played_unit": "unit"}
+NEXT_CARD_TURN_EFFECT_KINDS = {"next_spell_cost_reduction": "spell", "entry_state_for_next_played_unit": "unit",
+                               "next_spell_bonus_damage": "spell"}
 # ADR-0008 §5: attacking_or_defending_alone reads the Unit's own designation
 # and company (740.2.a); friendly_unit_defends_alone is the bounded external
 # aura of the Master Yi Legend clause, carried by a might_auras entry.
@@ -253,6 +257,8 @@ SUPPORTED_OPS = {
     # that answers to "would give me -Might" can see it. Modelled exactly so:
     # one snapshot, two ordinary modify_might events.
     "swap_might",
+    # 2026-10-06 package 9 (Convergent Mutation): "increase its Might to the Might of another friendly unit"
+    "raise_might_to_match",
     # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
     # taking a looked-at card, Recycle as one action, Predict.
     "look_at_top",
@@ -333,7 +339,7 @@ SUPPORTED_OPS = {
 }
 # Composite instructions resolved by apply_program itself (they consist of
 # several Deal events that each pass through the replacement path).
-COMPOSITE_OPS = {"mutual_damage_current_might", "swap_might"}
+COMPOSITE_OPS = {"mutual_damage_current_might", "swap_might", "raise_might_to_match"}
 # ADR-0011 §1: instructions whose single object comes from a typed `choice`.
 CHOICE_OPS = {"recycle_one", "choose_player"}
 # selection-binding.v1: instructions that establish a selection rather than
@@ -643,6 +649,7 @@ OP_RULES = {
     "heal_all_damage": ["Core 418"],
     "grant_keyword": ["Core 814.2", "Core 466.7.c", "Core 317.2.c", "Core 124"],
     "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
+    "raise_might_to_match": ["Core 477.3.a", "Core 355.8", "Core 359.3.e.5", "Core 370.1.a"],
     "swap_might": ["Core 477.3.a", "Core 477.3.e.1.a", "Core 477.3.e.2.a", "Core 135.2.e.3",
                    "Core 370.1.a", "Core 373.2"],
     "look_at_top": ["Core 128.4", "Core 431.1.c", "Core 431.1.c.1"],
@@ -713,7 +720,11 @@ LIMITED_PLAY_RECORD_FIELDS = {"granted_by", "program_id", "effect_id", "source_z
 LIMITED_PLAY_RECORD_OPTIONAL = {"entry_location"}
 # "If it's a unit, play it here.": where the effect has a unit it plays enter - the program source's current
 # Battlefield, read as the instruction executes (Core 359.3.f.2)
-LIMITED_PLAY_ENTRY_KINDS = {"unit_at_source_battlefield"}
+# 2026-10-06 (package 9, Portal Rescue): "plays it to their base" - the unit enters the Base of the player who plays it
+LIMITED_PLAY_ENTRY_KINDS = {"unit_at_source_battlefield", "unit_at_players_base"}
+# 2026-10-06 (package 9, GPT ruling 2): "its owner plays it" - who plays a linked card: its owner (Core 127.1), who then
+# controls it (419.1). Only a linked play names it; without it the program's controller plays, as before
+LIMITED_PLAY_PLAYERS = {"owner"}
 # The payments a triggered ability's base cost is made of (trigger_cost.py pays them): Energy
 # and Power, exhausting the ability's own source, spending a buff from a unit its controller
 # controls (Core 702.2.b), and recycling the ability's own source from its owner's trash (Core
@@ -1091,6 +1102,9 @@ def validate_state(state: Any) -> list[str]:
         if effect["kind"] == "next_spell_cost_reduction" and (not isinstance(effect.get("value"), int)
                                                              or isinstance(effect.get("value"), bool) or effect["value"] < 1):
             errors.append(f"{label}.value must be the positive Energy amount of the discount (Core 356.4)")
+        if effect["kind"] == "next_spell_bonus_damage" and (not isinstance(effect.get("value"), int)
+                                                           or isinstance(effect.get("value"), bool) or effect["value"] < 1):
+            errors.append(f"{label}.value must be the positive Bonus Damage amount (Core 714.1)")
         if effect["kind"] == "stunned_unit":
             if effect.get("object_id") not in objects:
                 errors.append(f"{label}.object_id must name an object in this state")
@@ -1971,13 +1985,16 @@ def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
     finalized (Core 355.2), and a card chosen from a private zone is not this instruction."""
     errors: list[str] = []
     extra = set(effect) - {"op", "effect_id", "target", "choice", "self", "linked", "decision_ref", "card_filter", "entry",
-                           "cost_basis", "depends_on", "dependency_mode", "predicate", "_execution"}
+                           "player", "cost_basis", "depends_on", "dependency_mode", "predicate", "_execution"}
     if extra:
         errors.append(f"carries only its target, choice or self, entry and cost_basis, not {sorted(extra)}")
     errors.extend(_limited_play_cost_basis_errors(effect.get("cost_basis")))
     entry = effect.get("entry")
     if entry is not None and (not isinstance(entry, dict) or set(entry) != {"kind"} or entry.get("kind") not in LIMITED_PLAY_ENTRY_KINDS):
         errors.append(f"entry must be {{kind}} with kind in {sorted(LIMITED_PLAY_ENTRY_KINDS)} (Core 355.2.b)")
+    if "player" in effect and (effect["player"] not in LIMITED_PLAY_PLAYERS or "linked" not in effect):
+        errors.append(f"player must be one of {sorted(LIMITED_PLAY_PLAYERS)}, and only on a linked play: the card an "
+                      f"earlier banish moved, played by its owner (Core 127.1, 419.1)")
     if sum(field in effect for field in ("target", "choice", "self", "linked")) != 1:
         return errors + ["needs exactly one of target (a card in a public zone, Core 355.10.a), choice (a card in "
                          "a private zone, chosen as the effect resolves), self (the program's own source card) or linked "
@@ -2040,9 +2057,10 @@ def _limited_play_record_errors(record: Any, players: dict[str, Any]) -> list[st
     if record["source_zone"] not in LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES | {"banishment"}:
         errors.append(f"source_zone must be one of {sorted(LIMITED_PLAY_ZONES | LIMITED_PLAY_CHOICE_ZONES | {'banishment'})}")
     entry = record.get("entry_location")
-    if entry is not None and (not isinstance(entry, dict) or set(entry) != {"kind", "battlefield"} or entry.get("kind") != "battlefield"
-                              or not isinstance(entry.get("battlefield"), str) or not entry["battlefield"]):
-        errors.append("entry_location must be {kind: battlefield, battlefield}")
+    if entry is not None and entry != {"kind": "base"} and (
+            not isinstance(entry, dict) or set(entry) != {"kind", "battlefield"} or entry.get("kind") != "battlefield"
+            or not isinstance(entry.get("battlefield"), str) or not entry["battlefield"]):
+        errors.append("entry_location must be {kind: base} or {kind: battlefield, battlefield}")
     if record["zone_owner"] not in players or record["controller_before"] not in players:
         errors.append("zone_owner and controller_before must be players")
     if not isinstance(record["zone_index"], int) or isinstance(record["zone_index"], bool) or record["zone_index"] < 0:
@@ -2187,6 +2205,20 @@ def validate_program(program: Any) -> list[str]:
                                   f"difference between the two Mights, read once at resolution (Core 477)")
                 if effect.get("duration") not in {"this_turn", None}:
                     errors.append(f"effects[{index}].swap_might may only last this_turn")
+            if effect.get("op") == "raise_might_to_match":
+                units = effect.get("units")
+                if not isinstance(units, list) or len(units) != 2:
+                    errors.append(f"effects[{index}].raise_might_to_match needs exactly two unit selectors: the one "
+                                  f"raised, then the one whose Might it is raised to")
+                else:
+                    for position, selector in enumerate(units):
+                        for problem in _selector_errors(selector):
+                            errors.append(f"effects[{index}].raise_might_to_match.units[{position}] {problem}")
+                if {"target", "targets", "object_id", "affected", "amount", "value", "minimum", "maximum"} & set(effect):
+                    errors.append(f"effects[{index}].raise_might_to_match carries its two units and nothing else: the "
+                                  f"increase is the difference read once at resolution (Core 477)")
+                if effect.get("duration") != "this_turn":
+                    errors.append(f"effects[{index}].raise_might_to_match lasts this_turn")
             if effect.get("op") == "mutual_damage_current_might":
                 units = effect.get("units")
                 if not isinstance(units, list) or len(units) != 2:
@@ -3244,7 +3276,9 @@ def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None
     return applied < requested, ["Core 430.3", "Core 430.5", "Core 055"]
 
 
-BONUS_SCOPES = {"controller_sources", "location"}
+# "source_card" (2026-10-06, package 9, Ravenborn Tome): the Deals of ONE spell - the object and the identity it had
+# as it was played - and of nothing else (713, 715.1)
+BONUS_SCOPES = {"controller_sources", "location", "source_card"}
 
 
 def source_active(state: dict[str, Any], source_id: str) -> bool:
@@ -3282,7 +3316,8 @@ def granted_entry_states(state: dict[str, Any], entering: str | None, kind: str,
     return found
 
 
-def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str | None) -> tuple[int, list[dict[str, Any]]]:
+def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str | None,
+                 source_object: str | None = None) -> tuple[int, list[dict[str, Any]]]:
     """Core 713-715: every active Bonus Damage that applies to this Deal,
     summed once (714). `controller_sources` follows the spell's or ability's
     controller; `location` follows the affected unit's current Battlefield.
@@ -3306,6 +3341,9 @@ def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str |
             continue
         if kind == "location" and not (location is not None and location[0] == "battlefield" and location[1] == scope["battlefield"]):
             continue
+        if kind == "source_card" and not (source_object == scope.get("object") and source_object is not None
+                                          and object_identity(state, source_object) == scope.get("identity")):
+            continue
         total += effect["value"]["amount"]
         sources.append({"modifier_id": effect["effect_id"], "source_object": effect["source"]["object"],
                         "amount": effect["value"]["amount"], "scope": dict(scope)})
@@ -3315,7 +3353,8 @@ def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str |
 SPLIT_BONUS_RULES = ["Core 713", "Core 714", "Core 715.3", "Core 355.14.c", "Core 437.1.a.1"]
 
 
-def split_bonus_damage(state: dict[str, Any], controller: str | None, object_ids: list[str]) -> tuple[int, list[dict[str, Any]]]:
+def split_bonus_damage(state: dict[str, Any], controller: str | None, object_ids: list[str],
+                       source_object: str | None = None) -> tuple[int, list[dict[str, Any]]]:
     """Core 715.3: a Deal that Splits its damage has its Bonus Damage added ONCE, to the amount
     being split - never to each share - so the bonus also raises how many Targets may be chosen
     (355.14.c). What applies is what applies to the Deal (713, 714 - summed once): the
@@ -3324,7 +3363,7 @@ def split_bonus_damage(state: dict[str, Any], controller: str | None, object_ids
     Bonus Damage (715.4). A Battlefield's bonus over a split whose Targets are only partly at that
     Battlefield is a case the rules do not settle; it is refused as a mechanic the engine does not
     have, never guessed."""
-    return _split_bonus(state, controller, object_ids, strict=True)
+    return _split_bonus(state, controller, object_ids, strict=True, source_object=source_object)
 
 
 def split_target_cap(state: dict[str, Any], effect: dict[str, Any], controller: str | None, object_ids: list[str]) -> int:
@@ -3340,7 +3379,7 @@ def split_target_cap(state: dict[str, Any], effect: dict[str, Any], controller: 
 
 
 def _split_bonus(state: dict[str, Any], controller: str | None, object_ids: list[str], *,
-                 strict: bool) -> tuple[int, list[dict[str, Any]]]:
+                 strict: bool, source_object: str | None = None) -> tuple[int, list[dict[str, Any]]]:
     object_ids = list(object_ids)
     if not object_ids:
         return 0, []
@@ -3359,6 +3398,13 @@ def _split_bonus(state: dict[str, Any], controller: str | None, object_ids: list
         if kind not in BONUS_SCOPES:
             raise NotImplementedError(f"Bonus Damage scope {kind!r} is not modelled")
         if kind == "controller_sources" and criteria["controller"] != controller:
+            continue
+        if kind == "source_card":
+            # package 9: one spell's own Bonus Damage on a Deal that splits - the target cap it would raise (355.14.c)
+            # was set before the bonus was bound to the spell; refused by name, never guessed
+            if source_object is not None and source_object == scope.get("object"):
+                raise NotImplementedError("a split Deal of a spell carrying its own Bonus Damage (next_spell_bonus_damage) "
+                                          "is not modelled (Core 715.3, 355.14.c)")
             continue
         if kind == "location":
             there = [location is not None and location[0] == "battlefield" and location[1] == scope["battlefield"]
@@ -4753,10 +4799,11 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         kind, value, controller = effect.get("turn_effect_kind"), effect.get("value"), effect.get("controller")
         if kind not in TURN_EFFECT_KINDS:
             raise NotImplementedError(f"turn effect {kind!r} is not modelled")
-        if kind == "next_spell_cost_reduction":
-            # the Energy the next spell's cost is reduced by (Core 356.4, 356.6)
+        if kind in {"next_spell_cost_reduction", "next_spell_bonus_damage"}:
+            # the Energy the next spell's cost is reduced by (Core 356.4, 356.6); the Bonus Damage each of the next
+            # spell's own Deals gets (713, 714.1)
             if controller not in new_state["players"] or not isinstance(value, int) or isinstance(value, bool) or value < 1:
-                raise ValueError("next_spell_cost_reduction requires a known controller and a positive Energy value")
+                raise ValueError(f"{kind} requires a known controller and a positive value")
         elif controller not in new_state["players"] or value not in TURN_EFFECT_VALUES.get(kind, {"ready", "exhausted"}):
             raise ValueError(f"grant_turn_effect requires a known controller and a value in "
                              f"{sorted(TURN_EFFECT_VALUES.get(kind, {'ready', 'exhausted'}))}")
@@ -4776,6 +4823,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
 
     elif op == "swap_might":
         raise ValueError("swap_might is resolved by apply_program as two Might changes over one snapshot")
+
+    elif op == "raise_might_to_match":
+        raise ValueError("raise_might_to_match is resolved by apply_program as one Might change over one snapshot")
 
     elif op == "trigger_base_cost":
         # paid at finalization (trigger_cost.py); apply_program only checks the receipt
@@ -5257,12 +5307,21 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             if object_id not in new_state["objects"]:
                 raise ValueError(f"banish requires a known object; {object_id!r} is not in the state")
             obj = new_state["objects"][object_id]
-            detached_all.extend(detach_records(new_state, object_id, _last_board_location(find_location(new_state, object_id)), host_left_board=True))
+            left_from = find_location(new_state, object_id)
+            detached_all.extend(detach_records(new_state, object_id, _last_board_location(left_from), host_left_board=True))
             _remove_from_location(new_state, object_id)
             if obj.get("is_token"):
                 del new_state["objects"][object_id]
                 destinations[object_id] = "ceased_to_exist"
                 continue
+            if zone_class(left_from) == "board":
+                # package 9 (Portal Rescue): a Unit banished from the board is a new object (Core 124) - its damage,
+                # Might changes, exhaustion and designations stay behind, as for return_to_hand
+                obj["damage"] = 0
+                obj["might_modifiers"] = []
+                obj["exhausted"] = False
+                for transient in ("statuses", "counters", "combat_designation"):
+                    obj.pop(transient, None)
             new_state["players"][obj["owner"]]["zones"]["banishment"].append(object_id)
             destinations[object_id] = f"{obj['owner']}.banishment"
             identities[object_id] = _bump_identity(new_state, object_id)
@@ -8693,6 +8752,60 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        if effect.get("op") == "raise_might_to_match":
+            # package 9 (Convergent Mutation, GPT 2026-10-06 ruling 7): both Units revalidated, both Mights read once,
+            # now; the first raised by the difference this turn when the second's is higher - an ordinary modify_might,
+            # so replacements see it - and nothing when it is not (an increase only, 370.1.a). One illegal Unit skips
+            # the whole instruction: the increase relates to both (359.3.e.5)
+            try:
+                pair = []
+                for selector in effect["units"]:
+                    resolved, _meta = _resolve_selectors(current, {"target": selector}, program, decisions)
+                    pair.append(resolved[0])
+            except TargetDecisionRequired as exc:
+                return {**base, "valid": True, "committed": False, "target_decision_required": True,
+                        "reason_code": "target_selection_required", "reason": str(exc),
+                        "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                        "failed_effect_index": index, "trace": trace}
+            except IllegalDecision as exc:
+                return {**base, "valid": True, "committed": False, "applied": False,
+                        "reason_code": "decision_controller_mismatch", "reason": str(exc),
+                        "failed_effect_index": index, "trace": trace}
+            except ValueError as exc:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                        "errors": [str(exc)], "trace": trace}
+            verdicts = [(sel, *evaluate_target(current, sel, program.get("controller"))) for sel in pair]
+            ids = [sel["object_id"] for sel, _, _ in verdicts]
+            invalid = [{"object_id": sel["object_id"], "reason": reason} for sel, ok, reason in verdicts if not ok]
+            if ids[0] == ids[1] and not invalid:
+                invalid = [{"object_id": ids[0], "reason": "same_unit_twice"}]
+            if invalid:
+                event = {"index": index, "effect_id": effect_id, "op": "raise_might_to_match",
+                         "outcome": "ignored_illegal_target", "target_outcome": "skipped_illegal_target",
+                         "completion": "none", "units": ids, "invalid_targets": invalid,
+                         "reason": "a Unit of the pair is not a legal referent; the increase relates to both (359.3.e.5)",
+                         "rule_locators": ["Core 359.3.e.1–359.3.e.5"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            snapshot = {object_id: effective_might(current, object_id) for object_id in ids}
+            delta = max(0, snapshot[ids[1]] - snapshot[ids[0]])
+            expanded = [{"op": "modify_might", "effect_id": f"{effect_id}:raise", "object_id": ids[0], "amount": delta,
+                         "duration": "this_turn", "source": effect.get("source") or effect_id,
+                         CHOSEN_FIELD: effect.get(CHOSEN_FIELD, True), "raise_of": effect_id}]
+            event = {"index": index, "effect_id": effect_id, "op": "raise_might_to_match",
+                     "outcome": "expanded" if delta else "no_op", "completion": "full" if delta else "none",
+                     "units": ids, "might_before": snapshot, "delta": delta,
+                     "expanded_into": [child["effect_id"] for child in expanded] if delta else [],
+                     "reason": None if delta else "its Might is already at least the other's; an increase only (370.1.a)",
+                     "rule_locators": list(OP_RULES["raise_might_to_match"]),
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            if delta:
+                effects_to_run[index + 1:index + 1] = expanded
+            continue
         if effect.get("op") == "swap_might":
             # Core 477 with Riot's reading: read both Mights BEFORE either moves,
             # then run the two changes as ordinary modify_might events. Because
@@ -8968,7 +9081,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 continue
             try:
                 current, event = _start_limited_play(current, effect.get("cost_basis"), target, program, effect_id,
-                                                     entry=effect.get("entry"))
+                                                     entry=effect.get("entry"), player=effect.get("player"))
             except NotImplementedError as exc:
                 return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
                         "reason": str(exc), "trace": trace}
@@ -9143,7 +9256,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 if effect.get("source_kind") != "unit":
                     try:
                         bonus, bonus_sources = split_bonus_damage(current, program.get("controller"),
-                                                                  [sel["object_id"] for sel in valid_sels])
+                                                                  [sel["object_id"] for sel in valid_sels],
+                                                                  source_object=program.get("source_object"))
                     except NotImplementedError as exc:
                         return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index,
                                 "reason": str(exc), "trace": trace}
@@ -9411,7 +9525,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         # any replacement or Prevent looks at the amount (437.1.a.1).
         if effect.get("op") == "deal_damage" and isinstance(effect.get("amount"), int) and effect["amount"] >= 1 and "bonus_damage" not in effect and effect.get("source_kind") != "unit":
             try:
-                bonus, bonus_sources = bonus_damage(current, program.get("controller"), effect.get("object_id"))
+                bonus, bonus_sources = bonus_damage(current, program.get("controller"), effect.get("object_id"),
+                                                    source_object=program.get("source_object"))
             except NotImplementedError as exc:
                 return {**base, "valid": True, "committed": False, "unsupported": True, "failed_effect_index": index, "reason": str(exc), "trace": trace}
             if bonus:
@@ -9825,7 +9940,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
 
 
 def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], target: dict[str, Any],
-                        program: dict[str, Any], effect_id: str, entry: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+                        program: dict[str, Any], effect_id: str, entry: dict[str, Any] | None = None,
+                        player: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Step 1 of an effect-driven play (Core 354, 419.3): the card leaves its zone for the Chain as a
     Pending item, a new object (Core 124). The record on the chain entry says who granted the play,
     where the card came from - so a play cancelled at its legality check can be undone (358.5) - and
@@ -9846,7 +9962,8 @@ def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], targe
     zone_index = ids.index(card)
     identity_before = object_identity(working, card) or f"{card}@0"
     ids.remove(card)
-    controller = program.get("controller")
+    # package 9: "its owner plays it" - the card's owner is the player who plays it (Core 127.1, 419.1)
+    controller = obj["owner"] if player == "owner" else program.get("controller")
     item_id = f"limited-play:{program.get('program_id')}:{effect_id}"
     serial = 1
     while item_id in (working.get("chain_items") or {}):
@@ -9868,7 +9985,12 @@ def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], targe
     # limited_play_here_absent), never resolved some other way. The card's other branch (a non-unit) is not
     # touched: it enters where it would.
     entry_note = None
-    if entry is not None and obj["kind"] == "unit":
+    if entry is not None and entry.get("kind") == "unit_at_players_base" and obj["kind"] == "unit":
+        # package 9 (Portal Rescue): "to their base" - the Base of the player who plays it (Core 355.2.b); nothing to
+        # choose, and a Battlefield is not where the card says
+        record["entry_location"] = {"kind": "base"}
+        entry_note = {"entry_location": {"kind": "base"}, "player": controller, "rule_locators": ["Core 355.2.b"]}
+    elif entry is not None and obj["kind"] == "unit":
         try:
             here = resolve_location_ref({"kind": "program_source_current_battlefield"}, working, program)
         except SelectionBindingRefused as exc:

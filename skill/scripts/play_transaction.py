@@ -2360,6 +2360,21 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             if not working["turn_effects"]:
                 working.pop("turn_effects")
             for turn_effect in next_card:
+                if turn_effect["kind"] == "next_spell_bonus_damage":
+                    # package 9 (Ravenborn Tome): the Bonus Damage is now this spell's - the object and the identity it
+                    # has on the Chain - for each of its own Deals (Core 713, 715.1), for the rest of this turn at most
+                    from effect_ir import DEFAULT_TURN_ID, object_identity as identity_of
+                    stamp = max([e.get("timestamp", 0) for e in working.get("continuous_effects", []) or []] + [0]) + 1
+                    working.setdefault("continuous_effects", []).append({
+                        "effect_id": f"turn:{turn_effect['effect_id']}", "kind": "bonus_damage",
+                        "source": {"object": card, "identity": None},
+                        "affects": {"scope": "criteria", "criteria": {
+                            "bonus_scope": {"kind": "source_card", "object": card,
+                                            "identity": identity_of(working, card)},
+                            "controller": actor}},
+                        "layer": "arithmetic", "sublayer": "increase", "timestamp": stamp,
+                        "value": {"amount": turn_effect["value"]},
+                        "duration": {"kind": "this_turn", "turn_id": working.get("turn_id", DEFAULT_TURN_ID)}})
                 if turn_effect["kind"] == "entry_state_for_next_played_unit":
                     working["objects"][card].setdefault("entry_replacements", []).append(
                         {"replacement_id": f"turn:{turn_effect['effect_id']}", "mode": "entry_state",

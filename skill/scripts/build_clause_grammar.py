@@ -400,6 +400,12 @@ LITERAL = [
      ["Deal 2 to a unit at a battlefield.", "Deal 3 to a unit at battlefield."],
      ["deal 2 to a unit at a battlefield with 3 [m] or less", "deal 2 to all units at a battlefield"]),
     # 2026-09-25 (The Syren): a chosen friendly Unit at a Battlefield goes to its own Base
+    # 2026-10-06 package 9 (The Grand Plaza): an effect that instructs its controller to win (Core 195); the game
+    # ends at once (196)
+    ("you_win_the_game", r"you win the game", ["Core 195", "Core 196"], "instruction", ["win_game"],
+     "The instruction's controller wins and the game ends at once. 'You lose the game' and 'an opponent wins the "
+     "game' are different productions.",
+     ["You win the game."], ["you lose the game", "you win", "an opponent wins the game"]),
     ("move_a_friendly_unit_at_a_battlefield_to_its_base", r"move a friendly unit at (?:a )?battlefield to its base",
      ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9"], "instruction", ["move_board_object", "targeting"],
      "One chosen friendly Unit at a Battlefield moves to its own Base. A Unit in a Base, an enemy Unit, or "
@@ -1049,6 +1055,14 @@ WRAPPERS = [
     ("when_i_move_to_a_battlefield", r"when i move to a battlefield, (?P<inner>.+)", ["Core 383.1", "Core 420"],
      ["move_triggers"], ["When I move to a battlefield, draw 1."],
      ["when i move, draw 1", "when i move to base, draw 1", "when a unit moves to a battlefield, draw 1"]),
+    # 2026-10-06 package 9 (The Grand Plaza): the conditional statement right after "When you hold here" is part of
+    # the Trigger Condition (Core 383.2.a.1) - on the Battlefield's hold descriptor, read as the Hold is processed
+    ("when_you_hold_here_if_you_have_n_units_here",
+     r"when you hold here, if you have (?P<count>\d+)\+ units here, (?P<inner>.+)",
+     ["Core 469.2", "Core 190.6.a", "Core 383.2.a.1"], ["hold_triggers"],
+     ["When you hold here, if you have 7+ units here, you win the game."],
+     ["when you hold here, you win the game", "when you conquer here, if you have 7+ units here, draw 1",
+      "when you hold here, if you control 7 units, draw 1"]),
     ("when_you_hold_here", r"when you hold here, (?P<optional>you may )?(?P<inner>.+)",
      ["Core 469.2", "Core 190.6.a", "Core 383.3"], ["hold_triggers"],
      ["When you hold here, draw 1.", "When you hold here, you may channel 1 rune exhausted."],

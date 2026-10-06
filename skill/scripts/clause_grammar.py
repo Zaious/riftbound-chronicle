@@ -94,14 +94,16 @@ def load_grammar(path: Path | None = None) -> dict[str, Any]:
     return json.loads((path or GRAMMAR_PATH).read_text(encoding="utf-8"))
 
 
-def _battlefield_trigger(field: str, trigger_id: str, optional: bool = False) -> dict[str, Any]:
+def _battlefield_trigger(field: str, trigger_id: str, optional: bool = False,
+                         extra: dict[str, Any] | None = None) -> dict[str, Any]:
     """A trigger printed on a Battlefield. Core 190.6.a: its controller is
     whoever controls the Battlefield when it triggers, so the descriptor names
     none - which is why this is a different shape from an object's trigger and
-    not a parameter of one."""
+    not a parameter of one. package 9: `extra` carries a Trigger Condition's
+    conditional statement (Core 383.2.a.1) onto the descriptor."""
     return {"battlefield_fields": {field: [{"trigger_id": trigger_id, "controller_order": 0,
                                             "effect_program_id": "$clause_id",
-                                            "optional_at_finalize": optional}]}}
+                                            "optional_at_finalize": optional, **(extra or {})}]}}
 
 
 def _trigger(field: str | tuple[str, ...], trigger_id: str, extra: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -250,6 +252,12 @@ def _lower_object_keyword(params, slots):
         fields[f"{keyword['keyword']}_value"] = int(value)
     return {"passive": {"object_fields": fields}, "ast": ast}
 
+
+
+def _lower_win_game(params):
+    # package 9 (The Grand Plaza): Core 195 - the instruction's controller wins; 196 - the game ends
+    return {"program_effects": [{"op": "win_game", "effect_id": "win", "player": "$controller"}],
+            "ast": {"node": "instruction", "op": "win_game", "params": {"player": "$controller"}}}
 
 
 def _lower_draw(params):
@@ -1217,6 +1225,7 @@ LOWERINGS = {
     "while_im_at_a_battlefield_spells_you_play_cost_less": _lower_spell_discount_at_battlefield,
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
+    "you_win_the_game": _lower_win_game,
     "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
     "discard_n": _lower_discard,
     "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,
@@ -1404,6 +1413,13 @@ REFERENT_WRAPPERS = {"when_an_enemy_unit_attacks_a_battlefield_you_control",
 # a row above. Named here so the contract check sees a production that can be
 # compiled, which is the whole point of that check.
 BATTLEFIELD_TRIGGER_WRAPPERS = {"when_you_hold_here": ("hold_triggers", "on-hold"),
+                                # 2026-10-06 package 9 (The Grand Plaza, Core 383.2.a.1): the condition on the
+                                # descriptor, {kind controls_units, count N, location here}
+                                "when_you_hold_here_if_you_have_n_units_here": ("hold_triggers", "on-hold",
+                                                                                lambda params: {"condition": {
+                                                                                    "kind": "controls_units",
+                                                                                    "count": int(params["count"]),
+                                                                                    "location": "here"}}),
                                 "when_you_conquer_here": ("conquer_triggers", "on-conquer"),
                                 "when_you_defend_here": ("defend_triggers", "on-defend"),
                                 # 2026-09-28: a Unit's Move whose location before was this
@@ -1788,7 +1804,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "program_effects": inner.get("program_effects", []),
             }
         if production_id in BATTLEFIELD_TRIGGER_WRAPPERS:
-            field, trigger_id = BATTLEFIELD_TRIGGER_WRAPPERS[production_id]
+            field, trigger_id, *battlefield_extra = BATTLEFIELD_TRIGGER_WRAPPERS[production_id]
             # "You may" is the trigger's own optionality at finalization
             # (383.3), not a separate instruction - the engine already carries
             # it on the descriptor.
@@ -1808,7 +1824,8 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
                 "production_id": production_id, "unsupported": False, "text": text, "normalized": normalized,
                 "params": params, "rule_locators": production["rule_locators"] + inner["rule_locators"],
                 "ast": {"node": "triggered", "on": production_id, "optional": optional, "then": inner["ast"]},
-                "passive": _battlefield_trigger(field, trigger_id, optional),
+                "passive": _battlefield_trigger(field, trigger_id, optional,
+                                                (battlefield_extra[0](params) if battlefield_extra else None)),
                 "program_effects": inner_effects,
                 "required_capability": sorted(set(production["required_capability"]) | set(inner["required_capability"])),
             }

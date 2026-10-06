@@ -1111,6 +1111,30 @@
       ]
     },
     {
+      "production_id": "you_win_the_game",
+      "form": "You win the game.",
+      "template": "you win the game",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 195",
+        "Core 196"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "win_game"
+      ],
+      "boundary": "The instruction's controller wins and the game ends at once. 'You lose the game' and 'an opponent wins the game' are different productions.",
+      "golden": [
+        "You win the game."
+      ],
+      "negative": [
+        "you lose the game",
+        "you win",
+        "an opponent wins the game"
+      ]
+    },
+    {
       "production_id": "move_a_friendly_unit_at_a_battlefield_to_its_base",
       "form": "Move a friendly unit at a battlefield to its base.",
       "template": "move a friendly unit at (?:a )?battlefield to its base",
@@ -3053,6 +3077,31 @@
         "when i move, draw 1",
         "when i move to base, draw 1",
         "when a unit moves to a battlefield, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_hold_here_if_you_have_n_units_here",
+      "form": "When you hold here, if you have 7+ units here, you win the game.",
+      "template": "when you hold here, if you have (?P<count>\\d+)\\+ units here, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 469.2",
+        "Core 190.6.a",
+        "Core 383.2.a.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "hold_scoring"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you hold here, if you have 7+ units here, you win the game."
+      ],
+      "negative": [
+        "when you hold here, you win the game",
+        "when you conquer here, if you have 7+ units here, draw 1",
+        "when you hold here, if you control 7 units, draw 1"
       ]
     },
     {

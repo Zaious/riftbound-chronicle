@@ -475,6 +475,17 @@ LITERAL = [
      "different production.",
      ["I can have any number of buffs."],
      ["other friendly units can have any number of buffs", "i can have two buffs", "i can't be buffed"]),
+    # 2026-10-06 package 9 (Nocturne - Horrifying): the card's own statement, working from its owner's Main Deck - seen
+    # from the top by its owner, it may be banished, and then played for [A] once the effect that looked is done
+    ("as_you_look_at_or_reveal_me_from_the_top_of_your_deck_banish_me_then_play_me_for_a",
+     r"as you look at or reveal me from the top of your deck, you may banish me\. if you do, you may play me for \[a\]",
+     ["Core 427", "Core 419.3", "Core 356.1.a", "Core 385.1"], "passive", ["banish", "limited_play"],
+     "The card's own permission, from the top of its owner's Main Deck as its owner looks at or reveals it: banish it, "
+     "and then play it for [A]. A draw is not a look; another card's, or another cost, is a different production.",
+     ["As you look at or reveal me from the top of your deck, you may banish me. If you do, you may play me for :rb_rune_rainbow:."],
+     ["as you draw me, you may banish me. if you do, you may play me for [a]",
+      "as you look at or reveal me from the top of your deck, you may banish me",
+      "as you look at me from the top of your deck, you may play me for [a]"]),
     # 2026-10-06 package 9 (The Grand Plaza): an effect that instructs its controller to win (Core 195); the game
     # ends at once (196)
     ("you_win_the_game", r"you win the game", ["Core 195", "Core 196"], "instruction", ["win_game"],

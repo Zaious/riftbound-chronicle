@@ -86,13 +86,27 @@ OVERRIDE_MODIFICATION = {"ignore_base_cost": "ignore_all", "ignore_energy": "ign
 # cost_override its play transaction declares
 LIMITED_PLAY_OVERRIDE = {"ignore_all": "ignore_base_cost", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power",
                          # 2026-10-04 (package 8): the effect changes nothing about the base cost - no override is declared
-                         "printed": None, "discount_energy": None}
+                         "printed": None, "discount_energy": None,
+                         # 2026-10-06 (package 9, Nocturne): "for [A]" - the base cost replaced (356.1.a)
+                         "for_power_any": "for_cost"}
 
 
 def limited_play_override(record: dict[str, Any]) -> dict[str, Any] | None:
     """The cost_override an effect-driven play's declaration carries, or None when it pays its printed cost."""
     kind = LIMITED_PLAY_OVERRIDE[record["cost_basis"]["kind"]]
+    if kind == "for_cost":
+        # package 9: the base cost is nothing; the [A] is the mandatory component limited_play_additional adds
+        return {"kind": "for_cost", "cost": {"energy": 0, "power": {}}, "source": record["granted_by"]}
     return {"kind": kind, "source": record["granted_by"]} if kind is not None else None
+
+
+def limited_play_additional(record: dict[str, Any]) -> list[dict[str, Any]]:
+    """package 9 (Nocturne - Horrifying): "play me for [A]" - N Power of any Domain, the cost the play is made for
+    (Core 356.1.a), as a mandatory component; nothing for every other cost basis."""
+    basis = record["cost_basis"]
+    if basis["kind"] != "for_power_any":
+        return []
+    return [{"cost_id": "limited:for_power_any", "mandatory": True, "payment": {"kind": "power_any", "amount": basis["amount"]}}]
 
 
 def limited_play_discounts(record: dict[str, Any], item_id: str) -> list[dict[str, Any]]:
@@ -1866,6 +1880,9 @@ def _limited_play_checks(timing_state: dict[str, Any], effect_state: dict[str, A
     if list(declaration["cost"].get("discounts") or []) != limited_play_discounts(record, item_id):
         problems.append(f"cost.discounts {declaration['cost'].get('discounts')} are not the effect's "
                         f"{limited_play_discounts(record, item_id)} (Core 356.4)")
+    if [c for c in declaration["cost"].get("additional") or [] if c.get("cost_id") == "limited:for_power_any"] \
+            != limited_play_additional(record):
+        problems.append(f"cost.additional does not carry exactly the effect's {limited_play_additional(record)} (Core 356.1.a)")
     if declaration["cost"].get("base") != printed:
         problems.append(f"cost.base {declaration['cost'].get('base')} is not the card's printed cost {printed} (Core 206)")
     if declaration["chain_item"].get("timing") != "default":

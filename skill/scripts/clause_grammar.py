@@ -333,6 +333,13 @@ def _lower_any_number_of_buffs(params):
             "ast": {"node": "passive", "kind": "buff_permission", "params": {"buffs": "any number"}}}
 
 
+def _lower_banish_when_seen(params):
+    # package 9 (Nocturne - Horrifying): effect_ir banish_when_seen - offered by apply_program as its owner looks at or
+    # reveals it from the top of their Main Deck; the play for [A] once that effect is done
+    return {"passive": {"object_fields": {"banish_when_seen": {"play_for_power_any": 1}}},
+            "ast": {"node": "passive", "kind": "banish_when_seen", "params": {"play_for": "[A]"}}}
+
+
 def _lower_win_game(params):
     # package 9 (The Grand Plaza): Core 195 - the instruction's controller wins; 196 - the game ends
     return {"program_effects": [{"op": "win_game", "effect_id": "win", "player": "$controller"}],
@@ -1305,6 +1312,7 @@ LOWERINGS = {
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "you_win_the_game": _lower_win_game,
+    "as_you_look_at_or_reveal_me_from_the_top_of_your_deck_banish_me_then_play_me_for_a": _lower_banish_when_seen,
     "i_can_have_any_number_of_buffs": _lower_any_number_of_buffs,
     "i_must_be_assigned_combat_damage_last": _lower_assigned_combat_damage_last,
     "deal_damage_equal_to_my_might_to_a_unit_at_a_battlefield": _lower_deal_my_might_to_unit_at_battlefield,

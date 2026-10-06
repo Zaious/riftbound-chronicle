@@ -698,7 +698,10 @@ LIMITED_PLAY_COST_BASES = {"ignore_energy": "Core 356.1.b.2", "ignore_power": "C
                            # 2026-10-04 (package 8, GPT ruling 6): "play it, reducing its cost by [5]" (Reinforce) - an
                            # Energy discount of `amount` (Core 356.4.b), applied in the discount step, Energy not below 0
                            # (356.6), the Power cost still paid; the base cost is the printed one
-                           "discount_energy": "Core 356.4.b"}
+                           "discount_energy": "Core 356.4.b",
+                           # 2026-10-06 (package 9, Nocturne - Horrifying): "play me for [A]" - the base cost replaced by
+                           # N Power of any Domain (Core 356.1.a), paid as a mandatory power_any component
+                           "for_power_any": "Core 356.1.a"}
 # 2026-10-04 (package 8): "play me" - the card is the program's own source, in the zone its triggered ability
 # works from (Core 383.2.c.1); not chosen, so not a target (355.7)
 LIMITED_PLAY_SELF_ZONES = {"trash"}
@@ -1620,6 +1623,11 @@ def validate_state(state: Any) -> list[str]:
         if effect_text is not None and (not isinstance(effect_text, dict) or not effect_text
                                         or any(field not in APPENDABLE_TRIGGER_FIELDS or not isinstance(rows, list) or not rows for field, rows in effect_text.items())):
             errors.append(f"objects.{object_id}.effect_text must map appendable ability lists to non-empty descriptor arrays (Core 477.2)")
+        seen = obj.get("banish_when_seen")
+        if seen is not None and (not isinstance(seen, dict) or set(seen) != {"play_for_power_any"}
+                                 or not isinstance(seen["play_for_power_any"], int) or isinstance(seen["play_for_power_any"], bool)
+                                 or seen["play_for_power_any"] < 1):
+            errors.append(f"objects.{object_id}.banish_when_seen must be {{play_for_power_any: positive integer}}")
         for flag in ("empowered", "buffed", "any_number_of_buffs"):
             if flag in obj and not isinstance(obj[flag], bool):
                 errors.append(f"objects.{object_id}.{flag} must be boolean when supplied (Core 441.1.a, 426.1.b)")
@@ -1983,6 +1991,11 @@ def _trigger_base_cost_errors(effect: dict[str, Any], index: int, count: int) ->
 
 
 def _limited_play_cost_basis_errors(value: Any) -> list[str]:
+    if isinstance(value, dict) and value.get("kind") == "for_power_any":
+        if set(value) != {"kind", "amount"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool) \
+                or value["amount"] < 1:
+            return ["cost_basis for_power_any must be {kind, amount} with a positive integer amount (Core 356.1.a)"]
+        return []
     if isinstance(value, dict) and value.get("kind") == "discount_energy":
         if set(value) != {"kind", "amount"} or not isinstance(value.get("amount"), int) or isinstance(value.get("amount"), bool) \
                 or value["amount"] < 1:
@@ -7410,6 +7423,41 @@ def spend_one_buff(obj: dict[str, Any]) -> None:
         del obj["buffed"]
 
 
+# 2026-10-06 package 9 (Nocturne - Horrifying): the instructions that make a player look at or reveal cards from the TOP
+# of a Main Deck (a plain draw is not a look)
+SEEN_FROM_TOP_OPS = {"look_at_top", "predict", "reveal", "reveal_until"}
+
+
+def seen_from_top(prior: dict[str, Any], effect: dict[str, Any], event: dict[str, Any],
+                  controller: str | None) -> tuple[str | None, list[str]]:
+    """(the deck's owner, the cards that player looked at or revealed from the top of their own Main Deck) for one
+    executed instruction; (None, []) when nobody looked at their own deck's top."""
+    op = effect.get("op")
+    if op in ("look_at_top", "predict"):
+        player = effect.get("player")
+        seer = effect.get("_controller") or controller if op == "look_at_top" else player
+        if player not in prior["players"] or seer != player:
+            return None, []
+        return player, list(prior["players"][player]["zones"]["main_deck"][: int(effect.get("count") or 0)])
+    if op == "reveal" and effect.get("from") != "main_deck_top":
+        return None, []
+    player = event.get("player")
+    if player not in prior["players"]:
+        return None, []
+    return player, [r["object_id"] for r in event.get("revealed") or [] if isinstance(r, dict)]
+
+
+def banish_seen(state: dict[str, Any], card: str, owner: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Banish `card` from its owner's Main Deck (Core 427: a new object in its owner's Banishment, 124)."""
+    working = copy.deepcopy(state)
+    working["players"][owner]["zones"]["main_deck"].remove(card)
+    _drop_reveals(working, [card])
+    working["players"][owner]["zones"]["banishment"].append(card)
+    identity = _bump_identity(working, card)
+    return working, {"objects": [card], "destinations": {card: f"{owner}.banishment"}, "identities_after": {card: identity},
+                     "not_kill": True, "not_discard": True}
+
+
 def spend_buff_candidates(state: dict[str, Any], player_id: str) -> list[str]:
     """The Units a player may spend a buff from: on the board, controlled by that player, with a buff
     (Core 702.2.b.1, 702.2.b.2)."""
@@ -8256,6 +8304,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
     # empty. A reference to one of these is a game event, not a bad artifact.
     empty_selections: set[str] = set()
     terminal: dict[str, Any] | None = None
+    # package 9 (Nocturne - Horrifying): the cards banished as they were seen, offered a play once the effect is done
+    seen_banished: list[dict[str, Any]] = []
     try:
         effects_to_run, mode, repeat_meta = _resolve_executions(program, decisions, context)
     except ModeSelectionRequired as exc:
@@ -9916,6 +9966,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             # Core 811.1.d.3 (GPT 2026-09-27): a unit this hidden card makes its controller play is
             # played at the battlefield it was hidden at
             effect = {**effect, "hidden_battlefield": context["hidden_battlefield"]}
+        prior = current
         try:
             current, event = _apply_one(current, effect, decisions=decisions,
                                         controller=program.get("controller"))
@@ -9988,6 +10039,63 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             event["removed_continuous_effects"] = dead
         trace.append(event)
         outcomes[effect_id] = event["outcome"]
+        if effect.get("op") in SEEN_FROM_TOP_OPS and event.get("outcome") not in IGNORED_OUTCOMES:
+            # package 9 (Nocturne - Horrifying): a card its owner just looked at or revealed from the top of their own
+            # Main Deck, that may banish itself as that happens - decided now, before the next instruction
+            import engine_decisions as ed
+            owner, seen = seen_from_top(prior, effect, event, program.get("controller"))
+            for card in seen:
+                obj = current["objects"].get(card) or {}
+                if not obj.get("banish_when_seen") or obj.get("owner") != owner \
+                        or card not in current["players"][owner]["zones"]["main_deck"]:
+                    continue
+                ref = f"seen-banish:{program.get('program_id')}:{effect_id}:{card}"
+                entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
+                if entry is None or entry.get("controller") != owner or entry.get("stage") != "resolution":
+                    return {**base, "valid": True, "committed": False, "optional_choice_required": True,
+                            "reason_code": "optional_choice_required" if entry is None else "decision_controller_mismatch",
+                            "reason": f"{card!r} was looked at or revealed from the top of {owner}'s Main Deck; its owner "
+                                      f"may banish it now (its printed statement)",
+                            "decision_ids": [ref], "decision_controller": owner, "failed_effect_index": index, "trace": trace}
+                if entry["value"] is not True:
+                    continue
+                snapshots.append(game_events.snapshot(current))
+                before_banish = hash_value(current)
+                current, done = banish_seen(current, card, owner)
+                banish_event = {"index": index, "effect_id": f"{effect_id}:seen:{card}", "op": "banish", "outcome": "applied",
+                                "completion": "full", "seen_banish": True, "decision_id": ref, **done,
+                                "rule_locators": ["Core 427", "Core 124"], "before_state_hash": before_banish,
+                                "after_state_hash": hash_value(current)}
+                trace.append(banish_event)
+                outcomes[banish_event["effect_id"]] = "applied"
+                seen_banished.append({"card": card, "owner": owner,
+                                      "identity": done["identities_after"][card],
+                                      "amount": obj["banish_when_seen"]["play_for_power_any"]})
+    if seen_banished and terminal is None:
+        # package 9 (Nocturne - Horrifying): "If you do, you may play me for [A]" - the effect that looked has finished;
+        # the owner may play each card banished as it was seen, from Banishment, for its Power of any Domain
+        import engine_decisions as ed
+        for offer in seen_banished:
+            card, owner = offer["card"], offer["owner"]
+            ref = f"seen-play:{program.get('program_id')}:{card}"
+            entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
+            if entry is None or entry.get("controller") != owner or entry.get("stage") != "resolution":
+                return {**base, "valid": True, "committed": False, "optional_choice_required": True,
+                        "reason_code": "optional_choice_required" if entry is None else "decision_controller_mismatch",
+                        "reason": f"{card!r} was banished as it was seen; its owner may play it for [A] now",
+                        "decision_ids": [ref], "decision_controller": owner, "trace": trace}
+            if entry["value"] is not True or card not in current["players"][owner]["zones"]["banishment"] \
+                    or object_identity(current, card) != offer["identity"]:
+                continue
+            snapshots.append(game_events.snapshot(current))
+            before_play = hash_value(current)
+            current, play_event = _start_limited_play(
+                current, {"kind": "for_power_any", "amount": offer["amount"]}, {"object_id": card},
+                {**program, "controller": owner, "source_object": card}, f"seen-play:{card}")
+            play_event.update({"index": len(effects_to_run), "effect_id": f"seen-play:{card}", "decision_id": ref,
+                               "before_state_hash": before_play, "after_state_hash": hash_value(current)})
+            trace.append(play_event)
+            outcomes[play_event["effect_id"]] = play_event["outcome"]
     # package 6 (Core 411.1): an each_player copy's game actions are the iteration player's -
     # "Each player kills one of their units": each is responsible for their own unit's death
     for entry in trace:

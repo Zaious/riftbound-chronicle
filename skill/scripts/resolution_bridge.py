@@ -914,7 +914,8 @@ def finalize_limited_play(
     the Chain - never Finalized, not countered. What the effect did before it stays (GPT 2026-09-25).
     Any other refusal is of a choice supplied for the play (an entry location the rules refuse), which
     its player makes again: nothing changes."""
-    from play_transaction import DECISION_REASONS, DECLARATION_VERSION, limited_play_discounts, limited_play_override, play_card
+    from play_transaction import (DECISION_REASONS, DECLARATION_VERSION, limited_play_additional, limited_play_discounts,
+                                  limited_play_override, play_card)
     from rules_core import finalize_oldest_pending, next_procedure
     from effect_ir import CORE_RULESET, FAQ_AS_OF
     base = {"schema_version": "riftbound-limited-play-result.v1",
@@ -953,7 +954,8 @@ def finalize_limited_play(
         "play_id": f"limited:{item['id']}", "actor": item["controller"], "card": card,
         "chain_item": {"id": item["id"], "object_kind": kind, "timing": "default"},
         "cost": {"base": copy.deepcopy(effect_state["objects"][card].get("printed_cost")),
-                 **({"discounts": limited_play_discounts(record, item["id"])} if limited_play_discounts(record, item["id"]) else {})},
+                 **({"discounts": limited_play_discounts(record, item["id"])} if limited_play_discounts(record, item["id"]) else {}),
+                 **({"additional": limited_play_additional(record)} if limited_play_additional(record) else {})},
         "source": {"kind": record["source_zone"]}, "source_permission": {"granted_by": record["granted_by"]},
         **({"cost_override": limited_play_override(record)} if limited_play_override(record) is not None else {}),
         "timing_source": "limited_play",

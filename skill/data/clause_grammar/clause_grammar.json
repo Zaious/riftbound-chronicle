@@ -1299,6 +1299,33 @@
       ]
     },
     {
+      "production_id": "as_you_look_at_or_reveal_me_from_the_top_of_your_deck_banish_me_then_play_me_for_a",
+      "form": "As you look at or reveal me from the top of your deck, you may banish me. If you do, you may play me for :rb_rune_rainbow:.",
+      "template": "as you look at or reveal me from the top of your deck, you may banish me\\. if you do, you may play me for \\[a\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 427",
+        "Core 419.3",
+        "Core 356.1.a",
+        "Core 385.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "banish",
+        "limited_play"
+      ],
+      "boundary": "The card's own permission, from the top of its owner's Main Deck as its owner looks at or reveals it: banish it, and then play it for [A]. A draw is not a look; another card's, or another cost, is a different production.",
+      "golden": [
+        "As you look at or reveal me from the top of your deck, you may banish me. If you do, you may play me for :rb_rune_rainbow:."
+      ],
+      "negative": [
+        "as you draw me, you may banish me. if you do, you may play me for [a]",
+        "as you look at or reveal me from the top of your deck, you may banish me",
+        "as you look at me from the top of your deck, you may play me for [a]"
+      ]
+    },
+    {
       "production_id": "you_win_the_game",
       "form": "You win the game.",
       "template": "you win the game",

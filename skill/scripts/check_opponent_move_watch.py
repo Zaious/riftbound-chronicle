@@ -15,6 +15,8 @@ destination_not_source_battlefield, grouping one_or_more (one trigger per batch 
   V4 not opponent  p1's own Move to bf2: none
   V5 effect move   p2's spell moving p2's unit to bf2: one trigger
   V6 base          Volibear in p1's Base, p2 moves to bf2: refused by name (source_not_at_battlefield)
+  V7 two Moves     two independent Standard Moves of p2's: each triggers once
+  V8 our effect    p1's own spell moving p2's unit to bf2: none (the Move is p1's, Core 411.4)
   G  grammar       the clause grammar lowers the sentence to exactly that descriptor; near misses stay unparsed
 
     python skill/scripts/check_opponent_move_watch.py
@@ -91,6 +93,19 @@ def main() -> int:
     got = count(effect_move(board(), "e1", TO_BF2, controller="p2"))
     if got != 1:
         fail("V5 effect move", got)
+    # V7: two independent Moves - each its own action - trigger twice (GPT 2026-09-27 reply2 1.7)
+    first = smove(board(), "e1", TO_BF2, actor="p2")
+    if first.get("committed"):
+        second = smove(first["next_effect_state"], "e2", TO_BF2, actor="p2")
+        got = count(second)
+        if got != 1 or count(first) != 1:
+            fail("V7 two Moves", f"first {count(first)}, second {got}")
+    else:
+        fail("V7 two Moves", count(first))
+    # V8: p1's own effect moving p2's unit is not "an opponent moves" (Core 411.4)
+    got = count(effect_move(board(), "e1", TO_BF2, controller="p1"))
+    if got != 0:
+        fail("V8 our effect", got)
     based = smove(board(volibear_at_base=True), "e1", TO_BF2, actor="p2")
     text = f"{based.get('reason_code')} {based.get('reason')}"
     if based.get("committed") or "source_not_at_battlefield" not in text and "is at no Battlefield" not in text:
@@ -108,7 +123,7 @@ def main() -> int:
             print(f"  - {e}")
         return 1
     print("OK: an opponent's Move to a Battlefield other than the source's triggers once per batch; the source at no "
-          "Battlefield is refused by name (V1-V6, G)")
+          "Battlefield is refused by name (V1-V8, G)")
     return 0
 
 

@@ -14,6 +14,7 @@ source_card {object, identity} - a Deal whose program's source is that object, w
   B3 not others   a Deal of another source (a gear's ability) while the bonus is bound deals its printed 2
   B4 opponent     the opponent's spell played first does not spend it; the controller's next one still has it
   B5 this turn    unspent, the turn's Expiration Step ends it
+  B7 unit source  the next spell's Deal with a Unit named as its source (417.6.b.3) gets no Bonus Damage
   B6 split        the bound spell's split Deal is refused by name (715.3 with 355.14.c not modelled); another
                   source's split gets nothing from it
   S  shapes       a value of 0 refused; the state validator refuses a non-integer value
@@ -22,6 +23,7 @@ source_card {object, identity} - a Deal whose program's source is that object, w
 """
 from __future__ import annotations
 
+import copy
 import sys
 from pathlib import Path
 
@@ -122,6 +124,17 @@ def main() -> int:
                                                            "source_object": "u1"})
         if not other.get("committed") or other["next_state"]["objects"]["big"]["damage"] != 6 + 2:
             fail("B3 not others", f"{other.get('reason')} {other.get('next_state', {}).get('objects', {}).get('big')}")
+    # B7: a Deal the spell names a Unit as the source of gets nothing (GPT 2026-10-06 ruling 15; Core 417.6.b.3)
+    named = spell_program("bolt1", "p1")
+    named["effects"][0].update({"source_object": "u1", "source_kind": "unit"})
+    keep = spell_program
+    try:
+        globals()["spell_program"] = lambda spell, controller, deals=1: copy.deepcopy(named)
+        unit_dealt = cast(s, "bolt1", "p1")
+    finally:
+        globals()["spell_program"] = keep
+    if dmg(unit_dealt) != 2:
+        fail("B7 unit source", f"a Deal the spell names u1 the source of dealt {dmg(unit_dealt)} ({unit_dealt.get('reason')})")
     # B4: the opponent's spell first
     theirs = cast(s, "obolt", "p2")
     if dmg(theirs) != 2:
@@ -169,7 +182,7 @@ def main() -> int:
         for err in errors:
             print(f"  - {err}")
         return 1
-    print("OK: the next spell played this turn deals its Bonus Damage, that spell only (B1-B6, S, G)")
+    print("OK: the next spell played this turn deals its Bonus Damage, that spell only (B1-B7, S, G)")
     return 0
 
 

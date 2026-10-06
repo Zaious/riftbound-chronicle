@@ -314,16 +314,48 @@ def main() -> int:
             or validate_play_result(blind):
         errors.append(f"a cost whose events are incomplete was not refused by name: {blind.get('reason_code')}")
 
-    # a kill paid as a cost that a replacement changes is still PAID (Core 357.2.a, 203.2) - the engine
-    # does not model the replacement's events during payment, so it refuses by name, never "unpayable"
+    # a kill paid as a cost that a replacement changes is still PAID (Core 357.2.a, 203.2). Package 9: the
+    # replacement's events are modelled (game_events.REPLACED_WITH), so the play commits - its payment event
+    # records the replaced outcome under 357.2.a, and the replacement and what it did are events a watcher sees
     from check_replacement_subject import CLAUSES, hourglass_state, install
     zhonya = install(hourglass_state(), cg.compile_card(CLAUSES, cg.load_grammar()))
     zhonya["players"]["p1"]["resources"] = {"energy": 0, "power": {}}
-    replaced = play_card(fixture(), zhonya, ability_declaration(cost=kill_cost))
-    if replaced.get("committed") or not replaced.get("unsupported") \
-            or replaced.get("reason_code") != "payment_replacement_events_not_modelled" or validate_play_result(replaced):
-        errors.append(f"a kill cost a replacement changed was not refused by name as unsupported: "
-                      f"{replaced.get('reason_code')} unsupported={replaced.get('unsupported')}")
+    import play_transaction as _pt
+    seen_events: list[dict] = []
+    real_apply = _pt.apply_program
+
+    def recording(state, program, **kw):
+        got = real_apply(state, program, **kw)
+        seen_events.extend(got.get("events") or [])
+        return got
+
+    _pt.apply_program = recording
+    try:
+        replaced = play_card(fixture(), copy.deepcopy(zhonya), ability_declaration(cost=kill_cost))
+    finally:
+        _pt.apply_program = real_apply
+    pay = (replaced.get("cost_receipt") or {}).get("payment_events") or []
+    if not replaced.get("committed") or validate_play_result(replaced) \
+            or not any(e.get("outcome") == "replaced_with" and "Core 357.2.a" in e.get("rule_locators", []) for e in pay):
+        errors.append(f"a kill cost a replacement changed was not paid with its replacement recorded (Core 357.2.a): "
+                      f"{replaced.get('reason_code')} {[(e.get('kind'), e.get('outcome')) for e in pay]}")
+    if replaced.get("committed") and "replacement_applied" not in [e.get("kind") for e in seen_events]:
+        errors.append(f"the replaced kill cost handed watchers no replacement_applied event: {[e.get('kind') for e in seen_events]}")
+    # and a replacement whose events are NOT modelled (the outcome reaches payment with no events) is still
+    # refused by name, never called unpayable
+    real_apply = _pt.apply_program
+
+    def eventless(state, program, **kw):
+        got = real_apply(state, program, **kw)
+        return {**got, "events": []} if got.get("committed") else got
+
+    _pt.apply_program = eventless
+    try:
+        blind_replaced = play_card(fixture(), copy.deepcopy(zhonya), ability_declaration(cost=kill_cost))
+    finally:
+        _pt.apply_program = real_apply
+    if blind_replaced.get("committed") or blind_replaced.get("reason_code") != "payment_replacement_events_not_modelled":
+        errors.append(f"a replaced kill cost with no modelled events was not refused by name: {blind_replaced.get('reason_code')}")
 
     # every field a result, its receipt and its payment events carry is one the published schema allows
     import json as _json

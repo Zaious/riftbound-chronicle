@@ -64,6 +64,12 @@ def main() -> int:
         u1 = saved["next_state"]["objects"]["u1"]
         if u1["damage"] != 0 or not u1["exhausted"] or object_identity(saved["next_state"], "u1") != "u1@0" or any("granted" in r for r in saved["next_state"]["replacement_effects"]):
             errors.append(f"replacement effects (heal, exhaust, recall) or one-use cleanup wrong: {u1} {saved['next_state']['replacement_effects']}")
+        # package 9: the replaced kill's events - the replacement, and what it did (heal, exhaust, recall and the
+        # change of location) - are events a watcher sees; the kill itself is not one (no died event)
+        kinds = [ev_["kind"] for ev_ in saved.get("events") or []]
+        if kinds[:4] != ["replacement_applied", "healed", "exhausted", "recalled"] or "died" in kinds \
+                or not {"left_location", "entered_location"} <= set(kinds) or saved.get("event_coverage", "complete") != "complete":
+            errors.append(f"the replaced kill's events are not the replacement and what it did: {kinds}")
         again = apply_program(saved["next_state"], program("kill2", {"op": "kill", "object_id": "u1", "effect_id": "k2"}))
         if not again.get("committed") or "u1" not in again["next_state"]["players"]["p1"]["zones"]["trash"]:
             errors.append("a second kill after the one-use grant did not kill")

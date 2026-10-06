@@ -306,6 +306,10 @@ PERFORMED = {"applied", "replaced_modified_applied", "augmented_applied"}
 # A replacement that prevented the original: the replacement applied, the
 # original event did not happen (Core 205, 359.3.e.14.b).
 PREVENTED = {"replaced_prevented"}
+# A replacement that did OTHER instructions instead (mode replace_with): the original event did not happen;
+# the instructions the replacement performed did, each with its own events (package 9: a kill paid as a cost and
+# replaced is still paid, Core 357.2.a; a granted death replacement heals, exhausts and recalls, Core 370).
+REPLACED_WITH = {"replaced_with"}
 
 
 class EventKindUnknown(NotImplementedError):
@@ -530,6 +534,28 @@ class EventLog:
                       extra={"replacement_id": entry.get("replacement_id"),
                              "prevented_kind": OP_PRIMARY.get(entry.get("op")),
                              "rule_locators": ["Core 370", "Core 205", "Core 359.3.e.14.b"]})
+            return self.events[start:]
+        if outcome in REPLACED_WITH and isinstance(entry.get("replacement_trace"), list):
+            # The original event did not happen; the replacement's own instructions did. One
+            # replacement_applied event names what was replaced, and every instruction the
+            # replacement performed is recorded as itself, under the same action - a watcher sees
+            # the exhaust, the heal, the recall, and every change of location they made.
+            object_id = entry.get("affected_object_id") or next(iter(_objects_of(entry)), None)
+            applied = self._new("replacement_applied", action_id, object_id=object_id,
+                                before=before.get(object_id or "", {}), after=after.get(object_id or "", {}),
+                                extra={"replacement_id": entry.get("replacement_id"),
+                                       "prevented_kind": OP_PRIMARY.get(entry.get("op")),
+                                       "rule_locators": ["Core 370", "Core 370.1.b", "Core 357.2.a"]})
+            parent_of: dict[str, str] = {}
+            for sub in entry["replacement_trace"]:
+                if sub.get("outcome") in PERFORMED:
+                    self._primary_events(sub, action_id, before, after, parent_of, None)
+            for object_id in sorted(moved):
+                self._location_events(object_id, action_id, before.get(object_id, {}), after.get(object_id, {}),
+                                      parent_of.get(object_id, applied["event_id"]), _visible_to_override(entry))
+            for object_id in sorted(moved):
+                if not any(e["object"] == object_id for e in self.events[start:]):
+                    self.problems.append(f"{action_id}: {object_id} changed location or identity with no event")
             return self.events[start:]
         if outcome not in PERFORMED:
             if moved:

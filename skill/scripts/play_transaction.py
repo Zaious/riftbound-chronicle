@@ -1474,15 +1474,20 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} ({comp['kind']}) cannot be paid: {result.get('reason') or '; '.join(result.get('errors', []))}", rule_locators=["Core 357.2", "Core 203.3"])
         outcome = result["trace"][0].get("outcome")
         import game_events as _events
-        if (outcome not in PAID_OUTCOMES and str(outcome).startswith("replaced")) or \
-                (outcome in PAID_OUTCOMES and outcome not in _events.PERFORMED | _events.PREVENTED):
+        # package 9 (Core 357.2.a, Cruel Patron's own example): a cost replaced by other instructions
+        # (replace_with) is paid; its events are modelled (game_events.REPLACED_WITH: the replacement
+        # and every instruction it performed), so it is no longer refused here
+        replaced_with = outcome in _events.REPLACED_WITH and any(
+            e.get("kind") == "replacement_applied" for e in result.get("events") or [])
+        if not replaced_with and ((outcome not in PAID_OUTCOMES and str(outcome).startswith("replaced")) or
+                                  (outcome in PAID_OUTCOMES and outcome not in _events.PERFORMED | _events.PREVENTED)):
             # a cost a replacement changed is still paid (Core 357.2.a, 203.2: Cruel Patron and
             # Zhonya's Hourglass) - but this outcome's own events are not modelled, so a watcher
             # could not see what really happened: refused by name, never called unpayable
             raise PlayError("payment", "payment_replacement_events_not_modelled",
                             f"cost {comp['cost_id']!r} ({comp['kind']}) was replaced ({outcome}); it is paid, but the events of the "
                             f"replacement are not modelled during payment", unsupported=True, rule_locators=["Core 357.2.a", "Core 203.2"])
-        if outcome not in PAID_OUTCOMES:
+        if outcome not in PAID_OUTCOMES and not replaced_with:
             raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} ({comp['kind']}) did not happen: {outcome}", rule_locators=["Core 357.2", "Core 203.3"])
         if result.get("event_coverage", "complete") != "complete":
             # what the cost did moved something no event names: a watcher would miss it (fail closed)

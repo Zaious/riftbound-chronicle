@@ -254,6 +254,20 @@ def _lower_object_keyword(params, slots):
 
 
 
+def _lower_no_damage_after_two_moves(params):
+    # package 9 (Kayn - Unleashed): the card's own replacement - prevent_event on a Deal to it, while it has made two
+    # or more real Moves this turn (effect_ir condition moved_this_turn_at_least, the moves_this_turn ledger)
+    return {
+        "state_lists": {"replacement_effects": [{
+            "replacement_id": "$clause_id", "controller": "$controller", "source_object": "$source_object",
+            "target_object_id": "$source_object", "mode": "prevent_event", "event_op": "deal_damage",
+            "optional": False, "uses_remaining": None,
+            "condition": {"kind": "moved_this_turn_at_least", "count": 2}}]},
+        "ast": {"node": "passive", "kind": "replacement", "params": {"event_op": "deal_damage", "mode": "prevent_event",
+                                                                     "condition": "moved_this_turn_at_least 2"}},
+    }
+
+
 def _lower_win_game(params):
     # package 9 (The Grand Plaza): Core 195 - the instruction's controller wins; 196 - the game ends
     return {"program_effects": [{"op": "win_game", "effect_id": "win", "player": "$controller"}],
@@ -1226,6 +1240,7 @@ LOWERINGS = {
     "play_timing_keyword": _lower_play_timing,
     "draw_n": _lower_draw,
     "you_win_the_game": _lower_win_game,
+    "if_i_have_moved_twice_this_turn_i_dont_take_damage": _lower_no_damage_after_two_moves,
     "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
     "discard_n": _lower_discard,
     "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,

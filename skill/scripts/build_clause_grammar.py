@@ -400,6 +400,16 @@ LITERAL = [
      ["Deal 2 to a unit at a battlefield.", "Deal 3 to a unit at battlefield."],
      ["deal 2 to a unit at a battlefield with 3 [m] or less", "deal 2 to all units at a battlefield"]),
     # 2026-09-25 (The Syren): a chosen friendly Unit at a Battlefield goes to its own Base
+    # 2026-10-06 package 9 (Kayn - Unleashed, GPT ruling 8): a printed statement - while the card has really moved
+    # at least twice this turn, every Deal to it is prevented, combat damage included (Core 370, 417)
+    ("if_i_have_moved_twice_this_turn_i_dont_take_damage", r"if i have moved twice this turn, i don't take damage",
+     ["Core 370", "Core 205", "Core 417.6.c", "Core 420", "Core 124"], "passive", ["replacement_effects", "condition_v1"],
+     "The card's own replacement: a Deal to it is prevented while it has made two or more real Moves this turn. A "
+     "Recall is not a Move; a new object starts at zero. 'I don't take combat damage' or 'the first time ...' are "
+     "different productions.",
+     ["If I have moved twice this turn, I don't take damage."],
+     ["if i have moved this turn, i don't take damage", "i don't take damage",
+      "if i have moved twice this turn, i have +2 might"]),
     # 2026-10-06 package 9 (The Grand Plaza): an effect that instructs its controller to win (Core 195); the game
     # ends at once (196)
     ("you_win_the_game", r"you win the game", ["Core 195", "Core 196"], "instruction", ["win_game"],

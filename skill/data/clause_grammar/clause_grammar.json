@@ -1111,6 +1111,34 @@
       ]
     },
     {
+      "production_id": "if_i_have_moved_twice_this_turn_i_dont_take_damage",
+      "form": "If I have moved twice this turn, I don't take damage.",
+      "template": "if i have moved twice this turn, i don't take damage",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 370",
+        "Core 205",
+        "Core 417.6.c",
+        "Core 420",
+        "Core 124"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "bounded_replacement",
+        "typed_conditions"
+      ],
+      "boundary": "The card's own replacement: a Deal to it is prevented while it has made two or more real Moves this turn. A Recall is not a Move; a new object starts at zero. 'I don't take combat damage' or 'the first time ...' are different productions.",
+      "golden": [
+        "If I have moved twice this turn, I don't take damage."
+      ],
+      "negative": [
+        "if i have moved this turn, i don't take damage",
+        "i don't take damage",
+        "if i have moved twice this turn, i have +2 might"
+      ]
+    },
+    {
       "production_id": "you_win_the_game",
       "form": "You win the game.",
       "template": "you win the game",

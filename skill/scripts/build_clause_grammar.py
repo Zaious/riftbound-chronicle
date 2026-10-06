@@ -632,6 +632,16 @@ LITERAL = [
      ["The next spell you play this turn costs :rb_energy_5: less."],
      ["spells you play this turn cost :rb_energy_1: less", "the next unit you play this turn costs :rb_energy_2: less",
       "the next spell you play this turn costs :rb_rune_rainbow: less"]),
+    # 2026-10-06 package 9 (Ravenborn Tome, GPT ruling 15): the first spell its controller plays after this, this turn -
+    # each of that spell's own Deals gets +N (Core 713-715); spent by that play
+    ("the_next_spell_you_play_this_turn_deals_n_bonus_damage",
+     r"the next spell you play this turn deals (?P<amount>\d+) bonus damage",
+     ["Core 390.4", "Core 391", "Core 713", "Core 714", "Core 715.1"], "instruction", ["grant_turn_effect"],
+     "A Bonus Damage of N bound to the next spell its controller plays this turn: each of that spell's own Deals. Every "
+     "spell, a unit, or 'your spells and abilities' is a different clause.",
+     ["The next spell you play this turn deals 1 Bonus Damage."],
+     ["your spells and abilities deal 1 bonus damage", "the next spell you play this turn costs :rb_energy_1: less",
+      "the next unit you play this turn deals 1 bonus damage"]),
     ("the_next_unit_you_play_this_turn_enters_ready", r"the next unit you play this turn enters ready",
      ["Core 390.4", "Core 391", "Core 369.3", "Core 143.4"], "instruction", ["grant_turn_effect"],
      "The next unit its controller plays this turn enters ready: bound to that play as an entry replacement, "

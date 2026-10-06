@@ -1831,6 +1831,33 @@
       ]
     },
     {
+      "production_id": "the_next_spell_you_play_this_turn_deals_n_bonus_damage",
+      "form": "The next spell you play this turn deals 1 Bonus Damage.",
+      "template": "the next spell you play this turn deals (?P<amount>\\d+) bonus damage",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 390.4",
+        "Core 391",
+        "Core 713",
+        "Core 714",
+        "Core 715.1"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_turn_effect"
+      ],
+      "boundary": "A Bonus Damage of N bound to the next spell its controller plays this turn: each of that spell's own Deals. Every spell, a unit, or 'your spells and abilities' is a different clause.",
+      "golden": [
+        "The next spell you play this turn deals 1 Bonus Damage."
+      ],
+      "negative": [
+        "your spells and abilities deal 1 bonus damage",
+        "the next spell you play this turn costs :rb_energy_1: less",
+        "the next unit you play this turn deals 1 bonus damage"
+      ]
+    },
+    {
       "production_id": "the_next_unit_you_play_this_turn_enters_ready",
       "form": "The next unit you play this turn enters ready.",
       "template": "the next unit you play this turn enters ready",

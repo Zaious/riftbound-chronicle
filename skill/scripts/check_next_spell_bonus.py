@@ -154,12 +154,22 @@ def main() -> int:
                             "turn_id": "turn-4", "source": "tome"}]
     if not validate_state(bad):
         fail("S shapes", "a non-integer value passed the state validator")
+    # G: the clause grammar lowers the sentence to exactly that turn effect; near misses stay unparsed
+    import clause_grammar as CG
+    lowered = CG.compile_clause("The next spell you play this turn deals 1 Bonus Damage.", CG.load_grammar())
+    if lowered.get("unsupported") or [(e.get("op"), e.get("turn_effect_kind"), e.get("value"))
+                                      for e in lowered.get("program_effects") or []] != [
+            ("grant_turn_effect", "next_spell_bonus_damage", 1)]:
+        fail("G grammar", f"{lowered.get('production_id')} {lowered.get('program_effects')}")
+    for near in ("Your spells and abilities deal 1 Bonus Damage this turn.", "The next unit you play this turn deals 1 Bonus Damage."):
+        if not CG.compile_clause(near, CG.load_grammar()).get("unsupported"):
+            fail("G grammar", f"{near!r} was parsed")
     if errors:
         print("FAILED: next spell bonus damage checks")
         for err in errors:
             print(f"  - {err}")
         return 1
-    print("OK: the next spell played this turn deals its Bonus Damage, that spell only (B1-B6, S)")
+    print("OK: the next spell played this turn deals its Bonus Damage, that spell only (B1-B6, S, G)")
     return 0
 
 

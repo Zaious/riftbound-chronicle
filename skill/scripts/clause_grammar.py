@@ -663,6 +663,17 @@ def _lower_next_spell_discount(params):
                     "params": {"turn_effect_kind": "next_spell_cost_reduction", "value": amount}}}
 
 
+def _lower_next_spell_bonus_damage(params):
+    """package 9 (Ravenborn Tome): a turn effect the play transaction binds to the next spell its controller plays, as a
+    Bonus Damage of that spell's own Deals (effect_ir next_spell_bonus_damage, scope source_card)."""
+    amount = int(params["amount"])
+    return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
+                                 "turn_effect_kind": "next_spell_bonus_damage", "value": amount,
+                                 "controller": "$controller", "source": "$chain_item"}],
+            "ast": {"node": "instruction", "op": "grant_turn_effect",
+                    "params": {"turn_effect_kind": "next_spell_bonus_damage", "value": amount}}}
+
+
 def _lower_next_unit_enters_ready(params):
     """"The next unit you play this turn enters ready." (Sun Disc) - bound to that one play as an
     entry replacement, then spent (Core 391, 369.3)."""
@@ -1351,6 +1362,7 @@ LOWERINGS = {
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
     "opponents_cant_play_cards_this_turn": _lower_opponents_cant_play_cards,
     "the_next_spell_you_play_this_turn_costs_n_less": _lower_next_spell_discount,
+    "the_next_spell_you_play_this_turn_deals_n_bonus_damage": _lower_next_spell_bonus_damage,
     "give_a_unit_at_a_battlefield_or_a_gear_temporary": _lower_temporary_unit_at_battlefield_or_gear,
     "the_next_unit_you_play_this_turn_enters_ready": _lower_next_unit_enters_ready,
     "no_rules_text": _lower_empty,

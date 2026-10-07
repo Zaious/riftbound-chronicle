@@ -5326,6 +5326,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("predict requires a known player")
         session = effect.get("effect_id", "predict")
         seen = _mark_reveals(new_state, player_id, "main_deck", new_state["players"][player_id]["zones"]["main_deck"][:count], [player_id], session, "look")
+        # GPT 2026-10-08 (second): looked_hash binds the objects as they were seen - each card's identity NOW, before a
+        # banish (a new object, Core 124) or a recycle changes it; the new identities stay with the banishment/play
+        seen_hash = _ids_hash(new_state, seen)
         # package 9 (GPT 2026-10-07, Nocturne - Horrifying): a card that may banish itself as its owner looks at it is
         # offered NOW - before Predict decides what to recycle or put back; banished, it is no longer among them.
         # GPT 2026-10-08: the banish does not undo the look - `seen` (every card looked at) is the receipt's looked_count,
@@ -5342,7 +5345,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         order, o_meta = resolve_choice(new_state, order_spec, decision_ref=effect.get("put_back_ref") or f"{session}:put_back", decisions=decisions, controller=player_id, candidates=rest)
         _reorder_deck(new_state, player_id, order, "top")
         _drop_reveals(new_state, order)
-        trace.update({"player": player_id, "requested_count": count, "looked_count": len(seen), "looked_hash": _ids_hash(new_state, seen), "burn_out": False,
+        trace.update({"player": player_id, "requested_count": count, "looked_count": len(seen), "looked_hash": seen_hash, "burn_out": False,
                       "recycled_count": len(recycled), "recycled_hash": sub.get("objects_hash"), "recycle_order_decision": sub.get("order_decision"),
                       "put_back_count": len(order), "put_back_ordering_hash": _ids_hash(new_state, order), "visible_to": [player_id],
                       "selection": {"recycle": {k: v for k, v in r_meta.items() if k != "choice"}, "put_back": {k: v for k, v in o_meta.items() if k != "choice"}},

@@ -27,7 +27,8 @@ limited_play cost_basis for_power_any, the base cost replaced and [A] paid as a 
   N9 Predict, banished  p1 predicts 2, Nocturne on top: the banish is asked FIRST, before Predict's recycle; banished,
                     it is neither recycled nor put back (a recycle choice naming it is refused). The banish does not undo
                     the look (GPT 2026-10-08): the receipt still reads looked_count 2, looked_hash over both cards,
-                    completion full, applied; only c9 is left for Predict (disposable_count 1, put back 1)
+                    completion full, applied; only c9 is left for Predict (disposable_count 1, put back 1). looked_hash binds
+                    noc@0 and c9@0 as seen (computed from the board before), never the banished noc@1
   N10 Predict, declined  the banish declined: Predict recycles it (the bottom of p1's deck); looked 2, full
   N11 Predict, declined  the banish declined: Predict puts it back on top; looked 2, full
   N12 Predict 1      p1 predicts 1, only Nocturne looked at and banished: a completed look - looked_count 1, completion
@@ -39,6 +40,8 @@ limited_play cost_basis for_power_any, the base cost replaced and [A] paid as a 
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -167,19 +170,31 @@ def run_predict(state, banish: bool, recycle: list[str], order: list[str] | None
     return {"loop": True}, asked
 
 
-def predict_receipt(label: str, got: dict, looked: list[str], **want) -> None:
+def seen_hash(before: dict, looked: list[str]) -> str:
+    """The looked-at cards as they were seen, computed here from the board BEFORE the Predict - each id with the identity
+    it had then (its object's `identity`, else <id>@0) - not through the engine's hashing of its own result."""
+    pairs = [[c, (before["objects"][c].get("identity") or f"{c}@0")] for c in looked]
+    return "sha256:" + hashlib.sha256(json.dumps(pairs, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def predict_receipt(label: str, got: dict, before: dict, looked: list[str], **want) -> None:
     """The Predict trace entry reads the cards actually looked at (GPT 2026-10-08): looked_count, looked_hash over exactly
-    `looked` (each with its identity after the instruction, as for every Predict), completion and outcome - and any
-    other field named in `want`."""
+    `looked` with the identities they had as they were seen (from `before`, the board before the Predict), completion
+    and outcome - and any other field named in `want`."""
     entry = next((t for t in got.get("trace") or [] if t.get("op") == "predict"), None)
     if entry is None:
         fail(label, "no predict entry in the trace")
         return
-    expected = {"looked_count": len(looked), "looked_hash": _ids_hash(got["next_state"], looked), "completion": "full",
+    expected = {"looked_count": len(looked), "looked_hash": seen_hash(before, looked), "completion": "full",
                 "outcome": "applied", **want}
     wrong = {k: (entry.get(k), v) for k, v in expected.items() if entry.get(k) != v}
     if wrong:
         fail(label, f"the receipt (got, wanted): {wrong}")
+    if any(object_identity(got["next_state"], c) != object_identity(before, c) for c in looked):
+        # a card that became a new object (banished): the identities after differ, so must the hash over them
+        after = _ids_hash(got["next_state"], looked)
+        if after == expected["looked_hash"] or entry.get("looked_hash") == after:
+            fail(label, f"looked_hash is the hash over the identities AFTER the Predict ({after}), not as they were seen")
 
 
 def predict(errors_out: list[str]) -> None:
@@ -187,14 +202,15 @@ def predict(errors_out: list[str]) -> None:
         return result["next_state"]["players"]["p1"]["zones"]["main_deck"]
 
     # N9: banished as it is looked at - Predict cannot recycle it, nor put it back; the look itself stands
-    got, asked = run_predict(board(), True, [], ["c9"])
+    before = board()
+    got, asked = run_predict(before, True, [], ["c9"])
     if not got.get("committed") or where(got["next_state"], "noc") != "p1:banishment" or "noc" in deck(got):
         fail("N9 banished first", f"{got.get('reason') or got.get('errors')} asked {asked} "
                                   f"{where(got['next_state'], 'noc') if got.get('committed') else None}")
     elif not asked or not asked[0].startswith("seen-banish"):
         fail("N9 banished first", f"the banish was not asked before Predict's own choices: {asked}")
     else:
-        predict_receipt("N9 banished first", got, ["noc", "c9"], disposable_count=1, recycled_count=0, put_back_count=1)
+        predict_receipt("N9 banished first", got, before, ["noc", "c9"], disposable_count=1, recycled_count=0, put_back_count=1)
     tried, _ = run_predict(board(), True, ["noc"])
     if tried.get("committed") or "cannot be chosen" not in str(tried.get("reason")):
         fail("N9 banished first", f"Predict's recycle naming the banished card was not refused as a choice it cannot "
@@ -204,19 +220,19 @@ def predict(errors_out: list[str]) -> None:
     if not got.get("committed") or deck(got)[-1:] != ["noc"] or not asked[0].startswith("seen-banish"):
         fail("N10 declined, recycled", f"{got.get('reason') or got.get('errors')} asked {asked}")
     else:
-        predict_receipt("N10 declined, recycled", got, ["noc", "c9"], recycled_count=1, put_back_count=1)
+        predict_receipt("N10 declined, recycled", got, board(), ["noc", "c9"], recycled_count=1, put_back_count=1)
     # N11: declined - Predict puts it back on top
     got, asked = run_predict(board(), False, [], ["noc", "c9"])
     if not got.get("committed") or deck(got)[:1] != ["noc"] or where(got["next_state"], "noc") != "p1:main_deck":
         fail("N11 declined, put back", f"{got.get('reason') or got.get('errors')} asked {asked}")
     else:
-        predict_receipt("N11 declined, put back", got, ["noc", "c9"], recycled_count=0, put_back_count=2)
+        predict_receipt("N11 declined, put back", got, board(), ["noc", "c9"], recycled_count=0, put_back_count=2)
     # N12: Predict 1, its only card banished as it is looked at - still a completed look, not a no_op
     got, asked = run_predict(board(), True, [], [], count=1)
     if not got.get("committed") or where(got["next_state"], "noc") != "p1:banishment":
         fail("N12 Predict 1", f"{got.get('reason') or got.get('errors')} asked {asked}")
     else:
-        predict_receipt("N12 Predict 1", got, ["noc"], requested_count=1, disposable_count=0, recycled_count=0,
+        predict_receipt("N12 Predict 1", got, board(), ["noc"], requested_count=1, disposable_count=0, recycled_count=0,
                         put_back_count=0)
 
 

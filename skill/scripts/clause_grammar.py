@@ -1432,11 +1432,12 @@ TRIGGER_WRAPPERS = {
     # 2026-09-27 (Volibear - Relentless Storm): "a [Mighty] unit" is a Unit whose current Might is 5 or
     # greater (Core 708, 710), read off the played Unit when the play wakes the watch
     # 2026-10-06 package 9 (Volibear - Imposing, GPT ruling 14): an opponent's Move - a Standard Move they make or one an
-    # effect they control makes (Core 411.1, 411.4) - to a Battlefield the source is not at; one per batch of Moves
+    # effect they control makes (Core 411.1, 411.4) - to a Battlefield the source is not at; one per Move action (GPT
+    # 2026-10-07: one Standard Move of several units is one; two Move instructions in one resolution are two)
     "when_an_opponent_moves_to_a_battlefield_other_than_mine": ("event_triggers", "on-opponent-move", {"watch": {
         "kinds": ["moved"], "scope": "opponent_actor",
         "filter": {"destination_kind": "battlefield", "destination_not_source_battlefield": True},
-        "grouping": "one_or_more"}}),
+        "grouping": "one_per_action"}}),
     "when_you_play_a_mighty_unit": ("event_triggers", "on-play-mighty-unit", {"watch": {
         "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit", "object_might_at_least": 5}}}),
     "when_you_play_a_card_on_an_opponents_turn": ("event_triggers", "on-play-opponents-turn", {"watch": {

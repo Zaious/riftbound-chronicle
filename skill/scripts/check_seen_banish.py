@@ -5,7 +5,8 @@
 "As you look at or reveal me from the top of your deck, you may banish me. If you do, you may play me for [A]." GPT
 2026-10-06 (PACKAGE9_INVENTORY section 4): the optional banish is handled as it is looked at or revealed - no ordinary
 triggered Chain item; only after the banish is it played with [A] from Banishment (Core 356.1.a), the original effect
-finishing first; Predict, an explicit look at the top, and a reveal of the top all count; a plain draw does not.
+finishing first; Predict, an explicit look at the top, and a reveal of the top all count; a plain draw does not. GPT
+2026-10-07: inside a Predict the offer comes as the card is looked at, before Predict recycles or puts it back.
 
 The engine's shape: object field banish_when_seen {play_for_power_any}; apply_program offers the banish (optional_choice
 seen-banish:<program>:<instruction>:<card>, its owner's) right after an instruction in SEEN_FROM_TOP_OPS, and - when it
@@ -23,6 +24,10 @@ limited_play cost_basis for_power_any, the base cost replaced and [A] paid as a 
   N7 effect first   look at the top 1, then draw 1: the draw takes the next card (Nocturne already banished) and the
                     play is offered only after the draw
   N8 Power short    no Power to pay [A]: the play cancelled, the card back in Banishment
+  N9 Predict, banished  p1 predicts 2, Nocturne on top: the banish is asked FIRST, before Predict's recycle; banished,
+                    it is neither recycled nor put back (a recycle choice naming it is refused)
+  N10 Predict, declined  the banish declined: Predict recycles it (the bottom of p1's deck)
+  N11 Predict, declined  the banish declined: Predict puts it back on top
   S  shapes         banish_when_seen and the cost basis typed; a declaration without the [A] component refused
 
     python skill/scripts/check_seen_banish.py
@@ -38,7 +43,8 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
-from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, hash_value, object_identity, validate_program,  # noqa: E402
+from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, hash_value, object_identity,  # noqa: E402
+                       validate_program,
                        validate_state)
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
 from resolution_bridge import complete_limited_play, finalize_limited_play, resolve_with_program  # noqa: E402
@@ -123,6 +129,62 @@ def where(state, card):
 
 
 LOOK2 = [{"op": "look_at_top", "effect_id": "look", "player": "p1", "count": 2}]
+PREDICT2 = program([{"op": "predict", "effect_id": "pr", "player": "p1", "count": 2}])
+
+
+def run_predict(state, banish: bool, recycle: list[str], order: list[str] | None = None) -> tuple[dict, list[str]]:
+    """apply_program over p1's Predict 2, answering each decision it asks in turn: the banish (as asked), the cards to
+    recycle (`recycle`), the order of the rest (`order`, else as they are). Returns (the result, the decisions asked)."""
+    decisions, asked = [], []
+    for _ in range(6):
+        env = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(state), "decisions": list(decisions)} \
+            if decisions else None
+        got = apply_program(state, PREDICT2, decisions=env)
+        if got.get("committed") or not got.get("decision_ids"):
+            return got, asked
+        ref = got["decision_ids"][0]
+        asked.append(ref)
+        if ref.startswith("seen-banish"):
+            decisions.append({"decision_id": ref, "stage": "resolution", "kind": "optional_choice", "controller": "p1",
+                              "value": banish})
+        elif ref.startswith("seen-play"):
+            decisions.append({"decision_id": ref, "stage": "resolution", "kind": "optional_choice", "controller": "p1",
+                              "value": False})
+        elif ref.endswith(":recycle"):
+            decisions.append({"decision_id": ref, "stage": "resolution", "kind": "card_selection", "controller": "p1",
+                              "value": list(recycle), "selection_identities": {c: object_identity(state, c) for c in recycle}})
+        elif ref.endswith(":put_back"):
+            rest = order if order is not None else (got.get("choice") or {}).get("options") or []
+            decisions.append({"decision_id": ref, "stage": "resolution", "kind": "card_ordering", "controller": "p1",
+                              "value": list(rest), "selection_identities": {c: object_identity(state, c) for c in rest}})
+        else:
+            return got, asked
+    return {"loop": True}, asked
+
+
+def predict(errors_out: list[str]) -> None:
+    def deck(result):
+        return result["next_state"]["players"]["p1"]["zones"]["main_deck"]
+
+    # N9: banished as it is looked at - Predict cannot recycle it, nor put it back
+    got, asked = run_predict(board(), True, [], ["c9"])
+    if not got.get("committed") or where(got["next_state"], "noc") != "p1:banishment" or "noc" in deck(got):
+        fail("N9 banished first", f"{got.get('reason') or got.get('errors')} asked {asked} "
+                                  f"{where(got['next_state'], 'noc') if got.get('committed') else None}")
+    elif not asked or not asked[0].startswith("seen-banish"):
+        fail("N9 banished first", f"the banish was not asked before Predict's own choices: {asked}")
+    tried, _ = run_predict(board(), True, ["noc"])
+    if tried.get("committed") or "cannot be chosen" not in str(tried.get("reason")):
+        fail("N9 banished first", f"Predict's recycle naming the banished card was not refused as a choice it cannot "
+                                  f"make: {tried.get('committed')} {tried.get('reason')}")
+    # N10: declined - Predict recycles it
+    got, asked = run_predict(board(), False, ["noc"])
+    if not got.get("committed") or deck(got)[-1:] != ["noc"] or not asked[0].startswith("seen-banish"):
+        fail("N10 declined, recycled", f"{got.get('reason') or got.get('errors')} asked {asked}")
+    # N11: declined - Predict puts it back on top
+    got, asked = run_predict(board(), False, [], ["noc", "c9"])
+    if not got.get("committed") or deck(got)[:1] != ["noc"] or where(got["next_state"], "noc") != "p1:main_deck":
+        fail("N11 declined, put back", f"{got.get('reason') or got.get('errors')} asked {asked}")
 
 
 def main() -> int:
@@ -199,6 +261,9 @@ def main() -> int:
             fail("N8 Power short", f"{cancelled.get('reason')} {where(cancelled.get('next_effect_state') or board(), 'noc')}")
     else:
         fail("N8 Power short", f"{done.get('reason')} {done.get('asked')}")
+    # N9-N11: Predict (GPT 2026-10-07) - the banish is offered as the card is looked at, BEFORE Predict decides what to
+    # recycle or put back
+    predict(errors)
     # S
     bad = board()
     bad["objects"]["noc"]["banish_when_seen"] = {"play_for_power_any": 0}
@@ -214,7 +279,7 @@ def main() -> int:
             print(f"  - {err}")
         return 1
     print("OK: a card seen from the top of its owner's deck may be banished then, and played for [A] once the effect is "
-          "done (N1-N8, S)")
+          "done (N1-N11, S)")
     return 0
 
 

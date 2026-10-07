@@ -4401,7 +4401,7 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
 
 
 def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[str, Any] | None = None,
-               controller: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+               controller: str | None = None, program_id: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     op = effect.get("op")
     if op not in SUPPORTED_OPS:
         raise NotImplementedError(f"unsupported effect op {op!r}")
@@ -5326,6 +5326,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError("predict requires a known player")
         session = effect.get("effect_id", "predict")
         looked = _mark_reveals(new_state, player_id, "main_deck", new_state["players"][player_id]["zones"]["main_deck"][:count], [player_id], session, "look")
+        # package 9 (GPT 2026-10-07, Nocturne - Horrifying): a card that may banish itself as its owner looks at it is
+        # offered NOW - before Predict decides what to recycle or put back; banished, it is no longer among them
+        looked, seen_banished = offer_seen_banish_now(new_state, player_id, looked, decisions,
+                                                      f"seen-banish:{program_id}:{session}")
+        if seen_banished:
+            trace["seen_banished"] = seen_banished
         spec = {"selection_kind": "unordered_set", "count": {"any_number": True}, "from": "revealed", "by": player_id, "visibility": "private_to_chooser", "identity_binding": True}
         recycled, r_meta = resolve_choice(new_state, spec, decision_ref=effect.get("recycle_ref") or f"{session}:recycle", decisions=decisions, controller=player_id, candidates=looked)
         new_state, sub = _recycle_batch(new_state, recycled, player_id, decisions, effect.get("order_ref") or f"{session}:order", session)
@@ -7445,6 +7451,40 @@ def seen_from_top(prior: dict[str, Any], effect: dict[str, Any], event: dict[str
     if player not in prior["players"]:
         return None, []
     return player, [r["object_id"] for r in event.get("revealed") or [] if isinstance(r, dict)]
+
+
+def offer_seen_banish_now(state: dict[str, Any], player_id: str, looked: list[str], decisions: dict[str, Any] | None,
+                          ref_prefix: str) -> tuple[list[str], list[dict[str, Any]]]:
+    """package 9 (GPT 2026-10-07): inside an instruction that disposes of what it looks at (predict) - each looked-at
+    card of `player_id`'s own deck that may banish itself (banish_when_seen) is offered to its owner (optional_choice
+    "<ref_prefix>:<card>") before anything is done with it; banished (in place, a new object in its owner's Banishment),
+    it leaves `looked`. Returns (the looked-at cards still there, the banished records)."""
+    import engine_decisions as ed
+    still, banished = [], []
+    for card in looked:
+        obj = state["objects"].get(card) or {}
+        if not obj.get("banish_when_seen") or obj.get("owner") != player_id:
+            still.append(card)
+            continue
+        ref = f"{ref_prefix}:{card}"
+        entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
+        if entry is None:
+            raise ChoiceRequired(f"{card!r} is being looked at from the top of {player_id}'s Main Deck; its owner may "
+                                 f"banish it now, before the instruction does anything with it", [ref], player_id,
+                                 {"decision_kind": "optional_choice", "decision_id": ref, "card": card})
+        if entry.get("controller") != player_id:
+            raise IllegalDecision(f"{ref!r} was decided by {entry.get('controller')!r}, not the card's owner {player_id!r}")
+        if entry.get("stage") != "resolution":
+            raise ValueError(f"{ref!r} is decided as the card is looked at; it was supplied for stage {entry.get('stage')!r}")
+        if entry["value"] is not True:
+            still.append(card)
+            continue
+        working, done = banish_seen(state, card, player_id)
+        state.clear()
+        state.update(working)
+        banished.append({"card": card, "owner": player_id, "identity": done["identities_after"][card],
+                         "amount": obj["banish_when_seen"]["play_for_power_any"], "decision_id": ref})
+    return still, banished
 
 
 def banish_seen(state: dict[str, Any], card: str, owner: str) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -9969,7 +10009,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         prior = current
         try:
             current, event = _apply_one(current, effect, decisions=decisions,
-                                        controller=program.get("controller"))
+                                        controller=program.get("controller"), program_id=program.get("program_id"))
         except NotImplementedError as exc:
             return {
                 **base,
@@ -10039,7 +10079,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             event["removed_continuous_effects"] = dead
         trace.append(event)
         outcomes[effect_id] = event["outcome"]
-        if effect.get("op") in SEEN_FROM_TOP_OPS and event.get("outcome") not in IGNORED_OUTCOMES:
+        for record in event.get("seen_banished") or []:
+            # package 9 (GPT 2026-10-07): banished inside the instruction, as it was looked at (predict)
+            seen_banished.append({k: record[k] for k in ("card", "owner", "identity", "amount")})
+        if effect.get("op") in SEEN_FROM_TOP_OPS - {"predict"} and event.get("outcome") not in IGNORED_OUTCOMES:
             # package 9 (Nocturne - Horrifying): a card its owner just looked at or revealed from the top of their own
             # Main Deck, that may banish itself as that happens - decided now, before the next instruction
             import engine_decisions as ed

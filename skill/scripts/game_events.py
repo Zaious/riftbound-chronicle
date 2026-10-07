@@ -586,6 +586,11 @@ class EventLog:
         else:
             self._primary_events(entry, action_id, before, after, parent_of, fallback)
 
+        for record in entry.get("seen_banished") or []:
+            # package 9 (Nocturne - Horrifying): a card banished inside the look, as it was seen (effect_ir
+            # offer_seen_banish_now) - its own banish, under the same action
+            self._primary_events({"op": "banish", "objects": [record["card"]], "outcome": "applied"}, action_id,
+                                 before, after, parent_of, None)
         for record in entry.get("burn_outs") or []:
             self._new("burned_out", action_id, player=record.get("beneficiary"),
                       extra={"operation_id": record.get("operation_id"), "sequence": record.get("sequence"),

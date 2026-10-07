@@ -125,7 +125,10 @@ FUNCTIONS_FROM_ZONES = {"trash"}
 BATTLEFIELD_WATCH_FIELDS = {"move_from_triggers": {"kinds": ["moved"], "object_kind": "unit"}}
 # "each": one trigger per matching event (Core 383.3.a); "one_or_more": one per batch of
 # simultaneous events however many match ("When you stun one or more enemy units").
-WATCH_GROUPINGS = {"each", "one_or_more"}
+# "one_per_action" (2026-10-06, package 9, GPT 2026-10-07 on Volibear - Imposing): one per game ACTION among the
+# matching events (a Standard Move's move_action, else their action_id) - one Standard Move of several units is one;
+# two Move instructions resolved in one batch are two (Core 144.3, 411.4)
+WATCH_GROUPINGS = {"each", "one_or_more", "one_per_action"}
 # "first_each_turn": only the first matching event of the turn triggers it ("The first time a
 # friendly unit dies each turn") - counted whether or not the trigger was performed, unlike
 # per_turn_limit (383.3.e), which counts performances.
@@ -735,6 +738,12 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
                 matched = [matched[nth - earlier - 1]] if earlier < nth <= earlier + len(matched) else []
             if watch.get("grouping") == "one_or_more":
                 matched = matched[:1]
+            elif watch.get("grouping") == "one_per_action":
+                first_of_action: dict[Any, dict[str, Any]] = {}
+                for event in matched:
+                    # a Standard Move's events carry its one action's identity (combat.standard_move: move_action)
+                    first_of_action.setdefault(event.get("move_action") or event.get("action_id") or event.get("event_id"), event)
+                matched = list(first_of_action.values())
             if at_limit(state, descriptor, turn_id):
                 continue
             for index, event in enumerate(matched):

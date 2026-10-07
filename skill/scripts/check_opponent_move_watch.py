@@ -7,16 +7,17 @@ opponent makes, or one an effect the opponent controls makes; the source in its 
 blocker, never guessed.
 
 The engine's shape: a watch over `moved` events, scope opponent_actor, filters destination_kind battlefield and
-destination_not_source_battlefield, grouping one_or_more (one trigger per batch of Moves).
+destination_not_source_battlefield, grouping one_per_action (one trigger per Move action - GPT 2026-10-07).
 
   V1 other bf      p2's Standard Move of a unit to bf2 (Volibear at bf1): one trigger
   V2 mine          p2's Move to bf1, Volibear's: none
-  V3 one move      p2's one Standard Move of two units to bf2: one trigger, not two
+  V3 one move      p2's one Standard Move of two units to bf2: one action, one trigger
   V4 not opponent  p1's own Move to bf2: none
   V5 effect move   p2's spell moving p2's unit to bf2: one trigger
   V6 base          Volibear in p1's Base, p2 moves to bf2: refused by name (source_not_at_battlefield)
   V7 two Moves     two independent Standard Moves of p2's: each triggers once
   V8 our effect    p1's own spell moving p2's unit to bf2: none (the Move is p1's, Core 411.4)
+  V9 one spell     p2's one resolution with two Move instructions (e1, then e2, to bf2): two actions, two triggers
   G  grammar       the clause grammar lowers the sentence to exactly that descriptor; near misses stay unparsed
 
     python skill/scripts/check_opponent_move_watch.py
@@ -32,12 +33,12 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import clause_grammar as CG  # noqa: E402
 from check_effect_ir import base_state  # noqa: E402
-from check_move_count_and_legend_triggers import descriptor, effect_move, mine, smove  # noqa: E402
+from check_move_count_and_legend_triggers import descriptor, effect_move, mine, resolve, smove  # noqa: E402
 from effect_ir import validate_state  # noqa: E402
 
 WATCH = {"kinds": ["moved"], "scope": "opponent_actor",
          "filter": {"destination_kind": "battlefield", "destination_not_source_battlefield": True},
-         "grouping": "one_or_more"}
+         "grouping": "one_per_action"}
 TO_BF1 = {"kind": "battlefield", "battlefield": "bf1"}
 TO_BF2 = {"kind": "battlefield", "battlefield": "bf2"}
 errors: list[str] = []
@@ -72,6 +73,9 @@ def board(*, volibear_at_base=False):
 
 
 def count(result) -> int | str:
+    if result.get("reason_code") == "trigger_order_required":
+        # two of the card's triggers at once: their order is its controller's (Core 383.3.d) - count them as asked
+        return len([t for t in result.get("trigger_ids") or [] if str(t).startswith("v-watch@")]) or result.get("reason")
     if not result.get("committed"):
         return f"refused: {result.get('reason_code')} {result.get('reason')}"
     return len(mine(result, "v-watch@"))
@@ -102,6 +106,13 @@ def main() -> int:
             fail("V7 two Moves", f"first {count(first)}, second {got}")
     else:
         fail("V7 two Moves", count(first))
+    # V9: one resolution of p2's, two Move instructions (mv1 e1, mv2 e2) - two actions, two triggers (GPT 2026-10-07);
+    # one instruction moving one unit, one
+    two = resolve(board(), [{"op": "move_board_object", "effect_id": "mv1", "object_id": "e1", "destination": TO_BF2},
+                            {"op": "move_board_object", "effect_id": "mv2", "object_id": "e2", "destination": TO_BF2}],
+                  controller="p2")
+    if count(two) != 2:
+        fail("V9 two instructions", count(two))
     # V8: p1's own effect moving p2's unit is not "an opponent moves" (Core 411.4)
     got = count(effect_move(board(), "e1", TO_BF2, controller="p1"))
     if got != 0:
@@ -122,8 +133,8 @@ def main() -> int:
         for e in errors:
             print(f"  - {e}")
         return 1
-    print("OK: an opponent's Move to a Battlefield other than the source's triggers once per batch; the source at no "
-          "Battlefield is refused by name (V1-V8, G)")
+    print("OK: an opponent's Move to a Battlefield other than the source's triggers once per Move action; the source at no "
+          "Battlefield is refused by name (V1-V9, G)")
     return 0
 
 

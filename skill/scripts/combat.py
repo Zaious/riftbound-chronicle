@@ -1129,6 +1129,11 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
     moved = apply_program(working, program)
     if moved.get("committed") is not True:
         return _invalid(base, [moved.get("reason", "; ".join(moved.get("errors", [])) or "the Move operation failed")])
+    # package 9 (GPT 2026-10-07): one Standard Move is ONE game action however many units it moves (Core 144.3) - its
+    # Move events carry that action's identity, which a watch grouped per action reads (watchers one_per_action)
+    for event in moved.get("events") or []:
+        if event.get("kind") == "moved":
+            event["move_action"] = program["program_id"]
     cleanup = perform_lethal_cleanup(moved["next_state"])
     if cleanup.get("committed") is not True:
         return {**base, "valid": cleanup.get("valid", True), "committed": False, "unsupported": cleanup.get("unsupported", False), "reason": cleanup.get("reason", "cleanup failed"), "cleanup_result": cleanup}

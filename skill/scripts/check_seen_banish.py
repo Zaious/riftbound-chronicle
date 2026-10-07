@@ -25,9 +25,13 @@ limited_play cost_basis for_power_any, the base cost replaced and [A] paid as a 
                     play is offered only after the draw
   N8 Power short    no Power to pay [A]: the play cancelled, the card back in Banishment
   N9 Predict, banished  p1 predicts 2, Nocturne on top: the banish is asked FIRST, before Predict's recycle; banished,
-                    it is neither recycled nor put back (a recycle choice naming it is refused)
-  N10 Predict, declined  the banish declined: Predict recycles it (the bottom of p1's deck)
-  N11 Predict, declined  the banish declined: Predict puts it back on top
+                    it is neither recycled nor put back (a recycle choice naming it is refused). The banish does not undo
+                    the look (GPT 2026-10-08): the receipt still reads looked_count 2, looked_hash over both cards,
+                    completion full, applied; only c9 is left for Predict (disposable_count 1, put back 1)
+  N10 Predict, declined  the banish declined: Predict recycles it (the bottom of p1's deck); looked 2, full
+  N11 Predict, declined  the banish declined: Predict puts it back on top; looked 2, full
+  N12 Predict 1      p1 predicts 1, only Nocturne looked at and banished: a completed look - looked_count 1, completion
+                    full, applied, never no_op; nothing left to recycle or put back
   S  shapes         banish_when_seen and the cost basis typed; a declaration without the [A] component refused
 
     python skill/scripts/check_seen_banish.py
@@ -43,7 +47,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from check_effect_ir import base_state  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
-from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, apply_program, hash_value, object_identity,  # noqa: E402
+from effect_ir import (CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _ids_hash, apply_program, hash_value, object_identity,  # noqa: E402
                        validate_program,
                        validate_state)
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
@@ -132,14 +136,15 @@ LOOK2 = [{"op": "look_at_top", "effect_id": "look", "player": "p1", "count": 2}]
 PREDICT2 = program([{"op": "predict", "effect_id": "pr", "player": "p1", "count": 2}])
 
 
-def run_predict(state, banish: bool, recycle: list[str], order: list[str] | None = None) -> tuple[dict, list[str]]:
-    """apply_program over p1's Predict 2, answering each decision it asks in turn: the banish (as asked), the cards to
-    recycle (`recycle`), the order of the rest (`order`, else as they are). Returns (the result, the decisions asked)."""
+def run_predict(state, banish: bool, recycle: list[str], order: list[str] | None = None, count: int = 2) -> tuple[dict, list[str]]:
+    """apply_program over p1's Predict `count`, answering each decision it asks in turn: the banish (as asked), the cards
+    to recycle (`recycle`), the order of the rest (`order`, else as they are). Returns (the result, the decisions asked)."""
+    prog = PREDICT2 if count == 2 else program([{"op": "predict", "effect_id": "pr", "player": "p1", "count": count}])
     decisions, asked = [], []
     for _ in range(6):
         env = {"schema_version": "engine-decisions.v1", "input_hash": hash_value(state), "decisions": list(decisions)} \
             if decisions else None
-        got = apply_program(state, PREDICT2, decisions=env)
+        got = apply_program(state, prog, decisions=env)
         if got.get("committed") or not got.get("decision_ids"):
             return got, asked
         ref = got["decision_ids"][0]
@@ -162,17 +167,34 @@ def run_predict(state, banish: bool, recycle: list[str], order: list[str] | None
     return {"loop": True}, asked
 
 
+def predict_receipt(label: str, got: dict, looked: list[str], **want) -> None:
+    """The Predict trace entry reads the cards actually looked at (GPT 2026-10-08): looked_count, looked_hash over exactly
+    `looked` (each with its identity after the instruction, as for every Predict), completion and outcome - and any
+    other field named in `want`."""
+    entry = next((t for t in got.get("trace") or [] if t.get("op") == "predict"), None)
+    if entry is None:
+        fail(label, "no predict entry in the trace")
+        return
+    expected = {"looked_count": len(looked), "looked_hash": _ids_hash(got["next_state"], looked), "completion": "full",
+                "outcome": "applied", **want}
+    wrong = {k: (entry.get(k), v) for k, v in expected.items() if entry.get(k) != v}
+    if wrong:
+        fail(label, f"the receipt (got, wanted): {wrong}")
+
+
 def predict(errors_out: list[str]) -> None:
     def deck(result):
         return result["next_state"]["players"]["p1"]["zones"]["main_deck"]
 
-    # N9: banished as it is looked at - Predict cannot recycle it, nor put it back
+    # N9: banished as it is looked at - Predict cannot recycle it, nor put it back; the look itself stands
     got, asked = run_predict(board(), True, [], ["c9"])
     if not got.get("committed") or where(got["next_state"], "noc") != "p1:banishment" or "noc" in deck(got):
         fail("N9 banished first", f"{got.get('reason') or got.get('errors')} asked {asked} "
                                   f"{where(got['next_state'], 'noc') if got.get('committed') else None}")
     elif not asked or not asked[0].startswith("seen-banish"):
         fail("N9 banished first", f"the banish was not asked before Predict's own choices: {asked}")
+    else:
+        predict_receipt("N9 banished first", got, ["noc", "c9"], disposable_count=1, recycled_count=0, put_back_count=1)
     tried, _ = run_predict(board(), True, ["noc"])
     if tried.get("committed") or "cannot be chosen" not in str(tried.get("reason")):
         fail("N9 banished first", f"Predict's recycle naming the banished card was not refused as a choice it cannot "
@@ -181,10 +203,21 @@ def predict(errors_out: list[str]) -> None:
     got, asked = run_predict(board(), False, ["noc"])
     if not got.get("committed") or deck(got)[-1:] != ["noc"] or not asked[0].startswith("seen-banish"):
         fail("N10 declined, recycled", f"{got.get('reason') or got.get('errors')} asked {asked}")
+    else:
+        predict_receipt("N10 declined, recycled", got, ["noc", "c9"], recycled_count=1, put_back_count=1)
     # N11: declined - Predict puts it back on top
     got, asked = run_predict(board(), False, [], ["noc", "c9"])
     if not got.get("committed") or deck(got)[:1] != ["noc"] or where(got["next_state"], "noc") != "p1:main_deck":
         fail("N11 declined, put back", f"{got.get('reason') or got.get('errors')} asked {asked}")
+    else:
+        predict_receipt("N11 declined, put back", got, ["noc", "c9"], recycled_count=0, put_back_count=2)
+    # N12: Predict 1, its only card banished as it is looked at - still a completed look, not a no_op
+    got, asked = run_predict(board(), True, [], [], count=1)
+    if not got.get("committed") or where(got["next_state"], "noc") != "p1:banishment":
+        fail("N12 Predict 1", f"{got.get('reason') or got.get('errors')} asked {asked}")
+    else:
+        predict_receipt("N12 Predict 1", got, ["noc"], requested_count=1, disposable_count=0, recycled_count=0,
+                        put_back_count=0)
 
 
 def main() -> int:
@@ -261,7 +294,7 @@ def main() -> int:
             fail("N8 Power short", f"{cancelled.get('reason')} {where(cancelled.get('next_effect_state') or board(), 'noc')}")
     else:
         fail("N8 Power short", f"{done.get('reason')} {done.get('asked')}")
-    # N9-N11: Predict (GPT 2026-10-07) - the banish is offered as the card is looked at, BEFORE Predict decides what to
+    # N9-N12: Predict (GPT 2026-10-07, 2026-10-08) - the banish is offered as the card is looked at, BEFORE Predict decides what to
     # recycle or put back
     predict(errors)
     # S
@@ -279,7 +312,7 @@ def main() -> int:
             print(f"  - {err}")
         return 1
     print("OK: a card seen from the top of its owner's deck may be banished then, and played for [A] once the effect is "
-          "done (N1-N11, S)")
+          "done (N1-N12, S)")
     return 0
 
 

@@ -5325,10 +5325,12 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if player_id not in new_state["players"]:
             raise ValueError("predict requires a known player")
         session = effect.get("effect_id", "predict")
-        looked = _mark_reveals(new_state, player_id, "main_deck", new_state["players"][player_id]["zones"]["main_deck"][:count], [player_id], session, "look")
+        seen = _mark_reveals(new_state, player_id, "main_deck", new_state["players"][player_id]["zones"]["main_deck"][:count], [player_id], session, "look")
         # package 9 (GPT 2026-10-07, Nocturne - Horrifying): a card that may banish itself as its owner looks at it is
-        # offered NOW - before Predict decides what to recycle or put back; banished, it is no longer among them
-        looked, seen_banished = offer_seen_banish_now(new_state, player_id, looked, decisions,
+        # offered NOW - before Predict decides what to recycle or put back; banished, it is no longer among them.
+        # GPT 2026-10-08: the banish does not undo the look - `seen` (every card looked at) is the receipt's looked_count,
+        # looked_hash, completion and outcome; `looked` (those still there) is only what Predict may recycle or put back
+        looked, seen_banished = offer_seen_banish_now(new_state, player_id, list(seen), decisions,
                                                       f"seen-banish:{program_id}:{session}")
         if seen_banished:
             trace["seen_banished"] = seen_banished
@@ -5340,12 +5342,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         order, o_meta = resolve_choice(new_state, order_spec, decision_ref=effect.get("put_back_ref") or f"{session}:put_back", decisions=decisions, controller=player_id, candidates=rest)
         _reorder_deck(new_state, player_id, order, "top")
         _drop_reveals(new_state, order)
-        trace.update({"player": player_id, "requested_count": count, "looked_count": len(looked), "looked_hash": _ids_hash(new_state, looked), "burn_out": False,
+        trace.update({"player": player_id, "requested_count": count, "looked_count": len(seen), "looked_hash": _ids_hash(new_state, seen), "burn_out": False,
                       "recycled_count": len(recycled), "recycled_hash": sub.get("objects_hash"), "recycle_order_decision": sub.get("order_decision"),
                       "put_back_count": len(order), "put_back_ordering_hash": _ids_hash(new_state, order), "visible_to": [player_id],
                       "selection": {"recycle": {k: v for k, v in r_meta.items() if k != "choice"}, "put_back": {k: v for k, v in o_meta.items() if k != "choice"}},
-                      "completion": "full" if len(looked) == count else ("partial" if looked else "none")})
-        if not looked:
+                      "completion": "full" if len(seen) == count else ("partial" if seen else "none")})
+        if seen_banished:
+            trace["disposable_count"] = len(looked)
+        if not seen:
             trace["outcome"] = "no_op"
 
     elif op == "banish":

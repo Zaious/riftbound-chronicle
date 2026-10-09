@@ -296,6 +296,54 @@ def _lower_raise_might_to_match(params):
                     "params": {"selector": "friendly unit", "to": "another friendly unit", "duration": "this_turn"}}}
 
 
+def _lower_choose_enemy_deal_unless_draw(params):
+    # 2026-10-08 package 10 (Shakedown, GPT ruling 7): "it" is the one enemy unit chosen at play (the Deal's target); its
+    # controller chooses as the Deal resolves whether the caster draws instead (effect_ir deal_damage unless)
+    return {"program_effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": int(params["amount"]),
+                                 "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
+                                            "controller_relation": "enemy"},
+                                 "unless": {"decision_ref": "un", "instead": [
+                                     {"op": "draw", "effect_id": "dr", "player": "$controller", "count": int(params["draw"])}]}}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"selector": "enemy unit", "amount": int(params["amount"]),
+                               "unless": {"chosen_by": "target_controller", "instead": "draw", "count": int(params["draw"])}}}}
+
+
+def _lower_decree(params):
+    # 2026-10-08 package 10 (Imperial Decree): a delayed trigger that waits, for the rest of this turn, for ANY unit to take
+    # damage - every time - and kills that unit (effect_ir create_delayed_trigger: event wait, repeats, until end_of_turn)
+    return {"program_effects": [{"op": "create_delayed_trigger", "effect_id": "dt", "delayed": {
+                "delayed_id": "decree", "controller": "$controller", "source_object": "$source_object",
+                "waits_for": {"kind": "event", "kinds": ["damaged"], "scope": "any", "filter": {"object_kind": "unit"}},
+                "until": "end_of_turn", "repeats": True, "effect_program_id": "decree-effects",
+                "optional_at_finalize": False, "controller_order": 0},
+                "effects": [{"op": "kill", "effect_id": "k", "object_id": {"object_ref": "trigger_event_object"}}]}],
+            "ast": {"node": "instruction", "op": "create_delayed_trigger",
+                    "params": {"waits_for": "a unit takes damage", "until": "end_of_turn", "repeats": True, "then": "kill it"}}}
+
+
+def _lower_guillotine(params):
+    # 2026-10-08 package 10 (Noxian Guillotine, GPT ruling 13): one unit chosen at play; without Legion a one-shot delayed
+    # trigger bound to it - the next time IT takes damage this turn, kill it; with Legion it is killed now INSTEAD (the
+    # delayed instruction is not created; Core 158.2), read as the spell resolves
+    legion = {"kind": "another_card_finalized_this_turn"}
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit"}
+    return {"program_effects": [
+                {"op": "create_delayed_trigger", "effect_id": "dt", "target": dict(target),
+                 "predicate": {"kind": "state_holds", "condition": {"kind": "not", "of": legion}},
+                 "delayed": {"delayed_id": "guillotine", "controller": "$controller", "source_object": "$source_object",
+                             "target_object": "$own_target",
+                             "waits_for": {"kind": "event", "kinds": ["damaged"], "scope": "any"},
+                             "until": "end_of_turn", "about_target": True, "effect_program_id": "guillotine-effects",
+                             "optional_at_finalize": False, "controller_order": 0},
+                 "effects": [{"op": "kill", "effect_id": "k", "object_id": {"object_ref": "trigger_event_object"}}]},
+                {"op": "kill", "effect_id": "now", "target": dict(target),
+                 "predicate": {"kind": "state_holds", "condition": dict(legion)}}],
+            "ast": {"node": "instruction", "op": "create_delayed_trigger",
+                    "params": {"target": "unit", "waits_for": "it takes damage", "until": "end_of_turn",
+                               "legion_instead": "kill it now"}}}
+
+
 def _lower_banish_then_owner_plays(params):
     # package 9 (Portal Rescue): the banish's target chosen at play; the play is limited_play linked to that banish,
     # by the card's owner, to their Base, ignore_all (effect_ir LIMITED_PLAY_PLAYERS, unit_at_players_base)
@@ -860,6 +908,9 @@ PRINTED_COST_WORDS = {
     "spend a buff": {"kind": "spend_buff", "amount": 1},
     "kill any number of friendly units": {"kind": "kill", "any_number": True},
     "spend any number of buffs": {"kind": "spend_buff", "any_number": True},
+    # 2026-10-08 package 10 (Meditation): one friendly Unit on the board, chosen by the payer, exhausted as the cost is
+    # paid (play_transaction.printed_cost_candidates: an exhausted unit cannot pay it, Core 203.3)
+    "exhaust a friendly unit": {"kind": "exhaust", "amount": 1},
 }
 
 
@@ -1001,6 +1052,9 @@ def _lower_death_replacement(params):
             "replacement_id": "$clause_id", "controller": "$controller", "source_object": "$source_object",
             "mode": "replace_with", "event_op": "kill", "optional": False, "uses_remaining": None,
             "target_controller_relation": "friendly",
+            # 2026-10-08 package 10 (Zhonya's Hourglass): "a friendly UNIT" - a friendly Gear's death (the source's own,
+            # which "kill this" makes, among them) is not replaced; only friendly was read before
+            "condition": {"kind": "object_kind", "value": "unit"},
             "replacement_effects": [{"op": "kill", "effect_id": "kill-self", "object_id": "$source"}],
         }]},
         "replacement_continuation": "$clause_id",
@@ -1015,7 +1069,8 @@ def _lower_counter_within_cost_limit(params):
     return {
         "program_effects": [{
             "op": "counter", "effect_id": "ctr",
-            "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain",
+            # 2026-10-08 (package 10): the target names its kind - a spell on the Chain (effect_ir validates the shape)
+            "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain", "kind": "spell",
                        "max_cost": {"energy": int(params["energy"]), "power": 1}},
         }],
         "needs_mapping": "cost_comparison",
@@ -1060,6 +1115,20 @@ def _lower_recycle_a_non_unit_from_the_reveal(params):
         "needs_reveal": True,
         "ast": {"node": "instruction", "op": "recycle",
                 "params": {"from": "revealed", "excluded_kinds": ["unit"]}},
+    }
+
+
+def _lower_they_discard_a_card_from_the_reveal(params):
+    # 2026-10-08 package 10 (Mindsplitter): the caster chooses one card of what the reveal showed; "they" - the player
+    # whose hand that reveal (rv, they_reveal_their_hand) revealed - discards it (Core 424.2.b, 422.1)
+    return {
+        "program_effects": [{"op": "discard", "effect_id": "dc", "reveal_ref": "rv",
+                             "decision_ref": "revealed-card",
+                             "choice": {"selection_kind": "single", "from": "revealed", "by": "controller",
+                                        "count": {"one": True}}}],
+        "needs_reveal": True,
+        "ast": {"node": "instruction", "op": "discard",
+                "params": {"from": "revealed", "chosen_by": "controller", "player": "$referent_player"}},
     }
 
 
@@ -1296,6 +1365,14 @@ LOWERINGS = {
     "units_here_have_keyword": _lower_keyword_aura("battlefield", {"kind": "unit"}),
     "other_friendly_units_here_have_keyword": _lower_keyword_aura("object", AURA_HERE),
     "other_friendly_units_have_keyword": _lower_keyword_aura("object", AURA_OTHER_FRIENDLY),
+    # 2026-10-08 package 10 (Spirit's Refuge)
+    "friendly_buffed_units_have_keyword_if_they_didnt_already": lambda params: {
+        "object_fields": {"static_auras": [{"aura_id": f"buffed-{params['keyword']}", "keyword": params["keyword"],
+                                            "only_if_absent": True,
+                                            "criteria": {"kind": "unit", "controller_relation": "friendly", "buffed": True}}]},
+        "ast": {"node": "passive", "kind": "static_keyword_aura",
+                "params": {"keyword": params["keyword"], "criteria": {"kind": "unit", "controller_relation": "friendly",
+                                                                      "buffed": True}, "only_if_absent": True}}},
     "while_im_buffed_i_have_keywords": _lower_conditional_keywords({"kind": "is_buffed"}),
     "if_you_discarded_a_card_this_turn_i_have_keywords": _lower_conditional_keywords(
         {"kind": "cards_discarded_this_turn_at_least", "count": 1}),
@@ -1312,11 +1389,26 @@ LOWERINGS = {
     "choose_an_opponent": _lower_choose_an_opponent,
     "they_reveal_their_hand": _lower_they_reveal_their_hand,
     "choose_a_non_unit_card_from_it_and_recycle_that_card": _lower_recycle_a_non_unit_from_the_reveal,
+    "choose_a_card_from_it_and_they_discard_that_card": _lower_they_discard_a_card_from_the_reveal,
     "counter_a_spell_within_a_cost_limit": _lower_counter_within_cost_limit,
+    # 2026-10-08 (package 10, Wind Wall)
+    "counter_a_spell": lambda params: {
+        "program_effects": [{"op": "counter", "effect_id": "ctr",
+                             "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain",
+                                        "kind": "spell"}}],
+        "ast": {"node": "instruction", "op": "counter", "params": {}}},
     "if_a_friendly_unit_would_die_kill_this_instead": _lower_death_replacement,
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
+    # 2026-10-08 package 10 (Clockwork Keeper)
+    "you_may_pay_a_rune_as_an_additional_cost_to_play_me": lambda params: {
+        "object_fields": {"optional_additional_costs": [
+            {"cost_offer_id": "$clause_id", "payment": {"kind": "power", "domain": params["domain"], "amount": 1}}]},
+        "ast": {"node": "passive", "kind": "optional_additional_cost",
+                "params": {"payment": "power", "domain": params["domain"], "amount": 1}}},
     # 2026-09-27 package 6: printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7)
     "as_an_additional_cost_to_play_me_kill_a_friendly_unit": _lower_printed_cost(True),
+    # 2026-10-08 package 10 (Meditation)
+    "as_an_additional_cost_to_play_this_you_may_exhaust_a_friendly_unit": _lower_printed_cost(False),
     "as_you_play_me_you_may_pay_a_cost_as_an_additional_cost": _lower_printed_cost(False),
     "your_tags_energy_costs_are_reduced_to_a_minimum": _lower_granted_tag_discount,
     "while_im_at_a_battlefield_spells_you_play_cost_less": _lower_spell_discount_at_battlefield,
@@ -1330,6 +1422,93 @@ LOWERINGS = {
     "banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost": _lower_banish_then_owner_plays,
     "choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit":
         _lower_raise_might_to_match,
+    "choose_an_enemy_unit_deal_n_to_it_unless_its_controller_has_you_draw_n": _lower_choose_enemy_deal_unless_draw,
+    "when_any_unit_takes_damage_this_turn_kill_it": _lower_decree,
+    # 2026-10-08 package 10 (Dr. Mundo - Expert): N cards of the controller's own trash, chosen by them, recycled (as many
+    # as there are when fewer, Core 416.4); several at once go to the bottom in a random order (416.5)
+    "recycle_n_from_your_trash": lambda params: {
+        "program_effects": [{"op": "recycle", "effect_id": "rc", "player": "$controller", "decision_ref": "rc",
+                             "order_ref": "rc-order",
+                             "choice": {"selection_kind": "unordered_set", "from": "trash", "by": "controller",
+                                        "count": {"exactly": int(params["count"])}}}],
+        "ast": {"node": "instruction", "op": "recycle", "params": {"from": "trash", "count": int(params["count"])}}},
+    # 2026-10-08 package 10 (Teemo - Swift Scout, GPT ruling 1): an alternative payment for its controller's Hide
+    "you_may_pay_energy_to_hide_a_card_with_hidden_instead_of_power_any": lambda params: {
+        "object_fields": {"hide_alternative_energy": int(params["energy"])},
+        "ast": {"node": "passive", "kind": "alternative_hide_cost", "params": {"energy": int(params["energy"]), "instead_of": "power_any"}}},
+    # 2026-10-08 package 10 (Teemo - Swift Scout): with_tag as printed (a tag is capitalized on the card, Core 133.8)
+    "put_a_tag_unit_you_own_into_your_hand_from_your_champion_zone_or_the_board": lambda params: {
+        "program_effects": [{"op": "return_to_hand", "effect_id": "put", "target": {
+            "decision_ref": "t", "chosen_zone_class": "board", "with_tag": params["tag"].capitalize(), "owner_relation": "own",
+            "any_of": [{"kind": "unit", "location": "board"},
+                       {"kind": "unit", "location": "champion_zone", "chosen_zone_class": "non_board",
+                        "zone_owner_relation": "own"}]}}],
+        "ast": {"node": "instruction", "op": "return_to_hand",
+                "params": {"tag": params["tag"].capitalize(), "owner": "controller", "from": ["board", "champion_zone"]}}},
+    # 2026-10-08 package 10 (Pack of Wonders): "another" is the source left out by identity (SOURCE_IDENTITY_SENTINEL)
+    "return_another_friendly_gear_unit_or_facedown_card_to_its_owners_hand": lambda params: {
+        "program_effects": [{"op": "return_to_hand", "effect_id": "ret", "target": {
+            "decision_ref": "t", "chosen_zone_class": "board", "exclude_source_identity": "$source_identity",
+            "any_of": [{"kind": "gear", "controller_relation": "friendly"}, {"kind": "unit", "controller_relation": "friendly"},
+                       {"location": "facedown", "chosen_zone_class": "non_board", "controller_relation": "friendly"}]}}],
+        "ast": {"node": "instruction", "op": "return_to_hand",
+                "params": {"of": ["gear", "unit", "facedown card"], "controller": "friendly", "other": True}}},
+    # 2026-10-08 package 10 (Sett - The Boss): source-backed, optional, its cost paid as it applies (effect_ir cost)
+    "when_a_buffed_unit_you_control_would_die_you_may_pay_a_and_exhaust_me_to_spend_its_buff_and_recall_it_exhausted_instead":
+        lambda params: {
+            "state_lists": {"replacement_effects": [{
+                "replacement_id": "$clause_id", "controller": "$controller", "source_object": "$source_object",
+                "mode": "replace_with", "event_op": "kill", "optional": True, "uses_remaining": None,
+                "target_controller_relation": "friendly", "condition": {"kind": "is_buffed"},
+                "cost": {"power_any": 1, "exhaust_source": True},
+                "replacement_effects": [
+                    {"op": "spend_buffs", "effect_id": "spend", "player": "$controller", "object_id": "$affected",
+                     "subject_identity": "$affected_identity"},
+                    {"op": "recall", "effect_id": "rc", "object_id": "$affected", "subject_identity": "$affected_identity"},
+                    {"op": "exhaust", "effect_id": "ex", "object_id": "$affected", "subject_identity": "$affected_identity"}]}]},
+            "ast": {"node": "passive", "kind": "replacement",
+                    "params": {"event_op": "kill", "mode": "replace_with", "optional": True,
+                               "cost": ["power_any 1", "exhaust me"], "instead": ["spend its buff", "recall", "exhaust"]}}},
+    # 2026-10-08 package 10 (Unlicensed Armory): Highlander's grant, optional, one Power of the named Domain as it applies
+    "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_you_may_pay_rune_to_heal_exhaust_and_recall_it_instead":
+        lambda params: {
+            "program_effects": [{"op": "grant_replacement", "effect_id": "grant",
+                                 "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
+                                            "controller_relation": "friendly"},
+                                 "controller": "$controller", "granted_by": "$chain_item",
+                                 "replacement": {"mode": "replace_with", "event_op": "kill", "optional": True,
+                                                 "cost": {"power": {params["domain"]: 1}},
+                                                 "replacement_effects": [
+                                                     {"op": "heal_all_damage", "object_id": "$granted_target"},
+                                                     {"op": "exhaust", "object_id": "$granted_target"},
+                                                     {"op": "recall", "object_id": "$granted_target"}]}}],
+            "ast": {"node": "instruction", "op": "grant_replacement",
+                    "params": {"selector": "friendly unit", "event_op": "kill", "duration": "this_turn", "uses": 1,
+                               "optional": True, "cost": {params["domain"]: 1},
+                               "instead": ["heal_all_damage", "exhaust", "recall"]}}},
+    # 2026-10-08 package 10 (Fox-Fire): "any number" - no max; the group's total bounds it
+    "kill_any_number_of_units_at_a_battlefield_with_total_might_n_or_less": lambda params: {
+        "program_effects": [{"op": "kill", "effect_id": "kill",
+                             "targets": {"min": 0, "decision_ref": "t", "subset_ref": "keep",
+                                         "restrictions": {"chosen_zone_class": "board", "kind": "unit", "location": "battlefield"},
+                                         "group": {"same_battlefield": True, "total_might_at_most": int(params["total"])}}}],
+        "ast": {"node": "instruction", "op": "kill",
+                "params": {"targets": "any number of units", "group": {"same battlefield": True,
+                                                                       "total might at most": int(params["total"])}}}},
+    # 2026-10-08 package 10 (Facebreaker): targets {2, 2} with a group requirement and the subset kept (Core 355.11.b)
+    "stun_a_friendly_unit_and_an_enemy_unit_at_the_same_battlefield": lambda params: {
+        "program_effects": [{"op": "stun", "effect_id": "stun",
+                             "targets": {"min": 2, "max": 2, "decision_ref": "t", "subset_ref": "keep",
+                                         "restrictions": {"chosen_zone_class": "board", "kind": "unit", "location": "battlefield"},
+                                         "group": {"same_battlefield": True, "one_per_relation": ["friendly", "enemy"]}}}],
+        "ast": {"node": "instruction", "op": "stun",
+                "params": {"targets": ["friendly unit", "enemy unit"], "group": "same battlefield"}}},
+    # 2026-10-08 package 10 (Guerilla Warfare)
+    "you_can_hide_cards_ignoring_costs_this_turn": lambda params: {
+        "program_effects": [{"op": "grant_turn_effect", "effect_id": "grant", "turn_effect_kind": "hide_ignoring_costs",
+                             "value": "all", "controller": "$controller", "source": "$chain_item"}],
+        "ast": {"node": "instruction", "op": "grant_turn_effect", "params": {"kind": "hide_ignoring_costs"}}},
+    "choose_a_unit_kill_it_the_next_time_it_takes_damage_this_turn_legion_kill_it_now_instead": _lower_guillotine,
     "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_heal_exhaust_and_recall_it_instead":
         _lower_next_death_heal_exhaust_recall,
     "if_i_have_moved_twice_this_turn_i_dont_take_damage": _lower_no_damage_after_two_moves,
@@ -1385,10 +1564,19 @@ TRIGGER_WRAPPERS = {
     # completes (resolution_bridge.complete_permanent_play); the tag as printed (Core 133.8.a, 763.1)
     "when_you_play_me_if_you_control_a_tag": ("play_triggers", "on-play", lambda params: {
         "condition": {"kind": "controls_units", "count": 1, "tag": PRINTED_TAGS[params["tag"]]}}),
+    # 2026-10-08 package 10 (Clockwork Keeper): the play's own optional cost paid, read as the play completes
+    "when_you_play_me_if_you_paid_the_additional_cost": ("play_triggers", "on-play",
+                                                          {"condition": {"kind": "paid_additional_cost"}}),
     "when_you_play_me": ("play_triggers", "on-play", None),
+    # 2026-10-08 package 10 (Spirit's Refuge, Forge of the Future): a Gear's own play trigger - "this" is the card, as "me"
+    # is a Unit's; collected as the play completes (Core 419.4.a), the same descriptor
+    "when_you_play_this": ("play_triggers", "on-play", None),
     "when_i_move": ("move_triggers", "on-move", None),
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
+    # 2026-10-08 (package 10, Sona - Harmonious): the conditional statement right after the trigger condition is part of
+    # it (Core 383.2.a.1) - read as the Ending Step schedules it (resolution_bridge.begin_ending_step: at_battlefield)
+    "at_the_end_of_your_turn_if_im_at_a_battlefield": ("end_of_turn_triggers", "eot", {"condition": {"kind": "at_battlefield"}}),
     "at_the_start_of_your_beginning_phase": ("beginning_phase_triggers", "on-beginning", {"scope": "your_beginning_phase"}),
     # 2026-09-27 (Mushroom Pouch): the conditional statement right after the trigger condition is
     # part of the trigger condition (Core 383.2.a.1) - on the descriptor, not a predicate of the effect
@@ -1467,6 +1655,17 @@ TRIGGER_WRAPPERS = {
     "when_you_kill_a_stunned_enemy_unit": ("event_triggers", "on-kill-stunned-enemy", {"watch": {
         "kinds": ["died"], "scope": "responsible",
         "filter": {"object_kind": "unit", "object_controller_relation": "enemy", "object_was_stunned": True}}}),
+    # 2026-10-08 (package 10): "When you ready a friendly unit" (Pirate's Haven) - a Ready you perform (the event's actor:
+    # an instruction's controller, or the Turn Player in the Awaken step, Core 315.1.b, 415.3.a) of a Unit you control;
+    # each readied unit its own trigger, the unit its "it" (Core 359.3.f.3). An already Ready unit is not readied (415.1.b)
+    "when_you_ready_a_friendly_unit": ("event_triggers", "on-ready-friendly-unit", {"watch": {
+        "kinds": ["readied"], "scope": "actor", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
+        "grouping": "each"}}),
+    # 2026-10-08 (package 10): "When you buff a friendly unit" (Mistfall) - a Buff you perform (Core 702) on a Unit you
+    # control; a unit that already has a buff is not buffed (no event); each buffed unit its own trigger, the unit its "it"
+    "when_you_buff_a_friendly_unit": ("event_triggers", "on-buff-friendly-unit", {"watch": {
+        "kinds": ["buffed"], "scope": "actor", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
+        "grouping": "each"}}),
     "the_first_time_a_friendly_unit_dies_each_turn": ("event_triggers", "on-first-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "occurrence": "first_each_turn"}}),
@@ -1482,6 +1681,12 @@ TRIGGER_WRAPPERS = {
     # board object or a Legend in its Legend Zone (battlefield_control._score_triggers). Distinct
     # from a Unit's "When I conquer" (unit_here) and a Battlefield's "When you conquer here"
     "when_you_conquer": ("conquer_triggers", "on-you-conquer", {"scope": "controller"}),
+    # 2026-10-08 (package 10, Garen - Might of Demacia (Starter)): the conditional statement right after "When you
+    # conquer" is part of the Trigger Condition (Core 383.2.a.1), read as the Conquer is processed - N or more units the
+    # player controls at THAT battlefield, the one conquered (battlefield_control reads it with that Battlefield as here)
+    "when_you_conquer_if_you_have_n_units_at_that_battlefield": (
+        "conquer_triggers", "on-you-conquer", lambda params: {"scope": "controller", "condition": {
+            "kind": "controls_units", "count": int(params["count"]), "location": "here"}}),
     # 2026-09-27 (package 6): "your second card in a turn" - the play's ordinal, stamped by the play
     # transaction as each play is Finalized (Core 419.4.b), every play of the turn counted
     "when_you_play_your_second_card_in_a_turn": ("event_triggers", "on-play-second-card", {"watch": {

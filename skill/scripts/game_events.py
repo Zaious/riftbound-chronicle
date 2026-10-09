@@ -140,6 +140,8 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "objects_chosen": {"about": "player", "rules": ["Core 355.10.e"]},
     # "Each other player chooses Cards or Runes.": a player chose a named option
     "option_chosen": {"about": "player", "rules": ["Core 355.10.e"]},
+    # 2026-10-08 package 10 (Bullet Time): a player sized and paid a variable Power payment as the instruction resolved
+    "amount_paid": {"about": "player", "rules": ["Core 204.3.b"]},
 }
 
 # op -> the primary semantic event it emits. An op that is absent is
@@ -205,6 +207,7 @@ OP_PRIMARY: dict[str, str] = {
     "each_player": "players_iterated",
     "choose_objects": "objects_chosen",
     "choose_option": "option_chosen",
+    "pay_any_amount": "amount_paid",
     "limited_play": "play_started",
 }
 
@@ -240,6 +243,22 @@ def designation_event(*, combat_id: str, role: str, unit: str, identity: str, co
             "rule_locators": list(EVENT_KINDS[kind]["rules"]) + ["Core 740.2.a"],
             "object_kind": "unit", "battlefield": battlefield, "battlefield_controller": battlefield_controller,
             "alone": bool(alone), "role": role, "turn_player": turn_player}
+
+
+def awaken_ready_event(*, turn_id: str, obj: str, identity: str, controller: str, object_kind: str,
+                       location: dict[str, Any] | None, turn_player: str | None = None) -> dict[str, Any]:
+    """2026-10-08 (package 10, Pirate's Haven): one object readied by the Awaken step (Core 315.1.b: the Turn Player
+    readies every object they control that can be readied; 415.3.a) - a Ready the Turn Player performs, so its actor is
+    that player ("When you ready a friendly unit"). One action, the whole Awaken (the readies are simultaneous); an
+    object already Ready is not readied again and has no event (415.1.b, 415.1.c). Public: the board."""
+    where = dict(location) if isinstance(location, dict) else None
+    return {"schema_version": EVENT_VERSION, "event_id": f"awaken:{turn_id}#readied:{obj}", "action_id": f"awaken:{turn_id}",
+            "kind": "readied", "source": {"object": None, "kind": "rule"}, "actor": controller, "controller": controller,
+            "object": obj, "player": controller, "identity_before": identity, "identity_after": identity,
+            "location_before": where, "location_after": dict(where) if where else None, "causal_parent": None,
+            "visibility": {"fact": "public", "identity": "public"},
+            "rule_locators": list(EVENT_KINDS["readied"]["rules"]) + ["Core 315.1.b", "Core 415.3.a"],
+            "object_kind": object_kind, "turn_player": turn_player}
 
 
 def played_event(*, play_id: str, card: str, actor: str, object_kind: str, identity_before: str | None,

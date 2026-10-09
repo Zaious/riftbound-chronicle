@@ -51,8 +51,9 @@ import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
     CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, deflect_total, derive_targeted, evaluate_target,
-    entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, object_identity,
+    entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, is_object_ref, object_identity,
     play_prohibition, record_discarded_cards, record_finalized_card, split_target_cap, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
+    target_group_holds,
 )
 from effect_ir import ConditionUnsupported  # noqa: E402
 from rules_core import is_terminal, add_pending_item, state_hash  # noqa: E402
@@ -1574,7 +1575,8 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
         if isinstance(effect.get("units"), list):
             # ADR-0008 s7: a composite instruction's Units are chosen at play like any target (355.5)
             for sel in effect["units"]:
-                if isinstance(sel, dict):
+                # a slot that is the source itself ({object_ref: program_source}) is not chosen and is not a target
+                if isinstance(sel, dict) and not is_object_ref(sel.get("object_id")):
                     candidates.append((sel, sel.get("decision_ref")))
         for template, ref in candidates:
             if "selection_ref" in template:
@@ -1650,7 +1652,7 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                                             rule_locators=["Core 355.16", "Core 164.2.a", "Core 164.2.b", "Core 357.1"])
                     if selector.get("kind") != "battlefield" and object_id in effect_state["objects"]:
                         chosen_objects.append(object_id)
-        _check_target_bounds(effect, index, decisions, effect_state)
+        _check_target_bounds(effect, index, decisions, effect_state, actor)
         _check_move_destination(effect, index, decisions, effect_state, actor, program, stage)
     return chosen_objects
 
@@ -1767,7 +1769,7 @@ def _played_target_record(effects: list[dict[str, Any]], decisions: dict[str, An
 
 
 def _check_target_bounds(effect: dict[str, Any], index: int, decisions: dict[str, Any] | None,
-                         effect_state: dict[str, Any]) -> None:
+                         effect_state: dict[str, Any], actor: str | None = None) -> None:
     """How MANY targets an instruction was given, and whether its slots are different
     objects - asked where the targets are chosen (play, or a trigger's finalization), after
     each chosen object has been found legal on its own (the loop above).
@@ -1786,11 +1788,19 @@ def _check_target_bounds(effect: dict[str, Any], index: int, decisions: dict[str
     # they are chosen (_check_play_targets above, Core 355.14.c)
     if isinstance(spec, dict) and isinstance(spec.get("decision_ref"), str) and effect.get("division_ref") is None:
         entry = ed.target_selection(decisions, spec["decision_ref"])
-        if entry is not None and not (spec["min"] <= len(entry["value"]) <= spec["max"]):
+        # package 10 (Fox-Fire): "any number" carries no max - its group's total bounds it (below)
+        if entry is not None and not (spec["min"] <= len(entry["value"]) <= spec.get("max", len(entry["value"]))):
             raise PlayError("choices", "target_count_out_of_range",
                             f"effects[{index}] target selection {spec['decision_ref']!r} chose {len(entry['value'])} "
-                            f"object(s); this instruction takes {spec['min']}..{spec['max']}",
+                            f"object(s); this instruction takes {spec['min']}..{spec.get('max', 'any number')}",
                             rule_locators=["Core 355.8", "Core 355.13"])
+        if entry is not None and spec.get("group"):
+            # package 10, Core 355.11.a: the chosen group meets its requirement as a whole as it is chosen
+            ok, why = target_group_holds(effect_state, list(entry["value"]), spec["group"], actor)
+            if not ok:
+                raise PlayError("choices", "target_group_requirement_failed",
+                                f"effects[{index}] target selection {spec['decision_ref']!r}: {why}",
+                                rule_locators=["Core 355.11", "Core 355.11.a"])
     units = effect.get("units")
     if isinstance(units, list) and len(units) == 2:
         slots: list[str | None] = []

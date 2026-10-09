@@ -479,10 +479,11 @@ def main() -> int:
     event = {"event_id": "e#1", "kind": "moved", "object": "a1", "identity": IR.object_identity(state, "a1") or "a1@0"}
     recorded = copy.deepcopy(timing)
     recorded["chain"]["items"][0]["trigger_event"] = dict(event)
-    kill_it = program_of("p", "bf1", [{"op": "kill", "effect_id": "k", "object_id": REF}])
-    refused = resolve_with_program(recorded, "t1", state, kill_it)
+    # (package 10 adopted kill for the referent; recall is still not adopted)
+    recall_it = program_of("p", "bf1", [{"op": "recall", "effect_id": "k", "object_id": REF}])
+    refused = resolve_with_program(recorded, "t1", state, recall_it)
     if refused.get("committed") or code(refused) != IR.OBJECT_REF_OP_NOT_ADOPTED:
-        errors.append(f"refused: kill on the referent (no adoption) was not refused by name ({code(refused)})")
+        errors.append(f"refused: recall on the referent (no adoption) was not refused by name ({code(refused)})")
     beside = program_of("p", "bf1", [{**move_effects[0], "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit"}}])
     refused = resolve_with_program(recorded, "t1", state, beside)
     if refused.get("committed") or code(refused) != IR.OBJECT_REF_NOT_SELF:

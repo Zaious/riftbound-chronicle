@@ -146,6 +146,31 @@ def main() -> int:
             errors.append("the second damaged friendly unit was affected; the subject was re-chosen "
                           "rather than captured")
 
+    # --- package 10: "a friendly UNIT" - a friendly Gear's death is not replaced, the source's own included; the
+    # replacement applies once, its source gone after it (Core 370.1.b; the source-backed replacement needs its source)
+    gear_state = install(hourglass_state(), card)
+    gear_state["objects"]["g2"] = copy.deepcopy(gear_state["objects"]["g1"])
+    gear_state["players"]["p1"]["zones"]["base"].append("g2")
+    for label, victim in (("another friendly Gear", "g2"), ("the Gear itself", "g1")):
+        died = apply_program(gear_state, kill_program(victim))
+        if not died.get("committed") or victim not in died["next_state"]["players"]["p1"]["zones"]["trash"]:
+            errors.append(f"{label}'s death was replaced or refused: {died.get('reason') or died.get('errors')}")
+        elif victim == "g2" and "g1" not in died["next_state"]["players"]["p1"]["zones"]["base"]:
+            errors.append("the Gear was killed in place of another Gear")
+    both = program("kill-both", {"op": "kill", "effect_id": "k1", "object_id": "u1"},
+                   {"op": "kill", "effect_id": "k2", "object_id": "u3"})
+    both["source_object"] = "u2"
+    twice = apply_program(install(hourglass_state(), card), both)
+    if not twice.get("committed"):
+        errors.append(f"two deaths did not resolve: {twice.get('reason') or twice.get('errors')}")
+    else:
+        after = twice["next_state"]
+        if "u1" not in after["players"]["p1"]["zones"]["base"] or "u3" not in after["players"]["p1"]["zones"]["trash"]:
+            errors.append(f"two friendly units killed one after the other: the first is not saved and the second dead "
+                          f"(base {after['players']['p1']['zones']['base']}, trash {after['players']['p1']['zones']['trash']})")
+    if entries[0].get("condition") != {"kind": "object_kind", "value": "unit"}:
+        errors.append(f"'a friendly unit' is not read as a unit: {entries[0].get('condition')}")
+
     # --- the subject is the dying unit, never the source ------------------------------------------
     bound = _bind_replacement_effects(copy.deepcopy(steps), "u1", "g1", "u1@0")
     if bound[0]["object_id"] != "g1":
@@ -188,7 +213,8 @@ def main() -> int:
         return 1
     print("replacement subject checks passed: the two clauses form one replacement, the subject is the unit "
           "that would have died and not the Gear, the second damaged unit is untouched, and an instruction "
-          "whose subject identity moved on applies nothing")
+          "whose subject identity moved on applies nothing; a friendly Gear's death (the source's own) is not "
+          "replaced, and two friendly deaths in a row save only the first")
     return 0
 
 

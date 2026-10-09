@@ -52,6 +52,15 @@ def target_of(execution):
     # (2026-09-24, "You may play me to an open battlefield.").
     timing = ((execution.get("declaration") or {}).get("chain_item", {}).get("timing")
               if execution.get("kind") == "play" else None)
+    # 2026-10-08 (package 10, Meditation): a play fixture whose only content is an OPTIONAL additional cost the card itself
+    # offers (declaration.cost.additional, source $card) is the clause that prints that cost - the grammar's
+    # printed_additional_costs; the fixture's timing is the card's [Reaction] / [Action] clause's, not this one's
+    additional = ((execution.get("declaration") or {}).get("cost") or {}).get("additional") or []
+    if execution.get("kind") == "play" and additional and not execution.get("program") and not execution.get("passive") \
+            and all(c.get("source") == "$card" and c.get("mandatory") is False for c in additional):
+        return {"program_effects": [], "play_timing": None, "passive": {"object_fields": {"printed_additional_costs": [
+            {"cost_offer_id": "$clause_id", "mandatory": False,
+             "payment": {"kind": c["payment"]["kind"], "amount": 1}} for c in additional]}}}
     return {
         "program_effects": (execution.get("program") or {}).get("effects", []),
         "passive": execution.get("passive"),

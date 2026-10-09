@@ -179,10 +179,11 @@ def validate_engine_decisions(value: Any) -> list[str]:
             errors.append(f"{label}.value must be a boolean")
         if kind == "trigger_order" and (not isinstance(val, list) or not val or any(not isinstance(v, str) or not v for v in val) or len(val) != len(set(val))):
             errors.append(f"{label}.value must be a non-empty unique array of trigger ids")
-        if kind == "resource_allocation" and (not isinstance(val, dict) or not val or any(not isinstance(k, str) or not k or isinstance(n, bool) or not isinstance(n, int) or n < 0 for k, n in val.items())):
+        if kind == "resource_allocation" and not (item["stage"] == "resolution" and val == {}) and (not isinstance(val, dict) or not val or any(not isinstance(k, str) or not k or isinstance(n, bool) or not isinstance(n, int) or n < 0 for k, n in val.items())):
             errors.append(f"{label}.value must map domains to non-negative integers (the complete allocation)")
-        if kind == "resource_allocation" and item["stage"] != "play_declaration":
-            errors.append(f"{label}: resource_allocation is decided while paying at play")
+        # 2026-10-08 package 10 (Bullet Time): or as a "pay any amount" resolves ({} paying 0)
+        if kind == "resource_allocation" and item["stage"] not in ("play_declaration", "resolution"):
+            errors.append(f"{label}: resource_allocation is decided while paying at play, or as a 'pay any amount' resolves")
         if kind == "card_ordering" and item["stage"] not in ("resolution", "play_declaration"):
             errors.append(f"{label}: card_ordering is decided at resolution, or while paying a cost at play (Core 357.2)")
         if kind == "option_selection" and (not isinstance(val, str) or not val):

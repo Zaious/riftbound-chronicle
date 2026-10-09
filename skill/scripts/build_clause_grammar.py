@@ -423,6 +423,132 @@ LITERAL = [
      ["choose an enemy unit. the next time it would die this turn, heal it, exhaust it, and recall it instead",
       "choose a friendly unit. the next time it would die, heal it, exhaust it, and recall it instead",
       "heal it, exhaust it, and recall it"]),
+    # 2026-10-08 package 10 (Teemo - Swift Scout, GPT ruling 1): the Legend lets its controller take the same Hide for N
+    # Energy instead of the usual one Power of any Domain
+    ("you_may_pay_energy_to_hide_a_card_with_hidden_instead_of_power_any",
+     r"you may pay \[e(?P<energy>\d+)\] to hide a card with \[hidden\] instead of \[a\]",
+     ["Core 811.1", "Core 356.1.a"], "passive", ["hide_action"],
+     "A printed static of a Legend: its controller may take a Hide for the named Energy in place of the usual cost - one "
+     "Hide, one cost, never both; other changes to a Hide's cost apply to the one chosen. Another keyword's cost, or an "
+     "additional cost, is a different clause.",
+     ["You may pay :rb_energy_1: to hide a card with [Hidden] instead of :rb_rune_rainbow:."],
+     ["you may pay :rb_energy_1: to hide a card", "pay :rb_energy_1: to hide a card with [hidden] instead of :rb_rune_rainbow:",
+      "you may pay :rb_energy_1: to play a card with [hidden] instead of :rb_rune_rainbow:"]),
+    # 2026-10-08 package 10 (Teemo - Swift Scout): one unit of the named tag that the controller owns, chosen as the ability
+    # is activated, from the board or the controller's own Champion Zone, into its owner's hand
+    ("put_a_tag_unit_you_own_into_your_hand_from_your_champion_zone_or_the_board",
+     r"put an? (?P<tag>[a-z][a-z'-]*) unit you own into your hand from your champion zone or the board",
+     ["Core 133.8", "Core 108.3", "Core 355.10.a.1", "Core 124"], "instruction", ["return_to_hand", "targeting"],
+     "One unit carrying the tag, owned (not merely controlled) by the controller, chosen from the board or the "
+     "controller's own Champion Zone, goes to its owner's hand. A unit they control, another zone, or a card that is "
+     "not a unit is a different production.",
+     ["Put a Teemo unit you own into your hand from your Champion Zone or the board."],
+     ["put a teemo unit you control into your hand from your champion zone or the board",
+      "put a teemo unit you own into your hand from the board", "put a teemo card you own into your hand from your trash"]),
+    # 2026-10-08 package 10 (Pack of Wonders): one of the controller's other gear, units or facedown cards, chosen as the
+    # ability is activated, into its owner's hand
+    ("return_another_friendly_gear_unit_or_facedown_card_to_its_owners_hand",
+     r"return another friendly gear, unit, or facedown card to its owner's hand",
+     ["Core 107.3", "Core 355.10.a.1", "Core 124"], "instruction", ["return_to_hand", "targeting"],
+     "One object its controller controls other than the source - a Gear or a Unit on the board, or a card in a Facedown "
+     "Zone - goes to its owner's hand. An enemy object, the source itself, or a Rune is a different production.",
+     ["Return another friendly gear, unit, or facedown card to its owner's hand."],
+     ["return another friendly gear or unit to its owner's hand", "return a friendly gear, unit, or facedown card to "
+      "its owner's hand", "return another enemy gear, unit, or facedown card to its owner's hand"]),
+    # 2026-10-08 package 10 (Sett - The Boss, GPT 2026-10-08 ruling 12): an optional death replacement of the card's own,
+    # paid as it applies - Power of any Domain and the source exhausted
+    ("when_a_buffed_unit_you_control_would_die_you_may_pay_a_and_exhaust_me_to_spend_its_buff_and_recall_it_exhausted_instead",
+     r"when a buffed unit you control would die, you may pay \[a\] and exhaust me to spend its buff and recall it exhausted "
+     r"instead",
+     ["Core 370.1", "Core 370.1.b", "Core 372", "Core 702.2.b", "Core 356.1"], "passive", ["bounded_replacement", "kill"],
+     "While the card is on the board, a buffed unit its controller controls that would die may instead lose its buff and "
+     "go to its Base exhausted, if the controller pays a Power of any Domain and exhausts the card as it applies; declined "
+     "or unpayable, the unit dies. An unbuffed unit, or another payment, is a different production.",
+     ["When a buffed unit you control would die, you may pay :rb_rune_rainbow: and exhaust me to spend its buff and recall it exhausted instead."],
+     ["when a buffed unit you control would die, you may pay [a] to recall it instead",
+      "when a buffed unit you control would die, spend its buff and recall it exhausted instead"]),
+    # 2026-10-08 package 10 (Unlicensed Armory): Highlander's grant, optional and paid as it applies
+    ("choose_a_friendly_unit_the_next_time_it_would_die_this_turn_you_may_pay_rune_to_heal_exhaust_and_recall_it_instead",
+     r"choose a friendly unit\. the next time it would die this turn, you may pay \[rune:(?P<domain>[a-z]+)\] to heal it, "
+     r"exhaust it, and recall it instead",
+     ["Core 370", "Core 355.5", "Core 356.1", "Core 317.2.c"], "instruction", ["grant_replacement", "targeting"],
+     "One friendly unit chosen as the ability is activated: the next time this turn it would die, its controller may pay "
+     "one Power of the named Domain to heal, exhaust and recall it instead; declined or unpayable, it dies.",
+     ["Choose a friendly unit. The next time it would die this turn, you may pay [rune:fury] to heal it, exhaust it, and recall it instead."],
+     ["choose a friendly unit. the next time it would die this turn, heal it, exhaust it, and recall it instead",
+      "choose an enemy unit. the next time it would die this turn, you may pay [rune:fury] to heal it, exhaust it, and recall it instead"]),
+    # 2026-10-08 package 10 (Fox-Fire, GPT 2026-10-08 ruling 5): any number of units at one Battlefield, their Mights
+    # together at most N as they are chosen; a group grown past it as it resolves is cut to a subset its controller keeps
+    ("kill_any_number_of_units_at_a_battlefield_with_total_might_n_or_less",
+     r"kill any number of units at a battlefield with total might (?P<total>\d+) or less",
+     ["Core 355.11", "Core 355.11.a", "Core 355.11.b", "Core 355.13", "Core 417"], "instruction", ["kill", "targeting"],
+     "Any number of units, all at one Battlefield, whose Mights add up to at most N as they are chosen, are killed; if "
+     "their total has grown past N as it resolves, its controller keeps a subset of them within it, at one Battlefield "
+     "(not necessarily the first). A count, or units anywhere, is a different production.",
+     ["Kill any number of units at a battlefield with total Might 4 or less."],
+     ["kill any number of units with total might 4 or less", "kill up to 2 units at a battlefield with total might 4 or less",
+      "kill any number of units at a battlefield"]),
+    # 2026-10-08 package 10 (Facebreaker): two targets that meet a requirement together (Core 355.11)
+    ("stun_a_friendly_unit_and_an_enemy_unit_at_the_same_battlefield",
+     r"stun a friendly unit and an enemy unit at the same battlefield",
+     ["Core 423", "Core 355.11", "Core 355.11.a", "Core 355.11.b"], "instruction", ["stun", "targeting"],
+     "One friendly and one enemy unit, both at one Battlefield as they are chosen, are Stunned; if they no longer stand "
+     "together as it resolves, its controller keeps one of them. Two units of one side, or any Battlefield each, is a "
+     "different production.",
+     ["Stun a friendly unit and an enemy unit at the same battlefield."],
+     ["stun a friendly unit and an enemy unit", "stun two enemy units at the same battlefield",
+      "stun a unit at a battlefield"]),
+    # 2026-10-08 package 10 (Guerilla Warfare): for the rest of the turn its controller's Hides cost nothing
+    ("you_can_hide_cards_ignoring_costs_this_turn", r"you can hide cards ignoring costs this turn",
+     ["Core 811.1", "Core 317.2.c"], "instruction", ["hide_action"],
+     "For the rest of the turn its controller may take Hide actions without paying their cost. Playing cards ignoring "
+     "costs, or a lasting effect, is a different production.",
+     ["You can hide cards ignoring costs this turn."],
+     ["you can play cards ignoring costs this turn", "you can hide cards ignoring costs",
+      "opponents can hide cards ignoring costs this turn"]),
+    # 2026-10-08 package 10 (Dr. Mundo - Expert): the controller recycles N cards of their own trash, chosen by them
+    ("recycle_n_from_your_trash", r"recycle (?P<count>\d+) from your trash",
+     ["Core 416.1", "Core 416.4", "Core 416.5"], "instruction", ["recycle"],
+     "The controller picks N cards from their own Trash as it resolves and recycles them (several together: shuffled "
+     "under the deck, per the locators); with fewer there, every one. 'Up to N', another player's trash, or a named card "
+     "is a different production.",
+     ["Recycle 3 from your trash."],
+     ["recycle up to 3 from your trash", "recycle 3 from a trash", "recycle me from your trash"]),
+    # 2026-10-08 package 10 (Imperial Decree): for the rest of this turn, every unit that takes damage is killed
+    ("when_any_unit_takes_damage_this_turn_kill_it",
+     r"when any unit takes damage this turn, kill it",
+     ["Core 383.1", "Core 317.2", "Core 359.3.f.3"], "instruction", ["create_delayed_trigger", "watched_triggers"],
+     "A delayed trigger that, until this turn ends, triggers every time a unit takes damage, and kills that unit. 'The "
+     "next time', a friendly or enemy unit only, or a lasting one is a different production.",
+     ["When any unit takes damage this turn, kill it."],
+     ["when a unit takes damage, kill it", "the next time any unit takes damage this turn, kill it",
+      "when any enemy unit takes damage this turn, kill it"]),
+    # 2026-10-08 package 10 (Noxian Guillotine, GPT ruling 13): the chosen unit killed the next time it takes damage this
+    # turn - or now instead, with Legion
+    ("choose_a_unit_kill_it_the_next_time_it_takes_damage_this_turn_legion_kill_it_now_instead",
+     # (the [Legion] marker is the card's keyword declaration; a body read with it split off still lowers here - the
+     # "instead" half runs only while legion_active, which reads that keyword on the card itself, Core 812.3)
+     r"choose a unit\. kill it the next time it takes damage this turn\. (?:\[legion\] (?:-|—) )?kill it now instead",
+     ["Core 355.5", "Core 383.1", "Core 317.2", "Core 158.2", "Core 812.1.c"], "instruction",
+     ["create_delayed_trigger", "watched_triggers", "targeting"],
+     "One unit chosen at play. Without Legion, a one-shot delayed trigger bound to that unit kills it the next time it "
+     "takes damage this turn; with Legion it is killed as the spell resolves instead and no delayed trigger is made.",
+     ["Choose a unit. Kill it the next time it takes damage this turn. [Legion] — Kill it now instead."],
+     ["choose a unit. kill it the next time it takes damage this turn",
+      "choose a unit. kill it the next time it takes damage. [legion] — kill it now instead",
+      "choose an enemy unit. kill it the next time it takes damage this turn. [legion] — kill it now instead"]),
+    # 2026-10-08 package 10 (Shakedown, GPT ruling 7): one enemy unit chosen at play; as the Deal resolves, that unit's
+    # controller lets it happen or has the caster draw instead
+    ("choose_an_enemy_unit_deal_n_to_it_unless_its_controller_has_you_draw_n",
+     r"choose an enemy unit\. deal (?P<amount>\d+) to it unless its controller has you draw (?P<draw>\d+)",
+     ["Core 355.5", "Core 355.10.e", "Core 359.3.e.14"], "instruction", ["deal_damage", "targeting"],
+     "One enemy Unit chosen at play is the Deal's target; as the Deal resolves, that Unit's controller either lets it "
+     "happen or has the caster draw the named number instead, and then nothing is dealt. A choice by the caster, or a "
+     "different 'instead', is a different production.",
+     ["Choose an enemy unit. Deal 6 to it unless its controller has you draw 2."],
+     ["choose an enemy unit. deal 6 to it unless you draw 2",
+      "choose a friendly unit. deal 6 to it unless its controller has you draw 2",
+      "deal 6 to it unless its controller has you draw 2"]),
     # 2026-10-06 package 9 (Convergent Mutation, GPT ruling 7): two different friendly Units chosen at play; at
     # resolution the first's Might is raised, this turn, to the second's - an increase only, read once
     ("choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit",
@@ -783,6 +909,17 @@ LITERAL = [
      ["Other friendly units here have [Assault].", "Other friendly units here have [Shield]."],
      ["other friendly units here have +1 :rb_might:", "friendly units here have [assault]",
       "other friendly units have [assault]", "other friendly units here have [assault 2]"]),
+    # 2026-10-08 package 10 (Spirit's Refuge): a keyword aura over friendly buffed Units that gives the keyword only to
+    # one that does not otherwise have it - never a second instance summed onto its own
+    ("friendly_buffed_units_have_keyword_if_they_didnt_already",
+     r"friendly buffed units have \[(?P<keyword>deflect)\] if they didn't already",
+     ["Core 365.1", "Core 477.2", "Core 477.2.b", "Core 702.2.a"], "passive", ["might_aura", "layer_engine", "buff_counters"],
+     ("A printed keyword aura over the friendly Units that have a buff, while the source is on the board: each that does "
+      "not otherwise have the keyword gets it; one that already has it keeps exactly its own. 'Other', an unbuffed set, or "
+      "an aura that adds on top is a different clause."),
+     ["Friendly buffed units have [Deflect] if they didn't already."],
+     ["friendly buffed units have [deflect]", "friendly units have [deflect] if they didn't already",
+      "other friendly buffed units have [deflect] if they didn't already"]),
     ("other_friendly_units_have_keyword",
      r"other friendly units have \[(?P<keyword>vision)\]",
      ["Core 365.1", "Core 476", "Core 477.2", "Core 477.2.b", "Core 817.2"], "passive", ["might_aura", "layer_engine"],
@@ -892,6 +1029,15 @@ LITERAL = [
      ["You may hide an additional card here."],
      ["you may hide a card here", "you may hide an additional card", "you may hide two additional cards here",
       "you may play an additional card here"]),
+    # 2026-10-08 package 10 (Clockwork Keeper): one Power of a printed Domain offered as an optional additional cost
+    ("you_may_pay_a_rune_as_an_additional_cost_to_play_me",
+     r"you may pay \[rune:(?P<domain>[a-z]+)\] as an additional cost to play me",
+     ["Core 356.2.b", "Core 356.2.b.1"], "passive", ["card_self_optional_cost"],
+     ("The card offers one Power of the printed Domain as an optional additional cost for its own play; paying it is the "
+      "controller's choice as the card is played (355.1.a)."),
+     ["You may pay [rune:calm] as an additional cost to play me."],
+     ["pay [rune:calm] as an additional cost to play me", "you may pay [rune:calm] as an additional cost to play another unit",
+      "you may pay [c] as an additional cost to play me"]),
     ("you_may_pay_own_domain_power_as_additional_cost_to_play_me",
      r"you may pay \[c\] as additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"], "passive", ["card_self_optional_cost", "domain_power"],
@@ -915,6 +1061,19 @@ LITERAL = [
      ["As an additional cost to play me, kill a friendly unit."],
      ["as an additional cost to play me, kill an enemy unit", "as an additional cost to play me, kill a unit",
       "as an additional cost to play another unit, kill a friendly unit", "as you play me, kill a friendly unit"]),
+    # 2026-10-08 (package 10, Meditation): the same optional printed cost, worded "As an additional cost to play this, you
+    # may ..." - what it switches on is the clause after it ("If you do, ..." / "Otherwise, ..." read the decision to pay)
+    ("as_an_additional_cost_to_play_this_you_may_exhaust_a_friendly_unit",
+     r"as an additional cost to play (?:me|this), you may (?P<cost>exhaust a friendly unit)",
+     ["Core 356.2.b", "Core 356.2.b.1", "Core 355.1.a", "Core 356.7", "Core 357.2"], "passive",
+     ["card_self_optional_cost"],
+     ("An OPTIONAL additional cost the card prints for its own play: exhausting one friendly Unit on the board, chosen "
+      "by the payer as the card is played (not a target, 355.10.c). Paying it is the controller's choice as the card is "
+      "played (355.1.a); 'If you do' / 'Otherwise' after it read that decision (356.4.f.1)."),
+     ["As an additional cost to play this, you may exhaust a friendly unit."],
+     ["as an additional cost to play this, exhaust a friendly unit",
+      "as an additional cost to play this, you may exhaust an enemy unit",
+      "as an additional cost to play another unit, you may exhaust a friendly unit"]),
     ("as_you_play_me_you_may_pay_a_cost_as_an_additional_cost",
      r"as you play (?:me|this), you may (?P<cost>discard (?P<amount>\d+)|spend a buff|kill any number of friendly units"
      r"|spend any number of buffs) as an additional cost",
@@ -978,6 +1137,16 @@ LITERAL = [
      ["counter a spell that costs no more than [e4]",
       "counter a spell",
       "counter a spell that costs no more than [e4] and no more than [c]"]),
+    # 2026-10-08 (package 10, Wind Wall): one spell on the Chain, chosen as the countering card is played (Core 355.7,
+    # 355.5), countered (Core 425.1)
+    ("counter_a_spell",
+     r"counter a spell",
+     ["Core 425.1", "Core 355.7", "Core 355.5"], "instruction", ["counter", "typed_selectors"],
+     ("Counter one chosen spell on the Chain: its card leaves the Chain to its owner's trash, it was not played and no "
+      "cost is refunded (Core 425.1). The target is chosen as the countering card is played."),
+     ["Counter a spell."],
+     ["counter a spell that costs no more than [e4] and no more than [a]", "counter an ability",
+      "counter a unit", "counter target spell"]),
     ("choose_an_opponent",
      r"choose an opponent",
      ["Core 355.1", "Core 355.17"], "instruction", ["choose_player"],
@@ -1001,6 +1170,16 @@ LITERAL = [
      ["choose a card from it, and recycle that card",
       "choose a non-unit card from their hand, and recycle that card",
       "choose a non-unit card from it"]),
+    # 2026-10-08 package 10 (Mindsplitter)
+    ("choose_a_card_from_it_and_they_discard_that_card",
+     r"choose a card from it, and they discard that card",
+     ["Core 424.2.b", "Core 422.1", "Core 128.4", "Core 355.10.a"], "instruction", ["discard", "reveal"],
+     ("One card from what the preceding reveal actually put on the table, chosen by the caster; the player an earlier "
+      "clause chose discards it. The candidates are the reveal's own marks in that player's hand, so nothing still "
+      "private is choosable; nothing revealed, nothing is discarded."),
+     ["Choose a card from it, and they discard that card."],
+     ["choose a card from it, and recycle that card", "they discard a card",
+      "choose a card from their hand, and they discard that card"]),
     ("you_may_play_me_to_an_occupied_enemy_battlefield",
      r"you may play me to an occupied enemy battlefield",
      ["Core 355.2.a", "Core 355.2.b", "Core 170.11.a", "Core 323.6"], "passive",
@@ -1141,9 +1320,19 @@ WRAPPERS = [
      ["When you play me, if you control a Poro, draw 1."],
      ["when you play me, draw 1 if you control a poro", "when you play me, if you control a unit, draw 1",
       "when you play a poro, draw 1", "when i move, if you control a poro, draw 1"]),
+    # 2026-10-08 package 10 (Clockwork Keeper): before when_you_play_me, which would take the condition for the instruction
+    ("when_you_play_me_if_you_paid_the_additional_cost", r"when you play me, if you paid the additional cost, (?P<inner>.+)",
+     ["Core 383.1", "Core 419.4.a", "Core 383.2.a.1", "Core 356.4.f.1"], ["play_triggers"],
+     ["When you play me, if you paid the additional cost, draw 1."],
+     ["when you play me, draw 1", "when you play me, if you paid the cost, draw 1",
+      "when i move, if you paid the additional cost, draw 1"]),
     ("when_you_play_me", r"when you play me, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
      ["When you play me, channel 1 rune exhausted.", "When you play me, draw 1."],
      ["when you play a unit, draw 1", "when i move, draw 1"]),
+    # 2026-10-08 package 10: a Gear's "When you play this" - the card's own play trigger, as "When you play me"
+    ("when_you_play_this", r"when you play this, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
+     ["When you play this, draw 1."],
+     ["when you play a gear, draw 1", "when you play me, draw 1"]),
     ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 420"], ["move_triggers"],
      ["When I move, draw 1."], ["when a unit moves, draw 1", "when you play me, draw 1"]),
     # 2026-09-24: the same Move trigger, met only when the completed Move's destination is a
@@ -1223,6 +1412,12 @@ WRAPPERS = [
      ["Core 315.2.a", "Core 315.2.a.1", "Core 383.1"], ["beginning_phase_triggers"],
      ["At the start of your Beginning Phase, draw 1.", "At start of your Beginning Phase, draw 1."],
      ["at the start of each player's beginning phase, draw 1", "at the end of your turn, draw 1"]),
+    # 2026-10-08 (package 10, Sona - Harmonious): the Trigger Condition right after it (Core 383.2.a.1)
+    ("at_the_end_of_your_turn_if_im_at_a_battlefield", r"at the end of your turn, if i'm at a battlefield, (?P<inner>.+)",
+     ["Core 317.1", "Core 383.1", "Core 383.2.a.1"], ["end_of_turn_triggers"],
+     ["At the end of your turn, if I'm at a battlefield, draw 1."],
+     ["at the end of your turn, draw 1", "at the end of your turn, if i'm at base, draw 1",
+      "at the end of your turn, if you control a battlefield, draw 1"]),
     ("at_the_end_of_your_turn", r"at the end of your turn, (?P<inner>.+)", ["Core 317.1", "Core 383.1"],
      ["end_of_turn_triggers"], ["At the end of your turn, draw 1."],
      ["at the end of each turn, draw 1", "at the beginning of your turn, draw 1"]),
@@ -1282,6 +1477,17 @@ WRAPPERS = [
      ["When you kill a stunned enemy unit, draw 1."],
      ["when you kill an enemy unit, draw 1", "when a stunned enemy unit dies, draw 1", "when you kill a stunned unit, draw 1",
       "when you stun an enemy unit, draw 1", "when an opponent kills a stunned enemy unit, draw 1"]),
+    # 2026-10-08 (package 10): a Ready / a Buff the player performs on a friendly Unit (Pirate's Haven, Mistfall)
+    ("when_you_ready_a_friendly_unit", r"when you ready a friendly unit, (?P<inner>.+)",
+     ["Core 383.1", "Core 415", "Core 315.1.b", "Core 415.3.a", "Core 359.3.f.3"], ["event_triggers"],
+     ["When you ready a friendly unit, draw 1."],
+     ["when you ready a unit, draw 1", "when a friendly unit becomes ready, draw 1", "when you ready an enemy unit, draw 1",
+      "when you exhaust a friendly unit, draw 1"]),
+    ("when_you_buff_a_friendly_unit", r"when you buff a friendly unit, (?P<inner>.+)",
+     ["Core 383.1", "Core 702", "Core 359.3.f.3"], ["event_triggers"],
+     ["When you buff a friendly unit, draw 1."],
+     ["when you buff a unit, draw 1", "when a friendly unit is buffed, draw 1", "when you buff an enemy unit, draw 1",
+      "when you spend a buff, draw 1"]),
     ("the_first_time_a_friendly_unit_dies_each_turn", r"the first time a friendly unit dies each turn, (?P<inner>.+)",
      ["Core 383.1", "Core 417", "Core 383.3.e"], ["event_triggers"],
      ["The first time a friendly unit dies each turn, draw 1."],
@@ -1301,6 +1507,13 @@ WRAPPERS = [
       "when i move, draw 1", "the third time a unit moves in a turn, draw 1"]),
     # 2026-09-27: a player-level Conquer Effect (Core 383.4.c.2.b) - any source the Conquering
     # player controls where its abilities work, a Legend in its Legend Zone included
+    # 2026-10-08 (package 10, Garen - Might of Demacia (Starter)): the Trigger Condition right after it (Core 383.2.a.1)
+    ("when_you_conquer_if_you_have_n_units_at_that_battlefield",
+     r"when you conquer, if you have (?P<count>\d+)\+ units at that battlefield, (?P<inner>.+)",
+     ["Core 469.1", "Core 383.4.c", "Core 383.4.c.2.b", "Core 383.2.a.1"], ["conquer_triggers"],
+     ["When you conquer, if you have 4+ units at that battlefield, draw 2."],
+     ["when you conquer, draw 2", "when you conquer here, if you have 4+ units here, draw 2",
+      "when you conquer, if you have 4+ units, draw 2", "when you hold, if you have 4+ units at that battlefield, draw 2"]),
     ("when_you_conquer", r"when you conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.4.c", "Core 383.4.c.2.b"],
      ["conquer_triggers"], ["When you conquer, draw 1."],
      ["when you conquer here, draw 1", "when i conquer, draw 1", "when you hold, draw 1",

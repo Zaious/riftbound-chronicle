@@ -251,6 +251,20 @@ jobs:
         run: python3 skill/scripts/check_buff_count.py
       - name: A card banished as it is seen from the top, then played for [A] (package 9, Nocturne)
         run: python3 skill/scripts/check_seen_banish.py
+      - name: Ready and buff watches (package 10)
+        run: python3 skill/scripts/check_ready_buff_watch.py
+      - name: Conquer unit-count condition (package 10)
+        run: python3 skill/scripts/check_conquer_unit_count.py
+      - name: End-of-turn at-battlefield condition (package 10)
+        run: python3 skill/scripts/check_end_of_turn_at_battlefield.py
+      - name: Counter a targeted spell (package 10)
+        run: python3 skill/scripts/check_counter_target.py
+      - name: Target state and otherwise (package 10)
+        run: python3 skill/scripts/check_target_state_otherwise.py
+      - name: Optional exhaust cost (package 10)
+        run: python3 skill/scripts/check_optional_exhaust_cost.py
+      - name: Paid additional cost play trigger (Clockwork Keeper)
+        run: python3 skill/scripts/check_paid_additional_cost.py
       # A card's printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7): a mandatory
       # kill of a chosen friendly unit or no play; an optional discard / buff / any-number offer is
       # the player's choice and switches on its linked cost reduction (356.1.b.1, 356.4, 356.6).
@@ -611,6 +625,40 @@ jobs:
         run: python3 skill/scripts/check_watch_each_and_discard.py
       - name: player referent bound to a reveal (Sabotage)
         run: python3 skill/scripts/check_player_ref_and_reveal.py
+      - name: Discard chosen by the caster from a revealed hand (Mindsplitter)
+        run: python3 skill/scripts/check_discard_from_reveal.py
+      - name: Move to the linked object's battlefield (Zenith Blade)
+        run: python3 skill/scripts/check_linked_battlefield_move.py
+      - name: Chosen unit's Might over a targeted battlefield, then moved there (Stormbringer)
+        run: python3 skill/scripts/check_selected_might_area.py
+      - name: Doubling a unit's Might is a snapshot (Last Stand)
+        run: python3 skill/scripts/check_might_snapshot_double.py
+      - name: Target's controller replaces the instruction (Shakedown)
+        run: python3 skill/scripts/check_unless_choice.py
+      - name: Pay any amount as it resolves (Bullet Time)
+        run: python3 skill/scripts/check_pay_any_amount.py
+      - name: Keyword aura only where absent (Spirit's Refuge)
+        run: python3 skill/scripts/check_keyword_aura_if_absent.py
+      - name: Delayed triggers waiting for an event this turn (Guillotine, Imperial Decree)
+        run: python3 skill/scripts/check_delayed_event_watch.py
+      - name: Ready each unit whose buff was spent (Overt Operation)
+        run: python3 skill/scripts/check_linked_each.py
+      - name: Buffs give an additional Might this turn (Stand United)
+        run: python3 skill/scripts/check_buff_bonus_might.py
+      - name: Hide cost basis: alternative Energy or ignoring costs (Teemo, Guerilla Warfare)
+        run: python3 skill/scripts/check_hide_cost_basis.py
+      - name: Owned tagged unit to hand
+        run: python3 skill/scripts/check_owned_tagged_unit_to_hand.py
+      - name: Return gear, unit or facedown card
+        run: python3 skill/scripts/check_return_gear_unit_or_facedown.py
+      - name: Target group requirement
+        run: python3 skill/scripts/check_target_group.py
+      - name: Replacement cost
+        run: python3 skill/scripts/check_replacement_cost.py
+      - name: Battlefield here
+        run: python3 skill/scripts/check_battlefield_here.py
+      - name: source in one slot of a Unit pair
+        run: python3 skill/scripts/check_source_pair_damage.py
       - name: a card's own Energy reduction read off the board - highest Might, a death this turn (Core 356.4, 428.1)
         run: python3 skill/scripts/check_cost_from_board.py
       - name: opponents can't play cards this turn - refuses their card plays, not their abilities (Core 054.1, 052)
@@ -751,6 +799,13 @@ jobs:
           python3 "$REPO/skill/scripts/check_opponent_move_watch.py"
           python3 "$REPO/skill/scripts/check_buff_count.py"
           python3 "$REPO/skill/scripts/check_seen_banish.py"
+          python3 "$REPO/skill/scripts/check_ready_buff_watch.py"
+          python3 "$REPO/skill/scripts/check_conquer_unit_count.py"
+          python3 "$REPO/skill/scripts/check_end_of_turn_at_battlefield.py"
+          python3 "$REPO/skill/scripts/check_counter_target.py"
+          python3 "$REPO/skill/scripts/check_target_state_otherwise.py"
+          python3 "$REPO/skill/scripts/check_optional_exhaust_cost.py"
+          python3 "$REPO/skill/scripts/check_paid_additional_cost.py"
           python3 "$REPO/skill/scripts/check_printed_costs.py"
           python3 "$REPO/skill/scripts/check_granted_cost_discounts.py"
           python3 "$REPO/skill/scripts/check_spend_buffs.py"
@@ -849,6 +904,23 @@ jobs:
           python3 "$REPO/skill/scripts/check_optional_instruction.py"
           python3 "$REPO/skill/scripts/check_watch_each_and_discard.py"
           python3 "$REPO/skill/scripts/check_player_ref_and_reveal.py"
+          python3 "$REPO/skill/scripts/check_discard_from_reveal.py"
+          python3 "$REPO/skill/scripts/check_linked_battlefield_move.py"
+          python3 "$REPO/skill/scripts/check_selected_might_area.py"
+          python3 "$REPO/skill/scripts/check_might_snapshot_double.py"
+          python3 "$REPO/skill/scripts/check_unless_choice.py"
+          python3 "$REPO/skill/scripts/check_pay_any_amount.py"
+          python3 "$REPO/skill/scripts/check_keyword_aura_if_absent.py"
+          python3 "$REPO/skill/scripts/check_delayed_event_watch.py"
+          python3 "$REPO/skill/scripts/check_linked_each.py"
+          python3 "$REPO/skill/scripts/check_buff_bonus_might.py"
+          python3 "$REPO/skill/scripts/check_hide_cost_basis.py"
+          python3 "$REPO/skill/scripts/check_owned_tagged_unit_to_hand.py"
+          python3 "$REPO/skill/scripts/check_return_gear_unit_or_facedown.py"
+          python3 "$REPO/skill/scripts/check_target_group.py"
+          python3 "$REPO/skill/scripts/check_replacement_cost.py"
+          python3 "$REPO/skill/scripts/check_battlefield_here.py"
+          python3 "$REPO/skill/scripts/check_source_pair_damage.py"
           python3 "$REPO/skill/scripts/check_cost_from_board.py"
           python3 "$REPO/skill/scripts/check_play_prohibition.py"
           python3 "$REPO/skill/scripts/check_linked_move.py"

@@ -155,7 +155,12 @@ DELAYED_FIELDS = {"delayed_id", "controller", "source_object", "source_identity"
                   "created_turn",
                   # 2026-09-27 package 6: the content hash of the program the creating instruction
                   # carried, bound by the engine and carried to the Chain
-                  "effect_program_hash"}
+                  "effect_program_hash",
+                  # 2026-10-08 package 10 (Noxian Guillotine, Imperial Decree): an event-waiting delayed trigger that
+                  # lasts only this turn (until end_of_turn: it no longer waits once the turn it was made in is over),
+                  # fires on EVERY matching event rather than once (repeats), or waits only for an event about the
+                  # object it is bound to (about_target)
+                  "until", "repeats", "about_target"}
 MULTIPLIER_FIELDS = {"multiplier_id", "controller", "source_object", "applies_to", "extra_times"}
 
 
@@ -303,6 +308,12 @@ def validate_watch_state(state: dict[str, Any]) -> list[str]:
             errors.append(f"{path}.waits_for must be {{kind: turn, moment, turn_id}} with moment in {sorted(TURN_MOMENTS)}")
         if ("target_object" in entry) != ("target_identity" in entry):
             errors.append(f"{path} must bind a target identity with its target object (Core 124)")
+        if entry.get("until", "end_of_turn") != "end_of_turn" or entry.get("repeats", False) not in (True, False) \
+                or entry.get("about_target", False) not in (True, False) \
+                or (({"until", "repeats", "about_target"} & set(entry)) and waits.get("kind") != "event") \
+                or (entry.get("about_target") and "target_object" not in entry):
+            errors.append(f"{path}: until (end_of_turn), repeats and about_target belong to an event-waiting delayed "
+                          f"trigger; about_target needs its bound target")
         if "effect_program_hash" in entry and not (isinstance(entry["effect_program_hash"], str)
                                                    and entry["effect_program_hash"].startswith("sha256:")):
             errors.append(f"{path}.effect_program_hash must be a sha256 content hash")
@@ -754,6 +765,15 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
                     entry["effect_program_hash"] = descriptor["effect_program_hash"]
                 scheduled.append(entry)
     scheduled += _battlefield_watches(state, events, batch_label=batch_label, turn_player=turn_player)
+    # 2026-10-08 package 10 (Noxian Guillotine, Imperial Decree): delayed triggers waiting for an EVENT are matched in
+    # real play, batch by batch, as watchers are; one that fires once is spent, one that expired or lost its bound object
+    # is dropped (Core 124, 317.2); a delayed trigger waiting for a moment of the turn is not touched here
+    if any((entry.get("waits_for") or {}).get("kind") == "event" for entry in state.get("delayed_triggers") or []):
+        delayed, dropped = delayed_matches(counted, events, turn_id=turn_id, only_watch=True)
+        for index, entry in enumerate(delayed):
+            entry["trigger_id"] = f"{entry['trigger_id']}@{batch_label}" + (f"#{index}" if index else "")
+        scheduled += delayed
+        counted = settle_delayed(counted, delayed, dropped)
     if not occurrences:
         counted.pop("watch_occurrences", None)
     return scheduled, counted
@@ -823,7 +843,7 @@ def _battlefield_watches(state: dict[str, Any], events: list[dict[str, Any]], *,
 
 
 def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None = None, *, turn_id: str,
-                    moment: str | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+                    moment: str | None = None, only_watch: bool = False) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Returns (scheduled, dropped). A delayed trigger fires once, and one
     whose bound identity is gone is dropped with its reason (Core 124)."""
     from effect_ir import object_identity
@@ -843,6 +863,13 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
     for entry in state.get("delayed_triggers") or []:
         source_now = object_identity(state, entry["source_object"]) if entry["source_object"] in (state.get("objects") or {}) else None
         waits = entry["waits_for"]
+        if only_watch and waits["kind"] == "turn":
+            continue
+        # package 10: "this turn" - once the turn it was made in is over it no longer waits (Core 317.2)
+        if entry.get("until") == "end_of_turn" and entry.get("created_turn") != turn_id:
+            dropped.append({"delayed_id": entry["delayed_id"], "reason": "expired_end_of_turn",
+                            "created_turn": entry.get("created_turn"), "rule_locators": ["Core 317.2"]})
+            continue
         if entry.get("target_object") is not None and waits["kind"] == "turn":
             found = bound_identity(entry, None)
             if found != entry["target_identity"]:
@@ -862,9 +889,13 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
                                                       if entry.get("effect_program_hash") else {})}))
             continue
         matched_but_unbound: dict[str, Any] | None = None
+        fired = 0
         for event in events or []:
             watch = {k: v for k, v in waits.items() if k != "kind"}
             if not watch_matches(state, watch, event, source_object=entry["source_object"], controller=entry["controller"]):
+                continue
+            # package 10 (Noxian Guillotine): "the next time IT takes damage" - only an event about the bound object
+            if entry.get("about_target") and event.get("object") != entry.get("target_object"):
                 continue
             if entry.get("target_object") is not None:
                 found = bound_identity(entry, event)
@@ -874,7 +905,10 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
                                            "rule_locators": ["Core 124"]}
                     continue
             if True:
-                scheduled.append(_scheduled(entry | {"trigger_id": entry["delayed_id"]}, event,
+                # package 10 (Imperial Decree): a repeating one fires once per matching event, each its own trigger
+                trigger_id = entry["delayed_id"] + (f"#{event.get('event_id')}" if entry.get("repeats") else "")
+                fired += 1
+                scheduled.append(_scheduled(entry | {"trigger_id": trigger_id}, event,
                                             trigger_kind="delayed",
                                             extra={"delayed_id": entry["delayed_id"], "snapshot": entry.get("snapshot"),
                                                    "source_identity_at_creation": entry["source_identity"],
@@ -882,6 +916,8 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
                                                    **({"effect_program_hash": entry["effect_program_hash"]}
                                                       if entry.get("effect_program_hash") else {})}))
                 matched_but_unbound = None
+                if entry.get("repeats"):
+                    continue
                 break  # it fires once
         if matched_but_unbound is not None:
             dropped.append(matched_but_unbound)
@@ -893,7 +929,9 @@ def settle_delayed(state: dict[str, Any], fired: list[dict[str, Any]], dropped: 
     binding. Everything else waits."""
     import copy
 
-    spent = {entry.get("delayed_id") for entry in fired} | {entry["delayed_id"] for entry in dropped}
+    repeating = {entry["delayed_id"] for entry in state.get("delayed_triggers") or [] if entry.get("repeats")}
+    spent = {entry.get("delayed_id") for entry in fired if entry.get("delayed_id") not in repeating} \
+        | {entry["delayed_id"] for entry in dropped}
     if not spent or not state.get("delayed_triggers"):
         return state
     new_state = copy.deepcopy(state)

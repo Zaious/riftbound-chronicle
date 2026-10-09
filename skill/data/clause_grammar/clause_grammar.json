@@ -1167,6 +1167,321 @@
       ]
     },
     {
+      "production_id": "you_may_pay_energy_to_hide_a_card_with_hidden_instead_of_power_any",
+      "form": "You may pay :rb_energy_1: to hide a card with [Hidden] instead of :rb_rune_rainbow:.",
+      "template": "you may pay \\[e(?P<energy>\\d+)\\] to hide a card with \\[hidden\\] instead of \\[a\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 811.1",
+        "Core 356.1.a"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "hide_action"
+      ],
+      "boundary": "A printed static of a Legend: its controller may take a Hide for the named Energy in place of the usual cost - one Hide, one cost, never both; other changes to a Hide's cost apply to the one chosen. Another keyword's cost, or an additional cost, is a different clause.",
+      "golden": [
+        "You may pay :rb_energy_1: to hide a card with [Hidden] instead of :rb_rune_rainbow:."
+      ],
+      "negative": [
+        "you may pay :rb_energy_1: to hide a card",
+        "pay :rb_energy_1: to hide a card with [hidden] instead of :rb_rune_rainbow:",
+        "you may pay :rb_energy_1: to play a card with [hidden] instead of :rb_rune_rainbow:"
+      ]
+    },
+    {
+      "production_id": "put_a_tag_unit_you_own_into_your_hand_from_your_champion_zone_or_the_board",
+      "form": "Put a Teemo unit you own into your hand from your Champion Zone or the board.",
+      "template": "put an? (?P<tag>[a-z][a-z'-]*) unit you own into your hand from your champion zone or the board",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 133.8",
+        "Core 108.3",
+        "Core 355.10.a.1",
+        "Core 124"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "return_to_hand",
+        "typed_selectors"
+      ],
+      "boundary": "One unit carrying the tag, owned (not merely controlled) by the controller, chosen from the board or the controller's own Champion Zone, goes to its owner's hand. A unit they control, another zone, or a card that is not a unit is a different production.",
+      "golden": [
+        "Put a Teemo unit you own into your hand from your Champion Zone or the board."
+      ],
+      "negative": [
+        "put a teemo unit you control into your hand from your champion zone or the board",
+        "put a teemo unit you own into your hand from the board",
+        "put a teemo card you own into your hand from your trash"
+      ]
+    },
+    {
+      "production_id": "return_another_friendly_gear_unit_or_facedown_card_to_its_owners_hand",
+      "form": "Return another friendly gear, unit, or facedown card to its owner's hand.",
+      "template": "return another friendly gear, unit, or facedown card to its owner's hand",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 107.3",
+        "Core 355.10.a.1",
+        "Core 124"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "return_to_hand",
+        "typed_selectors"
+      ],
+      "boundary": "One object its controller controls other than the source - a Gear or a Unit on the board, or a card in a Facedown Zone - goes to its owner's hand. An enemy object, the source itself, or a Rune is a different production.",
+      "golden": [
+        "Return another friendly gear, unit, or facedown card to its owner's hand."
+      ],
+      "negative": [
+        "return another friendly gear or unit to its owner's hand",
+        "return a friendly gear, unit, or facedown card to its owner's hand",
+        "return another enemy gear, unit, or facedown card to its owner's hand"
+      ]
+    },
+    {
+      "production_id": "when_a_buffed_unit_you_control_would_die_you_may_pay_a_and_exhaust_me_to_spend_its_buff_and_recall_it_exhausted_instead",
+      "form": "When a buffed unit you control would die, you may pay :rb_rune_rainbow: and exhaust me to spend its buff and recall it exhausted instead.",
+      "template": "when a buffed unit you control would die, you may pay \\[a\\] and exhaust me to spend its buff and recall it exhausted instead",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 370.1",
+        "Core 370.1.b",
+        "Core 372",
+        "Core 702.2.b",
+        "Core 356.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "bounded_replacement",
+        "kill"
+      ],
+      "boundary": "While the card is on the board, a buffed unit its controller controls that would die may instead lose its buff and go to its Base exhausted, if the controller pays a Power of any Domain and exhausts the card as it applies; declined or unpayable, the unit dies. An unbuffed unit, or another payment, is a different production.",
+      "golden": [
+        "When a buffed unit you control would die, you may pay :rb_rune_rainbow: and exhaust me to spend its buff and recall it exhausted instead."
+      ],
+      "negative": [
+        "when a buffed unit you control would die, you may pay [a] to recall it instead",
+        "when a buffed unit you control would die, spend its buff and recall it exhausted instead"
+      ]
+    },
+    {
+      "production_id": "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_you_may_pay_rune_to_heal_exhaust_and_recall_it_instead",
+      "form": "Choose a friendly unit. The next time it would die this turn, you may pay [rune:fury] to heal it, exhaust it, and recall it instead.",
+      "template": "choose a friendly unit\\. the next time it would die this turn, you may pay \\[rune:(?P<domain>[a-z]+)\\] to heal it, exhaust it, and recall it instead",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 370",
+        "Core 355.5",
+        "Core 356.1",
+        "Core 317.2.c"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_replacement",
+        "typed_selectors"
+      ],
+      "boundary": "One friendly unit chosen as the ability is activated: the next time this turn it would die, its controller may pay one Power of the named Domain to heal, exhaust and recall it instead; declined or unpayable, it dies.",
+      "golden": [
+        "Choose a friendly unit. The next time it would die this turn, you may pay [rune:fury] to heal it, exhaust it, and recall it instead."
+      ],
+      "negative": [
+        "choose a friendly unit. the next time it would die this turn, heal it, exhaust it, and recall it instead",
+        "choose an enemy unit. the next time it would die this turn, you may pay [rune:fury] to heal it, exhaust it, and recall it instead"
+      ]
+    },
+    {
+      "production_id": "kill_any_number_of_units_at_a_battlefield_with_total_might_n_or_less",
+      "form": "Kill any number of units at a battlefield with total Might 4 or less.",
+      "template": "kill any number of units at a battlefield with total might (?P<total>\\d+) or less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.11",
+        "Core 355.11.a",
+        "Core 355.11.b",
+        "Core 355.13",
+        "Core 417"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "kill",
+        "typed_selectors"
+      ],
+      "boundary": "Any number of units, all at one Battlefield, whose Mights add up to at most N as they are chosen, are killed; if their total has grown past N as it resolves, its controller keeps a subset of them within it, at one Battlefield (not necessarily the first). A count, or units anywhere, is a different production.",
+      "golden": [
+        "Kill any number of units at a battlefield with total Might 4 or less."
+      ],
+      "negative": [
+        "kill any number of units with total might 4 or less",
+        "kill up to 2 units at a battlefield with total might 4 or less",
+        "kill any number of units at a battlefield"
+      ]
+    },
+    {
+      "production_id": "stun_a_friendly_unit_and_an_enemy_unit_at_the_same_battlefield",
+      "form": "Stun a friendly unit and an enemy unit at the same battlefield.",
+      "template": "stun a friendly unit and an enemy unit at the same battlefield",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 423",
+        "Core 355.11",
+        "Core 355.11.a",
+        "Core 355.11.b"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "stun",
+        "typed_selectors"
+      ],
+      "boundary": "One friendly and one enemy unit, both at one Battlefield as they are chosen, are Stunned; if they no longer stand together as it resolves, its controller keeps one of them. Two units of one side, or any Battlefield each, is a different production.",
+      "golden": [
+        "Stun a friendly unit and an enemy unit at the same battlefield."
+      ],
+      "negative": [
+        "stun a friendly unit and an enemy unit",
+        "stun two enemy units at the same battlefield",
+        "stun a unit at a battlefield"
+      ]
+    },
+    {
+      "production_id": "you_can_hide_cards_ignoring_costs_this_turn",
+      "form": "You can hide cards ignoring costs this turn.",
+      "template": "you can hide cards ignoring costs this turn",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 811.1",
+        "Core 317.2.c"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "hide_action"
+      ],
+      "boundary": "For the rest of the turn its controller may take Hide actions without paying their cost. Playing cards ignoring costs, or a lasting effect, is a different production.",
+      "golden": [
+        "You can hide cards ignoring costs this turn."
+      ],
+      "negative": [
+        "you can play cards ignoring costs this turn",
+        "you can hide cards ignoring costs",
+        "opponents can hide cards ignoring costs this turn"
+      ]
+    },
+    {
+      "production_id": "recycle_n_from_your_trash",
+      "form": "Recycle 3 from your trash.",
+      "template": "recycle (?P<count>\\d+) from your trash",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 416.1",
+        "Core 416.4",
+        "Core 416.5"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "recycle"
+      ],
+      "boundary": "The controller picks N cards from their own Trash as it resolves and recycles them (several together: shuffled under the deck, per the locators); with fewer there, every one. 'Up to N', another player's trash, or a named card is a different production.",
+      "golden": [
+        "Recycle 3 from your trash."
+      ],
+      "negative": [
+        "recycle up to 3 from your trash",
+        "recycle 3 from a trash",
+        "recycle me from your trash"
+      ]
+    },
+    {
+      "production_id": "when_any_unit_takes_damage_this_turn_kill_it",
+      "form": "When any unit takes damage this turn, kill it.",
+      "template": "when any unit takes damage this turn, kill it",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 317.2",
+        "Core 359.3.f.3"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "create_delayed_trigger",
+        "watched_triggers"
+      ],
+      "boundary": "A delayed trigger that, until this turn ends, triggers every time a unit takes damage, and kills that unit. 'The next time', a friendly or enemy unit only, or a lasting one is a different production.",
+      "golden": [
+        "When any unit takes damage this turn, kill it."
+      ],
+      "negative": [
+        "when a unit takes damage, kill it",
+        "the next time any unit takes damage this turn, kill it",
+        "when any enemy unit takes damage this turn, kill it"
+      ]
+    },
+    {
+      "production_id": "choose_a_unit_kill_it_the_next_time_it_takes_damage_this_turn_legion_kill_it_now_instead",
+      "form": "Choose a unit. Kill it the next time it takes damage this turn. [Legion] — Kill it now instead.",
+      "template": "choose a unit\\. kill it the next time it takes damage this turn\\. (?:\\[legion\\] (?:-|—) )?kill it now instead",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 383.1",
+        "Core 317.2",
+        "Core 158.2",
+        "Core 812.1.c"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "create_delayed_trigger",
+        "typed_selectors",
+        "watched_triggers"
+      ],
+      "boundary": "One unit chosen at play. Without Legion, a one-shot delayed trigger bound to that unit kills it the next time it takes damage this turn; with Legion it is killed as the spell resolves instead and no delayed trigger is made.",
+      "golden": [
+        "Choose a unit. Kill it the next time it takes damage this turn. [Legion] — Kill it now instead."
+      ],
+      "negative": [
+        "choose a unit. kill it the next time it takes damage this turn",
+        "choose a unit. kill it the next time it takes damage. [legion] — kill it now instead",
+        "choose an enemy unit. kill it the next time it takes damage this turn. [legion] — kill it now instead"
+      ]
+    },
+    {
+      "production_id": "choose_an_enemy_unit_deal_n_to_it_unless_its_controller_has_you_draw_n",
+      "form": "Choose an enemy unit. Deal 6 to it unless its controller has you draw 2.",
+      "template": "choose an enemy unit\\. deal (?P<amount>\\d+) to it unless its controller has you draw (?P<draw>\\d+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 355.10.e",
+        "Core 359.3.e.14"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "deal_damage",
+        "typed_selectors"
+      ],
+      "boundary": "One enemy Unit chosen at play is the Deal's target; as the Deal resolves, that Unit's controller either lets it happen or has the caster draw the named number instead, and then nothing is dealt. A choice by the caster, or a different 'instead', is a different production.",
+      "golden": [
+        "Choose an enemy unit. Deal 6 to it unless its controller has you draw 2."
+      ],
+      "negative": [
+        "choose an enemy unit. deal 6 to it unless you draw 2",
+        "choose a friendly unit. deal 6 to it unless its controller has you draw 2",
+        "deal 6 to it unless its controller has you draw 2"
+      ]
+    },
+    {
       "production_id": "choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit",
       "form": "Choose a friendly unit. This turn, increase its Might to the Might of another friendly unit.",
       "template": "choose a friendly unit\\. this turn, increase its might to the might of another friendly unit",
@@ -2258,6 +2573,34 @@
       ]
     },
     {
+      "production_id": "friendly_buffed_units_have_keyword_if_they_didnt_already",
+      "form": "Friendly buffed units have [Deflect] if they didn't already.",
+      "template": "friendly buffed units have \\[(?P<keyword>deflect)\\] if they didn't already",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 477.2",
+        "Core 477.2.b",
+        "Core 702.2.a"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "buff_counters",
+        "continuous_effects",
+        "layer_engine"
+      ],
+      "boundary": "A printed keyword aura over the friendly Units that have a buff, while the source is on the board: each that does not otherwise have the keyword gets it; one that already has it keeps exactly its own. 'Other', an unbuffed set, or an aura that adds on top is a different clause.",
+      "golden": [
+        "Friendly buffed units have [Deflect] if they didn't already."
+      ],
+      "negative": [
+        "friendly buffed units have [deflect]",
+        "friendly units have [deflect] if they didn't already",
+        "other friendly buffed units have [deflect] if they didn't already"
+      ]
+    },
+    {
       "production_id": "other_friendly_units_have_keyword",
       "form": "Other friendly units have [Vision].",
       "template": "other friendly units have \\[(?P<keyword>vision)\\]",
@@ -2570,6 +2913,30 @@
       ]
     },
     {
+      "production_id": "you_may_pay_a_rune_as_an_additional_cost_to_play_me",
+      "form": "You may pay [rune:calm] as an additional cost to play me.",
+      "template": "you may pay \\[rune:(?P<domain>[a-z]+)\\] as an additional cost to play me",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.2.b",
+        "Core 356.2.b.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "self_costs"
+      ],
+      "boundary": "The card offers one Power of the printed Domain as an optional additional cost for its own play; paying it is the controller's choice as the card is played (355.1.a).",
+      "golden": [
+        "You may pay [rune:calm] as an additional cost to play me."
+      ],
+      "negative": [
+        "pay [rune:calm] as an additional cost to play me",
+        "you may pay [rune:calm] as an additional cost to play another unit",
+        "you may pay [c] as an additional cost to play me"
+      ]
+    },
+    {
       "production_id": "you_may_pay_own_domain_power_as_additional_cost_to_play_me",
       "form": "You may pay [C] as additional cost to play me.",
       "template": "you may pay \\[c\\] as additional cost to play me",
@@ -2622,6 +2989,33 @@
         "as an additional cost to play me, kill a unit",
         "as an additional cost to play another unit, kill a friendly unit",
         "as you play me, kill a friendly unit"
+      ]
+    },
+    {
+      "production_id": "as_an_additional_cost_to_play_this_you_may_exhaust_a_friendly_unit",
+      "form": "As an additional cost to play this, you may exhaust a friendly unit.",
+      "template": "as an additional cost to play (?:me|this), you may (?P<cost>exhaust a friendly unit)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.2.b",
+        "Core 356.2.b.1",
+        "Core 355.1.a",
+        "Core 356.7",
+        "Core 357.2"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "self_costs"
+      ],
+      "boundary": "An OPTIONAL additional cost the card prints for its own play: exhausting one friendly Unit on the board, chosen by the payer as the card is played (not a target, 355.10.c). Paying it is the controller's choice as the card is played (355.1.a); 'If you do' / 'Otherwise' after it read that decision (356.4.f.1).",
+      "golden": [
+        "As an additional cost to play this, you may exhaust a friendly unit."
+      ],
+      "negative": [
+        "as an additional cost to play this, exhaust a friendly unit",
+        "as an additional cost to play this, you may exhaust an enemy unit",
+        "as an additional cost to play another unit, you may exhaust a friendly unit"
       ]
     },
     {
@@ -2774,6 +3168,33 @@
       ]
     },
     {
+      "production_id": "counter_a_spell",
+      "form": "Counter a spell.",
+      "template": "counter a spell",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 425.1",
+        "Core 355.7",
+        "Core 355.5"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "counter",
+        "typed_selectors"
+      ],
+      "boundary": "Counter one chosen spell on the Chain: its card leaves the Chain to its owner's trash, it was not played and no cost is refunded (Core 425.1). The target is chosen as the countering card is played.",
+      "golden": [
+        "Counter a spell."
+      ],
+      "negative": [
+        "counter a spell that costs no more than [e4] and no more than [a]",
+        "counter an ability",
+        "counter a unit",
+        "counter target spell"
+      ]
+    },
+    {
       "production_id": "choose_an_opponent",
       "form": "Choose an opponent.",
       "template": "choose an opponent",
@@ -2845,6 +3266,33 @@
         "choose a card from it, and recycle that card",
         "choose a non-unit card from their hand, and recycle that card",
         "choose a non-unit card from it"
+      ]
+    },
+    {
+      "production_id": "choose_a_card_from_it_and_they_discard_that_card",
+      "form": "Choose a card from it, and they discard that card.",
+      "template": "choose a card from it, and they discard that card",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 424.2.b",
+        "Core 422.1",
+        "Core 128.4",
+        "Core 355.10.a"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "discard",
+        "reveal"
+      ],
+      "boundary": "One card from what the preceding reveal actually put on the table, chosen by the caster; the player an earlier clause chose discards it. The candidates are the reveal's own marks in that player's hand, so nothing still private is choosable; nothing revealed, nothing is discarded.",
+      "golden": [
+        "Choose a card from it, and they discard that card."
+      ],
+      "negative": [
+        "choose a card from it, and recycle that card",
+        "they discard a card",
+        "choose a card from their hand, and they discard that card"
       ]
     },
     {
@@ -3251,6 +3699,32 @@
       ]
     },
     {
+      "production_id": "when_you_play_me_if_you_paid_the_additional_cost",
+      "form": "When you play me, if you paid the additional cost, draw 1.",
+      "template": "when you play me, if you paid the additional cost, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a",
+        "Core 383.2.a.1",
+        "Core 356.4.f.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "play_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play me, if you paid the additional cost, draw 1."
+      ],
+      "negative": [
+        "when you play me, draw 1",
+        "when you play me, if you paid the cost, draw 1",
+        "when i move, if you paid the additional cost, draw 1"
+      ]
+    },
+    {
       "production_id": "when_you_play_me",
       "form": "When you play me, channel 1 rune exhausted.",
       "template": "when you play me, (?P<inner>.+)",
@@ -3272,6 +3746,29 @@
       "negative": [
         "when you play a unit, draw 1",
         "when i move, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_this",
+      "form": "When you play this, draw 1.",
+      "template": "when you play this, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 419.4.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "play_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play this, draw 1."
+      ],
+      "negative": [
+        "when you play a gear, draw 1",
+        "when you play me, draw 1"
       ]
     },
     {
@@ -3609,6 +4106,31 @@
       "negative": [
         "at the start of each player's beginning phase, draw 1",
         "at the end of your turn, draw 1"
+      ]
+    },
+    {
+      "production_id": "at_the_end_of_your_turn_if_im_at_a_battlefield",
+      "form": "At the end of your turn, if I'm at a battlefield, draw 1.",
+      "template": "at the end of your turn, if i'm at a battlefield, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 317.1",
+        "Core 383.1",
+        "Core 383.2.a.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "ending_step"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "At the end of your turn, if I'm at a battlefield, draw 1."
+      ],
+      "negative": [
+        "at the end of your turn, draw 1",
+        "at the end of your turn, if i'm at base, draw 1",
+        "at the end of your turn, if you control a battlefield, draw 1"
       ]
     },
     {
@@ -3981,6 +4503,60 @@
       ]
     },
     {
+      "production_id": "when_you_ready_a_friendly_unit",
+      "form": "When you ready a friendly unit, draw 1.",
+      "template": "when you ready a friendly unit, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 415",
+        "Core 315.1.b",
+        "Core 415.3.a",
+        "Core 359.3.f.3"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you ready a friendly unit, draw 1."
+      ],
+      "negative": [
+        "when you ready a unit, draw 1",
+        "when a friendly unit becomes ready, draw 1",
+        "when you ready an enemy unit, draw 1",
+        "when you exhaust a friendly unit, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_buff_a_friendly_unit",
+      "form": "When you buff a friendly unit, draw 1.",
+      "template": "when you buff a friendly unit, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 702",
+        "Core 359.3.f.3"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you buff a friendly unit, draw 1."
+      ],
+      "negative": [
+        "when you buff a unit, draw 1",
+        "when a friendly unit is buffed, draw 1",
+        "when you buff an enemy unit, draw 1",
+        "when you spend a buff, draw 1"
+      ]
+    },
+    {
       "production_id": "the_first_time_a_friendly_unit_dies_each_turn",
       "form": "The first time a friendly unit dies each turn, draw 1.",
       "template": "the first time a friendly unit dies each turn, (?P<inner>.+)",
@@ -4056,6 +4632,33 @@
         "the second time i move in a turn, draw 1",
         "when i move, draw 1",
         "the third time a unit moves in a turn, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_conquer_if_you_have_n_units_at_that_battlefield",
+      "form": "When you conquer, if you have 4+ units at that battlefield, draw 2.",
+      "template": "when you conquer, if you have (?P<count>\\d+)\\+ units at that battlefield, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 469.1",
+        "Core 383.4.c",
+        "Core 383.4.c.2.b",
+        "Core 383.2.a.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you conquer, if you have 4+ units at that battlefield, draw 2."
+      ],
+      "negative": [
+        "when you conquer, draw 2",
+        "when you conquer here, if you have 4+ units here, draw 2",
+        "when you conquer, if you have 4+ units, draw 2",
+        "when you hold, if you have 4+ units at that battlefield, draw 2"
       ]
     },
     {

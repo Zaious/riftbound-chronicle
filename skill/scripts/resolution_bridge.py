@@ -119,7 +119,8 @@ def _target_refs(program: dict[str, Any]) -> list[str]:
         for unit in effect.get("units") or []:
             if isinstance(unit, dict) and isinstance(unit.get("decision_ref"), str):
                 refs.append(unit["decision_ref"])
-    return refs
+    # 2026-10-08 (package 10, Solari Chief): two instructions on the same target share ONE decision - recorded once
+    return list(dict.fromkeys(refs))
 
 
 def finalize_trigger(
@@ -1210,6 +1211,19 @@ def complete_permanent_play(
             from effect_ir import evaluate_condition
             if not evaluate_condition(working, condition, controller=controller, object_id=card):
                 inactive.append({"trigger_id": descriptor["trigger_id"], "reason": "legion_not_active", "rule_locators": ["Core 812.1.c"]})
+                continue
+            descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
+        elif condition is not None and condition.get("kind") == "paid_additional_cost":
+            # 2026-10-08 package 10 (Clockwork Keeper): "if you paid the additional cost" right after the trigger
+            # condition is part of it (Core 383.2.a.1) - read off THIS play's cost receipt as the play completes: the
+            # card's own optional offer chosen (Core 356.4.f.1); declined (or no receipt), it does not trigger
+            from play_transaction import CARD_SELF_OFFER_PREFIX
+            receipt = entry.get("cost_receipt") or {}
+            paid = [c for c in receipt.get("components") or [] if str(c.get("cost_id", "")).startswith(CARD_SELF_OFFER_PREFIX + ":")
+                    and c.get("paid") is True]
+            if not paid:
+                inactive.append({"trigger_id": descriptor["trigger_id"], "reason": "trigger_condition_not_met",
+                                 "rule_locators": ["Core 383.2.a.1", "Core 356.4.f.1"]})
                 continue
             descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
         elif condition is not None and condition.get("kind") == "controls_units":

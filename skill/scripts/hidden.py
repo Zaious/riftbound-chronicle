@@ -59,7 +59,8 @@ def validate_declaration(value: Any, effect_state: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     if value.get("schema_version") != HIDE_DECLARATION_VERSION:
         errors.append(f"declaration.schema_version must be {HIDE_DECLARATION_VERSION}")
-    if set(value) - {"schema_version", "ruleset", "hide_id", "actor", "card", "source", "battlefield", "cost", "payment_context"}:
+    if set(value) - {"schema_version", "ruleset", "hide_id", "actor", "card", "source", "battlefield", "cost", "payment_context",
+                     "cost_basis"}:
         errors.append("declaration carries unsupported fields")
     if value.get("ruleset") != {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}:
         errors.append("declaration.ruleset must match the engine ruleset")
@@ -79,6 +80,27 @@ def validate_declaration(value: Any, effect_state: dict[str, Any]) -> list[str]:
     if ctx is not None and (not isinstance(ctx, dict) or set(ctx) != {"add_window_closed", "confirmed_by"} or not isinstance(ctx["add_window_closed"], bool) or not isinstance(ctx["confirmed_by"], str) or not ctx["confirmed_by"]):
         errors.append("declaration.payment_context must be {add_window_closed: bool, confirmed_by: non-empty string}")
     return errors
+
+
+HIDE_ALTERNATIVE_FIELD = "hide_alternative_energy"
+
+
+def hide_cost_for_basis(effect_state: dict[str, Any], actor: str, basis: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """(the base cost a Hide on this basis is taken for, None) or (None, why it is not available to the actor now)."""
+    turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
+    if basis == "ignoring_costs":
+        if not any(e.get("kind") == "hide_ignoring_costs" and e.get("controller") == actor and e.get("turn_id") == turn_id
+                   for e in effect_state.get("turn_effects") or []):
+            return None, f"{actor} has no 'hide cards ignoring costs this turn' effect"
+        return {"energy": 0, "power": {}}, None
+    if basis == "alternative_energy":
+        legends = [effect_state["objects"][o] for o in effect_state["players"][actor]["zones"].get("legend_zone") or []
+                   if o in effect_state["objects"]]
+        amounts = [o.get(HIDE_ALTERNATIVE_FIELD) for o in legends if isinstance(o.get(HIDE_ALTERNATIVE_FIELD), int)]
+        if not amounts:
+            return None, f"{actor}'s Legend offers no alternative Hide cost"
+        return {"energy": amounts[0], "power": {}}, None
+    return None, f"cost_basis {basis!r} is not one of ignoring_costs, alternative_energy"
 
 
 def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any],
@@ -142,6 +164,18 @@ def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         return refuse("facedown_zone_full", f"{battlefield_id!r} already holds {len(zone['cards'])} facedown card(s); its capacity is {zone['capacity']} (107.3.b, 811.1)",
                       ["Core 107.3.b", "Core 811.1"])
 
+    # 2026-10-08 package 10: the cost the Hide is taken for, when the declaration names its basis - "ignoring costs" (a
+    # turn effect of the actor's, Guerilla Warfare) pays nothing; "alternative_energy" (the actor's Legend, Teemo - Swift
+    # Scout; GPT 2026-10-08 ruling 1) pays N Energy INSTEAD of [A] - the same Hide, one cost, never both. A declaration
+    # with no basis is taken as before
+    basis = declaration.get("cost_basis")
+    if basis is not None:
+        wanted, problem = hide_cost_for_basis(effect_state, actor, basis)
+        if problem is not None:
+            return refuse("hide_cost_basis_unavailable", problem, ["Core 811.1"])
+        if declaration["cost"].get("base") != wanted:
+            return refuse("hide_cost_mismatch", f"a Hide {basis} costs {wanted}, not {declaration['cost'].get('base')}",
+                          ["Core 811.1", "Core 356.1.a"])
     working = copy.deepcopy(effect_state)
     try:
         skeleton = determine_total_cost(declaration["cost"], {}, actor=actor)

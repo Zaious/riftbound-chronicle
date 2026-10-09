@@ -210,6 +210,36 @@ def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], 
     next_timing = copy.deepcopy(timing_state)
     next_timing["turn_progress"] = {**_progress(timing_state), "awaken_complete": True}
     trace = {"player": player, "readied": readied, "already_ready": already, "simultaneous": True}
+    # 2026-10-08 (package 10, Pirate's Haven): the Turn Player performs these Readies (Core 315.1.b, 415.3.a), so they
+    # wake watchers like any other Ready - "When you ready a friendly unit" - one batch, the readies being simultaneous.
+    # An object already Ready was not readied (415.1.b) and wakes nothing. A board with no watcher is unchanged
+    import game_events
+    snap = game_events.snapshot(next_effect)
+    events = [game_events.awaken_ready_event(
+        turn_id=next_effect.get("turn_id", DEFAULT_TURN_ID), obj=o, identity=object_identity(next_effect, o) or f"{o}@0",
+        controller=player, object_kind=next_effect["objects"][o].get("kind"), location=(snap.get(o) or {}).get("location"),
+        turn_player=player) for o in readied]
+    if events:
+        try:
+            woken, counted = watchers.schedule_live(next_effect, events, turn_id=next_effect.get("turn_id", DEFAULT_TURN_ID),
+                                                    batch_label=f"awaken:{base['input_hash'][7:19]}", turn_player=player)
+        except watchers.WatchUnsupported as exc:
+            return _unsupported(base, exc.reason_code, str(exc), ["Core 315.1.b", "Core 383.1"])
+        occurrences = lambda s: {k: v for k, v in (s.get("watch_occurrences") or {}).items() if v}
+        if woken or occurrences(counted) != occurrences(next_effect):
+            next_effect = counted
+        if woken:
+            for trigger in woken:
+                trigger["batch_id"], trigger["batch_sequence"] = f"watch:awaken:{base['input_hash'][7:19]}", 0
+            if failure := _settle_trigger_orders(woken, engine_decisions, base):
+                return failure
+            scheduled = schedule_triggered_items(next_timing, woken)
+            if scheduled.get("applied") is not True:
+                return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"),
+                               "; ".join(scheduled.get("errors", [])) or "the Awaken step's triggers could not be scheduled",
+                               ["Core 315.1.b", "Core 383.1"])
+            next_timing = scheduled["next_state"]
+            trace["watch_triggers"] = [t["trigger_id"] for t in woken]
     return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 315.1", "Core 315.1.b", "Core 415.1.b", "Core 415.1.c", "Core 415.3.a"])
 
 

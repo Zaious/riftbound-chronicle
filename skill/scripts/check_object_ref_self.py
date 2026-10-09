@@ -48,7 +48,9 @@ from engine_decisions import DECISIONS_VERSION, validate_engine_decisions  # noq
 
 REF = {"object_ref": "program_source"}
 # The ops whose adoption was reviewed, each with its own fixture (below). Hard-coded on purpose.
-ADOPTED_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand"}
+ADOPTED_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand",
+               # 2026-10-08 package 10 (Noxian Guillotine, Imperial Decree): "kill it", check_delayed_event_watch
+               "kill"}
 EXTRA = {"ready": {}, "buff": {}, "banish": {}, "return_to_hand": {},
          "modify_might": {"amount": 3, "duration": "this_turn", "source": "u1"}}
 
@@ -133,7 +135,7 @@ def main() -> int:
 
     # --- adoption is per op ---------------------------------------------------
     state = state_with_source()
-    for op in ("kill", "stun", "exhaust"):
+    for op in ("recall", "stun", "exhaust"):
         expect_refusal(f"unadopted op {op}", apply_program(state, program(op, state)),
                        effect_ir.OBJECT_REF_OP_NOT_ADOPTED)
 
@@ -187,6 +189,23 @@ def main() -> int:
     expect_refusal("the source is not in the state and no identity binds it",
                    apply_program(state, program("ready", state, source="nobody", declare_identity=False)),
                    effect_ir.OBJECT_REF_ABSENT)
+
+    # package 10 (Sett - The Boss): a Legend's own "ready me" readies it in its Legend Zone (Core 107.4); a Legend's "buff
+    # me", or a Legend elsewhere, is still refused
+    legend = copy.deepcopy(state)
+    legend["objects"]["leg"] = {"owner": "p1", "controller": "p1", "kind": "legend", "base_might": 0, "might_modifiers": [],
+                                "damage": 0, "exhausted": True}
+    legend["players"]["p1"]["zones"].setdefault("legend_zone", []).append("leg")
+    readied = apply_program(legend, program("ready", legend, source="leg"))
+    if readied.get("committed") is not True or readied["next_state"]["objects"]["leg"].get("exhausted") is not False:
+        fail("a Legend's ready me", f"{readied.get('reason_code')} {readied.get('reason') or readied.get('errors')}")
+    expect_refusal("a Legend's buff me", apply_program(legend, program("buff", legend, source="leg")),
+                   effect_ir.OBJECT_REF_LEFT_PLAY)
+    banished = copy.deepcopy(legend)
+    banished["players"]["p1"]["zones"]["legend_zone"].remove("leg")
+    banished["players"]["p1"]["zones"]["banishment"].append("leg")
+    expect_refusal("a Legend in Banishment's ready me", apply_program(banished, program("ready", banished, source="leg")),
+                   effect_ir.OBJECT_REF_LEFT_PLAY)
 
     spell = copy.deepcopy(state)
     expect_refusal("the source is a Spell, not a permanent",

@@ -1,10 +1,10 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:b3a43419c03e01210a506256",
-  "capability_set_id": "sha256:b3a43419c03e01210a5062560b3e1822362ee8f62ecee5c87516ea8621b13aea",
+  "manifest_id": "capability-manifest:1c59150e7f004923e748fea6",
+  "capability_set_id": "sha256:1c59150e7f004923e748fea61b1f15c3825560def7e69c16e9c7affee362f6dd",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:4b69454205be56714dcf5333017570f10db5ed016aa44ca9eec94a845c03e937",
+    "value": "sha256:33c01fca8cd0294ff4e89921f95b3b4f560cda5098cd8b3d05c5022164150f77",
     "files": [
       {
         "path": "rules_core.py",
@@ -12,11 +12,11 @@
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:76a3a405dddb408242bb78ea5fa55ef08b5d49f33371a2e3eb46865735159401"
+        "sha256": "sha256:081cdb5ad151c9944eb31ec792001df3c006d7c159e3234316030ed6d3675b6f"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:bf73e79fbf8075d0e4b123b7e1209727b597cabe6411e4ab3b9e35b7cbcbcefc"
+        "sha256": "sha256:47c33d2de7164df60f406d65b34f327145eab9b5e05a3617f95c25b17cd0cad6"
       },
       {
         "path": "engine_check.py",
@@ -28,7 +28,7 @@
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:614b75edbac5ba4152038c6afd35493eb52bb94ff198070349da3f29358f5485"
+        "sha256": "sha256:d2793f998deae8863e8910f36ee2729699b94475382daef0e4e631ad8cd1cfcd"
       },
       {
         "path": "terminal.py",
@@ -36,11 +36,11 @@
       },
       {
         "path": "turn_cycle.py",
-        "sha256": "sha256:9ec492cd27382cb82b3a231bd5321800afb97cd66124767ab4ebc51e7ce5ab99"
+        "sha256": "sha256:9bc20521da3034738d70727667fbe1b566ec31c842ce389e2308ebfb39ba7f08"
       },
       {
         "path": "hidden.py",
-        "sha256": "sha256:46d7b75e1a6ea231c43f634fecb2c553fd597abda401498748730c635f3a2a7a"
+        "sha256": "sha256:150bd7f6711387a647e4008b1b815e6705dc18080bbf3547802bc7fa5338449e"
       }
     ]
   },
@@ -688,6 +688,14 @@
         "Core 417.6.b.4",
         "Core 143.2.b",
         "Core 359.3.e.5"
+      ]
+    },
+    {
+      "id": "pay_any_amount",
+      "rule_locators": [
+        "Core 204.3.b",
+        "Core 355.10.e",
+        "Core 417.1.e"
       ]
     },
     {
@@ -1591,6 +1599,7 @@
     "Core 195",
     "Core 196",
     "Core 204.3.a",
+    "Core 204.3.b",
     "Core 303.2",
     "Core 303.2.a",
     "Core 308.1.a",
@@ -1740,6 +1749,7 @@
     "Core 417",
     "Core 417.1.a",
     "Core 417.1.d",
+    "Core 417.1.e",
     "Core 417.6.a",
     "Core 417.6.b.3",
     "Core 417.6.b.3–417.6.b.4",

@@ -12,12 +12,12 @@
   "quota": null,
   "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
   "counts": {
-    "clauses_parsed": 37,
-    "clauses_in_debt": 19,
+    "clauses_parsed": 38,
+    "clauses_in_debt": 18,
     "promotion": {
-      "grammar_reproduced": 33,
-      "hand_written": 15,
-      "in_debt_but_claimed": 15
+      "grammar_reproduced": 34,
+      "hand_written": 14,
+      "in_debt_but_claimed": 14
     },
     "by_rule_family": {
       "attacking_defending_alone": 1,
@@ -33,7 +33,6 @@
       "linked_instruction": 1,
       "mutual_damage_equal_might": 1,
       "next_death_replacement": 1,
-      "optional_additional_cost": 1,
       "play_and_move_triggers": 2,
       "play_lifecycle": 1,
       "recall": 1,
@@ -45,7 +44,7 @@
     },
     "by_risk": {
       "always_in_play": 3,
-      "main_deck": 16,
+      "main_deck": 15,
       "unknown": 0
     }
   },
@@ -224,25 +223,6 @@
       ],
       "missing_capability": "R3-A1-choices-costs-zones",
       "claim_in_pack": "stale",
-      "reason_code": "clause_unparsed"
-    },
-    {
-      "clause_id": "meditation#6ce549b5",
-      "card_key": "meditation",
-      "card": "Meditation",
-      "text": "As an additional cost to play this, you may exhaust a friendly unit.",
-      "pack": "global-core-origins-v1",
-      "deck_slots": 0,
-      "deck_count": 1,
-      "decks": [
-        "proving-grounds-master-yi"
-      ],
-      "risk": "main_deck",
-      "rule_family": [
-        "optional_additional_cost"
-      ],
-      "missing_capability": "R3-A1-choices-costs-zones",
-      "claim_in_pack": "full",
       "reason_code": "clause_unparsed"
     },
     {

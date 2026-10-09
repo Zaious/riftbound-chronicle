@@ -132,6 +132,14 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
             scope = descriptor.get("scope", "unit_here")
             if scope == "unit_here" and (obj.get("kind") != "unit" or find_location(effect_state, object_id) != ("battlefield", battlefield_id, None)):
                 continue
+            if descriptor.get("condition") is not None:
+                # 2026-10-08 package 10 (Core 383.2.a.1, Garen - Might of Demacia (Starter)): a player-level score
+                # trigger's conditional statement is part of its Trigger Condition, read now - the score just processed -
+                # with THAT battlefield (the one scored) as its "here"; not met, it does not trigger
+                from effect_ir import evaluate_condition
+                if not evaluate_condition(effect_state, descriptor["condition"], controller=player, object_id=battlefield_id):
+                    continue
+                descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
             copied = {k: v for k, v in descriptor.items() if k != "scope"}
             copied.update({"trigger_kind": "triggered", "batch_id": batch_id, "batch_sequence": 0, "scored_battlefield": battlefield_id, "how": how, "scope": scope,
                            "source_identity": object_identity(effect_state, object_id) or f"{object_id}@0"})

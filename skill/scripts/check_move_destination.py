@@ -16,8 +16,11 @@ somewhere it already is - and a Move to where you already are is not a Move
   - with no choice made, the program does not run. It answers
     location_selection_required and carries the candidates with it, so a
     caller never has to reconstruct what was legal;
-  - the candidates are every Battlefield and every Base *except* the one the
-    object occupies, computed from the state;
+  - the candidates are every Battlefield, and its controller's Base, *except*
+    the one the object occupies, computed from the state - a permanent resides
+    in its controller's Base (Core 107.1.c), so another player's Base is no
+    location it may be at (355.4.a; package 10: every Base had been offered,
+    and this gate expected it);
   - a choice outside that list is refused by name - including the object's
     current location, which is the one a careless implementation would allow;
   - the choice belongs to the effect's controller, not to whoever supplies the
@@ -67,12 +70,17 @@ def main() -> int:
 
     # --- the candidates are generated, and exclude where the object already is ---------------------
     candidates = legal_move_destinations(state, "u2")
-    expected = ["battlefield:bf2", "base:p1", "base:p2"]
+    expected = ["battlefield:bf2", "base:p2"]
     if sorted(candidates) != sorted(expected):
         errors.append(f"the legal destinations are not the board's other Locations: {candidates}")
     if "battlefield:bf1" in candidates:
         errors.append("the object's own Location was offered as a Move destination; "
                       "a Move goes to another Location (355.4.a)")
+    if "base:p1" in candidates:
+        errors.append("another player's Base was offered as a Move destination (Core 107.1.c, 355.4.a)")
+    their_base = apply_program(state, move_program(), decisions=decisions(state, "base:p1"))
+    if their_base.get("committed") and "u2" in their_base["next_state"]["players"]["p1"]["zones"]["base"]:
+        errors.append("p2's unit was moved into p1's Base (Core 107.1.c)")
     off_board = legal_move_destinations(state, "c1")     # in a deck, not on the board
     if off_board:
         errors.append(f"an object that is not on the board was offered Move destinations: {off_board}")

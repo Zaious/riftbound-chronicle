@@ -50,7 +50,8 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION, validate_cost_receipt  # noqa: E402
 from effect_ir import (  # noqa: E402
-    CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, _bind_location_ref, _bind_source_exclusion, _bump_identity, apply_program, deflect_total, derive_targeted, evaluate_target,
+    CORE_RULESET, FAQ_AS_OF, LOCATION_REF_NO_DESTINATION, PROGRAM_VERSION, _bind_location_ref, _bind_referent_exclusion,
+    _bind_source_exclusion, _bump_identity, apply_program, deflect_total, derive_targeted, evaluate_target,
     entity_identity, evaluate_condition, evaluate_cost_modification, find_location, hash_value, is_object_ref, object_identity,
     play_prohibition, record_discarded_cards, record_finalized_card, split_target_cap, suffix_decision_refs, validate_condition, validate_program, validate_state, zone_class,
     target_group_holds,
@@ -197,8 +198,14 @@ def validate_declaration(value: Any) -> list[str]:
     if item_kind_early == "ability":
         # ADR-0011 §4 / Core 377, 402: an activated ability is declared with its
         # source and ability id; `card` names the source (nothing leaves the hand).
-        if not isinstance(activation, dict) or set(activation) - {"source_object", "ability_id"} or not {"source_object", "ability_id"} <= set(activation) or any(not isinstance(activation[k], str) or not activation[k] for k in activation):
-            errors.append("an ability declaration needs activation {source_object, ability_id}")
+        # package 11 (Heimerdinger - Inventor): a copied ability also names what it copies (copied_from)
+        if not isinstance(activation, dict) or set(activation) - {"source_object", "ability_id", "copied_from"} \
+                or not {"source_object", "ability_id"} <= set(activation) \
+                or any(not isinstance(activation[k], str) or not activation[k] for k in ("source_object", "ability_id")) \
+                or ("copied_from" in activation and (not isinstance(activation["copied_from"], dict)
+                                                    or set(activation["copied_from"]) != {"source_object", "ability_id"})):
+            errors.append("an ability declaration needs activation {source_object, ability_id} (and copied_from "
+                          "{source_object, ability_id} for a copied ability)")
         elif value.get("card") != activation["source_object"]:
             errors.append("an ability declaration's card must be its activation.source_object")
     elif activation is not None:
@@ -625,6 +632,39 @@ ACCELERATE_POWER = 1
 ACCELERATE_COST_ID = "accelerate"
 
 
+def copied_ability_problem(effect_state: dict[str, Any], card: str, actor: str, copied: dict[str, Any],
+                           declaration: dict[str, Any]) -> tuple[str, str] | None:
+    """2026-10-13 package 11 (Heimerdinger - Inventor): why `card` may not activate the ability it declares it copies,
+    or None. See the caller."""
+    objects = effect_state.get("objects") or {}
+    kinds = (objects.get(card) or {}).get("has_exhaust_abilities_of") or []
+    if not kinds:
+        return "copied_ability_not_had", f"{card!r} has no other permanents' abilities"
+    original_id, ability_id = copied["source_object"], copied["ability_id"]
+    original = objects.get(original_id) or {}
+    where = find_location(effect_state, original_id) if original else None
+    on_board = zone_class(where) == "board" or (original.get("kind") == "legend" and where is not None
+                                               and where[0] == "player" and where[2] == "legend_zone")
+    if not original or not on_board or original.get("controller") != actor or original.get("kind") not in kinds:
+        return "copied_ability_not_had", (f"{original_id!r} is not a friendly {'/'.join(kinds)} on the Board, so "
+                                          f"{card!r} does not have its abilities now")
+    ability = (original.get("activated_abilities") or {}).get(ability_id)
+    if ability is None or not ability["cost"].get("exhaust"):
+        return "copied_ability_not_had", f"{original_id!r} prints no [Exhaust] ability {ability_id!r}"
+    if declaration.get("effect_program_id") != ability["effect_program_id"]:
+        return "copied_ability_program_mismatch", (f"the copy runs {ability['effect_program_id']!r}, the ability it copies, "
+                                                   f"not {declaration.get('effect_program_id')!r}")
+    cost = declaration.get("cost") or {}
+    base = cost.get("base") or {}
+    if (base.get("energy", 0), dict(base.get("power") or {})) != (ability["cost"].get("energy", 0), dict(ability["cost"].get("power") or {})):
+        return "copied_ability_cost_mismatch", f"the copy costs what {ability_id!r} prints: {ability['cost']}"
+    exhausts = [a["payment"].get("object_id") for a in cost.get("additional") or []
+                if isinstance(a, dict) and (a.get("payment") or {}).get("kind") == "exhaust"]
+    if exhausts != [card]:
+        return "copied_ability_cost_mismatch", f"its [Exhaust] exhausts {card!r} - the one that has the copy - and only it"
+    return None
+
+
 def legend_activation_source(effect_state: dict[str, Any], card: str | None) -> bool:
     """A Legend (Core 174.8) in a Legend Zone - the only thing activated from there."""
     obj = (effect_state.get("objects") or {}).get(card or "") or {}
@@ -985,6 +1025,11 @@ def battlefield_entry_paths(effect_state: dict[str, Any], card: str, actor: str,
     from effect_ir import granted_play_permissions
     permissions += [p for p in granted_play_permissions(effect_state, card, actor) if p not in permissions]
     friendly_units = [o for o in present if (objects.get(o) or {}).get("controller") == actor]
+    # package 11 (Mageseeker Warden): a Unit its opponent restricts to the Base has no way onto any Battlefield
+    from effect_ir import battlefield_restriction
+    if (objects.get(card) or {}).get("kind") == "unit" \
+            and battlefield_restriction(effect_state, "opponent_units_to_base_only", actor) is not None:
+        return {"controlled": False, "open_battlefield": False, "ambush": False, "occupied_enemy_battlefield": False}
     return {
         "controlled": controller == actor,
         "open_battlefield": ("open_battlefield" in permissions
@@ -1381,8 +1426,10 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                 picked, meta = resolve_choice(working, spec, decision_ref=ref, decisions=decisions, controller=actor, session=play_stage, candidates=pool)
                 if not meta["forced"]:
                     supplied = ed.decision_entry(decisions, ref)
-                    if supplied is not None and supplied["stage"] != "play_declaration":
-                        raise PlayError("payment", "decision_stage_mismatch", f"cost choice {ref!r} was supplied for stage {supplied['stage']!r}, not play_declaration", invalid=True)
+                    # 2026-10-12 (package 11): a triggered ability's cost is chosen as it is finalized (Core 383.3.b.1)
+                    stage = "trigger_finalization" if use == "trigger_ability" else "play_declaration"
+                    if supplied is not None and supplied["stage"] != stage:
+                        raise PlayError("payment", "decision_stage_mismatch", f"cost choice {ref!r} was supplied for stage {supplied['stage']!r}, not {stage}", invalid=True)
                 if comp["kind"] == "discard":
                     identities, identities_before = {}, {}
                     for object_id in picked:
@@ -1628,6 +1675,8 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 # is chosen - found when a permanent's play trigger first had its target
                 # bound at finalization rather than compiled in by a harness.
                 selector = _bind_source_exclusion(selector, effect_state, program) if program.get("source_object") in effect_state["objects"] else selector
+                # package 11: "another" than the trigger's referent (Dragon's Rage), by the identity its event recorded
+                selector = _bind_referent_exclusion(selector, program)
                 # "here": the target must be at the source's current Battlefield when it is
                 # chosen; an unbindable source makes it illegal by name (_bind_location_ref)
                 selector = _bind_location_ref(selector, effect_state, program)
@@ -1700,8 +1749,16 @@ def _check_move_destination(effect: dict[str, Any], index: int, decisions: dict[
                         rule_locators=["Core 355.4"])
     object_id = moved_object(effect, decisions, program)
     if object_id in effect_state["objects"]:
-        from effect_ir import move_destination_candidates
-        candidates = move_destination_candidates(effect_state, object_id, destination)
+        from effect_ir import bind_move_here, move_destination_candidates
+        # package 11: "to here" - the source's current Battlefield as the destination is chosen (bind_move_here)
+        # package 11 (Tideturner): where the unit another target decision chose is, as these choices are made
+        chosen = {}
+        if isinstance(destination.get("target_ref"), str):
+            picked = (ed.target_selection(decisions, destination["target_ref"]) or {}).get("value") or []
+            if len(picked) == 1:
+                chosen[destination["target_ref"]] = picked[0]
+        candidates = move_destination_candidates(effect_state, object_id,
+                                                 bind_move_here(destination, effect_state, program, chosen))
         if entry["value"] not in candidates:
             raise PlayError("choices", "move_destination_illegal",
                             f"effects[{index}]: {entry['value']!r} is not a legal Move destination for {object_id!r} "
@@ -1720,8 +1777,8 @@ def legal_target_options(effect_state: dict[str, Any], actor: str, program: dict
         try:
             if program.get("source_object") in effect_state["objects"]:
                 selector = _bind_source_exclusion(selector, effect_state, program)
-            selector = _bind_location_ref(selector, effect_state, program)
-            if "location_ref_refused" in selector:
+            selector = _bind_location_ref(_bind_referent_exclusion(selector, program), effect_state, program)
+            if "location_ref_refused" in selector and selector["location_ref_refused"] != LOCATION_REF_NO_DESTINATION:
                 # "here" that cannot be bound is refused by name where the choice is checked, not read as
                 # "no legal options" (check_location_ref.py: location_ref_source_absent at finalization)
                 return [object_id]
@@ -1982,6 +2039,12 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                 errors.append(f"declaration.effect_program_id {declaration.get('effect_program_id')!r} does not bind to program {effect_program.get('program_id')!r}")
             if effect_program.get("controller") not in (None, declaration.get("actor")):
                 errors.append("effect program controller is not the declaring actor")
+            # 2026-10-13 package 11 (Heimerdinger - Inventor, GPT ruling 14): a copied ability's "me"/"this" is the card
+            # that has the copy - its program runs from that card, never from the permanent it was copied from
+            copied = (declaration.get("activation") or {}).get("copied_from")
+            if copied is not None and effect_program.get("source_object") != declaration["activation"]["source_object"]:
+                errors.append(f"a copied ability's program runs from {declaration['activation']['source_object']!r}, the card "
+                              f"that has the copy, not from {effect_program.get('source_object')!r} (Core 377)")
     if errors:
         return invalid(errors)
     if isinstance(timing_state, dict) and is_terminal(timing_state):  # ADR-0010 §3
@@ -2022,6 +2085,16 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # GPT 2026-09-22 (Legion, option b): an ability gated by a Dependent Keyword
             # does not exist while its condition fails, so it is refused here - before
             # any cost is paid or anything is exhausted, never paid for and left empty.
+            # 2026-10-13 package 11 (Heimerdinger - Inventor, GPT ruling 14): a copied ability exists while the permanent
+            # it is copied from is a friendly Legend, Unit or Gear on the Board (a Legend in its Legend Zone) of a kind the
+            # source copies, printing it with [Exhaust] in its cost. Its "me"/"this" is the source (the chain item's own),
+            # its [Exhaust] exhausts the source, and every other printed cost is paid as printed - checked here before
+            # anything is paid; the program is the original's
+            copied = (declaration.get("activation") or {}).get("copied_from")
+            if copied is not None:
+                problem = copied_ability_problem(effect_state, card, actor, copied, declaration)
+                if problem is not None:
+                    raise PlayError("choices", problem[0], problem[1], rule_locators=["Core 377", "Core 191.4"])
             gate = (source.get("ability_conditions") or {}).get((declaration.get("activation") or {}).get("ability_id"))
             if gate is not None:
                 try:
@@ -2121,6 +2194,16 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             # ("play it here") is a location that effect permits (Core 355.2.b)
             if limited and (limited_record or {}).get("entry_location") == location:
                 paths = {**paths, "granted_by_the_effect": True}
+            # 2026-10-13 package 11 (Mageseeker Warden, GPT ruling 17): no Battlefield is a valid location for a Unit an
+            # opponent of a restricting permanent plays (355.2) - whatever permission would otherwise reach it
+            from effect_ir import battlefield_restriction
+            blocked = (battlefield_restriction(effect_state, "opponent_units_to_base_only", actor)
+                       if (effect_state["objects"].get(card) or {}).get("kind") == "unit" else None)
+            if blocked is not None:
+                raise PlayError("choices", "entry_location_units_to_base_only",
+                                f"{actor} can only play units to their Base while {blocked!r} is at a Battlefield; "
+                                f"{location['battlefield']!r} is not a valid location (355.2)",
+                                rule_locators=["Core 355.2", "Core 358.5"])
             if not any(paths.values()):
                 raise PlayError("choices", "entry_location_illegal",
                                 f"{card!r} may enter its controller's Base or a Battlefield {actor} controls (355.2.a); {location['battlefield']!r} is "

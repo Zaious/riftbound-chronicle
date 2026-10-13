@@ -17,6 +17,8 @@ pay it; when the payer could choose between Domains, that choice is not modelled
                     "exhaust me" exhausts it; the Legend in Banishment: the replacement is no longer there
   A1 Armory, yes    the granted replacement on the chosen unit, chosen: one Fury paid; healed, exhausted, recalled
   A2 Armory, no     declined, or no Fury: the unit dies
+  H  Sett errata    (package 11) the official errata text: chosen - the buff spent, the unit HEALED, exhausted and
+                    recalled, one Power paid, the card exhausted; declined - the unit dies, nothing paid
   V  shape          a cost on a replacement that is not optional, or exhaust_source on a granted one, does not validate
   G  grammar        both lines lower to exactly these shapes; near misses do not lower to the rows
 
@@ -37,6 +39,9 @@ from effect_ir import apply_program, hash_value, validate_state  # noqa: E402
 
 errors: list[str] = []
 SETT = "When a buffed unit you control would die, you may pay :rb_rune_rainbow: and exhaust me to spend its buff and recall it exhausted instead."
+# package 11: the official errata text (Sett - The Boss)
+SETT_ERRATA = ("If a buffed unit you control would die, you may pay :rb_rune_rainbow:, exhaust me, and spend its buff to heal "
+               "it, exhaust it, and recall it instead.")
 ARMORY = "Choose a friendly unit. The next time it would die this turn, you may pay :rb_rune_fury: to heal it, exhaust it, and recall it instead."
 
 
@@ -106,6 +111,22 @@ def main() -> int:
     if validate_state(start):
         fail("board", validate_state(start)[:2])
         return report()
+    # H: the errata text - the unit is healed too (the printed text left its damage)
+    errata = cg.compile_clause(SETT_ERRATA, grammar)
+    if errata.get("unsupported") or not errata.get("production_id", "").startswith("if_a_buffed_unit"):
+        fail("H Sett errata", f"the errata text did not lower to its row: {errata.get('production_id')} {errata.get('reason')}")
+    else:
+        start_h = with_sett(board(), errata)
+        got = kill(start_h, True)
+        after = got.get("next_state") or {}
+        if not got.get("committed") or where(after, "u1") != "p1:base" or after["objects"]["u1"].get("buffed") \
+                or after["objects"]["u1"]["damage"] != 0 or after["objects"]["u1"]["exhausted"] is not True \
+                or after["objects"]["sett"]["exhausted"] is not True \
+                or after["players"]["p1"]["resources"]["power"].get("chaos", 0) != 0:
+            fail("H Sett errata", f"chosen: {got.get('reason') or got.get('errors')} u1 {after.get('objects', {}).get('u1')}")
+        declined = kill(start_h, False)
+        if not declined.get("committed") or where(declined["next_state"], "u1") != "p1:trash":
+            fail("H Sett errata", f"declined: {declined.get('reason')}")
     # S1
     yes = kill(start, True)
     after = yes.get("next_state") or {}

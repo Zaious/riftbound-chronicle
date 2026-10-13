@@ -50,9 +50,13 @@ REF = {"object_ref": "program_source"}
 # The ops whose adoption was reviewed, each with its own fixture (below). Hard-coded on purpose.
 ADOPTED_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand",
                # 2026-10-08 package 10 (Noxian Guillotine, Imperial Decree): "kill it", check_delayed_event_watch
-               "kill"}
+               "kill",
+               # 2026-10-12 package 11 (Tideturner: "Move me to its location ..."): check_swap_locations S1, S4
+               "move_board_object"}
 EXTRA = {"ready": {}, "buff": {}, "banish": {}, "return_to_hand": {},
-         "modify_might": {"amount": 3, "duration": "this_turn", "source": "u1"}}
+         "modify_might": {"amount": 3, "duration": "this_turn", "source": "u1"},
+         # package 11: the source moved from its Base to bf1
+         "move_board_object": {"destination": {"kind": "battlefield", "battlefield": "bf1"}}}
 
 
 def state_with_source():

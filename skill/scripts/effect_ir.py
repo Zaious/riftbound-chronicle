@@ -72,7 +72,9 @@ KIND_LAYER = {"might_set": "trait", "keyword_grant": "ability", "keyword_remove"
 # append to another object. These are exactly the printed trigger lists.
 APPENDABLE_TRIGGER_FIELDS = ("death_triggers", "play_triggers", "move_triggers", "attack_triggers", "defend_triggers",
                              "conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers",
-                             "end_of_turn_triggers", "event_triggers")
+                             "end_of_turn_triggers", "event_triggers",
+                             # 2026-10-12 package 11 (Treasure Trove: "When this leaves the board, ...")
+                             "leave_board_triggers")
 COPYABLE_TRAITS = {"type", "rules_text"}
 
 CONTINUOUS_DURATIONS = {"permanent", "this_turn", "this_combat", "while_source_active", "until_detached"}
@@ -172,8 +174,14 @@ TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn",
                            "controls_units",
                            # 2026-10-08 package 10 (Clockwork Keeper): "When you play me, if you paid the
                            # additional cost, ..." - the play's own receipt, read as the play completes
-                           "paid_additional_cost"}
+                           "paid_additional_cost",
+                           # 2026-10-12 package 11 (Blitzcrank - Impassive): "When you play me to a battlefield" -
+                           # the play put the card at a Battlefield, not its Base; read as the play completes
+                           "played_to_battlefield"}
 DEFAULT_TURN_ID = "turn-0"
+# 2026-10-12 package 11 (Symbol of the Solari): a permanent's printed replacement of a tied combat's result (Core 466.3.d)
+# - every unit still at that Battlefield recalled - while its controller is the combat's attacker
+COMBAT_TIE_RECALL_ALL = {"mode": "recall_all_units", "when": "controller_is_attacker"}
 # ADR-0005 §5 named predicates. Only the cost pair is implemented; the rest are
 # reserved so C-17 does not bump the program major.
 # "state_holds" (2026-09-25, Jinx - Loose Cannon: "draw 1 if you have one or fewer cards in your
@@ -233,7 +241,16 @@ ZERO_MAGNITUDE_OPS = {"modify_might"}
 EMPOWER_LIMIT_FIELD = "empower_limit"
 EMPOWER_COUNT_FIELD = "empowered_count"
 DEFAULT_EMPOWER_LIMIT = 1
-CONDITIONAL_TRIGGER_KINDS = {"caused_kill"}
+CONDITIONAL_TRIGGER_KINDS = {"caused_kill",
+                             # 2026-10-12 (package 11, Dragon's Rage: "Move an enemy unit. Then do this: ..."): a
+                             # Reflexive Trigger with no condition is always added (Core 387.2), once the instruction
+                             # it follows is done; what that instruction did is handed to it (resolution_bridge)
+                             "unconditional",
+                             # 2026-10-13 (package 11, Twisted Fate - Gambler: "reveal the top rune of your rune deck,
+                             # then recycle it. Do one of the following based on its domain:"): the Reflexive Trigger
+                             # of one Domain goes on the Chain when the rune the named reveal showed was of it (Core
+                             # 387.1.b), read off what the reveal noted - recycling the rune does not change it
+                             "revealed_domain"}
 # ADR-0012 §5: a Legend lives in the Legend Zone, which is not a Location.
 OBJECT_KINDS = {"unit", "gear", "spell", "rune", "legend"}
 SUPPORTED_OPS = {
@@ -281,6 +298,21 @@ SUPPORTED_OPS = {
     "raise_might_to_match",
     # 2026-10-06 package 9 (Kai'Sa - Evolutionary): "Then recycle it." - a leave replacement bound to the Chain item
     "recycle_when_leaving_chain",
+    # 2026-10-13 package 11 (Time Warp): "Take a turn after this one." - an Additional Turn queued after the current
+    # turn (Core 735-738); "Banish this." - the resolving spell goes to its owner's banishment, not the trash
+    "take_additional_turn", "banish_this",
+    # 2026-10-13 package 11 (Possession, GPT ruling 12): "Take control of it" - a permanent's controller changes, its owner
+    # does not (Core 189, 191.3); nothing else about it changes
+    "gain_control",
+    # 2026-10-13 package 11 (Reckoner's Arena, GPT ruling 15): "activate the conquer effects of units here" (Core
+    # 383.4.g.1) - each unit's conquer effect checked as if it had conquered, put on the Chain if the rest holds
+    "activate_conquer_effects",
+    # 2026-10-13 package 11 (Promising Future, GPT ruling 16): "banishes one of them, then recycles the rest" - of the
+    # cards its player looked at (Core 424.1, 427, 416)
+    "banish_one_looked", "recycle_looked_rest",
+    # 2026-10-13 package 11 (Mystic Reversal, GPT ruling 13): control of a spell on the Chain, and new choices for it
+    # (Core 750-755)
+    "gain_control_of_spell", "make_new_choices",
     # C-41 (ADR-0011 §3): look-at / reveal marks, the player's put-back order,
     # taking a looked-at card, Recycle as one action, Predict.
     "look_at_top",
@@ -400,7 +432,11 @@ EACH_PLAYER_SETS = ("all", "others", "opponents")
 EACH_PLAYER_ORDERS = ("turn_order", "after_controller")
 EACH_PLAYER_NESTED_OPS = {"kill", "return_to_hand", "discard", "draw", "channel_rune", "choose_objects", "choose_option",
                           # 2026-10-04 (package 8): "Each opponent reveals the top card of their Main Deck." (Blind Fury)
-                          "reveal"}
+                          "reveal",
+                          # 2026-10-13 package 11 (Promising Future): each player looks at their own deck, banishes one of
+                          # the cards, recycles the rest; then each plays the card they banished (limited_play linked
+                          # per_player)
+                          "look_at_top", "banish_one_looked", "recycle_looked_rest", "limited_play"}
 EACH_PLAYER_RULES = ["Core 303.2", "Core 303.2.a", "Core 355.10.e", "Core 411.1"]
 # "Each player chooses ..." / "each other player chooses a unit ... that hasn't been chosen for this
 # spell": the objects chosen go into a GROUP of this program (ephemeral, like the selection bindings);
@@ -676,6 +712,14 @@ OP_RULES = {
     "mutual_damage_current_might": ["Core 417.1.d", "Core 417.6.b.3", "Core 417.6.b.4", "Core 143.2.b", "Core 359.3.e.5"],
     "raise_might_to_match": ["Core 477.3.a", "Core 355.8", "Core 359.3.e.5", "Core 370.1.a"],
     "recycle_when_leaving_chain": ["Core 390.3.a", "Core 416", "Core 124"],
+    "take_additional_turn": ["Core 735", "Core 736", "Core 737", "Core 738"],
+    "gain_control": ["Core 188", "Core 189", "Core 191.3", "Core 191.4.b"],
+    "activate_conquer_effects": ["Core 383.4.g", "Core 383.4.g.1", "Core 383.4.c", "Core 383.2.a.1"],
+    "banish_one_looked": ["Core 424.1", "Core 427.1", "Core 124"],
+    "gain_control_of_spell": ["Core 191.2", "Core 191.4.b", "Core 359.3.f.4"],
+    "make_new_choices": ["Core 751", "Core 751.1", "Core 752", "Core 752.1", "Core 753", "Core 753.1", "Core 753.2", "Core 755"],
+    "recycle_looked_rest": ["Core 424.1", "Core 416", "Core 416.5"],
+    "banish_this": ["Core 157", "Core 427.1", "Core 124"],
     "swap_might": ["Core 477.3.a", "Core 477.3.e.1.a", "Core 477.3.e.2.a", "Core 135.2.e.3",
                    "Core 370.1.a", "Core 373.2"],
     "look_at_top": ["Core 128.4", "Core 431.1.c", "Core 431.1.c.1"],
@@ -733,7 +777,8 @@ LIMITED_PLAY_SELF_ZONES = {"trash"}
 # the card an EARLIER instruction of the same program banished, played from its owner's Banishment (Core 427: banished
 # cards go to their owner's Banishment; 127.1: the owner does not change). Bound by that instruction's result, never
 # chosen again: it is not a target (355.7)
-LIMITED_PLAY_LINKED_OPS = {"banish"}
+# 2026-10-13 package 11 (Promising Future): the one card a player banished from what they looked at
+LIMITED_PLAY_LINKED_OPS = {"banish", "banish_one_looked"}
 # where an effect-driven play may take a card from: a public zone, so the card is a target chosen as
 # the effect is played or finalized (GPT 2026-09-25; Core 355.10.a, 355.9.a). A private zone (the
 # hand) is a choice made as the effect resolves, which this instruction does not model yet.
@@ -763,7 +808,13 @@ TRIGGER_COST_PAYMENTS = {"energy": {"amount"}, "power": {"domain", "amount"}, "e
                          "spend_buff": set(), "recycle": {"object_id"},
                          # 2026-09-28 (package 6): [C] - Power of the ability's own card's Domain, read off the
                          # source as the cost is paid (the errata's [C]; its one Domain, or not payable)
-                         "power_own_domain": {"amount"}}
+                         "power_own_domain": {"amount"},
+                         # 2026-10-12 (package 11, Super Mega Death Rocket!): discard N cards of the paying player's hand,
+                         # chosen as the ability is finalized (Core 383.3.b.1, 422.1)
+                         "discard": {"amount"}}
+# 2026-10-12 (package 11): return_to_hand's typed "this" from the zone the ability works from (Core 385.2) - the program's
+# own source as its chain item recorded it, in its owner's zone named here
+RETURN_SELF_ZONES = {"trash"}
 
 
 def hash_value(value: Any) -> str:
@@ -1043,7 +1094,9 @@ def validate_state(state: Any) -> list[str]:
                          "played_from_hidden",
                          "limited_play",
                          # 2026-10-06 package 9 (Kai'Sa - Evolutionary): Core 390.3.a, bound by recycle_when_leaving_chain
-                         "leave_replacement"})
+                         "leave_replacement",
+                         # 2026-10-13 package 11 (Mystic Reversal): its control changed on the Chain {from, to}
+                         "control_changed"})
         needed = {"source_object", "ability_id", "controller"} if is_ability else {"card", "controller"}
         if not isinstance(item_id, str) or not item_id or not isinstance(entry, dict) or set(entry) - allowed or not needed <= set(entry):
             errors.append(f"chain_items.{item_id} must carry card and controller (or source_object, ability_id and controller for an activated ability, ADR-0011 §4)")
@@ -1052,8 +1105,9 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"chain_items.{item_id}.counterable must be boolean (ADR-0011 §5)")
         leave = entry.get("leave_replacement")
         if leave is not None and (not isinstance(leave, dict) or set(leave) != {"kind", "created_by", "effect_id"}
-                                  or leave.get("kind") != "recycle" or not isinstance(leave.get("created_by"), str)):
-            errors.append(f"chain_items.{item_id}.leave_replacement must be {{kind: recycle, created_by, effect_id}} (Core 390.3.a)")
+                                  or leave.get("kind") not in {"recycle", "banish"} or not isinstance(leave.get("created_by"), str)):
+            errors.append(f"chain_items.{item_id}.leave_replacement must be {{kind: recycle | banish, created_by, effect_id}} "
+                          f"(Core 390.3.a; package 11: banish_this)")
         # Core 355.5 / 355.15: the targets chosen at play ride with the entry to resolution; GPT 2026-09-29
         # (Core 355.4): so do the Move destinations chosen there, each a location token
         played = entry.get("played_targets")
@@ -1114,6 +1168,14 @@ def validate_state(state: Any) -> list[str]:
     turn_id = state.get("turn_id", DEFAULT_TURN_ID)
     if not isinstance(turn_id, str) or not turn_id:
         errors.append("turn_id must be a non-empty string when supplied")
+    # 2026-10-13 package 11 (Time Warp, Core 735-738): the Additional Turns queued after the current turn, the next
+    # first; and, while they are taken, the player whose regular turn the queue resumes after
+    queued = state.get("additional_turns", [])
+    if not isinstance(queued, list) or any(not isinstance(q, dict) or set(q) != {"player", "created_by", "effect_id", "turn_id"}
+                                           or q.get("player") not in players for q in queued):
+        errors.append("additional_turns must be an array of {player, created_by, effect_id, turn_id}, each a known player (Core 735)")
+    if "turn_queue_resume_after" in state and state["turn_queue_resume_after"] not in players:
+        errors.append("turn_queue_resume_after must be a known player (Core 737)")
     turn_effects = state.get("turn_effects", [])
     if not isinstance(turn_effects, list):
         errors.append("turn_effects must be an array")
@@ -1387,6 +1449,23 @@ def validate_state(state: Any) -> list[str]:
         # Round H / Core 805: a card's printed Domains. Absent means the data
         # does not say, which is not the same as "no Domain" - an empty list
         # says that, and only an empty list lets Accelerate take any Power.
+        # 2026-10-13 package 11 (Heimerdinger - Inventor): the activated abilities a permanent prints, by id - what a copy
+        # of one is checked against - and the kinds whose [Exhaust] abilities a permanent has as well (Core 377)
+        printed = obj.get("activated_abilities")
+        if printed is not None and (not isinstance(printed, dict) or any(
+                not isinstance(a, dict) or set(a) - {"cost", "effect_program_id"} or not isinstance(a.get("effect_program_id"), str)
+                or not isinstance(a.get("cost"), dict) or set(a["cost"]) - {"energy", "power", "exhaust"}
+                or not isinstance(a["cost"].get("energy", 0), int) or not isinstance(a["cost"].get("power", {}), dict)
+                or not isinstance(a["cost"].get("exhaust", False), bool) for a in printed.values())):
+            errors.append(f"objects.{object_id}.activated_abilities maps ability ids to {{cost: {{energy, power, exhaust}}, "
+                          f"effect_program_id}}")
+        copies = obj.get("has_exhaust_abilities_of")
+        if copies is not None and (not isinstance(copies, list) or not copies or set(copies) - {"legend", "unit", "gear"}
+                                   or len(copies) != len(set(copies))):
+            errors.append(f"objects.{object_id}.has_exhaust_abilities_of lists kinds among legend, unit, gear")
+        for flag in BATTLEFIELD_RESTRICTIONS.values():
+            if flag in obj and obj[flag] is not True:
+                errors.append(f"objects.{object_id}.{flag} is true when present (package 11, Mageseeker Warden)")
         domains = obj.get("domains")
         if domains is not None and (not isinstance(domains, list)
                                     or any(not isinstance(d, str) or not d for d in domains)
@@ -1436,9 +1515,15 @@ def validate_state(state: Any) -> list[str]:
             errors.append(f"objects.{object_id}.shield_value must be a positive integer (Core 814.1.b)")
         if "assault_value" in obj and (not isinstance(obj["assault_value"], int) or isinstance(obj["assault_value"], bool) or obj["assault_value"] < 1):
             errors.append(f"objects.{object_id}.assault_value must be a positive integer (Core 807.1.b)")
+        # 2026-10-12 package 11 (Symbol of the Solari): "If a combat where you are the attacker ends in a tie, recall ALL
+        # units instead." - read by combat.determine_combat_result; one shape only
+        if "combat_tie_replacement" in obj and obj["combat_tie_replacement"] != COMBAT_TIE_RECALL_ALL:
+            errors.append(f"objects.{object_id}.combat_tie_replacement must be {COMBAT_TIE_RECALL_ALL}")
         # Typed trigger lists: death (self-death, 808), play (419.4.a), move (383.1),
         # end of turn (317.1), attack / defend (383.4.e–f).
-        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers"):
+        for trigger_field in ("death_triggers", "play_triggers", "move_triggers", "end_of_turn_triggers", "attack_triggers", "defend_triggers", "conquer_triggers", "hold_triggers", "beginning_phase_triggers", "main_phase_triggers",
+                              # 2026-10-12 package 11 (Treasure Trove)
+                              "leave_board_triggers"):
             triggers = obj.get(trigger_field, [])
             if not isinstance(triggers, list):
                 errors.append(f"objects.{object_id}.{trigger_field} must be an array")
@@ -1474,6 +1559,8 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'if you control a <tag>' is read only on a play trigger, as {{kind, count, tag}} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "controls_facedown_card_at_battlefield" and (trigger_field != "beginning_phase_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'if you control a facedown card at a battlefield' is read only on a Beginning Phase trigger, as {{kind}} (Core 383.2.a.1)")
+                elif "condition" in trigger and trigger["condition"].get("kind") == "played_to_battlefield" and (trigger_field != "play_triggers" or set(trigger["condition"]) != {"kind"}):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'to a battlefield' on a play is read only on a play trigger, as {{kind}} (Core 383.1, 419.4.a)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "moved_to_battlefield" and (trigger_field != "move_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'to a battlefield' is read only on a move trigger, as {{kind}} (Core 383.1, 428)")
                 elif "scope" in trigger and trigger_field in {"conquer_triggers", "hold_triggers"} and trigger["scope"] not in {"unit_here", "controller"}:
@@ -1735,7 +1822,8 @@ def validate_state(state: Any) -> list[str]:
             continue
         if mark["identity"] != (obj.get("identity") or f"{mark['object_id']}@0"):
             errors.append(f"{label} is bound to a stale identity")
-        if mark["zone"] not in {"main_deck", "hand"} or mark["object_id"] not in players.get(obj.get("owner"), {}).get("zones", {}).get(mark["zone"], []):
+        # package 11 (Twisted Fate - Gambler): a rune revealed on top of its Rune Deck stays there, marked
+        if mark["zone"] not in {"main_deck", "hand", "rune_deck"} or mark["object_id"] not in players.get(obj.get("owner"), {}).get("zones", {}).get(mark["zone"], []):
             errors.append(f"{label} names a zone the object is not in")
         if not (mark["visible_to"] == "all" or (isinstance(mark["visible_to"], list) and mark["visible_to"] and all(p in players for p in mark["visible_to"]))):
             errors.append(f"{label}.visible_to must be 'all' or a non-empty player list")
@@ -2026,7 +2114,7 @@ def _trigger_base_cost_errors(effect: dict[str, Any], index: int, count: int) ->
         if set(part) - {"kind"} != TRIGGER_COST_PAYMENTS[kind]:
             errors.append(f"payment[{position}] ({kind}) must carry exactly {sorted(TRIGGER_COST_PAYMENTS[kind])}")
             continue
-        if kind in {"energy", "power", "power_own_domain"} and (not isinstance(part["amount"], int) or isinstance(part["amount"], bool)
+        if kind in {"energy", "power", "power_own_domain", "discard"} and (not isinstance(part["amount"], int) or isinstance(part["amount"], bool)
                                                                 or part["amount"] < 1):
             errors.append(f"payment[{position}] ({kind}) needs a positive amount")
         if kind == "power" and (not isinstance(part["domain"], str) or not part["domain"]):
@@ -2080,7 +2168,10 @@ def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
                          "(the card an earlier banish of the program moved)"]
     if "linked" in effect:
         linked = effect["linked"]
-        if not isinstance(linked, dict) or set(linked) != {"effect_id", "from"} or linked.get("from") != "banishment" \
+        # package 11 (Promising Future): per_player - inside "each player plays those cards", the banish of THIS
+        # iteration's player (the earlier each_player copy of that banish, effect_id@player)
+        if not isinstance(linked, dict) or set(linked) - {"per_player"} != {"effect_id", "from"} \
+                or linked.get("per_player", True) is not True or linked.get("from") != "banishment" \
                 or not isinstance(linked.get("effect_id"), str) or not linked["effect_id"]:
             errors.append("linked must be {effect_id, from: banishment}: the earlier banish whose card is played")
         if "decision_ref" in effect or "card_filter" in effect:
@@ -2150,6 +2241,18 @@ def _limited_play_record_errors(record: Any, players: dict[str, Any]) -> list[st
     return errors
 
 
+def noted_location_errors(value: Any) -> list[str]:
+    """2026-10-12 (package 11, Kog'Maw - Caustic): where a death trigger's source was as its abilities were noted, before
+    it moved (Core 808.1.d.3) - a Battlefield, or a player's Base."""
+    if isinstance(value, dict) and value.get("kind") == "battlefield" and set(value) == {"kind", "battlefield"} \
+            and isinstance(value["battlefield"], str) and value["battlefield"]:
+        return []
+    if isinstance(value, dict) and value.get("kind") == "base" and set(value) == {"kind", "player"} \
+            and isinstance(value["player"], str) and value["player"]:
+        return []
+    return ["noted_location must be {kind: battlefield, battlefield} or {kind: base, player}, each a non-empty string"]
+
+
 def validate_program(program: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(program, dict):
@@ -2169,6 +2272,9 @@ def validate_program(program: Any) -> list[str]:
             not isinstance(trigger_event, dict) or set(trigger_event) != {"event_id", "kind", "object", "identity"}
             or any(not isinstance(v, str) or not v for v in trigger_event.values())):
         errors.append("trigger_event must be {event_id, kind, object, identity}, each a non-empty string")
+    # 2026-10-12 (package 11): a death trigger's noted location, bound in by the engine at resolution
+    if program.get("noted_location") is not None:
+        errors.extend(noted_location_errors(program["noted_location"]))
     conditional = program.get("conditional_triggers")
     if conditional is not None:
         effect_ids = {e.get("effect_id", f"effect-{i}") for i, e in enumerate(program.get("effects") or []) if isinstance(e, dict)}
@@ -2185,8 +2291,17 @@ def validate_program(program: Any) -> list[str]:
                     errors.append(f"conditional_triggers[{i}].trigger_id is invalid or duplicated")
                 ids.add(ct.get("trigger_id", ""))
                 cond = ct["condition"]
-                if not isinstance(cond, dict) or cond.get("kind") not in CONDITIONAL_TRIGGER_KINDS or set(cond) != {"kind", "effect_id"}:
-                    errors.append(f"conditional_triggers[{i}].condition must be {{kind: caused_kill, effect_id}}")
+                keys = {"kind", "effect_id", "domain"} if isinstance(cond, dict) and cond.get("kind") == "revealed_domain" \
+                    else {"kind", "effect_id"}
+                if isinstance(cond, dict) and cond.get("kind") == "revealed_domain" and (
+                        not isinstance(cond.get("domain"), str) or not cond.get("domain")
+                        or next((e.get("op") for e in program.get("effects") or [] if isinstance(e, dict)
+                                 and e.get("effect_id") == cond.get("effect_id")), None) != "reveal"):
+                    errors.append(f"conditional_triggers[{i}].condition revealed_domain names a Domain and a reveal of "
+                                  f"this program (Core 387.1.b)")
+                if not isinstance(cond, dict) or cond.get("kind") not in CONDITIONAL_TRIGGER_KINDS or set(cond) != keys:
+                    errors.append(f"conditional_triggers[{i}].condition must be {{kind, effect_id}} with kind in "
+                                  f"{sorted(CONDITIONAL_TRIGGER_KINDS)}")
                 elif cond["effect_id"] not in effect_ids:
                     errors.append(f"conditional_triggers[{i}].condition.effect_id {cond['effect_id']!r} is not an instruction of this program")
                 if not isinstance(ct["optional_at_finalize"], bool) or not isinstance(ct["controller_order"], int) or ct["controller_order"] < 0:
@@ -2277,6 +2392,39 @@ def validate_program(program: Any) -> list[str]:
                         or (earlier.get(linked.get("effect_id")) or {}).get("op") != "limited_play":
                     errors.append(f"effects[{index}].recycle_when_leaving_chain carries only linked {{effect_id}}: an "
                                   f"earlier limited_play of this program, whose card it binds (Core 390.3.a)")
+            if effect.get("op") == "gain_control_of_spell":
+                targeted = effect.get("target")
+                if not isinstance(effect.get("player"), str) or not isinstance(targeted, dict) \
+                        or targeted.get("location") != "chain" or targeted.get("chosen_zone_class") != "non_board" \
+                        or targeted.get("kind") != "spell":
+                    errors.append(f"effects[{index}].gain_control_of_spell targets a spell on the Chain "
+                                  f"{{chosen_zone_class: non_board, location: chain, kind: spell}} and names the player")
+            if effect.get("op") == "make_new_choices":
+                earlier = {e.get("effect_id"): e for e in effects[:index] if isinstance(e, dict)}
+                linked = effect.get("linked")
+                if set(effect) - {"op", "effect_id", "linked", "optional", "depends_on", "dependency_mode", "_execution"} \
+                        or not isinstance(effect.get("optional"), dict) or not isinstance(linked, dict) or set(linked) != {"effect_id"} \
+                        or (earlier.get(linked.get("effect_id")) or {}).get("op") != "gain_control_of_spell":
+                    errors.append(f"effects[{index}].make_new_choices is optional and linked to an earlier "
+                                  f"gain_control_of_spell of this program (Core 751)")
+            if effect.get("op") in {"banish_one_looked", "recycle_looked_rest"} and (
+                    set(effect) - {"op", "effect_id", "player", "decision_ref", "order_ref", "depends_on", "dependency_mode",
+                                   "_execution", EACH_PLAYER_FIELD, "each_player_of"}
+                    or not isinstance(effect.get("player"), str)):
+                errors.append(f"effects[{index}].{effect.get('op')} names the player whose looked-at cards it reads")
+            if effect.get("op") == "activate_conquer_effects" and (
+                    set(effect) - {"op", "effect_id", "location_ref", "depends_on", "dependency_mode", "_execution"}
+                    or not is_location_ref(effect.get("location_ref"))):
+                errors.append(f"effects[{index}].activate_conquer_effects names the Battlefield by location_ref (Core 383.4.g.1)")
+            if effect.get("op") == "gain_control" and not isinstance(effect.get("player"), str):
+                errors.append(f"effects[{index}].gain_control names the player who takes control (Core 189)")
+            if effect.get("op") == "take_additional_turn":
+                if set(effect) - {"op", "effect_id", "player", "depends_on", "dependency_mode", "_execution"} \
+                        or not isinstance(effect.get("player"), str):
+                    errors.append(f"effects[{index}].take_additional_turn carries only the player who takes it (Core 735)")
+            if effect.get("op") == "banish_this":
+                if set(effect) - {"op", "effect_id", "depends_on", "dependency_mode", "_execution"}:
+                    errors.append(f"effects[{index}].banish_this carries nothing: it is the resolving card itself")
             if effect.get("op") == "swap_might":
                 units = effect.get("units")
                 if not isinstance(units, list) or len(units) != 2:
@@ -2314,10 +2462,13 @@ def validate_program(program: Any) -> list[str]:
                     for j, sel in enumerate(units):
                         if isinstance(sel, dict) and is_object_ref(sel.get("object_id")):
                             # the source in one slot (OBJECT_REF_UNIT_SLOT_OPS): a Unit on the board, nothing chosen
-                            if sel["object_id"] != {"object_ref": "program_source"} or set(sel) != {"object_id", "chosen_zone_class", "kind"} \
+                            # package 11: or the trigger's referent (Dragon's Rage's moved unit), the same shape
+                            if sel["object_id"] not in ({"object_ref": "program_source"}, {"object_ref": TRIGGER_EVENT_OBJECT}) \
+                                    or set(sel) != {"object_id", "chosen_zone_class", "kind"} \
                                     or sel.get("chosen_zone_class") != "board" or sel.get("kind") != "unit":
-                                errors.append(f"effects[{index}].units[{j}] names the source as exactly "
-                                              f"{{object_id: {{object_ref: program_source}}, chosen_zone_class: board, kind: unit}}")
+                                errors.append(f"effects[{index}].units[{j}] names the source (or the trigger's referent) as "
+                                              f"exactly {{object_id: {{object_ref: program_source | trigger_event_object}}, "
+                                              f"chosen_zone_class: board, kind: unit}}")
                         else:
                             errors.extend(f"effects[{index}].units[{j}] {e}" for e in _selector_errors(sel))
                     if sum(1 for sel in units if isinstance(sel, dict) and is_object_ref(sel.get("object_id"))) > 1:
@@ -2442,7 +2593,21 @@ def validate_program(program: Any) -> list[str]:
                                                      or not player_field["decision_ref"]):
                 errors.append(f"effects[{index}].player must be a player id, {{decision_ref}} or "
                               f"{{object_player: {{effect_id, relation}}}} with relation in {list(OBJECT_PLAYER_RELATIONS)}")
-            if "count_per" in effect:
+            if "count_per" in effect and isinstance(effect["count_per"], dict) \
+                    and effect["count_per"].get("kind") == LINKED_REVEALED_COUNT:
+                # package 11 (Teemo - Strategist): the cards an earlier reveal of this program showed, with the keyword
+                earlier = next((e for e in effects[:index] if isinstance(e, dict)
+                                and e.get("effect_id") == effect["count_per"].get("effect_id")), None)
+                if not is_count_per(effect["count_per"]):
+                    errors.append(f"effects[{index}].count_per {LINKED_REVEALED_COUNT} is {{kind, effect_id, keyword}} "
+                                  f"with keyword in {sorted(LINKED_REVEALED_KEYWORDS)}")
+                elif earlier is None or earlier.get("op") != "reveal" or earlier.get("from") != "main_deck_top":
+                    errors.append(f"effects[{index}].count_per.effect_id must name an earlier reveal of the Main Deck's top")
+                if effect.get("op") not in LINKED_REVEALED_READERS:
+                    errors.append(f"effects[{index}].count_per {LINKED_REVEALED_COUNT} is read by {sorted(LINKED_REVEALED_READERS)} only")
+                if not isinstance(effect.get("amount"), int) or isinstance(effect.get("amount"), bool) or effect.get("amount", 0) < 1:
+                    errors.append(f"effects[{index}].count_per multiplies a positive printed amount")
+            elif "count_per" in effect:
                 linked_count = isinstance(effect["count_per"], dict) and effect["count_per"].get("kind") == "linked_applied_count"
                 if not is_count_per(effect["count_per"]):
                     errors.append(f"effects[{index}].count_per must be {{kind: units_you_control, mighty: true}} "
@@ -2540,7 +2705,9 @@ def validate_program(program: Any) -> list[str]:
                         if inner.get("op") not in EACH_PLAYER_NESTED_OPS:
                             errors.append(f"effects[{index}].each_player.effects[{n_index}] op {inner.get('op')!r} is not "
                                           f"run per player; one of {sorted(EACH_PLAYER_NESTED_OPS)}")
-                    if not _mentions_sentinel(nested):
+                    # (package 11: a play linked per_player names the iteration's player through its link)
+                    if not _mentions_sentinel(nested) and not any(
+                            inner.get("op") == "limited_play" and (inner.get("linked") or {}).get("per_player") for inner in nested):
                         errors.append(f"effects[{index}].each_player: no instruction names the player of the "
                                       f"iteration ({EACH_PLAYER_SENTINEL})")
                     synthetic = {k: v for k, v in program.items() if k not in {"effects", "modal"}}
@@ -2724,6 +2891,13 @@ def validate_program(program: Any) -> list[str]:
                                   f"{sorted(LINKED_EACH_PRODUCERS)} acted on")
                 if {"target", "targets", "object_id", "affected"} & set(effect):
                     errors.append(f"effects[{index}].linked_each names its objects; no target, targets, object_id or affected")
+            if effect.get("op") == "return_to_hand" and "self" in effect:
+                # 2026-10-12 (package 11): "return this from your trash to your hand" - the program's own source
+                if not isinstance(effect["self"], dict) or set(effect["self"]) != {"from"} \
+                        or effect["self"]["from"] not in RETURN_SELF_ZONES:
+                    errors.append(f"effects[{index}].self must be {{from}} with from in {sorted(RETURN_SELF_ZONES)}")
+                if {"target", "targets", "object_id", "affected", "subject_ref"} & set(effect):
+                    errors.append(f"effects[{index}].self names the object; no target, targets, object_id or affected")
             if "subject_ref" in effect:
                 ref = effect["subject_ref"]
                 earlier_ids = {e.get("effect_id") for e in effects[:index] if isinstance(e, dict)}
@@ -2755,6 +2929,20 @@ def validate_program(program: Any) -> list[str]:
                 if set(linked) != {"kind", "effect_id"} or linked.get("effect_id") not in earlier:
                     errors.append(f"effects[{index}].move_board_object destination {LINKED_BATTLEFIELD_DESTINATION} is "
                                   f"{{kind, effect_id}} naming an earlier instruction of this program")
+            if effect.get("op") == "move_board_object" and isinstance(effect.get("destination"), dict) \
+                    and (effect["destination"].get("restriction") == "location_of_target") != (
+                        isinstance(effect["destination"].get("target_ref"), str) and effect["destination"]["target_ref"] in {
+                            (e.get("target") or {}).get("decision_ref") for e in effects if isinstance(e, dict)}):
+                errors.append(f"effects[{index}].move_board_object destination location_of_target names, in target_ref, "
+                              f"the decision of a target of this program - and only that restriction carries one")
+            if effect.get("op") == "move_board_object" and isinstance(effect.get("destination"), dict) \
+                    and "bound_location" in effect["destination"]:
+                errors.append(f"effects[{index}].move_board_object destination bound_location is bound by the engine, "
+                              f"never by a program")
+            if effect.get("op") == "move_board_object" and isinstance(effect.get("destination"), dict) \
+                    and "here_battlefield" in effect["destination"]:
+                errors.append(f"effects[{index}].move_board_object destination here_battlefield is bound by the engine, "
+                              f"never by a program")
             if effect.get("op") == "move_board_object" and isinstance(effect.get("destination"), dict) \
                     and "restriction" in effect["destination"] and (
                         effect["destination"]["restriction"] not in MOVE_DESTINATION_RESTRICTIONS
@@ -2810,7 +2998,12 @@ def validate_program(program: Any) -> list[str]:
                 has_location = isinstance(criteria, dict) and "location" in criteria
                 has_location_ref = isinstance(criteria, dict) and "location_ref" in criteria
                 if (not isinstance(affected, dict) or set(affected) != {"criteria"} or not isinstance(criteria, dict)
-                        or set(criteria) - {"kind", "controller_relation", "location", "location_ref", *AFFECTED_NARROWING_FIELDS}
+                        or set(criteria) - {"kind", "controller_relation", "location", "location_ref", *AFFECTED_NARROWING_FIELDS,
+                                            "exclude_targets_of"}
+                        or ("exclude_targets_of" in criteria and not (
+                            isinstance(criteria["exclude_targets_of"], str) and any(
+                                isinstance(e, dict) and e.get("effect_id") == criteria["exclude_targets_of"] and e.get("target")
+                                for e in effects[:index])))
                         or has_location == has_location_ref):
                     errors.append(f"effects[{index}].affected must be {{criteria: {{location, kind?, controller_relation?}}}} "
                                   "or {{criteria: {{location_ref, kind?, controller_relation?}}}}, never both, never neither")
@@ -3013,7 +3206,10 @@ SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zon
                    "energy_cost_below_points",
                    # 2026-10-08 package 10 (Teemo - Swift Scout): "a Teemo unit you own" - a tag the object carries
                    # (Core 133.8) and the player who owns it (as against controls it)
-                   "with_tag", "owner_relation"}
+                   "with_tag", "owner_relation",
+                   # 2026-10-12 package 11 (Dragon's Rage: "another enemy unit at its destination"): not the object
+                   # the trigger's event was about, by the identity the event recorded (resolution_bridge)
+                   "exclude_trigger_event_object"}
 # 2026-09-27 (Fading Memories, "a unit at a battlefield or a gear"): one chosen object that fits ONE of
 # the alternatives; each names a kind and may narrow the location and the controller relation
 ANY_OF_FIELDS = {"kind", "location", "controller_relation",
@@ -3050,7 +3246,10 @@ TRIGGER_EVENT_OBJECT = "trigger_event_object"
 # check_ready_buff_watch.py (T1-T2)
 TRIGGER_EVENT_OBJECT_OPS = {"modify_might", "ready",
                             # 2026-10-08 package 10 (Noxian Guillotine, Imperial Decree): "kill it" - the damaged unit
-                            "kill"}
+                            "kill",
+                            # 2026-10-12 package 11 (Dragon's Rage: "They deal damage ... to each other"): the moved
+                            # unit in ONE of the pair's slots; its fixture is engine check_reflexive_move.py
+                            "mutual_damage_current_might"}
 OBJECT_REF_NO_TRIGGER_EVENT = "object_ref_no_trigger_event"
 OBJECT_REF_REFERENT_ABSENT = "object_ref_referent_absent"
 OBJECT_REF_REFERENT_IDENTITY_CHANGED = "object_ref_referent_identity_changed"
@@ -3061,7 +3260,10 @@ OBJECT_REF_REFERENT_LEFT_PLAY = "object_ref_referent_left_play"
 # 2026-09-27: return_to_hand ("return me to my owner's hand", Vayne, Hunter) - its fixtures are
 # check_object_ref_self.py (the source leaves the board for its owner's hand) and
 # check_trigger_cost.py (a Conquer-shaped trigger whose base cost is [1], resolved for real).
-OBJECT_REF_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand", "kill"}
+OBJECT_REF_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand", "kill",
+                  # 2026-10-12 package 11 (Tideturner: "Move me to its location ..."): its fixture is engine
+                  # check_swap_locations.py (S1, S4)
+                  "move_board_object"}
 # A Spell is not a permanent; it is not on the board to be acted on when its own
 # program resolves. The default is deliberately narrow (Core 355.4.a: the Board's
 # Locations are the Battlefields and the Bases).
@@ -3099,7 +3301,14 @@ OBJECT_REF_OP_NOT_ADOPTED = "object_ref_op_not_adopted"
 # location captured once, when the trigger's condition is fulfilled, immune to
 # a later move): that is a separate referent this capability does not resolve,
 # and no production may be widened to use this one for a 359.3.f.3 shape.
-LOCATION_REF_KINDS = ("program_source_current_battlefield",)
+LOCATION_REF_KINDS = ("program_source_current_battlefield",
+                      # 2026-10-12 (package 11, Kog'Maw - Caustic): a death trigger's "my battlefield" - where its
+                      # source was as the trigger was noted (Core 808.1.d.3), not where anything is now
+                      "program_source_noted_battlefield",
+                      # 2026-10-12 (package 11, Dragon's Rage: "Choose another enemy unit at its destination"): where
+                      # the object a reflexive trigger's instruction moved was moved to - a Battlefield or a Base - as
+                      # the trigger's chain item recorded it (resolution_bridge); fixed then, not read again
+                      "trigger_event_destination")
 
 LOCATION_REF_ABSENT = "location_ref_source_absent"
 LOCATION_REF_IDENTITY_CHANGED = "location_ref_source_identity_changed"
@@ -3108,6 +3317,9 @@ LOCATION_REF_IDENTITY_CHANGED = "location_ref_source_identity_changed"
 # source sitting in Base is still on the board, but it is not "at" anything -
 # 359.3.f.2's own example is exactly a source moved to Base, mistargeting.
 LOCATION_REF_NOT_AT_BATTLEFIELD = "location_ref_source_not_at_battlefield"
+# package 11: a reflexive trigger whose instruction moved nothing has no destination - no object is "at" it, so a target
+# that must be there has no legal option (Core 402.4), unlike an unbindable "here", which is refused by name
+LOCATION_REF_NO_DESTINATION = "location_ref_no_destination"
 
 # "deal damage equal to my Might" (Yasuo, Remorseful): a typed reference to a number the
 # program's own source carries, read on EXECUTION of the instruction - Core 359.3.f.2's
@@ -3201,9 +3413,19 @@ LINKED_COUNT_OPS = {"spend_buffs"}
 # RESOLUTION_CHOICE_OPS (kill / return_to_hand whose `choice` is made as they resolve, Core 355.10.e)
 DECISION_REF_CHOICE_OPS = {"spend_buffs"}
 LINKED_COUNT_READERS = {"channel_rune", "draw"}
+# 2026-10-12 package 11 (Teemo - Strategist: "Deal 1 to that unit for each card with [Hidden] revealed this way"): how
+# many of the cards an EARLIER reveal of this program showed carry the keyword - each still the object it was when
+# revealed (Core 124) - multiplying a Deal's printed amount (a linked instruction, Core 359.3.e.14: ignored when the
+# reveal was). One keyword so far
+LINKED_REVEALED_COUNT = "linked_revealed_with_keyword"
+LINKED_REVEALED_KEYWORDS = {"hidden"}
+LINKED_REVEALED_READERS = {"deal_damage"}
 
 
 def is_count_per(value: Any) -> bool:
+    if isinstance(value, dict) and value.get("kind") == LINKED_REVEALED_COUNT:
+        return (set(value) == {"kind", "effect_id", "keyword"} and isinstance(value.get("effect_id"), str)
+                and bool(value["effect_id"]) and value.get("keyword") in LINKED_REVEALED_KEYWORDS)
     if isinstance(value, dict) and value.get("kind") == "linked_applied_count":
         return set(value) == {"kind", "effect_id"} and isinstance(value.get("effect_id"), str) and bool(value["effect_id"])
     return isinstance(value, dict) and value == {"kind": "units_you_control", "mighty": True}
@@ -3547,6 +3769,16 @@ def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
     # package 6: "Recycle the rest." after "Each player chooses ...": what the group's choices were
     # offered and did not take (rest_of). Each card goes to its owner's deck (Core 416.1.c), and each
     # owner orders their own deck's cards (416.5.a) - no single player is named
+    # 2026-10-12 package 11 (Teemo - Strategist: "then recycle the revealed cards"): the cards an EARLIER reveal of this
+    # program showed, each still that object (revealed_by); not chosen and not targets (Core 355.10.a)
+    revealed_by = effect.get("revealed_by")
+    if op == "recycle" and revealed_by is not None:
+        if not isinstance(revealed_by, str) or not revealed_by:
+            errors.append("revealed_by names the reveal whose cards are recycled")
+        if {"objects", "choice", "decision_ref", "rest_of"} & set(effect):
+            errors.append("revealed_by recycles what the reveal showed; it names no objects, choice, decision or group")
+    elif revealed_by is not None:
+        errors.append("revealed_by is read by recycle only")
     rest_of = effect.get("rest_of")
     if op == "recycle" and rest_of is not None:
         if not isinstance(rest_of, str) or not rest_of:
@@ -3566,9 +3798,10 @@ def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
     if op == "look_at_top":
         positive("count")
     elif op == "reveal":
-        if effect.get("from") not in {"main_deck_top", "hand"}:
-            errors.append("from must be main_deck_top or hand")
-        if effect.get("from") == "main_deck_top":
+        # 2026-10-13 package 11 (Twisted Fate - Gambler): the top of the Rune Deck too
+        if effect.get("from") not in {"main_deck_top", "rune_deck_top", "hand"}:
+            errors.append("from must be main_deck_top, rune_deck_top or hand")
+        if effect.get("from") in {"main_deck_top", "rune_deck_top"}:
             positive("count")
         elif "count" in effect:
             errors.append("a hand reveal shows every card (Core 424.2.b); count does not apply")
@@ -3590,7 +3823,7 @@ def _reveal_op_errors(effect: dict[str, Any]) -> list[str]:
             errors.append("choose_player is the instruction that picks the player; it does not name one")
     elif op == "recycle":
         objects = effect.get("objects")
-        if (objects is None) == (effect.get("choice") is None):
+        if (objects is None) == (effect.get("choice") is None) and revealed_by is None:
             errors.append("needs exactly one of objects or choice")
         if objects is not None and (not isinstance(objects, list) or not objects or any(not isinstance(o, str) or not o for o in objects) or len(objects) != len(set(objects))):
             errors.append("objects must be a non-empty unique array")
@@ -3653,6 +3886,16 @@ def _local_predicate(predicate: dict[str, Any], effect: dict[str, Any], state: d
     if predicate["condition"]["kind"] == "is_stunned":
         return bool(on_board and obj.get("stunned") is True), ["Core 359.3.d", "Core 423"]
     return False, ["Core 359.3.d"]
+
+
+def _names_another_card(condition: Any) -> bool:
+    """Whether a condition (possibly under not / all / any) reads another_card_finalized_this_turn."""
+    if not isinstance(condition, dict):
+        return False
+    if condition.get("kind") == "another_card_finalized_this_turn":
+        return True
+    nested = [condition.get("of")] + list(condition.get("conditions") or [])
+    return any(_names_another_card(c) for c in nested)
 
 
 def evaluate_predicate(predicate: dict[str, Any], receipt: dict[str, Any] | None, events: dict[str, dict[str, Any]] | None = None, state: dict[str, Any] | None = None, controller: str | None = None, source: str | None = None) -> tuple[bool | None, list[str]]:
@@ -3980,7 +4223,15 @@ def location_token(location: tuple[str, str, str | None] | None) -> str | None:
 # the unit's own Base when it is at a Battlefield, and to a Battlefield when it is in its Base.
 # "to a battlefield" (2026-09-27 package 5, Showstopper): a chosen destination that is a
 # Battlefield - never a Base (Core 355.4.a, 144.4.b).
-MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base", "battlefield"}
+# "to here" (2026-10-12 package 11, Blitzcrank - Impassive: "you may move an enemy unit to here"): a chosen destination
+# that can only be the program's source's current Battlefield, read where the destination is chosen and again where the
+# Move executes (Core 355.4, 359.3.f.2) - bound by bind_move_here, never by the program; no Battlefield there, no
+# destination at all, never its Base
+# "to its location" / "to my original location" (2026-10-12 package 11, Tideturner; package 10 ruling 4): a chosen
+# destination that, as the ability is finalized, can only be where the unit its `target_ref` decision chose is, or
+# where the program's source is - bound then (bind_move_here) and fixed, never read again: as the Move executes the
+# recorded place only has to be a legal destination (Core 355.4.a, 355.15)
+MOVE_DESTINATION_RESTRICTIONS = {"to_or_from_own_base", "battlefield", "here", "location_of_target", "source_location"}
 # How a later instruction depends on the earlier one it names in depends_on:
 #   if_applied      only when the earlier one was applied (the long-standing default)
 #   always          regardless
@@ -4012,12 +4263,42 @@ def move_destination_candidates(state: dict[str, Any], object_id: str, destinati
     candidates = legal_move_destinations(state, object_id)
     if destination.get("restriction") == "battlefield":
         candidates = [c for c in candidates if c.startswith("battlefield:")]
+    if destination.get("restriction") == "here":
+        # package 11: only the source's current Battlefield, as bind_move_here read it; unbound or none - no destination
+        here = destination.get("here_battlefield")
+        candidates = [c for c in candidates if isinstance(here, str) and c == f"battlefield:{here}"]
+    if destination.get("restriction") in ("location_of_target", "source_location") and "bound_location" in destination:
+        # package 11: only the place bound as the destination is chosen; unbound - as the Move executes - no narrowing
+        candidates = [c for c in candidates if c == destination["bound_location"]]
     if destination.get("restriction") == "to_or_from_own_base":
         own_base = f"base:{state['objects'][object_id]['owner']}"
         at = location_token(find_location(state, object_id))
         candidates = ([c for c in candidates if c == own_base] if at != own_base
                       else [c for c in candidates if c.startswith("battlefield:")])
     return candidates
+
+
+def bind_move_here(destination: dict[str, Any], state: dict[str, Any], program: dict[str, Any],
+                   chosen: dict[str, str] | None = None) -> dict[str, Any]:
+    """2026-10-12 (package 11): a "to here" destination with the source's current Battlefield read NOW (Core 359.3.f.2)
+    as `here_battlefield` - None when the source is gone, a new object, or at no Battlefield (its Base included).
+    Tideturner's two (package 10 ruling 4), read where the destination is chosen: "location_of_target" - where the unit
+    `chosen` names for its target_ref is now; "source_location" - where the program's source is now; each as
+    `bound_location` (None when there is nothing to read). Any other destination is returned as it is."""
+    if isinstance(destination, dict) and destination.get("restriction") in ("location_of_target", "source_location"):
+        if destination["restriction"] == "source_location":
+            whose = program.get("source_object")
+        else:
+            whose = (chosen or {}).get(destination.get("target_ref"))
+        place = location_token(find_location(state, whose)) if isinstance(whose, str) and whose in state["objects"] else None
+        return {**destination, "bound_location": place}
+    if not isinstance(destination, dict) or destination.get("restriction") != "here":
+        return destination
+    try:
+        here = resolve_location_ref({"kind": "program_source_current_battlefield"}, state, program)
+    except SelectionBindingRefused:
+        here = None
+    return {**destination, "here_battlefield": here}
 
 
 def legal_move_destinations(state: dict[str, Any], object_id: str) -> list[str]:
@@ -4215,6 +4496,11 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
     at = target.get("location_battlefield")
     if at is not None and (location is None or location[0] != "battlefield" or location[1] != at):
         return False, "target_not_at_source_battlefield"
+    # package 11: a destination that is a Base (trigger_event_destination) - the object must be in that player's Base
+    in_base = target.get("location_base")
+    if in_base is not None and (location is None or location[0] != "player" or location[1] != in_base
+                                or location[2] != "base"):
+        return False, "target_not_at_referent_location"
     exclude = target.get("exclude_source_identity")
     if exclude == SOURCE_IDENTITY_SENTINEL:
         # The sentinel reached the check unresolved: nobody bound it to a
@@ -4223,6 +4509,14 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
         return False, "target_source_exclusion_unresolved"
     if exclude is not None and object_identity(state, object_id) == exclude:
         return False, "target_excludes_source"
+    # package 11: "another" than the trigger's referent, bound by _bind_referent_exclusion; never authored
+    if "exclude_trigger_event_object" in target:
+        return False, "target_referent_exclusion_unresolved"
+    if target.get("referent_exclusion_refused"):
+        return False, target["referent_exclusion_refused"]
+    if target.get("excluded_referent_identity") is not None \
+            and object_identity(state, object_id) == target["excluded_referent_identity"]:
+        return False, "target_is_the_trigger_referent"
     return True, "ok"
 
 
@@ -5040,6 +5334,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         source = find_location(new_state, object_id)
         on_board = source is not None and (source[0] == "battlefield" or source[2] == "base")
         detached = detach_records(new_state, object_id, _last_board_location(source), host_left_board=True) if on_board else []
+        # package 11: noted before it moves (leave_board_triggers)
+        leaving_triggers = leave_board_triggers(new_state, object_id) if on_board else []
         in_owner_trash = source == ("player", obj["owner"], "trash")
         # package 10 (Teemo - Swift Scout): "into your hand from your Champion Zone" - its owner's Champion Zone (Core 108.3)
         in_owner_champion_zone = source == ("player", obj["owner"], "champion_zone")
@@ -5064,6 +5360,8 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                           "identity_after": _bump_identity(new_state, object_id), "not_a_move": True})
         if on_board:
             trace["disabled_replacements"] = _prune_inactive_replacements(new_state)
+        if leaving_triggers:
+            trace["pending_triggers"] = leaving_triggers
         if detached:
             trace["detached"] = detached  # Core 435.4.b: to the host's last board location
             trace["rule_locators"] = list(dict.fromkeys(trace["rule_locators"] + ["Core 435.4", "Core 435.4.b"]))
@@ -5092,6 +5390,50 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             zone.append(object_id)
             trace.update({"object_id": object_id, "from": source, "destination": f"{obj['owner']}.champion_zone",
                           "identity_after": _bump_identity(new_state, object_id), "not_a_move": True})
+
+    elif op == "gain_control_of_spell":
+        # 2026-10-13 package 11 (Mystic Reversal, GPT ruling 13): the Chain item that card is changes controller - its
+        # card too (Core 191.2); what was paid for it stays paid and moves nowhere; the choices it was played with are now
+        # its new controller's; the timing chain follows in the same commit (resolution_bridge)
+        card = effect.get("object_id")
+        item_id = next((k for k, v in (new_state.get("chain_items") or {}).items() if v.get("card") == card), None)
+        player = controller if effect.get("player") == "$controller" else effect.get("player")
+        if item_id is None or player not in new_state["players"]:
+            raise IllegalOperation(f"{card!r} is not a spell on the Chain, or {player!r} is no player (Core 191.2)")
+        entry = new_state["chain_items"][item_id]
+        before = entry["controller"]
+        original = (entry.get("control_changed") or {}).get("from", before)
+        entry["controller"] = player
+        new_state["objects"][card]["controller"] = player
+        if player != original:
+            entry["control_changed"] = {"from": original, "to": player}
+        else:
+            entry.pop("control_changed", None)
+        for made in entry.get("played_targets") or []:
+            made["controller"] = player
+        trace.update({"object_id": card, "chain_item_id": item_id, "controller_before": before, "controller_after": player,
+                      "costs_transferred": False, "controlled_chain_items": [{"chain_item_id": item_id, "to": player}]})
+        if before == player:
+            trace["outcome"] = "no_op"
+
+    elif op == "gain_control":
+        # 2026-10-13 package 11 (Possession, GPT ruling 12): the permanent's controller becomes the player; its owner, its
+        # place, damage, exhaustion, buff and modifiers stay (Core 189, 191.3); an ability of it already on the Chain keeps
+        # its controller (191.4.b) - nothing on the Chain is touched. A Combat's designations follow its Cleanup (323.2)
+        object_id = effect.get("object_id")
+        player = controller if effect.get("player") == "$controller" else effect.get("player")
+        if object_id not in new_state["objects"] or player not in new_state["players"]:
+            raise ValueError("gain_control requires a known object and a known player")
+        obj = new_state["objects"][object_id]
+        if zone_class(find_location(new_state, object_id)) != "board" or obj["kind"] not in {"unit", "gear"}:
+            raise IllegalOperation(f"gain_control takes a permanent on the board; {object_id!r} is not one")
+        before = obj["controller"]
+        obj["controller"] = player
+        trace.update({"object_id": object_id, "controller_before": before, "controller_after": player,
+                      "owner": obj["owner"], "retained": {"damage": obj["damage"], "exhausted": obj["exhausted"],
+                                                         "buffed": bool(obj.get("buffed"))}})
+        if before == player:
+            trace["outcome"] = "no_op"
 
     elif op == "recall":
         # DP-06 / Q2: relocation to the current controller's Base (455); not a
@@ -5379,6 +5721,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
     elif op == "recycle_when_leaving_chain":
         raise ValueError("recycle_when_leaving_chain is bound by apply_program to the chain item its linked play started")
 
+    elif op in {"take_additional_turn", "banish_this", "activate_conquer_effects", "make_new_choices"}:
+        raise ValueError(f"{op} is applied by apply_program (the turn queue; the resolving chain item)")
+
     elif op == "trigger_base_cost":
         # paid at finalization (trigger_cost.py); apply_program only checks the receipt
         raise ValueError("trigger_base_cost is paid when the triggered ability is finalized (Core 383.3.b.1); "
@@ -5439,6 +5784,15 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise ValueError(f"{op} applies only to board objects and a Legend in its Legend Zone")
         desired = op == "exhaust"
         before = new_state["objects"][object_id]["exhausted"]
+        prevented = (battlefield_restriction(new_state, "no_ready_enemy_units_gear",
+                                             new_state["objects"][object_id].get("controller"))
+                     if op == "ready" and new_state["objects"][object_id]["kind"] in {"unit", "gear"} else None)
+        if prevented is not None:
+            # package 11 (Mageseeker Warden, 358.3.a): an impossible instruction, skipped as it resolves
+            trace.update({"object_id": object_id, "before": before, "after": before, "outcome": "no_op",
+                          "reason": "ready_prevented", "prevented_by": prevented,
+                          "rule_locators": list(dict.fromkeys(trace["rule_locators"] + ["Core 358.3.a"]))})
+            return new_state, trace
         new_state["objects"][object_id]["exhausted"] = desired
         trace.update({"object_id": object_id, "before": before, "after": desired})
         if before == desired:
@@ -5637,6 +5991,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # Core 323 step 3a / 808.2: the abilities are noted *before* the card
         # moves to the Trash, with its location and attributes as they are now.
         pending_triggers = copy.deepcopy(object_triggers(new_state, object_id, "death_triggers"))
+        # package 11: leaving the board by dying is leaving it (leave_board_triggers)
+        leaving_triggers = leave_board_triggers(new_state, object_id)
+        # 2026-10-12 (package 11, Kog'Maw - Caustic; GPT PACKAGE11 ruling 3): where it was as its abilities were noted,
+        # before it moves (Core 808.1.d.3) - what its "my battlefield" reads when the trigger resolves
+        noted = ({"kind": "battlefield", "battlefield": location[1]} if location[0] == "battlefield"
+                 else {"kind": "base", "player": location[1]})
+        for trigger in pending_triggers:
+            trigger["noted_location"] = dict(noted)
         deathknell = {trigger["trigger_id"] for trigger in deathknell_instances(new_state, object_id)}
         for trigger in pending_triggers:
             trigger["deathknell"] = trigger["trigger_id"] in deathknell
@@ -5644,6 +6006,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # board (a token ceases to exist below, 186.1, and still died)
         died_as_unit = characteristics(new_state, object_id).get("kind") == "unit"
         controller_at_death = obj.get("controller")
+        extra_at_death = obj.get(DEATHKNELL_EXTRA_FIELD)
         # 2026-10-04 (package 8, GPT ruling 7): the Might it had as it died, for an instruction that compares with "the
         # killed unit" afterwards (Core 359.3.e.12: information about an object that changed zones is its last known)
         might_at_death = effective_might(new_state, object_id) if died_as_unit else None
@@ -5671,8 +6034,10 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             "kill_mode": effect.get("kill_mode", "active"),
             "destination": destination,
             "attributed_sources": effect.get("attributed_sources", []),
-            "pending_triggers": pending_triggers,
+            "pending_triggers": pending_triggers + leaving_triggers,
             "disabled_replacements": disabled_replacements,
+            **({"deathknell_extra_source": {"controller": controller_at_death, "extra_times": extra_at_death}}
+               if _extra_times(extra_at_death) else {}),
         })
 
     elif op == "look_at_top":
@@ -5685,6 +6050,45 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                       "objects_hash": _ids_hash(new_state, looked), "deck_order_unchanged": True, "burn_out": False,
                       "completion": "full" if len(looked) == count else ("partial" if looked else "none")})
         if not looked:
+            trace["outcome"] = "no_op"
+
+    elif op == "banish_one_looked":
+        # 2026-10-13 package 11 (Promising Future): one of the cards its player looked at - chosen by that player,
+        # privately - leaves the Main Deck for its owner's Banishment as a new object (Core 427.1, 124). Nothing looked
+        # at, nothing banished
+        player_id = effect.get("player")
+        if player_id not in new_state["players"]:
+            raise ValueError("banish_one_looked requires a known player")
+        candidates = _session_cards(new_state, player_id, "main_deck")
+        spec = {"selection_kind": "single", "from": "revealed", "by": player_id, "visibility": "private_to_chooser",
+                "identity_binding": True}
+        chosen, meta = (resolve_choice(new_state, spec, decision_ref=effect.get("decision_ref") or f"{effect.get('effect_id')}:pick",
+                                       decisions=decisions, controller=player_id, candidates=candidates)
+                        if candidates else ([], {}))
+        identities = {}
+        for object_id in chosen:
+            new_state["players"][player_id]["zones"]["main_deck"].remove(object_id)
+            new_state["players"][new_state["objects"][object_id]["owner"]]["zones"]["banishment"].append(object_id)
+            identities[object_id] = _bump_identity(new_state, object_id)
+        _drop_reveals(new_state, chosen)
+        trace.update({"player": player_id, "objects": list(chosen), "identities_after": identities,
+                      "objects_visible_to": [player_id], "selection": {k: v for k, v in meta.items() if k != "choice"},
+                      "completion": "full" if chosen else "none"})
+        if not chosen:
+            trace["outcome"] = "no_op"
+
+    elif op == "recycle_looked_rest":
+        # 2026-10-13 package 11 (Promising Future): the cards its player looked at that are still in that Main Deck - as
+        # one Recycle (Core 416), in a random order (416.5)
+        player_id = effect.get("player")
+        if player_id not in new_state["players"]:
+            raise ValueError("recycle_looked_rest requires a known player")
+        rest = _session_cards(new_state, player_id, "main_deck")
+        new_state, sub = _recycle_batch(new_state, rest, player_id, decisions,
+                                        effect.get("order_ref") or f"{effect.get('effect_id', 'rest')}:order",
+                                        effect.get("effect_id", "rest"))
+        trace.update(sub)
+        if not rest:
             trace["outcome"] = "no_op"
 
     elif op == "stun":
@@ -5729,16 +6133,23 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         player_id = resolve_player_ref(effect.get("player"), decisions, new_state, controller)
         if player_id not in new_state["players"]:
             raise ValueError("reveal requires a known player")
-        zone = "main_deck" if effect.get("from") == "main_deck_top" else "hand"
+        zone = {"main_deck_top": "main_deck", "rune_deck_top": "rune_deck"}.get(effect.get("from"), "hand")
         ids = new_state["players"][player_id]["zones"][zone]
-        wanted = ids[: effect["count"]] if zone == "main_deck" else list(ids)
+        wanted = ids[: effect["count"]] if zone != "hand" else list(ids)
         revealed = _mark_reveals(new_state, player_id, zone, wanted, "all", effect.get("effect_id", "reveal"), "reveal")
-        trace.update({"player": player_id, "from": effect.get("from"), "revealed": [{"object_id": o, "identity": object_identity(new_state, o)} for o in revealed],
+        # package 11 (Twisted Fate - Gambler): a rune revealed from the Rune Deck carries its Domains as they were
+        # then - what "based on its domain" reads, even once it is recycled (GPT PACKAGE11 ruling 18)
+        noted = (lambda o: {"domains": list(new_state["objects"][o].get("domains") or [])}) if zone == "rune_deck" \
+            else (lambda o: {})
+        trace.update({"player": player_id, "from": effect.get("from"),
+                      "revealed": [{"object_id": o, "identity": object_identity(new_state, o), **noted(o)} for o in revealed],
                       "visible_to": "all", "zone_unchanged": True, "burn_out": False,
-                      **({"requested_count": effect["count"]} if zone == "main_deck" else {}),
+                      **({"requested_count": effect["count"]} if zone != "hand" else {}),
                       "completion": "full" if (zone == "hand" or len(revealed) == effect["count"]) else ("partial" if revealed else "none")})
         if not revealed:
             trace["outcome"] = "no_op"
+            if zone == "rune_deck":
+                trace["reason"] = "rune_deck_empty"
 
     elif op == "reveal_until":
         # 2026-10-04 (package 8): the Main Deck's top card, then the next, and so on, until one of the kind is revealed
@@ -5876,6 +6287,9 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
                 raise ValueError(f"banish requires a known object; {object_id!r} is not in the state")
             obj = new_state["objects"][object_id]
             left_from = find_location(new_state, object_id)
+            if zone_class(left_from) == "board":
+                # package 11: noted before it moves (leave_board_triggers)
+                trace.setdefault("pending_triggers", []).extend(leave_board_triggers(new_state, object_id))
             detached_all.extend(detach_records(new_state, object_id, _last_board_location(left_from), host_left_board=True))
             _remove_from_location(new_state, object_id)
             if obj.get("is_token"):
@@ -6355,6 +6769,15 @@ def migrate_legacy_effects(state: dict[str, Any]) -> dict[str, Any]:
 def _next_timestamp(state: dict[str, Any]) -> int:
     """Core 480: a relative comparison, so one past every effect that already applies."""
     return max((e["timestamp"] for e in canonical_effects(state)), default=-1) + 1
+
+
+def leave_board_triggers(state: dict[str, Any], object_id: str) -> list[dict[str, Any]]:
+    """2026-10-12 package 11 (Treasure Trove: "When this leaves the board, draw 1 and channel 1 rune exhausted."; GPT
+    PACKAGE11 ruling 8): the object's abilities that trigger as it leaves the board, however it leaves - killed,
+    returned to a hand, banished - noted before it moves, as a death trigger is (Core 359.3.e.13: what moves can be
+    looked back at). Each is one Pending trigger of the game action that moved it."""
+    return [{**copy.deepcopy(t), "trigger_kind": t.get("trigger_kind", "triggered")}
+            for t in object_triggers(state, object_id, "leave_board_triggers")]
 
 
 def object_triggers(state: dict[str, Any], object_id: str, field: str) -> list[dict[str, Any]]:
@@ -7008,6 +7431,31 @@ def play_prohibition(state: dict[str, Any], player: str) -> dict[str, Any] | Non
     return None
 
 
+# 2026-10-13 package 11 (Mageseeker Warden): restrictions a permanent imposes while it is at a Battlefield - the closed
+# set, each read where its action happens (GPT PACKAGE11 ruling 17):
+#   opponent_units_to_base_only  355.2: an opponent's Unit has no Battlefield among its valid locations as it is played
+#                                (play_transaction); an effect that instructs such a play to a Battlefield is still
+#                                played and finalized, and the play is skipped as it resolves (358.3.a)
+#   no_ready_enemy_units_gear    358.3.a: a spell or ability's "ready" on an enemy Unit or Gear is skipped as it
+#                                resolves; the Awaken Step is neither (turn_cycle readies directly)
+# each kind is its own boolean field on the permanent, so two statements of one card merge without loss
+BATTLEFIELD_RESTRICTIONS = {"opponent_units_to_base_only": "restricts_opponent_units_to_base",
+                            "no_ready_enemy_units_gear": "prevents_ready_enemy_units_gear"}
+
+
+def battlefield_restriction(state: dict[str, Any], kind: str, player: str | None) -> str | None:
+    """The source of an active `kind` restriction that binds `player` - a permanent at a Battlefield, carrying it,
+    controlled by an opponent of `player` - or None."""
+    for source, obj in sorted(state["objects"].items()):
+        if obj.get(BATTLEFIELD_RESTRICTIONS[kind]) is not True:
+            continue
+        where = find_location(state, source)
+        if where is not None and where[0] == "battlefield" and player is not None \
+                and not same_side(state, obj.get("controller"), player):
+            return source
+    return None
+
+
 def granted_play_permissions(state: dict[str, Any], card: str, actor: str) -> list[str]:
     """The play permissions permanents on the board grant to `card` played by `actor` (Core
     355.2.b): each friendly permanent - one on `actor`'s side - on the board whose
@@ -7305,6 +7753,57 @@ def current_might(obj: dict[str, Any]) -> int:
     return obj["base_might"]
 
 
+DEATHKNELL_EXTRA_FIELD = "deathknell_extra_times"
+
+
+def _extra_times(value: Any) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 1 else 0
+
+
+def group_pending_triggers(events: list[dict[str, Any]], after: dict[str, Any]) -> list[dict[str, Any]]:
+    """2026-10-12 package 11 (Karthus - Eternal: "Your [Deathknell] effects trigger an additional time."; GPT PACKAGE11
+    ruling 1). `events` are the events of ONE game action - deaths from one instruction or one Cleanup are simultaneous
+    (Core 370.1.a.2) - and `after` the state once all of them were applied. Each Deathknell trigger among them triggers
+    once more for every such static its controller has that was on the board as these deaths were noted, before any of
+    them moved (Core 808.1.d.2; Cleanup 323.4 before 323.5): a source still on the board afterwards, or one that died in
+    this same group (its kill recorded it, deathknell_extra_source). A source that left the board by a Replacement Effect
+    instead of dying does not count (the replacement is applied first); one that died in an earlier, separate action is
+    not here at all. The result does not depend on the order the deaths were applied in: any copies an inner,
+    one-object application added are dropped and computed again for the whole group. Only real Deathknell triggers are
+    multiplied - not another death trigger of the same object. Returns every pending trigger of the group, the copies
+    included, and leaves each event's own list with its copies."""
+    sources: list[tuple[str, str | None, int]] = []
+    died = {}
+    for event in events:
+        record = event.get("deathknell_extra_source") if event.get("op") == "kill" else None
+        if isinstance(record, dict) and _extra_times(record.get("extra_times")):
+            died[event.get("object_id")] = record
+    for oid in sorted(set(after.get("objects") or {}) | set(died)):
+        obj = (after.get("objects") or {}).get(oid)
+        if obj is not None and zone_class(find_location(after, oid)) == "board" and _extra_times(obj.get(DEATHKNELL_EXTRA_FIELD)):
+            sources.append((oid, obj.get("controller"), obj[DEATHKNELL_EXTRA_FIELD]))
+        elif oid in died:
+            sources.append((oid, died[oid].get("controller"), died[oid]["extra_times"]))
+    every = []
+    for event in events:
+        if "pending_triggers" not in event:
+            continue
+        own = [t for t in event["pending_triggers"] if not t.get("multiplied_by")]
+        copies = []
+        for trigger in own:
+            if not trigger.get("deathknell"):
+                continue
+            for oid, controller, extra in sources:
+                if controller != trigger.get("controller"):
+                    continue
+                for k in range(extra):
+                    copies.append({**copy.deepcopy(trigger), "trigger_id": f"{trigger['trigger_id']}#extra:{oid}:{k + 1}",
+                                   "multiplied_by": oid, "rule_locators": ["Core 383.3", "Core 808.1.d.2", "Core 370.1.a.2"]})
+        event["pending_triggers"] = own + copies
+        every.extend(event["pending_triggers"])
+    return every
+
+
 def deathknell_instances(state: dict[str, Any], object_id: str) -> list[dict[str, Any]]:
     """Core 808: which of a dying permanent's death triggers are Deathknell.
 
@@ -7316,7 +7815,13 @@ def deathknell_instances(state: dict[str, Any], object_id: str) -> list[dict[str
     """
     if not has_keyword(state, object_id, "deathknell"):
         return []
-    return [dict(trigger) for trigger in object_triggers(state, object_id, "death_triggers")]
+    triggers = object_triggers(state, object_id, "death_triggers")
+    # 2026-10-12 (package 11, GPT PACKAGE11 ruling 1): an object with a Deathknell AND another ability that triggers on
+    # its own death (Core 323.4 names both) says which is which on each descriptor (`keyword`); only the Deathknell one
+    # is Deathknell. An object whose descriptors name none is read as before - every death trigger is its Deathknell
+    if any("keyword" in trigger for trigger in triggers):
+        return [dict(trigger) for trigger in triggers if trigger.get("keyword") == "deathknell"]
+    return [dict(trigger) for trigger in triggers]
 
 
 VISION_PROGRAM_PREFIX = "keyword:vision"
@@ -7796,6 +8301,7 @@ def apply_simultaneous_kill_batch(
             return {**base, "valid": True, "committed": False, "unsupported": True,
                     "reason_code": exc.reason_code, "reason": str(exc), "trace": trace}
         killed.append(object_id)
+    group_pending_triggers([event for event in trace if event.get("phase") == "unmodified_simultaneous_events"], current)
     pending_triggers = [trigger for event in trace for trigger in event.get("pending_triggers", [])]
     return {
         **base, "valid": True, "committed": True, "unsupported": False,
@@ -8136,6 +8642,10 @@ def choice_candidates(state: dict[str, Any], spec: dict[str, Any], chooser: str,
         ids = list(state["players"][chooser]["zones"]["hand"])
     elif source == "trash":
         ids = list(state["players"][chooser]["zones"]["trash"])
+    elif source == "trashes":
+        # 2026-10-12 (package 11, Forge of the Future; GPT PACKAGE11 ruling 7): "cards from trashes" - every player's
+        # trash, read as the instruction executes (Core 416.6: chosen then, not targets)
+        ids = [c for player in sorted(state["players"]) for c in state["players"][player]["zones"].get("trash", [])]
     elif source == "main_deck_top":
         ids = list(state["players"][chooser]["zones"]["main_deck"][: spec["top"]])
     elif source == "revealed":
@@ -8575,6 +9085,32 @@ def resolve_location_ref(ref: dict[str, Any], state: dict[str, Any], program: di
     moment the object at that id is no longer that object - never resolved
     against whatever sits there now (Core 355.7's own principle - a reference
     does not silently retarget to a substitute)."""
+    if ref.get("kind") == "trigger_event_destination":
+        # package 11: a target reads this through _bind_location_ref (a Base destination too); found by criteria, only a
+        # Battlefield destination is a place to look
+        destination = program.get("noted_location")
+        if not isinstance(destination, dict):
+            raise SourceUnavailable("the trigger's instruction moved nothing; there is no destination", LOCATION_REF_NO_DESTINATION)
+        if destination.get("kind") != "battlefield":
+            raise SelectionBindingRefused(f"a Base destination ({destination}) is read by a target selector only",
+                                          LOCATION_REF_NOT_AT_BATTLEFIELD)
+        return destination["battlefield"]
+    if ref.get("kind") == "program_source_noted_battlefield":
+        # 2026-10-12 (package 11, GPT PACKAGE11 ruling 3): the Battlefield the death trigger's source was at as its
+        # abilities were noted (Core 808.1.d.3), as its chain item recorded it; a source that died in a Base has no
+        # battlefield - 'my battlefield' reads null (359.3.e.12) and nothing is chosen instead. A program with no
+        # noted location is not a death trigger's, and is refused by name
+        noted = program.get("noted_location")
+        if not isinstance(noted, dict):
+            raise SelectionBindingRefused(
+                "'my battlefield' of a death trigger reads the location noted as it died; the program carries none",
+                LOCATION_REF_ABSENT)
+        if noted.get("kind") != "battlefield":
+            raise SourceUnavailable(
+                f"the source died at no battlefield ({noted}); 'my battlefield' reads null", LOCATION_REF_NOT_AT_BATTLEFIELD)
+        if noted["battlefield"] not in (state.get("battlefields") or {}):
+            raise SourceUnavailable(f"the noted battlefield {noted['battlefield']!r} is not in the game", LOCATION_REF_ABSENT)
+        return noted["battlefield"]
     source = program.get("source_object")
     declared = program.get("source_identity")
     if isinstance(source, str) and source in (state.get("battlefields") or {}) and source not in state["objects"]:
@@ -8626,6 +9162,17 @@ def _bind_location_ref(selector: dict[str, Any], state: dict[str, Any], program:
     if "location_ref" not in selector:
         return selector
     concrete = {k: v for k, v in selector.items() if k != "location_ref"}
+    if selector["location_ref"].get("kind") == "trigger_event_destination":
+        # package 11 (Dragon's Rage): "at its destination" - where the trigger's instruction moved its object, a
+        # Battlefield or a Base, as the chain item recorded it; nothing moved: no object is at it (Core 402.4)
+        destination = program.get("noted_location")
+        if not isinstance(destination, dict):
+            concrete["location_ref_refused"] = LOCATION_REF_NO_DESTINATION
+        elif destination.get("kind") == "battlefield":
+            concrete["location_battlefield"] = destination["battlefield"]
+        else:
+            concrete["location_base"] = destination["player"]
+        return concrete
     try:
         concrete["location_battlefield"] = resolve_location_ref(selector["location_ref"], state, program)
     except SelectionBindingRefused as refusal:
@@ -8636,7 +9183,23 @@ def _bind_location_ref(selector: dict[str, Any], state: dict[str, Any], program:
 def bind_program_context(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
     """Everything a selector reads from its own program: the source it excludes
     ("another"), and the source's current Battlefield ("here")."""
-    return _bind_location_ref(_bind_source_exclusion(selector, state, program), state, program)
+    return _bind_location_ref(_bind_referent_exclusion(_bind_source_exclusion(selector, state, program), program),
+                              state, program)
+
+
+def _bind_referent_exclusion(selector: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
+    """2026-10-12 (package 11, Dragon's Rage): "another enemy unit" than the one the trigger's event was about - bound to
+    the identity the event recorded (resolution_bridge.bind_trigger_event). A program with no event cannot say which
+    object is excluded: the target is illegal by name, never "any unit"."""
+    if not selector.get("exclude_trigger_event_object"):
+        return selector
+    concrete = {k: v for k, v in selector.items() if k != "exclude_trigger_event_object"}
+    event = program.get("trigger_event")
+    if isinstance(event, dict) and isinstance(event.get("identity"), str):
+        concrete["excluded_referent_identity"] = event["identity"]
+    else:
+        concrete["referent_exclusion_refused"] = OBJECT_REF_NO_TRIGGER_EVENT
+    return concrete
 
 
 def _bind_source_exclusion(selector: dict[str, Any], state: dict[str, Any], program: dict[str, Any]) -> dict[str, Any]:
@@ -8970,8 +9533,13 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 if predicate.get("kind") in ("target_state_holds", "predicate_not_met"):
                     holds, predicate_locators = _local_predicate(predicate, effect, current, decisions, trace)
                 else:
+                    source = program.get("source_object") if isinstance(program.get("source_object"), str) else None
+                    # 2026-10-12 (package 11, Noxian Guillotine): "another card" read on a resolving spell is another than
+                    # that spell (Core 812.1.c) - the chain item's card (resolution_bridge), for that condition only
+                    if source is None and _names_another_card(predicate.get("condition")):
+                        source = (context or {}).get("resolving_card")
                     holds, predicate_locators = evaluate_predicate(predicate, program.get("cost_receipt"), {e.get("effect_id"): e for e in trace}, current, program.get("controller"),
-                                                                  source=program.get("source_object") if isinstance(program.get("source_object"), str) else None)
+                                                                  source=source)
             except ValueError as exc:
                 return {**base, "valid": False, "committed": False, "failed_effect_index": index, "errors": [str(exc)], "trace": trace}
             if holds is None:
@@ -9099,7 +9667,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "applied" if applied else "no_op",
                      "completion": "full" if objects and applied == len(objects) else ("partial" if applied else "none"),
                      "linked_effect_id": effect["linked_each"], "objects": list(objects or []), "expansion_trace": sub_trace,
-                     "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                     "pending_triggers": group_pending_triggers(sub_trace, current),
                      "rule_locators": ["Core 359.3.e.14"], "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
@@ -9307,6 +9875,36 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             per = dict(effect["count_per"])
             effect = {**{k: v for k, v in effect.items() if k != "count_per"}, "count": effect["count"] * found}
             linked_reads["count_read"] = {"per": per, "linked_count": found, "printed_count": effect["count"] // found,
+                                          "rule_locators": ["Core 359.3.e.14"]}
+        # 2026-10-12 package 11 (Teemo - Strategist): "for each card with [Hidden] revealed this way"
+        if isinstance(effect.get("count_per"), dict) and effect["count_per"].get("kind") == LINKED_REVEALED_COUNT:
+            spec = effect["count_per"]
+            shown = next((e for e in trace if e.get("effect_id") == spec["effect_id"] and e.get("op") == "reveal"), None)
+            if shown is None or shown.get("outcome") in IGNORED_OUTCOMES:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "skipped_linked_dependency",
+                         "completion": "none", "linked_effect_id": spec["effect_id"],
+                         "reason": "the reveal whose cards this counts did not happen",
+                         "rule_locators": ["Core 359.3.e.14", "Core 359.3.e.14.a"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            counted = [r["object_id"] for r in shown.get("revealed") or []
+                       if r.get("object_id") in current["objects"]
+                       and object_identity(current, r["object_id"]) == r.get("identity")
+                       # a card with [Hidden] is one with the keyword (Core 811), as `with_hidden` reads it
+                       and current["objects"][r["object_id"]].get(spec["keyword"]) is True]
+            if not counted:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "linked_count_zero", "linked_effect_id": spec["effect_id"],
+                         "counted": [], "rule_locators": ["Core 359.3.e.14"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            printed = effect["amount"]
+            effect = {**{k: v for k, v in effect.items() if k != "count_per"}, "amount": printed * len(counted)}
+            linked_reads["count_read"] = {"per": dict(spec), "counted": counted, "printed_amount": printed,
                                           "rule_locators": ["Core 359.3.e.14"]}
         # 2026-09-27: "draw 1 for each of your [Mighty] units" - the count read now (708, 710)
         if effect.get("count_per") is not None:
@@ -9520,6 +10118,28 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
+        if effect.get("op") == "recycle" and effect.get("revealed_by") is not None:
+            # package 11: "the revealed cards" - what that reveal showed, each still the object it was (Core 124)
+            shown = next((e for e in trace if e.get("effect_id") == effect["revealed_by"] and e.get("op") == "reveal"), None)
+            if shown is None or shown.get("outcome") in IGNORED_OUTCOMES:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "skipped_linked_dependency",
+                         "completion": "none", "linked_effect_id": effect["revealed_by"],
+                         "reason": "the reveal whose cards this recycles did not happen",
+                         "rule_locators": ["Core 359.3.e.14", "Core 359.3.e.14.a"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            still = [r["object_id"] for r in shown.get("revealed") or []
+                     if r.get("object_id") in current["objects"] and object_identity(current, r["object_id"]) == r.get("identity")]
+            effect = {**{k: v for k, v in effect.items() if k != "revealed_by"}, "objects": still}
+            if not still:
+                event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "no_op",
+                         "completion": "none", "reason": "none of the revealed cards is still that card",
+                         "rule_locators": ["Core 124"], "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
         if effect.get("op") == "recycle" and effect.get("rest_of") is not None:
             # package 6: "Recycle the rest." - what the group's choices were offered and did not take,
             # each still the object it was when offered (Core 124: a card that changed zones since is
@@ -9586,7 +10206,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                      "completion": "full" if members and applied == len(members) else ("partial" if applied else "none"),
                      "group": effect["group_ref"], "affected_objects": members, "not_in_play": gone,
                      "affected_are_targets": False, "expansion_trace": sub_trace,
-                     "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                     "pending_triggers": group_pending_triggers(sub_trace, current),
                      "rule_locators": list(dict.fromkeys(["Core 355.10.e", "Core 124"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                      "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
             trace.append(event)
@@ -9816,13 +10436,217 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             event = {"index": index, "effect_id": effect_id, "op": effect["op"], "outcome": "applied" if applied else "no_op",
                      "completion": "full" if applied == 2 else ("partial" if applied else "none"), "units": ids, "might_snapshot": snapshot,
                      "simultaneous": True, "batch": "one_pre_deal_state_prevent_only", "not_combat_damage": True, "sources": {ids[0]: ids[1], ids[1]: ids[0]}, "expansion_trace": sub_trace,
-                     "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                     "pending_triggers": group_pending_triggers(sub_trace, current),
                      "rule_locators": list(dict.fromkeys(OP_RULES["mutual_damage_current_might"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                      "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
             for _, meta in pair:
                 event.update(meta)
             if source_meta:
                 event["source_slot"] = source_meta
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "make_new_choices":
+            # 2026-10-13 package 11 (Mystic Reversal, GPT ruling 13; Core 751-755): its new controller may remake any subset
+            # of the spell's targets, Move destinations and mode - each new choice something it did not choose before
+            # (751.1), legal now for the new controller (753.1); what is not remade stays as it was, never re-read; costs a
+            # new choice would incur are ignored (755). The spell's own program comes from the caller (context
+            # chain_programs), checked against the Chain item's program id
+            import engine_decisions as ed
+            got = next((e for e in trace if e.get("effect_id") == effect["linked"]["effect_id"]), {})
+            item_id, chooser = got.get("chain_item_id"), got.get("controller_after")
+            entry = (current.get("chain_items") or {}).get(item_id) if item_id else None
+            base_event = {"index": index, "effect_id": effect_id, "op": "make_new_choices", "chain_item_id": item_id,
+                          "player": chooser, "rule_locators": list(OP_RULES["make_new_choices"]),
+                          "before_state_hash": before_hash, "after_state_hash": before_hash}
+            if entry is None or got.get("outcome") not in {"applied", None}:
+                event = {**base_event, "outcome": "skipped_linked_dependency", "completion": "none",
+                         "reason": "no spell changed control"}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            # ("You may": the instruction's own optional decision, asked of its controller before it runs - the program's
+            # controller is the player who took the spell)
+            asked = [d for kind in ("target_selection", "location_selection", "option_selection")
+                     for d in ed.entries(decisions, kind=kind) if str(d.get("decision_id", "")).startswith("new:")]
+            if not asked:
+                # chosen to make new choices, and none made - nothing to check, nothing changes (Core 753)
+                event = {**base_event, "outcome": "no_op", "completion": "none", "reason": "no_new_choice_made"}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            spell = ((context or {}).get("chain_programs") or {}).get(item_id)
+            if not isinstance(spell, dict) or spell.get("program_id") != entry.get("effect_program_id"):
+                return {**base, "valid": True, "committed": False, "unsupported": True,
+                        "reason_code": "new_choices_program_unknown",
+                        "reason": f"the program of {item_id!r} ({entry.get('effect_program_id')!r}) is not supplied, so its "
+                                  f"choices cannot be checked (Core 753.1)", "failed_effect_index": index, "trace": trace}
+            current = copy.deepcopy(current)
+            entry = current["chain_items"][item_id]
+            played = [dict(p) for p in entry.get("played_targets") or []]
+            chosen_before = {v for p in played if p.get("kind") == "target_selection" for v in p.get("value") or []}
+            remade, problem = [], None
+            # the mode (752.1)
+            modal = spell.get("modal")
+            option_effects = list(spell.get("effects") or [])
+            if modal:
+                ref = modal["decision_ref"]
+                now = (entry.get("mode_selection") or {}).get("option_id")
+                new_mode = next((e for e in ed.entries(decisions, kind="option_selection") if e.get("decision_id") == f"new:{ref}"), None)
+                if new_mode is not None:
+                    options = {o["option_id"]: o for o in modal["options"]}
+                    if new_mode.get("controller") != chooser or new_mode.get("value") not in options or new_mode.get("value") == now:
+                        problem = f"the new mode {new_mode.get('value')!r} is not another of the spell's modes chosen by {chooser}"
+                    else:
+                        entry["mode_selection"] = {"decision_id": ref, "option_id": new_mode["value"]}
+                        remade.append({"mode": new_mode["value"], "was": now})
+                        now = new_mode["value"]
+                option_effects = list(next((o["effects"] for o in modal["options"] if o["option_id"] == now), []))
+            selectors = {}
+            for e in option_effects:
+                for field in ("target", "targets"):
+                    if isinstance(e.get(field), dict) and isinstance(e[field].get("decision_ref"), str):
+                        selectors[e[field]["decision_ref"]] = (e[field], e)
+            destinations = {e["destination"]["decision_ref"]: e for e in option_effects
+                            if isinstance(e.get("destination"), dict) and isinstance(e["destination"].get("decision_ref"), str)}
+            # targets (752.1): something not chosen before, legal for the new controller now
+            for d in ed.entries(decisions, kind="target_selection"):
+                if problem or not str(d.get("decision_id", "")).startswith("new:"):
+                    continue
+                ref = d["decision_id"][4:]
+                if ref not in selectors or d.get("controller") != chooser or d.get("stage") != "resolution":
+                    problem = f"{ref!r} is not one of the spell's target choices, remade by {chooser} as this resolves"
+                    break
+                values = list(d.get("value") or [])
+                reused = [v for v in values if v in chosen_before]
+                if not values or reused:
+                    problem = f"a new choice is something the spell did not choose before (Core 751.1): {reused or values}"
+                    break
+                selector = {k: v for k, v in selectors[ref][0].items() if k != "decision_ref"}
+                for v in values:
+                    legal, why = evaluate_target(current, {**selector, "object_id": v}, chooser)
+                    if not legal:
+                        problem = f"{v!r} is not a legal new choice for {ref!r} ({why}; Core 753.1)"
+                        break
+                if problem:
+                    break
+                record = {"decision_id": ref, "stage": "play_declaration", "kind": "target_selection", "controller": chooser,
+                          "value": values, "selection_identities": {v: object_identity(current, v) for v in values}}
+                was = next((p.get("value") for p in played if p.get("decision_id") == ref), None)
+                played = [p for p in played if p.get("decision_id") != ref] + [record]
+                remade.append({"target": ref, "was": was, "now": values})
+            # Move destinations (752.1): another legal one
+            for d in ed.entries(decisions, kind="location_selection"):
+                if problem or not str(d.get("decision_id", "")).startswith("new:"):
+                    continue
+                ref = d["decision_id"][4:]
+                old = next((p for p in played if p.get("decision_id") == ref and p.get("kind") == "location_selection"), None)
+                move = destinations.get(ref)
+                moved_ref = ((move or {}).get("target") or {}).get("decision_ref")
+                moved = next((p["value"][0] for p in played if p.get("decision_id") == moved_ref and p.get("value")), None)
+                offered = move_destination_candidates(current, moved, move["destination"]) if move and moved else []
+                if old is None or d.get("controller") != chooser or d.get("value") == old.get("value") or d.get("value") not in offered:
+                    problem = f"the new destination {d.get('value')!r} is not another legal one for {ref!r} (Core 753.1)"
+                    break
+                played = [p for p in played if p.get("decision_id") != ref] + [
+                    {"decision_id": ref, "stage": "play_declaration", "kind": "location_selection", "controller": chooser,
+                     "value": d["value"]}]
+                remade.append({"destination": ref, "was": old.get("value"), "now": d["value"]})
+            missing = sorted(r for r in selectors if not any(p.get("decision_id") == r for p in played))
+            if not problem and missing:
+                problem = f"the new mode needs targets {missing}, which no new choice gives (Core 752.1, 753.1)"
+            if problem:
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "new_choice_illegal",
+                        "reason": problem, "failed_effect_index": index, "trace": trace}
+            entry["played_targets"] = played
+            event = {**base_event, "outcome": "applied" if remade else "no_op", "completion": "full" if remade else "none",
+                     "remade": remade, "costs_incurred_ignored": True, "after_state_hash": hash_value(current)}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "activate_conquer_effects":
+            # 2026-10-13 package 11 (Reckoner's Arena, GPT ruling 15; Core 383.4.g.1): for each unit at the Battlefield -
+            # of either side - each of its conquer effects is checked as if its conquer part were fulfilled: its own
+            # "When I conquer" and a "When you conquer" it carries (383.4.c.2.b, the player being its controller); any
+            # other part of its condition is read now, with that Battlefield as "there"; met, it becomes a Pending item just
+            # as a fresh trigger does, controlled by the unit's controller. A conquer effect working from another zone, or
+            # of anything that is not a unit there, is not one of these
+            try:
+                at = resolve_location_ref(effect["location_ref"], current, program)
+            except (SourceUnavailable, SelectionBindingRefused) as exc:
+                at = None
+                why = str(exc)
+            battlefield = (at or {}).get("battlefield") if isinstance(at, dict) else at
+            activated, skipped = [], []
+            if battlefield in current.get("battlefields", {}):
+                for unit_id in list(current["battlefields"][battlefield]["objects"]):
+                    obj = current["objects"].get(unit_id) or {}
+                    if obj.get("kind") != "unit":
+                        continue
+                    for descriptor in obj.get("conquer_triggers") or []:
+                        if descriptor.get("functions_from"):
+                            continue
+                        condition = descriptor.get("condition")
+                        if condition is not None and not evaluate_condition(current, condition, controller=obj["controller"],
+                                                                            object_id=battlefield):
+                            skipped.append({"unit": unit_id, "trigger_id": descriptor.get("trigger_id"),
+                                            "why": "the rest of its condition is not met"})
+                            continue
+                        copied = {k: v for k, v in descriptor.items() if k not in ("scope", "condition")}
+                        copied.update({"controller": obj["controller"], "source_object": unit_id,
+                                       "trigger_kind": "triggered", "batch_id": f"activate:{battlefield}:{effect_id}",
+                                       "batch_sequence": 0, "scored_battlefield": battlefield, "how": "conquer",
+                                       "scope": descriptor.get("scope", "unit_here"), "activated_by": effect_id,
+                                       "source_identity": object_identity(current, unit_id) or f"{unit_id}@0"})
+                        activated.append(copied)
+            event = {"index": index, "effect_id": effect_id, "op": "activate_conquer_effects",
+                     "outcome": "applied" if activated else "no_op", "completion": "full" if activated else "none",
+                     "battlefield": battlefield, "activated": [(d["source_object"], d["trigger_id"]) for d in activated],
+                     "not_activated": skipped, "pending_triggers": activated,
+                     **({} if battlefield else {"reason": "no_battlefield_here"}),
+                     "rule_locators": list(OP_RULES["activate_conquer_effects"]),
+                     "before_state_hash": before_hash, "after_state_hash": before_hash}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "take_additional_turn":
+            # 2026-10-13 package 11 (Time Warp, Core 735-738): an Additional Turn owned by the player, inserted after
+            # the current turn - ahead of any queued before it (738: each is inserted after the current turn), the Turn
+            # Order unchanged (737). The turn transition (turn_cycle.begin_turn) takes it
+            player = program.get("controller") if effect.get("player") == "$controller" else effect.get("player")
+            if player not in current["players"]:
+                return {**base, "valid": False, "committed": False, "failed_effect_index": index,
+                        "errors": [f"take_additional_turn: unknown player {player!r}"], "trace": trace}
+            current = copy.deepcopy(current)
+            made = {"player": player, "created_by": str(program.get("program_id")), "effect_id": effect_id,
+                    "turn_id": current.get("turn_id", DEFAULT_TURN_ID)}
+            current["additional_turns"] = [made] + list(current.get("additional_turns") or [])
+            event = {"index": index, "effect_id": effect_id, "op": "take_additional_turn", "outcome": "applied",
+                     "completion": "full", "player": player, "queued": [q["player"] for q in current["additional_turns"]],
+                     "rule_locators": list(OP_RULES["take_additional_turn"]),
+                     "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "banish_this":
+            # 2026-10-13 package 11 (Time Warp): the resolving card's own instruction - it leaves the Chain for its
+            # owner's banishment instead of the trash (Core 157, 427.1); the resolution bridge moves it once its
+            # instructions are done. Not resolving from the Chain (context resolving_chain_item): nothing to banish
+            item = (context or {}).get("resolving_chain_item")
+            entry = (current.get("chain_items") or {}).get(item) if item else None
+            if not entry or not entry.get("card"):
+                event = {"index": index, "effect_id": effect_id, "op": "banish_this", "outcome": "no_op", "completion": "none",
+                         "reason": "not_a_resolving_card", "player": program.get("controller"),
+                         "rule_locators": list(OP_RULES["banish_this"]), "before_state_hash": before_hash,
+                         "after_state_hash": before_hash}
+            else:
+                current = copy.deepcopy(current)
+                current["chain_items"][item]["leave_replacement"] = {
+                    "kind": "banish", "created_by": str(program.get("program_id")), "effect_id": effect_id}
+                event = {"index": index, "effect_id": effect_id, "op": "banish_this", "outcome": "applied", "completion": "full",
+                         "chain_item_id": item, "card": entry["card"], "player": program.get("controller"),
+                         "replacement_id": f"leave:{item}", "rule_locators": list(OP_RULES["banish_this"]),
+                         "before_state_hash": before_hash, "after_state_hash": hash_value(current)}
             trace.append(event)
             outcomes[effect_id] = event["outcome"]
             continue
@@ -9884,6 +10708,9 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 # it became in its owner's Banishment (Core 124, 427). Nothing banished, or the card moved on since:
                 # nothing is played (419.3.c, 359.3.e.6); the instruction never picks another card
                 ref = effect["linked"]["effect_id"]
+                if effect["linked"].get("per_player"):
+                    # package 11 (Promising Future): this iteration's player's own banish (its each_player copy)
+                    ref = f"{ref}@{effect.get(EACH_PLAYER_FIELD)}"
                 source_event = next((e for e in trace if e.get("effect_id") == ref), None)
                 if source_event is None or source_event.get("op") not in LIMITED_PLAY_LINKED_OPS:
                     return {**base, "valid": False, "committed": False, "failed_effect_index": index, "trace": trace,
@@ -10047,6 +10874,13 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             affected_ids: list[str] = []
             # 2026-09-27 package 6: "other" - the program's own source, as it is now, is left out
             # (the sentinel is the only value validate_program admits here)
+            # 2026-10-13 package 11 (Twisted Fate - Gambler: "1 to all other enemy units here"): what an earlier
+            # instruction of this program targeted is left out, as it was when that instruction acted
+            excluded_targets: set[str] = set()
+            if criteria.get("exclude_targets_of"):
+                acted = next((e for e in trace if e.get("effect_id") == criteria["exclude_targets_of"]), {})
+                excluded_targets = {acted["object_id"]} if isinstance(acted.get("object_id"), str) else set()
+                excluded_targets |= {x.get("object_id") for x in acted.get("expansion_trace") or [] if x.get("object_id")}
             excluded_identity = None
             if criteria.get("exclude_source_identity") == SOURCE_IDENTITY_SENTINEL:
                 source = program.get("source_object")
@@ -10064,6 +10898,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     if not object_state_holds(obj, criteria):
                         continue
                     if excluded_identity is not None and object_identity(current, candidate) == excluded_identity:
+                        continue
+                    if candidate in excluded_targets:
                         continue
                     if active_combat is not None and (obj.get("combat_designation") or {}).get("combat_id") != active_combat.get("combat_id"):
                         continue  # present but not yet designated: not "in combat" (740.2.c)
@@ -10164,7 +11000,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "criteria": dict(criteria), "criteria_snapshot_hash": snapshot_hash, "expansion_trace": sub_trace,
                 **({"amount_read": group_read["might"], "amount_read_from": group_read} if group_read else {}),
                 **({"active_combat": dict(active_combat) if active_combat else None} if criteria.get("location") == "active_combat" else {}),
-                "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                "pending_triggers": group_pending_triggers(sub_trace, current),
                 "rule_locators": list(dict.fromkeys(["Core 355.5.a", "Core 355.10.b", "Core 355.10.d"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                 "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,
             }
@@ -10272,7 +11108,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 "requested_targets": requested, "applied_targets": applied, "invalid_targets": invalid,
                 "below_minimum": below_min,
                 "expansion_trace": sub_trace,
-                "pending_triggers": [t for ev in sub_trace for t in ev.get("pending_triggers", [])],
+                "pending_triggers": group_pending_triggers(sub_trace, current),
                 "rule_locators": list(dict.fromkeys(["Core 355.13", "Core 359.3.e.8"] + [loc for ev in sub_trace for loc in ev.get("rule_locators", [])])),
                 "before_state_hash": before_hash, "after_state_hash": hash_value(current), **selector_meta,
             }
@@ -10460,6 +11296,27 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             linked_reads["subject_read"] = {"object_id": subject_id, "linked_effect_id": subject_event.get("effect_id"),
                                             "bound_identity": linked_identity(snapshots, subject_id, subject_event, after=True),
                                             "rule_locators": ["Core 359.3.e.14"]}
+        if effect.get("op") == "return_to_hand" and isinstance(effect.get("self"), dict):
+            # 2026-10-12 (package 11, Super Mega Death Rocket!; GPT PACKAGE11 ruling 6): "return this from your trash to your
+            # hand" - the program's own source as its chain item recorded it (bind_source_identity), still in its owner's
+            # zone. Gone from it, or back as a new object (Core 124), it is not the "this" the ability is about: the
+            # instruction is ignored (359.3.e.6) - whatever was paid for it stays paid, and no other card is taken
+            source = program.get("source_object")
+            declared = program.get("source_identity")
+            source_obj = current["objects"].get(source) if isinstance(source, str) else None
+            owner = (source_obj or {}).get("owner")
+            in_zone = (source_obj is not None and owner in current["players"]
+                       and source in current["players"][owner]["zones"].get(effect["self"]["from"], []))
+            same = not declared or object_identity(current, source) == declared
+            if not (in_zone and same):
+                event = {"index": index, "effect_id": effect_id, "op": "return_to_hand", "outcome": "no_op",
+                         "completion": "none", "reason": "source_not_in_zone" if not in_zone else "source_identity_changed",
+                         "source_object": source, "rule_locators": ["Core 124", "Core 359.3.e.6"],
+                         "before_state_hash": before_hash, "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            effect = {**{k: v for k, v in effect.items() if k != "self"}, "object_id": source}
         if "destination" in linked_now:
             object_id, destination_event = linked_now["destination"]
             where = find_location(current, object_id) if on_board_as_linked(current, snapshots, object_id, destination_event) else None
@@ -10564,6 +11421,10 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         # A token the program cannot name: a fresh id, minted now (Core 124), and "here" as
         # where it enters - the source's current Battlefield, read now (Core 359.3.f.2); a
         # source that is not at a Battlefield plays no token (2026-09-24)
+        if effect.get("op") == "move_board_object" and (effect.get("destination") or {}).get("restriction") == "here":
+            # package 11 (Blitzcrank - Impassive): "to here" read as the Move executes (Core 359.3.f.2); a destination chosen
+            # at finalization that is no longer here is not carried out (move_destination_no_longer_legal)
+            effect = {**effect, "destination": bind_move_here(effect["destination"], current, program)}
         if effect.get("op") == "play_token" and (effect.get("object_id_ref") is not None
                                                   or isinstance((effect.get("destination") or {}).get("location_ref"), dict)):
             effect = dict(effect)
@@ -10942,6 +11803,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             }
         if event.get("terminal_event") is not None:
             terminal = event["terminal_event"]
+        if event.get("op") == "kill" and "pending_triggers" in event:
+            group_pending_triggers([event], current)
         event.update({"index": index, "effect_id": effect_id, "before_state_hash": before_hash, "after_state_hash": hash_value(current)})
         if linked_reads:
             # 2026-09-27: what a linked reference read (the player, the source), on the event itself
@@ -11054,6 +11917,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         # to refer to, in the artifact rather than only in the engine's head.
         **({"selection_bindings": copy.deepcopy(selection_bindings)} if selection_bindings else {}),
         **({"countered_chain_items": [i for e in trace for i in e.get("countered_chain_items", [])]} if any(e.get("countered_chain_items") for e in trace) else {}),
+        # package 11 (Mystic Reversal): the Chain items whose control changed, for the timing chain
+        **({"controlled_chain_items": [i for e in trace for i in e.get("controlled_chain_items", [])]} if any(e.get("controlled_chain_items") for e in trace) else {}),
         "next_state": current,
         "next_state_hash": hash_value(current),
         "trace": trace,
@@ -11089,6 +11954,37 @@ def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], targe
     if location is None or location[0] != "player":
         raise NotImplementedError(f"{card!r} is not in a player's zone; an effect-driven play takes it from one")
     zone_owner, zone = location[1], location[2]
+    # "If it's a unit, play it here." - "here" is read as this instruction executes (Core 359.3.f.2), before the card
+    # is touched. 2026-10-12 (GPT PACKAGE11 ruling 2, replacing PACKAGE8 ruling 3's named refusal): a source gone, a new
+    # object, or at no Battlefield - its Base included - gives no "here"; the check reads null (359.3.e.12) and the
+    # unit branch cannot be followed, so it is ignored (359.3.e.6). The card stays where it was; what the ability's
+    # controller paid to put it on the Chain stays paid; nothing is put elsewhere instead. A program that declares no
+    # source to read is a malformed program, refused by name as before
+    here = None
+    if entry is not None and entry.get("kind") == "unit_at_source_battlefield" and obj["kind"] == "unit":
+        try:
+            here = resolve_location_ref({"kind": "program_source_current_battlefield"}, state, program)
+        except SourceUnavailable as exc:
+            return state, {"op": "limited_play", "outcome": SOURCE_UNAVAILABLE_OUTCOME, "completion": "none",
+                           "object_id": card, "object_kind": obj["kind"], "reason": "limited_play_here_absent",
+                           "reason_code": exc.reason_code, "message": str(exc), "card_stays": [zone_owner, zone],
+                           "source_object": program.get("source_object"),
+                           "rule_locators": ["Core 359.3.f.2", "Core 359.3.e.12", "Core 359.3.e.6"]}
+        except SelectionBindingRefused as exc:
+            raise NotImplementedError(
+                f"limited_play_here_unreadable: the effect plays the unit {card!r} 'here', and the program gives no "
+                f"source to read it from ({exc.reason_code})") from exc
+    # 2026-10-13 package 11 (Mageseeker Warden, GPT ruling 17, Core 358.3.a): the effect still resolves; a unit it would
+    # play to a Battlefield its player may not play units to is not played - the card stays where it was
+    plays_as = obj["owner"] if player == "owner" else program.get("controller")
+    if here is not None and obj["kind"] == "unit":
+        blocked = battlefield_restriction(state, "opponent_units_to_base_only", plays_as)
+        if blocked is not None:
+            return state, {"op": "limited_play", "outcome": "no_op", "completion": "none", "object_id": card,
+                           "object_kind": obj["kind"], "reason": "limited_play_units_to_base_only",
+                           "prevented_by": blocked, "card_stays": [zone_owner, zone],
+                           "source_object": program.get("source_object"),
+                           "rule_locators": ["Core 358.3.a", "Core 355.2"]}
     working = copy.deepcopy(state)
     ids = working["players"][zone_owner]["zones"][zone]
     zone_index = ids.index(card)
@@ -11110,12 +12006,8 @@ def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], targe
     working["objects"][card]["controller"] = controller
     identity_after = _bump_identity(working, card)
     # 2026-09-28 (package 6, step 2): "If it's a unit, play it here." - the effect names where the unit it
-    # plays enters (Core 355.2.b): the source's Battlefield as this instruction executes (359.3.f.2).
-    # 2026-10-04 (package 8, GPT ruling 3): a source no longer at a Battlefield gives no "here", and the unit may
-    # NOT be put in its Base by default or at another Battlefield chosen instead - the engine does not model
-    # what the rules make of that legal situation, so the unit branch is refused by name (unsupported:
-    # limited_play_here_absent), never resolved some other way. The card's other branch (a non-unit) is not
-    # touched: it enters where it would.
+    # plays enters (Core 355.2.b): the source's Battlefield as this instruction executes (359.3.f.2), read above.
+    # The card's other branch (a non-unit) is not touched: it enters where it would.
     entry_note = None
     if entry is not None and entry.get("kind") == "unit_at_players_base" and obj["kind"] == "unit":
         # package 9 (Portal Rescue): "to their base" - the Base of the player who plays it (Core 355.2.b); nothing to
@@ -11123,13 +12015,6 @@ def _start_limited_play(state: dict[str, Any], cost_basis: dict[str, Any], targe
         record["entry_location"] = {"kind": "base"}
         entry_note = {"entry_location": {"kind": "base"}, "player": controller, "rule_locators": ["Core 355.2.b"]}
     elif entry is not None and obj["kind"] == "unit":
-        try:
-            here = resolve_location_ref({"kind": "program_source_current_battlefield"}, working, program)
-        except SelectionBindingRefused as exc:
-            raise NotImplementedError(
-                f"limited_play_here_absent: the effect plays the unit {card!r} 'here', and its source is at no "
-                f"Battlefield ({exc.reason_code}); putting it elsewhere is not what the card says, and what the rules "
-                f"make of this is not modelled (GPT 2026-10-04, PACKAGE8_INVENTORY ruling 3)") from exc
         record["entry_location"] = {"kind": "battlefield", "battlefield": here}
         entry_note = {"entry_location": dict(record["entry_location"]), "rule_locators": ["Core 355.2.b", "Core 359.3.f.2"]}
     kind = cost_basis["kind"]

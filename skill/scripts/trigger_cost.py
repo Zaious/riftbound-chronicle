@@ -35,6 +35,8 @@ BASE_COST_OP = "trigger_base_cost"
 RULES = ["Core 204.3.a", "Core 383.3.b", "Core 383.3.b.1", "Core 403.1.b.1", "Core 740.4.a.2"]
 DECLINE_RULES = ["Core 404.2", "Core 404.2.a", "Core 383.3.b.1"]
 UNPAYABLE_RULES = ["Core 203.3", "Core 404.2", "Core 404.2.a", "Core 383.3.b.1"]
+# package 11: an opponent's Deflect on an object the ability chose, paid with its costs (Core 809.1.c, 809.1.d, 356.2.a.2)
+DEFLECT_RULES = ["Core 809.1.c", "Core 809.1.c.1", "Core 809.1.d", "Core 809.2", "Core 356.2.a.2", "Core 404.1"]
 # play_transaction.PlayError reason codes that are a decision the payer still owes, not a refusal
 DECISION_CODES = {"add_window_confirmation_required", "resource_allocation_required", "card_selection_required",
                   "card_ordering_required"}
@@ -137,17 +139,21 @@ def _source_is_me(state: dict[str, Any], item: dict[str, Any], *, where: str) ->
 
 
 def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: dict[str, Any],
-                  decisions: dict[str, Any] | None, payment_context: dict[str, Any] | None) -> dict[str, Any]:
+                  decisions: dict[str, Any] | None, payment_context: dict[str, Any] | None, *,
+                  deflect: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Pay the program's base cost for this pending chain item on a copy of the effect state.
 
     Returns {state, receipt, pay_events, events, death_batches}; raises TriggerCostError. The
     input state is never touched: a cost that fails part-way leaves nothing paid (the same
-    all-or-nothing rule the play transaction keeps, Core 358.5)."""
+    all-or-nothing rule the play transaction keeps, Core 358.5).
+
+    2026-10-12 (package 11): `deflect` - the Deflect costs its choices incurred (play_transaction.deflect_costs), mandatory
+    any-domain Power paid with the rest; an ability with no base cost of its own may owe only these."""
     import play_transaction as PT
     import game_events
 
     marker = base_cost(program)
-    if marker is None:
+    if marker is None and not deflect:
         raise TriggerCostError("invalid", "no_base_cost", "the program has no trigger_base_cost to pay")
     actor = item["controller"]
     item_id = item["id"]
@@ -157,7 +163,8 @@ def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: d
     additional: list[dict[str, Any]] = []
     recycle_source = None
     buff_choice = None
-    for part in marker["payment"]:
+    additional += [dict(c) for c in deflect or []]
+    for part in (marker or {}).get("payment") or []:
         kind = part["kind"]
         if kind == "energy":
             base["energy"] += part["amount"]
@@ -183,6 +190,11 @@ def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: d
                                "payment": {"kind": "spend_buff", "object_id": chosen}})
         elif kind == "recycle":
             recycle_source = _source_is_me(working, item, where="trash")
+        elif kind == "discard":
+            # 2026-10-12 (package 11, Super Mega Death Rocket!): N cards of the paying player's hand, chosen as the
+            # ability is finalized (Core 383.3.b.1) - the play transaction's own discard payment (Core 422.1, 422.3)
+            additional.append({"cost_id": "trigger:discard", "mandatory": True,
+                               "payment": {"kind": "discard", "amount": part["amount"]}})
         else:   # validate_program admits nothing else; a hand-built program is refused by name
             raise TriggerCostError("invalid", "unsupported_trigger_cost", f"payment kind {kind!r} is not modelled")
     skeleton = PT.determine_total_cost({"base": base, "additional": additional}, {}, actor=actor)
@@ -233,4 +245,4 @@ def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: d
                                           pay_events=pay_events, state=working) + semantic["events"]
     return {"state": working, "receipt": receipt, "pay_events": pay_events, "events": events,
             "death_batches": semantic["death_batches"], "buff_choice": buff_choice,
-            "cost_hash": cost_hash(marker)}
+            "cost_hash": cost_hash(marker) if marker is not None else hash_value({"deflect": deflect})}

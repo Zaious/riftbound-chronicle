@@ -144,12 +144,24 @@ def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engin
         if (timing_state.get("ending_step") or {}).get("status") != "expired":
             return _refuse(base, "ending_not_expired", "the next turn follows the Expiration Step (317.2, 317.3); run_expiration_step has not completed", ["Core 317.2", "Core 317.3"])
         order = timing_state["turn_order"]
-        player = order[(order.index(timing_state["turn_player"]) + 1) % len(order)]
+        # 2026-10-13 package 11 (Time Warp, Core 735-738): a queued Additional Turn is the next turn; the Turn Order
+        # does not change, and once the queue is empty it resumes after the regular turn it was inserted after
+        queued = list(effect_state.get("additional_turns") or [])
+        resume_after = effect_state.get("turn_queue_resume_after") or timing_state["turn_player"]
+        if queued:
+            player = queued[0]["player"]
+        else:
+            player = order[(order.index(resume_after) + 1) % len(order)]
         prefix, _, number = turn_id.rpartition("-")
         if not number.isdigit():
             return _invalid(base, [f"turn_id {turn_id!r} must end in -<n> to advance (ADR-0010 §6)"])
         next_turn_id = f"{prefix or 'turn'}-{int(number) + 1}"
-        path = "next_turn"
+        path = "additional_turn" if queued else "next_turn"
+        if queued and taken.get(player, 0) == 0:
+            # an Additional Turn before its owner's first turn: whether the First Turn Process applies is not read
+            return _unsupported(base, "additional_turn_before_first_turn", "an Additional Turn for a player who has not "
+                                "taken a turn yet: whether it is their first turn (483.7) is not modelled", ["Core 735", "Core 483.7"],
+                                player=player)
     else:
         return _refuse(base, "phase_order", f"a turn begins from setup or from an expired Ending Phase, not from {phase!r}", ["Core 315", "Core 317.3"])
     facts, problem = (first_turn_process(timing_state, effect_state, player) if taken.get(player, 0) == 0 else ({"extra_channel": False, "skip_draw": False, "source": "not_first_turn", "rule_locators": ["Core 483.7"]}, None))
@@ -166,6 +178,14 @@ def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engin
     next_timing["showdown"] = {"active": False, "kind": None, "focus": None}
     next_effect = copy.deepcopy(effect_state)
     next_effect["turn_id"] = next_turn_id
+    if path == "additional_turn":
+        # package 11: the Additional Turn leaves the queue as it is taken; the regular turn it follows is remembered
+        next_effect["additional_turns"] = queued[1:]
+        next_effect["turn_queue_resume_after"] = resume_after
+        if not next_effect["additional_turns"]:
+            del next_effect["additional_turns"]
+    elif path == "next_turn":
+        next_effect.pop("turn_queue_resume_after", None)
     # ADR-0014 §2 / Core 383.3.e: the per-turn trigger counters are part of the
     # per-turn ledger this step prunes.
     import watchers

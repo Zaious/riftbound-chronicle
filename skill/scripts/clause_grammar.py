@@ -502,6 +502,21 @@ def _lower_deal_enemy_unit_here(params):
                                                             "location_ref": dict(_HERE)}}}}
 
 
+def _lower_deal_enemy_unit_here_and_others(params):
+    """2026-10-13 package 11 (Twisted Fate - Gambler): the chosen enemy unit here takes `amount`; every other enemy unit
+    here (criteria, exclude_targets_of the first instruction) takes `rest`."""
+    amount, rest = int(params["amount"]), int(params["rest"])
+    return {"program_effects": [
+        {"op": "deal_damage", "effect_id": "dmg", "amount": amount, "target": _here_target()},
+        {"op": "deal_damage", "effect_id": "dmg-others", "amount": rest,
+         "affected": {"criteria": {"kind": "unit", "controller_relation": "enemy", "location_ref": dict(_HERE),
+                                   "exclude_targets_of": "dmg"}}}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount": amount, "rest": rest, "target": {"kind": "unit", "controller_relation": "enemy",
+                                                                          "location_ref": dict(_HERE)},
+                               "others": "every other enemy unit here"}}}
+
+
 def _lower_deal_split_among_enemy_units_here(params):
     """"Deal N damage split among any number of enemy units here." (Volibear - Furious) - Core
     355.14: each chosen Unit is a Target (355.14.a), chosen as the ability is finalized (355.14.b),
@@ -1392,12 +1407,27 @@ LOWERINGS = {
     "choose_a_card_from_it_and_they_discard_that_card": _lower_they_discard_a_card_from_the_reveal,
     "counter_a_spell_within_a_cost_limit": _lower_counter_within_cost_limit,
     # 2026-10-08 (package 10, Wind Wall)
+    # 2026-10-13 package 11 (Treasure Trove)
+    # 2026-10-13 package 11 (Time Warp)
+    "take_a_turn_after_this_one": lambda params: {
+        "program_effects": [{"op": "take_additional_turn", "effect_id": "turn", "player": "$controller"}],
+        "ast": {"node": "instruction", "op": "take_additional_turn", "params": {"player": "controller"}}},
+    "banish_this": lambda params: {
+        "program_effects": [{"op": "banish_this", "effect_id": "banish-self"}],
+        "ast": {"node": "instruction", "op": "banish_this", "params": {}}},
+    "kill_this": lambda params: {
+        "program_effects": [{"op": "kill", "effect_id": "kill-self", "object_id": {"object_ref": "program_source"}}],
+        "ast": {"node": "instruction", "op": "kill", "params": {"object": "program_source"}}},
     "counter_a_spell": lambda params: {
         "program_effects": [{"op": "counter", "effect_id": "ctr",
                              "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain",
                                         "kind": "spell"}}],
         "ast": {"node": "instruction", "op": "counter", "params": {}}},
     "if_a_friendly_unit_would_die_kill_this_instead": _lower_death_replacement,
+    # 2026-10-12 package 11 (Symbol of the Solari): a tied combat's result replaced (combat.determine_combat_result)
+    "if_a_combat_where_you_are_the_attacker_ends_in_a_tie_recall_all_units_instead": lambda params: {
+        "object_fields": {"combat_tie_replacement": {"mode": "recall_all_units", "when": "controller_is_attacker"}},
+        "ast": {"node": "passive", "kind": "replacement", "params": {"event": "combat_tie", "mode": "recall_all_units"}}},
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     # 2026-10-08 package 10 (Clockwork Keeper)
     "you_may_pay_a_rune_as_an_additional_cost_to_play_me": lambda params: {
@@ -1432,6 +1462,14 @@ LOWERINGS = {
                              "choice": {"selection_kind": "unordered_set", "from": "trash", "by": "controller",
                                         "count": {"exactly": int(params["count"])}}}],
         "ast": {"node": "instruction", "op": "recycle", "params": {"from": "trash", "count": int(params["count"])}}},
+    # 2026-10-12 package 11 (Forge of the Future, GPT PACKAGE11 ruling 7): up to N cards from any players' trashes, chosen
+    # by the controller as it resolves (not targets, Core 416.6); each to its owner's deck (416.1)
+    "recycle_up_to_n_cards_from_trashes": lambda params: {
+        "program_effects": [{"op": "recycle", "effect_id": "rc", "player": "$controller", "decision_ref": "rc",
+                             "order_ref": "rc-order",
+                             "choice": {"selection_kind": "unordered_set", "from": "trashes", "by": "controller",
+                                        "visibility": "public", "count": {"up_to": int(params["count"])}}}],
+        "ast": {"node": "instruction", "op": "recycle", "params": {"from": "trashes", "count": {"up_to": int(params["count"])}}}},
     # 2026-10-08 package 10 (Teemo - Swift Scout, GPT ruling 1): an alternative payment for its controller's Hide
     "you_may_pay_energy_to_hide_a_card_with_hidden_instead_of_power_any": lambda params: {
         "object_fields": {"hide_alternative_energy": int(params["energy"])},
@@ -1469,6 +1507,25 @@ LOWERINGS = {
             "ast": {"node": "passive", "kind": "replacement",
                     "params": {"event_op": "kill", "mode": "replace_with", "optional": True,
                                "cost": ["power_any 1", "exhaust me"], "instead": ["spend its buff", "recall", "exhaust"]}}},
+    # 2026-10-13 package 11 (Sett - The Boss, its errata text): the same replacement, its unit healed, exhausted, recalled
+    "if_a_buffed_unit_you_control_would_die_you_may_pay_a_exhaust_me_and_spend_its_buff_to_heal_it_exhaust_it_and_recall_it_instead":
+        lambda params: {
+            "state_lists": {"replacement_effects": [{
+                "replacement_id": "$clause_id", "controller": "$controller", "source_object": "$source_object",
+                "mode": "replace_with", "event_op": "kill", "optional": True, "uses_remaining": None,
+                "target_controller_relation": "friendly", "condition": {"kind": "is_buffed"},
+                "cost": {"power_any": 1, "exhaust_source": True},
+                "replacement_effects": [
+                    {"op": "spend_buffs", "effect_id": "spend", "player": "$controller", "object_id": "$affected",
+                     "subject_identity": "$affected_identity"},
+                    {"op": "heal_all_damage", "effect_id": "heal", "object_id": "$affected",
+                     "subject_identity": "$affected_identity"},
+                    {"op": "exhaust", "effect_id": "ex", "object_id": "$affected", "subject_identity": "$affected_identity"},
+                    {"op": "recall", "effect_id": "rc", "object_id": "$affected", "subject_identity": "$affected_identity"}]}]},
+            "ast": {"node": "passive", "kind": "replacement",
+                    "params": {"event_op": "kill", "mode": "replace_with", "optional": True,
+                               "cost": ["power_any 1", "exhaust me", "spend its buff"],
+                               "instead": ["heal", "exhaust", "recall"]}}},
     # 2026-10-08 package 10 (Unlicensed Armory): Highlander's grant, optional, one Power of the named Domain as it applies
     "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_you_may_pay_rune_to_heal_exhaust_and_recall_it_instead":
         lambda params: {
@@ -1508,6 +1565,10 @@ LOWERINGS = {
         "program_effects": [{"op": "grant_turn_effect", "effect_id": "grant", "turn_effect_kind": "hide_ignoring_costs",
                              "value": "all", "controller": "$controller", "source": "$chain_item"}],
         "ast": {"node": "instruction", "op": "grant_turn_effect", "params": {"kind": "hide_ignoring_costs"}}},
+    # package 10/11 (Karthus - Eternal): a printed static - its controller's Deathknell triggers trigger once more
+    "your_deathknell_effects_trigger_an_additional_time": lambda params: {
+        "object_fields": {"deathknell_extra_times": 1},
+        "ast": {"node": "passive", "kind": "trigger_multiplier", "params": {"applies_to": "deathknell", "extra_times": 1}}},
     "choose_a_unit_kill_it_the_next_time_it_takes_damage_this_turn_legion_kill_it_now_instead": _lower_guillotine,
     "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_heal_exhaust_and_recall_it_instead":
         _lower_next_death_heal_exhaust_recall,
@@ -1521,6 +1582,50 @@ LOWERINGS = {
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
+    # 2026-10-13 package 11 (Mystic Reversal)
+    "gain_control_of_a_spell_you_may_make_new_choices_for_it": lambda params: {
+        "program_effects": [
+            {"op": "gain_control_of_spell", "effect_id": "gcs", "player": "$controller",
+             "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain", "kind": "spell"}},
+            {"op": "make_new_choices", "effect_id": "new", "linked": {"effect_id": "gcs"}, "optional": {"decision_ref": "may"}}],
+        "ast": {"node": "instruction", "op": "sequence",
+                "params": {"gain_control": "a spell", "then": "you may make new choices for it"}}},
+    # 2026-10-13 package 11 (Heimerdinger - Inventor)
+    "i_have_all_exhaust_abilities_of_all_friendly_legends_units_and_gear": lambda params: {
+        "passive": {"object_fields": {"has_exhaust_abilities_of": ["legend", "unit", "gear"]}},
+        "ast": {"node": "passive", "kind": "copied_abilities", "params": {"of": ["legend", "unit", "gear"],
+                                                                         "relation": "friendly", "cost_has": "exhaust"}}},
+    # 2026-10-13 package 11 (Reckoner's Arena)
+    "activate_the_conquer_effects_of_units_here": lambda params: {
+        "program_effects": [{"op": "activate_conquer_effects", "effect_id": "act",
+                             "location_ref": {"kind": "program_source_current_battlefield"}}],
+        "ast": {"node": "instruction", "op": "activate_conquer_effects", "params": {"where": "here"}}},
+    # 2026-10-13 package 11 (Possession)
+    "choose_an_enemy_unit_at_a_battlefield_take_control_of_it_and_recall_it": lambda params: {
+        "program_effects": [
+            {"op": "gain_control", "effect_id": "gc", "player": "$controller",
+             "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "enemy",
+                        "location": "battlefield"}},
+            {"op": "recall", "effect_id": "rc", "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit"},
+             "depends_on": "gc", "dependency_mode": "unless_ignored"}],
+        "ast": {"node": "instruction", "op": "sequence",
+                "params": {"choose": "an enemy unit at a battlefield", "then": ["take control of it", "recall it"]}}},
+    # 2026-10-13 package 11 (Mageseeker Warden)
+    "while_im_at_a_battlefield_opponents_can_only_play_units_to_their_base": lambda params: {
+        "passive": {"object_fields": {"restricts_opponent_units_to_base": True}},
+        "ast": {"node": "passive", "kind": "battlefield_restriction", "params": {"kind": "opponent_units_to_base_only"}}},
+    "while_im_at_a_battlefield_spells_and_abilities_cant_ready_enemy_units_and_gear": lambda params: {
+        "passive": {"object_fields": {"prevents_ready_enemy_units_gear": True}},
+        "ast": {"node": "passive", "kind": "battlefield_restriction", "params": {"kind": "no_ready_enemy_units_gear"}}},
+    # 2026-10-13 package 11 (Twisted Fate - Gambler)
+    "deal_n_to_an_enemy_unit_here_and_m_to_all_other_enemy_units_here": _lower_deal_enemy_unit_here_and_others,
+    "reveal_the_top_rune_of_your_rune_deck_then_recycle_it": lambda params: {
+        "program_effects": [{"op": "reveal", "effect_id": "rv", "player": "$controller", "from": "rune_deck_top", "count": 1},
+                            {"op": "recycle", "effect_id": "rc", "player": "$controller", "revealed_by": "rv"}],
+        "ast": {"node": "instruction", "op": "sequence", "params": {"reveal": "rune_deck_top", "then": "recycle it"}}},
+    "reveal_the_top_rune_of_your_rune_deck": lambda params: {
+        "program_effects": [{"op": "reveal", "effect_id": "rv", "player": "$controller", "from": "rune_deck_top", "count": 1}],
+        "ast": {"node": "instruction", "op": "reveal", "params": {"from": "rune_deck_top", "count": 1}}},
     "deal_n_damage_split_among_any_number_of_enemy_units_here": _lower_deal_split_among_enemy_units_here,
     "stun_an_enemy_unit_here": _lower_stun_enemy_unit_here,
     "deal_damage_equal_to_my_might_to_an_enemy_unit_here": _lower_deal_my_might_to_enemy_unit_here,
@@ -1567,11 +1672,16 @@ TRIGGER_WRAPPERS = {
     # 2026-10-08 package 10 (Clockwork Keeper): the play's own optional cost paid, read as the play completes
     "when_you_play_me_if_you_paid_the_additional_cost": ("play_triggers", "on-play",
                                                           {"condition": {"kind": "paid_additional_cost"}}),
+    # 2026-10-12 package 11 (Blitzcrank - Impassive): played to a Battlefield, not its Base (read as the play completes)
+    "when_you_play_me_to_a_battlefield": ("play_triggers", "on-play-to-battlefield",
+                                          {"condition": {"kind": "played_to_battlefield"}}),
     "when_you_play_me": ("play_triggers", "on-play", None),
     # 2026-10-08 package 10 (Spirit's Refuge, Forge of the Future): a Gear's own play trigger - "this" is the card, as "me"
     # is a Unit's; collected as the play completes (Core 419.4.a), the same descriptor
     "when_you_play_this": ("play_triggers", "on-play", None),
     "when_i_move": ("move_triggers", "on-move", None),
+    # 2026-10-12 package 11 (Treasure Trove): however the card leaves the board (effect_ir.leave_board_triggers)
+    "when_this_leaves_the_board": ("leave_board_triggers", "on-leave-board", None),
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
     # 2026-10-08 (package 10, Sona - Harmonious): the conditional statement right after the trigger condition is part of
@@ -1595,6 +1705,8 @@ TRIGGER_WRAPPERS = {
     # _designation_triggers reads it straight off the Unit that just gained the Attacker
     # designation, so there is no separate scope to state (same shape as when_i_move).
     "when_i_attack": ("attack_triggers", "on-attack", None),
+    # 2026-10-12 package 11 (Teemo - Strategist): the object's own Defend trigger (Core 383.4.f)
+    "when_i_defend": ("defend_triggers", "on-defend", None),
     # Core 383.4.e / 383.4.f: one ability, two trigger conditions - the Unit gaining the
     # Attacker OR the Defender designation. A Unit holds one designation per Combat, and
     # both fields carry the same trigger_id, so it goes on the Chain at most once per

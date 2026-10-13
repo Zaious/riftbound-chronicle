@@ -1,30 +1,30 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:1c59150e7f004923e748fea6",
-  "capability_set_id": "sha256:1c59150e7f004923e748fea61b1f15c3825560def7e69c16e9c7affee362f6dd",
+  "manifest_id": "capability-manifest:71b175962e0688abb9e70d6e",
+  "capability_set_id": "sha256:71b175962e0688abb9e70d6e113ccf9965bf6d0d4b542ede3c468ec064357565",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:33c01fca8cd0294ff4e89921f95b3b4f560cda5098cd8b3d05c5022164150f77",
+    "value": "sha256:eeb54d4a4c2a5d98736b4994da5173751b8dba641c5dba5236fb8674ceeeaf4e",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:82c7b3df82880f1b824fb1df0127f60eece81495757e6f56a48c5aac3744b6c0"
+        "sha256": "sha256:32b18ef3cb05326c6ae080cf6820ada2fb04de5cb7a616a9509f8938369c1bdb"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:081cdb5ad151c9944eb31ec792001df3c006d7c159e3234316030ed6d3675b6f"
+        "sha256": "sha256:1ac56c08e2869bbc2a3022200a36a8f3a57fc25698c887aab7bc90335ba58b9c"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:47c33d2de7164df60f406d65b34f327145eab9b5e05a3617f95c25b17cd0cad6"
+        "sha256": "sha256:ba7294673a2768224b1bdb3bf3e75a9c463062117dd53859ccabc752942cf24d"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:9cb980fdca22849161e946ca3228d8b1b69e462679aaf13caab786e32280ad1d"
+        "sha256": "sha256:50b72dccb5edb13e5ce79577d68651c24639f138482763cf31bbf9103cae41d2"
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:39f10558a437f58c7e817d817855a9bae3aa263c44f8cf771f9dfcefec38c06c"
+        "sha256": "sha256:c84e04628df378fbb2738808b06aa2e8651deb6be9d3ff699a9a8d7839800bef"
       },
       {
         "path": "battlefield_control.py",
@@ -36,7 +36,7 @@
       },
       {
         "path": "turn_cycle.py",
-        "sha256": "sha256:9bc20521da3034738d70727667fbe1b566ec31c842ce389e2308ebfb39ba7f08"
+        "sha256": "sha256:79e54bcd42d1c1140504483ece2025c0d7037bfeadfd390bd310f550a54e077c"
       },
       {
         "path": "hidden.py",
@@ -144,6 +144,9 @@
         "bonus_damage",
         "instruction_conditions",
         "move_triggers",
+        "leave_board_triggers",
+        "battlefield_restrictions",
+        "copied_abilities",
         "private_discard",
         "granted_replacements",
         "combat_relative_might",
@@ -394,6 +397,15 @@
   ],
   "operations": [
     {
+      "id": "activate_conquer_effects",
+      "rule_locators": [
+        "Core 383.4.g",
+        "Core 383.4.g.1",
+        "Core 383.4.c",
+        "Core 383.2.a.1"
+      ]
+    },
+    {
       "id": "add_resource",
       "rule_locators": [
         "Core 429"
@@ -417,6 +429,22 @@
         "Core 427.2",
         "Core 427.2.a",
         "Core 427.2.b",
+        "Core 124"
+      ]
+    },
+    {
+      "id": "banish_one_looked",
+      "rule_locators": [
+        "Core 424.1",
+        "Core 427.1",
+        "Core 124"
+      ]
+    },
+    {
+      "id": "banish_this",
+      "rule_locators": [
+        "Core 157",
+        "Core 427.1",
         "Core 124"
       ]
     },
@@ -588,6 +616,23 @@
       ]
     },
     {
+      "id": "gain_control",
+      "rule_locators": [
+        "Core 188",
+        "Core 189",
+        "Core 191.3",
+        "Core 191.4.b"
+      ]
+    },
+    {
+      "id": "gain_control_of_spell",
+      "rule_locators": [
+        "Core 191.2",
+        "Core 191.4.b",
+        "Core 359.3.f.4"
+      ]
+    },
+    {
       "id": "gain_point",
       "rule_locators": [
         "Core 471.1",
@@ -662,6 +707,19 @@
         "Core 128.4",
         "Core 431.1.c",
         "Core 431.1.c.1"
+      ]
+    },
+    {
+      "id": "make_new_choices",
+      "rule_locators": [
+        "Core 751",
+        "Core 751.1",
+        "Core 752",
+        "Core 752.1",
+        "Core 753",
+        "Core 753.1",
+        "Core 753.2",
+        "Core 755"
       ]
     },
     {
@@ -768,6 +826,14 @@
       ]
     },
     {
+      "id": "recycle_looked_rest",
+      "rule_locators": [
+        "Core 424.1",
+        "Core 416",
+        "Core 416.5"
+      ]
+    },
+    {
       "id": "recycle_one",
       "rule_locators": [
         "Core 416"
@@ -854,6 +920,15 @@
         "Core 135.2.e.3",
         "Core 370.1.a",
         "Core 373.2"
+      ]
+    },
+    {
+      "id": "take_additional_turn",
+      "rule_locators": [
+        "Core 735",
+        "Core 736",
+        "Core 737",
+        "Core 738"
       ]
     },
     {
@@ -1372,6 +1447,15 @@
       ]
     },
     {
+      "id": "leave_board_triggers",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 319.6",
+        "Core 359.3.e.13",
+        "Core 124"
+      ]
+    },
+    {
       "id": "main_phase_entry",
       "rule_locators": [
         "Core 316.1–316.4"
@@ -1582,11 +1666,14 @@
     "Core 144.1–144.4.b",
     "Core 144.4.c–144.4.c.1",
     "Core 149.1",
+    "Core 157",
     "Core 170.11.a",
     "Core 170.11.c",
     "Core 184–186",
     "Core 185.3.a",
     "Core 187.1",
+    "Core 188",
+    "Core 189",
     "Core 190.3.a.1",
     "Core 190.4",
     "Core 190.4.a",
@@ -1594,6 +1681,9 @@
     "Core 190.6.a",
     "Core 190.6.b",
     "Core 190.6.d",
+    "Core 191.2",
+    "Core 191.3",
+    "Core 191.4.b",
     "Core 194.1.d",
     "Core 194.2–194.2.b",
     "Core 195",
@@ -1628,6 +1718,7 @@
     "Core 317.3",
     "Core 318–320",
     "Core 319.2",
+    "Core 319.6",
     "Core 319.8",
     "Core 320–321",
     "Core 322–322.1",
@@ -1698,6 +1789,7 @@
     "Core 359.2.c–359.2.d",
     "Core 359.2–359.2.d",
     "Core 359.3.e",
+    "Core 359.3.e.13",
     "Core 359.3.e.14",
     "Core 359.3.e.14.a",
     "Core 359.3.e.1–359.3.e.10",
@@ -1706,6 +1798,7 @@
     "Core 359.3.e.5",
     "Core 359.3.e.6",
     "Core 359.3.f.3",
+    "Core 359.3.f.4",
     "Core 364.3",
     "Core 365.1",
     "Core 369.3",
@@ -1724,11 +1817,14 @@
     "Core 383.3.b.1",
     "Core 383.3.c–383.3.d.1",
     "Core 383.3.e",
+    "Core 383.4.c",
     "Core 383.4.c–383.4.d",
     "Core 383.4.e.2.b",
     "Core 383.4.e–383.4.f.3",
     "Core 383.4.f",
     "Core 383.4.f.2.b",
+    "Core 383.4.g",
+    "Core 383.4.g.1",
     "Core 386–388",
     "Core 390.3.a",
     "Core 402–402.1",
@@ -1885,9 +1981,21 @@
     "Core 713–715.4",
     "Core 730.1",
     "Core 730.2",
+    "Core 735",
+    "Core 736",
+    "Core 737",
+    "Core 738",
     "Core 740.2.a",
     "Core 740.2.c",
     "Core 740.4.a.2",
+    "Core 751",
+    "Core 751.1",
+    "Core 752",
+    "Core 752.1",
+    "Core 753",
+    "Core 753.1",
+    "Core 753.2",
+    "Core 755",
     "Core 806–807",
     "Core 807",
     "Core 809.1.c.1",

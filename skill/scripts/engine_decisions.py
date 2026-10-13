@@ -297,7 +297,9 @@ SELECTION_KINDS = ("single", "unordered_set", "ordered_permutation")
 # the Battlefields themselves (Core 355.4.a). Codex's 2026-09-10 ruling on the
 # eff_010 split required this path before "Choose a battlefield." could be
 # mapped, rather than letting it be disguised as a board choice.
-CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "battlefields", "players")
+CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "battlefields", "players",
+                  # 2026-10-12 (package 11, Forge of the Future): every player's trash - public (Core 128.4)
+                  "trashes")
 # Sabotage: "a non-unit card". Stated as an exclusion from a closed list rather
 # than as a negation, so a card kind nobody has thought about is *included* by
 # default and never silently filtered out.

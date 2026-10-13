@@ -220,6 +220,18 @@ def _open_after_empty_chain(state: dict[str, Any], origin: str | None) -> dict[s
 TRIGGER_EVENT_FIELDS = ("event_id", "kind", "object", "identity")
 
 
+def noted_location_errors(value: Any) -> list[str]:
+    """2026-10-12 (package 11, Kog'Maw - Caustic): where a death trigger's source was as its abilities were noted, before
+    it moved (Core 808.1.d.3) - a Battlefield, or a player's Base."""
+    if isinstance(value, dict) and value.get("kind") == "battlefield" and set(value) == {"kind", "battlefield"} \
+            and isinstance(value["battlefield"], str) and value["battlefield"]:
+        return []
+    if isinstance(value, dict) and value.get("kind") == "base" and set(value) == {"kind", "player"} \
+            and isinstance(value["player"], str) and value["player"]:
+        return []
+    return ["noted_location must be {kind: battlefield, battlefield} or {kind: base, player}, each a non-empty string"]
+
+
 def trigger_event_errors(value: Any) -> list[str]:
     """2026-09-28: a triggered item's `trigger_event` - the event that met its condition, the
     object it is about and that object's identity then - is exactly four non-empty strings."""
@@ -420,6 +432,8 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.source_identity must be a non-empty identity token")
             if "trigger_event" in item and trigger_event_errors(item["trigger_event"]):
                 errors.append(f"{label}.trigger_event must be {{event_id, kind, object, identity}} strings")
+            if "noted_location" in item and noted_location_errors(item["noted_location"]):
+                errors.append(f"{label}.{noted_location_errors(item['noted_location'])[0]}")
             # GPT 2026-09-29 (Core 355.4): a Move destination chosen at finalization is recorded with the targets
             if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") in ("target_selection", "location_selection") for e in item["finalized_targets"])):
                 errors.append(f"{label}.finalized_targets must be trigger_finalization target selections and Move destinations")
@@ -1126,6 +1140,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             descriptor_errors.append(f"descriptor {index}.source_identity must be a non-empty identity token")
         if "trigger_event" in descriptor and trigger_event_errors(descriptor["trigger_event"]):
             descriptor_errors.append(f"descriptor {index}.trigger_event must be {{event_id, kind, object, identity}} strings")
+        if "noted_location" in descriptor and noted_location_errors(descriptor["noted_location"]):
+            descriptor_errors.append(f"descriptor {index}.{noted_location_errors(descriptor['noted_location'])[0]}")
         batch_sequence = descriptor.get("batch_sequence", 0)
         batch_id = descriptor.get("batch_id", f"batch-{batch_sequence}")
         if not isinstance(batch_sequence, int) or batch_sequence < 0 or not isinstance(batch_id, str) or not batch_id:
@@ -1186,6 +1202,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             # the identity it had then (watchers.trigger_event_of) - what the ability's "it" names
             # (Core 359.3.f.3); resolution hands it to the program (resolution_bridge.bind_trigger_event)
             **({"trigger_event": dict(descriptor["trigger_event"])} if descriptor.get("trigger_event") else {}),
+            # 2026-10-12 (package 11): a death trigger's source location as it was noted (Core 808.1.d.3)
+            **({"noted_location": dict(descriptor["noted_location"])} if descriptor.get("noted_location") else {}),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),
             "trigger_kind": descriptor.get("trigger_kind", "triggered"),
             "batch_sequence": descriptor["batch_sequence"],

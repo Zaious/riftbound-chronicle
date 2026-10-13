@@ -645,6 +645,42 @@ jobs:
         run: python3 skill/scripts/check_linked_each.py
       - name: Buffs give an additional Might this turn (Stand United)
         run: python3 skill/scripts/check_buff_bonus_might.py
+      - name: Deathknell triggers an additional time, order-independent over simultaneous deaths (Karthus)
+        run: python3 skill/scripts/check_deathknell_extra.py
+      - name: a death trigger's my battlefield, noted as it died (Kog'Maw)
+        run: python3 skill/scripts/check_noted_battlefield.py
+      - name: Reflexive trigger after a Move (package 11, Dragon's Rage): own Chain item, target and Deflect at finalization
+        run: python3 skill/scripts/check_reflexive_move.py
+      - name: Play trigger met on a Battlefield and a Move to here (package 11, Blitzcrank - Impassive)
+        run: python3 skill/scripts/check_play_to_battlefield_move_here.py
+      - name: A tied combat recalls all units (package 11, Symbol of the Solari)
+        run: python3 skill/scripts/check_combat_tie_recall_all.py
+      - name: Two Moves that swap places (package 11, Tideturner)
+        run: python3 skill/scripts/check_swap_locations.py
+      - name: A count of the revealed cards and recycling them (package 11, Teemo - Strategist)
+        run: python3 skill/scripts/check_revealed_count.py
+      - name: A trigger on leaving the board (package 11, Treasure Trove)
+        run: python3 skill/scripts/check_leave_board_trigger.py
+      - name: Additional turns and a spell that banishes itself (package 11, Time Warp)
+        run: python3 skill/scripts/check_additional_turn.py
+      - name: A revealed rune and one Reflexive Trigger per Domain (package 11, Twisted Fate)
+        run: python3 skill/scripts/check_revealed_domain.py
+      - name: Restrictions while a permanent is at a Battlefield (package 11, Mageseeker Warden)
+        run: python3 skill/scripts/check_battlefield_restrictions.py
+      - name: Taking control of a permanent (package 11, Possession)
+        run: python3 skill/scripts/check_gain_control.py
+      - name: Activating the conquer effects of units at a Battlefield (package 11, Reckoner's Arena)
+        run: python3 skill/scripts/check_activate_conquer.py
+      - name: Activating an [Exhaust] ability had from another permanent (package 11, Heimerdinger)
+        run: python3 skill/scripts/check_copied_abilities.py
+      - name: Each player banishes one looked-at card, then plays it (package 11, Promising Future)
+        run: python3 skill/scripts/check_look_banish_play.py
+      - name: Gaining control of a spell and making new choices for it (package 11, Mystic Reversal)
+        run: python3 skill/scripts/check_spell_control.py
+      - name: discard to return this from the trash (Super Mega Death Rocket!)
+        run: python3 skill/scripts/check_trigger_discard_return_self.py
+      - name: recycle up to N cards from trashes (Forge of the Future)
+        run: python3 skill/scripts/check_recycle_from_trashes.py
       - name: Hide cost basis: alternative Energy or ignoring costs (Teemo, Guerilla Warfare)
         run: python3 skill/scripts/check_hide_cost_basis.py
       - name: Owned tagged unit to hand
@@ -914,6 +950,24 @@ jobs:
           python3 "$REPO/skill/scripts/check_delayed_event_watch.py"
           python3 "$REPO/skill/scripts/check_linked_each.py"
           python3 "$REPO/skill/scripts/check_buff_bonus_might.py"
+          python3 "$REPO/skill/scripts/check_deathknell_extra.py"
+          python3 "$REPO/skill/scripts/check_noted_battlefield.py"
+          python3 "$REPO/skill/scripts/check_reflexive_move.py"
+          python3 "$REPO/skill/scripts/check_play_to_battlefield_move_here.py"
+          python3 "$REPO/skill/scripts/check_combat_tie_recall_all.py"
+          python3 "$REPO/skill/scripts/check_swap_locations.py"
+          python3 "$REPO/skill/scripts/check_revealed_count.py"
+          python3 "$REPO/skill/scripts/check_leave_board_trigger.py"
+          python3 "$REPO/skill/scripts/check_additional_turn.py"
+          python3 "$REPO/skill/scripts/check_revealed_domain.py"
+          python3 "$REPO/skill/scripts/check_battlefield_restrictions.py"
+          python3 "$REPO/skill/scripts/check_gain_control.py"
+          python3 "$REPO/skill/scripts/check_activate_conquer.py"
+          python3 "$REPO/skill/scripts/check_copied_abilities.py"
+          python3 "$REPO/skill/scripts/check_look_banish_play.py"
+          python3 "$REPO/skill/scripts/check_spell_control.py"
+          python3 "$REPO/skill/scripts/check_trigger_discard_return_self.py"
+          python3 "$REPO/skill/scripts/check_recycle_from_trashes.py"
           python3 "$REPO/skill/scripts/check_hide_cost_basis.py"
           python3 "$REPO/skill/scripts/check_owned_tagged_unit_to_hand.py"
           python3 "$REPO/skill/scripts/check_return_gear_unit_or_facedown.py"

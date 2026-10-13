@@ -76,6 +76,8 @@ FEATURE_RULES = {
     # C-22 (ADR-0007 §9–10).
     "instruction_conditions": ["Core 135.2.b.5.a", "Core 359.3.e.14.a"],
     "move_triggers": ["Core 383.1", "Core 319.8", "Core 446.2", "Core 456.1"],
+    # 2026-10-12 package 11 (Treasure Trove): "When this leaves the board" - noted before it moves, however it leaves
+    "leave_board_triggers": ["Core 383.1", "Core 319.6", "Core 359.3.e.13", "Core 124"],
     "private_discard": ["Core 422.1–422.4", "Core 355.10.a", "Core 124"],
     # C-23 (ADR-0007 §11).
     "deflect": ["Core 809.1.c–809.1.d", "Core 809.2", "Core 356.2.a.2"],
@@ -150,7 +152,7 @@ KIND_CONFIG = {
     "effect": {
         "component": ("effect_ir", PROGRAM_VERSION),
         "coverage": "effect_program_v1",
-        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers", "active_combat_criteria", "mutual_current_might_damage", "burn_out_draw", "randomization_receipt", "choice_grammar", "modal_abilities", "card_ordering", "look_reveal_put_back", "predict", "multi_recycle", "restricted_resource_grant", "repeat_execution", "banish", "counter", "burn", "attachments", "top_most_might_bonus", "derived_detach_destination", "legend_objects", "legend_zone_passives", "continuous_effects", "layer_engine", "canonical_migration", "typed_conditions", "keyword_catalog", "empower_state", "buff_counters", "xp", "effect_text_append", "copy_modelled_traits"],
+        "supported": ["typed_atomic_effects", "bounded_replacement", "bounded_cleanup", "typed_selectors", "object_identity", "engine_decisions", "battlefield_targets", "criteria_expansion", "bonus_damage", "instruction_conditions", "move_triggers", "leave_board_triggers", "battlefield_restrictions", "copied_abilities", "private_discard", "granted_replacements", "combat_relative_might", "keyword_modifiers", "active_combat_criteria", "mutual_current_might_damage", "burn_out_draw", "randomization_receipt", "choice_grammar", "modal_abilities", "card_ordering", "look_reveal_put_back", "predict", "multi_recycle", "restricted_resource_grant", "repeat_execution", "banish", "counter", "burn", "attachments", "top_most_might_bonus", "derived_detach_destination", "legend_objects", "legend_zone_passives", "continuous_effects", "layer_engine", "canonical_migration", "typed_conditions", "keyword_catalog", "empower_state", "buff_counters", "xp", "effect_text_append", "copy_modelled_traits"],
         "unsupported": ["arbitrary_card_text", "combat", "scoring", "burn_out_non_draw", "burn_out_in_replacement", "distinct_per_turn_choice", "each_player_choice", "multi_opponent_choice", "revealed_knowledge_persistence", "cannot_be_countered", "burn_triggers", "nested_attachments", "gear_recall_cleanup", "copy_unmodelled_traits", "champion_legend_movement", "token_not_in_catalogue", "layer_dependency_unresolved", "condition_needs_hidden_information", "keyword_not_implemented", "complete_game", "complete_legality"],
     },
     "resolution": {

@@ -932,10 +932,39 @@ def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str
     else:
         result = {"outcome": "no_result", "reason": "neither_remains", "winner": None, "loser": None}
     result["units_remaining"] = {record["attacker"]: present.get(record["attacker"], []), record["defender"]: present.get(record["defender"], [])}
+    next_effect = copy.deepcopy(effect_state)
+    locators = ["Core 466.2", "Core 466.3", "Core 466.3.a", "Core 466.3.b", "Core 466.3.c", "Core 466.3.d", "Core 466.3.d.1"]
+    if result["outcome"] == "no_result":
+        # 2026-10-12 package 11 (Symbol of the Solari; GPT 2026-10-12 ruling 14 of package 10): a tie - No Result after
+        # combat damage and the Cleanup, both or neither still here (466.3.d) - in a Combat whose attacker controls a
+        # permanent on the board that says "recall ALL units instead": every unit still at this Battlefield, either
+        # side's, is recalled to its controller's Base (Core 455, not a Move), in place of the tie's own outcome - no
+        # Combat is staged again; with no unit here, nothing is recalled
+        from effect_ir import COMBAT_TIE_RECALL_ALL, PROGRAM_VERSION, apply_program
+        sources = sorted(o for o, obj in effect_state["objects"].items()
+                         if obj.get("combat_tie_replacement") == COMBAT_TIE_RECALL_ALL
+                         and obj.get("controller") == record["attacker"]
+                         and zone_class(find_location(effect_state, o)) == "board")
+        if sources:
+            here = sorted(o for units in present.values() for o in units)
+            if here:
+                recalled = apply_program(effect_state, {
+                    "schema_version": PROGRAM_VERSION, "ruleset": effect_state["ruleset"],
+                    "program_id": f"combat-tie:{record['combat_id']}", "controller": record["attacker"],
+                    "source_object": sources[0],
+                    "effects": [{"op": "recall", "effect_id": f"recall:{o}", "object_id": o} for o in here]})
+                if recalled.get("committed") is not True:
+                    return _refuse(base, "combat_tie_recall_failed", str(recalled.get("reason") or recalled.get("errors")),
+                                   ["Core 455"])
+                next_effect = recalled["next_state"]
+            result.pop("restage_required", None)
+            result.update({"tie_replaced_by": sources, "recalled_all": here,
+                           "units_remaining": {record["attacker"]: [], record["defender"]: []}})
+            locators += ["Core 370.1", "Core 455", "Core 456.1"]
     next_timing = copy.deepcopy(timing_state)
     next_timing["combat"]["status"] = "result_determined"
     next_timing["combat"]["result"] = result
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"result": result}, locators=["Core 466.2", "Core 466.3", "Core 466.3.a", "Core 466.3.b", "Core 466.3.c", "Core 466.3.d", "Core 466.3.d.1"])
+    return _commit(base, next_timing, next_effect, trace={"result": result}, locators=locators)
 
 
 def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:

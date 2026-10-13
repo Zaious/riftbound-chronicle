@@ -330,9 +330,14 @@ def main() -> int:
         fail("is_location_ref", "the one admitted shape was not recognised as a location_ref")
     if effect_ir.is_location_ref({"kind": "anaphoric_there"}):
         fail("is_location_ref", "an unknown kind (e.g. a future 359.3.f.3 'there') was accepted as if it were this capability")
-    if len(LOCATION_REF_KINDS) != 1:
-        fail("capability stays narrow", f"LOCATION_REF_KINDS is {LOCATION_REF_KINDS}; GPT 2026-09-23 approved exactly "
-                                        f"one kind for this first cut, not a general relational-locator capability")
+    # each kind is approved by name, with its own gate - never a general relational-locator capability: GPT 2026-09-23 the
+    # source's current Battlefield (this gate); GPT 2026-10-12 PACKAGE11 ruling 3 a death trigger's noted Battlefield
+    # (check_noted_battlefield.py); GPT 2026-10-12 PACKAGE11 ruling 4 the destination of the move a reflexive trigger
+    # follows (check_reflexive_move.py)
+    if LOCATION_REF_KINDS != ("program_source_current_battlefield", "program_source_noted_battlefield",
+                              "trigger_event_destination"):
+        fail("capability stays narrow", f"LOCATION_REF_KINDS is {LOCATION_REF_KINDS}; only the kinds approved by name "
+                                        f"(GPT 2026-09-23, 2026-10-12 rulings 3 and 4) may exist")
 
     # --- the single-target, TARGETED path (Crackshot Corsair's shape: "deal 1 to an
     # enemy unit here"), end to end through schedule -> finalize_trigger -> resolve.

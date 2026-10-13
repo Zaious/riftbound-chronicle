@@ -62,10 +62,14 @@ Held here:
                       is chosen from the hand as the ability resolves - private, not a target (Core 355.10.a) - and
                       only a card with [Hidden]; choosing none is allowed (128.6), and with none in hand nothing is
                       asked (419.3.c); a unit enters the source's Battlefield though its player does not control it
-                      (355.2.b), and no other location is taken; a gear enters its Base; the source gone from the
-                      Battlefield gives no "here", and the unit branch is refused by name (limited_play_here_absent,
-                      GPT 2026-10-04 ruling 3 - never its Base by default nor another Battlefield), while a gear
-                      chosen then still enters its Base; a cancelled play puts the card back in the hand at its place
+                      (355.2.b), and no other location is taken; a gear enters its Base; a cancelled play puts the
+                      card back in the hand at its place
+  H2 no 'here'        GPT 2026-10-12 (PACKAGE11 ruling 2, replacing PACKAGE8 ruling 3's named refusal): the source
+                      killed (in its trash) or back in its Base when the ability resolves gives no "here" - read as
+                      the instruction executes (359.3.f.2), null (359.3.e.12) - and the unit branch is ignored
+                      (359.3.e.6): the card stays in the hand at its place, [C] stays paid, nothing enters a Base or
+                      another Battlefield instead, the resolution commits; a gear chosen then still enters its Base and
+                      a spell chosen then is still played - neither reads "here"
 
     python skill/scripts/check_limited_play.py
 """
@@ -609,7 +613,7 @@ AVA_PROGRAM = program("ava-on-attack-effects", "ava", [
 AVA_REGISTRY = {AVA_PROGRAM["program_id"]: AVA_PROGRAM}
 
 
-def ava_board(*, domains=("mind",), hand=("hid-unit", "hid-gear", "plain")) -> dict:
+def ava_board(*, domains=("mind",), hand=("hid-unit", "hid-gear", "hid-spell", "plain")) -> dict:
     """Ava (p1, Domain mind) at bf1, which p2 controls, with p2's unit there (contested by Ava's arrival); p1's
     hand holds a unit and a gear with [Hidden] and a unit without; p1 has one mind Power."""
     state = base_state()
@@ -621,6 +625,7 @@ def ava_board(*, domains=("mind",), hand=("hid-unit", "hid-gear", "plain")) -> d
     state["players"]["p1"]["zones"]["base"].append("u1")
     pool = {"hid-unit": card("p1", "unit", {"energy": 5, "power": {"mind": 2}}, might=4, hidden=True),
             "hid-gear": card("p1", "gear", {"energy": 2, "power": {}}, hidden=True),
+            "hid-spell": card("p1", "spell", {"energy": 2, "power": {}}, hidden=True),
             "plain": card("p1", "unit", {"energy": 1, "power": {}}, might=1)}
     for name in hand:
         state["objects"][name] = pool[name]
@@ -642,15 +647,15 @@ def ava_pending(state: dict) -> dict:
     return scheduled["next_state"]
 
 
-def ava_resolved(state: dict, chosen: list[str] | None, *, move_away: bool = False) -> dict:
+def ava_resolved(state: dict, chosen: list[str] | None, *, move_away: bool = False, killed: bool = False) -> dict:
     timing = ava_pending(state)
     fin = finalize_trigger(timing, state, AVA_REGISTRY, None, perform_optional_trigger=True, pay_trigger_cost=True,
                            payment_context=CLOSED)
     assert fin.get("committed") and not fin.get("removed"), (fin.get("reason"), fin.get("message"))
     board_now = copy.deepcopy(fin["next_effect_state"])
-    if move_away:
+    if move_away or killed:
         board_now["battlefields"]["bf1"]["objects"].remove("ava")
-        board_now["players"]["p1"]["zones"]["base"].append("ava")
+        board_now["players"]["p1"]["zones"]["trash" if killed else "base"].append("ava")
         board_now["battlefields"]["bf1"].update({"contested": False, "contested_by": None})
     decisions = None
     if chosen is not None:
@@ -705,21 +710,38 @@ def check_hand_choice() -> None:
     gear_done = complete_limited_play(gear["next_timing_state"], gear["next_effect_state"], payment_context=CLOSED)
     if not gear_done.get("committed") or "hid-gear" not in gear_done["next_effect_state"]["players"]["p1"]["zones"]["base"]:
         fail("H gear", f"{gear_done.get('reason')} {gear_done.get('message')}")
-    # the source gone from the Battlefield: no 'here'; the location is the player's choice (355.2.a)
-    # 2026-10-04 (package 8, GPT ruling 3): the source gone from the Battlefield gives no "here"; the unit is not
-    # put in its Base or at a Battlefield chosen instead - the unit branch is refused by name, nothing is played
-    away = ava_resolved(state, ["hid-unit"], move_away=True)["done"]
-    away_effect = away.get("effect_result") or {}
-    if away.get("committed") or not away_effect.get("unsupported") \
-            or "limited_play_here_absent" not in str(away_effect.get("reason") or away.get("reason")):
-        fail("H here gone", f"the unit with no 'here' was not refused by name: {away.get('committed')} "
-                            f"{away_effect.get('reason') or away.get('reason')}")
-    # ... and the card's other branch is its own: a gear chosen with no 'here' enters its Base as any gear does
-    gear_away = ava_resolved(state, ["hid-gear"], move_away=True)["done"]
-    gear_done = complete_limited_play(gear_away["next_timing_state"], gear_away["next_effect_state"], payment_context=CLOSED) \
-        if gear_away.get("committed") else {}
-    if not gear_done.get("committed") or "hid-gear" not in (gear_done.get("next_effect_state") or {}).get("players", {}).get("p1", {}).get("zones", {}).get("base", []):
-        fail("H here gone, a gear", f"the non-unit branch did not enter its Base: {gear_away.get('reason')} {gear_done.get('reason')}")
+    # H2 (GPT 2026-10-12): no 'here' - the source killed, or back in its Base. The unit branch is ignored: the card stays
+    # in the hand at its place, [C] stays paid, nothing enters anywhere, the resolution commits
+    for label, where in (("killed", {"killed": True}), ("back in its Base", {"move_away": True})):
+        run = ava_resolved(state, ["hid-unit"], **where)
+        gone = run["done"]
+        steps = (gone.get("trace") or {}).get("effect") or []
+        play = next((s for s in steps if s.get("op") == "limited_play"), {})
+        after = gone.get("next_effect_state") or {}
+        hand = after.get("players", {}).get("p1", {}).get("zones", {}).get("hand", [])
+        if not gone.get("committed") or play.get("outcome") != "ignored_source_unavailable" \
+                or play.get("reason") != "limited_play_here_absent":
+            fail(f"H2 {label}", f"the unit branch was not ignored: {gone.get('committed')} {play.get('outcome')} "
+                                f"{play.get('reason')} {gone.get('reason')}")
+            continue
+        if hand.index("hid-unit") != state["players"]["p1"]["zones"]["hand"].index("hid-unit") \
+                or pending_play(gone["next_timing_state"]) is not None:
+            fail(f"H2 {label}", f"the card is not in the hand at its place, or a play started: {hand}")
+        if "hid-unit" in after["players"]["p1"]["zones"].get("base", []) \
+                or any("hid-unit" in bf.get("objects", []) for bf in after["battlefields"].values()):
+            fail(f"H2 {label}", "the unit entered somewhere instead")
+        if after["players"]["p1"]["resources"]["power"].get("mind") != 0:
+            fail(f"H2 {label}", f"[C] was given back: {after['players']['p1']['resources']}")
+        # ... and the non-unit branches are their own: a gear enters its Base, a spell is still played
+        gear_away = ava_resolved(state, ["hid-gear"], **where)["done"]
+        gear_done = complete_limited_play(gear_away["next_timing_state"], gear_away["next_effect_state"], payment_context=CLOSED) \
+            if gear_away.get("committed") else {}
+        if not gear_done.get("committed") or "hid-gear" not in (gear_done.get("next_effect_state") or {}).get("players", {}).get("p1", {}).get("zones", {}).get("base", []):
+            fail(f"H2 {label}, a gear", f"the gear branch did not enter its Base: {gear_away.get('reason')} {gear_done.get('reason')}")
+        spell_away = ava_resolved(state, ["hid-spell"], **where)["done"]
+        if not spell_away.get("committed") or pending_play(spell_away["next_timing_state"]) is None \
+                or "hid-spell" in spell_away["next_effect_state"]["players"]["p1"]["zones"]["hand"]:
+            fail(f"H2 {label}, a spell", f"the spell branch was not played: {spell_away.get('reason')}")
     # cancelled (the player cannot play cards): back in the hand at its place
     prohibited = copy.deepcopy(done["next_effect_state"])
     prohibited["turn_effects"] = [{"effect_id": "stop", "kind": "cards_play_prohibited", "controller": "p2",

@@ -467,6 +467,20 @@ LITERAL = [
      ["When a buffed unit you control would die, you may pay :rb_rune_rainbow: and exhaust me to spend its buff and recall it exhausted instead."],
      ["when a buffed unit you control would die, you may pay [a] to recall it instead",
       "when a buffed unit you control would die, spend its buff and recall it exhausted instead"]),
+    # 2026-10-13 package 11 (Sett - The Boss, its official errata text - package 10 had read the printed one): the same
+    # optional, paid replacement, its unit healed, exhausted and recalled
+    ("if_a_buffed_unit_you_control_would_die_you_may_pay_a_exhaust_me_and_spend_its_buff_to_heal_it_exhaust_it_and_recall_it_instead",
+     r"if a buffed unit you control would die, you may pay \[a\], exhaust me, and spend its buff to heal it, exhaust it, "
+     r"and recall it instead",
+     ["Core 370.1", "Core 370.1.b", "Core 372", "Core 702.2.b", "Core 356.1"], "passive", ["bounded_replacement", "kill"],
+     "While the card is on the board, a buffed unit its controller controls that would die may instead lose its buff, be "
+     "healed, exhausted and recalled to its Base, if the controller pays a Power of any Domain and exhausts the card as it "
+     "applies; declined or unpayable, the unit dies. The printed 2026 text (no heal), an unbuffed unit, or another "
+     "payment is a different production.",
+     ["If a buffed unit you control would die, you may pay :rb_rune_rainbow:, exhaust me, and spend its buff to heal it, exhaust it, and recall it instead."],
+     ["when a buffed unit you control would die, you may pay [a] and exhaust me to spend its buff and recall it exhausted instead",
+      "if a buffed unit you control would die, you may pay [a], exhaust me, and spend its buff to recall it instead",
+      "if a buffed unit you control would die, you may pay [a], exhaust me, and spend its buff to heal it and recall it instead"]),
     # 2026-10-08 package 10 (Unlicensed Armory): Highlander's grant, optional and paid as it applies
     ("choose_a_friendly_unit_the_next_time_it_would_die_this_turn_you_may_pay_rune_to_heal_exhaust_and_recall_it_instead",
      r"choose a friendly unit\. the next time it would die this turn, you may pay \[rune:(?P<domain>[a-z]+)\] to heal it, "
@@ -514,6 +528,26 @@ LITERAL = [
      "is a different production.",
      ["Recycle 3 from your trash."],
      ["recycle up to 3 from your trash", "recycle 3 from a trash", "recycle me from your trash"]),
+    # 2026-10-12 package 11 (Forge of the Future): up to N cards of any players' trashes, chosen as it resolves
+    ("recycle_up_to_n_cards_from_trashes", r"recycle up to (?P<count>\d+) cards from trashes",
+     ["Core 416.1", "Core 416.5", "Core 416.6", "Core 355.13"], "instruction", ["recycle"],
+     "The controller picks up to N cards from any players' trashes as it resolves - not targets (Core 416.6) - and each "
+     "is recycled to its owner's deck; zero is allowed (355.13). 'From your trash', an exact N, or 'a card' is a different "
+     "production.",
+     ["Recycle up to 4 cards from trashes."],
+     ["recycle up to 4 cards from your trash", "recycle 4 cards from trashes", "recycle up to 4 units from trashes"]),
+    # 2026-10-08 package 10 (Karthus - Eternal): its controller's Deathknell triggers each trigger once more while it is
+    # on the board; 2026-10-12 package 11: order-independent over simultaneous deaths (effect_ir.group_pending_triggers)
+    ("your_deathknell_effects_trigger_an_additional_time",
+     r"your \[deathknell\] effects trigger an additional time",
+     ["Core 383.3", "Core 808.1.d.2", "Core 808.3"], "passive", ["self_death_triggers"],
+     "A printed static: each Deathknell trigger of its controller's units triggers one additional time while the card is "
+     "on the board as the deaths are noted (a copy of the trigger the game generated, never of a copy); dying with them "
+     "at the same time still counts. An opponent's Deathknell, another death trigger, another keyword, or 'twice' is a "
+     "different clause.",
+     ["Your [Deathknell] effects trigger an additional time."],
+     ["your [deathknell] effects trigger twice", "your [vision] effects trigger an additional time",
+      "deathknell effects trigger an additional time"]),
     # 2026-10-08 package 10 (Imperial Decree): for the rest of this turn, every unit that takes damage is killed
     ("when_any_unit_takes_damage_this_turn_kill_it",
      r"when any unit takes damage this turn, kill it",
@@ -666,6 +700,49 @@ LITERAL = [
      ["Deal 5 damage split among any number of enemy units here."],
      ["deal 5 damage split among any number of enemy units at a battlefield", "deal 5 to all enemy units here",
       "deal 5 to an enemy unit here", "deal damage equal to its might split among enemy units at battlefields"]),
+    # 2026-10-13 package 11 (Twisted Fate - Gambler's Fury branch): one chosen enemy unit here, and every OTHER enemy
+    # unit here found by criteria
+    ("deal_n_to_an_enemy_unit_here_and_m_to_all_other_enemy_units_here",
+     r"deal (?P<amount>\d+) to an enemy unit here and (?P<rest>\d+) to all other enemy units here",
+     ["Core 417", "Core 355.9", "Core 355.10.d", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
+     ["deal_damage", "targeting"],
+     "One chosen enemy Unit at the source's current Battlefield takes the first amount; every other enemy Unit there, "
+     "found by criteria (none chosen), takes the second. Friendly units, or enemy units elsewhere, are untouched.",
+     ["Deal 2 to an enemy unit here and 1 to all other enemy units here."],
+     ["deal 2 to an enemy unit here and 1 to all enemy units here", "deal 2 to an enemy unit here",
+      "deal 2 to an enemy unit at a battlefield and 1 to all other enemy units there"]),
+    # 'it' bound inside the one sentence: the rune that reveal showed, still that object (recycle revealed_by)
+    ("reveal_the_top_rune_of_your_rune_deck_then_recycle_it",
+     r"reveal the top rune of your rune deck, then recycle it",
+     ["Core 424", "Core 424.2", "Core 416", "Core 124"], "instruction", ["reveal", "recycle"],
+     "The top card of its controller's Rune Deck is shown to all, its Domains noted, then that same rune goes to the "
+     "bottom of its owner's Rune Deck. An empty Rune Deck reveals and recycles nothing.",
+     ["Reveal the top rune of your rune deck, then recycle it."],
+     ["reveal the top rune of your rune deck, then channel it", "reveal the top card of your main deck, then recycle it",
+      "reveal the top 2 runes of your rune deck, then recycle them"]),
+    ("reveal_the_top_rune_of_your_rune_deck", r"reveal the top rune of your rune deck",
+     ["Core 424", "Core 424.2", "Core 105"], "instruction", ["reveal"],
+     "The top card of its controller's Rune Deck is shown to all and stays where it is; its Domains are noted as it "
+     "is revealed. An empty Rune Deck reveals nothing.",
+     ["Reveal the top rune of your rune deck."],
+     ["reveal the top card of your main deck", "reveal the top 2 runes of your rune deck", "channel the top rune"]),
+    # 2026-10-13 package 11 (Mageseeker Warden, GPT ruling 17): two restrictions while the card is at a Battlefield
+    ("while_im_at_a_battlefield_opponents_can_only_play_units_to_their_base",
+     r"while i'm at a battlefield, opponents can only play units to their base",
+     ["Core 355.2", "Core 358.3.a", "Core 358.5"], "passive", ["battlefield_restrictions"],
+     "While the card is at a Battlefield, an opponent playing a Unit has only their Base as a valid location; an "
+     "effect that would play an opponent's Unit to a Battlefield still resolves, and that play is skipped.",
+     ["While I'm at a battlefield, opponents can only play units to their base."],
+     ["while i'm at a battlefield, opponents can't play units", "opponents can only play units to their base",
+      "while i'm at a battlefield, you can only play units to your base"]),
+    ("while_im_at_a_battlefield_spells_and_abilities_cant_ready_enemy_units_and_gear",
+     r"while i'm at a battlefield, spells and abilities can't ready enemy units and gear",
+     ["Core 358.3.a", "Core 415"], "passive", ["battlefield_restrictions"],
+     "While the card is at a Battlefield, a spell's or ability's instruction to ready an enemy Unit or Gear is "
+     "skipped as it resolves; the Awaken Step still readies them.",
+     ["While I'm at a battlefield, spells and abilities can't ready enemy units and gear."],
+     ["spells and abilities can't ready enemy units and gear", "while i'm at a battlefield, enemy units can't ready",
+      "while i'm at a battlefield, spells can't ready enemy units"]),
     ("deal_n_to_an_enemy_unit_here", r"deal (?P<amount>\d+) to an enemy unit here",
      ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or "
@@ -1116,6 +1193,16 @@ LITERAL = [
       "while i'm in your base, the energy costs for spells you play is reduced by [e1], to a minimum of [e1]",
       "the energy costs for spells you play is reduced by [e1], to a minimum of [e1]",
       "while i'm at a battlefield, the energy costs for spells you play is reduced by [e1]"]),
+    # 2026-10-12 package 11 (Symbol of the Solari)
+    ("if_a_combat_where_you_are_the_attacker_ends_in_a_tie_recall_all_units_instead",
+     r"if a combat where you are the attacker ends in a tie, recall all units instead",
+     ["Core 466.3.d", "Core 370.1", "Core 455"], "passive", ["combat_result", "recall"],
+     ("The result of a Combat its controller attacked in, when it is a tie (No Result, 466.3.d), is replaced: every unit "
+      "still at that Battlefield, either side's, is recalled. As the defender, or with a winner, nothing changes."),
+     ["If a combat where you are the attacker ends in a tie, recall ALL units instead."],
+     ["if a combat where you are the defender ends in a tie, recall all units instead",
+      "if a combat ends in a tie, recall all units instead",
+      "if a combat where you are the attacker ends in a tie, recall all enemy units instead"]),
     ("if_a_friendly_unit_would_die_kill_this_instead",
      r"if a friendly unit would die, kill this instead",
      ["Core 367", "Core 370.1.b", "Core 373.1"], "passive", ["replacement_effects", "kill"],
@@ -1139,6 +1226,73 @@ LITERAL = [
       "counter a spell that costs no more than [e4] and no more than [c]"]),
     # 2026-10-08 (package 10, Wind Wall): one spell on the Chain, chosen as the countering card is played (Core 355.7,
     # 355.5), countered (Core 425.1)
+    # 2026-10-13 package 11 (Treasure Trove: "[C], [T]: Kill this."): the ability's own source killed - its typed
+    # self-reference, resolved as the instruction executes (gone or a new object: ignored, Core 359.3.e.6)
+    # 2026-10-13 package 11 (Time Warp): an Additional Turn for the card's controller, and the spell banishing itself
+    # 2026-10-13 package 11 (Possession, GPT ruling 12): one enemy unit at a Battlefield chosen as the spell is played;
+    # its controller becomes the caster, then it is recalled - to its NEW controller's Base
+    ("choose_an_enemy_unit_at_a_battlefield_take_control_of_it_and_recall_it",
+     r"choose an enemy unit at a battlefield\. take control of it and recall it",
+     ["Core 189", "Core 191.3", "Core 355.5", "Core 455", "Core 456.1"], "instruction", ["gain_control", "recall", "targeting"],
+     "One enemy Unit at a Battlefield, chosen as the spell is played (the same chosen object for both instructions): "
+     "its controller becomes the spell's controller - its owner, damage, exhaustion and buff unchanged - and it is "
+     "recalled to that new controller's Base (not a Move). A friendly Unit, or one in a Base, is not a legal choice.",
+     ["Choose an enemy unit at a battlefield. Take control of it and recall it."],
+     ["choose an enemy unit. take control of it and recall it", "choose an enemy unit at a battlefield. take control of it",
+      "choose an enemy unit at a battlefield. recall it"]),
+    # 2026-10-13 package 11 (Reckoner's Arena, GPT ruling 15): Core 383.4.g.1's own example
+    ("activate_the_conquer_effects_of_units_here",
+     r"activate the conquer effects of units here",
+     ["Core 383.4.g", "Core 383.4.g.1", "Core 383.4.c"], "instruction", ["activate_conquer_effects"],
+     "Each conquer effect of each unit at the source's Battlefield - of either side - is checked as if its conquer part "
+     "were fulfilled; one whose other conditions hold becomes a Pending item like a fresh trigger, controlled by "
+     "that unit's controller.",
+     ["Activate the conquer effects of units here."],
+     ["activate the conquer effects of friendly units here", "activate the hold effects of units here",
+      "activate the conquer effects of units at a battlefield"]),
+    # 2026-10-13 package 11 (Heimerdinger - Inventor, GPT ruling 14)
+    ("i_have_all_exhaust_abilities_of_all_friendly_legends_units_and_gear",
+     r"i have all :rb_exhaust: abilities of all friendly legends, units, and gear",
+     ["Core 377", "Core 191.4", "Core 359.3.f.1"], "passive", ["copied_abilities"],
+     "The card has every activated ability with [Exhaust] in its cost that a friendly Legend, Unit or Gear on the Board "
+     "prints, for as long as that permanent is there: 'me'/'this' is the card, its [Exhaust] exhausts the card, every "
+     "other printed cost is paid as printed.",
+     ["I have all :rb_exhaust: abilities of all friendly legends, units, and gear."],
+     ["i have all abilities of all friendly units", "i have all :rb_exhaust: abilities of all enemy units",
+      "i have all :rb_exhaust: abilities of all friendly units"]),
+    # 2026-10-13 package 11 (Mystic Reversal, GPT ruling 13; Core 750-755)
+    ("gain_control_of_a_spell_you_may_make_new_choices_for_it",
+     r"gain control of a spell\. you may make new choices for it",
+     ["Core 191.2", "Core 191.4.b", "Core 751", "Core 752.1", "Core 753.1", "Core 755"], "instruction",
+     ["gain_control_of_spell", "make_new_choices", "counter"],
+     "One spell on the Chain, chosen as this is played, becomes its controller's - what was paid for it moves nowhere - "
+     "and that player may then remake any of its targets, destinations or mode, each new choice something it did not "
+     "choose before and legal now; what is not remade stays.",
+     ["Gain control of a spell. You may make new choices for it."],
+     ["gain control of a spell", "gain control of a unit. you may make new choices for it",
+      "gain control of a spell. make new choices for it"]),
+    ("take_a_turn_after_this_one",
+     r"take a turn after this one",
+     ["Core 735", "Core 736", "Core 737", "Core 738"], "instruction", ["take_additional_turn"],
+     ("Its controller takes an Additional Turn after the current one: queued ahead of any queued before it, the Turn "
+      "Order unchanged; after it the turns resume as they were queued. Another player's turn, or 'an additional turn' "
+      "with a condition, is a different production."),
+     ["Take a turn after this one."],
+     ["take an additional turn after this one", "each player takes a turn after this one", "skip your next turn"]),
+    ("banish_this",
+     r"banish this",
+     ["Core 157", "Core 427.1", "Core 124"], "instruction", ["banish_this"],
+     ("The resolving spell's own instruction: it leaves the Chain for its owner's banishment, not the trash. Not on the "
+      "Chain, nothing is banished. 'Banish it' or 'banish a unit' is a different production."),
+     ["Banish this."],
+     ["banish it", "banish a unit", "banish this instead"]),
+    ("kill_this",
+     r"kill this",
+     ["Core 428", "Core 359.3.f.1", "Core 359.3.e.6"], "instruction", ["kill"],
+     ("The ability's own source is killed (object_ref program_source): no target, nothing chosen. 'Kill it', a chosen "
+      "unit, or 'kill this instead' (a replacement) is a different production."),
+     ["Kill this."],
+     ["kill it", "kill a unit", "kill this instead"]),
     ("counter_a_spell",
      r"counter a spell",
      ["Core 425.1", "Core 355.7", "Core 355.5"], "instruction", ["counter", "typed_selectors"],
@@ -1326,6 +1480,11 @@ WRAPPERS = [
      ["When you play me, if you paid the additional cost, draw 1."],
      ["when you play me, draw 1", "when you play me, if you paid the cost, draw 1",
       "when i move, if you paid the additional cost, draw 1"]),
+    # 2026-10-12 package 11 (Blitzcrank - Impassive): before when_you_play_me, which would not take "to a battlefield"
+    ("when_you_play_me_to_a_battlefield", r"when you play me to a battlefield, (?P<inner>.+)",
+     ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
+     ["When you play me to a battlefield, draw 1."],
+     ["when you play me, draw 1", "when i move to a battlefield, draw 1", "when you play me to your base, draw 1"]),
     ("when_you_play_me", r"when you play me, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
      ["When you play me, channel 1 rune exhausted.", "When you play me, draw 1."],
      ["when you play a unit, draw 1", "when i move, draw 1"]),
@@ -1333,6 +1492,11 @@ WRAPPERS = [
     ("when_you_play_this", r"when you play this, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
      ["When you play this, draw 1."],
      ["when you play a gear, draw 1", "when you play me, draw 1"]),
+    # 2026-10-12 package 11 (Treasure Trove)
+    ("when_this_leaves_the_board", r"when this leaves the board, (?P<inner>.+)", ["Core 383.1", "Core 319.6", "Core 359.3.e.13"],
+     ["leave_board_triggers"],
+     ["When this leaves the board, draw 1."],
+     ["when i die, draw 1", "when this moves, draw 1", "when a unit leaves the board, draw 1"]),
     ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 420"], ["move_triggers"],
      ["When I move, draw 1."], ["when a unit moves, draw 1", "when you play me, draw 1"]),
     # 2026-09-24: the same Move trigger, met only when the completed Move's destination is a
@@ -1380,6 +1544,12 @@ WRAPPERS = [
      ["Core 383.4.e", "Core 383.4.e.1", "Core 383.4.e.2", "Core 383.4.e.2.a", "Core 464.2.e", "Core 464.2.e.1"],
      ["attack_triggers"],
      ["When I attack, draw 1."], ["when you attack, draw 1", "when i defend, draw 1", "when i conquer, draw 1"]),
+    # 2026-10-12 package 11 (Teemo - Strategist): a Unit's own Defend trigger (Core 383.4.f), the object-level
+    # defend_triggers the attack-or-defend row already files its descriptor under
+    ("when_i_defend", r"when i defend, (?P<inner>.+)",
+     ["Core 383.4.f", "Core 383.4.f.1", "Core 383.4.f.2", "Core 383.4.f.2.a", "Core 464.2.e", "Core 464.2.e.1"],
+     ["attack_triggers"],
+     ["When I defend, draw 1."], ["when you defend here, draw 1", "when i attack, draw 1", "when i conquer, draw 1"]),
     # One Unit ability with two trigger conditions (Core 383.4.e, 383.4.f): it goes on the
     # Chain the first time this Combat the Unit becomes an Attacker, or a Defender - never
     # both, since a Unit holds one designation per Combat.

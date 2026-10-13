@@ -83,6 +83,10 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "replacement_granted": {"about": "object", "rules": ["Core 370", "Core 124"]},
     # package 9 (Unyielding Spirit): a replacement an effect created for this turn, for any object
     "replacement_created": {"about": "player", "rules": ["Core 370", "Core 417.6"]},
+    # package 11 (Time Warp): an Additional Turn queued (Core 735)
+    "additional_turn_created": {"about": "player", "rules": ["Core 735", "Core 737"]},
+    # package 11 (Possession): a permanent's controller changed
+    "control_changed": {"about": "object", "rules": ["Core 189", "Core 191.3"]},
     "revealed": {"about": "object", "rules": ["Core 424.2"]},
     "looked_at": {"about": "object", "rules": ["Core 424.1"]},
     # DP-94: only a Stun that actually happened. Stunning an already Stunned
@@ -161,6 +165,14 @@ OP_PRIMARY: dict[str, str] = {
     "swap_might": "might_modified",
     "raise_might_to_match": "might_modified",
     "recycle_when_leaving_chain": "replacement_created",
+    "take_additional_turn": "additional_turn_created",
+    "gain_control": "control_changed",
+    "banish_one_looked": "banished",
+    "gain_control_of_spell": "control_changed",
+    "make_new_choices": "replacement_created",
+    "recycle_looked_rest": "recycled",
+    "activate_conquer_effects": "reflexive_emitted",
+    "banish_this": "replacement_created",
     "heal_damage": "healed",
     "heal_all_damage": "healed",
     "ready": "readied",

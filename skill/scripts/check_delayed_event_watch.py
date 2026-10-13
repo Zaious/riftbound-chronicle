@@ -17,6 +17,9 @@ one they wait for (Core 124).
   D3 resolves      each trigger kills the unit it is about
   D4 next turn     expired
   L1 L2 Legion     the card's own body: without Legion the delayed trigger is made and nothing dies; with it u2 dies now
+  L3 L4 itself     resolving as the chain item's card (context resolving_card): the spell itself Finalized this turn is
+                   not "another card" - alone in the ledger, no Legion (the delayed trigger, nothing dies); with another
+                   card before it, Legion (u2 dies now, nothing waits)
                    and no delayed trigger is made (GPT ruling 13)
   V  validation    until / repeats / about_target only on an event wait; about_target only with a bound target
 
@@ -171,6 +174,27 @@ def main() -> int:
         made_one = waiting(ran["next_state"]) == ["guillotine"]
         if (dead, made_one) != ((True, False) if legion else (False, True)):
             fail(label, f"killed now {dead}, delayed trigger made {made_one}")
+    # L3, L4 (package 11): the card resolving is in the ledger itself, as in real play
+    for label, ledger, legion in (("L3 itself alone", ["c1"], False), ("L4 another before it", ["c2", "c1"], True)):
+        s = board()
+        s["objects"]["c1"]["keywords"] = ["legion"]
+        s["players"]["p1"]["cards_finalized_this_turn"] = {s.get("turn_id", "turn-0"): list(ledger)}
+        effects = copy.deepcopy(lowered.get("program_effects") or [])
+        for e in effects:
+            e["target"] = {"object_id": "u2", "chosen_zone_class": "board", "kind": "unit",
+                           "bound_identity": object_identity(s, "u2")}
+            if e["op"] == "create_delayed_trigger":
+                e["delayed"].update({"controller": "p1", "source_object": "c1"})
+        # a spell's program names no source; resolution hands the chain item's card in (resolution_bridge)
+        sourceless = {k: v for k, v in program("guillotine", *effects).items() if k != "source_object"}
+        ran = apply_program(s, sourceless, context={"resolving_card": "c1"})
+        if not ran.get("committed"):
+            fail(label, ran.get("reason") or ran.get("errors"))
+            continue
+        dead = "u2" in ran["next_state"]["players"]["p2"]["zones"]["trash"]
+        made_one = waiting(ran["next_state"]) == ["guillotine"]
+        if (dead, made_one) != ((True, False) if legion else (False, True)):
+            fail(label, f"killed now {dead}, delayed trigger made {made_one}")
     bad = copy.deepcopy(made["next_state"])
     bad["delayed_triggers"][0]["waits_for"] = {"kind": "turn", "moment": "end_of_turn", "turn_id": "turn-0"}
     if not validate_state(bad):
@@ -189,7 +213,7 @@ def main() -> int:
         return 1
     print("OK: delayed triggers waiting for an event this turn - the bound one fires once on its unit only, the repeating "
           "one on every damaged unit, each 'it' the damaged unit; both stop at the turn's end; a new object is not "
-          "waited for (G1-G5, D1-D4, L1-L2, V)")
+          "waited for (G1-G5, D1-D4, L1-L4, V)")
     return 0
 
 

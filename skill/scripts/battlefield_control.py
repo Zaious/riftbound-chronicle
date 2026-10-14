@@ -90,7 +90,22 @@ def scored_this_turn(effect_state: dict[str, Any], player: str, turn_id: str) ->
 
 # ------------------------------------------------------------------ scoring --
 
-def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str) -> list[dict[str, Any]]:
+def assigned_excess(combat: dict[str, Any] | None, player: str, battlefield_id: str) -> int | None:
+    """Package 12 (Tryndamere - Barbarian; the site owner's ruling 2026-10-14, the community reading, noted as such): the
+    excess Combat Damage `player` assigned to enemy units in the Combat at `battlefield_id` that `player` attacked in -
+    over every unit, what was assigned beyond the lethal amount for it (its marked damage and the replacements previewed
+    on the assignment counted, Core 2026-10-09 467.2.c.4, 467.2.c.5); spell damage is no part of it. None when the
+    conquer did not come after an attack by `player` there."""
+    if not combat or combat.get("battlefield") != battlefield_id or combat.get("attacker") != player:
+        return None
+    receipt = (combat.get("assignments") or {}).get("attacker") or {}
+    if receipt.get("assigning_player") != player:
+        return None
+    return sum(max(0, int(e.get("raw_assigned", 0)) - int(e.get("min_lethal_raw", 0))) for e in receipt.get("entries") or [])
+
+
+def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str,
+                    combat: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Core 471.2 / 383.4.c–d: a Unit's own trigger fires when that Unit, the
     scoring player's, is at the Battlefield scored (scope unit_here); a
     player-referencing trigger fires from any board object the scoring player
@@ -132,7 +147,14 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
             scope = descriptor.get("scope", "unit_here")
             if scope == "unit_here" and (obj.get("kind") != "unit" or find_location(effect_state, object_id) != ("battlefield", battlefield_id, None)):
                 continue
-            if descriptor.get("condition") is not None:
+            if (descriptor.get("condition") or {}).get("kind") == "assigned_excess_after_attack":
+                # package 12 (Tryndamere - Barbarian): part of the Trigger Condition (Core 383.2.a.1), read as the
+                # conquer is processed - from the Combat that ended in it
+                excess = assigned_excess(combat, player, battlefield_id)
+                if excess is None or excess < descriptor["condition"]["at_least"]:
+                    continue
+                descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
+            elif descriptor.get("condition") is not None:
                 # 2026-10-08 package 10 (Core 383.2.a.1, Garen - Might of Demacia (Starter)): a player-level score
                 # trigger's conditional statement is part of its Trigger Condition, read now - the score just processed -
                 # with THAT battlefield (the one scored) as its "here"; not met, it does not trigger
@@ -162,7 +184,8 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
     return descriptors
 
 
-def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str, decisions: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str, decisions: dict[str, Any] | None = None,
+                      combat: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     """Core 469–471 on a copy of the effect state: once per Battlefield per
     turn (470); up to one point (471.1); a Conquer that would reach the
     Victory Score gains the Final Point only if every Battlefield was scored
@@ -203,7 +226,7 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
         working["players"][player]["points"] = record["points_before"] + 1
         record.update({"scored": True, "gain": "point", "rule_locators": ["Core 469.1" if how == "conquer" else "Core 469.2", "Core 471.1"] + (["Core 471.1.a.1"] if how == "hold" else [])})
     record["points_after"] = points_of(working, player)
-    triggers = _score_triggers(working, player, battlefield_id, how, turn_id)  # 383.4.c.2.c: a replaced point still triggers
+    triggers = _score_triggers(working, player, battlefield_id, how, turn_id, combat)  # 383.4.c.2.c: a replaced point still triggers
     record["triggers"] = [t["trigger_id"] for t in triggers]
     return working, record, triggers
 
@@ -253,7 +276,8 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
         else:
             next_effect["battlefields"][battlefield_id]["controller"] = player
             try:
-                next_effect, scoring, triggers = score_battlefield(next_effect, player, battlefield_id, "conquer", turn_id, engine_decisions)
+                next_effect, scoring, triggers = score_battlefield(next_effect, player, battlefield_id, "conquer", turn_id, engine_decisions,
+                                                                   combat=record if source == "combat" else None)
             except ScoringUnsupported as exc:
                 return _unsupported(base, exc.code, exc.reason, exc.locators, source=source, would_establish_control=player)
             except ScoringDecisionRequired as exc:

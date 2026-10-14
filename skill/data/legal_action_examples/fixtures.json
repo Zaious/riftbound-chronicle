@@ -9,7 +9,7 @@
         "state_seq": 1
       },
       "context": {
-        "ruleset_core": "2026-07-16",
+        "ruleset_core": "2026-10-09",
         "faq_as_of": "2026-08-14",
         "format": "1v1 Constructed",
         "region": "global",
@@ -18,11 +18,11 @@
       "component_states": {
         "timing_state": {
           "schema_version": "riftbound-rules-core-state.v1",
-          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "hash": "sha256:456ccf898b6a7c131ff667410300c70fe68767e56cb30a1142a2215d71d040bb",
           "state": {
             "schema_version": "riftbound-rules-core-state.v1",
             "ruleset": {
-              "core": "2026-07-16",
+              "core": "2026-10-09",
               "faq_as_of": "2026-08-14"
             },
             "players": [
@@ -78,11 +78,11 @@
         "resources": "absent",
         "pending_decisions": "complete"
       },
-      "observation_hash": "sha256:ce42add615ac2796f979b95d9a4a1cd506034e4036ea4decd5644cf52838d976"
+      "observation_hash": "sha256:97b5070076d2ec9907df1a4bf8b52d0655874023152656fee35b2312b5274dfe"
     },
     "query": {
       "schema_version": "action-query.v1",
-      "observation_hash": "sha256:ce42add615ac2796f979b95d9a4a1cd506034e4036ea4decd5644cf52838d976",
+      "observation_hash": "sha256:97b5070076d2ec9907df1a4bf8b52d0655874023152656fee35b2312b5274dfe",
       "candidate_source_mode": "user_supplied",
       "acting_player": "p1",
       "requested_action_families": [
@@ -135,14 +135,14 @@
           }
         }
       ],
-      "query_hash": "sha256:f2fbf265944b056a861784c5b73a108ae454a6ce5c047022b401f256b736e36a"
+      "query_hash": "sha256:83bb9f9926f23807c1b4f216156c6723c5ca5cb00aaa82ae19f6546f47583af7"
     },
     "result": {
       "schema_version": "legal-action-result.v1",
       "valid": true,
       "errors": [],
-      "observation_hash": "sha256:ce42add615ac2796f979b95d9a4a1cd506034e4036ea4decd5644cf52838d976",
-      "query_hash": "sha256:f2fbf265944b056a861784c5b73a108ae454a6ce5c047022b401f256b736e36a",
+      "observation_hash": "sha256:97b5070076d2ec9907df1a4bf8b52d0655874023152656fee35b2312b5274dfe",
+      "query_hash": "sha256:83bb9f9926f23807c1b4f216156c6723c5ca5cb00aaa82ae19f6546f47583af7",
       "perspective": "player1",
       "acting_player": "p1",
       "candidate_source_mode": "user_supplied",
@@ -222,7 +222,7 @@
         "Core 339"
       ],
       "reason_code": "ok",
-      "result_hash": "sha256:39349c3a7c06ac50edfaef870cfd85850eb740c568a36bdaa60e195b2d4dc6d4"
+      "result_hash": "sha256:6bc629251689e833c97855c4e1e85ce0e70cf2b2895282b7d520d99a97d3b2df"
     }
   },
   "neutral_closed_reaction_window": {
@@ -235,7 +235,7 @@
         "state_seq": 3
       },
       "context": {
-        "ruleset_core": "2026-07-16",
+        "ruleset_core": "2026-10-09",
         "faq_as_of": "2026-08-14",
         "format": "1v1 Constructed",
         "region": "global",
@@ -244,11 +244,11 @@
       "component_states": {
         "timing_state": {
           "schema_version": "riftbound-rules-core-state.v1",
-          "hash": "sha256:7fc5a26701a44f13eee91d913a23c8734eb3af5e6926dc08f3edc905af94d160",
+          "hash": "sha256:9960ef3e0a112dc8b09c2d64b70450c668ae0b7648e58850c6ec491a30dcdbd6",
           "state": {
             "schema_version": "riftbound-rules-core-state.v1",
             "ruleset": {
-              "core": "2026-07-16",
+              "core": "2026-10-09",
               "faq_as_of": "2026-08-14"
             },
             "players": [
@@ -307,11 +307,11 @@
         "resources": "absent",
         "pending_decisions": "complete"
       },
-      "observation_hash": "sha256:bf6fc9c60b868d490a4e0e94583ca22c21c22eaa80f64066faf36c3d86f4cb6a"
+      "observation_hash": "sha256:9292e985898a81489497d9a234a9e82dccad8568e8b7989ebde32765063ce7f4"
     },
     "query": {
       "schema_version": "action-query.v1",
-      "observation_hash": "sha256:bf6fc9c60b868d490a4e0e94583ca22c21c22eaa80f64066faf36c3d86f4cb6a",
+      "observation_hash": "sha256:9292e985898a81489497d9a234a9e82dccad8568e8b7989ebde32765063ce7f4",
       "candidate_source_mode": "user_supplied",
       "acting_player": "p2",
       "requested_action_families": [
@@ -350,14 +350,14 @@
           }
         }
       ],
-      "query_hash": "sha256:4521e739345dc5f4c7374f06c8b445f2ad792fbe32c67e7b72cb777d1957bee8"
+      "query_hash": "sha256:958926f4dcb8d59414f2b4f0f2a8df7183da3f77ecd08ed224475c04935bf516"
     },
     "result": {
       "schema_version": "legal-action-result.v1",
       "valid": true,
       "errors": [],
-      "observation_hash": "sha256:bf6fc9c60b868d490a4e0e94583ca22c21c22eaa80f64066faf36c3d86f4cb6a",
-      "query_hash": "sha256:4521e739345dc5f4c7374f06c8b445f2ad792fbe32c67e7b72cb777d1957bee8",
+      "observation_hash": "sha256:9292e985898a81489497d9a234a9e82dccad8568e8b7989ebde32765063ce7f4",
+      "query_hash": "sha256:958926f4dcb8d59414f2b4f0f2a8df7183da3f77ecd08ed224475c04935bf516",
       "perspective": "player2",
       "acting_player": "p2",
       "candidate_source_mode": "user_supplied",
@@ -431,7 +431,7 @@
         "Core 807"
       ],
       "reason_code": "ok",
-      "result_hash": "sha256:566aea426baffe3a63c95256d5cb6772c65fd263be7c4048f67d396e763ecac2"
+      "result_hash": "sha256:11c3f1e082f3093c078776d02aa300315d7a863c5235698b4c51b22b3f638b8e"
     }
   },
   "prose_only_indeterminate": {
@@ -444,7 +444,7 @@
         "state_seq": 5
       },
       "context": {
-        "ruleset_core": "2026-07-16",
+        "ruleset_core": "2026-10-09",
         "faq_as_of": "2026-08-14",
         "format": "1v1 Constructed",
         "region": "global",
@@ -479,11 +479,11 @@
         "resources": "absent",
         "pending_decisions": "absent"
       },
-      "observation_hash": "sha256:84d49313a970ef784074262e7471f7d8af43d5dea04b49925c2a5a2c2512bfc4"
+      "observation_hash": "sha256:fb9223c9291fd2259a04f382817b0aa08662e4fe24391b2cdafeaf201de173b9"
     },
     "query": {
       "schema_version": "action-query.v1",
-      "observation_hash": "sha256:84d49313a970ef784074262e7471f7d8af43d5dea04b49925c2a5a2c2512bfc4",
+      "observation_hash": "sha256:fb9223c9291fd2259a04f382817b0aa08662e4fe24391b2cdafeaf201de173b9",
       "candidate_source_mode": "user_supplied",
       "acting_player": "p2",
       "requested_action_families": [
@@ -508,14 +508,14 @@
           "description": "Do the obvious thing"
         }
       ],
-      "query_hash": "sha256:397a809c528402b5e95cca14e05b0268379146fe1e08be04a917660d3e7962c6"
+      "query_hash": "sha256:892ce62460186953f901239df94b868c6fd941b39cc125f9eed1c4e420418a3d"
     },
     "result": {
       "schema_version": "legal-action-result.v1",
       "valid": true,
       "errors": [],
-      "observation_hash": "sha256:84d49313a970ef784074262e7471f7d8af43d5dea04b49925c2a5a2c2512bfc4",
-      "query_hash": "sha256:397a809c528402b5e95cca14e05b0268379146fe1e08be04a917660d3e7962c6",
+      "observation_hash": "sha256:fb9223c9291fd2259a04f382817b0aa08662e4fe24391b2cdafeaf201de173b9",
+      "query_hash": "sha256:892ce62460186953f901239df94b868c6fd941b39cc125f9eed1c4e420418a3d",
       "perspective": "player2",
       "acting_player": "p2",
       "candidate_source_mode": "user_supplied",
@@ -561,7 +561,7 @@
       },
       "rule_locators": [],
       "reason_code": "ok",
-      "result_hash": "sha256:bf61e503da63163ae582af4a444f0c733b5a829530508cb38b4fe7a4141ac10f"
+      "result_hash": "sha256:c73ddd5aa64d61e66edf5362f624728b60ee9702f232ddb413e73220ecb2a836"
     }
   },
   "pending_decision": {
@@ -574,7 +574,7 @@
         "state_seq": 7
       },
       "context": {
-        "ruleset_core": "2026-07-16",
+        "ruleset_core": "2026-10-09",
         "faq_as_of": "2026-08-14",
         "format": "1v1 Constructed",
         "region": "global",
@@ -583,11 +583,11 @@
       "component_states": {
         "timing_state": {
           "schema_version": "riftbound-rules-core-state.v1",
-          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "hash": "sha256:456ccf898b6a7c131ff667410300c70fe68767e56cb30a1142a2215d71d040bb",
           "state": {
             "schema_version": "riftbound-rules-core-state.v1",
             "ruleset": {
-              "core": "2026-07-16",
+              "core": "2026-10-09",
               "faq_as_of": "2026-08-14"
             },
             "players": [
@@ -643,11 +643,11 @@
         "resources": "absent",
         "pending_decisions": "complete"
       },
-      "observation_hash": "sha256:45ba902f394449a9a142e3d44a162fc9ad041fa066a0e643b545c0ba63b9c71f"
+      "observation_hash": "sha256:f2c5c7be8ef74bca6fd11d6653295884c44e54ee4c36d549446a3a1c46c6355e"
     },
     "query": {
       "schema_version": "action-query.v1",
-      "observation_hash": "sha256:45ba902f394449a9a142e3d44a162fc9ad041fa066a0e643b545c0ba63b9c71f",
+      "observation_hash": "sha256:f2c5c7be8ef74bca6fd11d6653295884c44e54ee4c36d549446a3a1c46c6355e",
       "candidate_source_mode": "user_supplied",
       "acting_player": "p1",
       "requested_action_families": [
@@ -674,14 +674,14 @@
           "requires_decision_id": "d9"
         }
       ],
-      "query_hash": "sha256:4d075f1a17529355f741aae5a89840d34c4ae858d0ab781e02e949c57ebab69b"
+      "query_hash": "sha256:f2e7ea0470eb2ff05d5518bd2a364d371f442c02f5702db67ba4683381c08948"
     },
     "result": {
       "schema_version": "legal-action-result.v1",
       "valid": true,
       "errors": [],
-      "observation_hash": "sha256:45ba902f394449a9a142e3d44a162fc9ad041fa066a0e643b545c0ba63b9c71f",
-      "query_hash": "sha256:4d075f1a17529355f741aae5a89840d34c4ae858d0ab781e02e949c57ebab69b",
+      "observation_hash": "sha256:f2c5c7be8ef74bca6fd11d6653295884c44e54ee4c36d549446a3a1c46c6355e",
+      "query_hash": "sha256:f2e7ea0470eb2ff05d5518bd2a364d371f442c02f5702db67ba4683381c08948",
       "perspective": "player1",
       "acting_player": "p1",
       "candidate_source_mode": "user_supplied",
@@ -725,7 +725,7 @@
       },
       "rule_locators": [],
       "reason_code": "legal_action_decision_required",
-      "result_hash": "sha256:7c4df15ba80d8fa392dd0d80ffb5f68cb6c940a629256d35466559b7639d8efd"
+      "result_hash": "sha256:a1eccee3b8e468cb822a80a75bde01546e5b94a8b4abc897d5591ae1511a67e5"
     }
   },
   "showdown_open_focus": {
@@ -738,7 +738,7 @@
         "state_seq": 2
       },
       "context": {
-        "ruleset_core": "2026-07-16",
+        "ruleset_core": "2026-10-09",
         "faq_as_of": "2026-08-14",
         "format": "1v1 Constructed",
         "region": "global",
@@ -747,11 +747,11 @@
       "component_states": {
         "timing_state": {
           "schema_version": "riftbound-rules-core-state.v1",
-          "hash": "sha256:372d68ce53dbd7dcf58ce160a981c8960e9a764744aa55c9eac797e0b2619ae1",
+          "hash": "sha256:cba9f4e7fc7d411507cd2aa7f49edea627bb755904028fbc5795a9753a1e0a3d",
           "state": {
             "schema_version": "riftbound-rules-core-state.v1",
             "ruleset": {
-              "core": "2026-07-16",
+              "core": "2026-10-09",
               "faq_as_of": "2026-08-14"
             },
             "players": [
@@ -801,11 +801,11 @@
         "resources": "absent",
         "pending_decisions": "complete"
       },
-      "observation_hash": "sha256:b898e3a75f52bba5fe97a7936eb577ae25a7024c8088a5f3546646f4fb700709"
+      "observation_hash": "sha256:b1438a975617abbb3e599f7f59163666adff8afb87bf29d3999a6c3108c3515e"
     },
     "query": {
       "schema_version": "action-query.v1",
-      "observation_hash": "sha256:b898e3a75f52bba5fe97a7936eb577ae25a7024c8088a5f3546646f4fb700709",
+      "observation_hash": "sha256:b1438a975617abbb3e599f7f59163666adff8afb87bf29d3999a6c3108c3515e",
       "candidate_source_mode": "user_supplied",
       "acting_player": "p1",
       "requested_action_families": [
@@ -844,14 +844,14 @@
           }
         }
       ],
-      "query_hash": "sha256:233c5ed04c72353cdd3af08680348d3fc64b36f14d48119c91f755a5b8791063"
+      "query_hash": "sha256:0e57ce7ff9086dc7cba55d43e8b441ca809ebfad81a474e9c00a90d0ae97b966"
     },
     "result": {
       "schema_version": "legal-action-result.v1",
       "valid": true,
       "errors": [],
-      "observation_hash": "sha256:b898e3a75f52bba5fe97a7936eb577ae25a7024c8088a5f3546646f4fb700709",
-      "query_hash": "sha256:233c5ed04c72353cdd3af08680348d3fc64b36f14d48119c91f755a5b8791063",
+      "observation_hash": "sha256:b1438a975617abbb3e599f7f59163666adff8afb87bf29d3999a6c3108c3515e",
+      "query_hash": "sha256:0e57ce7ff9086dc7cba55d43e8b441ca809ebfad81a474e9c00a90d0ae97b966",
       "perspective": "public_observer",
       "acting_player": "p1",
       "candidate_source_mode": "user_supplied",
@@ -922,7 +922,7 @@
         "Core 806–807"
       ],
       "reason_code": "ok",
-      "result_hash": "sha256:3e081515c7892fbe84d17f9bc9a36b4921e28669105a575c5135a966f4188b98"
+      "result_hash": "sha256:f4c005d69a5bbe59bf067476a311e74d280c7c28d53d3589c0e4f1b65b508644"
     }
   },
   "hindsight_without": {
@@ -935,7 +935,7 @@
         "state_seq": 9
       },
       "context": {
-        "ruleset_core": "2026-07-16",
+        "ruleset_core": "2026-10-09",
         "faq_as_of": "2026-08-14",
         "format": "1v1 Constructed",
         "region": "global",
@@ -944,11 +944,11 @@
       "component_states": {
         "timing_state": {
           "schema_version": "riftbound-rules-core-state.v1",
-          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "hash": "sha256:456ccf898b6a7c131ff667410300c70fe68767e56cb30a1142a2215d71d040bb",
           "state": {
             "schema_version": "riftbound-rules-core-state.v1",
             "ruleset": {
-              "core": "2026-07-16",
+              "core": "2026-10-09",
               "faq_as_of": "2026-08-14"
             },
             "players": [
@@ -998,11 +998,11 @@
         "resources": "absent",
         "pending_decisions": "complete"
       },
-      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206"
+      "observation_hash": "sha256:3452cf50015865dc46ce053076aef97a9cb11fee289c5c10f5c88d52bc943e3c"
     },
     "query": {
       "schema_version": "action-query.v1",
-      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
+      "observation_hash": "sha256:3452cf50015865dc46ce053076aef97a9cb11fee289c5c10f5c88d52bc943e3c",
       "candidate_source_mode": "user_supplied",
       "acting_player": "p1",
       "requested_action_families": [
@@ -1023,14 +1023,14 @@
           }
         }
       ],
-      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161"
+      "query_hash": "sha256:033c6b32dbbce2cc4ffad010f7230368c957626e8f16e51a510d8b65ed84a522"
     },
     "result": {
       "schema_version": "legal-action-result.v1",
       "valid": true,
       "errors": [],
-      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
-      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161",
+      "observation_hash": "sha256:3452cf50015865dc46ce053076aef97a9cb11fee289c5c10f5c88d52bc943e3c",
+      "query_hash": "sha256:033c6b32dbbce2cc4ffad010f7230368c957626e8f16e51a510d8b65ed84a522",
       "perspective": "player1",
       "acting_player": "p1",
       "candidate_source_mode": "user_supplied",
@@ -1068,7 +1068,7 @@
         "Core 316"
       ],
       "reason_code": "ok",
-      "result_hash": "sha256:a0251f2d947815bd5b96ea978d42b5ff030ec4323da485f5fdf70073ba0a30eb"
+      "result_hash": "sha256:5a5e965bed2e78af875a59b4093430c0dd1384cac18150de0ed1c44a9f173829"
     }
   },
   "hindsight_with": {
@@ -1081,7 +1081,7 @@
         "state_seq": 9
       },
       "context": {
-        "ruleset_core": "2026-07-16",
+        "ruleset_core": "2026-10-09",
         "faq_as_of": "2026-08-14",
         "format": "1v1 Constructed",
         "region": "global",
@@ -1090,11 +1090,11 @@
       "component_states": {
         "timing_state": {
           "schema_version": "riftbound-rules-core-state.v1",
-          "hash": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee",
+          "hash": "sha256:456ccf898b6a7c131ff667410300c70fe68767e56cb30a1142a2215d71d040bb",
           "state": {
             "schema_version": "riftbound-rules-core-state.v1",
             "ruleset": {
-              "core": "2026-07-16",
+              "core": "2026-10-09",
               "faq_as_of": "2026-08-14"
             },
             "players": [
@@ -1156,11 +1156,11 @@
         "resources": "absent",
         "pending_decisions": "complete"
       },
-      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206"
+      "observation_hash": "sha256:3452cf50015865dc46ce053076aef97a9cb11fee289c5c10f5c88d52bc943e3c"
     },
     "query": {
       "schema_version": "action-query.v1",
-      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
+      "observation_hash": "sha256:3452cf50015865dc46ce053076aef97a9cb11fee289c5c10f5c88d52bc943e3c",
       "candidate_source_mode": "user_supplied",
       "acting_player": "p1",
       "requested_action_families": [
@@ -1181,14 +1181,14 @@
           }
         }
       ],
-      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161"
+      "query_hash": "sha256:033c6b32dbbce2cc4ffad010f7230368c957626e8f16e51a510d8b65ed84a522"
     },
     "result": {
       "schema_version": "legal-action-result.v1",
       "valid": true,
       "errors": [],
-      "observation_hash": "sha256:288f70493d98fe7ba96de5910826bf91583fb020e84e630c585efe0d1ceef206",
-      "query_hash": "sha256:f228eee1a1815261459777c7cbdfb1c638563c48a188f357b46b51372e882161",
+      "observation_hash": "sha256:3452cf50015865dc46ce053076aef97a9cb11fee289c5c10f5c88d52bc943e3c",
+      "query_hash": "sha256:033c6b32dbbce2cc4ffad010f7230368c957626e8f16e51a510d8b65ed84a522",
       "perspective": "player1",
       "acting_player": "p1",
       "candidate_source_mode": "user_supplied",
@@ -1226,7 +1226,7 @@
         "Core 316"
       ],
       "reason_code": "ok",
-      "result_hash": "sha256:a0251f2d947815bd5b96ea978d42b5ff030ec4323da485f5fdf70073ba0a30eb"
+      "result_hash": "sha256:5a5e965bed2e78af875a59b4093430c0dd1384cac18150de0ed1c44a9f173829"
     }
   }
 }

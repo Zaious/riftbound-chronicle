@@ -83,7 +83,7 @@ def programs() -> dict[str, dict]:
 def observation(timing_state, effect_state):
     return legal_action.build_observation(
         perspective="player1", source={"kind": "engine_state", "state_seq": 1},
-        context={"ruleset_core": "2026-07-16", "faq_as_of": "2026-07-16",
+        context={"ruleset_core": effect_ir.CORE_RULESET, "faq_as_of": effect_ir.FAQ_AS_OF,
                  "format": "standard", "card_data_version": "r3a1"},
         timing_state=timing_state, effect_state=effect_state, facts={}, pending_decisions=[],
         completeness={"hands": "complete", "board": "complete", "resources": "complete",
@@ -339,6 +339,51 @@ def main() -> int:
             failures.append(f"{case_id}: the run shipped a pack it had not verified")
     if sorted(reproduced) != sorted({ENTRIES[e]["check_kind"] for e in ENTRIES}):
         failures.append(f"the five entries did not produce five pack kinds: {sorted(reproduced)}")
+
+    # 2026-10-14 package 12 (GPT's review, point 2): the same consultation against rules text of another Core than the
+    # engine executes - the table relabelled 2026-07-16 - binds no engine claim: held, tier C, by name
+    older_table = copy.deepcopy(payload["sources"]["table"])
+    for row in older_table.values():
+        if row.get("record"):
+            row["record"]["document_version"] = "2026-07-16"
+    older = run_consultation(
+        question=ran["CR-001"]["question"], entry="timing", draft=timing_draft,
+        entry_inputs={"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
+        claims=ran["CR-001"]["request"]["claim_bindings"],
+        **{**context, "source_retriever": TableRetriever(older_table, payload["sources"]["surfaced"])})
+    if older["not_attempted_reason"] != "engine_version_mismatch" or older["tier"] != "C" or older["claims"]:
+        failures.append(f"an engine verdict bound against rules text of another Core: {older['status']}/"
+                        f"{older['not_attempted_reason']}/{older['tier']}")
+    if ran["CR-001"]["tier"] != "A":
+        failures.append("CR-001 does not reach tier A on the aligned table, so the held case above proves nothing")
+    seen_reasons.add(older["not_attempted_reason"])
+    # 2026-10-15 package 12 (GPT's second review): an engine claim with no proof the rules text is the executed Core -
+    # nothing retrieved for the question, no retriever at all, or a Core record without a version - fails closed too
+    by_id = {c["case_id"]: c for c in cases}
+    unversioned = copy.deepcopy(payload["sources"]["table"])
+    for row in unversioned.values():
+        if row.get("record"):
+            row["record"].pop("document_version", None)
+    for case_id in ("CR-001", "CR-003"):
+        case = by_id[case_id]
+        if ran[case_id]["tier"] != "A":
+            failures.append(f"{case_id} does not reach tier A with its rules text, so its fail-closed variants prove nothing")
+        base = {"question": case["question"], "entry": case["entry"], "draft": case.get("draft_override", timing_draft),
+                "effect_draft": None if case.get("omit_effect_draft") else effect_draft,
+                "entry_inputs": resolve(case["entry_inputs"]), "claims": case["claims"]}
+        for label, ctx, says in (
+                ("nothing retrieved", {**context, "source_retriever": TableRetriever(payload["sources"]["table"],
+                                                                                    {case["question"]: []})},
+                 "no Core rules text was retrieved"),
+                ("no retriever", {k: v for k, v in context.items() if k != "source_retriever"}, "no rules retriever"),
+                ("a Core record without a version", {**context, "source_retriever": TableRetriever(
+                    unversioned, payload["sources"]["surfaced"])}, "carries no version")):
+            got = run_consultation(**base, **ctx)
+            if got["not_attempted_reason"] != "engine_version_unverified" or got["tier"] != "C" or got["claims"] \
+                    or says not in (got["detail"] or ""):
+                failures.append(f"{case_id} with {label}: an engine verdict was not held - {got['status']}/"
+                                f"{got['not_attempted_reason']}/{got['tier']}")
+            seen_reasons.add(got["not_attempted_reason"])
 
     # Re-running the same consultation reproduces the same run, hash included.
     first = ran["CR-001"]

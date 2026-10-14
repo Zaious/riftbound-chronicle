@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, contains_each_player, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_identity, object_triggers, perform_lethal_cleanup, validate_state, zone_class
+from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, contains_each_player, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_identity, object_triggers, perform_lethal_cleanup, restrict_to_facedown_battlefield, validate_state, zone_class
 from rules_core import add_limited_play_items, apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
 
@@ -182,6 +182,8 @@ def finalize_trigger(
     program, refusal = bind_source_identity(program, item)
     if refusal is not None:
         return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], **refusal}
+    if item.get("facedown_battlefield"):
+        program = _facedown_restricted(program, item, effect_state)
     if decision_errors := _ed.validate_engine_decisions(engine_decisions):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": decision_errors, "reason": "; ".join(decision_errors)}
     if engine_decisions is not None and engine_decisions.get("input_hash") != hash_value(effect_state):
@@ -477,6 +479,36 @@ def _envelope_extras(engine_decisions: dict[str, Any] | None) -> dict[str, Any]:
             if k not in ("schema_version", "input_hash", "decisions")}
 
 
+def _literal_players(value: Any, players: set[str]) -> bool:
+    """Does a program's text name a player by id ("player": "p2") anywhere in its effects?"""
+    if isinstance(value, dict):
+        return any((k == "player" and v in players) or _literal_players(v, players) for k, v in value.items())
+    if isinstance(value, list):
+        return any(_literal_players(v, players) for v in value)
+    return False
+
+
+def _swap_players(value: Any, a: str, b: str) -> Any:
+    """Every "player" field naming a or b names the other (a two-player game's you and opponent, exchanged)."""
+    if isinstance(value, dict):
+        return {k: ({a: b, b: a}.get(v, v) if k == "player" and isinstance(v, str) else _swap_players(v, a, b))
+                for k, v in value.items()}
+    if isinstance(value, list):
+        return [_swap_players(v, a, b) for v in value]
+    return value
+
+
+def _facedown_restricted(program: dict[str, Any], item: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
+    """The on-play trigger of a permanent that came from facedown (Core 2026-10-09 811.1.d.3, 811.1.d.3.a): its targets at the
+    battlefield it was played to; its source no longer that object on the board, it reads no battlefield and every
+    target mistargets."""
+    source, identity = item.get("source_object"), item.get("source_identity")
+    where = find_location(effect_state, source) if source else None
+    gone = where is None or where[0] not in {"battlefield", "base"} or \
+        (identity is not None and object_identity(effect_state, source) != identity)
+    return restrict_to_facedown_battlefield(program, item["facedown_battlefield"], source_gone=gone)
+
+
 def resolve_with_program(
     timing_state: dict[str, Any],
     item_id: str,
@@ -526,7 +558,16 @@ def resolve_with_program(
     # controller is rebound, nothing else in it changes
     taken = ((effect_state.get("chain_items") or {}).get(item_id) or {}).get("control_changed")
     if program and taken and program.get("controller") == taken["from"]:
-        program = {**program, "controller": taken["to"]}
+        # package 12: the players a program names were bound for its first controller - "you" as that player, "an
+        # opponent" as the other - so in a two-player game they are exchanged with the controller; with more players
+        # the binding cannot be read back from the ids, refused by name
+        players = sorted((effect_state.get("players") or {}))
+        named = _literal_players(program.get("effects") or [], set(players))
+        if named and len(players) != 2:
+            return {**base, "valid": True, "committed": False, "stage": "program_binding",
+                    "reason": "spell_control_players_unbound", "unsupported": True}
+        program = {**program, "controller": taken["to"],
+                   **({"effects": _swap_players(program["effects"], taken["from"], taken["to"])} if named else {})}
     if program.get("controller") is not None and program.get("controller") != chain_item.get("controller"):
         return {**base, "valid": True, "committed": False, "stage": "program_binding", "reason": "effect_program_controller_mismatch"}
     if program.get("source_object") is not None and chain_item.get("source_object") is not None and program.get("source_object") != chain_item.get("source_object"):
@@ -644,6 +685,11 @@ def resolve_with_program(
     if entry_before.get("played_from_hidden"):
         # Core 811.1.d.3 (GPT 2026-09-27): the battlefield this card was played from Hidden at
         context = {**(context or {}), "hidden_battlefield": entry_before["played_from_hidden"]}
+        # package 12 (Core 2026-10-09 811.1.d.2, 359.3.e.2.a): its targets are checked at that battlefield again now
+        if program and entry_before.get("hidden_targeting", "restricted") == "restricted":
+            program = restrict_to_facedown_battlefield(program, entry_before["played_from_hidden"])
+    if program and chain_item.get("facedown_battlefield"):
+        program = _facedown_restricted(program, chain_item, effect_state)
     # 2026-09-27: a base cost paid as the ability was finalized (Core 383.3.b.1) - the chain
     # item's receipt is what apply_program checks; resolution pays nothing again
     paid_cost = chain_item.get("trigger_cost_receipt")
@@ -1400,6 +1446,11 @@ def complete_permanent_play(
         # that reads "here" or "me" is bound to THIS object, never to whatever sits at the id
         # later (2026-09-24, "When you play me, play a ... token here.")
         copied["source_identity"] = trace["identity_after"]
+        # package 12 (Core 2026-10-09 811.1.d.3): played from facedown, its play effect chooses at the battlefield it was
+        # played to - noted here, applied as the trigger is finalized and again as it resolves
+        if entry.get("played_from_hidden") and entry.get("hidden_targeting", "restricted") == "restricted" \
+                and location.get("kind") == "battlefield":
+            copied["facedown_battlefield"] = location["battlefield"]
         triggers.append(copied)
     # Core 817.1.c: Vision triggers as the permanent enters the Board by being played
     from effect_ir import vision_triggers

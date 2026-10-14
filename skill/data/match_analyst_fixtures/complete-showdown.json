@@ -11,7 +11,7 @@
     "recorded_by": "fixture author",
     "is_real_match": false
   },
-  "ruleset": {"core": "2026-07-16", "faq_as_of": "2026-08-14", "format": "1v1 Constructed", "region": "global"},
+  "ruleset": {"core": "2026-10-09", "faq_as_of": "2026-08-14", "format": "1v1 Constructed", "region": "global"},
   "perspective": "omniscient_replay",
   "players": {
     "p1": {"legend": "Rengar - Pridestalker", "chosen_champion": "Rengar, Trophy Hunter"},

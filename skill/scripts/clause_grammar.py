@@ -1614,6 +1614,10 @@ LOWERINGS = {
     "while_im_at_a_battlefield_opponents_can_only_play_units_to_their_base": lambda params: {
         "passive": {"object_fields": {"restricts_opponent_units_to_base": True}},
         "ast": {"node": "passive", "kind": "battlefield_restriction", "params": {"kind": "opponent_units_to_base_only"}}},
+    # 2026-10-14 package 12 (Noxus Saboteur)
+    "your_opponents_hidden_cards_cant_be_revealed_here": lambda params: {
+        "passive": {"object_fields": {"prevents_opponent_hidden_reveals_here": True}},
+        "ast": {"node": "passive", "kind": "battlefield_restriction", "params": {"kind": "opponent_hidden_not_revealed_here"}}},
     "while_im_at_a_battlefield_spells_and_abilities_cant_ready_enemy_units_and_gear": lambda params: {
         "passive": {"object_fields": {"prevents_ready_enemy_units_gear": True}},
         "ast": {"node": "passive", "kind": "battlefield_restriction", "params": {"kind": "no_ready_enemy_units_gear"}}},
@@ -1796,6 +1800,11 @@ TRIGGER_WRAPPERS = {
     # 2026-10-08 (package 10, Garen - Might of Demacia (Starter)): the conditional statement right after "When you
     # conquer" is part of the Trigger Condition (Core 383.2.a.1), read as the Conquer is processed - N or more units the
     # player controls at THAT battlefield, the one conquered (battlefield_control reads it with that Battlefield as here)
+    # 2026-10-14 (package 12, Tryndamere - Barbarian): the unit's own conquer; the "if" right after it belongs to the
+    # trigger condition (Core 383.2.a.1), read off the Combat that ended in the conquer (battlefield_control)
+    "when_i_conquer_after_an_attack_if_you_assigned_n_or_more_excess_damage_to_enemy_units": (
+        "conquer_triggers", "on-conquer", lambda params: {"scope": "unit_here", "condition": {
+            "kind": "assigned_excess_after_attack", "at_least": int(params["amount"])}}),
     "when_you_conquer_if_you_have_n_units_at_that_battlefield": (
         "conquer_triggers", "on-you-conquer", lambda params: {"scope": "controller", "condition": {
             "kind": "controls_units", "count": int(params["count"]), "location": "here"}}),

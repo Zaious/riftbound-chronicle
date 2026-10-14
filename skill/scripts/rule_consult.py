@@ -323,6 +323,12 @@ def attach_engine_check(value: dict[str, Any], engine_check: dict[str, Any]) -> 
     errors = validate_engine_check(engine_check)
     if errors:
         raise ConsultationError("invalid engine-check.v1: " + "; ".join(errors))
+    # 2026-10-14 package 12 (GPT's review, point 2): a consultation answers under one Core; an engine check executed
+    # under another is not same-version evidence for it, and is refused rather than attached
+    if engine_check["ruleset"]["core"] != updated.get("ruleset_as_of"):
+        raise ConsultationError(f"engine_version_mismatch: the engine check was executed under Core "
+                                f"{engine_check['ruleset']['core']}; this consultation reads Core "
+                                f"{updated.get('ruleset_as_of')}")
     checks = updated.setdefault("engine_checks", [])
     if any(item.get("check_id") == engine_check["check_id"] for item in checks if isinstance(item, dict)):
         raise ConsultationError(f"duplicate engine check {engine_check['check_id']}")

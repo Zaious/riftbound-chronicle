@@ -677,6 +677,16 @@ jobs:
         run: python3 skill/scripts/check_look_banish_play.py
       - name: Gaining control of a spell and making new choices for it (package 11, Mystic Reversal)
         run: python3 skill/scripts/check_spell_control.py
+      - name: Choices of what is played from facedown, at that battlefield (package 12)
+        run: python3 skill/scripts/check_facedown_play_effect.py
+      - name: Facedown cards an opponent's permanent keeps from being revealed (package 12, Noxus Saboteur)
+        run: python3 skill/scripts/check_hidden_reveal_restriction.py
+      - name: A conquer counting the excess Combat Damage assigned (package 12, Tryndamere - Barbarian)
+        run: python3 skill/scripts/check_assigned_excess.py
+      - name: Modes not chosen this turn, per object and player (package 12, Udyr - Wildman)
+        run: python3 skill/scripts/check_modes_not_chosen.py
+      - name: Executed Core and rule numbering, apart (package 12)
+        run: python3 skill/scripts/check_semantics_version.py
       - name: discard to return this from the trash (Super Mega Death Rocket!)
         run: python3 skill/scripts/check_trigger_discard_return_self.py
       - name: recycle up to N cards from trashes (Forge of the Future)
@@ -966,6 +976,11 @@ jobs:
           python3 "$REPO/skill/scripts/check_copied_abilities.py"
           python3 "$REPO/skill/scripts/check_look_banish_play.py"
           python3 "$REPO/skill/scripts/check_spell_control.py"
+          python3 "$REPO/skill/scripts/check_facedown_play_effect.py"
+          python3 "$REPO/skill/scripts/check_hidden_reveal_restriction.py"
+          python3 "$REPO/skill/scripts/check_assigned_excess.py"
+          python3 "$REPO/skill/scripts/check_modes_not_chosen.py"
+          python3 "$REPO/skill/scripts/check_semantics_version.py"
           python3 "$REPO/skill/scripts/check_trigger_discard_return_self.py"
           python3 "$REPO/skill/scripts/check_recycle_from_trashes.py"
           python3 "$REPO/skill/scripts/check_hide_cost_basis.py"

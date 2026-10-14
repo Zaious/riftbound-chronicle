@@ -10,6 +10,7 @@ from pathlib import Path
 from rules_core import (
     FAQ_AS_OF,
     CORE_RULESET,
+    RULE_NUMBERING,
     SCHEMA_VERSION,
     add_pending_item,
     complete_resolution,
@@ -94,6 +95,10 @@ FIXTURES = {
 CITABLE_DOCUMENTS = {"core_rules"}
 
 
+# 2026-10-14 package 12: what re-reading a cited clause under a new executed Core found - a clause whose behaviour
+# changed has no finding here, and its case must be rewritten rather than re-labelled
+REVIEW_FINDINGS = {"text_identical", "cross_reference_renumbered", "wording_only"}
+
 def main() -> int:
     errors = []
     cases = json.loads(CASES.read_text(encoding="utf-8"))
@@ -137,9 +142,16 @@ def main() -> int:
             else:
                 if cited["document"] not in CITABLE_DOCUMENTS:
                     errors.append(f"{case_id}: source document {cited['document']!r} is not a citable official document")
-                if cited["version"] != cases.get("ruleset", {}).get("core"):
+                # 2026-10-14 package 12 (GPT's review, point 1): a locator is numbered by RULE_NUMBERING, apart from the
+                # Core the engine executes; moving the executed Core still needs every cited clause re-read under it
+                if cited["version"] != RULE_NUMBERING:
+                    errors.append(f"{case_id}: source cites the {cited['version']} numbering; the engine's locators are "
+                                  f"numbered by {RULE_NUMBERING}")
+                review = case.get("semantics_review")
+                if not isinstance(review, dict) or review.get("core") != cases.get("ruleset", {}).get("core") \
+                        or review.get("locator") != cited["locator"] or review.get("finding") not in REVIEW_FINDINGS:
                     errors.append(
-                        f"{case_id}: source cites {cited['version']} but the corpus baseline is "
+                        f"{case_id}: no re-read of {cited['locator']} under the corpus baseline "
                         f"{cases.get('ruleset', {}).get('core')}; re-read the clause before moving the baseline")
                 if not isinstance(cited["locator"], str) or not cited["locator"]:
                     errors.append(f"{case_id}: source locator must be a non-empty rule number")

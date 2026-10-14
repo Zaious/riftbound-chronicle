@@ -20,7 +20,14 @@ from typing import Any
 
 
 SCHEMA_VERSION = "riftbound-rules-core-state.v1"
-CORE_RULESET = "2026-07-16"
+# (the same three as effect_ir) 2026-10-14 package 12 (GPT's review, point 1): `ruleset.core` names the Core Rules whose BEHAVIOUR this engine
+# executes - 2026-10-09, in effect 2026-10-16 - and nothing else. A state, program or decision labelled with another
+# Core is refused, so an older label never runs the newer behaviour (check_semantics_version.py). The rule locators the
+# engine cites are still numbered by the 2026-07-16 document until C3: RULE_NUMBERING, carried as its own field
+# wherever locators reach a consumer (engine_check.rule_numbering, the capability manifest), never inside `ruleset`.
+CORE_RULESET = "2026-10-09"
+CORE_EFFECTIVE = "2026-10-16"
+RULE_NUMBERING = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 
 TIMINGS = {"default", "action", "reaction", "triggered"}
@@ -434,6 +441,8 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.trigger_event must be {{event_id, kind, object, identity}} strings")
             if "noted_location" in item and noted_location_errors(item["noted_location"]):
                 errors.append(f"{label}.{noted_location_errors(item['noted_location'])[0]}")
+            if "facedown_battlefield" in item and not (isinstance(item["facedown_battlefield"], str) and item["facedown_battlefield"]):
+                errors.append(f"{label}.facedown_battlefield must be a battlefield id")
             # GPT 2026-09-29 (Core 355.4): a Move destination chosen at finalization is recorded with the targets
             if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") in ("target_selection", "location_selection") for e in item["finalized_targets"])):
                 errors.append(f"{label}.finalized_targets must be trigger_finalization target selections and Move destinations")
@@ -1204,6 +1213,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             **({"trigger_event": dict(descriptor["trigger_event"])} if descriptor.get("trigger_event") else {}),
             # 2026-10-12 (package 11): a death trigger's source location as it was noted (Core 808.1.d.3)
             **({"noted_location": dict(descriptor["noted_location"])} if descriptor.get("noted_location") else {}),
+            # package 12: the on-play trigger of a permanent that came from facedown chooses at this battlefield (811.1.d.3)
+            **({"facedown_battlefield": descriptor["facedown_battlefield"]} if descriptor.get("facedown_battlefield") else {}),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),
             "trigger_kind": descriptor.get("trigger_kind", "triggered"),
             "batch_sequence": descriptor["batch_sequence"],

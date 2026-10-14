@@ -19,7 +19,14 @@ from typing import Any
 
 STATE_VERSION = "riftbound-effect-state.v1"
 PROGRAM_VERSION = "riftbound-effect-program.v1"
-CORE_RULESET = "2026-07-16"
+# 2026-10-14 package 12 (GPT's review, point 1): `ruleset.core` names the Core Rules whose BEHAVIOUR this engine
+# executes - 2026-10-09, in effect 2026-10-16 - and nothing else. A state, program or decision labelled with another
+# Core is refused, so an older label never runs the newer behaviour (check_semantics_version.py). The rule locators the
+# engine cites are still numbered by the 2026-07-16 document until C3: RULE_NUMBERING, carried as its own field
+# wherever locators reach a consumer (engine_check.rule_numbering, the capability manifest), never inside `ruleset`.
+CORE_RULESET = "2026-10-09"
+CORE_EFFECTIVE = "2026-10-16"
+RULE_NUMBERING = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
 # ADR-0012 §5: the Legend and Champion zones are public, are not Locations,
@@ -177,7 +184,11 @@ TRIGGER_CONDITION_KINDS = {"at_battlefield", "another_card_finalized_this_turn",
                            "paid_additional_cost",
                            # 2026-10-12 package 11 (Blitzcrank - Impassive): "When you play me to a battlefield" -
                            # the play put the card at a Battlefield, not its Base; read as the play completes
-                           "played_to_battlefield"}
+                           "played_to_battlefield",
+                           # 2026-10-14 package 12 (Tryndamere - Barbarian): "When I conquer after an attack, if you
+                           # assigned N or more excess damage to enemy units" - read off the Combat that ended in the
+                           # conquer (battlefield_control.assigned_excess)
+                           "assigned_excess_after_attack"}
 DEFAULT_TURN_ID = "turn-0"
 # 2026-10-12 package 11 (Symbol of the Solari): a permanent's printed replacement of a tied combat's result (Core 466.3.d)
 # - every unit still at that Battlefield recalled - while its controller is the combat's attacker
@@ -833,7 +844,8 @@ def validate_state(state: Any) -> list[str]:
     if state.get("schema_version") != STATE_VERSION:
         errors.append(f"schema_version must be {STATE_VERSION}")
     if not _ruleset_valid(state.get("ruleset")):
-        errors.append("ruleset must match the R2 v1 baseline")
+        errors.append(f"ruleset must be {{'core': {CORE_RULESET!r}, 'faq_as_of': {FAQ_AS_OF!r}}}: the Core this engine "
+                      f"executes; a state labelled with another Core is refused")
     players = state.get("players")
     objects = state.get("objects")
     battlefields = state.get("battlefields")
@@ -1092,6 +1104,8 @@ def validate_state(state: Any) -> list[str]:
                          "played_event",
                          # Core 811.1.d.3: the battlefield the card was played from Hidden at
                          "played_from_hidden",
+                         # package 12: how its choices were restricted there, when not the default (753.3 binds new choices)
+                         "hidden_targeting",
                          "limited_play",
                          # 2026-10-06 package 9 (Kai'Sa - Evolutionary): Core 390.3.a, bound by recycle_when_leaving_chain
                          "leave_replacement",
@@ -1459,11 +1473,19 @@ def validate_state(state: Any) -> list[str]:
                 or not isinstance(a["cost"].get("exhaust", False), bool) for a in printed.values())):
             errors.append(f"objects.{object_id}.activated_abilities maps ability ids to {{cost: {{energy, power, exhaust}}, "
                           f"effect_program_id}}")
+        # package 12 (Udyr - Wildman): the modes chosen this turn with this object's "choose one you've not chosen this
+        # turn" ability - {identity, turn_id, by: {player: [option ids]}}; read only while identity and turn are current
+        chosen = obj.get("modes_chosen")
+        if chosen is not None and (not isinstance(chosen, dict) or set(chosen) != {"identity", "turn_id", "by"}
+                                   or not isinstance(chosen["by"], dict)
+                                   or any(not isinstance(v, list) or any(not isinstance(o, str) for o in v)
+                                          for v in chosen["by"].values())):
+            errors.append(f"objects.{object_id}.modes_chosen must be {{identity, turn_id, by: {{player: [option ids]}}}}")
         copies = obj.get("has_exhaust_abilities_of")
         if copies is not None and (not isinstance(copies, list) or not copies or set(copies) - {"legend", "unit", "gear"}
                                    or len(copies) != len(set(copies))):
             errors.append(f"objects.{object_id}.has_exhaust_abilities_of lists kinds among legend, unit, gear")
-        for flag in BATTLEFIELD_RESTRICTIONS.values():
+        for flag in [*BATTLEFIELD_RESTRICTIONS.values(), *HERE_RESTRICTIONS.values()]:
             if flag in obj and obj[flag] is not True:
                 errors.append(f"objects.{object_id}.{flag} is true when present (package 11, Mageseeker Warden)")
         domains = obj.get("domains")
@@ -1559,6 +1581,13 @@ def validate_state(state: Any) -> list[str]:
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'if you control a <tag>' is read only on a play trigger, as {{kind, count, tag}} (Core 383.2.a.1)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "controls_facedown_card_at_battlefield" and (trigger_field != "beginning_phase_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'if you control a facedown card at a battlefield' is read only on a Beginning Phase trigger, as {{kind}} (Core 383.2.a.1)")
+                elif "condition" in trigger and trigger["condition"].get("kind") == "assigned_excess_after_attack" and (
+                        trigger_field != "conquer_triggers" or trigger.get("scope", "unit_here") != "unit_here"
+                        or set(trigger["condition"]) != {"kind", "at_least"}
+                        or not isinstance(trigger["condition"]["at_least"], int) or isinstance(trigger["condition"]["at_least"], bool)
+                        or trigger["condition"]["at_least"] < 1):
+                    errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'after an attack, if you assigned N or more "
+                                  f"excess damage' is read only on a unit's own conquer trigger, as {{kind, at_least >= 1}}")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "played_to_battlefield" and (trigger_field != "play_triggers" or set(trigger["condition"]) != {"kind"}):
                     errors.append(f"objects.{object_id}.{trigger_field}[{trigger_index}]: 'to a battlefield' on a play is read only on a play trigger, as {{kind}} (Core 383.1, 419.4.a)")
                 elif "condition" in trigger and trigger["condition"].get("kind") == "moved_to_battlefield" and (trigger_field != "move_triggers" or set(trigger["condition"]) != {"kind"}):
@@ -2310,8 +2339,10 @@ def validate_program(program: Any) -> list[str]:
     if modal is not None:
         # ADR-0011 §2: the instructions live in the options; each option has a
         # stable id the mode_selection decision names.
-        if not isinstance(modal, dict) or set(modal) != {"choose", "timing", "decision_ref", "options"}:
-            errors.append("modal must be {choose, timing, decision_ref, options}")
+        if not isinstance(modal, dict) or not {"choose", "timing", "decision_ref", "options"} <= set(modal) \
+                or set(modal) - {"choose", "timing", "decision_ref", "options", "not_chosen_this_turn"} \
+                or modal.get("not_chosen_this_turn", True) is not True:
+            errors.append("modal must be {choose, timing, decision_ref, options, not_chosen_this_turn?: true}")
         else:
             if modal["choose"] != 1:
                 errors.append("modal.choose must be 1 (choose one)")
@@ -3183,6 +3214,14 @@ def target_group_subset(state: dict[str, Any], effect: dict[str, Any], valid_sel
         ok, why = target_group_holds(state, value, spec["group"], controller, subset=True)
         if not ok:
             problems.append(f"the subset does not meet the group requirement either ({why})")
+    if not problems:
+        # Core 2026-10-09 355.11.b.1 (in effect 10-16): the subset kept has as many of the legal targets as it can - no
+        # original target still legal is left out when keeping it too would still meet the requirement
+        could_add = [o for o in legal if o not in value
+                     and target_group_holds(state, value + [o], spec["group"], controller, subset=True)[0]]
+        if could_add:
+            problems.append(f"the subset leaves out {could_add}, which it could keep and still meet the requirement "
+                            f"(Core 355.11.b.1)")
     if problems:
         return None, {"valid": False, "committed": False, "errors": [f"target group subset {ref!r}: {p}" for p in problems]}
     return value, None
@@ -3197,6 +3236,11 @@ AFFECTED_NARROWING_FIELDS = (*SELECTOR_STATE_FIELDS, "exclude_source_identity")
 SELECTOR_FIELDS = {"object_id", "bound_object_id", "bound_identity", "chosen_zone_class", "kind", "location", "controller_relation", "zone_owner_relation", "targeted", "decision_ref", "max_might", "exclude_source_identity", "max_cost", "selection_ref", "location_ref", "any_of", *SELECTOR_STATE_FIELDS,
                    # Core 103.2.a.3: a Champion Unit named as its controller's Chosen Champion
                    "chosen_champion",
+                   # package 12 (Core 2026-10-09 811.1.d.2-811.1.d.3.a, 359.3.e.2.a): a choice of a card played from
+                   # facedown, or of the on-play trigger of a permanent that came from facedown, is made at that battlefield and
+                   # checked there again as it resolves; the play effect whose source left the board reads no battlefield.
+                   # Only the engine sets these (restrict_to_facedown_battlefield), never a program's author
+                   "at_battlefield", "facedown_source_gone",
                    # 2026-10-08 package 10 (Guerilla Warfare): "a card with [Hidden]" - the card has the keyword (Core 811)
                    "with_hidden",
                    # GPT 2026-10-02: a kind-less board target that also admits a Legend in its Legend Zone
@@ -3390,11 +3434,18 @@ OBJECT_PLAYER_RELATIONS = ("controller", "owner")
 # instruction (355.12) did not execute; an instruction whose own source is gone was ignored
 # (359.3.e.6). A REPLACED instruction still counts as executed for the link (359.3.e.14.b).
 IGNORED_OUTCOMES = frozenset({"ignored_illegal_target", "skipped_illegal_target", "skipped_linked_dependency",
-                              "ignored_subject_changed", "skipped_after_terminal", "skipped_restricted_move",
+                              "ignored_subject_changed", "skipped_after_terminal",
                               # package 9: the branch its controller did not choose (only_if_chose)
                               "skipped_option_not_chosen",
                               "declined", SOURCE_UNAVAILABLE_OUTCOME})
 LINKED_IGNORED_OUTCOMES = IGNORED_OUTCOMES
+# Core 2026-10-09 (in effect 2026-10-16), 359.3.e.6 and 359.3.e.14.a/b: an instruction that cannot be followed for a
+# reason other than an illegal target or unavailable information is Negated, not Ignored, and a later linked
+# instruction still executes unless it names the negated action itself. A Move a restriction forbids is the rules' own
+# example (Ride the Wind at Vilemaw's Lair: the Move is negated, "ready it" still readies the unit). Under the 07-16
+# text the same Move was ignored and took its linked instructions with it. A replaced event (replaced_prevented and
+# the other replacement outcomes) was never in IGNORED_OUTCOMES: negated too, as before.
+NEGATED_OUTCOMES = frozenset({"skipped_restricted_move"})
 # "draw 1 for each of your [Mighty] units" (Kadregrin the Infernal): a draw whose count is its
 # printed number times a count read as the instruction executes. One kind: the units the
 # program's controller controls on the board that are Mighty - Might 5 or greater (Core 708),
@@ -4364,6 +4415,12 @@ def object_state_holds(obj: dict[str, Any], wanted: dict[str, Any]) -> bool:
 
 def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: str | None) -> tuple[bool, str]:
     object_id = target["object_id"]
+    # package 12 (Core 2026-10-09 811.1.d.3.a, 359.3.e.2.a): see restrict_to_facedown_battlefield
+    if target.get("facedown_source_gone"):
+        return False, "facedown_source_left_board"
+    if target.get("at_battlefield") is not None \
+            and find_location(state, object_id) != ("battlefield", target["at_battlefield"], None):
+        return False, "target_outside_facedown_battlefield"
     if target.get("kind") == "battlefield":
         # ADR-0007 §4: "all units at a battlefield" targets the Battlefield
         # (355.10.b), which has a bindable identity like any target.
@@ -4518,6 +4575,100 @@ def evaluate_target(state: dict[str, Any], target: dict[str, Any], controller: s
             and object_identity(state, object_id) == target["excluded_referent_identity"]:
         return False, "target_is_the_trigger_referent"
     return True, "ok"
+
+
+def restrict_to_facedown_battlefield(program: dict[str, Any], battlefield: str, *, source_gone: bool = False) -> dict[str, Any]:
+    """Package 12 (Core 2026-10-09 811.1.d.2, 811.1.d.3, 811.1.d.3.a, 811.1.d.4, 359.3.e.2.a): the program of a card played
+    from facedown, or the on-play trigger of a permanent that came from facedown, chooses its targets at that battlefield - each
+    target separately - and a target found elsewhere as it resolves is illegal. A target whose own restriction can never
+    be met there (one in a Base) is left free. An on-play trigger whose permanent has left the board reads no battlefield
+    at all: every target it chooses mistargets (source_gone). Choices that are not targets are left as they are."""
+    def tighten(selector: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(selector, dict) or selector.get("location") == "base":
+            return selector
+        return {**selector, **({"facedown_source_gone": True} if source_gone else {"at_battlefield": battlefield})}
+
+    def walk(value: Any) -> Any:
+        if isinstance(value, list):
+            return [walk(v) for v in value]
+        if not isinstance(value, dict):
+            return value
+        out = {}
+        for key, item in value.items():
+            if key == "target" and isinstance(item, dict) and isinstance(item.get("decision_ref"), str):
+                out[key] = tighten(item)
+            elif key == "targets" and isinstance(item, dict):
+                out[key] = {**item,
+                            **({"restrictions": tighten(item["restrictions"])} if isinstance(item.get("restrictions"), dict) else {}),
+                            **({"selectors": [tighten(s) for s in item["selectors"]]} if isinstance(item.get("selectors"), list) else {})}
+            else:
+                out[key] = walk(item)
+        return out
+
+    return {**program, **({"effects": walk(program["effects"])} if "effects" in program else {}),
+            **({"modal": walk(program["modal"])} if "modal" in program else {})}
+
+
+def _new_target_legal(state: dict[str, Any], selector: dict[str, Any], object_id: str, chooser: str,
+                      hidden_at: str | None) -> tuple[bool, str]:
+    """A new choice for a Chain item's target (Core 753.1, 753.3, 10-09 text): legal for the new controller now, and, for
+    a card played from facedown whose choices are restricted, at the battlefield it was played from."""
+    legal, why = evaluate_target(state, {**selector, "object_id": object_id}, chooser)
+    if not legal:
+        return legal, why
+    if hidden_at is not None and find_location(state, object_id) != ("battlefield", hidden_at, None):
+        return False, "new_choice_outside_hidden_battlefield"
+    return True, "ok"
+
+
+def _new_choice_effects(spell: dict[str, Any], option_id: str | None) -> list[dict[str, Any]]:
+    modal = spell.get("modal")
+    if modal:
+        return list(next((o["effects"] for o in modal["options"] if o["option_id"] == option_id), []))
+    return list(spell.get("effects") or [])
+
+
+def _new_choice_refs(spell: dict[str, Any], entry: dict[str, Any]) -> set[str]:
+    """Every choice of the Chain item as it stands: its mode, and its mode's targets and Move destinations (753)."""
+    modal = spell.get("modal")
+    option = (entry.get("mode_selection") or {}).get("option_id")
+    refs = {modal["decision_ref"]} if modal else set()
+    for e in _new_choice_effects(spell, option):
+        for field in ("target", "targets", "destination"):
+            if isinstance(e.get(field), dict) and isinstance(e[field].get("decision_ref"), str):
+                refs.add(e[field]["decision_ref"])
+    return refs
+
+
+def _new_choices_possible(state: dict[str, Any], spell: dict[str, Any], entry: dict[str, Any], chooser: str) -> bool:
+    """Core 753.2 (10-09 text): is there a legal set of new choices at all? Some mode (the one chosen, for a spell with
+    none) whose every target has a legal object for the new controller - at the facedown battlefield where that binds -
+    and every Move a legal destination. A Chain item with no choice at all has none to remake."""
+    hidden_at = entry.get("played_from_hidden") if entry.get("hidden_targeting", "restricted") == "restricted" else None
+    modal = spell.get("modal")
+    options = [o["option_id"] for o in modal["options"]] if modal else [None]
+    board_objects = [o for o in state.get("objects") or {} if find_location(state, o) is not None
+                     and find_location(state, o)[0] in {"battlefield", "base"}]
+    for option in options:
+        effects = _new_choice_effects(spell, option)
+        targets = [e[f] for e in effects for f in ("target", "targets")
+                   if isinstance(e.get(f), dict) and isinstance(e[f].get("decision_ref"), str)]
+        moves = [e for e in effects if isinstance(e.get("destination"), dict)
+                 and isinstance(e["destination"].get("decision_ref"), str)]
+        if not modal and not targets and not moves:
+            return False
+        chosen = {}
+        for selector in targets:
+            plain = {k: v for k, v in selector.items() if k != "decision_ref"}
+            found = [o for o in board_objects if _new_target_legal(state, plain, o, chooser, hidden_at)[0]]
+            if not found:
+                break
+            chosen[selector["decision_ref"]] = found[0]
+        else:
+            if all(move_destination_candidates(state, chosen.get(((m.get("target") or {}).get("decision_ref"))), m["destination"])
+                   for m in moves if chosen.get(((m.get("target") or {}).get("decision_ref"))) is not None):
+                return True
+    return False
 
 
 def _remove_from_location(state: dict[str, Any], object_id: str) -> None:
@@ -5265,10 +5416,11 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # Core 359.3.e.6, and the whole of DP-96: a spell may legally *choose*
         # a destination this Battlefield forbids. The choice stands; it is the
         # move instruction that cannot be carried out, so this one instruction
-        # is ignored and everything else in the program still runs.
+        # is negated (10-09 text; "ignored" in 07-16) and everything else in the
+        # program still runs - an instruction linked to it as well (NEGATED_OUTCOMES).
         restriction = move_restricted(new_state, object_id, destination)
         if restriction is not None:
-            trace.update({"outcome": "skipped_restricted_move", "completion": "none",
+            trace.update({"outcome": "skipped_restricted_move", "completion": "none", "negated": True,
                           "object_id": object_id, "destination": destination,
                           "reason": restriction["reason_code"], "restriction": restriction["restriction"],
                           "restricted_by": restriction["battlefield"],
@@ -7441,6 +7593,22 @@ def play_prohibition(state: dict[str, Any], player: str) -> dict[str, Any] | Non
 # each kind is its own boolean field on the permanent, so two statements of one card merge without loss
 BATTLEFIELD_RESTRICTIONS = {"opponent_units_to_base_only": "restricts_opponent_units_to_base",
                             "no_ready_enemy_units_gear": "prevents_ready_enemy_units_gear"}
+# package 12 (Noxus Saboteur, the site owner's reading 2026-10-14): a restriction on the battlefield its source is at -
+# an opponent's facedown card there cannot be turned face up by its owner, so it cannot be played from facedown there.
+# A facedown card changing zones is still shown as it goes (the zone change's own procedure, not a play); a card
+# merely mentioning the keyword elsewhere is untouched
+HERE_RESTRICTIONS = {"opponent_hidden_not_revealed_here": "prevents_opponent_hidden_reveals_here"}
+
+
+def hidden_reveal_prohibited(state: dict[str, Any], battlefield_id: str, player: str | None) -> str | None:
+    """The source - a permanent at `battlefield_id` carrying the restriction, controlled by an opponent of `player` - that
+    keeps `player`'s facedown cards there from being played, or None."""
+    for source in sorted((state.get("battlefields") or {}).get(battlefield_id, {}).get("objects") or []):
+        obj = state["objects"].get(source) or {}
+        if obj.get(HERE_RESTRICTIONS["opponent_hidden_not_revealed_here"]) is True and player is not None \
+                and not same_side(state, obj.get("controller"), player):
+            return source
+    return None
 
 
 def battlefield_restriction(state: dict[str, Any], kind: str, player: str | None) -> str | None:
@@ -10447,11 +10615,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             outcomes[effect_id] = event["outcome"]
             continue
         if effect.get("op") == "make_new_choices":
-            # 2026-10-13 package 11 (Mystic Reversal, GPT ruling 13; Core 751-755): its new controller may remake any subset
-            # of the spell's targets, Move destinations and mode - each new choice something it did not choose before
-            # (751.1), legal now for the new controller (753.1); what is not remade stays as it was, never re-read; costs a
-            # new choice would incur are ignored (755). The spell's own program comes from the caller (context
-            # chain_programs), checked against the Chain item's program id
+            # 2026-10-13 package 11 (Mystic Reversal, GPT ruling 13; Core 751-755), moved to the 10-09 text by package 12:
+            # its new controller remakes every one of the spell's targets, Move destinations and mode, each legal now for
+            # the new controller (753.1) - the same one again allowed (753); costs a new choice would incur are ignored
+            # (755). The spell's own program comes from the caller (context chain_programs), checked against the Chain
+            # item's program id
             import engine_decisions as ed
             got = next((e for e in trace if e.get("effect_id") == effect["linked"]["effect_id"]), {})
             item_id, chooser = got.get("chain_item_id"), got.get("controller_after")
@@ -10467,25 +10635,35 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 continue
             # ("You may": the instruction's own optional decision, asked of its controller before it runs - the program's
             # controller is the player who took the spell)
+            # Core 2026-10-09 (in effect 10-16), 753-755: having chosen to make new choices, the player remakes EVERY choice
+            # of the Chain item - the same one again is allowed (753); with no legal set of new choices the instruction is
+            # negated (753.2); the item's restrictions bind the new choices too (753.3: a card played from facedown still
+            # chooses at that battlefield). The 07-16 text (751.1) asked for choices not made before, and for any subset
             asked = [d for kind in ("target_selection", "location_selection", "option_selection")
                      for d in ed.entries(decisions, kind=kind) if str(d.get("decision_id", "")).startswith("new:")]
-            if not asked:
-                # chosen to make new choices, and none made - nothing to check, nothing changes (Core 753)
-                event = {**base_event, "outcome": "no_op", "completion": "none", "reason": "no_new_choice_made"}
-                trace.append(event)
-                outcomes[effect_id] = event["outcome"]
-                continue
             spell = ((context or {}).get("chain_programs") or {}).get(item_id)
             if not isinstance(spell, dict) or spell.get("program_id") != entry.get("effect_program_id"):
                 return {**base, "valid": True, "committed": False, "unsupported": True,
                         "reason_code": "new_choices_program_unknown",
                         "reason": f"the program of {item_id!r} ({entry.get('effect_program_id')!r}) is not supplied, so its "
                                   f"choices cannot be checked (Core 753.1)", "failed_effect_index": index, "trace": trace}
+            if not asked:
+                if not _new_choices_possible(current, spell, entry, chooser):
+                    event = {**base_event, "outcome": "no_op", "completion": "none", "negated": True,
+                             "reason": "no_legal_new_choices", "rule_locators": base_event["rule_locators"] + ["Core 753.2"]}
+                    trace.append(event)
+                    outcomes[effect_id] = event["outcome"]
+                    continue
+                required = sorted(_new_choice_refs(spell, entry))
+                return {**base, "valid": True, "committed": False, "reason_code": "new_choices_required",
+                        "reason": f"{chooser} chose to make new choices; every choice of {item_id!r} is remade (Core 753)",
+                        "decision_ids": [f"new:{r}" for r in required], "decision_controller": chooser,
+                        "failed_effect_index": index, "trace": trace}
             current = copy.deepcopy(current)
             entry = current["chain_items"][item_id]
             played = [dict(p) for p in entry.get("played_targets") or []]
-            chosen_before = {v for p in played if p.get("kind") == "target_selection" for v in p.get("value") or []}
-            remade, problem = [], None
+            hidden_at = entry.get("played_from_hidden") if entry.get("hidden_targeting", "restricted") == "restricted" else None
+            remade, problem, remade_refs = [], None, set()
             # the mode (752.1)
             modal = spell.get("modal")
             option_effects = list(spell.get("effects") or [])
@@ -10495,11 +10673,12 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 new_mode = next((e for e in ed.entries(decisions, kind="option_selection") if e.get("decision_id") == f"new:{ref}"), None)
                 if new_mode is not None:
                     options = {o["option_id"]: o for o in modal["options"]}
-                    if new_mode.get("controller") != chooser or new_mode.get("value") not in options or new_mode.get("value") == now:
-                        problem = f"the new mode {new_mode.get('value')!r} is not another of the spell's modes chosen by {chooser}"
+                    if new_mode.get("controller") != chooser or new_mode.get("value") not in options:
+                        problem = f"the new mode {new_mode.get('value')!r} is not one of the spell's modes chosen by {chooser}"
                     else:
                         entry["mode_selection"] = {"decision_id": ref, "option_id": new_mode["value"]}
                         remade.append({"mode": new_mode["value"], "was": now})
+                        remade_refs.add(ref)
                         now = new_mode["value"]
                 option_effects = list(next((o["effects"] for o in modal["options"] if o["option_id"] == now), []))
             selectors = {}
@@ -10509,7 +10688,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                         selectors[e[field]["decision_ref"]] = (e[field], e)
             destinations = {e["destination"]["decision_ref"]: e for e in option_effects
                             if isinstance(e.get("destination"), dict) and isinstance(e["destination"].get("decision_ref"), str)}
-            # targets (752.1): something not chosen before, legal for the new controller now
+            # targets (752.1): legal for the new controller now - the same one again allowed (753)
             for d in ed.entries(decisions, kind="target_selection"):
                 if problem or not str(d.get("decision_id", "")).startswith("new:"):
                     continue
@@ -10518,24 +10697,24 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                     problem = f"{ref!r} is not one of the spell's target choices, remade by {chooser} as this resolves"
                     break
                 values = list(d.get("value") or [])
-                reused = [v for v in values if v in chosen_before]
-                if not values or reused:
-                    problem = f"a new choice is something the spell did not choose before (Core 751.1): {reused or values}"
+                if not values:
+                    problem = f"no new choice given for {ref!r}"
                     break
                 selector = {k: v for k, v in selectors[ref][0].items() if k != "decision_ref"}
                 for v in values:
-                    legal, why = evaluate_target(current, {**selector, "object_id": v}, chooser)
+                    legal, why = _new_target_legal(current, selector, v, chooser, hidden_at)
                     if not legal:
-                        problem = f"{v!r} is not a legal new choice for {ref!r} ({why}; Core 753.1)"
+                        problem = f"{v!r} is not a legal new choice for {ref!r} ({why}; Core 753.1, 753.3)"
                         break
                 if problem:
                     break
+                remade_refs.add(ref)
                 record = {"decision_id": ref, "stage": "play_declaration", "kind": "target_selection", "controller": chooser,
                           "value": values, "selection_identities": {v: object_identity(current, v) for v in values}}
                 was = next((p.get("value") for p in played if p.get("decision_id") == ref), None)
                 played = [p for p in played if p.get("decision_id") != ref] + [record]
                 remade.append({"target": ref, "was": was, "now": values})
-            # Move destinations (752.1): another legal one
+            # Move destinations (752.1): a legal one - the same one again allowed (753)
             for d in ed.entries(decisions, kind="location_selection"):
                 if problem or not str(d.get("decision_id", "")).startswith("new:"):
                     continue
@@ -10545,20 +10724,30 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 moved_ref = ((move or {}).get("target") or {}).get("decision_ref")
                 moved = next((p["value"][0] for p in played if p.get("decision_id") == moved_ref and p.get("value")), None)
                 offered = move_destination_candidates(current, moved, move["destination"]) if move and moved else []
-                if old is None or d.get("controller") != chooser or d.get("value") == old.get("value") or d.get("value") not in offered:
-                    problem = f"the new destination {d.get('value')!r} is not another legal one for {ref!r} (Core 753.1)"
+                if move is None or d.get("controller") != chooser or d.get("value") not in offered:
+                    problem = f"the new destination {d.get('value')!r} is not a legal one for {ref!r} (Core 753.1)"
                     break
                 played = [p for p in played if p.get("decision_id") != ref] + [
                     {"decision_id": ref, "stage": "play_declaration", "kind": "location_selection", "controller": chooser,
                      "value": d["value"]}]
-                remade.append({"destination": ref, "was": old.get("value"), "now": d["value"]})
-            missing = sorted(r for r in selectors if not any(p.get("decision_id") == r for p in played))
-            if not problem and missing:
-                problem = f"the new mode needs targets {missing}, which no new choice gives (Core 752.1, 753.1)"
+                remade.append({"destination": ref, "was": (old or {}).get("value"), "now": d["value"]})
+                remade_refs.add(ref)
             if problem:
                 return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "new_choice_illegal",
                         "reason": problem, "failed_effect_index": index, "trace": trace}
-            entry["played_targets"] = played
+            # every choice remade (753): the mode, each target and each destination of the mode now chosen
+            required = ({modal["decision_ref"]} if modal else set()) | set(selectors) | set(destinations)
+            if required - remade_refs:
+                missing = sorted(required - remade_refs)
+                return {**base, "valid": True, "committed": False, "applied": False, "reason_code": "new_choices_incomplete",
+                        "reason": f"every choice of {item_id!r} is remade, the same one again allowed (Core 753); "
+                                  f"not remade: {missing}",
+                        "decision_ids": [f"new:{r}" for r in missing], "decision_controller": chooser,
+                        "failed_effect_index": index, "trace": trace}
+            if played:
+                entry["played_targets"] = played
+            else:
+                entry.pop("played_targets", None)   # a mode with no target choices (validate_state wants none, not [])
             event = {**base_event, "outcome": "applied" if remade else "no_op", "completion": "full" if remade else "none",
                      "remade": remade, "costs_incurred_ignored": True, "after_state_hash": hash_value(current)}
             trace.append(event)

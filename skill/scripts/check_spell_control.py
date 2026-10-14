@@ -3,9 +3,11 @@
 control of a spell. You may make new choices for it.").
 
 GPT 2026-10-12 (PACKAGE11 ruling 13): the new controller's "you", "friendly" and "enemy" apply to the text still to execute,
-read as it executes (Core 359.3.f.4); new choices follow Core 750-755 - a subset of the targets, destinations and mode
-may be remade, each new choice something not chosen before (751.1) and legal (753.1); what is not remade is not
-recomputed; what the first controller paid is neither refunded nor transferred (755). The engine's shape: op
+read as it executes (Core 359.3.f.4); new choices follow Core 750-755 - in the 10-09 text (in effect 2026-10-16,
+package 12): every choice of the Chain item is remade, the same one again allowed (753), each legal (753.1) and within
+the item's restrictions (753.3); with no legal set the instruction is negated (753.2). (The 07-16 text asked for a
+subset, each choice new - 751.1 - and package 11 was built so.) What the first controller paid is neither refunded nor
+transferred (755). The engine's shape: op
 gain_control_of_spell (the Chain item and its card change controller; the timing chain follows); op make_new_choices
 (optional; the spell's own program supplied by the caller as chain_programs); the bridge rebinds the spell's program to
 its new controller when it resolves.
@@ -16,15 +18,21 @@ its new controller when it resolves.
                     enemy unit" is read for p1 as it executes - p1's own a1 is no longer a legal target, so nothing is
                     dealt (Core 359.3.f.4, 359.3.e.2)
   M3 retarget       p1 remakes the target to p2's e1: the spell resolves for p1 and e1 is dealt 3, a1 nothing
-  M4 not new        remaking it to a1 again: refused (751.1)
-  M5 illegal        remaking it to p1's own a2 ("an enemy unit" for p1 now): refused (753.1)
+  M4 same again     the Move spell's target and destination chosen again as they were: accepted (753, 10-09)
+  M5 illegal        remaking it to p1's own a2 or a1 ("an enemy unit" for p1 now): refused (753.1)
   M6 mode           a modal spell of p2's ("Choose one - Draw 1; or Deal 2 to an enemy unit"), chosen "draw": p1
-                    remakes the mode to the Deal with a new target e1 - e1 dealt 2; the new mode without its target: refused
+                    remakes the mode to the Deal with a new target e1 - e1 dealt 2; the new mode without its target:
+                    refused as incomplete; the same mode again: accepted
   M7 no program     new choices asked with the spell's program not supplied: refused as unsupported by name
   M8 the card       the spell's card goes to its OWNER's (p2's) trash after it resolves
-  M9 destination   a Move spell of p2's (e1 to bf1): p1 remakes the destination to bf2 - e1 goes to bf2; the same
-                    destination again: refused
-  M10 none made     chosen to make new choices and none made: nothing changes, no program needed
+  M9 destination   a Move spell of p2's (e1 to bf1): p1 remakes target and destination, e1 to bf2 - e1 goes to bf2
+  M10 none made     chosen to make new choices and none made: the choices are asked for (new_choices_required)
+  M11 incomplete    only the Move's destination remade: refused - every choice is remade (753)
+  M12 facedown      the spell played from facedown at bf1: a new target at bf2 refused, one at bf1 accepted (753.3)
+  M13 none legal    no enemy unit for p1 anywhere: the instruction is negated (753.2) and the spell keeps its choices
+  M14 paid by p2    a spell whose optional cost p2 paid ('If you do, draw 2. Otherwise, draw 1'), its program bound for
+                    p2: taken by p1, it draws 2 for p1 - the check reads the payment, not who controls it now (10-09
+                    135.2.b.7), and the players its text names are exchanged with its controller (359.3.f.4)
   V  shape/grammar  make_new_choices not optional, or not linked to a gain of control, does not validate; the card's
                     text lowers to the two ops
 
@@ -61,6 +69,11 @@ MOVE = {"schema_version": PROGRAM_VERSION, "ruleset": RULESET, "program_id": "mo
         "effects": [{"op": "move_board_object", "effect_id": "mv",
                      "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit"},
                      "destination": {"decision_ref": "dest", "restriction": "battlefield"}}]}
+MEDITATE = {"schema_version": PROGRAM_VERSION, "ruleset": RULESET, "program_id": "meditate-effects", "controller": "p2",
+            "effects": [{"op": "draw", "effect_id": "dr-0", "player": "p2", "count": 2,
+                         "predicate": {"kind": "cost_paid", "cost_id": "self_offer:k1-cost", "cost_offer_id": "k1-cost"}},
+                        {"op": "draw", "effect_id": "dr-1", "player": "p2", "count": 1,
+                         "predicate": {"kind": "cost_not_paid", "cost_id": "self_offer:k1-cost", "cost_offer_id": "k1-cost"}}]}
 REVERSAL = {"schema_version": PROGRAM_VERSION, "ruleset": RULESET, "program_id": "reversal-effects", "controller": "p1",
             "effects": [{"op": "gain_control_of_spell", "effect_id": "gcs", "player": "p1",
                          "target": {"decision_ref": "s", "chosen_zone_class": "non_board", "location": "chain", "kind": "spell"}},
@@ -177,8 +190,8 @@ def main() -> int:
     got = resolve_spell(redone) if redone.get("committed") else redone
     if not got.get("committed") or dmg(got["next_effect_state"]) != {"a1": 0, "a2": 0, "e1": 3}:
         fail("M3 retarget", f"{got.get('reason') or got.get('reason_code')} {dmg(got.get('next_effect_state') or s)}")
-    # M4, M5
-    for label, values in (("M4 not new", ["a1"]), ("M5 illegal", ["a2"])):
+    # M5 (p1's own units are not "an enemy unit" for p1)
+    for label, values in (("M5 illegal", ["a2"]), ("M5 illegal", ["a1"])):
         refused = reverse(s, may=True, remake={"t": values})
         if refused.get("committed") or code(refused) != "new_choice_illegal":
             fail(label, f"{refused.get('committed')} {code(refused)}")
@@ -189,8 +202,11 @@ def main() -> int:
     if not got.get("committed") or dmg(got["next_effect_state"])["e1"] != 2:
         fail("M6 mode", f"{got.get('reason') or got.get('reason_code')} {dmg(got.get('next_effect_state') or m)}")
     lacking = reverse(m, may=True, mode="deal", spell=MODAL)
-    if lacking.get("committed") or code(lacking) != "new_choice_illegal":
+    if lacking.get("committed") or code(lacking) != "new_choices_incomplete":
         fail("M6 mode", f"the new mode without its target: {lacking.get('committed')} {code(lacking)}")
+    same_mode = reverse(m, may=True, mode="draw", spell=MODAL)
+    if not same_mode.get("committed"):
+        fail("M6 mode", f"the same mode again was refused (753 allows it): {code(same_mode)}")
     # M9: a Move's destination remade
     mv = board()
     mv["battlefields"]["bf2"] = {"controller": None, "objects": []}
@@ -203,25 +219,77 @@ def main() -> int:
          "value": "battlefield:bf1"}])
     from check_effect_ir import settle_contested as settle
     mv = settle(mv)
-    redone = reverse(mv, may=True, spell=MOVE, destination="battlefield:bf2")
+    redone = reverse(mv, may=True, spell=MOVE, remake={"t": ["e1"]}, destination="battlefield:bf2")
     got = resolve_spell(redone, MOVE) if redone.get("committed") else redone
     where_e1 = [b for b, v in (got.get("next_effect_state") or {}).get("battlefields", {}).items() if "e1" in v["objects"]]
     if not got.get("committed") or where_e1 != ["bf2"]:
         fail("M9 destination", f"{got.get('reason') or code(got)} e1 at {where_e1}")
-    same = reverse(mv, may=True, spell=MOVE, destination="battlefield:bf1")
-    if same.get("committed") or code(same) != "new_choice_illegal":
-        fail("M9 destination", f"the same destination again: {same.get('committed')} {code(same)}")
-    # M4 again, where the old target is still legal for p1 ("a unit"): only Core 751.1 refuses it
-    again = reverse(mv, may=True, spell=MOVE, remake={"t": ["e1"]})
-    if again.get("committed") or code(again) != "new_choice_illegal":
-        fail("M4 not new", f"the Move's own target chosen again: {again.get('committed')} {code(again)}")
-    # M10: chosen to make new choices, none made - nothing changes, and no program is needed to check nothing
-    none = reverse(s, may=True, programs=False)
-    nstep = next((x for x in ((none.get("trace") or {}).get("effect") or []) if x.get("effect_id") == "new"), {}) \
-        if isinstance(none.get("trace"), dict) else {}
-    if not none.get("committed") or nstep.get("reason") != "no_new_choice_made" \
-            or none["next_effect_state"]["chain_items"]["spell-shot"]["played_targets"][0]["value"] != ["a1"]:
-        fail("M10 none made", f"{none.get('reason') or code(none)} {nstep.get('reason')}")
+    # M4: the same target and destination again - allowed in the 10-09 text (753); the 07-16 751.1 refused it
+    again = reverse(mv, may=True, spell=MOVE, remake={"t": ["e1"]}, destination="battlefield:bf1")
+    got = resolve_spell(again, MOVE) if again.get("committed") else again
+    where_e1 = [b for b, v in (got.get("next_effect_state") or {}).get("battlefields", {}).items() if "e1" in v["objects"]]
+    if not got.get("committed") or where_e1 != ["bf1"]:
+        fail("M4 same again", f"{got.get('reason') or code(got)} e1 at {where_e1}")
+    # M11: only the destination remade - every choice is remade (753)
+    part = reverse(mv, may=True, spell=MOVE, destination="battlefield:bf2")
+    asked = part.get("decision_ids") or (part.get("effect_result") or {}).get("decision_ids") or []
+    if part.get("committed") or code(part) != "new_choices_incomplete" or "new:t" not in asked:
+        fail("M11 incomplete", f"{part.get('committed')} {code(part)} {asked}")
+    # M10: chosen to make new choices, none made - the choices are asked for
+    none = reverse(s, may=True)
+    if none.get("committed") or code(none) != "new_choices_required":
+        fail("M10 none made", f"{none.get('committed')} {code(none)}")
+    # M12: played from facedown at bf1 (753.3) - p2's e2 at bf2 is an enemy unit for p1 but not at bf1
+    h = board()
+    h["battlefields"]["bf2"] = {"controller": None, "objects": ["e2"]}
+    h["objects"]["e2"] = unit("p2")
+    h["chain_items"]["spell-shot"]["played_from_hidden"] = "bf1"
+    h = settle_contested(h)
+    outside = reverse(h, may=True, remake={"t": ["e2"]})
+    if outside.get("committed") or code(outside) != "new_choice_illegal":
+        fail("M12 facedown", f"a new target outside the facedown battlefield: {outside.get('committed')} {code(outside)}")
+    inside = reverse(h, may=True, remake={"t": ["e1"]})
+    if not inside.get("committed"):
+        fail("M12 facedown", f"a new target at the facedown battlefield was refused: {code(inside)}")
+    # M13: no enemy unit for p1 anywhere - negated (753.2); the spell keeps its choices (a1, now illegal for p1)
+    n = board()
+    n["battlefields"]["bf1"]["objects"].remove("e1")
+    del n["objects"]["e1"]
+    n = settle_contested(n)
+    negated = reverse(n, may=True)
+    trace = negated.get("trace") if isinstance(negated.get("trace"), dict) else {}
+    nstep = next((x for x in trace.get("effect") or [] if x.get("effect_id") == "new"), {})
+    kept = ((negated.get("next_effect_state") or {}).get("chain_items") or {}).get("spell-shot", {}).get("played_targets")
+    if not negated.get("committed") or nstep.get("negated") is not True or nstep.get("reason") != "no_legal_new_choices" \
+            or (kept or [{}])[0].get("value") != ["a1"]:
+        fail("M13 none legal", f"{negated.get('reason') or code(negated)} {nstep}")
+    # M14 (Core 2026-10-09 135.2.b.7): an instruction checking what was done as the spell was finalized checks the action,
+    # not who controls the spell now - p2 paid Meditation's optional cost; taken, the spell draws 2 for p1
+    med = board()
+    zero = {"energy": 0, "power": {}}
+    med["chain_items"]["spell-shot"].update(effect_program_id="meditate-effects", cost_receipt={
+        "schema_version": "riftbound-cost-receipt.v1", "play_id": "play-shot", "actor": "p2", "card": "shot",
+        "chain_item": "spell-shot", "order_provenance": "printed", "base": dict(zero), "after_base_modifications": dict(zero),
+        "total": dict(zero), "paid": True, "rule_locators": ["Core 356"], "discount_order": [],
+        "aggregate": {"energy": {"before_total_discounts": 0, "reductions": 0, "final": 0}},
+        "payment_events": [{"event_id": "ex1", "kind": "pay_exhaust", "object_id": "e1"}],
+        "components": [{"cost_id": "self_offer:k1-cost", "cost_offer_id": "k1-cost", "kind": "exhaust", "mandatory": False,
+                        "intent": True, "requested": 1, "increases": [], "reductions": [], "final": 1,
+                        "payment_refs": [{"event_id": "ex1"}], "paid": True, "rule_locators": ["Core 356.2.b.1"]}]})
+    med["chain_items"]["spell-shot"].pop("played_targets", None)
+    for card in ("d1", "d2", "d3"):
+        med["objects"][card] = {"owner": "p1", "controller": "p1", "kind": "spell", "base_might": 0, "might_modifiers": [],
+                                "damage": 0, "exhausted": False}
+        med["players"]["p1"]["zones"]["main_deck"].append(card)
+    med = settle_contested(med)
+    # the caller hands the spell's program the receipt of its play, as the real resolution does
+    paid = {**MEDITATE, "cost_receipt": med["chain_items"]["spell-shot"]["cost_receipt"]}
+    taken = reverse(med, may=False, spell=paid)
+    hand = len(med["players"]["p1"]["zones"]["hand"])
+    got = resolve_spell(taken, paid) if taken.get("committed") else taken
+    drawn = len((got.get("next_effect_state") or med)["players"]["p1"]["zones"]["hand"]) - hand
+    if not got.get("committed") or drawn != 2:
+        fail("M14 paid by p2", f"{got.get('reason') or code(got)}: p1 drew {drawn}, not 2")
     # M7
     blind = reverse(s, may=True, remake={"t": ["e1"]}, programs=False)
     if blind.get("committed") or code(blind) != "new_choices_program_unknown" or not unsupported(blind):
@@ -246,8 +314,9 @@ def report() -> int:
             print(f"  - {e}")
         return 1
     print("OK: a spell taken on the Chain is its new controller's - card, Chain item and timing chain - and resolves for "
-          "them; nothing paid moves; declined, its choices stand unrecomputed; remade, each new target is new and legal for "
-          "the new controller, a new mode brings its own targets; without the spell's program, refused by name (M1-M10, V)")
+          "them; nothing paid moves; declined, its choices stand unrecomputed; remade, each new target legal for "
+          "the new controller, every choice remade - the same one again allowed - within the item's restrictions, none legal "
+          "negated (10-09 753); without the spell's program, refused by name (M1-M13, V)")
     return 0
 
 

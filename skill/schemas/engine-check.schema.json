@@ -11,6 +11,7 @@
     "outcome",
     "authority",
     "ruleset",
+    "rule_numbering",
     "component",
     "coverage",
     "input_hashes",
@@ -73,6 +74,7 @@
       }
     },
     "ruleset": {
+      "description": "core: the Core Rules whose behaviour the engine executed this check under.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -87,6 +89,24 @@
         "faq_as_of": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "rule_numbering": {
+      "description": "The document whose numbering rule_locators use - not the Core the result was executed under (ruleset.core).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "core",
+        "applies_to"
+      ],
+      "properties": {
+        "core": {
+          "type": "string",
+          "minLength": 1
+        },
+        "applies_to": {
+          "const": "rule_locators"
         }
       }
     },

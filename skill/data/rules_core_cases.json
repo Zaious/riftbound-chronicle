@@ -1,7 +1,7 @@
 {
   "schema_version": "riftbound-rules-core-cases.v1",
   "ruleset": {
-    "core": "2026-07-16",
+    "core": "2026-10-09",
     "faq_as_of": "2026-08-14"
   },
   "cases": [
@@ -104,6 +104,7 @@
       "case_id": "RK-015",
       "description": "A later card in Showdown Closed needs Reaction, so Action timing is refused",
       "source": {"document": "core_rules", "version": "2026-07-16", "locator": "358.4"},
+      "semantics_review": {"core": "2026-10-09", "locator": "358.4", "finding": "text_identical"},
       "state": "showdown_closed",
       "action": {"actor": "p2", "kind": "play_card", "timing": "action", "object_kind": "spell"},
       "expected": {"state_label": "showdown_closed", "legal": false, "reason_code": "reaction_required_in_closed_state"}
@@ -112,6 +113,7 @@
       "case_id": "RK-016",
       "description": "Default timing is refused in Showdown Closed for the same reason as Action timing",
       "source": {"document": "core_rules", "version": "2026-07-16", "locator": "358.4"},
+      "semantics_review": {"core": "2026-10-09", "locator": "358.4", "finding": "text_identical"},
       "state": "showdown_closed",
       "action": {"actor": "p2", "kind": "play_card", "timing": "default", "object_kind": "spell"},
       "expected": {"state_label": "showdown_closed", "legal": false, "reason_code": "reaction_required_in_closed_state"}
@@ -120,6 +122,7 @@
       "case_id": "RK-017",
       "description": "Activating an Action-timing ability in Neutral Closed is refused, not only playing a card",
       "source": {"document": "core_rules", "version": "2026-07-16", "locator": "358.4"},
+      "semantics_review": {"core": "2026-10-09", "locator": "358.4", "finding": "text_identical"},
       "state": "neutral_closed",
       "action": {"actor": "p2", "kind": "activate_ability", "timing": "action", "object_kind": "ability"},
       "expected": {"state_label": "neutral_closed", "legal": false, "reason_code": "reaction_required_in_closed_state"}
@@ -128,6 +131,7 @@
       "case_id": "RK-018",
       "description": "Correct Reaction timing still fails without Priority in Neutral Closed",
       "source": {"document": "core_rules", "version": "2026-07-16", "locator": "312.1"},
+      "semantics_review": {"core": "2026-10-09", "locator": "312.1", "finding": "cross_reference_renumbered"},
       "state": "neutral_closed",
       "action": {"actor": "p1", "kind": "play_card", "timing": "reaction", "object_kind": "spell"},
       "expected": {"state_label": "neutral_closed", "legal": false, "reason_code": "priority_required"}
@@ -136,6 +140,7 @@
       "case_id": "RK-019",
       "description": "The Focus holder with Priority may pass Focus in Showdown Open",
       "source": {"document": "core_rules", "version": "2026-07-16", "locator": "347.2"},
+      "semantics_review": {"core": "2026-10-09", "locator": "347.2", "finding": "text_identical"},
       "state": "showdown_open",
       "action": {"actor": "p1", "kind": "pass_focus", "timing": "default", "object_kind": "ability"},
       "expected": {"state_label": "showdown_open", "legal": true, "reason_code": "ok"}
@@ -144,6 +149,7 @@
       "case_id": "RK-020",
       "description": "A Showdown Chain opened by playing a card passes Focus to the next player as it empties",
       "source": {"document": "core_rules", "version": "2026-07-16", "locator": "346"},
+      "semantics_review": {"core": "2026-10-09", "locator": "346", "finding": "text_identical"},
       "state": "showdown_chain_played_card_all_passed",
       "resolve": {"item_id": "action-1", "effect_execution_confirmed": true},
       "expected": {"state_label": "showdown_closed", "focus_before": "p1", "focus_after": "p2", "chain_empty": true}
@@ -152,6 +158,7 @@
       "case_id": "RK-021",
       "description": "A Showdown Chain opened by a triggered ability keeps Focus with the same player as it empties",
       "source": {"document": "core_rules", "version": "2026-07-16", "locator": "346.1"},
+      "semantics_review": {"core": "2026-10-09", "locator": "346.1", "finding": "text_identical"},
       "state": "showdown_chain_triggered_all_passed",
       "resolve": {"item_id": "trigger-1", "effect_execution_confirmed": true},
       "expected": {"state_label": "showdown_closed", "focus_before": "p1", "focus_after": "p1", "chain_empty": true}

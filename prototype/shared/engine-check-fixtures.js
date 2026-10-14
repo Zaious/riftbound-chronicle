@@ -12,7 +12,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
       "note": "Timing kernel accepted the action inside its bounded coverage. Source case RK-001: Turn player may play a default-timing Unit in Neutral Open during Main",
       "check": {
         "schema_version": "engine-check.v1",
-        "check_id": "engine-check:01b5a45cf62d01537220b620",
+        "check_id": "engine-check:aa433b4fc25aa4c7638914cb",
         "check_kind": "timing",
         "outcome": "supported",
         "authority": {
@@ -21,8 +21,12 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "state_effect": "none"
         },
         "ruleset": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "faq_as_of": "2026-08-14"
+        },
+        "rule_numbering": {
+          "core": "2026-07-16",
+          "applies_to": "rule_locators"
         },
         "component": {
           "name": "rules_core",
@@ -45,9 +49,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           ]
         },
         "input_hashes": {
-          "state": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee"
+          "state": "sha256:456ccf898b6a7c131ff667410300c70fe68767e56cb30a1142a2215d71d040bb"
         },
-        "result_hash": "sha256:e2700998cabe97bca0029e0dd24c610eaecaa95e3e117818f429fa7a99ecce94",
+        "result_hash": "sha256:8a2467e50e675eb3d0c979ddd260ddf05547c5a09e6a5f5aaf1ddd30bd758dd5",
         "reason": {
           "code": "ok",
           "message": "By default, the Turn Player with Priority may play cards or activate abilities during the Main Phase in Neutral Open."
@@ -74,7 +78,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
       "note": "A supported timing rule rejects the attempted action. This is a bounded rejection, not a card-legality ruling. Source case RK-002: Off-turn player cannot act without Priority in Neutral Open",
       "check": {
         "schema_version": "engine-check.v1",
-        "check_id": "engine-check:3cb85af560084583d28eaaea",
+        "check_id": "engine-check:6e8a00538f2b3fb456f3beec",
         "check_kind": "timing",
         "outcome": "illegal",
         "authority": {
@@ -83,8 +87,12 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "state_effect": "none"
         },
         "ruleset": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "faq_as_of": "2026-08-14"
+        },
+        "rule_numbering": {
+          "core": "2026-07-16",
+          "applies_to": "rule_locators"
         },
         "component": {
           "name": "rules_core",
@@ -107,9 +115,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           ]
         },
         "input_hashes": {
-          "state": "sha256:bd1727a8ecd98b4480ac6d24bc112bebea10696ca0a406cf4b36fa4e7278acee"
+          "state": "sha256:456ccf898b6a7c131ff667410300c70fe68767e56cb30a1142a2215d71d040bb"
         },
-        "result_hash": "sha256:3018185ea7d062bdd79a9ddc98a9661018ee2c127e9d8823b4481c2c8513505f",
+        "result_hash": "sha256:59771e18747c29a2023f06849656eb0e93afde0a55488bad558b77534c608168",
         "reason": {
           "code": "priority_required",
           "message": "The proposed actor does not currently have Priority."
@@ -134,7 +142,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
       "note": "The effect IR has no model for this operation and fails closed rather than guessing one.",
       "check": {
         "schema_version": "engine-check.v1",
-        "check_id": "engine-check:24c4fb2e4f6e8adf5c039a66",
+        "check_id": "engine-check:a8e38e132a4ff5995a4fa3da",
         "check_kind": "effect",
         "outcome": "unsupported",
         "authority": {
@@ -143,8 +151,12 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "state_effect": "none"
         },
         "ruleset": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "faq_as_of": "2026-08-14"
+        },
+        "rule_numbering": {
+          "core": "2026-07-16",
+          "applies_to": "rule_locators"
         },
         "component": {
           "name": "effect_ir",
@@ -229,9 +241,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           ]
         },
         "input_hashes": {
-          "state": "sha256:2d7823e643e488eeec490355b85f6622c9d5bff549a445818d820d8c942041bf"
+          "state": "sha256:1528cbc1ccf7a310f7595fd81769d02844fa59c5a60ecc4ed13eb132f8d3deba"
         },
-        "result_hash": "sha256:5eef351402e1e0027d34e655dcbff0b5d4955f26e1a67dd12940ba6c47ff0378",
+        "result_hash": "sha256:e95978e93b47b7d3121a062d9dc617c27557a8165f52fe1f15bfc5651a3edc4f",
         "reason": {
           "code": "unsupported effect op 'double'",
           "message": "unsupported effect op 'double'"
@@ -253,7 +265,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
       "note": "A controller must order simultaneous replacement events before cleanup can continue. The viewer presents the options; it never picks one.",
       "check": {
         "schema_version": "engine-check.v1",
-        "check_id": "engine-check:8ca38ce0edb003a4ef033f73",
+        "check_id": "engine-check:11c9c20c8b9fd16480d96aea",
         "check_kind": "cleanup",
         "outcome": "decision_required",
         "authority": {
@@ -262,8 +274,12 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "state_effect": "none"
         },
         "ruleset": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "faq_as_of": "2026-08-14"
+        },
+        "rule_numbering": {
+          "core": "2026-07-16",
+          "applies_to": "rule_locators"
         },
         "component": {
           "name": "lethal_cleanup",
@@ -286,9 +302,9 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           ]
         },
         "input_hashes": {
-          "state": "sha256:d96f3ba632243e6a046f244e7dced62c0c16ed71b13876e5f3ca9e13043880cf"
+          "state": "sha256:7823f721d5727e19636d8c962972ce7b8527debf76840452705ffccde05b99ab"
         },
-        "result_hash": "sha256:a9584cca2f8cf88b37e5411e337cccf6b9baf0bc5fa9e6ef90ef81e1b860458a",
+        "result_hash": "sha256:abe4448c7ef6707b9b85335ac0489a35bdca239db04900f51c839ea8d2d1b487",
         "reason": {
           "code": "replacement controller must order every qualifying simultaneous event",
           "message": "replacement controller must order every qualifying simultaneous event"
@@ -323,7 +339,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
       "note": "State or program is malformed. Repair the input; do not read this as a game ruling.",
       "check": {
         "schema_version": "engine-check.v1",
-        "check_id": "engine-check:1379a5f1d0e232e9f7f0ffa2",
+        "check_id": "engine-check:613b5faca6182e0b885f8b92",
         "check_kind": "effect",
         "outcome": "invalid_input",
         "authority": {
@@ -332,8 +348,12 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "state_effect": "none"
         },
         "ruleset": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "faq_as_of": "2026-08-14"
+        },
+        "rule_numbering": {
+          "core": "2026-07-16",
+          "applies_to": "rule_locators"
         },
         "component": {
           "name": "effect_ir",
@@ -420,10 +440,10 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
         "input_hashes": {
           "state": "sha256:9bbaa4efa37d691ee7332ba37f0fdf369437e555067e70e1277b740189c8ae54"
         },
-        "result_hash": "sha256:68110627fff2fb165a4d73b347d71e245b776001ebd74717a4d72d049d0519e7",
+        "result_hash": "sha256:79f8edf5c581bbaedb3b728fd74a868b380b502971367aaf699045a213c91764",
         "reason": {
           "code": "ok",
-          "message": "schema_version must be riftbound-effect-state.v1; ruleset must match the R2 v1 baseline; players must be an object with at least two entries; objects must be an object; battlefields must be an object; replacement_effects must be an array"
+          "message": "schema_version must be riftbound-effect-state.v1; ruleset must be {'core': '2026-10-09', 'faq_as_of': '2026-08-14'}: the Core this engine executes; a state labelled with another Core is refused; players must be an object with at least two entries; objects must be an object; battlefields must be an object; replacement_effects must be an array"
         },
         "rule_locators": [],
         "trace_summary": {

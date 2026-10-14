@@ -1575,6 +1575,30 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
 
 # ------------------------------------------------------------------- choices --
 
+def modes_chosen_this_turn(state: dict[str, Any], source: str, player: str) -> list[str]:
+    """The modes `player` has chosen this turn with this object's "choose one you've not chosen this turn" ability -
+    none when the record is another object's (an earlier identity) or another turn's."""
+    obj = (state.get("objects") or {}).get(source) or {}
+    record = obj.get("modes_chosen") or {}
+    if record.get("identity") != (object_identity(state, source) or f"{source}@0") \
+            or record.get("turn_id") != state.get("turn_id", "turn-0"):
+        return []
+    return list((record.get("by") or {}).get(player) or [])
+
+
+def record_mode_chosen(state: dict[str, Any], source: str, player: str, option_id: str) -> None:
+    obj = state["objects"].get(source)
+    if obj is None:
+        return
+    identity, turn = object_identity(state, source) or f"{source}@0", state.get("turn_id", "turn-0")
+    record = obj.get("modes_chosen") or {}
+    if record.get("identity") != identity or record.get("turn_id") != turn:
+        record = {"identity": identity, "turn_id": turn, "by": {}}
+    by = {k: list(v) for k, v in record["by"].items()}
+    by[player] = sorted(set(by.get(player, [])) | {option_id})
+    obj["modes_chosen"] = {"identity": identity, "turn_id": turn, "by": by}
+
+
 def _play_mode(actor: str, program: dict[str, Any], decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     """ADR-0011 §2 / Core 402.2: a spell's mode is chosen while playing, by
     stable option id, and only the chosen option's targets are checked."""
@@ -2141,6 +2165,13 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                     raise PlayError("choices", "card_not_in_source", f"{card!r} is not hidden at {battlefield_id!r} for {actor}", rule_locators=["Core 811.1"])
                 if entry_facedown["hidden_on_turn"] == effect_state.get("turn_id", "turn-0"):
                     raise PlayError("choices", "hidden_same_turn", f"{card!r} was hidden this turn; a hidden card may be played beginning on the next turn (811.1)", rule_locators=["Core 811.1"])
+                # package 12 (Noxus Saboteur, the site owner's reading 2026-10-14): played from facedown the card is
+                # turned face up, and an opponent's permanent there forbids exactly that
+                from effect_ir import hidden_reveal_prohibited
+                if (prohibitor := hidden_reveal_prohibited(effect_state, battlefield_id, actor)) is not None:
+                    raise PlayError("choices", "hidden_reveal_prohibited",
+                                    f"{card!r} would be turned face up at {battlefield_id!r}, where {prohibitor!r} forbids "
+                                    f"{actor}'s facedown cards being revealed", rule_locators=["Core 811.1", "Core 425"])
             elif source_kind != "hand":
                 # ADR-0012 §1: the declared source must hold the card, and a
                 # source other than the ordinary ones needs a granted permission.
@@ -2260,6 +2291,15 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         played_targets: list[dict[str, Any]] = []
         if effect_program is not None:
             effects, mode = _play_mode(actor, effect_program, engine_decisions)
+            if mode is not None and (effect_program.get("modal") or {}).get("not_chosen_this_turn"):
+                # package 12 (Udyr - Wildman): "choose one you've not chosen this turn" - each object keeps its own record
+                # (a new object after a zone change starts afresh, Core 124), per player who chose (the site's reading
+                # of "you" after a change of control)
+                mode_source = (declaration.get("activation") or {}).get("source_object") or card
+                if mode["option_id"] in modes_chosen_this_turn(effect_state, mode_source, actor):
+                    raise PlayError("choices", "mode_chosen_this_turn",
+                                    f"{actor} has chosen {mode['option_id']!r} with {mode_source!r} this turn",
+                                    rule_locators=["Core 402.2", "Core 124"])
             chosen_objects = _check_play_targets(effect_state, actor, effect_program, engine_decisions, effects)
             played_targets += _played_target_record(effects, engine_decisions)
             repeat_modes = [mode] if mode else []
@@ -2439,6 +2479,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
             entry["entry_location"] = dict(declaration["entry_location"])
         if mode is not None:
             entry["mode_selection"] = dict(mode)  # ADR-0011 §2: the mode rides with the chain entry to resolution
+            if (effect_program or {}).get("modal", {}).get("not_chosen_this_turn"):
+                record_mode_chosen(working, (declaration.get("activation") or {}).get("source_object") or card, actor,
+                                   mode["option_id"])
         if repeat_record is not None:
             entry["repeat"] = copy.deepcopy(repeat_record)  # ADR-0011 §4: paid Repeats ride to resolution
         if played_targets:
@@ -2573,7 +2616,8 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         working["chain_items"][item_id] = {**working["chain_items"][item_id],
                                            "cost_receipt": copy.deepcopy(receipt),
                                            # Core 811.1.d.3 (GPT 2026-09-27): where a card played from Hidden was hidden
-                                           **({"played_from_hidden": hidden_battlefield} if hidden_battlefield else {})}
+                                           **({"played_from_hidden": hidden_battlefield} if hidden_battlefield else {}),
+                                           **({"hidden_targeting": hidden_targeting} if hidden_battlefield and hidden_targeting != "restricted" else {})}
     next_timing = insertion["next_state"]
     # The watchers that listen for a play ("When you play a spell", "... a gear", "... another
     # unit", "... a card from [Hidden]", "... a card on an opponent's turn") do NOT wake here:

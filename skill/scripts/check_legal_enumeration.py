@@ -68,7 +68,7 @@ def observe(*, completeness=None, timing=None, effect=None):
     return la.build_observation(
         perspective="player1",
         source={"kind": "engine_state", "state_seq": 7},
-        context={"ruleset_core": "2026-07-16", "faq_as_of": "2026-07-16", "format": "standard",
+        context={"ruleset_core": la.rules_core.CORE_RULESET, "faq_as_of": la.rules_core.FAQ_AS_OF, "format": "standard",
                  "card_data_version": "r3a1"},
         timing_state=timing if timing is not None else fixture(),
         effect_state=effect if effect is not None else effect_state(),

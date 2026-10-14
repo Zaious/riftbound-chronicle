@@ -142,6 +142,11 @@ def main() -> int:
                         for p in ("p1", "p2")], []) if kept.get("committed") else []
             if "u3" not in trash or "u4" in trash:
                 fail("M1 total Might", f"grown to 5, u3 kept: {kept.get('reason') or kept.get('errors')}")
+            # Core 2026-10-09 355.11.b.1: the subset kept is as large as it can be - none at all, when either could be
+            # kept, is refused
+            empty = resolve(grown, KILL_TOTAL, keep=[])
+            if empty.get("committed"):
+                fail("M2 maximal subset", "grown to 5, an empty subset kept although u3 or u4 alone still meets it")
     if problem := refused(play(s, KILL_TOTAL, t=["u1", "u3"]), "target_group_requirement_failed"):
         fail("M1 total Might", f"3 + 2: {problem}")
     none = play(s, KILL_TOTAL, t=[])

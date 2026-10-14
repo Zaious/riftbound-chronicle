@@ -1,10 +1,10 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:f1b03cc161214c1c316701aa",
+  "manifest_id": "manifest:ea2d35c451f26518b95679ac",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
-    "core": "2026-07-16",
+    "core": "2026-10-09",
     "faq_as_of": "2026-08-14"
   },
   "environment": {

@@ -117,7 +117,38 @@ NOT_ATTEMPTED_REASONS = frozenset({
     "claim_binding_invalid",
     "no_claims_offered",
     "evidence_not_reproducible",
+    # 2026-10-14 package 12 (GPT's review, point 2): the engine executes one Core and the rules text this run retrieved
+    # is another; an engine verdict is not same-version evidence for that text, so no engine claim binds
+    "engine_version_mismatch",
+    # 2026-10-15 package 12 (GPT's second review): no Core rules text was retrieved for this run, or its version is
+    # unknown - nothing shows the text is the Core the engine executed, so no engine claim binds either
+    "engine_version_unverified",
 })
+# the retriever's document id for the Core Rules
+CORE_DOCUMENT_ID = "core-rules"
+
+
+def engine_version_problem(check: dict[str, Any], retrieved: list[dict[str, Any]] | None,
+                           has_retriever: bool) -> tuple[str, str] | None:
+    """Why this run's engine verdict is not same-version evidence for the rules text it read - (reason, detail) - or
+    None when every Core rules record it retrieved is the Core the engine executed. Fails closed: no retriever, no Core
+    record retrieved, or a record without a version, is unverified; another version is a mismatch."""
+    executed = check["ruleset"]["core"]
+    if not has_retriever:
+        return ("engine_version_unverified", f"the engine executed Core {executed}; this run has no rules retriever, so "
+                                             f"nothing shows the text it answers from is that Core")
+    core = [r for r in retrieved or [] if isinstance(r, dict) and r.get("document_id") == CORE_DOCUMENT_ID]
+    if not core:
+        return ("engine_version_unverified", f"the engine executed Core {executed}; no Core rules text was retrieved "
+                                             f"for this question, so nothing shows it is that Core")
+    versions = {r.get("document_version") for r in core}
+    if any(not isinstance(v, str) or not v for v in versions):
+        return ("engine_version_unverified", f"the engine executed Core {executed}; a retrieved Core rules record "
+                                             f"carries no version")
+    if versions != {executed}:
+        return ("engine_version_mismatch", f"the engine executed Core {executed}; the rules text retrieved is Core "
+                                           f"{', '.join(sorted(versions))}, so its verdict is not same-version evidence")
+    return None
 
 DECIDING_OUTCOMES = fact_ledger.DECIDING_OUTCOMES
 
@@ -862,6 +893,16 @@ def run_consultation(*, question: str, entry: str, draft: Any, question_kind: st
     # whether or not a producer went on to cite any of it.
     if source_retriever is not None:
         run["retrieved_sources"] = copy.deepcopy(source_retriever.retrieve_for(question))
+
+    # 2026-10-14/15 package 12 (GPT's reviews, point 2 and the second review): an engine claim binds only when the Core
+    # rules text this run retrieved shows the Core the engine executed - absent, unknown or another version, it does not
+    # (an engine that declined reached no verdict, so it has none to bind; that run takes the B route as before)
+    wants_engine = any(isinstance(b, dict) and (CLAIM_TEMPLATES.get(b.get("template")) or {}).get("basis", {})
+                       .get("kind") == "engine" for b in claims)
+    if wants_engine and check["outcome"] in DECIDING_OUTCOMES:
+        problem = engine_version_problem(check, run.get("retrieved_sources"), source_retriever is not None)
+        if problem is not None:
+            return _not_attempted(run, *problem)
 
     assumption_slots = {e["slot"] for artifact in run["state_assumptions"] for e in artifact["assumptions"]}
     context = {

@@ -532,8 +532,29 @@ def main() -> int:
 
     # --- every routable question is run, and compared to its contract -------
     runs = judge_corpus_runner.load(judge_corpus_runner.RUNS_PATH)
+    formal_check = rule_consult_command.engine_version_problem
     report = judge_corpus_runner.run_corpus(corpus, runs)
-    counts = report["counts"]
+    # the counterfactual below is the runner's alone: the consultation command's own version check is back in place
+    if rule_consult_command.engine_version_problem is not formal_check:
+        failures.append("the judge-corpus counterfactual left the consultation command's version check switched off")
+    # 2026-10-14 package 12 (GPT's review, point 2): a question held because the engine executes another Core than its
+    # rules text is judged below by its aligned run - the same run with the version check off - so the hold hides
+    # nothing else; the counts keep the hold visible
+    held = [i for i in report["results"] if i["outcome"] == "held_engine_version"]
+    report = {**report, "results": [i["aligned"] if i["outcome"] == "held_engine_version" else i
+                                    for i in report["results"]]}
+    counts = {}
+    for item in report["results"]:
+        counts[item["outcome"]] = counts.get(item["outcome"], 0) + 1
+    engine_templates = {t for t, spec in rule_consult_command.CLAIM_TEMPLATES.items() if spec["basis"]["kind"] == "engine"}
+    # held are exactly the routable questions whose contract requires an engine claim (a position conclusion)
+    binds_engine = {q["question_id"] for q in corpus["questions"] if q["consultation_entry"]
+                    and {c["template"] for c in q["expected_answer_contract"]["required_claims"]} & engine_templates}
+    if {i["question_id"] for i in held} != binds_engine:
+        failures.append(f"the questions held for the engine's version are not exactly those whose contract requires an "
+                        f"engine claim: held {sorted(i['question_id'] for i in held)}, require {sorted(binds_engine)}")
+    if any(i["status"] != "not_attempted" or i["tier"] != "C" for i in held):
+        failures.append("a question held for the engine's version was answered anyway")
 
     undeclared = judge_corpus_runner.undeclared_differences(report)
     for item in undeclared:
@@ -642,6 +663,8 @@ def main() -> int:
           f"no package yet: {len(parked)} (review by {sorted({d['review_by'] for d in parked}) or '-'})")
     print(f"run against the real consultation command: "
           + ", ".join(f"{value} {key}" for key, value in sorted(counts.items())))
+    print(f"held for the engine's Core ({rule_consult_command.CORE_RULESET}, not the rules text's): {len(held)} "
+          f"question(s), each judged above by its aligned run")
     print(f"semantic authority: {authority}")
     return 0
 

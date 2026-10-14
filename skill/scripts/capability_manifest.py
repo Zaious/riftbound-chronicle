@@ -134,6 +134,8 @@ def build_manifest(script_dir: Path = SCRIPT_DIR) -> dict[str, Any]:
 
     capability_content = {
         "ruleset": {"core": rules_core.CORE_RULESET, "faq_as_of": rules_core.FAQ_AS_OF},
+        # 2026-10-14 package 12: the executed Core (ruleset) and the numbering of every rule_locators below, apart
+        "rule_numbering": {"core": rules_core.RULE_NUMBERING, "applies_to": "rule_locators"},
         "components": components,
         "operations": operations,
         "procedures": procedures,
@@ -162,7 +164,7 @@ def validate_manifest(value: Any) -> list[str]:
     if not isinstance(value, dict):
         return ["manifest must be an object"]
     required = {
-        "schema_version", "manifest_id", "capability_set_id", "implementation", "ruleset",
+        "schema_version", "manifest_id", "capability_set_id", "implementation", "ruleset", "rule_numbering",
         "components", "operations", "procedures", "clauses", "exclusions", "claims",
     }
     optional = {"features"}
@@ -191,6 +193,10 @@ def validate_manifest(value: Any) -> list[str]:
     ruleset = value.get("ruleset")
     if not isinstance(ruleset, dict) or set(ruleset) != {"core", "faq_as_of"} or not all(isinstance(v, str) and v for v in ruleset.values()):
         errors.append("ruleset is invalid")
+    numbering = value.get("rule_numbering")
+    if not isinstance(numbering, dict) or set(numbering) != {"core", "applies_to"} or numbering.get("applies_to") != "rule_locators" \
+            or not isinstance(numbering.get("core"), str) or not numbering["core"]:
+        errors.append("rule_numbering is invalid")
 
     for key in ("components", "operations", "procedures", "features"):
         items = value.get(key)
@@ -224,7 +230,7 @@ def validate_manifest(value: Any) -> list[str]:
         errors.append("claims must reject complete-game and complete-legality")
 
     if not errors:
-        content_keys = ["ruleset", "components", "operations", "procedures"]
+        content_keys = ["ruleset", "rule_numbering", "components", "operations", "procedures"]
         if "features" in value:
             content_keys.append("features")
         content_keys += ["clauses", "exclusions", "claims"]
@@ -263,7 +269,7 @@ def verify_manifest(value: dict[str, Any], script_dir: Path = SCRIPT_DIR) -> lis
             for same in sorted(set(have) & set(want)):
                 if have[same] != want[same]:
                     findings.append(f"{key}: {same!r} locators differ from the engine")
-        for key in ("components", "clauses", "exclusions", "ruleset", "claims"):
+        for key in ("components", "clauses", "exclusions", "ruleset", "rule_numbering", "claims"):
             if value[key] != live[key]:
                 findings.append(f"{key} differ from the engine")
         if not findings:

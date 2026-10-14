@@ -182,6 +182,11 @@ def validate_observation(value: Any) -> list[str]:
     context = value.get("context")
     if not isinstance(context, dict) or not all(_str(context.get(k)) for k in ("ruleset_core", "faq_as_of", "format", "card_data_version")):
         errors.append("context must carry ruleset_core, faq_as_of, format, card_data_version")
+    # 2026-10-14 package 12 (GPT's review, point 2): an observation's context names the Core it is read under; the
+    # engine executes one Core, and an observation under another is not its input
+    elif context["ruleset_core"] != rules_core.CORE_RULESET:
+        errors.append(f"context.ruleset_core names Core {context['ruleset_core']}; this engine executes Core "
+                      f"{rules_core.CORE_RULESET}")
     elif "region" in context and not _str(context["region"]):
         errors.append("context.region must be a non-empty string when present")
     states = value.get("component_states")

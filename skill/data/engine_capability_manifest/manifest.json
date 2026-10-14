@@ -1,26 +1,26 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:71b175962e0688abb9e70d6e",
-  "capability_set_id": "sha256:71b175962e0688abb9e70d6e113ccf9965bf6d0d4b542ede3c468ec064357565",
+  "manifest_id": "capability-manifest:d0a46fa963820143e07179d7",
+  "capability_set_id": "sha256:d0a46fa963820143e07179d7c04c7ac54776a53149bd90b2faebccb1601b6e15",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:eeb54d4a4c2a5d98736b4994da5173751b8dba641c5dba5236fb8674ceeeaf4e",
+    "value": "sha256:b1a335f235dfd80f56890b05397a6283c591a5b0a3c5ccfd56f59c75a607c400",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:32b18ef3cb05326c6ae080cf6820ada2fb04de5cb7a616a9509f8938369c1bdb"
+        "sha256": "sha256:9f64fcf48f2024fbc3cdc008b392bee82f82b581b43d8a9cde8a9afdde0bd610"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:1ac56c08e2869bbc2a3022200a36a8f3a57fc25698c887aab7bc90335ba58b9c"
+        "sha256": "sha256:f6e2c29acb38d2d267df53e773251163194baefb140b768b388c1f705d1139e2"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:ba7294673a2768224b1bdb3bf3e75a9c463062117dd53859ccabc752942cf24d"
+        "sha256": "sha256:a10b7a9635ec8034b68a4c9986a8a969e67e2aeb1ce39ae97bbefae748573675"
       },
       {
         "path": "engine_check.py",
-        "sha256": "sha256:50b72dccb5edb13e5ce79577d68651c24639f138482763cf31bbf9103cae41d2"
+        "sha256": "sha256:90efc4bf1a08af8e0a92efaadac62c2b66239690d34749d49adfa1f861c7423c"
       },
       {
         "path": "combat.py",
@@ -28,7 +28,7 @@
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:d2793f998deae8863e8910f36ee2729699b94475382daef0e4e631ad8cd1cfcd"
+        "sha256": "sha256:43cdd5b289201c6af320fc0965ccdcf8093c56f966805f63075cbfbb4b4b4d14"
       },
       {
         "path": "terminal.py",
@@ -45,8 +45,12 @@
     ]
   },
   "ruleset": {
-    "core": "2026-07-16",
+    "core": "2026-10-09",
     "faq_as_of": "2026-08-14"
+  },
+  "rule_numbering": {
+    "core": "2026-07-16",
+    "applies_to": "rule_locators"
   },
   "components": [
     {

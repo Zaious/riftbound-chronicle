@@ -156,9 +156,20 @@ def main():
         "rule_locators": ["Core 310.1.a"],
     }
     normalized = build_engine_check("timing", raw_timing_result, input_hashes={"timing_state": raw_timing_result["input_state_hash"]})
+    # 2026-10-14 package 12: a consultation reading another Core than the engine executes refuses its check
+    older = new_consultation(
+        question_type="specific_interaction", question="Older Core fixture?",
+        format_name="1v1 Constructed", ruleset_as_of="2026-07-16", created_by="test",
+    )
+    try:
+        attach_engine_check(older, normalized)
+        errors.append("an engine check executed under another Core was attached to a 2026-07-16 consultation")
+    except ConsultationError as exc:
+        if "engine_version_mismatch" not in str(exc):
+            errors.append(f"the older-Core consultation refused the check for the wrong reason: {exc}")
     modern = new_consultation(
         question_type="specific_interaction", question="Modern engine fixture?",
-        format_name="1v1 Constructed", ruleset_as_of="test fixture", created_by="test",
+        format_name="1v1 Constructed", ruleset_as_of=CORE_RULESET, created_by="test",
     )
     modern = attach_engine_check(modern, normalized)
     if found := validate_consultation(modern):
@@ -282,7 +293,7 @@ def main():
         check_path = temp / "engine-check.json"
         save(consultation_path, new_consultation(
             question_type="specific_interaction", question="CLI engine fixture?",
-            format_name="1v1 Constructed", ruleset_as_of="test fixture", created_by="test",
+            format_name="1v1 Constructed", ruleset_as_of=CORE_RULESET, created_by="test",
         ))
         check_path.write_text(json.dumps(normalized), encoding="utf-8")
         completed = subprocess.run(
@@ -300,7 +311,7 @@ def main():
         raw_path = temp / "raw-rules-core.json"
         save(legacy_path, new_consultation(
             question_type="specific_interaction", question="Legacy CLI fixture?",
-            format_name="1v1 Constructed", ruleset_as_of="test fixture", created_by="test",
+            format_name="1v1 Constructed", ruleset_as_of=CORE_RULESET, created_by="test",
         ))
         raw_path.write_text(json.dumps(raw_timing_result), encoding="utf-8")
         converted = subprocess.run(

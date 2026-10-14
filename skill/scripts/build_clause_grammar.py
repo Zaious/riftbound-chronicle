@@ -735,6 +735,15 @@ LITERAL = [
      ["While I'm at a battlefield, opponents can only play units to their base."],
      ["while i'm at a battlefield, opponents can't play units", "opponents can only play units to their base",
       "while i'm at a battlefield, you can only play units to your base"]),
+    # 2026-10-14 package 12 (Noxus Saboteur; the site owner's reading - a provisional reading, not a published ruling)
+    ("your_opponents_hidden_cards_cant_be_revealed_here",
+     r"your opponents' \[hidden\] cards can't be revealed here",
+     ["Core 811.1", "Core 811.5.a", "Core 425"], "passive", ["battlefield_restrictions"],
+     "While the card is at a Battlefield, its controller's opponents cannot play their facedown cards there (doing so "
+     "would turn them face up); a facedown card that changes zones is still shown as it goes.",
+     ["Your opponents' [Hidden] cards can't be revealed here."],
+     ["your opponents' [hidden] cards can't be revealed", "your [hidden] cards can't be revealed here",
+      "your opponents' cards can't be revealed here"]),
     ("while_im_at_a_battlefield_spells_and_abilities_cant_ready_enemy_units_and_gear",
      r"while i'm at a battlefield, spells and abilities can't ready enemy units and gear",
      ["Core 358.3.a", "Core 415"], "passive", ["battlefield_restrictions"],
@@ -1678,6 +1687,15 @@ WRAPPERS = [
     # 2026-09-27: a player-level Conquer Effect (Core 383.4.c.2.b) - any source the Conquering
     # player controls where its abilities work, a Legend in its Legend Zone included
     # 2026-10-08 (package 10, Garen - Might of Demacia (Starter)): the Trigger Condition right after it (Core 383.2.a.1)
+    # 2026-10-14 package 12 (Tryndamere - Barbarian; the site owner's ruling: the community reading, a provisional
+    # reading and not a published ruling)
+    ("when_i_conquer_after_an_attack_if_you_assigned_n_or_more_excess_damage_to_enemy_units",
+     r"when i conquer after an attack, if you assigned (?P<amount>\d+) or more excess damage to enemy units, (?P<inner>.+)",
+     ["Core 469.1", "Core 383.4.c", "Core 383.2.a.1", "Core 467.2.c.4"], ["conquer_triggers"],
+     ["When I conquer after an attack, if you assigned 5 or more excess damage to enemy units, draw 1."],
+     ["when i conquer, if you assigned 5 or more excess damage to enemy units, draw 1",
+      "when i conquer after an attack, draw 1",
+      "when you conquer after an attack, if you assigned 5 or more excess damage to enemy units, draw 1"]),
     ("when_you_conquer_if_you_have_n_units_at_that_battlefield",
      r"when you conquer, if you have (?P<count>\d+)\+ units at that battlefield, (?P<inner>.+)",
      ["Core 469.1", "Core 383.4.c", "Core 383.4.c.2.b", "Core 383.2.a.1"], ["conquer_triggers"],
@@ -1817,7 +1835,7 @@ def main() -> int:
     grammar = {
         "schema_version": "clause-grammar.v1",
         "version": "2026-09-08.1",
-        "ruleset": {"core": "2026-07-16", "faq_as_of": "2026-08-14"},
+        "ruleset": {"core": __import__("effect_ir").CORE_RULESET, "faq_as_of": __import__("effect_ir").FAQ_AS_OF},
         "complete_grammar": False,
         "note": ("A production is a template over sub-grammar slots (DP-84), not a literal sentence. Its goldens must "
                  "exercise every alternative of every slot it admits, and the cross product of every slot pair listed "

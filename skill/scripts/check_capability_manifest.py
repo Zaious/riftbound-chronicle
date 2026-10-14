@@ -114,7 +114,7 @@ def main() -> int:
     under["operations"] = [op for op in under["operations"] if op["id"] != "draw"]
     # Re-hash so the *shape* is valid; only `verify` can see the understatement.
     from capability_manifest import canonical_hash  # noqa: E402
-    content = {k: under[k] for k in ("ruleset", "components", "operations", "procedures", "features", "clauses", "exclusions", "claims")}
+    content = {k: under[k] for k in ("ruleset", "rule_numbering", "components", "operations", "procedures", "features", "clauses", "exclusions", "claims")}
     under["capability_set_id"] = canonical_hash(content)
     under["manifest_id"] = "capability-manifest:" + under["capability_set_id"].split(":", 1)[1][:24]
     if validate_manifest(under):
@@ -123,7 +123,7 @@ def main() -> int:
 
     under_feature = copy.deepcopy(live)
     under_feature["features"] = [feature for feature in under_feature["features"] if feature["id"] != "typed_selectors"]
-    feature_content = {k: under_feature[k] for k in ("ruleset", "components", "operations", "procedures", "features", "clauses", "exclusions", "claims")}
+    feature_content = {k: under_feature[k] for k in ("ruleset", "rule_numbering", "components", "operations", "procedures", "features", "clauses", "exclusions", "claims")}
     under_feature["capability_set_id"] = canonical_hash(feature_content)
     under_feature["manifest_id"] = "capability-manifest:" + under_feature["capability_set_id"].split(":", 1)[1][:24]
     expect_findings("understated cited feature (verify)", verify_manifest(under_feature), "typed_selectors", errors)

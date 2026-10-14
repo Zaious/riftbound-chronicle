@@ -1,7 +1,7 @@
 {
   "schema_version": "riftbound-rules-core-state.v1",
   "ruleset": {
-    "core": "2026-07-16",
+    "core": "2026-10-09",
     "faq_as_of": "2026-08-14"
   },
   "players": [

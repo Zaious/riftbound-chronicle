@@ -21,6 +21,7 @@ an engine entry, and pretending to route it would be inventing a path.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -28,6 +29,7 @@ from typing import Any
 
 import judge_corpus
 import legal_action
+import rules_core
 import rule_consult_command as rcc
 import source_semantic_bindings as ssb
 import state_builder
@@ -134,7 +136,7 @@ def _observation(inputs: dict[str, Any]) -> dict[str, Any]:
         draft=inputs["effect_draft"])
     return legal_action.build_observation(
         perspective="player1", source={"kind": "engine_state", "state_seq": 1},
-        context={"ruleset_core": "2026-07-16", "faq_as_of": "2026-07-16",
+        context={"ruleset_core": rules_core.CORE_RULESET, "faq_as_of": rules_core.FAQ_AS_OF,
                  "format": "standard", "card_data_version": "r3a1"},
         timing_state=timing["state"], effect_state=effect["state"], facts={},
         pending_decisions=[],
@@ -155,6 +157,19 @@ def run_question(question: dict[str, Any], inputs: dict[str, Any],
         effect_question_kind=inputs.get("effect_question_kind", "unit_damage"),
         entry_inputs=inputs["entry_inputs"], claims=inputs["claims"],
         source_retriever=retriever, semantic_bindings=registry)
+
+
+@contextlib.contextmanager
+def _version_check_off():
+    """The gate's counterfactual, and only the gate's: the consultation command's own version check replaced, for one
+    run, by one that finds nothing - so a question held for its version can be judged as an unheld run is. The formal
+    entry has no switch for this; the original check is put back however the run ends."""
+    keep = rcc.engine_version_problem
+    rcc.engine_version_problem = lambda *args, **kwargs: None
+    try:
+        yield
+    finally:
+        rcc.engine_version_problem = keep
 
 
 def run_corpus(corpus: dict[str, Any], runs: dict[str, Any]) -> dict[str, Any]:
@@ -180,6 +195,14 @@ def run_corpus(corpus: dict[str, Any], runs: dict[str, Any]) -> dict[str, Any]:
                             "reason": "no run inputs are recorded for this question"})
             continue
         run = run_question(question, inputs, retriever, registry)
+        held = run["not_attempted_reason"] in ("engine_version_mismatch", "engine_version_unverified")
+        if held:
+            # 2026-10-14 package 12 (GPT's review, point 2): the engine executes another Core than the text this
+            # question is answered from. The question is held, and the same run with the version check off says
+            # whether anything else would stop it (`aligned`, judged exactly as an unheld run is)
+            held_run = run
+            with _version_check_off():
+                run = run_question(question, inputs, retriever, registry)
         problems = compare(question, run)
         contract = question["expected_answer_contract"]
         if contract["template_coverage_debt"]:
@@ -201,14 +224,19 @@ def run_corpus(corpus: dict[str, Any], runs: dict[str, Any]) -> dict[str, Any]:
             outcome = "differs_recorded"
         else:
             outcome = "differs"
-        results.append({
+        item = {
             "question_id": question["question_id"],
             "outcome": outcome,
             "tier": run["tier"], "status": run["status"],
             "scope": observed_scope(run),
             "templates": [claim["template"] for claim in run["claims"]],
             "problems": problems,
-        })
+        }
+        if held:
+            item = {"question_id": question["question_id"], "outcome": "held_engine_version",
+                    "reason": held_run["detail"], "tier": held_run["tier"], "status": held_run["status"],
+                    "aligned": item}
+        results.append(item)
     counts: dict[str, int] = {}
     for item in results:
         counts[item["outcome"]] = counts.get(item["outcome"], 0) + 1

@@ -14,6 +14,7 @@ from typing import Any
 from effect_ir import (
     CORE_RULESET,
     FAQ_AS_OF,
+    RULE_NUMBERING,
     PROGRAM_VERSION,
     STATE_VERSION as EFFECT_STATE_VERSION,
     apply_program,
@@ -38,6 +39,9 @@ from rules_core import (
 
 
 SCHEMA_VERSION = "engine-check.v1"
+# 2026-10-14 package 12 (GPT's review, point 1): the document whose numbering `rule_locators` use - not the Core the
+# result was executed under (`ruleset.core`)
+RULE_NUMBERING_FIELD = {"core": RULE_NUMBERING, "applies_to": "rule_locators"}
 OUTCOMES = {"supported", "illegal", "unsupported", "decision_required", "invalid_input"}
 FEATURE_RULES = {
     "typed_selectors": ["Core 108.6.e", "Core 355.7–355.10.d.2", "Core 359.3.e.1–359.3.e.10"],
@@ -432,6 +436,8 @@ def build_engine_check(
         "outcome": outcome,
         "authority": {"official_status": "unofficial", "role": "consistency_check", "state_effect": "none"},
         "ruleset": copy.deepcopy(result.get("ruleset", {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF})),
+        # 2026-10-14 package 12: the numbering of `rule_locators`, apart from the Core the result was executed under
+        "rule_numbering": dict(RULE_NUMBERING_FIELD),
         "component": {"name": config["component"][0], "version": config["component"][1]},
         "coverage": {
             "id": config["coverage"], "complete_game": False, "complete_legality": False,
@@ -471,7 +477,7 @@ def validate_engine_check(value: Any) -> list[str]:
     if not isinstance(value, dict):
         return ["engine check must be an object"]
     required = {
-        "schema_version", "check_id", "check_kind", "outcome", "authority", "ruleset", "component",
+        "schema_version", "check_id", "check_kind", "outcome", "authority", "ruleset", "rule_numbering", "component",
         "coverage", "input_hashes", "result_hash", "reason", "rule_locators", "trace_summary",
         "assumptions", "missing_information",
     }
@@ -483,6 +489,12 @@ def validate_engine_check(value: Any) -> list[str]:
         errors.append(f"schema_version must be {SCHEMA_VERSION}")
     if value.get("outcome") not in OUTCOMES:
         errors.append("outcome is invalid")
+    # 2026-10-14 package 12: the Core the result was executed under, and the numbering of its locators - two fields
+    if value.get("ruleset") != {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}:
+        errors.append(f"ruleset must be the Core this engine executes ({CORE_RULESET}); a check from another Core is "
+                      f"not this engine's evidence")
+    if value.get("rule_numbering") != RULE_NUMBERING_FIELD:
+        errors.append(f"rule_numbering must be {RULE_NUMBERING_FIELD}")
     authority = value.get("authority")
     if authority != {"official_status": "unofficial", "role": "consistency_check", "state_effect": "none"}:
         errors.append("authority boundary is invalid")

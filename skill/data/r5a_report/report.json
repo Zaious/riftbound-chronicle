@@ -1,17 +1,17 @@
 {
   "schema_version": "r5a-report.v1",
   "identity": {
-    "manifest_id": "capability-manifest:71b175962e0688abb9e70d6e",
-    "capability_set_id": "sha256:71b175962e0688abb9e70d6e113ccf9965bf6d0d4b542ede3c468ec064357565",
-    "implementation_identity": "sha256:eeb54d4a4c2a5d98736b4994da5173751b8dba641c5dba5236fb8674ceeeaf4e",
+    "manifest_id": "capability-manifest:d0a46fa963820143e07179d7",
+    "capability_set_id": "sha256:d0a46fa963820143e07179d7c04c7ac54776a53149bd90b2faebccb1601b6e15",
+    "implementation_identity": "sha256:b1a335f235dfd80f56890b05397a6283c591a5b0a3c5ccfd56f59c75a607c400",
     "ruleset": {
-      "core": "2026-07-16",
+      "core": "2026-10-09",
       "faq_as_of": "2026-08-14"
     },
     "fixture_sources": [
       {
         "path": "data/rules_core_cases.json",
-        "sha256": "sha256:b3d507733941206ce247e18b1c66fd8768725d14e25189b70e17f3040eef21a4"
+        "sha256": "sha256:2af72a23fd9d78f17a15bb7055d0665d9b1b88ae15b5685a2054418bd2e7eda5"
       },
       {
         "path": "data/rule_consult_cases.json",
@@ -19,7 +19,7 @@
       },
       {
         "path": "data/legal_action_examples/fixtures.json",
-        "sha256": "sha256:c7363009297c64d4d2b7ce16d742cf1d3d61ab60b1c866e7c7669e18a232106c"
+        "sha256": "sha256:9908878b654d76d66db5663d34d30ea37c629572cd8b9b060de0b7b7d95f2be6"
       },
       {
         "path": "data/engine_check_examples/cleanup-decisions.json",
@@ -27,35 +27,35 @@
       },
       {
         "path": "data/engine_check_examples/cleanup-state.json",
-        "sha256": "sha256:934b56cc192ea38be00b7861d744fd937aba46771cf618d075b859fdea3a7037"
+        "sha256": "sha256:ba74e02cc2927c90e4d514321756aef9495fab3fd4eb2bcaf9ead07d2d1b42da"
       },
       {
         "path": "data/engine_check_examples/closed-timing-state.json",
-        "sha256": "sha256:ffa990cc24ed283c85bc3fb73507ccd0f50b07f4ff6aeaead8da1e8c2d02ef06"
+        "sha256": "sha256:9d206968420a5a8a738ca23aeaeb47336ceeb05b72ee594930b4a7bfe0061869"
       },
       {
         "path": "data/engine_check_examples/effect-program.json",
-        "sha256": "sha256:cd1955a54deddd01b2e3c74bc087183c218c00539275b37af7cb59218a7242f3"
+        "sha256": "sha256:a04f16f75e83f4b8241f1f44e4e095b083db6cfe646eda20143983009fa64842"
       },
       {
         "path": "data/engine_check_examples/effect-state.json",
-        "sha256": "sha256:8ea8c01aea0fa085f5f96e2f251c783a4bbc1c5df95548ff0d893e5c229b361a"
+        "sha256": "sha256:df0ddaaeefae1a0fed02f12894a5f6d84f148bfd14c2d8223a7b17a5816797ec"
       },
       {
         "path": "data/engine_check_examples/play-decisions.json",
-        "sha256": "sha256:cbbd4a2af69d682bd09f253ed92788a8c016eb2e2fdc3cb471f6bf49da5b8b25"
+        "sha256": "sha256:f0967a889073dcf5f57690f960e2433bf4fe7f4e7d13d7ab40019cb957c69580"
       },
       {
         "path": "data/engine_check_examples/play-declaration.json",
-        "sha256": "sha256:cdb6618ec6a97c963ac4670c0385c4f1821204963f3e30f6e3a37e85554194f3"
+        "sha256": "sha256:99c89926ce68b4787ebcc4295b0c14b6f411ac1fe486ac8986fdcf97fa5770ec"
       },
       {
         "path": "data/engine_check_examples/play-effect-state.json",
-        "sha256": "sha256:de497b60663b82f9180bb219f2c51e606bbdc195b6ec8afa65045e5e30ae2a5a"
+        "sha256": "sha256:dd00746fcc3410b6f98d21051df98a17d730306a0dbeb8aa91ac03f4fc6fd666"
       },
       {
         "path": "data/engine_check_examples/play-timing-state.json",
-        "sha256": "sha256:4ae29989112ed9611435df53c497e1e6ecd0d749630974b0c0ca5d181c125acd"
+        "sha256": "sha256:9390513afbcc0222291fbac4f4dea2c5ab74fee164e1c272317b540d32113f03"
       },
       {
         "path": "data/engine_check_examples/proposed-action.json",
@@ -63,23 +63,23 @@
       },
       {
         "path": "data/engine_check_examples/timing-state.json",
-        "sha256": "sha256:4ae29989112ed9611435df53c497e1e6ecd0d749630974b0c0ca5d181c125acd"
+        "sha256": "sha256:9390513afbcc0222291fbac4f4dea2c5ab74fee164e1c272317b540d32113f03"
       },
       {
         "path": "data/match_analyst_fixtures/complete-showdown.json",
-        "sha256": "sha256:6fc3b072509cd47ef51fab1c99752c146f2fc9466d759ebadbcb69a9c3143453"
+        "sha256": "sha256:7ff0567e7f624e0676e80390eb77eaeea2600775a0802d4930d5a1d8e7373ce0"
       },
       {
         "path": "data/match_analyst_fixtures/contradictory-record.json",
-        "sha256": "sha256:cd15020fc35d3a4ffda430c7d64c3d5ad9949e63cbe991bd2c91183d0378f70b"
+        "sha256": "sha256:eaf521ebbb896fd2dae6f16118046be14af8e8b3a36b8aa0ab91b3bf483f4ad9"
       },
       {
         "path": "data/match_analyst_fixtures/partial-observer.json",
-        "sha256": "sha256:1b088834aabeb55c5759c219025b74bef4e3192bd90998793b96998282ea8913"
+        "sha256": "sha256:d121caa1f6927d22dd349da69df352a14890fec3b1d47084a598b8b4533ed3a0"
       },
       {
         "path": "data/match_analyst_fixtures/perspective-safe-hidden.json",
-        "sha256": "sha256:ea3f649393ddd81199c2ac6ec4a4a9306b7ce491ebf0184a75dac012733d1314"
+        "sha256": "sha256:0b753361cdfebf286bb67be9ed68cc2e612bf0b9d128cb24f7b4a972c4570207"
       }
     ]
   },
@@ -1013,5 +1013,5 @@
       ]
     }
   ],
-  "report_hash": "sha256:c55c12e5fcdcb49203f0aa2aa9d505bf3fd3471f14e8f64ad11f945f02145c78"
+  "report_hash": "sha256:2e9f21b7a3219ee50439628cd92718ad673d915b901ea041070894ff338c09e5"
 }

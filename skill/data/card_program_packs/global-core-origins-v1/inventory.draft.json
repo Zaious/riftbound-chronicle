@@ -4,7 +4,7 @@
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
-    "core": "2026-07-16",
+    "core": "2026-10-09",
     "faq_as_of": "2026-08-14"
   },
   "environment": {

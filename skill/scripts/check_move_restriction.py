@@ -150,6 +150,43 @@ def main() -> int:
             errors.append(f"an independent instruction of the same effect was abandoned: {steps.get('dr')}")
         if len(after["players"]["p1"]["zones"]["hand"]) != 1:
             errors.append("the draw that shares the spell with the restricted move did not happen")
+    # --- 2b. Core 2026-10-09 359.3.e.6, 359.3.e.14.a/b: the forbidden Move is NEGATED, so an instruction linked to
+    #     it still executes - "Move a friendly unit and ready it" readies the unit that could not move. Under the
+    #     07-16 text the Move was ignored and the readying with it.
+    exhausted = copy.deepcopy(state)
+    exhausted["objects"]["u1"]["exhausted"] = True
+    linked = program("ride-the-wind-ready",
+                     {"op": "move_board_object", "effect_id": "mv", "object_id": "u1",
+                      "destination": {"kind": "base", "player": "p1"}},
+                     {"op": "ready", "effect_id": "rd", "object_id": "u1", "depends_on": "mv",
+                      "dependency_mode": "unless_ignored"})
+    linked["source_object"] = "u2"
+    readied = apply_program(exhausted, linked)
+    if not readied.get("committed"):
+        errors.append(f"the linked program was refused: {readied.get('reason') or readied.get('errors')}")
+    else:
+        steps = {step["effect_id"].split(":")[0]: step for step in readied["trace"]}
+        if steps.get("mv", {}).get("outcome") != "skipped_restricted_move" or steps["mv"].get("negated") is not True:
+            errors.append(f"the forbidden Move is not marked negated: {steps.get('mv')}")
+        if readied["next_state"]["objects"]["u1"].get("exhausted") is not False:
+            errors.append(f"the unit the forbidden Move named was not readied - the negated Move took its linked "
+                          f"instruction with it (the 07-16 reading): {steps.get('rd')}")
+        if "u1" not in readied["next_state"]["battlefields"]["bf1"]["objects"]:
+            errors.append("the unit moved although the Move was negated")
+    # mutation: the 07-16 reading (the restricted Move ignored) must fail the case above; an illegal target is still
+    # Ignored and takes its linked instruction with it - check_linked_move.py holds that side
+    import effect_ir
+    keep = effect_ir.IGNORED_OUTCOMES
+    effect_ir.IGNORED_OUTCOMES = keep | {"skipped_restricted_move"}
+    try:
+        old_reading = apply_program(exhausted, linked)
+    finally:
+        effect_ir.IGNORED_OUTCOMES = keep
+    if old_reading.get("committed") and old_reading["next_state"]["objects"]["u1"].get("exhausted") is False:
+        errors.append("mutation not caught: with the restricted Move ignored the unit was readied anyway; the case "
+                      "cannot tell negated from ignored")
+    if effect_ir.NEGATED_OUTCOMES & effect_ir.IGNORED_OUTCOMES:
+        errors.append(f"an outcome is both negated and ignored: {sorted(effect_ir.NEGATED_OUTCOMES & effect_ir.IGNORED_OUTCOMES)}")
     # the same effect, unrestricted, does move - so the fixture proves the restriction and not a no-op
     free = apply_program(state, ride_the_wind("u2"))
     if "u2" not in free["next_state"]["players"]["p1"]["zones"]["base"]:
@@ -196,7 +233,8 @@ def main() -> int:
         return 1
     print("move restriction checks passed: a Standard Move to the forbidden Base is neither offered nor "
           "accepted and is refused by name, an effect may still choose it and has only that instruction "
-          "ignored (359.3.e.6) while the rest of the spell runs, and the four other restriction shapes "
+          "negated (359.3.e.6, 10-09 text) while the rest of the spell runs - an instruction linked to it too "
+          "(359.3.e.14.a/b) - and the four other restriction shapes "
           "stay unparsed")
     return 0
 

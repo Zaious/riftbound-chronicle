@@ -45,7 +45,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from check_effect_ir import base_state, program  # noqa: E402
 from effect_ir import (  # noqa: E402
     apply_program, bonus_damage, canonical_effects, characteristics, effective_might, effects_for,
-    has_keyword, migrate_legacy_effects, prune_dead_effects, shield_total, validate_state,
+    has_keyword, migrate_legacy_effects, printed_aura_effects, prune_dead_effects, shield_total, validate_state,
 )
 from engine_check import KIND_CONFIG  # noqa: E402
 
@@ -95,14 +95,19 @@ def main() -> int:
     if validate_state(migrated):
         errors.append(f"the migrated state is invalid: {validate_state(migrated)}")
     kinds = sorted((e["kind"], e["layer"]) for e in migrated["continuous_effects"])
-    if len(migrated["continuous_effects"]) != 5 or ("keyword_grant", "ability") not in kinds or ("bonus_damage", "arithmetic") not in kinds:
-        errors.append(f"the five legacy families did not all land: {kinds}")
+    # 2026-10-15 package 13 (C2): a card's own conditional_might is printed text, read live from the object (it is not a
+    # legacy family any more - migrated, a card played later lost it)
+    if len(migrated["continuous_effects"]) != 4 or ("keyword_grant", "ability") not in kinds or ("bonus_damage", "arithmetic") not in kinds:
+        errors.append(f"the four legacy families did not all land: {kinds}")
+    if migrated["objects"]["u1"].get("conditional_might") != legacy["objects"]["u1"]["conditional_might"] \
+            or not any(e["effect_id"] == "printed:conditional:u1:runes" for e in printed_aura_effects(migrated)):
+        errors.append("a printed conditional_might was migrated, not read live from the object")
     named = next((e for e in migrated["continuous_effects"] if e["source"].get("name") == "en-garde"), None)
     if named is None or named["duration"] != {"kind": "this_turn", "turn_id": "turn-0"} or named["sublayer"] != "increase":
         errors.append(f"the translated modifier lost its provenance or duration: {named}")
     if migrate_legacy_effects(migrated) is not migrated:
         errors.append("migration is not idempotent")
-    if any(migrated["objects"][o].get("conditional_might") or migrated["objects"][o].get("keyword_modifiers") for o in migrated["objects"]) or "might_auras" in migrated or "damage_modifiers" in migrated:
+    if any(migrated["objects"][o].get("keyword_modifiers") for o in migrated["objects"]) or "might_auras" in migrated or "damage_modifiers" in migrated:
         errors.append("the legacy families survived the migration; they would be read twice")
 
     both = copy.deepcopy(migrated)

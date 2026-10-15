@@ -28,6 +28,9 @@ CORE_RULESET = "2026-10-09"
 CORE_EFFECTIVE = "2026-10-16"
 RULE_NUMBERING = "2026-07-16"
 FAQ_AS_OF = "2026-08-14"
+# 2026-10-15 package 13 (C2): the six Domains a Power is of (Core 805) - the names the resource pools use; a cost that
+# lets the payer name a Domain ([A]) ranges over these
+DOMAINS = ("body", "calm", "chaos", "fury", "mind", "order")
 PLAYER_ZONES = {"main_deck", "hand", "trash", "banishment", "base", "rune_deck"}
 # ADR-0012 §5: the Legend and Champion zones are public, are not Locations,
 # and only appear in states that use them (Core 107.4.d, 108.3).
@@ -89,7 +92,10 @@ MIGHT_MODES = {"delta", "increase_to"}
 # ADR-0010 §6 / Core 484-489: the Modes of Play the state may name. One set,
 # read here and by the state builder; a caller that restated it would drift.
 SANCTIONED_MODES = frozenset({"duel", "match", "skirmish", "war", "magma_chamber"})
-LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "conditional_might", "might_auras", "damage_modifiers", "dynamic_might")
+LEGACY_EFFECT_FIELDS = ("might_modifiers", "keyword_modifiers", "might_auras", "damage_modifiers")
+# 2026-10-15 package 13 (C2): a card's own printed Might statics, read live from the object while it is on the Board
+# (printed_aura_effects) - never migrated, so one played after the game began has them (Core 365.1)
+PRINTED_MIGHT_FIELDS = ("conditional_might", "dynamic_might")
 # "My Might is increased by your points." (Draven - Showboat): the amounts a passive
 # arithmetic effect may read off the board each time it is computed (477.3.b: a
 # passive source is not snapshotted). 2026-09-27: "for each buffed friendly unit at my
@@ -982,6 +988,13 @@ def validate_state(state: Any) -> list[str]:
                     or aura["criteria"].get("kind", "unit") != "unit":
                 errors.append(f"battlefields.{battlefield_id}.static_auras[{a_index}] must be {{aura_id, amount != 0, "
                               f"criteria over {sorted(BATTLEFIELD_AURA_CRITERIA)}}}")
+        for p_index, modifier in enumerate(battlefield.get("printed_damage_modifiers", []) or []):
+            # 2026-10-15 package 13 (C2): a Battlefield's own Bonus Damage, to units at itself (Void Gate)
+            if not isinstance(modifier, dict) or set(modifier) != {"amount", "scope"} or not isinstance(modifier["amount"], int) \
+                    or isinstance(modifier["amount"], bool) or modifier["amount"] < 1 \
+                    or modifier["scope"] != {"kind": "location", "battlefield": battlefield_id}:
+                errors.append(f"battlefields.{battlefield_id}.printed_damage_modifiers[{p_index}] must be {{amount >= 1, "
+                              f"scope: location at itself}}")
         # Core 190.3.a / 190.3.a.1: a Unit whose controller does not control this
         # Battlefield applies Contested the moment it becomes present there. A Battlefield
         # controlled by one player with an enemy Unit on it and no Contested status is
@@ -1466,13 +1479,26 @@ def validate_state(state: Any) -> list[str]:
         # 2026-10-13 package 11 (Heimerdinger - Inventor): the activated abilities a permanent prints, by id - what a copy
         # of one is checked against - and the kinds whose [Exhaust] abilities a permanent has as well (Core 377)
         printed = obj.get("activated_abilities")
+        # 2026-10-15 package 13 (C2): a row also says the ability's timing, its kind (standard or [Add]), its text costs
+        # (cost.additional, as an activation declares them) and its own activation conditions (Core 377.2.b) - what a
+        # catalogued object's activation must declare (play_transaction.catalogued_declaration_problem)
         if printed is not None and (not isinstance(printed, dict) or any(
-                not isinstance(a, dict) or set(a) - {"cost", "effect_program_id"} or not isinstance(a.get("effect_program_id"), str)
-                or not isinstance(a.get("cost"), dict) or set(a["cost"]) - {"energy", "power", "exhaust"}
+                not isinstance(a, dict) or set(a) - {"cost", "effect_program_id", "timing", "ability_kind", "activation_conditions"}
+                or not isinstance(a.get("effect_program_id"), str)
+                or not isinstance(a.get("cost"), dict) or set(a["cost"]) - {"energy", "power", "exhaust", "additional"}
                 or not isinstance(a["cost"].get("energy", 0), int) or not isinstance(a["cost"].get("power", {}), dict)
-                or not isinstance(a["cost"].get("exhaust", False), bool) for a in printed.values())):
-            errors.append(f"objects.{object_id}.activated_abilities maps ability ids to {{cost: {{energy, power, exhaust}}, "
-                          f"effect_program_id}}")
+                or not isinstance(a["cost"].get("exhaust", False), bool)
+                or not isinstance(a["cost"].get("additional", []), list)
+                or any(not isinstance(c, dict) or not {"cost_id", "mandatory", "payment"} <= set(c) for c in a["cost"].get("additional", []))
+                or a.get("timing", "default") not in {"default", "action", "reaction"}
+                or a.get("ability_kind", "standard") not in {"standard", "add"}
+                or not isinstance(a.get("activation_conditions", []), list) for a in printed.values())):
+            errors.append(f"objects.{object_id}.activated_abilities maps ability ids to {{cost: {{energy, power, exhaust, "
+                          f"additional?}}, effect_program_id, timing?, ability_kind?, activation_conditions?}}")
+        # 2026-10-15 package 13 (C2): the closed environment's catalogue key of the card this object is - a catalogued
+        # object is played and activated exactly as its record says
+        if "card_ref" in obj and (not isinstance(obj["card_ref"], str) or not obj["card_ref"]):
+            errors.append(f"objects.{object_id}.card_ref must be a non-empty string")
         # package 12 (Udyr - Wildman): the modes chosen this turn with this object's "choose one you've not chosen this
         # turn" ability - {identity, turn_id, by: {player: [option ids]}}; read only while identity and turn are current
         chosen = obj.get("modes_chosen")
@@ -1679,6 +1705,24 @@ def validate_state(state: Any) -> list[str]:
                     or any(criteria.get(k) not in (None, True) for k in STATIC_AURA_FLAGS)):
                 errors.append(f"{label} must be {{aura_id, amount != 0, minimum >= 0 (a decrease only)?, criteria over "
                               f"{sorted(STATIC_AURA_CRITERIA)}}}")
+        # 2026-10-15 package 13 (C2): a card's own printed Bonus Damage, Might aura and Replacement Effects, read live
+        # (printed_aura_effects) or materialized while it is where it works (materialize_printed_replacements)
+        for p_index, modifier in enumerate(obj.get("printed_damage_modifiers", []) or []):
+            if not isinstance(modifier, dict) or set(modifier) != {"amount", "scope"} or not isinstance(modifier["amount"], int) \
+                    or isinstance(modifier["amount"], bool) or modifier["amount"] < 1 or modifier["scope"] != {"kind": "controller_sources"}:
+                errors.append(f"objects.{object_id}.printed_damage_modifiers[{p_index}] must be {{amount >= 1, scope: "
+                              f"controller_sources}} (Core 714.1)")
+        for p_index, aura in enumerate(obj.get("printed_might_auras", []) or []):
+            if not isinstance(aura, dict) or set(aura) != {"amount", "condition"} or not isinstance(aura["amount"], int) \
+                    or isinstance(aura["amount"], bool) or aura["amount"] == 0 or not isinstance(aura["condition"], dict) \
+                    or aura["condition"].get("kind") not in AURA_CONDITION_KINDS or set(aura["condition"]) != {"kind"}:
+                errors.append(f"objects.{object_id}.printed_might_auras[{p_index}] must be {{amount != 0, condition: one of "
+                              f"{sorted(AURA_CONDITION_KINDS)}}}")
+        templates = obj.get("printed_replacements")
+        if templates is not None and (not isinstance(templates, list) or not templates
+                                      or any(not isinstance(t, dict) or set(t) & set(PRINTED_REPLACEMENT_BOUND) for t in templates)):
+            errors.append(f"objects.{object_id}.printed_replacements must be templates without "
+                          f"{list(PRINTED_REPLACEMENT_BOUND)} (where it is supplies them)")
         seen_conditional: set[str] = set()
         for c_index, conditional in enumerate(obj.get("conditional_might", []) or []):
             label = f"objects.{object_id}.conditional_might[{c_index}]"
@@ -4046,7 +4090,7 @@ def bonus_damage(state: dict[str, Any], controller: str | None, object_id: str |
     total = 0
     sources: list[dict[str, Any]] = []
     location = find_location(state, object_id) if object_id is not None else None
-    for effect in canonical_effects(state):
+    for effect in canonical_effects(state) + printed_aura_effects(state):
         if effect["kind"] != "bonus_damage":
             continue
         active, _ = _effect_active(state, effect)
@@ -4106,7 +4150,7 @@ def _split_bonus(state: dict[str, Any], controller: str | None, object_ids: list
     total = 0
     sources: list[dict[str, Any]] = []
     locations = [find_location(state, object_id) for object_id in object_ids]
-    for effect in canonical_effects(state):
+    for effect in canonical_effects(state) + printed_aura_effects(state):
         if effect["kind"] != "bonus_damage":
             continue
         active, _ = _effect_active(state, effect)
@@ -4716,6 +4760,46 @@ def replacement_source_present(state: dict[str, Any], source: str | None) -> boo
         return True
     return (location is not None and location[0] == "player" and location[2] == "legend_zone"
             and state["objects"][source].get("kind") == "legend")
+
+
+# 2026-10-15 package 13 (C2): a card's own Replacement Effect, printed on the object as a template; the fields a
+# materialized entry takes from where it is
+PRINTED_REPLACEMENT_BOUND = ("replacement_id", "controller", "source_object")
+
+
+def printed_replacement_id(object_id: str, index: int) -> str:
+    return f"{object_id}:printed:{index}"
+
+
+def materialize_printed_replacements(state: dict[str, Any]) -> list[str]:
+    """Each object's printed_replacements, added to replacement_effects while the object is where its abilities work
+    (replacement_source_present) and not already there - its controller the object's, its own references to itself
+    bound. Pruning removes it when the object leaves; a card that enters again gets a fresh one (Core 124). Returns the
+    ids added."""
+    present = {r.get("replacement_id") for r in state.get("replacement_effects") or []}
+    added = []
+    for object_id in sorted(state.get("objects") or {}):
+        obj = state["objects"][object_id]
+        templates = obj.get("printed_replacements") or []
+        if not templates or not replacement_source_present(state, object_id):
+            continue
+        for index, template in enumerate(templates):
+            replacement_id = printed_replacement_id(object_id, index)
+            if replacement_id in present:
+                continue
+            entry = _bind_source_object(copy.deepcopy(template), object_id)
+            entry.update(replacement_id=replacement_id, controller=obj["controller"], source_object=object_id)
+            state.setdefault("replacement_effects", []).append(entry)
+            added.append(replacement_id)
+    return added
+
+
+def _bind_source_object(value: Any, object_id: str) -> Any:
+    if isinstance(value, dict):
+        return {k: _bind_source_object(v, object_id) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_bind_source_object(v, object_id) for v in value]
+    return object_id if value == "$source_object" else value
 
 
 def _prune_inactive_replacements(state: dict[str, Any]) -> list[str]:
@@ -5581,6 +5665,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             raise IllegalOperation(f"gain_control takes a permanent on the board; {object_id!r} is not one")
         before = obj["controller"]
         obj["controller"] = player
+        follow_controller(new_state, object_id, player)
         trace.update({"object_id": object_id, "controller_before": before, "controller_after": player,
                       "owner": obj["owner"], "retained": {"damage": obj["damage"], "exhausted": obj["exhausted"],
                                                          "buffed": bool(obj.get("buffed"))}})
@@ -6814,6 +6899,14 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
             descriptor["trigger_kind"] = "reflexive"
         trace.update({"pending_triggers": copied, "reflexive_count": len(copied)})
 
+    # 2026-10-15 package 13 (C2, PACKAGE13 ruling 2): a card this effect put in a non-Board zone is its owner's again
+    returned = owners_again(new_state)
+    if returned:
+        trace["control_returned_to_owner"] = returned
+    # 2026-10-15 package 13 (C2): a card this effect put where its abilities work has its own Replacement Effects
+    materialized = materialize_printed_replacements(new_state)
+    if materialized:
+        trace["printed_replacements_added"] = materialized
     errors = validate_state(new_state)
     if errors:
         raise ValueError("effect produced invalid state: " + "; ".join(errors))
@@ -6853,25 +6946,6 @@ def migrate_legacy_effects(state: dict[str, Any]) -> dict[str, Any]:
                 "timestamp": _legacy_timestamp(0, position), "value": {"amount": amount, "mode": "delta"},
                 "duration": duration, "passive": False,
             })
-        for position, conditional in enumerate(obj.get("conditional_might", []) or []):
-            amount = conditional["amount"]
-            effects.append({
-                "effect_id": f"legacy:conditional:{object_id}:{conditional['modifier_id']}", "kind": "might_arithmetic",
-                "source": {"object": object_id, "identity": identity},
-                "affects": {"scope": "object", "object": object_id, "identity": identity},
-                "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
-                "timestamp": _legacy_timestamp(1, position), "value": {"amount": amount, "mode": "delta"},
-                "condition": copy.deepcopy(conditional["condition"]), "duration": {"kind": "while_source_active"}, "passive": True,
-            })
-        for position, dynamic in enumerate(obj.get("dynamic_might", []) or []):
-            effects.append({
-                "effect_id": f"legacy:dynamic:{object_id}:{dynamic['modifier_id']}", "kind": "might_arithmetic",
-                "source": {"object": object_id, "identity": identity},
-                "affects": {"scope": "object", "object": object_id, "identity": identity},
-                "layer": "arithmetic", "sublayer": "increase",
-                "timestamp": _legacy_timestamp(5, position), "value": {"amount": dynamic["amount"], "mode": "delta", "per": dict(dynamic["per"])},
-                "duration": {"kind": "while_source_active"}, "passive": True,
-            })
         for position, modifier in enumerate(obj.get("keyword_modifiers", []) or []):
             duration = ({"kind": "this_combat", "combat_id": modifier["combat_id"]}
                         if modifier["duration"] == "this_combat" else {"kind": "this_turn", "turn_id": modifier.get("turn_id", turn_id)})
@@ -6909,8 +6983,7 @@ def migrate_legacy_effects(state: dict[str, Any]) -> dict[str, Any]:
         return state
     migrated = copy.deepcopy(state)
     for object_id in migrated["objects"]:
-        for field in ("conditional_might", "keyword_modifiers", "dynamic_might"):
-            migrated["objects"][object_id].pop(field, None)
+        migrated["objects"][object_id].pop("keyword_modifiers", None)
         migrated["objects"][object_id]["might_modifiers"] = []  # the schema still requires the list; it stays empty
     for field in ("might_auras", "damage_modifiers"):
         migrated.pop(field, None)
@@ -6930,6 +7003,57 @@ def leave_board_triggers(state: dict[str, Any], object_id: str) -> list[dict[str
     looked back at). Each is one Pending trigger of the game action that moved it."""
     return [{**copy.deepcopy(t), "trigger_kind": t.get("trigger_kind", "triggered")}
             for t in object_triggers(state, object_id, "leave_board_triggers")]
+
+
+# The state-level lists whose entries are a permanent's own abilities (each names its source_object and controller)
+SOURCE_LISTS = ("damage_modifiers", "might_auras", "replacement_effects")
+
+
+def follow_controller(state: dict[str, Any], object_id: str, player: str) -> None:
+    """Core 191.5.a: an ability's controller is its source's - so when a permanent changes controller, its own triggered
+    abilities (the printed descriptors) and the state-level entries it adds as its source become the new controller's.
+    An ability already on the Chain is not touched (gain_control); a granted or created replacement names no source."""
+    obj = state["objects"][object_id]
+    for field in APPENDABLE_TRIGGER_FIELDS:
+        # a printed descriptor's source is its own object (validate_state); one that works from a non-Board zone
+        # (functions_from / active_zone, Core 385.2) is its owner's wherever the card is (Core 191.5.a.1)
+        for descriptor in obj.get(field) or []:
+            if "functions_from" in descriptor or "active_zone" in descriptor:
+                continue
+            descriptor["controller"] = player
+    for name in SOURCE_LISTS:
+        for entry in state.get(name) or []:
+            if isinstance(entry, dict) and entry.get("source_object") == object_id:
+                entry["controller"] = player
+    # the same entries once migrated (a passive translated from damage_modifiers / might_auras); the printed ones on the
+    # object are read live and need nothing
+    for effect in state.get("continuous_effects") or []:
+        if effect.get("passive") and (effect.get("source") or {}).get("object") == object_id:
+            criteria = (effect.get("affects") or {}).get("criteria") or {}
+            for key in ("controller", "aura_controller"):
+                if key in criteria:
+                    criteria[key] = player
+
+
+# The zones a card is its owner's in (Core 191.5.a.1): not the Board, not a Legend Zone, not the Chain or a facedown zone
+OWNER_ZONES = ("hand", "trash", "main_deck", "banishment", "rune_deck", "champion_zone")
+
+
+def owners_again(state: dict[str, Any]) -> list[str]:
+    """Every object in one of its player's OWNER_ZONES whose controller is not its owner becomes its owner's again, its
+    own abilities too (Core 191.5.a.1) - what it triggered as it left the Board was made before it moved, and an ability
+    on the Chain keeps its controller. Returns the ids changed."""
+    changed = []
+    for object_id in sorted(state.get("objects") or {}):
+        obj = state["objects"][object_id]
+        where = find_location(state, object_id)
+        if where is None or where[0] != "player" or where[2] not in OWNER_ZONES:
+            continue
+        if obj.get("controller") != obj.get("owner") and obj.get("owner") in state.get("players", {}):
+            obj["controller"] = obj["owner"]
+            follow_controller(state, object_id, obj["owner"])
+            changed.append(object_id)
+    return changed
 
 
 def object_triggers(state: dict[str, Any], object_id: str, field: str) -> list[dict[str, Any]]:
@@ -7068,7 +7192,54 @@ def printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
                 "condition": copy.deepcopy(conditional["condition"]),
                 "duration": {"kind": "while_source_active"}, "passive": True,
             })
+        # 2026-10-15 package 13 (C2): the card's own printed Might statics and Bonus Damage - the same effects the legacy
+        # families translated to (same layer, same relative order), read from the object as it is now
+        for position, conditional in enumerate(obj.get("conditional_might", []) or []):
+            amount = conditional["amount"]
+            effects.append({
+                "effect_id": f"printed:conditional:{object_id}:{conditional['modifier_id']}", "kind": "might_arithmetic",
+                "source": {"object": object_id, "identity": identity},
+                "affects": {"scope": "object", "object": object_id, "identity": identity},
+                "layer": "arithmetic", "sublayer": "increase" if amount >= 0 else "decrease",
+                "timestamp": _legacy_timestamp(1, position), "value": {"amount": amount, "mode": "delta"},
+                "condition": copy.deepcopy(conditional["condition"]), "duration": {"kind": "while_source_active"}, "passive": True,
+            })
+        for position, dynamic in enumerate(obj.get("dynamic_might", []) or []):
+            effects.append({
+                "effect_id": f"printed:dynamic:{object_id}:{dynamic['modifier_id']}", "kind": "might_arithmetic",
+                "source": {"object": object_id, "identity": identity},
+                "affects": {"scope": "object", "object": object_id, "identity": identity},
+                "layer": "arithmetic", "sublayer": "increase",
+                "timestamp": _legacy_timestamp(5, position), "value": {"amount": dynamic["amount"], "mode": "delta", "per": dict(dynamic["per"])},
+                "duration": {"kind": "while_source_active"}, "passive": True,
+            })
+        for position, aura in enumerate(obj.get("printed_might_auras", []) or []):
+            effects.append({
+                "effect_id": f"printed:might_aura:{object_id}:{position}", "kind": "might_arithmetic",
+                "source": {"object": object_id, "identity": identity},
+                "affects": {"scope": "criteria", "criteria": {"aura_controller": obj.get("controller"), "relation": "same_side"}},
+                "layer": "arithmetic", "sublayer": "increase" if aura["amount"] >= 0 else "decrease",
+                "timestamp": _legacy_timestamp(3, position), "value": {"amount": aura["amount"], "mode": "delta"},
+                "condition": copy.deepcopy(aura["condition"]), "duration": {"kind": "while_source_active"}, "passive": True,
+            })
+        effects += _printed_bonus(object_id, identity, obj.get("controller"), obj.get("printed_damage_modifiers"))
+    for battlefield_id in sorted(state.get("battlefields") or {}):
+        battlefield = state["battlefields"][battlefield_id]
+        effects += _printed_bonus(battlefield_id, f"{battlefield_id}@0", battlefield.get("controller"),
+                                  battlefield.get("printed_damage_modifiers"))
     return effects
+
+
+def _printed_bonus(source: str, identity: str, controller: str | None, modifiers: list | None) -> list[dict[str, Any]]:
+    """A card's own Bonus Damage (Core 713-715), as the legacy damage_modifiers translated to - its controller the
+    source's current one."""
+    return [{"effect_id": f"printed:bonus:{source}:{position}", "kind": "bonus_damage",
+             "source": {"object": source, "identity": identity},
+             "affects": {"scope": "criteria", "criteria": {"bonus_scope": copy.deepcopy(modifier["scope"]), "controller": controller}},
+             "layer": "arithmetic", "sublayer": "increase",
+             "timestamp": _legacy_timestamp(4, position), "value": {"amount": modifier["amount"]},
+             "duration": {"kind": "while_source_active"}, "passive": True}
+            for position, modifier in enumerate(modifiers or [])]
 
 
 def _keyword_value(entry: dict[str, Any]) -> dict[str, Any]:

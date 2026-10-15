@@ -13,6 +13,7 @@ from typing import Any
 from effect_ir import DEFAULT_TURN_ID, TURN_EFFECT_KINDS, _bump_identity, action_performed, apply_program, contains_each_player, drop_play_bound_replacements, find_location, hash_value, migrate_legacy_effects, object_identity, object_triggers, perform_lethal_cleanup, restrict_to_facedown_battlefield, validate_state, zone_class
 from rules_core import add_limited_play_items, apply_terminal_event, complete_resolution, is_terminal, remove_chain_item, schedule_triggered_items, state_hash
 from rules_core import validate_state as validate_timing_state
+from rules_core import validate_timing as validate_timing_action
 
 CLEANUP_DECISION_VERSION = "riftbound-cleanup-decisions.v1"
 
@@ -1396,6 +1397,13 @@ def complete_permanent_play(
         trace["destination"] = f"{controller}.base"
         trace["rule_locators"].append("Core 359.2.c" if obj["kind"] == "unit" else "Core 359.2.d")
     trace["identity_after"] = _bump_identity(working, card)
+    # 2026-10-15 package 13 (C2): the permanent is its player's, its own abilities too (Core 191.4, 191.5.a), and its own
+    # Replacement Effects work from now on
+    from effect_ir import follow_controller, materialize_printed_replacements
+    follow_controller(working, card, controller)
+    materialized = materialize_printed_replacements(working)
+    if materialized:
+        trace["printed_replacements_added"] = materialized
     triggers = []
     inactive = []
     for descriptor in object_triggers(working, card, "play_triggers"):
@@ -1470,6 +1478,20 @@ TURN_STEP_VERSION = "riftbound-turn-step-result.v1"
 def _turn_base(step: str, timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
     return {"schema_version": TURN_STEP_VERSION, "step": step,
             "input_timing_state_hash": state_hash(timing_state), "input_effect_state_hash": hash_value(effect_state)}
+
+
+def end_main_phase(timing_state: dict[str, Any], effect_state: dict[str, Any], actor: str,
+                   engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """2026-10-15 package 13 (C2, GPT ruling 6; Core 316.9): the Turn Player's discretionary action that ends the Main
+    Phase - checked as an action of `actor` (rules_core.validate_timing, kind end_main_phase), then the Ending Step it
+    leads to (begin_ending_step). Refused by name when `actor` may not take it."""
+    verdict = validate_timing_action(timing_state, {"actor": actor, "kind": "end_main_phase", "timing": "default"})
+    if verdict.get("legal") is not True:
+        base = _turn_base("end_main_phase", timing_state, effect_state)
+        return {**base, "valid": verdict.get("valid", True), "committed": False, "applied": False,
+                "reason_code": verdict.get("reason_code"), "reason": verdict.get("explanation"),
+                "rule_locators": list(verdict.get("rule_locators") or [])}
+    return begin_ending_step(timing_state, effect_state, engine_decisions)
 
 
 def begin_ending_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:

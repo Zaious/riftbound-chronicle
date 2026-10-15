@@ -147,14 +147,31 @@ def main() -> int:
     if hide_card(timing, broke, hide_declaration()).get("reason_code") != "cost_unpayable":
         errors.append("an unpayable Hide cost was accepted")
 
+    # package 13 (C2): a Hide with no basis costs [A] - one Power of a named Domain (811.1.b) - and nothing else; a free
+    # Hide, an Energy Hide, two Domains, or another cost component is refused by name
+    rich = copy.deepcopy(state)
+    rich["players"]["p1"]["resources"] = {"energy": 2, "power": {"fury": 1, "calm": 1}}
+    for label, cost in (("free", {"base": {"energy": 0, "power": {}}}), ("Energy", {"base": {"energy": 1, "power": {}}}),
+                        ("two Domains", {"base": {"energy": 0, "power": {"fury": 1, "calm": 1}}}),
+                        ("two Power", {"base": {"energy": 0, "power": {"fury": 2}}}),
+                        ("an unknown Domain", {"base": {"energy": 0, "power": {"void": 1}}}),
+                        ("an extra component", {"base": {"energy": 0, "power": {"fury": 1}},
+                                                "increases": [{"id": "x", "component": "energy", "amount": 1}]})):
+        got = hide_card(timing, rich, hide_declaration(cost=cost))
+        if got.get("committed") or got.get("reason_code") != "hide_cost_mismatch":
+            errors.append(f"a Hide costing {label} was not refused as hide_cost_mismatch: {got.get('reason_code')}")
+    for domain in ("fury", "calm"):
+        if not hide_card(timing, rich, hide_declaration(cost={"base": {"energy": 0, "power": {domain: 1}}})).get("committed"):
+            errors.append(f"a Hide paying [A] as {domain} was refused")
+
     # a resource restricted to playing cannot pay a Hide (811.2)
     restricted = copy.deepcopy(state)
-    restricted["players"]["p1"]["resources"] = {"energy": 0, "power": {}, "restricted": [{"restriction_id": "lux", "kind": "energy", "amount": 1, "uses": ["play_spell"]}]}
-    hide_energy = hide_declaration(cost={"base": {"energy": 1, "power": {}}})
-    blocked = hide_card(timing, restricted, hide_energy)
+    # (package 13: restricted Power - a Hide costs [A], so Power is what it would spend)
+    restricted["players"]["p1"]["resources"] = {"energy": 1, "power": {}, "restricted": [{"restriction_id": "lux", "kind": "power", "domain": "fury", "amount": 1, "uses": ["play_spell"]}]}
+    blocked = hide_card(timing, restricted, hide_declaration())
     if blocked.get("reason_code") != "cost_unpayable" or blocked.get("restricted_not_applicable") != ["lux"]:
         errors.append(f"a play-restricted resource paid for a Hide: {blocked.get('reason_code')} {blocked.get('restricted_not_applicable')}")
-    if not play_card(timing, restricted, declaration(cost={"base": {"energy": 1, "power": {}}})).get("committed"):
+    if not play_card(timing, restricted, declaration(cost={"base": {"energy": 1, "power": {"fury": 1}}})).get("committed"):
         errors.append("negative mutation failed: the same restricted pool did not pay the play it names, so the Hide refusal proves nothing")
 
     # --- playing from Hidden -------------------------------------------------------------------------------

@@ -145,7 +145,8 @@ def main() -> int:
     moves = family(result, "standard_move")
     if moves["candidates"] != ["move:u1:bf1"]:
         errors.append(f"standard_move did not enumerate the ready Unit's one destination: {moves['candidates']}")
-    if not any(item.get("object_id") == "u3" and item.get("reason_code") == "unit_is_exhausted" for item in moves["excluded"]):
+    # package 13: the Standard Move procedure's own refusal, per unit and destination
+    if not any(item.get("object_id") == "u3" and item.get("reason_code") == "unit_exhausted" for item in moves["excluded"]):
         errors.append(f"an exhausted Unit was not excluded by name: {moves['excluded']}")
     closed = copy.deepcopy(fixture())
     closed["phase"] = "beginning"
@@ -158,7 +159,8 @@ def main() -> int:
     hidden = effect_state()
     hidden["objects"]["c1"]["hidden"] = True
     hides = family(la.enumerate_actions(observe(effect=hidden), "p1"), "hide")
-    if hides["candidates"] != ["hide:c1:bf1"]:
+    # package 13: one candidate per cost it may be paid with - here [A] as fury, the only Power in the pool
+    if hides["candidates"] != ["hide:c1:bf1:fury"]:
         errors.append(f"hide did not offer exactly the Hidden card at the controlled Battlefield: {hides['candidates']}")
     if family(result, "hide")["candidates"]:
         errors.append("hide offered a card that is not Hidden")

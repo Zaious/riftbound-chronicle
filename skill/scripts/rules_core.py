@@ -65,6 +65,8 @@ RULES = {
     "timing_check": ["Core 358.4"],
     "action": ["Core 806"],
     "reaction": ["Core 807"],
+    # 2026-10-15 package 13 (C2, GPT ruling 6): the Turn Player indicates the turn is ending - the Main Phase ends
+    "end_main_phase": ["Core 305", "Core 316.9", "Core 316.9.a", "Core 316.9.b"],
 }
 
 # Executable entry points are deliberately declared separately from RULES.
@@ -726,8 +728,24 @@ def validate_timing(state: dict[str, Any], action: dict[str, Any]) -> dict[str, 
         else:
             reason, explanation = "ok", "The Turn Player may perform a Standard Move during their Main Phase in Neutral Open (144.1)."
         return _result(state, valid=True, legal=reason == "ok", reason_code=reason, explanation=explanation, rule_locators=["Core 144.1", "Core 144.1.a", "Core 144.1.b", "Core 144.1.c"])
+    if kind == "end_main_phase":
+        # 2026-10-15 package 13 (C2, GPT ruling 6): a discretionary action of its own, not a pass - only the Turn Player,
+        # in their Main Phase, in Neutral Open (no Chain, no Showdown), with no task outstanding and no Combat staged
+        combat = state.get("combat")
+        if state.get("phase") != "main" or actor != state["turn_player"]:
+            reason, explanation = "end_main_phase_requires_own_main_phase", "Only the Turn Player ends their own Main Phase (316.9)."
+        elif label != "neutral_open":
+            reason, explanation = "end_main_phase_requires_neutral_open", "The Main Phase ends from an Open State outside any Showdown, with the Chain empty (305, 316.9)."
+        elif state.get("outstanding_tasks"):
+            reason, explanation = "end_main_phase_blocked_by_task", "A task is still outstanding (305)."
+        elif combat is not None and combat.get("status") != "closed":
+            reason, explanation = "end_main_phase_blocked_by_combat", "A Combat is staged or in progress (305)."
+        else:
+            reason, explanation = "ok", "The Turn Player may indicate they are ending their turn, which ends the Main Phase (316.9)."
+        return _result(state, valid=True, legal=reason == "ok", reason_code=reason, explanation=explanation,
+                       rule_locators=RULES["end_main_phase"])
     if kind not in {"play_card", "activate_ability"}:
-        return _result(state, valid=True, legal=False, reason_code="unsupported_action_kind", explanation="This v1 kernel only validates play, activation, move, and pass timing.", rule_locators=[])
+        return _result(state, valid=True, legal=False, reason_code="unsupported_action_kind", explanation="This v1 kernel only validates play, activation, move, pass and end-of-main-phase timing.", rule_locators=[])
 
     if actor != priority:
         return _result(

@@ -1036,6 +1036,10 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
 
 STANDARD_MOVE_VERSION = "riftbound-standard-move-result.v1"
 STANDARD_MOVE_DECLARATION_VERSION = "riftbound-standard-move-declaration.v1"
+# 2026-10-15 package 13 (C2): every field a Standard Move declaration may carry - action_space.FIELD_CLASSES classifies
+# each one
+STANDARD_MOVE_DECLARATION_FIELDS = frozenset({"schema_version", "actor", "units", "unit_identities", "destination",
+                                              "cost_confirmation"})
 
 
 def _declaration_errors(declaration: Any, effect_state: dict[str, Any]) -> list[str]:
@@ -1046,7 +1050,7 @@ def _declaration_errors(declaration: Any, effect_state: dict[str, Any]) -> list[
         errors.append(f"declaration.schema_version must be {STANDARD_MOVE_DECLARATION_VERSION}")
     if not isinstance(declaration.get("unit_identities"), dict) or (isinstance(declaration.get("units"), list) and set(declaration["unit_identities"]) != set(declaration["units"])):
         errors.append("declaration.unit_identities must bind exactly the selected units to their identities")
-    if set(declaration) - {"schema_version", "actor", "units", "unit_identities", "destination", "cost_confirmation"}:
+    if set(declaration) - STANDARD_MOVE_DECLARATION_FIELDS:
         errors.append("declaration carries unsupported fields")
     if not isinstance(declaration.get("actor"), str) or declaration.get("actor") not in effect_state["players"]:
         errors.append("declaration.actor must be a player")

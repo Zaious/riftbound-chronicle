@@ -10,7 +10,7 @@ entry {kind: unit_at_players_base} - the record names {kind: base}, the Base of 
 
   O1 own unit      p1's own unit banished and played by p1 to p1's Base: a new object, p1 controls it, nothing paid
                    for its printed [3][Fury] (the receipt's base modifications zero both)
-  O2 another's     a unit p1 controls and p2 owns: banished to P2's Banishment, the Pending play is p2's, it enters
+  O2 another's     a unit p1 controls and p2 owns: banished to P2's Banishment (where it is p2's again), the Pending play is p2's, it enters
                    P2's Base under p2's control; p1's and p2's resources unchanged
   O3 not elsewhere a Battlefield supplied as the entry location is refused (the effect named the Base); the Base is
                    not asked for
@@ -121,7 +121,8 @@ def check_another() -> None:
     if not done.get("committed"):
         return fail("O2 another's", f"{done.get('stage')} {done.get('reason')}")
     item, record = limited(done)
-    if item.get("controller") != "p2" or record.get("zone_owner") != "p2" or record.get("controller_before") != "p1":
+    # in p2's Banishment the card is p2's (Core 191.5.a.1; GPT PACKAGE13 ruling 2) - so is the record of who controlled it
+    if item.get("controller") != "p2" or record.get("zone_owner") != "p2" or record.get("controller_before") != "p2":
         return fail("O2 owner plays", f"the Pending play is not p2's from p2's Banishment: {item} {record}")
     completed = complete_limited_play(done["next_timing_state"], done["next_effect_state"], payment_context=CLOSED)
     after = completed.get("next_effect_state") or {}

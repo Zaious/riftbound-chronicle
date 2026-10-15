@@ -433,7 +433,9 @@ def classify_candidates(observation: dict[str, Any], query: dict[str, Any]) -> d
 # Families the engine can produce candidates for. A family absent from this
 # tuple is not enumerated at all — the result says so rather than implying the
 # player has no such action.
-ENUMERABLE_FAMILIES = ("play_card", "activate_ability", "standard_move", "hide", "pass_priority", "pass_focus")
+ENUMERABLE_FAMILIES = ("play_card", "activate_ability", "standard_move", "hide", "pass_priority", "pass_focus",
+                       # 2026-10-15 package 13 (C2, GPT ruling 6): its own action, not a pass (Core 316.9)
+                       "end_main_phase")
 # What each family must be able to read before it may answer. A group that is
 # not `complete` makes the family abstain by name.
 FAMILY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
@@ -443,6 +445,7 @@ FAMILY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "hide": ("timing_state", "hands", "board"),
     "pass_priority": ("timing_state",),
     "pass_focus": ("timing_state",),
+    "end_main_phase": ("timing_state",),
 }
 # What the enumeration is allowed to look at. `observation.facts` is prose
 # with provenance, so it is never parsed for a conclusion; structured
@@ -586,79 +589,125 @@ def _enumerate_activate_ability(observation, timing_state, effect_state, actor):
                     ["Core 349"]), []
 
 
+# 2026-10-15 package 13 (C2): a family whose action set would exceed this many declarations stops by name instead of
+# listing part of it (GPT 2026-10-15 ruling 3: the cap fails closed)
+ACTION_CAP = 4096
+
+
+def standard_move_declaration(effect_state: dict[str, Any], actor: str, units: list[str], destination: dict[str, Any]) -> dict[str, Any]:
+    import combat
+    return {"schema_version": combat.STANDARD_MOVE_DECLARATION_VERSION, "actor": actor, "units": sorted(units),
+            "unit_identities": {u: effect_ir.object_identity(effect_state, u) or f"{u}@0" for u in sorted(units)},
+            "destination": dict(destination), "cost_confirmation": {"exhaust_confirmed": True}}
+
+
+def standard_move_destinations(effect_state: dict[str, Any], actor: str) -> list[dict[str, Any]]:
+    """Every destination a Standard Move names: the actor's own Base ({kind: base} - always the mover's own), or a
+    Battlefield (Core 420.3; 144.4)."""
+    return [{"kind": "base"}] + [{"kind": "battlefield", "battlefield": bf}
+                                                   for bf in sorted(effect_state.get("battlefields") or {})]
+
+
 def _enumerate_standard_move(observation, timing_state, effect_state, actor):
+    """2026-10-15 package 13 (C2): one Standard Move moves one or more units to one destination. Each of the actor's
+    board units is tried alone against each destination by the Standard Move procedure itself; the units that may go
+    alone are exactly the units that may go together (the procedure checks each unit, and the destination once), so
+    every non-empty set of them is a candidate."""
+    import combat
+    from itertools import combinations
     verdict = _timing_verdict(timing_state, {"actor": actor, "kind": "standard_move", "timing": "default"})
     if verdict.get("legal") is not True:
         return _enumerated("standard_move", [], list(verdict.get("rule_locators", [])),
                            [{"reason_code": verdict.get("reason_code", "timing_illegal"), "check": "timing"}]), []
+    units = sorted(o for o, obj in (effect_state.get("objects") or {}).items()
+                   if obj.get("kind") == "unit" and obj.get("controller") == actor
+                   and effect_ir.zone_class(effect_ir.find_location(effect_state, o)) == "board")
     candidates, excluded = [], []
-    battlefields = sorted(effect_state.get("battlefields", {}))
-    for object_id in sorted(effect_state.get("objects", {})):
-        obj = effect_state["objects"][object_id]
-        if obj.get("kind") != "unit" or obj.get("controller") != actor:
-            continue
-        location = effect_ir.find_location(effect_state, object_id)
-        if effect_ir.zone_class(location) != "board":
-            continue
-        if obj.get("exhausted"):
-            excluded.append({"object_id": object_id, "reason_code": "unit_is_exhausted"})
-            continue
-        here = location[1] if location[0] == "battlefield" else None
-        destinations = [{"kind": "base", "player": actor}] if here is not None else []
-        destinations += [{"kind": "battlefield", "battlefield": bf} for bf in battlefields if bf != here]
-        for destination in list(destinations):
-            # DP-96 / Core 359.3.e.6: a Standard Move the board forbids is not
-            # an action the player has. The same predicate the procedure reads,
-            # so the list and the refusal cannot drift apart.
-            restriction = effect_ir.move_restricted(effect_state, object_id, destination)
-            if restriction is not None:
-                destinations.remove(destination)
-                excluded.append({"object_id": object_id, "destination": destination,
-                                 "reason_code": restriction["reason_code"],
-                                 "battlefield": restriction["battlefield"]})
-        for destination in destinations:
-            label = destination.get("battlefield") or f"base:{destination['player']}"
-            candidates.append({
-                "candidate_id": f"move:{object_id}:{label}",
-                "family": "standard_move",
-                "action": {"kind": "standard_move", "actor": actor, "timing": "default", "object_kind": "unit",
-                           "object_id": object_id, "destination": destination, "checks": ["timing"]},
-                "required_facts": [f"board:{object_id}"],
-                "rule_locators": list(verdict.get("rule_locators", [])),
-            })
+    for destination in standard_move_destinations(effect_state, actor):
+        label = destination.get("battlefield") or f"base:{actor}"
+        movable = []
+        for unit in units:
+            alone = combat.standard_move(timing_state, effect_state, standard_move_declaration(effect_state, actor, [unit], destination))
+            if alone.get("committed") is True:
+                movable.append(unit)
+            else:
+                excluded.append({"object_id": unit, "destination": destination,
+                                 "reason_code": alone.get("reason_code") or "standard_move_refused"})
+        if 2 ** len(movable) - 1 > ACTION_CAP:
+            return _abstain("standard_move", "action_space_over_cap",
+                            [f"{2 ** len(movable) - 1} unit sets for {label} exceed the cap of {ACTION_CAP}"]), []
+        for size in range(1, len(movable) + 1):
+            for group in combinations(movable, size):
+                declaration = standard_move_declaration(effect_state, actor, list(group), destination)
+                candidates.append({
+                    "candidate_id": f"move:{'+'.join(group)}:{label}",
+                    "family": "standard_move",
+                    "action": {"kind": "standard_move", "actor": actor, "timing": "default", "object_kind": "unit",
+                               "object_ids": list(group), "destination": destination, "checks": ["timing", "procedure"],
+                               "declaration": declaration},
+                    "required_facts": [f"board:{u}" for u in group],
+                    "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 420.3"],
+                })
     return _enumerated("standard_move", [c["candidate_id"] for c in candidates],
                        list(verdict.get("rule_locators", [])), excluded), candidates
 
 
+def hide_declaration(actor: str, card: str, source: str, battlefield: str, base: dict[str, Any],
+                     basis: str | None = None) -> dict[str, Any]:
+    import hidden
+    return {"schema_version": hidden.HIDE_DECLARATION_VERSION,
+            "ruleset": {"core": effect_ir.CORE_RULESET, "faq_as_of": effect_ir.FAQ_AS_OF},
+            "hide_id": f"hide:{card}:{battlefield}", "actor": actor, "card": card, "source": source,
+            "battlefield": battlefield, "cost": {"base": dict(base)}, **({"cost_basis": basis} if basis else {}),
+            "payment_context": {"add_window_closed": True, "confirmed_by": "enumerator"}}
+
+
+def _hide_cost_options(effect_state: dict[str, Any], actor: str) -> list[tuple[dict[str, Any], str | None]]:
+    """The costs a Hide may be taken for (Core 811.1.b): [A] as each Domain, nothing on 'ignoring costs', or the
+    actor's Legend's Energy instead - the Hide procedure decides which of them is the actor's now."""
+    import hidden
+    options = [({"energy": 0, "power": {d: 1}}, None) for d in effect_ir.DOMAINS]
+    options.append(({"energy": 0, "power": {}}, "ignoring_costs"))
+    legends = effect_state["players"][actor]["zones"].get("legend_zone") or []
+    for amount in sorted({(effect_state["objects"].get(o) or {}).get(hidden.HIDE_ALTERNATIVE_FIELD) for o in legends} - {None}):
+        options.append(({"energy": amount, "power": {}}, "alternative_energy"))
+    return options
+
+
 def _enumerate_hide(observation, timing_state, effect_state, actor):
-    player = (effect_state.get("players") or {}).get(actor) or {"zones": {"hand": []}}
-    cards = [{"object_id": object_id} for object_id in player["zones"]["hand"]
-             if (effect_state["objects"].get(object_id) or {}).get("hidden") is True]
-    verdict = _timing_verdict(timing_state, {"actor": actor, "kind": "standard_move", "timing": "default"})
-    controlled = [bf for bf, entry in sorted(effect_state.get("battlefields", {}).items())
-                  if entry.get("controller") == actor]
+    """2026-10-15 package 13 (C2): every card with Hidden in the actor's hand or Champion Zone, at every Battlefield,
+    for every cost it may be taken for - each declaration checked by the Hide procedure itself (Core 421.2, 811.1)."""
+    import hidden
     candidates, excluded = [], []
-    if verdict.get("legal") is not True:
-        excluded.append({"reason_code": verdict.get("reason_code", "timing_illegal"), "check": "timing"})
-    else:
-        for fact in sorted(cards, key=lambda f: str(f.get("object_id"))):
-            object_id = fact.get("object_id")
-            for battlefield_id in controlled:
-                zone = (effect_state["battlefields"][battlefield_id].get("facedown") or {})
-                if len(zone.get("cards", []) or []) >= zone.get("capacity", 1):
-                    excluded.append({"object_id": object_id, "battlefield": battlefield_id,
-                                     "reason_code": "facedown_zone_full"})
-                    continue
-                candidates.append({
-                    "candidate_id": f"hide:{object_id}:{battlefield_id}",
-                    "family": "hide",
-                    "action": {"kind": "hide", "actor": actor, "timing": "default", "object_kind": "spell",
-                               "card": object_id, "battlefield": battlefield_id, "checks": ["timing"]},
-                    "required_facts": [f"hand_card:{object_id}", f"battlefield:{battlefield_id}"],
-                    "rule_locators": ["Core 811.1", "Core 107.3.f"],
-                })
-    return _enumerated("hide", [c["candidate_id"] for c in candidates],
-                       ["Core 811.1"], excluded), candidates
+    zones = effect_state["players"][actor]["zones"]
+    options = _hide_cost_options(effect_state, actor)
+    for source in sorted(hidden.HIDE_SOURCES):
+        for card in sorted(zones.get(source) or []):
+            if (effect_state["objects"].get(card) or {}).get("hidden") is not True:
+                continue
+            for battlefield_id in sorted(effect_state.get("battlefields") or {}):
+                refusals = set()
+                for base, basis in options:
+                    declaration = hide_declaration(actor, card, source, battlefield_id, base, basis)
+                    got = hidden.hide_card(timing_state, effect_state, declaration)
+                    if got.get("committed") is not True:
+                        refusals.add(got.get("reason_code") or "hide_refused")
+                        continue
+                    paid = basis or next(iter(base["power"]))
+                    candidates.append({
+                        "candidate_id": f"hide:{card}:{battlefield_id}:{paid}",
+                        "family": "hide",
+                        "action": {"kind": "hide", "actor": actor, "timing": "default", "object_kind": None,
+                                   "card": card, "battlefield": battlefield_id, "checks": ["timing", "procedure"],
+                                   "declaration": declaration},
+                        "required_facts": [f"{source}_card:{card}", f"battlefield:{battlefield_id}"],
+                        "rule_locators": ["Core 421.2", "Core 811.1", "Core 811.1.b"],
+                    })
+                if refusals and not any(c["action"]["card"] == card and c["action"]["battlefield"] == battlefield_id
+                                        for c in candidates):
+                    excluded.append({"object_id": card, "battlefield": battlefield_id, "reason_code": sorted(refusals)[0],
+                                     "reason_codes": sorted(refusals)})
+    return _enumerated("hide", [c["candidate_id"] for c in candidates], ["Core 811.1"], excluded), candidates
 
 
 def _enumerate_pass(family, observation, timing_state, effect_state, actor):
@@ -676,6 +725,25 @@ def _enumerate_pass(family, observation, timing_state, effect_state, actor):
     return _enumerated(family, [candidate["candidate_id"]], list(verdict.get("rule_locators", [])), []), [candidate]
 
 
+def _enumerate_full(family, timing_state, effect_state, actor, catalogue):
+    """2026-10-15 package 13 (C2): play_card / activate_ability as full declarations over the catalogue (play_space) -
+    every choice made, the procedure the judge; a family play_space cannot prove whole abstains by name."""
+    import play_space
+    got = play_space.enumerate_family(family, timing_state, effect_state, actor, catalogue)
+    if got["status"] != "enumerated":
+        return _abstain(family, "unproved:" + got["reason"], [got["reason"]], ["Core 410.1"]), []
+    import action_space
+    candidates = []
+    for action in got["actions"]:
+        key = action_space.action_key_hash(action)
+        candidates.append({"candidate_id": f"{family}:{key.split(':', 1)[-1][:24]}", "family": family,
+                           "action": {**action, "actor": actor, "checks": ["timing", "cost", "targets"]},
+                           "required_facts": [f"catalogue:{catalogue.get('catalogue_hash')}"],
+                           "rule_locators": ["Core 410.1", "Core 419.2" if family == "play_card" else "Core 377.3"]})
+    excluded = [{"object_id": card, "reason_code": ",".join(reasons)} for card, reasons in sorted(got["excluded"].items())]
+    return _enumerated(family, [c["candidate_id"] for c in candidates], ["Core 410.1"], excluded), candidates
+
+
 ENUMERATORS = {
     "play_card": _enumerate_play_card,
     "activate_ability": _enumerate_activate_ability,
@@ -684,7 +752,7 @@ ENUMERATORS = {
 }
 
 
-def enumerate_actions(observation: dict[str, Any], acting_player: str) -> dict[str, Any]:
+def enumerate_actions(observation: dict[str, Any], acting_player: str, catalogue: dict[str, Any] | None = None) -> dict[str, Any]:
     """Phase B (ADR-0015 §1). Produces candidates for the families the engine
     covers *and* the observation confirms; every other family abstains by name.
 
@@ -709,6 +777,12 @@ def enumerate_actions(observation: dict[str, Any], acting_player: str) -> dict[s
         components = observation.get("component_states", {})
         timing_state = (components.get("timing_state") or {}).get("state")
         effect_state = (components.get("effect_state") or {}).get("state")
+        # 2026-10-15 package 13 (C2): with a catalogue, the state must be one of its environment's
+        environment_problem = None
+        if catalogue is not None and effect_state is not None:
+            import closed_environment
+            problems = closed_environment.validate_catalogue(catalogue) or closed_environment.environment_problems(effect_state, catalogue)
+            environment_problem = problems[0] if problems else None
         for family in ENUMERABLE_FAMILIES:
             missing = [group for group in FAMILY_REQUIREMENTS[family] if completeness.get(group) != "complete"]
             if missing:
@@ -718,11 +792,16 @@ def enumerate_actions(observation: dict[str, Any], acting_player: str) -> dict[s
             if timing_state is None:
                 families.append(_abstain(family, "observation_incomplete:timing_state", ["a timing_state component"]))
                 continue
-            if family in {"pass_priority", "pass_focus"}:
+            if family in {"pass_priority", "pass_focus", "end_main_phase"}:
                 record, produced = _enumerate_pass(family, observation, timing_state, effect_state, acting_player)
             elif effect_state is None:
                 families.append(_abstain(family, "observation_incomplete:effect_state", ["an effect_state component"]))
                 continue
+            elif catalogue is not None and family in {"play_card", "activate_ability"}:
+                if environment_problem is not None:
+                    families.append(_abstain(family, "not_an_environment_state", [environment_problem]))
+                    continue
+                record, produced = _enumerate_full(family, timing_state, effect_state, acting_player, catalogue)
             else:
                 record, produced = ENUMERATORS[family](observation, timing_state, effect_state, acting_player)
             if isinstance(record, dict) and record.get("status") == "abstained":

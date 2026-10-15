@@ -33,13 +33,16 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import engine_decisions as ed  # noqa: E402
 from cost_receipt import RECEIPT_VERSION  # noqa: E402
-from effect_ir import CORE_RULESET, FAQ_AS_OF, DEFAULT_TURN_ID, _bump_identity, find_location, hash_value, validate_state  # noqa: E402
+from effect_ir import CORE_RULESET, DOMAINS, FAQ_AS_OF, DEFAULT_TURN_ID, _bump_identity, find_location, hash_value, validate_state  # noqa: E402
 from play_transaction import PlayError, _pay, determine_total_cost  # noqa: E402
 from rules_core import is_terminal, state_hash, validate_state as validate_timing_state, validate_timing  # noqa: E402
 
 HIDE_VERSION = "riftbound-hide-result.v1"
 HIDE_DECLARATION_VERSION = "riftbound-hide-declaration.v1"
 HIDE_SOURCES = {"hand", "champion_zone"}
+# 2026-10-15 package 13 (C2): every field a hide declaration may carry - action_space.FIELD_CLASSES classifies each one
+HIDE_DECLARATION_FIELDS = frozenset({"schema_version", "ruleset", "hide_id", "actor", "card", "source", "battlefield",
+                                     "cost", "payment_context", "cost_basis"})
 RULES = ["Core 811", "Core 811.2", "Core 107.3.b", "Core 108.2.b", "Core 124"]
 
 
@@ -59,8 +62,7 @@ def validate_declaration(value: Any, effect_state: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     if value.get("schema_version") != HIDE_DECLARATION_VERSION:
         errors.append(f"declaration.schema_version must be {HIDE_DECLARATION_VERSION}")
-    if set(value) - {"schema_version", "ruleset", "hide_id", "actor", "card", "source", "battlefield", "cost", "payment_context",
-                     "cost_basis"}:
+    if set(value) - HIDE_DECLARATION_FIELDS:
         errors.append("declaration carries unsupported fields")
     if value.get("ruleset") != {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}:
         errors.append("declaration.ruleset must match the engine ruleset")
@@ -169,6 +171,18 @@ def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
     # Scout; GPT 2026-10-08 ruling 1) pays N Energy INSTEAD of [A] - the same Hide, one cost, never both. A declaration
     # with no basis is taken as before
     basis = declaration.get("cost_basis")
+    # 2026-10-15 package 13 (C2): a Hide's cost is only its base - no other component is a Hide's
+    if set(declaration["cost"]) != {"base"}:
+        return refuse("hide_cost_mismatch", f"a Hide costs only its base, not {sorted(set(declaration['cost']) - {'base'})}",
+                      ["Core 811.1.b"])
+    if basis is None:
+        # [A]: one Power, of the Domain the payer names (Core 811.1.b) - the declaration names it; any other cost is not
+        # this Hide's (before package 13 a Hide with no basis took whatever cost it declared, a free one included)
+        named = declaration["cost"].get("base") or {}
+        power = named.get("power") or {}
+        if named.get("energy") != 0 or len(power) != 1 or list(power.values()) != [1] or next(iter(power)) not in DOMAINS:
+            return refuse("hide_cost_mismatch", f"a Hide costs [A] - one Power of a named Domain - not {named}",
+                          ["Core 811.1.b"])
     if basis is not None:
         wanted, problem = hide_cost_for_basis(effect_state, actor, basis)
         if problem is not None:

@@ -28,7 +28,7 @@ import clause_grammar as CG  # noqa: E402
 import play_transaction as PT  # noqa: E402
 from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
-from effect_ir import apply_program, effective_might, validate_state  # noqa: E402
+from effect_ir import apply_program, effective_might, printed_aura_effects, validate_state  # noqa: E402
 from rules_core import CORE_RULESET, FAQ_AS_OF  # noqa: E402
 
 
@@ -96,8 +96,11 @@ def main() -> int:
             errors.append(f"the increase was snapshotted, not read off the board (477.3.b): {before} then {effective_might(later, 'u1')}")
     if moved.get("committed"):
         forged = copy.deepcopy(moved["next_state"])
-        effect = next(e for e in forged["continuous_effects"] if e["effect_id"].startswith("legacy:dynamic:"))
+        # 2026-10-15 package 13 (C2): the printed one is read live (printed_aura_effects); the forgery stores it as an
+        # ordinary continuous effect that is not a passive
+        effect = next(e for e in printed_aura_effects(forged) if e["effect_id"].startswith("printed:dynamic:"))
         effect["passive"] = False
+        forged["continuous_effects"].append(effect)
         if not validate_state(forged):
             errors.append("a non-passive effect reading points was accepted; only a passive ability is read fresh (477.3.b)")
 

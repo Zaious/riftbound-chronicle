@@ -79,6 +79,11 @@ PERMISSION_REQUIRED_SOURCES = {"trash", "banishment"}
 # ADR-0012 §3: playing a hidden card needs no separate permission — the
 # Hidden keyword itself grants it from the next turn (811.1).
 HIDDEN_TARGETING = {"restricted", "free_by_restriction"}
+# 2026-10-15 package 13 (C2): every field a play declaration may carry - action_space.FIELD_CLASSES classifies each one
+PLAY_DECLARATION_FIELDS = frozenset({"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id",
+                                     "chain_item", "cost", "payment_context", "entry_location", "activation",
+                                     "activation_conditions", "source", "source_permission", "cost_override",
+                                     "timing_source", "hidden_targeting"})
 # How a declaration may replace or zero the base cost before Core 356 runs (ADR-0012 §1): "for [Cost]"
 # (356.1.a), "ignoring its cost" (356.1.b.1), and - 2026-09-28, package 6 - "ignoring its Energy cost" /
 # "ignoring its Power cost" (356.1.b.2), which an effect-driven play needs.
@@ -167,7 +172,7 @@ def validate_declaration(value: Any) -> list[str]:
         errors.append(f"schema_version must be {DECLARATION_VERSION}")
     if value.get("ruleset") != {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF}:
         errors.append("ruleset must match the engine ruleset")
-    if set(value) - {"schema_version", "ruleset", "play_id", "actor", "card", "effect_program_id", "chain_item", "cost", "payment_context", "entry_location", "activation", "activation_conditions", "source", "source_permission", "cost_override", "timing_source", "hidden_targeting"}:
+    if set(value) - PLAY_DECLARATION_FIELDS:
         errors.append("declaration contains unsupported fields")
     source = value.get("source")
     if source is not None:
@@ -280,6 +285,11 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append(f"cost.additional[{i}].payment.amount is required for power_any")
         if pay["kind"] in {"exhaust", "kill"} and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
             errors.append(f"cost.additional[{i}].payment.object_id is required for {pay['kind']}")
+        # 2026-10-15 package 13 (C2): the kinds a kill cost names ("Kill a friendly unit or gear")
+        if "object_kinds" in pay and (pay["kind"] != "kill" or not isinstance(pay["object_kinds"], list) or not pay["object_kinds"]
+                                      or len(set(pay["object_kinds"])) != len(pay["object_kinds"])
+                                      or set(pay["object_kinds"]) - {"unit", "gear"}):
+            errors.append(f"cost.additional[{i}].payment.object_kinds names distinct kinds among unit and gear, on a kill cost")
         if pay["kind"] in SELF_COSTS and "object_id" in pay and (not isinstance(pay["object_id"], str) or not pay["object_id"]):
             errors.append(f"cost.additional[{i}].payment.object_id must be a non-empty string when supplied")
         if pay["kind"] in SELF_COSTS and "object_id" not in pay and item_kind_early != "ability":
@@ -665,6 +675,74 @@ def copied_ability_problem(effect_state: dict[str, Any], card: str, actor: str, 
     return None
 
 
+EXHAUST_SELF_COST_ID = "exhaust-self"
+
+
+def _catalogued_costs_match(declared: list[dict[str, Any]], wanted: list[dict[str, Any]]) -> bool:
+    """The non-standard costs an ability's row prints, as the payer declares them: in any order (Core 357.2), one entry
+    per cost id; a payment the row gives no object_id names the object the payer chose (Core 203.1); every other field
+    exactly the row's."""
+    # as many entries as the row, each of the row's ids present - so no id twice
+    if len(declared) != len(wanted):
+        return False
+    by_id = {c.get("cost_id"): c for c in declared}
+    for row in wanted:
+        entry = by_id.get(row["cost_id"])
+        if entry is None or set(entry) - {"cost_id", "mandatory", "payment"} or entry.get("mandatory") != row["mandatory"]:
+            return False
+        paid, printed = entry.get("payment") or {}, row["payment"]
+        if "object_id" in printed or printed.get("kind") in CHOICE_COSTS:
+            # a Discard or a Recycle is paid by the payer's card selection at play (CHOICE_COSTS), not by a named object
+            if paid != printed:
+                return False
+        elif {k: v for k, v in paid.items() if k != "object_id"} != printed or not isinstance(paid.get("object_id"), str):
+            return False
+    return True
+
+
+def catalogued_declaration_problem(effect_state: dict[str, Any], declaration: dict[str, Any]) -> str | None:
+    """2026-10-15 package 13 (C2): why a declaration of a catalogued object (one that carries card_ref) is not the play
+    or activation its record says, or None. A catalogued card costs its printed cost (Core 206) - what the state grants
+    or adds the engine adds itself - so the declaration names the base and nothing else. A catalogued ability is
+    declared with its record's cost (its [Exhaust] the source's own, then its text costs), timing, kind, program and
+    activation conditions. A copied ability is checked by copied_ability_problem; an effect-driven play by
+    _limited_play_checks. An object without card_ref is not checked here."""
+    objects = effect_state.get("objects") or {}
+    cost = declaration.get("cost") or {}
+    if (declaration.get("chain_item") or {}).get("object_kind") == "ability":
+        activation = declaration.get("activation") or {}
+        source = objects.get(activation.get("source_object")) or {}
+        if "card_ref" not in source or activation.get("copied_from") is not None:
+            return None
+        row = (source.get("activated_abilities") or {}).get(activation.get("ability_id"))
+        if row is None:
+            return f"{activation.get('source_object')!r} ({source['card_ref']}) has no ability {activation.get('ability_id')!r}"
+        wanted_additional = ([{"cost_id": EXHAUST_SELF_COST_ID, "mandatory": True,
+                               "payment": {"kind": "exhaust", "object_id": activation["source_object"]}}]
+                             if row["cost"].get("exhaust") else []) + list(row["cost"].get("additional") or [])
+        base = {"energy": row["cost"].get("energy", 0), "power": dict(row["cost"].get("power") or {})}
+        if set(cost) - {"base", "additional"} or cost.get("base") != base \
+                or not _catalogued_costs_match(list(cost.get("additional") or []), wanted_additional):
+            return f"the ability costs {base} with {wanted_additional}, not {cost}"
+        item = declaration.get("chain_item") or {}
+        if item.get("timing", "default") != row.get("timing", "default") or item.get("ability_kind", "standard") != row.get("ability_kind", "standard"):
+            return (f"the ability is {row.get('ability_kind', 'standard')} at {row.get('timing', 'default')!r} timing, not "
+                    f"{item.get('ability_kind', 'standard')} at {item.get('timing', 'default')!r}")
+        if declaration.get("effect_program_id") != row["effect_program_id"]:
+            return f"the ability runs {row['effect_program_id']!r}, not {declaration.get('effect_program_id')!r}"
+        if list(declaration.get("activation_conditions") or []) != list(row.get("activation_conditions") or []):
+            return "the activation conditions are the ability's own, not the declaration's"
+        return None
+    card = objects.get(declaration.get("card")) or {}
+    if "card_ref" not in card or declaration.get("timing_source") == "limited_play":
+        return None
+    if not isinstance(card.get("printed_cost"), dict):
+        return f"{declaration.get('card')!r} ({card['card_ref']}) carries no printed cost"
+    if cost != {"base": card["printed_cost"]}:
+        return f"{declaration.get('card')!r} ({card['card_ref']}) costs {card['printed_cost']} as printed, not {cost}"
+    return None
+
+
 def legend_activation_source(effect_state: dict[str, Any], card: str | None) -> bool:
     """A Legend (Core 174.8) in a Legend Zone - the only thing activated from there."""
     obj = (effect_state.get("objects") or {}).get(card or "") or {}
@@ -861,6 +939,7 @@ def _printed_cost_objects(effect_state: dict[str, Any], entry: dict[str, Any], d
         raise PlayError("choices", "card_selection_required",
                         f"{actor} chooses what pays {entry['cost_id']!r} from {candidates}",
                         decision_ids=[decision_id], decision_controller=actor, candidates=candidates,
+                        selection_count={"any_number": True} if any_number else {"one": True},
                         rule_locators=["Core 355.1.a", "Core 357.2", "Core 357.2.a"])
     if supplied["stage"] != "play_declaration":
         raise PlayError("choices", "decision_stage_mismatch",
@@ -1343,6 +1422,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         else:
             raise PlayError("payment", "resource_allocation_required", f"{actor} must say where Universal Power pays "
                             f"{total} ({len(options)} legal ways)", decision_ids=[decision_id], decision_controller=actor,
+                            allocation_options=copy.deepcopy(options),
                             rule_locators=["Core 135.2.e.5.b", "Core 163.2.b", "Core 357.1"])
 
     if total["energy"]:
@@ -1384,7 +1464,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             allocation = options[0]
         else:
             raise PlayError("payment", "resource_allocation_required", f"{actor} must allocate {any_amount} any-domain Power across {sorted(d for d, n in remaining.items() if n)}",
-                            decision_ids=[decision_id], decision_controller=actor, rule_locators=["Core 809.1.c.1", "Core 357.1"])
+                            decision_ids=[decision_id], decision_controller=actor, allocation_options=copy.deepcopy(options),
+                            rule_locators=["Core 809.1.c.1", "Core 357.1"])
         for domain, amount in sorted(allocation.items()):
             before = resources["power"][domain]; resources["power"][domain] -= amount
             event_id = f"pay:power_any:{domain}"
@@ -1520,6 +1601,14 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         object_id = comp["object_id"]
         selector = {"object_id": object_id, "chosen_zone_class": "board", "controller_relation": "friendly",
                     "bound_identity": object_identity(working, object_id) or f"{object_id}@0"}
+        # 2026-10-15 package 13 (C2): a kill cost that names its kinds is paid only with a friendly object of one of them
+        requested = comp.get("requested") if isinstance(comp.get("requested"), dict) else {}
+        kinds = list(requested.get("object_kinds") or [])
+        if len(kinds) == 1:
+            selector["kind"] = kinds[0]
+        elif kinds:
+            selector.pop("controller_relation")
+            selector["any_of"] = [{"kind": k, "controller_relation": "friendly"} for k in kinds]
         program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                    "program_id": f"cost:{declaration['play_id']}:{comp['cost_id']}", "controller": actor,
                    # the card played / the ability's source: what the cost's own events name as their source
@@ -1636,8 +1725,13 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
     chosen_objects: list[str] = []  # every time an object is chosen as a target (Deflect counts each, 809.1.c)
     for index, effect in enumerate(program.get("effects", []) if effects is None else effects):
         candidates: list[tuple[dict[str, Any], str | None]] = []
+        # 2026-10-15 package 13 (C2): a single target ("a unit": an instruction's `target`, a composite's Unit slot) is
+        # chosen as exactly one object (Core 355.8); only a bounded `targets` takes another count (355.13)
+        single_refs: set[str] = set()
         if isinstance(effect.get("target"), dict):
             candidates.append((effect["target"], effect["target"].get("decision_ref")))
+            if isinstance(effect["target"].get("decision_ref"), str):
+                single_refs.add(effect["target"]["decision_ref"])
         if isinstance(effect.get("targets"), dict):
             for sel in effect["targets"].get("selectors", []) or []:
                 candidates.append((sel, None))
@@ -1649,6 +1743,8 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 # a slot that is the source itself ({object_ref: program_source}) is not chosen and is not a target
                 if isinstance(sel, dict) and not is_object_ref(sel.get("object_id")):
                     candidates.append((sel, sel.get("decision_ref")))
+                    if isinstance(sel.get("decision_ref"), str):
+                        single_refs.add(sel["decision_ref"])
         for template, ref in candidates:
             if "selection_ref" in template:
                 # selection-binding.v1: a reference to what an earlier instruction of this
@@ -1671,6 +1767,10 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
             if entry["controller"] != actor:
                 raise PlayError("choices", "decision_controller_mismatch", f"target selection {ref!r} was made by {entry['controller']!r}, not the card's controller", rule_locators=["Core 355.5"])
             identities = entry.get("selection_identities") or {}
+            if ref in single_refs and (not isinstance(entry["value"], list) or len(entry["value"]) != 1):
+                raise PlayError("choices", "target_count_out_of_range",
+                                f"effects[{index}] target selection {ref!r} chose {len(entry['value'] or [])} object(s); "
+                                f"a single target is one (Core 355.8)", rule_locators=["Core 355.8"])
             if effect.get("division_ref") is not None and isinstance(effect.get("targets"), dict) \
                     and ref == effect["targets"].get("decision_ref"):
                 # 2026-09-27 package 5, Core 355.14.b-c: a split's Targets are chosen now, no more of
@@ -2090,6 +2190,10 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         limited_record = _limited_play_checks(timing_state, effect_state, declaration) if limited else None
         source_kind = (declaration.get("source") or {}).get("kind", "hand")
         is_ability = declaration["chain_item"]["object_kind"] == "ability"
+        # 2026-10-15 package 13 (C2): a catalogued object is played or activated exactly as its record says
+        if (problem := catalogued_declaration_problem(effect_state, declaration)) is not None:
+            raise PlayError("declaration", "declaration_not_as_catalogued", problem,
+                            rule_locators=["Core 206", "Core 356.1", "Core 377", "Core 377.2.b"])
         if is_ability:
             # ADR-0011 §4 / Core 377: the source is a permanent the actor
             # controls on the Board; a Legend's ability is a P3 source.

@@ -669,6 +669,8 @@ jobs:
         run: python3 skill/scripts/check_battlefield_restrictions.py
       - name: Taking control of a permanent (package 11, Possession)
         run: python3 skill/scripts/check_gain_control.py
+      - name: printed statics work once a card is played
+        run: python3 skill/scripts/check_printed_statics.py
       - name: Activating the conquer effects of units at a Battlefield (package 11, Reckoner's Arena)
         run: python3 skill/scripts/check_activate_conquer.py
       - name: Activating an [Exhaust] ability had from another permanent (package 11, Heimerdinger)
@@ -687,6 +689,20 @@ jobs:
         run: python3 skill/scripts/check_modes_not_chosen.py
       - name: Executed Core and rule numbering, apart (package 12)
         run: python3 skill/scripts/check_semantics_version.py
+      - name: Ending the Main Phase is its own action (package 13, C2)
+        run: python3 skill/scripts/check_end_main_phase.py
+      - name: Action space closure: kinds, declaration fields, action key (package 13, C2)
+        run: python3 skill/scripts/check_action_space.py
+      - name: Enumerator against the engine's own acceptance (package 13, C2)
+        run: python3 skill/scripts/check_action_differential.py
+      - name: play and activation as full declarations
+        run: python3 skill/scripts/check_play_space.py
+      - name: per-state completeness receipt
+        run: python3 skill/scripts/check_state_receipt.py
+      - name: Catalogued objects are played as their record says (package 13, C2)
+        run: python3 skill/scripts/check_catalogued_declarations.py
+      - name: The closed environment's catalogue (package 13, C2)
+        run: python3 skill/scripts/check_closed_environment.py
       - name: discard to return this from the trash (Super Mega Death Rocket!)
         run: python3 skill/scripts/check_trigger_discard_return_self.py
       - name: recycle up to N cards from trashes (Forge of the Future)
@@ -972,6 +988,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_revealed_domain.py"
           python3 "$REPO/skill/scripts/check_battlefield_restrictions.py"
           python3 "$REPO/skill/scripts/check_gain_control.py"
+          python3 "$REPO/skill/scripts/check_printed_statics.py"
           python3 "$REPO/skill/scripts/check_activate_conquer.py"
           python3 "$REPO/skill/scripts/check_copied_abilities.py"
           python3 "$REPO/skill/scripts/check_look_banish_play.py"
@@ -981,6 +998,13 @@ jobs:
           python3 "$REPO/skill/scripts/check_assigned_excess.py"
           python3 "$REPO/skill/scripts/check_modes_not_chosen.py"
           python3 "$REPO/skill/scripts/check_semantics_version.py"
+          python3 "$REPO/skill/scripts/check_end_main_phase.py"
+          python3 "$REPO/skill/scripts/check_action_space.py"
+          python3 "$REPO/skill/scripts/check_action_differential.py"
+          python3 "$REPO/skill/scripts/check_play_space.py"
+          python3 "$REPO/skill/scripts/check_state_receipt.py"
+          python3 "$REPO/skill/scripts/check_catalogued_declarations.py"
+          python3 "$REPO/skill/scripts/check_closed_environment.py"
           python3 "$REPO/skill/scripts/check_trigger_discard_return_self.py"
           python3 "$REPO/skill/scripts/check_recycle_from_trashes.py"
           python3 "$REPO/skill/scripts/check_hide_cost_basis.py"

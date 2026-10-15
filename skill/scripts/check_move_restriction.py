@@ -102,14 +102,23 @@ def main() -> int:
     # --- 1. a Standard Move to a Base is neither listed nor accepted ---------------------------------
     enumerated = la.enumerate_actions(observe(state), "p1")
     moves = [a for a in enumerated["enumeration"]["actions"] if a["family"] == "standard_move"]
-    offered = {(a["action"]["object_id"], a["action"]["destination"].get("player")
-                or a["action"]["destination"].get("battlefield")) for a in moves}
-    if ("u1", "p1") in offered:
+    # package 13: a Standard Move moves a set of units to one destination; each unit's pairs are read off the sets
+    offered = {(unit, a["action"]["destination"].get("battlefield") or "base")
+               for a in moves for unit in a["action"]["object_ids"]}
+    if ("u1", "base") in offered:
         errors.append("the enumerator offered a Standard Move the Battlefield forbids")
-    if ("u2", "p1") not in offered:
+    if ("u2", "base") not in offered:
         errors.append(f"a Unit elsewhere lost its ordinary Move to Base: {sorted(offered)}")
-    if ("u1", "bf2") not in offered:
-        errors.append("moving off the restricted Battlefield to another Battlefield was refused")
+    # Battlefield to Battlefield needs Ganking (144.4.c, 810.1.b): not offered without it, offered with it
+    if ("u1", "bf2") in offered:
+        errors.append("moving to another Battlefield without Ganking was offered")
+    ganking = copy.deepcopy(state)
+    ganking["objects"]["u1"]["keywords"] = ["ganking"]
+    with_it = {(unit, a["action"]["destination"].get("battlefield") or "base")
+               for a in la.enumerate_actions(observe(ganking), "p1")["enumeration"]["actions"]
+               if a["family"] == "standard_move" for unit in a["action"]["object_ids"]}
+    if ("u1", "bf2") not in with_it:
+        errors.append("moving off the restricted Battlefield to another Battlefield with Ganking was not offered")
     family = next(f for f in enumerated["enumeration"]["families"] if f["family"] == "standard_move")
     if not any(item.get("reason_code") == "move_restricted_by_location" for item in family["excluded"]):
         errors.append(f"the restricted destination was dropped without saying why: {family['excluded']}")

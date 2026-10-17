@@ -64,10 +64,12 @@ RESULT_VERSION = "riftbound-play-result.v1"
 
 # Non-standard costs the engine can pay by reusing a primitive operation
 # (356.7, 357.2). Anything else is `unsupported` by name.
-SUPPORTED_NON_STANDARD = {"exhaust": "exhaust", "kill": "kill", "kill_this": "kill", "recall_self": "recall"}
+SUPPORTED_NON_STANDARD = {"exhaust": "exhaust", "kill": "kill", "kill_this": "kill", "recall_self": "recall",
+                          # 2026-10-16 package 14: a Basic Rune's "Recycle this" (Core 164.2.b) - to its Rune Deck (161.2.b)
+                          "recycle_self": "recycle"}
 # ADR-0011 §4: costs paid by the chain item's own source (an ability's own cost, 204.1.b); the object
 # is the activation's source_object unless the declaration names one.
-SELF_COSTS = {"kill_this", "recall_self", "banish_self"}
+SELF_COSTS = {"kill_this", "recall_self", "banish_self", "recycle_self"}
 # ADR-0012 §1: where a card is played from. The hand is the default; the
 # Champion Zone plays as normal (108.3.e); a trash source needs a granted
 # permission. Facedown arrives with C-45.
@@ -1535,7 +1537,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                                    "order_decision": sub["order_decision"], "decided_by": meta.get("decision_id") or "forced", "rule_locators": ["Core 357.2", "Core 416.3", "Core 416.5", "Core 124"]})
             except ExternalInputRequired as exc:
                 raise PlayError("payment", "randomization_receipt_required", f"cost {comp['cost_id']!r}: {exc}", decision_ids=exc.decision_ids,
-                                decision_controller=actor, rule_locators=["Core 357.2", "Core 416.5"])
+                                decision_controller=actor, rule_locators=["Core 357.2", "Core 416.5"],
+                                **({"chance": exc.chance} if getattr(exc, "chance", None) else {}))
             except ChoiceRequired as exc:
                 raise PlayError("payment", exc.reason_code, f"cost {comp['cost_id']!r}: {exc}", decision_ids=exc.decision_ids, decision_controller=actor, choice=exc.summary,
                                 rule_locators=["Core 357.2", "Core 422.1.a"] if zone == "hand" else ["Core 357.2", "Core 416.3"])
@@ -1599,6 +1602,16 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             continue
         op = SUPPORTED_NON_STANDARD[comp["kind"]]
         object_id = comp["object_id"]
+        if comp["kind"] == "recycle_self":
+            # Core 164.2.b, 204.1.b: the ability's own source, on the Board and its payer's (a Rune is not a Permanent,
+            # 161.1.a, so no permanent selector names it); recycled to its owner's Rune Deck (161.2.b, 417.1.b)
+            source = (declaration.get("activation") or {}).get("source_object")
+            if object_id != source:
+                raise PlayError("payment", "invalid_input", f"'Recycle this' names {object_id!r}, not the ability's source {source!r}",
+                                invalid=True, rule_locators=["Core 204.1.b"])
+            if zone_class(find_location(working, object_id)) != "board" or working["objects"][object_id].get("controller") != actor:
+                raise PlayError("payment", "cost_unpayable", f"{object_id!r} is not on the Board under {actor}'s control",
+                                rule_locators=["Core 164.2.b", "Core 203.3"])
         selector = {"object_id": object_id, "chosen_zone_class": "board", "controller_relation": "friendly",
                     "bound_identity": object_identity(working, object_id) or f"{object_id}@0"}
         # 2026-10-15 package 13 (C2): a kill cost that names its kinds is paid only with a friendly object of one of them
@@ -1613,7 +1626,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                    "program_id": f"cost:{declaration['play_id']}:{comp['cost_id']}", "controller": actor,
                    # the card played / the ability's source: what the cost's own events name as their source
                    "source_object": declaration["card"],
-                   "effects": [{"op": op, "effect_id": comp["cost_id"], "object_id": object_id, "target": selector}]}
+                   "effects": [{"op": "recycle", "effect_id": comp["cost_id"], "player": actor, "objects": [object_id]} if op == "recycle" else
+                               {"op": op, "effect_id": comp["cost_id"], "object_id": object_id, "target": selector}]}
         # No envelope here: it is keyed to the pre-play hash and the pool is
         # already debited. A replacement that needs a choice mid-payment is a
         # contract the engine does not have yet.
@@ -1859,6 +1873,14 @@ def _check_move_destination(effect: dict[str, Any], index: int, decisions: dict[
         return
     ref = destination["decision_ref"]
     entry = next((e for e in ed.entries(decisions, kind="location_selection") if e["decision_id"] == ref), None)
+    target_ref = destination.get("target_ref")
+    if entry is None and isinstance(target_ref, str) and ed.target_selection(decisions, target_ref) is None:
+        # 2026-10-16 package 14 (Tideturner, found playing set one through game_loop): a destination that is where another
+        # target is ("move me to its location") is legal only once that target is chosen - so the target is asked first,
+        # never a destination none of whose values can be legal yet
+        raise PlayError("choices", "target_selection_required",
+                        f"the Move destination {ref!r} is the location of target {target_ref!r}, which is chosen first",
+                        decision_ids=[target_ref], decision_controller=actor, rule_locators=["Core 355.4", "Core 355.5"])
     if entry is None:
         raise PlayError("choices", "move_destination_required",
                         f"the Move destination {ref!r} is chosen at {stage} (Core 355.4) and was not supplied",

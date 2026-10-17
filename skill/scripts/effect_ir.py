@@ -609,14 +609,23 @@ SOURCE_UNAVAILABLE_RULES = ["Core 359.3.e.6", "Core 359.3.f.1", "Core 359.3.f.2"
 
 
 class ExternalInputRequired(ValueError):
-    """ADR-0010 §2: an external randomization receipt the transition needs is absent."""
+    """ADR-0010 §2: an external randomization receipt the transition needs is absent. 2026-10-16 package 14: it says
+    what chance orders - the operation, its player and the cards (`chance`) - so a caller can supply the receipt."""
 
     reason_code = "randomization_receipt_required"
 
-    def __init__(self, message: str, decision_ids: list[str], controller: str | None):
+    def __init__(self, message: str, decision_ids: list[str], controller: str | None,
+                 chance: dict[str, Any] | None = None):
         super().__init__(message)
         self.decision_ids = decision_ids
         self.controller = controller
+        self.chance = chance
+
+
+def chance_fields(exc: Exception) -> dict[str, Any]:
+    """The result field a randomization request's operation travels in: {operation, operation_id, player, permute}."""
+    chance = getattr(exc, "chance", None)
+    return {"chance": chance} if chance is not None else {}
 
 
 class PlayerSelectionRequired(ValueError):
@@ -640,6 +649,25 @@ class ChoiceRequired(ValueError):
         self.controller = controller
         self.summary = summary
         self.reason_code = f"{summary['decision_kind']}_required"
+
+
+# 2026-10-16 package 14: what a choice private to its chooser offers never travels in a result or its summary (Core
+# 128.4, 355.10.a - engine_check hands results on). A trusted verifier that must enumerate the choice opts in to a side
+# record of it for the calls it makes (recording_private_options): {decision id: [{object_id, identity}]}
+import contextlib as _contextlib
+import contextvars as _contextvars
+
+_PRIVATE_OPTIONS: _contextvars.ContextVar = _contextvars.ContextVar("private_choice_options", default=None)
+
+
+@_contextlib.contextmanager
+def recording_private_options():
+    log: dict[str, list[dict[str, Any]]] = {}
+    token = _PRIVATE_OPTIONS.set(log)
+    try:
+        yield log
+    finally:
+        _PRIVATE_OPTIONS.reset(token)
 
 
 class LocationSelectionRequired(ValueError):
@@ -5185,7 +5213,9 @@ def perform_draw(state: dict[str, Any], player_id: str, count: int, *, decisions
         if trash:
             receipt = ed.randomization_receipt(decisions, operation_id)
             if receipt is None:
-                raise ExternalInputRequired(f"{player_id} Burns Out: the Trash is recycled into the Main Deck in a randomized order (431.2.b) that must arrive as a randomization receipt for {operation_id}", [operation_id], None)
+                raise ExternalInputRequired(f"{player_id} Burns Out: the Trash is recycled into the Main Deck in a randomized order (431.2.b) that must arrive as a randomization receipt for {operation_id}", [operation_id], None,
+                                            chance={"operation": "recycle_trash", "operation_id": operation_id, "player": player_id,
+                                                    "permute": list(trash)})
             from randomization_receipt import permutation_matches
             problem = permutation_matches(receipt, trash)
             if problem is not None or receipt.get("player") != player_id:
@@ -5380,7 +5410,9 @@ def _recycle_batch(state: dict[str, Any], ids: list[str], player_id: str | None,
             receipt = ed.randomization_receipt(decisions, operation_id)
             if receipt is None:
                 raise ExternalInputRequired(f"{len(group)} cards are recycled to {owner}'s Main Deck at once: they go to the bottom in a random order (Core 416.5), "
-                                            f"which must arrive as a randomization receipt for {operation_id}", [operation_id], None)
+                                            f"which must arrive as a randomization receipt for {operation_id}", [operation_id], None,
+                                            chance={"operation": "recycle_simultaneous", "operation_id": operation_id, "player": owner,
+                                                    "permute": list(group)})
             from randomization_receipt import permutation_matches
             problem = permutation_matches(receipt, group)
             if problem is None and receipt.get("operation") != "recycle_simultaneous":
@@ -8405,6 +8437,17 @@ def apply_simultaneous_kill_batch(
         obj = state["objects"].get(object_id)
         if obj is None or obj.get("kind") not in {"unit", "gear"} or zone_class(find_location(state, object_id)) != "board":
             return {**base, "valid": False, "committed": False, "errors": [f"{object_id!r} is not a supported board permanent"], "trace": []}
+    if isinstance(replacement_event_order, dict):
+        # 2026-10-16 package 14: a resolution-stage replacement_order names its order by what it orders (engine_decisions
+        # carries one map) - a Replacement Effect's events (keyed by the replacement), a controller's own sequences
+        # (keyed by that player, Core 372) or one object's Replacement Effects (keyed by the object) - split here, so
+        # every order the batch can ask for has an answer
+        players, objects = set(state["players"]), set(state["objects"])
+        if replacement_sequence_order is None and any(k in players for k in replacement_event_order):
+            replacement_sequence_order = {k: v for k, v in replacement_event_order.items() if k in players}
+        if event_replacement_order is None and any(k in objects for k in replacement_event_order):
+            event_replacement_order = {k: v for k, v in replacement_event_order.items() if k in objects}
+        replacement_event_order = {k: v for k, v in replacement_event_order.items() if k not in players and k not in objects}
     if replacement_event_order is not None and not isinstance(replacement_event_order, dict):
         return {**base, "valid": False, "committed": False, "errors": ["replacement_event_order must be an object"], "trace": []}
     if replacement_choices is not None and not isinstance(replacement_choices, dict):
@@ -8927,13 +8970,33 @@ def _resolve_spend_buffs(state: dict[str, Any], effect: dict[str, Any], decision
     if not candidates:
         return {**effect, "objects": [], "selection_meta": {"forced": True, "reason": "no Unit its player controls has a buff"}}
     several = [o for o in candidates if buff_count(state["objects"][o]) > 1]
-    if several:
-        # package 9: a Unit with more than one buff (426.1.b.2) could spend several; the choice here is one per Unit
-        raise NotImplementedError(f"spend_buffs_several_on_one_unit: {several} have more than one buff; spending any "
-                                  f"number of them from one Unit is not modelled")
     ref = effect.get("decision_ref") or f"spend_buffs:{player_id}{execution_suffix(effect)}"
     import engine_decisions as ed
     supplied = ed.decision_entry(decisions, ref)
+    if several:
+        # 2026-10-16 package 14 (GPT PACKAGE11's named debt): a Unit that may have any number of buffs (Core 426.1.b.2,
+        # Lee Sin - Ascetic) can spend several, one at a time (702.2.b) - so the choice is how many of each Unit's buffs,
+        # a buff_spend {unit: how many}, each at most what the Unit has; the Units with one buff are chosen the same way
+        counts = {o: buff_count(state["objects"][o]) for o in candidates}
+        identities = {o: object_identity(state, o) or f"{o}@0" for o in candidates}
+        summary = {"decision_kind": "buff_spend", "selection_kind": "buff_counts", "count": {"any_number": True},
+                   "from": "board", "chooser": player_id, "visibility": "public", "identity_binding": True,
+                   "options_count": len(candidates), "options_enumerated": True, "buff_counts": counts,
+                   "options": [{"object_id": o, "identity": identities[o], "buffs": counts[o]} for o in candidates]}
+        if supplied is None:
+            raise ChoiceRequired(f"{player_id} chooses how many buffs to spend from each of {candidates}", [ref], player_id, summary)
+        if supplied.get("kind") != "buff_spend" or supplied.get("stage") != "resolution":
+            raise ValueError(f"decision {ref!r} must be a resolution-stage buff_spend: a Unit here has more than one buff")
+        if supplied["controller"] != player_id:
+            raise IllegalDecision(f"buff_spend {ref!r} was made by {supplied['controller']!r}, not {player_id!r}")
+        value = supplied["value"]
+        for unit, n in value.items():
+            if unit not in counts or n > counts[unit]:
+                raise IllegalOperation(f"{unit!r} cannot spend {n} buff(s) here: it has {counts.get(unit, 0)} (702.2.b.1)")
+            if (supplied.get("selection_identities") or {}).get(unit) != identities[unit]:
+                raise ValueError(f"buff_spend {ref!r} binds {unit!r} to another object than the one there now (Core 124)")
+        objects = [unit for unit in sorted(value) for _ in range(value[unit])]
+        return {**effect, "objects": objects, "selection_meta": {"forced": False, "decision_id": ref, "buff_counts": dict(value)}}
     if supplied is not None and supplied.get("stage") != "resolution":
         raise ValueError(f"decision {ref!r} must be a resolution-stage decision: buffs are counters, not targets "
                          "(Core 704.1), so what is spent is chosen as the instruction resolves (355.17)")
@@ -9126,6 +9189,9 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
     ref = decision_ref or f"choice:{spec['from']}:{chooser}{execution}"
     entry = ed.decision_entry(decisions, ref)
     if entry is None:
+        log = _PRIVATE_OPTIONS.get()
+        if log is not None and "options" not in summary:
+            log[ref] = [{"object_id": c, "identity": identities.get(c)} for c in candidates]
         raise ChoiceRequired(f"{chooser} chooses from {spec['from']} ({spec['selection_kind']})", [ref], chooser, summary)
     chosen, failure, message = ed.check_choice_entry(spec, entry, chooser, candidates, identities)
     if failure == "controller":
@@ -12133,7 +12199,7 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         except (ExternalInputRequired, PlayerSelectionRequired) as exc:
             return {
                 **base, "valid": True, "committed": False, "external_input_required": isinstance(exc, ExternalInputRequired),
-                "reason_code": exc.reason_code, "reason": str(exc),
+                "reason_code": exc.reason_code, "reason": str(exc), **chance_fields(exc),
                 "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
                 "failed_effect_index": index, "trace": trace,
             }

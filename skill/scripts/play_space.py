@@ -42,7 +42,10 @@ STAGE = "play_declaration"
 # the requests this module reads a domain for, and the decision kind each answers with
 DECIDED = {"target_selection_required": "target_selection", "optional_cost_intent_required": "optional_choice",
            "mode_selection_required": "mode_selection", "card_selection_required": "card_selection",
-           "resource_allocation_required": "resource_allocation", "move_destination_required": "location_selection"}
+           "resource_allocation_required": "resource_allocation", "move_destination_required": "location_selection",
+           # 2026-10-16 package 14: the three package 13 left by name
+           "card_ordering_required": "card_ordering", "trigger_order_required": "trigger_order",
+           "randomization_receipt_required": "chance"}
 # The closure (GPT ruling 1), gated against the procedure's own constants (check_play_space F6): how each choice field of
 # a play declaration is generated, which play sources are a player's to choose, and what each request the procedure can
 # make is answered with - or why it is not a choice of a discretionary play
@@ -61,19 +64,22 @@ FIELD_GENERATORS = {
 }
 NOT_DISCRETIONARY = {
     "source_permission": "only a play from the trash or banishment carries one, and only an effect's limited play "
-                         "reaches those (Core 419.3) - a decision of that effect's resolution (package 14)",
+                         "reaches those (Core 419.3): the play's steps are a procedure of that effect's resolution - "
+                         "decision_space enumerates them at the limited play's finalization (package 14)",
 }
 SOURCES = {"hand": "play_skeletons", "champion_zone": "play_skeletons", "facedown": "play_skeletons",
-           "trash": "a limited play only (Core 419.3: package 14)", "banishment": "a limited play only (package 14)"}
+           "trash": "a limited play only (Core 419.3): decision_space, at its finalization",
+           "banishment": "a limited play only (Core 419.3): decision_space, at its finalization"}
 REQUESTS_LEFT = {
     "add_window_confirmation_required": "never asked: every declaration closes the Add window (payment_context)",
     "discount_order_required": "a catalogued card's cost is its printed one; an order of two discounts that differ is "
                                "declared in cost.discount_order, which a catalogued play does not carry - unproved by "
                                "name if asked",
-    "card_ordering_required": "an ordering at play: unproved by name (package 14)",
-    "randomization_receipt_required": "chance, not a choice (ruling 5): unproved by name",
-    "trigger_order_required": "the order of abilities a cost triggered: unproved by name (package 14)",
 }
+# Chance inside an action (a cost that recycles two or more cards to a Main Deck, Core 416.5) is nature's, not a choice
+# of the action: whether the action is legal does not depend on the order, so discovery checks it under the cards'
+# own order; the action carries no receipt - whoever applies it supplies the one chance gives (game_loop.run_action)
+CHANCE_ORDER = "identity"
 # the procedure's calls one family may make for one state; past it the family's answer is unproved (ruling 3)
 CALL_CAP = 1 << 15
 PLAY_KINDS = ("unit", "gear", "spell")
@@ -296,6 +302,20 @@ def domain(result: dict[str, Any], state: dict[str, Any], declaration: dict[str,
         elif kind == "location_selection":
             entries = [{"value": f"base:{p}"} for p in sorted(state["players"])] + \
                       [{"value": f"battlefield:{bf}"} for bf in sorted(state.get("battlefields") or {})]
+        elif kind == "trigger_order":
+            # Core 383.3.d: every order of the abilities the play's costs triggered together
+            per_id.append([{"decision_id": decision_id, "stage": "resolution", "kind": kind, "controller": actor,
+                            "value": list(order)} for order in itertools.permutations(result.get("trigger_ids") or [])])
+            continue
+        elif kind == "card_ordering":
+            listing = (result.get("choice") or {}).get("options") or (result.get("_private_options") or {}).get(decision_id)
+            if listing is None:
+                raise Unproved(f"ordering {decision_id!r} carries no cards")
+            bound = {o["object_id"]: o.get("identity") or _identity(state, o["object_id"]) for o in listing}
+            entries = [{"value": list(order), "selection_identities": {c: bound[c] for c in order}}
+                       for order in itertools.permutations(sorted(bound))]
+            if len(entries) > CALL_CAP:
+                raise Unproved(f"ordering {decision_id!r}: {len(entries)} orders exceed {CALL_CAP}")
         per_id.append([{"decision_id": decision_id, "stage": STAGE, "kind": kind, "controller": actor, **e} for e in entries])
     return per_id
 
@@ -305,16 +325,21 @@ def discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: d
     """(every decision list with which the procedure accepts the declaration, the reasons it refused the others)."""
     at_play = None if _reads_receipt(program) else program
     accepted, refused = [], []
-    stack: list[list[dict[str, Any]]] = [[]]
+    # each branch with its own receipts: what chance orders depends on what was chosen before it
+    stack: list[tuple[list[dict[str, Any]], list[dict[str, Any]]]] = [([], [])]
     while stack:
-        decisions = stack.pop()
+        decisions, receipts = stack.pop()
         budget[0] += 1
         if budget[0] > CALL_CAP:
             raise Unproved(f"more than {CALL_CAP} calls of the procedure")
-        envelope = ({"schema_version": DECISIONS_VERSION, "input_hash": hash_value(state), "decisions": decisions}
-                    if decisions else None)
+        envelope = ({"schema_version": DECISIONS_VERSION, "input_hash": hash_value(state), "decisions": decisions,
+                     **({"randomization_receipts": list(receipts)} if receipts else {})}
+                    if decisions or receipts else None)
         try:
-            got = PT.play_card(timing_state, state, declaration, engine_decisions=envelope, effect_program=at_play)
+            with IR.recording_private_options() as private:
+                got = PT.play_card(timing_state, state, declaration, engine_decisions=envelope, effect_program=at_play)
+            if private:
+                got = {**got, "_private_options": dict(private)}    # the trusted record, local to this module
         except Exception as exc:  # noqa: BLE001 - a crash is never a refusal
             raise Unproved(f"the procedure failed on {declaration['play_id']}: {type(exc).__name__}: {exc}") from exc
         if got.get("committed"):
@@ -324,12 +349,21 @@ def discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: d
         if reason in DECIDED and got.get("decision_controller") not in (None, actor):
             # a choice another player makes as this one plays (ruling 5): not this player's to enumerate
             raise Unproved(f"{declaration['play_id']}: {reason} is {got['decision_controller']}'s to decide")
+        if reason in DECIDED and DECIDED[reason] == "chance":
+            chance = got.get("chance")
+            if not isinstance(chance, dict) or any(r["operation_id"] == chance["operation_id"] for r in receipts):
+                raise Unproved(f"{declaration['play_id']}: chance with no operation, or asked again")
+            stack.append((decisions, receipts + [{
+                "schema_version": "randomization-receipt.v1", "receipt_id": f"play_space:{chance['operation_id']}",
+                "operation": chance["operation"], "operation_id": chance["operation_id"], "player": chance["player"],
+                "permutation": list(chance["permute"]), "provenance": {"provider": "play_space", "method": CHANCE_ORDER}}]))
+            continue
         if reason in DECIDED:
             per_id = domain(got, state, declaration, program, actor)
             if any(not entries for entries in per_id):
                 refused.append(f"no_legal_{DECIDED[reason]}")     # a choice with nothing legal to choose (Core 355.8)
             for combination in itertools.product(*per_id):
-                stack.append(decisions + list(combination))
+                stack.append((decisions + list(combination), receipts))
         elif reason in PT.DECISION_REASONS or got.get("unsupported"):
             raise Unproved(f"{declaration['play_id']}: {reason} ({(got.get('reason') or '')[:120]})")
         else:

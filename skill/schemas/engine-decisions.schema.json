@@ -70,7 +70,8 @@
               "mode_selection",
               "card_ordering",
               "damage_division",
-              "option_selection"
+              "option_selection",
+              "buff_spend"
             ]
           },
           "controller": {

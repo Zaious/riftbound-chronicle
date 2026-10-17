@@ -3,9 +3,11 @@
 and 5). It says, for one state and one player, whether the list of that player's actions is proved whole - and when it
 is not, why, by name. It fails closed: anything it cannot show makes `complete` false.
 
-  the point      the timing kernel says discretionary actions are allowed now (rules_core.next_procedure); a state
-                 where a procedure is due (a pending item to finalize, a task) is not an action point - its choices are
-                 the procedure's decisions (package 14), named as procedure_due:<procedure>
+  the point      the timing kernel says discretionary actions are allowed now (rules_core.next_procedure) - an action
+                 point; or a procedure is due (a pending item to finalize, a task, a Combat step) - a procedure point
+                 (package 14): no one acts at will, and the receipt is of the procedure's next decision
+                 (decision_space.decision_point): the player who decides it gets its options (`point`); any other
+                 player, none - complete, for no choice of theirs is open; chance's move (a receipt) is no one's
   the state      a state of the catalogue's environment (closed_environment.environment_problems)
   the families   every action kind (action_space.ACTION_KINDS) enumerated - none abstained, none unproved
   information    (ruling 5; PACKAGE13 rulings 4 and round two) two states the player sees alike must list the same
@@ -18,7 +20,16 @@ is not, why, by name. It fails closed: anything it cannot show makes `complete` 
                  leaks:; a card shown to someone other than the player outside those dimensions is unvaried_private:.
                  A request another player decides, or chance, makes a family unproved (play_space).
 
-    state_receipt(timing_state, effect_state, actor, catalogue) -> receipt
+  a procedure   (package 14) a decision is made when it is asked - after whatever the procedure did first (a card drawn
+  point          before "discard one" is in its chooser's hand by then). So the published options are the true state's,
+                 and two checks hold them to what the decider knows then: every unseen card an option names must be one
+                 the request itself shows its decider (the options it lists for them, Core 128.4) - else leaks:; and the
+                 same point computed on the decider's view at the point's start, its place names read back as the cards
+                 they stand for, must give the same decider, request and options - else depends_on_hidden: (legality
+                 that would change with what the decider never sees). A decision this module cannot prove whole is
+                 unproved:<why>
+
+    state_receipt(timing_state, effect_state, actor, catalogue, made=None) -> receipt
 """
 from __future__ import annotations
 
@@ -27,6 +38,7 @@ from typing import Any
 
 import action_space as AS
 import closed_environment as CE
+import game_loop as GL
 import effect_ir as IR
 import legal_action as LA
 import rules_core
@@ -103,9 +115,10 @@ def _named(value: Any, out: set) -> set:
     return out
 
 
-def actor_view(effect_state: dict[str, Any], actor: str) -> dict[str, Any]:
+def actor_view(effect_state: dict[str, Any], actor: str, *, names_out: dict[str, str] | None = None) -> dict[str, Any]:
     """The state as the player sees it: every card in PRIVATE_DIMENSIONS (private_objects) a mask (closed_environment.mask)
-    - its owner, controller, place and identity token kept, nothing else. A function of what the player sees only."""
+    - its owner, controller, place and identity token kept, nothing else. A function of what the player sees only.
+    `names_out`, when given, receives {original id: place name} (the trusted verifier's, to read a view's answer back)."""
     hidden = private_objects(effect_state, actor)
     # each unseen card is named by its place, not by its id - an id or an order could carry what was seen before; the
     # k-th unseen card of a zone is hidden:<whose>:<zone>:<k>, in the zone's order of unseen slots (a shown card keeps
@@ -121,6 +134,8 @@ def actor_view(effect_state: dict[str, Any], actor: str) -> dict[str, Any]:
     view = copy.deepcopy(effect_state)
     for object_id, dimension in hidden.items():
         view["objects"][object_id] = CE.mask(view["objects"][object_id], rune=dimension == PRIVATE_DIMENSIONS[3])
+    if names_out is not None:
+        names_out.update(names)
     return _renamed(view, names)
 
 
@@ -139,12 +154,65 @@ def _renamed(value: Any, names: dict[str, str]) -> Any:
     return value
 
 
+def option_key(point: dict[str, Any], option: dict[str, Any]) -> str:
+    """One option of a procedure point, canonically: what it answers, not its system ids."""
+    import decision_space as DS
+    return DS.way_key({**option["answer"], "label": point.get("label")})
+
+
+def _procedure_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any], actor: str, catalogue: dict[str, Any],
+                       procedure: dict[str, Any], made: dict[str, Any] | None) -> dict[str, Any]:
+    import decision_space as DS
+    why: list[str] = []
+    problems = CE.validate_catalogue(catalogue) or CE.environment_problems(effect_state, catalogue)
+    if problems:
+        why.append(f"not_an_environment_state:{problems[0]}")
+    names: dict[str, str] = {}
+    view = actor_view(effect_state, actor, names_out=names)
+    back = {name: original for original, name in names.items()}
+    true = DS.decision_point(timing_state, effect_state, catalogue, made)
+    seen = DS.decision_point(timing_state, view, catalogue, _renamed(made, names) if made else None)
+    point = {"procedure": procedure.get("procedure"), "label": true.get("label"), "status": true["status"],
+             "request": true.get("request"), "decider": true.get("decider")}
+    keys: list[str] = []
+    if true["status"] != "enumerated":
+        why.append(f"unproved:{true.get('reason') or true['status']}")
+    elif true.get("decider") == actor:
+        keys = sorted(option_key(true, o) for o in true["options"])
+        hidden = private_objects(effect_state, actor)
+        step = DS._run(timing_state, effect_state, catalogue, made)
+        request = step.get("request") or {}
+        shown = {o.get("object_id") for o in list(((request.get("payload") or {}).get("choice") or {}).get("options") or [])
+                 + [o for options in (request.get("private_options") or {}).values() for o in options]}
+        named = set()
+        for option in true["options"]:
+            named |= _named(option["answer"]["decisions"], set())
+        for object_id in sorted((named & set(hidden)) - shown):
+            why.append(f"leaks:{object_id} ({hidden[object_id]}) - an option names it, and the request does not show it")
+    if true["status"] == "enumerated":
+        seen_keys = sorted(option_key(seen, {"answer": _renamed(o["answer"], back)}) for o in seen.get("options") or []) \
+            if seen.get("decider") == actor else []
+        if seen["status"] != "enumerated" or seen.get("decider") != true.get("decider") \
+                or (seen.get("request") or {}).get("code") != (true.get("request") or {}).get("code") or seen_keys != keys:
+            present = sorted(set(private_objects(effect_state, actor).values()), key=PRIVATE_DIMENSIONS.index)
+            why.append(f"depends_on_hidden:{','.join(present) or 'nothing private'} - the decider's view at the point's "
+                       f"start does not give the same decision ({seen.get('status')}: {str(seen.get('reason') or '')[:80]})")
+    why += [f"unvaried_private:{where}" for where in unvaried(effect_state, actor)]
+    receipt = {"schema_version": RECEIPT_VERSION, "actor": actor,
+               "timing_state_hash": rules_core.state_hash(timing_state), "effect_state_hash": IR.hash_value(effect_state),
+               "catalogue_hash": catalogue.get("catalogue_hash"),
+               "engine": {"core": IR.CORE_RULESET, "faq_as_of": IR.FAQ_AS_OF, "rule_numbering": IR.RULE_NUMBERING},
+               "point": point, "families": {}, "information": {}, "actions": keys, "complete": not why, "why": why}
+    receipt["receipt_hash"] = IR.hash_value({k: v for k, v in receipt.items() if k != "receipt_hash"})
+    return receipt
+
+
 def state_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any], actor: str,
-                  catalogue: dict[str, Any]) -> dict[str, Any]:
+                  catalogue: dict[str, Any], made: dict[str, Any] | None = None) -> dict[str, Any]:
     why: list[str] = []
     procedure = rules_core.next_procedure(timing_state)
     if procedure.get("discretionary_actions_allowed") is not True:
-        why.append(f"procedure_due:{procedure.get('procedure')}")
+        return _procedure_receipt(timing_state, effect_state, actor, catalogue, procedure, made)
     problems = CE.validate_catalogue(catalogue) or CE.environment_problems(effect_state, catalogue)
     if problems:
         why.append(f"not_an_environment_state:{problems[0]}")
@@ -183,6 +251,8 @@ def state_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any], ac
                "timing_state_hash": rules_core.state_hash(timing_state), "effect_state_hash": IR.hash_value(effect_state),
                "catalogue_hash": catalogue.get("catalogue_hash"),
                "engine": {"core": IR.CORE_RULESET, "faq_as_of": IR.FAQ_AS_OF, "rule_numbering": IR.RULE_NUMBERING},
+               "point": {"procedure": procedure.get("procedure"), "label": "action_point", "status": "enumerated",
+                         "request": None, "decider": actor},
                "families": families, "information": information, "actions": keys,
                "complete": not why, "why": why}
     receipt["receipt_hash"] = IR.hash_value({k: v for k, v in receipt.items() if k != "receipt_hash"})

@@ -550,12 +550,19 @@ def assignment_candidates(record: dict[str, Any], effect_state: dict[str, Any], 
         need = might - damage if might > damage else (0 if damage > 0 else 1)  # 143.2.a: nonzero damage at or above Might
         raw = need
         reachable = True
-        while need > 0 and preview_assignment(descriptors, raw)[0] < need:
+        # 2026-10-16 package 14, Core 465.2.c.10: a Unit that cannot be dealt damage - a replacement that prevents every
+        # Deal to it, never used up (Kayn, Unleashed is the rule's own example) - has no lethal amount and is exempt from
+        # every consideration of mandatory assignment. One that only prevents the next Deal (the rule's Counter Strike
+        # example) can still be dealt damage and is not exempt.
+        exempt = any(d.get("mode") == "prevent_event" and d.get("uses_remaining") is None for d in descriptors)
+        while need > 0 and not exempt and preview_assignment(descriptors, raw)[0] < need:
             raw += 1
             if raw > need + 64:
                 reachable = False
                 break
-        if not reachable:
+        if exempt:
+            raw = UNREACHABLE_LETHAL
+        elif not reachable:
             if len(opposing) != 1:
                 # whether a Unit no amount can make lethal must take everything before another Unit gets any is
                 # not settled here (465.2.c.3-c.4); refused by name, never guessed
@@ -566,6 +573,7 @@ def assignment_candidates(record: dict[str, Any], effect_state: dict[str, Any], 
         requirements = [k for k in ("tank", "backline") if has_keyword(effect_state, unit, k)]
         candidates.append({"unit": unit, "identity": object_identity(effect_state, unit) or f"{unit}@0", "might": might, "damage": damage,
                            "min_lethal_applied": need, "min_lethal_raw": raw, "requirements": requirements, "event_id": event_id,
+                           **({"exempt": True} if exempt else {}),
                            "replacements": [d["replacement_id"] for d in descriptors], "_descriptors": descriptors})
     return candidates, None
 
@@ -588,10 +596,13 @@ def validate_assignment(candidates: list[dict[str, Any]], available: int, amount
     for c in candidates:
         if "tank" in c["requirements"] and "backline" in c["requirements"] and c["unit"] not in choices:
             return [f"{c['unit']} has both Tank and Backline; the assigning player chooses which applies (465.2.c.8)"]
+    # Core 465.2.c.10: an exempt Unit (it cannot be dealt damage) is outside every ordering below - it takes any amount,
+    # at any point, never waits for another Unit and never makes one wait
+    bound = [c for c in candidates if not c.get("exempt")]
     tiers: dict[int, list[dict[str, Any]]] = {}
-    for c in candidates:
+    for c in bound:
         tiers.setdefault(_tier(c, choices), []).append(c)
-    lethal = {c["unit"]: amounts[c["unit"]] >= c["min_lethal_raw"] for c in candidates}
+    lethal = {c["unit"]: c.get("exempt") is True or amounts[c["unit"]] >= c["min_lethal_raw"] for c in candidates}
     first_open = None
     for tier in sorted(tiers):
         members = tiers[tier]
@@ -606,7 +617,9 @@ def validate_assignment(candidates: list[dict[str, Any]], available: int, amount
             for m in members:
                 if amounts[m["unit"]] > 0:
                     problems.append(f"{m['unit']} received damage while a Unit that must be assigned first still lacks lethal damage (465.2.c.6–c.7)")
-    for c in candidates:
+    # GPT PACKAGE14 ruling 1: the exempt Unit may be assigned damage whether or not the others have their lethal yet;
+    # 465.2.c.3 and c.4 hold among the Units that are not exempt (the loops above and below read only those)
+    for c in bound:
         others_open = any(not lethal[o["unit"]] for o in candidates if o["unit"] != c["unit"])
         if amounts[c["unit"]] > c["min_lethal_raw"] and others_open:
             problems.append(f"{c['unit']} was assigned {amounts[c['unit']]}, above the minimum lethal {c['min_lethal_raw']}, while another Unit still lacks lethal damage (465.2.c.4)")

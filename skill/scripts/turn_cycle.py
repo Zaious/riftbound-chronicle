@@ -395,7 +395,8 @@ def run_draw_step(timing_state: dict[str, Any], effect_state: dict[str, Any], en
         try:
             next_effect, event = perform_draw(next_effect, player, 1, decisions=engine_decisions, operation_prefix=f"burn_out:{player}:{turn_id}:draw_step")
         except (ExternalInputRequired, PlayerSelectionRequired) as exc:
-            return {**base, "valid": True, "committed": False, "reason_code": exc.reason_code, "reason": str(exc), "decision_ids": exc.decision_ids, "decision_controller": exc.controller, "rule_locators": ["Core 315.4.b.1", "Core 431.2"]}
+            from effect_ir import chance_fields
+            return {**base, "valid": True, "committed": False, "reason_code": exc.reason_code, "reason": str(exc), "decision_ids": exc.decision_ids, "decision_controller": exc.controller, **chance_fields(exc), "rule_locators": ["Core 315.4.b.1", "Core 431.2"]}
         except IllegalDecision as exc:
             return _refuse(base, "decision_controller_mismatch", str(exc), ["Core 431.2.c"])
         except NotImplementedError as exc:

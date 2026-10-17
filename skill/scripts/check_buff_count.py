@@ -12,7 +12,9 @@ Buff of such a unit that already has one adds one more; Might counts each (703);
   L3 spend one      one spent at a time: buff_count 2, Might +2; down to one, the count leaves the state; the last
                     one spent, it is unbuffed - each state valid
   L4 cost           a spend_buff cost paid from it takes one buff
-  L5 any number     "spend any number of buffs" with a unit holding more than one: refused by name
+  L5 any number     "spend any number of buffs" with a unit holding more than one: a buff_spend {unit: how many}
+                    is asked (package 14); two of three spends two, one left; four of three, a card_selection, or
+                    another object's identity refused
   S  shapes         buff_count 1, buff_count without the permission, a non-boolean permission - refused
   G  grammar        the clause grammar lowers the sentence to the permission; near misses stay unparsed
 
@@ -30,7 +32,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import clause_grammar as CG  # noqa: E402
 from check_effect_ir import base_state, program  # noqa: E402
 from check_rules_core import fixture  # noqa: E402
-from effect_ir import CORE_RULESET, FAQ_AS_OF, apply_program, effective_might, spend_one_buff, validate_state  # noqa: E402
+from effect_ir import CORE_RULESET, FAQ_AS_OF, apply_program, effective_might, hash_value, spend_one_buff, validate_state  # noqa: E402
 from play_transaction import DECLARATION_VERSION, play_card  # noqa: E402
 
 errors: list[str] = []
@@ -96,11 +98,27 @@ def main() -> int:
     if not paid.get("committed") or paid["next_effect_state"]["objects"]["u1"].get("buff_count") != 2:
         fail("L4 cost", f"{paid.get('reason_code')} {paid.get('reason')} "
                         f"{(paid.get('next_effect_state') or {}).get('objects', {}).get('u1')}")
-    choose = apply_program(three, program("spend-any", {"op": "spend_buffs", "effect_id": "sa", "player": "p1",
-                                                        "decision_ref": "spend"}))
-    text = f"{choose.get('reason')} {choose.get('errors')}"
-    if choose.get("committed") or "spend_buffs_several_on_one_unit" not in text:
-        fail("L5 any number", f"{choose.get('committed')} {text}")
+    spend_any = program("spend-any", {"op": "spend_buffs", "effect_id": "sa", "player": "p1", "decision_ref": "spend"})
+    choose = apply_program(three, spend_any)
+    asked = (choose.get("reason_code"), choose.get("decision_ids"), (choose.get("choice") or {}).get("buff_counts"))
+    if choose.get("committed") or asked != ("buff_spend_required", ["spend"], {"u1": 3}):
+        fail("L5 any number", f"no buff_spend asked: {choose.get('committed')} {asked}")
+
+    def spending(value, kind="buff_spend", identity=None):
+        entry = {"decision_id": "spend", "stage": "resolution", "kind": kind, "controller": "p1",
+                 "value": value if kind == "buff_spend" else sorted(value),
+                 "selection_identities": {u: identity or f"{u}@0" for u in value}}
+        return apply_program(three, spend_any, decisions={"schema_version": "engine-decisions.v1",
+                                                          "input_hash": hash_value(three), "decisions": [entry]})
+    two = spending({"u1": 2})
+    spent = next((t for t in two.get("trace") or [] if t.get("op") == "spend_buffs"), {})
+    left = (two.get("next_state") or {}).get("objects", {}).get("u1") or {}
+    if not two.get("committed") or (left.get("buff_count"), left.get("buffed")) != (None, True) or spent.get("applied_count") != 2:
+        fail("L5 any number", f"spending two of three: {two.get('reason')} {left} {spent}")
+    for label, got in (("four of three", spending({"u1": 4})), ("a card_selection", spending({"u1": 1}, kind="card_selection")),
+                       ("another object", spending({"u1": 1}, identity="u1@9"))):
+        if got.get("committed"):
+            fail("L5 any number", f"{label} was accepted")
     for label, fields in (("count 1", {"buffed": True, "any_number_of_buffs": True, "buff_count": 1}),
                           ("no permission", {"buffed": True, "buff_count": 2}),
                           ("not boolean", {"buffed": True, "any_number_of_buffs": "yes"})):

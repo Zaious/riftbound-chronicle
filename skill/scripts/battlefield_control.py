@@ -42,9 +42,10 @@ class ScoringUnsupported(Exception):
 class ScoringDecisionRequired(Exception):
     """ADR-0010 §2: the draw-instead Burns Out and needs an external receipt or a beneficiary choice; nothing commits."""
 
-    def __init__(self, code: str, reason: str, decision_ids: list[str], controller: str | None):
+    def __init__(self, code: str, reason: str, decision_ids: list[str], controller: str | None, chance: dict[str, Any] | None = None):
         super().__init__(reason)
         self.code, self.reason, self.decision_ids, self.controller = code, reason, decision_ids, controller
+        self.chance = chance
 
 
 def _base(step: str, timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
@@ -214,7 +215,7 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
             try:
                 working, draw_event = perform_draw(working, player, 1, decisions=decisions, operation_prefix=f"burn_out:{player}:{turn_id}:score:{battlefield_id}")
             except (ExternalInputRequired, PlayerSelectionRequired) as exc:
-                raise ScoringDecisionRequired(exc.reason_code, str(exc), exc.decision_ids, exc.controller)
+                raise ScoringDecisionRequired(exc.reason_code, str(exc), exc.decision_ids, exc.controller, getattr(exc, "chance", None))
             except IllegalDecision as exc:
                 raise ScoringDecisionRequired("decision_controller_mismatch", str(exc), [], None)
             except NotImplementedError as exc:
@@ -282,6 +283,7 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
                 return _unsupported(base, exc.code, exc.reason, exc.locators, source=source, would_establish_control=player)
             except ScoringDecisionRequired as exc:
                 return {**base, "valid": True, "committed": False, "reason_code": exc.code, "reason": exc.reason, "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                        **({"chance": exc.chance} if exc.chance else {}),
                         "rule_locators": ["Core 471.1.b.1", "Core 431.2"], "source": source, "would_establish_control": player}
             control_step = "control_established"
         next_effect["battlefields"][battlefield_id]["contested"] = False
@@ -621,7 +623,8 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
     except ScoringUnsupported as exc:
         return _unsupported(base, exc.code, exc.reason, exc.locators, would_hold=to_hold)
     except ScoringDecisionRequired as exc:
-        return {**base, "valid": True, "committed": False, "reason_code": exc.code, "reason": exc.reason, "decision_ids": exc.decision_ids, "decision_controller": exc.controller, "rule_locators": ["Core 431.2"]}
+        return {**base, "valid": True, "committed": False, "reason_code": exc.code, "reason": exc.reason, "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
+                **({"chance": exc.chance} if exc.chance else {}), "rule_locators": ["Core 431.2"]}
     if not to_hold:
         _, problem = mode_of_play(effect_state)
         if problem is not None:

@@ -5,8 +5,16 @@ On check_play_space's synthetic catalogue and boards:
 
   R1 complete    p1 at a Neutral Open priority point on each board: complete, every action kind enumerated, the
                  actions those families list, the information checks independent; the receipt hashes itself
-  R2 the point   the same board with a pending item on the Chain (a procedure is due): not complete,
-                 procedure_due:finalize_oldest_pending
+  R2 the point   the same board with a pending item on the Chain (a procedure is due): a procedure point (package
+                 14) - finalizing a played spell asks no one anything, so its receipt is complete with no action for
+                 either player, the point named (finalize_oldest_pending, no decider)
+  R9 a decider   (package 14, check_decision_space's boards) an end-of-turn trigger's targets: the decider's receipt is
+                 complete with its seven options; the other player's is complete with none
+  R10 drawn      "draw 1, then discard 1": the discarded card may be the one just drawn - unseen at the point's start,
+                 shown to its chooser by the request - so the receipt is complete with both options; an option naming
+                 an unseen card the request does not show is leaks:
+  R11 hidden     a decision whose options would change with the opponent's hand (a doctored domain that reads it) is
+                 depends_on_hidden: at a procedure point too
   R3 a family    a family over its cap: not complete, naming it
   R4 the state   an object without card_ref: not complete, not_an_environment_state
   R5 hidden      an action set that would change with the opponent's hand (a doctored enumeration that reads it) is
@@ -84,9 +92,11 @@ def main() -> int:
     state = boards["targets"]
     # R2
     pending = fixture(items=[item("spell-1", "p1", "spell", "default", "pending")])
-    receipt = R.state_receipt(pending, state, "p1", cat)
-    if receipt["complete"] or "procedure_due:finalize_oldest_pending" not in receipt["why"]:
-        fail("R2 the point", f"{receipt['why']}")
+    for actor in ("p1", "p2"):
+        receipt = R.state_receipt(pending, state, actor, cat)
+        if not receipt["complete"] or receipt["actions"] or receipt["point"]["procedure"] != "finalize_oldest_pending" \
+                or receipt["point"]["decider"] is not None:
+            fail("R2 the point", f"{actor}: {receipt['complete']} {receipt['why']} {receipt['point']}")
     # R3
     original = PS.CALL_CAP
     PS.CALL_CAP = 2
@@ -181,6 +191,7 @@ def main() -> int:
         PT.play_card = original
     if got["status"] != "unproved" or "p2's to decide" not in got["reason"]:
         fail("R6 another", f"{got['status']} {got.get('reason')}")
+    procedure_points()
     return report()
 
 
@@ -221,6 +232,53 @@ def r8(cat: dict, state: dict) -> None:
         fail("R8 Zap / Pawn / Twin", f"Zap's or Pawn's state, whose true set is the view's: {zap['why']} {pawn['why']}")
 
 
+def procedure_points() -> None:
+    import check_decision_space as DSG
+    import decision_space as DS
+    cat = DSG.catalogue()
+    t, e = DSG.ending_point(cat, "Bell")
+    mine, theirs = R.state_receipt(t, e, "p1", cat), R.state_receipt(t, e, "p2", cat)
+    if not mine["complete"] or len(mine["actions"]) != 7 or mine["point"]["decider"] != "p1" or not theirs["complete"] or theirs["actions"]:
+        fail("R9 a decider", f"{mine['complete']} {len(mine['actions'])} {mine['why']} / {theirs['complete']} {theirs['actions']}")
+    t, e = DSG.resolving_point(cat, "Pick", [("h1", "Grunt", "p1", "hand"), ("dk", "Grunt", "p1", "main_deck"),
+                                             ("oh", "Grunt", "p2", "hand")])
+    drawn = R.state_receipt(t, e, "p1", cat)
+    if not drawn["complete"] or len(drawn["actions"]) != 2:
+        fail("R10 drawn", f"{drawn['complete']} {drawn['why']} {len(drawn['actions'])}")
+    real_point = DS.decision_point
+
+    def peeking(timing, effect, catalogue, made=None):
+        point = real_point(timing, effect, catalogue, made)
+        if point["status"] == "enumerated" and point["options"]:
+            entry = point["options"][0]["answer"]["decisions"][0]
+            name = "oh" if "oh" in effect["objects"] else next(o for o in effect["objects"] if o.startswith("hidden:p2:hand"))
+            point = {**point, "options": point["options"] + [{"answer": DS._answer([{**entry, "value": [name],
+                                                                                    "selection_identities": {name: f"{name}@0"}}]),
+                                                              "ways": 1}]}
+        return point
+    DS.decision_point = peeking
+    try:
+        leaky = R.state_receipt(t, e, "p1", cat)
+    finally:
+        DS.decision_point = real_point
+    real = DS.answers
+    if leaky["complete"] or not any(w.startswith("leaks:oh") for w in leaky["why"]):
+        fail("R10 drawn", f"an option naming the opponent's unseen card was not named leaks: {leaky['why']}")
+
+    def reading(request, timing, effect, catalogue, label):
+        kind, decider, options = real(request, timing, effect, catalogue, label)
+        if kind == "card_selection" and (effect["objects"].get("oh") or {}).get("card_ref") == "Grunt":
+            options = options[:1]
+        return kind, decider, options
+    DS.answers = reading
+    try:
+        hidden = R.state_receipt(t, e, "p1", cat)
+    finally:
+        DS.answers = real
+    if hidden["complete"] or not any(w.startswith("depends_on_hidden:") for w in hidden["why"]):
+        fail("R11 hidden", f"a decision reading the opponent's hand was not depends_on_hidden: {hidden['why']}")
+
+
 def report() -> int:
     if errors:
         print("FAILED: the per-state completeness receipt")
@@ -228,10 +286,12 @@ def report() -> int:
             print(f"  - {e}")
         return 1
     print("OK: a priority point of an environment state with every action kind enumerated and its set independent of "
-          "the opponent's hand and the decks' order has a complete receipt; a due procedure, an unproved family, a state "
+          "the opponent's hand and the decks' order has a complete receipt; an unproved family, a state "
           "outside the environment, a set reading hidden information, an action naming it, an unvaried private part and a "
           "choice another player makes are each named and the receipt is not complete; the published set is the player's "
-          "view's, the same for Zap, Pawn and Twin, and Twin's state is not complete (R1-R8)")
+          "view's, the same for Zap, Pawn and Twin, and Twin's state is not complete; at a procedure point the decider "
+          "has its options and every other player none, a card drawn before the choice is the chooser's to name, and a "
+          "leak or a hidden dependency is named there too (R1-R11)")
     return 0
 
 

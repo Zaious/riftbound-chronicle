@@ -50,7 +50,9 @@ KINDS = ("target_selection", "replacement_order", "replacement_choice", "optiona
          "damage_division",
          # 2026-09-27 package 6: a named option a player chooses as the instruction resolves ("Each
          # other player chooses Cards or Runes."), by that player - not a mode of the card (402.2)
-         "option_selection")
+         "option_selection",
+         # 2026-10-16 package 14: how many buffs to spend from each Unit when one has several (Core 426.1.b.2, 702.2.b)
+         "buff_spend")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
 
@@ -152,8 +154,18 @@ def validate_engine_decisions(value: Any) -> list[str]:
                 errors.append(f"{label}.selection_identities must bind every Target in the division exactly once")
             if item["stage"] != "resolution":
                 errors.append(f"{label}: damage_division is decided as the split resolves (Core 355.14.e)")
+        elif kind == "buff_spend":
+            # {unit id: how many of its buffs, at least one}; the identities bind each Unit (Core 124)
+            if not isinstance(val, dict) or any(not isinstance(k, str) or not k or isinstance(n, bool) or not isinstance(n, int) or n < 1
+                                                for k, n in val.items()):
+                errors.append(f"{label}.value must map each Unit spent from to a positive number of buffs")
+            identities = item.get("selection_identities")
+            if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, dict) else []):
+                errors.append(f"{label}.selection_identities must bind every Unit spent from exactly once")
+            if item["stage"] != "resolution":
+                errors.append(f"{label}: buff_spend is chosen as the instruction resolves (Core 355.17, 704.1)")
         elif "selection_identities" in item:
-            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering, damage_assignment or damage_division")
+            errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering, damage_assignment, damage_division or buff_spend")
         # selection-binding.v1: a decision that ESTABLISHES a selection later
         # instructions refer to carries the binding it was made under, so a
         # changed candidate set, rule, visibility or origin is refused by name

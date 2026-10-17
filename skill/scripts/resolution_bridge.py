@@ -190,6 +190,14 @@ def finalize_trigger(
     if engine_decisions is not None and engine_decisions.get("input_hash") != hash_value(effect_state):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "reason": "stale decision envelope"}
     declining = item.get("optional_at_finalize") is True and perform_optional_trigger is False
+    if item.get("optional_at_finalize") is True and perform_optional_trigger is None:
+        # 2026-10-16 package 14 (Hallowed Tomb, found playing set one through game_loop): whether an optional ability is
+        # performed is decided first (Core 383.3.a) - a declined one makes no choices, so none is asked before it; asked
+        # after its targets, an ability with no legal target could not even be declined
+        asked = finalize_oldest_pending(timing_state, perform_optional_trigger=None)
+        return {**base, "valid": True, "committed": False, "stage": "timing", "item_id": item["id"],
+                "reason": asked.get("reason_code") or "trigger_finalize_choice_required", "choices": asked.get("choices"),
+                "decision_controller": item["controller"], "rule_locators": ["Core 383.3.a"]}
     import trigger_cost as TC
     cost = TC.base_cost(program)
     # a program that chooses something may owe Deflect (809.1.c) once its choices are known; asked below, not here
@@ -1141,8 +1149,12 @@ def finalize_limited_play(
     if kind == "unit" and entry_location is None:
         # Core 355.2: a Unit's location is chosen in the play's own step 2 - now
         controller = item["controller"]
+        # 2026-10-16 package 14 (found by decision_space's differential): every Battlefield the card's own entry paths
+        # reach - the one predicate play_card checks (play_transaction.battlefield_entry_paths, DP-95: a permission such
+        # as Sneaky Deckhand's open Battlefield widens it, Core 355.2.b), not only the ones its controller controls
+        from play_transaction import battlefield_entry_paths
         candidates = [{"kind": "base"}] + [{"kind": "battlefield", "battlefield": b} for b in sorted(effect_state["battlefields"])
-                                           if effect_state["battlefields"][b].get("controller") == controller]
+                                           if any(battlefield_entry_paths(effect_state, card, controller, b).values())]
         return {**base, "valid": True, "committed": False, "stage": "choices", "item_id": item["id"],
                 "reason": "entry_location_required", "decision_controller": controller,
                 "location_candidates": candidates, "rule_locators": ["Core 355.2", "Core 355.2.a"]}

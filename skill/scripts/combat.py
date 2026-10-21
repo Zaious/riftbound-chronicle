@@ -47,6 +47,11 @@ def combined_input_hash(timing_state: dict[str, Any], effect_state: dict[str, An
     return hash_value({"timing_state": timing_state, "effect_state": effect_state})
 
 
+def _public_id(*states):
+    from effect_ir import public_id
+    return public_id(*states)
+
+
 def _base(step: str, timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
     return {"schema_version": COMBAT_STEP_VERSION, "step": step,
             "input_timing_state_hash": state_hash(timing_state), "input_effect_state_hash": hash_value(effect_state),
@@ -174,6 +179,8 @@ def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], eng
         chosen = candidates[0]
         selection = selection if selection != "none" else "sole_candidate"
     else:
+        from effect_ir import ledger_note
+        ledger_note("location", LOCATION_DECISION_ID)   # package 15: the Turn Player picks which opens first (461.1)
         entry = next((e for e in _ed.entries(engine_decisions, kind="location_selection") if e["decision_id"] == LOCATION_DECISION_ID), None)
         if entry is None:
             return {**base, "valid": True, "committed": False, "reason_code": "location_selection_required",
@@ -188,7 +195,8 @@ def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], eng
         selection = "turn_player_decision"
     present = units_at(effect_state, chosen)
     record = {
-        "combat_id": f"combat:{chosen}:{base['input_hash'][7:19]}",
+        # package 15 (GPT PACKAGE15 round 2, ruling 5): from what both players see, never the decks or hands
+        "combat_id": f"combat:{chosen}:{_public_id(timing_state, effect_state)}",
         "battlefield": chosen, "battlefield_identity": battlefield_identity(effect_state, chosen) or f"{chosen}@0",
         "status": "staged", "attacker": None, "defender": None, "participants": sorted(present),
         "triggered_identities": {"attacker": [], "defender": []},
@@ -498,9 +506,12 @@ def _preview_replacements(effect_state: dict[str, Any], unit: str, event_id: str
     ids = [r["replacement_id"] for r in applicable]
     if len(applicable) > 1:
         supplied = (order_map or {}).get(event_id)
+        from effect_ir import ledger_note
+        ledger_note("replacement", f"replacement:object_order:{'+'.join(ids)}:{event_id}")
         if supplied is None:
             return None, {"replacement_decision_required": True, "reason": f"{controller} orders the replacements {ids} that apply to damage assigned to {unit} (465.2.c.5)",
-                          "replacement_ids": ids, "event_ids": [event_id], "decision_controller": controller}
+                          "replacement_decision": "object_order", "replacement_ids": ids, "event_ids": [event_id],
+                          "decision_controller": controller}
         if sorted(supplied) != sorted(ids):
             return None, {"invalid": [f"replacement order for {event_id} must list exactly {sorted(ids)}"]}
         by_id = {r["replacement_id"]: r for r in applicable}
@@ -509,9 +520,12 @@ def _preview_replacements(effect_state: dict[str, Any], unit: str, event_id: str
     for descriptor in applicable:
         if descriptor.get("optional"):
             choice = ((choice_map or {}).get(descriptor["replacement_id"], {}) or {}).get(event_id)
+            from effect_ir import ledger_note
+            ledger_note("replacement", f"replacement:choice:{descriptor['replacement_id']}:{event_id}")
             if not isinstance(choice, bool):
                 return None, {"replacement_decision_required": True, "reason": f"{controller} decides whether the optional replacement {descriptor['replacement_id']} applies to damage assigned to {unit}",
-                              "replacement_ids": [descriptor["replacement_id"]], "event_ids": [event_id], "decision_controller": controller}
+                              "replacement_decision": "choice", "replacement_ids": [descriptor["replacement_id"]],
+                              "event_ids": [event_id], "decision_controller": controller}
             if choice is False:
                 continue
         chosen.append(descriptor)
@@ -686,7 +700,8 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
             if problem.get("unsupported"):
                 return _unsupported(base, problem["reason_code"], problem["reason"], ["Core 465.2.c.5", "Core 465.2.c.10"], unit=problem.get("unit"), replacement_ids=problem.get("replacement_ids", []))
             if problem.get("replacement_decision_required"):
-                return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": problem["reason"], "replacement_ids": problem["replacement_ids"],
+                return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": problem["reason"],
+                        "replacement_decision": problem.get("replacement_decision"), "replacement_ids": problem["replacement_ids"],
                         "event_ids": problem["event_ids"], "decision_controller": problem["decision_controller"], "rule_locators": ["Core 465.2.c.5"]}
             return _invalid(base, problem.get("invalid", ["assignment preview failed"]))
         public = [{k: v for k, v in c.items() if not k.startswith("_")} for c in candidates]
@@ -831,11 +846,14 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     by_object = {unit: list(sides_before["defender"]) for unit in sides_before["attacker"]}
     by_object.update({unit: list(sides_before["attacker"]) for unit in sides_before["defender"]})
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
-    cleanup = perform_lethal_cleanup(synced, attributed_sources=[], attributed_sources_by_object=by_object, replacement_event_order=order_map, replacement_choices=choice_map)
+    cleanup = perform_lethal_cleanup(synced, attributed_sources=[], attributed_sources_by_object=by_object, replacement_event_order=order_map, replacement_choices=choice_map,
+                                     later_iterations=_ed.later_iteration_maps(engine_decisions))
     if cleanup.get("committed") is not True:
         if cleanup.get("replacement_decision_required"):
             batch = cleanup.get("batch_result", {})
-            return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": cleanup.get("reason"), "replacement_ids": batch.get("replacement_ids", []),
+            return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": cleanup.get("reason"),
+                    "replacement_decision": batch.get("replacement_decision"), "cleanup_iteration": cleanup.get("cleanup_iteration", 0),
+                    "replacement_ids": batch.get("replacement_ids", []),
                     "event_ids": batch.get("event_ids", []), "decision_controller": batch.get("decision_controller"), "rule_locators": ["Core 323.5", "Core 370–373"]}
         return {**base, "valid": cleanup.get("valid", True), "committed": False, "unsupported": cleanup.get("unsupported", False), "reason": cleanup.get("reason", "lethal cleanup failed"), "cleanup_result": cleanup}
     working = cleanup["next_state"]
@@ -1035,7 +1053,7 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
         # 466.3.d.1: a Showdown and a Combat are staged again here — a new
         # Combat identity with no trigger history; opening it is the next
         # required procedure, so no discretionary action opens in between.
-        restaged = {"combat_id": f"combat:{record['battlefield']}:{base['input_hash'][7:19]}:restage", "battlefield": record["battlefield"],
+        restaged = {"combat_id": f"combat:{record['battlefield']}:{_public_id(timing_state, effect_state)}:restage", "battlefield": record["battlefield"],
                     "battlefield_identity": battlefield_identity(next_effect, record["battlefield"]) or f"{record['battlefield']}@0",
                     "status": "staged", "attacker": None, "defender": None, "participants": sorted(remaining),
                     "triggered_identities": {"attacker": [], "defender": []}, "restaged_from": record["combat_id"]}
@@ -1086,6 +1104,15 @@ def _declaration_errors(declaration: Any, effect_state: dict[str, Any]) -> list[
     if confirmation is not None and (not isinstance(confirmation, dict) or set(confirmation) != {"exhaust_confirmed"} or not isinstance(confirmation["exhaust_confirmed"], bool)):
         errors.append("declaration.cost_confirmation must be {exhaust_confirmed: bool}")
     return errors
+
+
+# package 15 (GPT PACKAGE15 ruling 2): standard_move's refusals that name one moved unit and read no other - each checked
+# for every unit the Move takes, so a set holding a unit refused so is refused - and those of the Move itself (its
+# destination; its timing carries `timing_verdict`), the same for every set. action_space's D(s) excludes a unit from the
+# sets only for these
+STANDARD_MOVE_UNIT_REFUSALS = frozenset({"unit_not_controlled_board_unit", "already_at_destination", "ganking_required",
+                                         "already_at_base", "move_restricted_by_location", "unit_exhausted"})
+STANDARD_MOVE_WHOLE_REFUSALS = frozenset({"destination_has_teammate_units", "destination_has_two_other_players"})
 
 
 def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -1170,7 +1197,7 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
     working = copy.deepcopy(effect_state)
     for unit in units:
         working["objects"][unit]["exhausted"] = True
-    program = {"schema_version": "riftbound-effect-program.v1", "ruleset": copy.deepcopy(effect_state["ruleset"]), "program_id": f"standard-move:{actor}:{base['input_hash'][7:19]}",
+    program = {"schema_version": "riftbound-effect-program.v1", "ruleset": copy.deepcopy(effect_state["ruleset"]), "program_id": f"standard-move:{actor}:{_public_id(timing_state, effect_state, declaration)}",
                "controller": actor, "effects": [{"op": "move_board_object", "effect_id": f"mv:{unit}", "object_id": unit, "destination": dict(move_destination)} for unit in units]}
     moved = apply_program(working, program)
     if moved.get("committed") is not True:
@@ -1180,8 +1207,19 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
     for event in moved.get("events") or []:
         if event.get("kind") == "moved":
             event["move_action"] = program["program_id"]
-    cleanup = perform_lethal_cleanup(moved["next_state"])
+    # package 15 (GPT PACKAGE15 round 3): the Move's Cleanup is given the Standard Move's own decisions - its Replacement
+    # Effects' choices, each follow-up iteration its own (later_iteration_maps) - and a choice it needs is asked by name
+    order_map, choice_map = _ed.replacement_maps(engine_decisions)
+    cleanup = perform_lethal_cleanup(moved["next_state"], replacement_event_order=order_map, replacement_choices=choice_map,
+                                     later_iterations=_ed.later_iteration_maps(engine_decisions))
     if cleanup.get("committed") is not True:
+        if cleanup.get("replacement_decision_required"):
+            batch = cleanup.get("batch_result", {})
+            return {**base, "valid": True, "committed": False, "replacement_decision_required": True,
+                    "reason": cleanup.get("reason"), "replacement_decision": batch.get("replacement_decision"),
+                    "cleanup_iteration": cleanup.get("cleanup_iteration", 0), "replacement_ids": batch.get("replacement_ids", []),
+                    "event_ids": batch.get("event_ids", []), "decision_controller": batch.get("decision_controller"),
+                    "rule_locators": ["Core 323.5", "Core 370–373"]}
         return {**base, "valid": cleanup.get("valid", True), "committed": False, "unsupported": cleanup.get("unsupported", False), "reason": cleanup.get("reason", "cleanup failed"), "cleanup_result": cleanup}
     triggers = [dict(t) for t in moved.get("pending_triggers", [])]
     for index, trigger in enumerate(triggers):
@@ -1202,7 +1240,7 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
         try:
             watch_triggers, final_effect = watchers.schedule_live(
                 final_effect, watched_events, turn_id=final_effect.get("turn_id", "turn-0"),
-                batch_label=f"standard-move:{actor}:{base['input_hash'][7:19]}",
+                batch_label=f"standard-move:{actor}:{_public_id(timing_state, effect_state, declaration)}",
                 turn_player=timing_state.get("turn_player"))
         except watchers.WatchUnsupported as exc:
             return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "watchers",

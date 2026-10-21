@@ -424,6 +424,8 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
     if len(live) == 1:
         chosen, selection = live[0], "sole_candidate"
     else:
+        from effect_ir import ledger_note
+        ledger_note("location", SHOWDOWN_LOCATION_DECISION_ID)   # package 15: the Turn Player picks where (323.12)
         entry = next((e for e in _ed.entries(engine_decisions, kind="location_selection") if e["decision_id"] == SHOWDOWN_LOCATION_DECISION_ID), None)
         if entry is None:
             return {**base, "valid": True, "committed": False, "reason_code": "location_selection_required",

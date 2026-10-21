@@ -85,6 +85,8 @@ def catalogue() -> dict:
             "Champ": {"object": {"kind": "unit", "printed_cost": {"energy": 1, "power": {}}, "base_might": 2, "domains": ["fury"]}},
             "Sneak": {"object": spell(hidden=True), "programs": {"play": {"effects": [ZAP]}}},
             "Pawn": {"object": {"kind": "unit", "printed_cost": {"energy": 1, "power": {}}, "base_might": 1, "domains": ["calm"]}},
+            "Guard": {"object": {"kind": "unit", "printed_cost": {"energy": 1, "power": {}}, "base_might": 1, "domains": ["calm"],
+                                 "keywords": ["deflect"]}},
             "Totem": {"object": {"kind": "gear", "printed_cost": {"energy": 1, "power": {}}, "domains": ["calm"]},
                       "activated_abilities": {
                           "a1": {"cost": {"energy": 0, "power": {}, "exhaust": True}, "effect_program_id": "draw"},
@@ -290,7 +292,65 @@ def main() -> int:
         completeness={"hands": "complete", "board": "complete", "resources": "complete", "pending_decisions": "complete"}), "p1")
     if family(plain, "activate_ability").get("reason_code") != "capability_missing:activated_ability_catalogue":
         fail("F4 the state", f"without a catalogue: {family(plain, 'activate_ability')}")
+    f9_refused_targets(results)
+    f10_deflect(cat)
     return report()
+
+
+def f10_deflect(cat) -> None:
+    """F10 (package 15, found by the corpus: Cleave choosing a Unit with [Deflect]): choosing an opposing Unit with
+    Deflect 1 costs [A] more (Core 809.1.c) - an event of the choice the procedure names, its values by the rule. With
+    Power of one Domain left the payment is forced and no decision is part of the play; with two, each Domain is a play.
+    Both equal D(s)."""
+    for power, want in (({"fury": 1}, 0), ({"fury": 1, "calm": 1}, 2)):
+        state = environment(cat, [("z", "Zap", "p1", "hand"), ("b", "Guard", "p2", "bf1")])
+        state["players"]["p1"]["resources"] = {"energy": 3, "power": dict(power)}
+        got = enumerate_for(state, cat)
+        diff = A.differential("play_card", fixture(), state, "p1", got, cat)
+        allocations = [d for a in A.enumerated_actions(got, "play_card") if a["declaration"]["card"] == "z"
+                       for d in a.get("decisions") or [] if d["kind"] == "resource_allocation"]
+        if not diff["complete"] or len(allocations) != want:
+            fail("F10 deflect", f"Power {power}: {diff.get('stopped')} missing {len(diff.get('missing') or [])} extra "
+                                f"{len(diff.get('extra') or [])}, {len(allocations)} allocations (want {want})")
+        counts[f"F10 {len(power)} domain(s)"] = len(allocations)
+
+
+def f9_refused_targets(results) -> None:
+    """F9 (package 15, GPT PACKAGE15 ruling 2): the target screening's refusals are the procedure's own - for each
+    selector and each object, play_transaction.refused_targets names it exactly when _check_play_targets refuses it as
+    that selector's choice (target_illegal_at_play); a selector that does not target, and one that reads another
+    instruction's selection, refuse none (the check does not test them at play)."""
+    import effect_ir
+    import play_transaction as PT
+    selectors = {
+        "a unit": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit"},
+        "a friendly unit": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly"},
+        "an enemy unit": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "enemy"},
+        "a card in a hand": {"decision_ref": "t", "chosen_zone_class": "hand"},
+        "another's selection": {"decision_ref": "t", "selection_ref": "earlier"},
+    }
+    compared = 0
+    for board in ("targets", "plays", "abilities"):
+        state = results[board][0]
+        for name, template in selectors.items():
+            program = {"schema_version": "riftbound-effect-program.v1", "ruleset": state["ruleset"], "program_id": "f9",
+                       "controller": "p1", "effects": [{"op": "deal_damage", "effect_id": "dmg", "amount": 1, "target": template}]}
+            claimed = PT.refused_targets(state, "p1", program, template)
+            checked = set()
+            for object_id in sorted(state["objects"]) + sorted(state["battlefields"]):
+                envelope ={"schema_version": "engine-decisions.v1", "input_hash": effect_ir.hash_value(state),
+                            "decisions": [A._entry("t", "target_selection", [object_id], "p1", state)]}
+                try:
+                    PT._check_play_targets(state, "p1", program, envelope)
+                except PT.PlayError as exc:
+                    if exc.reason_code == "target_illegal_at_play":
+                        checked.add(object_id)
+                compared += 1
+            if claimed != checked:
+                fail("F9 refused", f"{board}, {name}: refused_targets {sorted(claimed)} but the check refuses {sorted(checked)}")
+            if name in ("another's selection",) and claimed:
+                fail("F9 refused", f"{board}, {name}: a selection read at resolution refuses {sorted(claimed)} at play")
+    counts["F9 compared"] = compared
 
 
 def _blind(state, cat):

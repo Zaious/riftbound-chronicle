@@ -72,9 +72,10 @@ SOURCES = {"hand": "play_skeletons", "champion_zone": "play_skeletons", "facedow
            "banishment": "a limited play only (Core 419.3): decision_space, at its finalization"}
 REQUESTS_LEFT = {
     "add_window_confirmation_required": "never asked: every declaration closes the Add window (payment_context)",
-    "discount_order_required": "a catalogued card's cost is its printed one; an order of two discounts that differ is "
-                               "declared in cost.discount_order, which a catalogued play does not carry - unproved by "
-                               "name if asked",
+    # package 15: answered as a field of the declaration, not a decision - the play again with each order of the
+    # discounts the procedure names (_discount_orders; Core 356.4.c.1, 356.4.d.1, 356.4.e)
+    "discount_order_required": "an order of the discounts that apply is declared in cost.discount_order: the play is "
+                               "tried again with each order of the discounts the procedure names (discount_ids)",
 }
 # Chance inside an action (a cost that recycles two or more cards to a Main Deck, Core 416.5) is nature's, not a choice
 # of the action: whether the action is legal does not depend on the order, so discovery checks it under the cards'
@@ -244,10 +245,12 @@ def _subsets(items: list[str], form: str, n: int | None) -> list[list[str]]:
         sizes = list(range(0, len(items) + 1))
     else:
         raise Unproved(f"a selection counted {form!r}")
-    out = [list(c) for size in sizes for c in itertools.combinations(sorted(items), size)]
-    if len(out) > CALL_CAP:
-        raise Unproved(f"{len(out)} selections exceed {CALL_CAP}")
-    return out
+    import math
+    # 2026-10-18 package 15: counted before any is built (building first exhausted the machine's memory)
+    count = sum(math.comb(len(items), size) for size in sizes)
+    if count > CALL_CAP:
+        raise Unproved(f"{count} selections exceed {CALL_CAP}")
+    return [list(c) for size in sizes for c in itertools.combinations(sorted(items), size)]
 
 
 def domain(result: dict[str, Any], state: dict[str, Any], declaration: dict[str, Any], program: dict[str, Any] | None,
@@ -267,9 +270,11 @@ def domain(result: dict[str, Any], state: dict[str, Any], declaration: dict[str,
             if "_count" in template:
                 low, high = template["_count"]
                 high = len(options) if high is None else min(high, len(options))
+                import math
+                count = sum(math.comb(len(options), size) for size in range(low, high + 1))
+                if count > CALL_CAP:
+                    raise Unproved(f"target {decision_id!r}: {count} sets exceed {CALL_CAP}")
                 chosen_sets = [list(c) for size in range(low, high + 1) for c in itertools.combinations(sorted(options), size)]
-                if len(chosen_sets) > CALL_CAP:
-                    raise Unproved(f"target {decision_id!r}: {len(chosen_sets)} sets exceed {CALL_CAP}")
             else:
                 chosen_sets = [[option] for option in options]
             for chosen in chosen_sets:
@@ -304,6 +309,9 @@ def domain(result: dict[str, Any], state: dict[str, Any], declaration: dict[str,
                       [{"value": f"battlefield:{bf}"} for bf in sorted(state.get("battlefields") or {})]
         elif kind == "trigger_order":
             # Core 383.3.d: every order of the abilities the play's costs triggered together
+            import math
+            if math.factorial(len(result.get("trigger_ids") or [])) > CALL_CAP:
+                raise Unproved(f"{math.factorial(len(result.get('trigger_ids') or []))} trigger orders exceed {CALL_CAP}")
             per_id.append([{"decision_id": decision_id, "stage": "resolution", "kind": kind, "controller": actor,
                             "value": list(order)} for order in itertools.permutations(result.get("trigger_ids") or [])])
             continue
@@ -312,6 +320,9 @@ def domain(result: dict[str, Any], state: dict[str, Any], declaration: dict[str,
             if listing is None:
                 raise Unproved(f"ordering {decision_id!r} carries no cards")
             bound = {o["object_id"]: o.get("identity") or _identity(state, o["object_id"]) for o in listing}
+            import math
+            if math.factorial(len(bound)) > CALL_CAP:
+                raise Unproved(f"{math.factorial(len(bound))} orders of {len(bound)} cards exceed {CALL_CAP}")
             entries = [{"value": list(order), "selection_identities": {c: bound[c] for c in order}}
                        for order in itertools.permutations(sorted(bound))]
             if len(entries) > CALL_CAP:
@@ -321,8 +332,11 @@ def domain(result: dict[str, Any], state: dict[str, Any], declaration: dict[str,
 
 
 def discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: dict[str, Any],
-             program: dict[str, Any] | None, actor: str, budget: list[int]) -> tuple[list[list[dict]], list[str]]:
-    """(every decision list with which the procedure accepts the declaration, the reasons it refused the others)."""
+             program: dict[str, Any] | None, actor: str, budget: list[int],
+             orders: set | None = None) -> tuple[list[list[dict]], list[str]]:
+    """(every decision list with which the procedure accepts the declaration, the reasons it refused the others).
+    A branch whose cost waits for the player's order of its discounts (Core 356.4.c.1) adds the discounts to `orders`
+    (package 15): the order is a field of the declaration, so the caller tries the declaration with each order."""
     at_play = None if _reads_receipt(program) else program
     accepted, refused = [], []
     # each branch with its own receipts: what chance orders depends on what was chosen before it
@@ -364,6 +378,9 @@ def discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: d
                 refused.append(f"no_legal_{DECIDED[reason]}")     # a choice with nothing legal to choose (Core 355.8)
             for combination in itertools.product(*per_id):
                 stack.append((decisions + list(combination), receipts))
+        elif reason == "discount_order_required" and orders is not None and got.get("discount_ids") \
+                and not (declaration.get("cost") or {}).get("discount_order"):
+            orders.add(tuple(got["discount_ids"]))
         elif reason in PT.DECISION_REASONS or got.get("unsupported"):
             raise Unproved(f"{declaration['play_id']}: {reason} ({(got.get('reason') or '')[:120]})")
         else:
@@ -371,16 +388,41 @@ def discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: d
     return accepted, refused
 
 
+def _discount_orders(declaration: dict[str, Any], orders: set) -> list[dict[str, Any]]:
+    """The declaration with each order of the discounts that apply declared (cost.discount_order; Core 356.4.c.1,
+    356.4.d.1, 356.4.e) - for each set of discounts a branch of it waited on, every order counted first."""
+    import math
+    out = []
+    for ids in sorted(orders):
+        if math.factorial(len(ids)) > CALL_CAP:
+            raise Unproved(f"{math.factorial(len(ids))} orders of the discounts {list(ids)} exceed {CALL_CAP}")
+        out += [{**declaration, "cost": {**declaration["cost"], "discount_order": list(order)}}
+                for order in itertools.permutations(ids)]
+    return out
+
+
 def enumerate_family(family: str, timing_state: dict[str, Any], state: dict[str, Any], actor: str,
                      catalogue: dict[str, Any] | None) -> dict[str, Any]:
     """{status: enumerated | unproved, actions, excluded, reason} for play_card or activate_ability."""
+    # package 15: every skeleton is tried on this one unchanged state - held frozen (effect_ir.frozen_inputs)
+    with IR.frozen_inputs(state):
+        return _enumerate_family(family, timing_state, state, actor, catalogue)
+
+
+def _enumerate_family(family: str, timing_state: dict[str, Any], state: dict[str, Any], actor: str,
+                      catalogue: dict[str, Any] | None) -> dict[str, Any]:
     skeletons = play_skeletons(state, catalogue, actor) if family == "play_card" else ability_skeletons(state, catalogue, actor)
     actions: dict[str, dict[str, Any]] = {}
     excluded: dict[str, list[str]] = {}
     budget = [0]
     try:
-        for declaration, program in skeletons:
-            accepted, refused = discover(timing_state, state, declaration, program, actor, budget)
+        work = list(skeletons)
+        while work:
+            declaration, program = work.pop(0)
+            orders: set = set()
+            accepted, refused = discover(timing_state, state, declaration, program, actor, budget, orders)
+            # package 15: a branch that waited on the order of its discounts - the declaration again, with each order
+            work[:0] = [(ordered, program) for ordered in _discount_orders(declaration, orders)]
             for decisions in accepted:
                 action = {"kind": family, "declaration": declaration, "decisions": decisions}
                 actions.setdefault(AS.action_key_hash(action), action)

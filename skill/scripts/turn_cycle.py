@@ -53,6 +53,12 @@ PHASE_TRIGGER_FIELDS = {"beginning": ("beginning_phase_triggers", "your_beginnin
                         "main": ("main_phase_triggers", "your_main_phase", ["Core 316.2", "Core 316.4", "Core 383.1"])}
 
 
+def _public_id(*states):
+    # package 15 (GPT PACKAGE15 round 2, ruling 5): an engine-made id from what both players see
+    from effect_ir import public_id
+    return public_id(*states)
+
+
 def _base(step: str, timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
     return {**_combat_base(step, timing_state, effect_state), "schema_version": TURN_STEP_VERSION}
 
@@ -119,6 +125,55 @@ def first_turn_process(timing_state: dict[str, Any], effect_state: dict[str, Any
 
 # ----------------------------------------------------------- turn transition --
 
+MULLIGAN_SPEC = {"from": "hand", "selection_kind": "unordered_set", "count": {"up_to": 2}, "by": "controller",
+                 "visibility": "private_to_chooser"}
+
+
+def mulligan_decision_id(player: str) -> str:
+    return f"mulligan:{player}"
+
+
+def perform_mulligan(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """2026-10-18 package 15 (C2): Core 117 - the next player in mulligans_pending chooses up to two cards of their hand
+    (117.1: a choice private to them, card_selection mulligan:<player>), draws as many (117.2), then recycles the cards
+    set aside (117.3) - two at once go to the bottom of the Main Deck in a random order (416.5: a randomization receipt).
+    The cards chosen stay in the hand while the draw is made (it reads only the deck's top) and are recycled from there:
+    the same cards end in the same places as setting them aside first."""
+    import effect_ir as IR
+    base = _base("mulligan", timing_state, effect_state)
+    if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
+        return problem
+    queue = list(timing_state.get("mulligans_pending") or [])
+    if timing_state.get("phase") != "setup" or not queue:
+        return _refuse(base, "no_mulligan_pending", "the Mulligan is Setup's, for a player whose Mulligan is to come (Core 117)", ["Core 117"])
+    player = queue[0]
+    try:
+        chosen, meta = IR.resolve_choice(effect_state, dict(MULLIGAN_SPEC), decision_ref=mulligan_decision_id(player),
+                                         decisions=engine_decisions, controller=player)
+    except IR.ChoiceRequired as exc:
+        return {**base, "valid": True, "committed": False, "reason_code": exc.reason_code, "reason": str(exc),
+                "decision_ids": list(exc.decision_ids), "decision_controller": exc.controller, "choice": exc.summary,
+                "rule_locators": ["Core 117.1"]}
+    except (IR.IllegalDecision, IR.IllegalOperation, ValueError) as exc:
+        return _refuse(base, "mulligan_choice_illegal", str(exc), ["Core 117.1"])
+    working = copy.deepcopy(effect_state)
+    trace: dict[str, Any] = {"player": player, "set_aside": len(chosen)}
+    if chosen:
+        try:
+            working, drawn = IR.perform_draw(working, player, len(chosen), decisions=engine_decisions,
+                                             operation_prefix=f"mulligan-draw:{player}")
+            working, recycled = IR._recycle_batch(working, list(chosen), player, engine_decisions,
+                                                  f"mulligan-recycle:{player}", "mulligan")
+        except IR.ExternalInputRequired as exc:
+            return {**base, "valid": True, "committed": False, "reason_code": exc.reason_code, "reason": str(exc),
+                    "decision_ids": list(exc.decision_ids), "decision_controller": exc.controller, **IR.chance_fields(exc),
+                    "rule_locators": ["Core 117.3", "Core 416.5"]}
+        trace.update({"drawn": drawn.get("drawn") if isinstance(drawn, dict) else None, "recycle": recycled})
+    next_timing = copy.deepcopy(timing_state)
+    next_timing["mulligans_pending"] = queue[1:]
+    return _commit(base, next_timing, working, trace=trace, locators=["Core 117", "Core 117.1", "Core 117.2", "Core 117.3"])
+
+
 def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
     """Core 317.3 / 315: start a turn. From `setup` the selected first player
     keeps the turn; from an expired Ending Phase the next player in Turn Order
@@ -134,6 +189,8 @@ def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engin
         return _refuse(base, code, "a turn begins with an empty chain, no outstanding task and no Showdown or Combat (317.3)", ["Core 317.3"])
     taken = dict(timing_state.get("turns_taken") or {p: 0 for p in timing_state["players"]})
     turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
+    if phase == "setup" and timing_state.get("mulligans_pending"):
+        return _refuse(base, "mulligans_pending", "play begins after every player's Mulligan (Core 117, 118)", ["Core 117", "Core 118"])
     if phase == "setup":
         if any(taken.values()) or timing_state.get("ending_step"):
             return _refuse(base, "setup_already_left", "setup is the state before the first turn; turns have already been taken", ["Core 315", "Core 317.3"])
@@ -242,7 +299,7 @@ def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], 
     if events:
         try:
             woken, counted = watchers.schedule_live(next_effect, events, turn_id=next_effect.get("turn_id", DEFAULT_TURN_ID),
-                                                    batch_label=f"awaken:{base['input_hash'][7:19]}", turn_player=player)
+                                                    batch_label=f"awaken:{_public_id(timing_state, effect_state)}", turn_player=player)
         except watchers.WatchUnsupported as exc:
             return _unsupported(base, exc.reason_code, str(exc), ["Core 315.1.b", "Core 383.1"])
         occurrences = lambda s: {k: v for k, v in (s.get("watch_occurrences") or {}).items() if v}
@@ -250,7 +307,7 @@ def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], 
             next_effect = counted
         if woken:
             for trigger in woken:
-                trigger["batch_id"], trigger["batch_sequence"] = f"watch:awaken:{base['input_hash'][7:19]}", 0
+                trigger["batch_id"], trigger["batch_sequence"] = f"watch:awaken:{_public_id(timing_state, effect_state)}", 0
             if failure := _settle_trigger_orders(woken, engine_decisions, base):
                 return failure
             scheduled = schedule_triggered_items(next_timing, woken)
@@ -522,7 +579,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             return _invalid(base, [f"step {step}: {result.get('reason')}"])
         if result.get("unsupported"):
             return _unsupported(base, result.get("reason_code", "unsupported_cleanup_step"), f"step {step}: {result.get('reason')}", result.get("rule_locators", []), cleanup_step=step)
-        return {**base, "valid": True, "committed": False, "cleanup_step": step, **{k: v for k, v in result.items() if k in {"reason_code", "reason", "decision_ids", "decision_controller", "options", "batch_id", "trigger_ids", "rule_locators", "replacement_decision_required", "replacement_ids", "event_ids"}}}
+        return {**base, "valid": True, "committed": False, "cleanup_step": step, **{k: v for k, v in result.items() if k in {"reason_code", "reason", "decision_ids", "decision_controller", "options", "batch_id", "trigger_ids", "rule_locators", "replacement_decision_required", "replacement_decision", "cleanup_iteration", "replacement_ids", "event_ids"}}}
 
     for index in range(CLEANUP_ITERATION_BOUND):
         before = snapshot(working_t, working_e)
@@ -551,10 +608,13 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             working_t, working_e = synced["next_timing_state"], synced["next_effect_state"]
             record["steps"].append({"step": 2, "outcome": "synchronized", "triggers": synced["trace"].get("scheduled_triggers", [])})
         # 3a / 3b — Core 323.3–323.5
-        lethal = perform_lethal_cleanup(working_e, replacement_event_order=order_map, replacement_choices=choice_map)
+        lethal = perform_lethal_cleanup(working_e, replacement_event_order=order_map, replacement_choices=choice_map,
+                                        later_iterations=_ed.later_iteration_maps(engine_decisions))
         if lethal.get("committed") is not True:
             if lethal.get("replacement_decision_required"):
                 return {**base, "valid": True, "committed": False, "cleanup_step": "3a", "replacement_decision_required": True, "reason": lethal.get("reason"),
+                        "replacement_decision": lethal.get("batch_result", {}).get("replacement_decision"),
+                        "cleanup_iteration": lethal.get("cleanup_iteration", 0),
                         "replacement_ids": lethal.get("batch_result", {}).get("replacement_ids", []), "event_ids": lethal.get("batch_result", {}).get("event_ids", []), "decision_controller": lethal.get("batch_result", {}).get("decision_controller")}
             if lethal.get("unsupported"):
                 return _unsupported(base, "lethal_cleanup_unsupported", f"step 3: {lethal.get('reason')}", ["Core 323.4", "Core 323.5"], cleanup_step="3")
@@ -571,13 +631,13 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             try:
                 watch_triggers, working_e = watchers.schedule_live(
                     working_e, list(lethal["events"]), turn_id=working_e.get("turn_id", DEFAULT_TURN_ID),
-                    batch_label=f"cleanup:{base['input_hash'][7:19]}:{index}")
+                    batch_label=f"cleanup:{_public_id(timing_state, effect_state)}:{index}")
             except watchers.WatchUnsupported as exc:
                 return _unsupported(base, exc.reason_code, f"step 3: {exc}", ["Core 323.4", "Core 428.1.a.2"], cleanup_step="3")
             watch_batch = max((t["batch_sequence"] for t in death_triggers), default=index * 100 - 1) + 1
             for trigger in watch_triggers:
                 trigger["batch_sequence"] = watch_batch
-                trigger["batch_id"] = f"watch:cleanup:{base['input_hash'][7:19]}:{index}"
+                trigger["batch_id"] = f"watch:cleanup:{_public_id(timing_state, effect_state)}:{index}"
         if failure := _settle_trigger_orders(death_triggers + watch_triggers, engine_decisions, base):
             return failure
         if death_triggers or watch_triggers:

@@ -115,11 +115,13 @@ def _named(value: Any, out: set) -> set:
     return out
 
 
-def actor_view(effect_state: dict[str, Any], actor: str, *, names_out: dict[str, str] | None = None) -> dict[str, Any]:
+def actor_view(effect_state: dict[str, Any], actor: str, *, names_out: dict[str, str] | None = None,
+               seen: set | frozenset = frozenset()) -> dict[str, Any]:
     """The state as the player sees it: every card in PRIVATE_DIMENSIONS (private_objects) a mask (closed_environment.mask)
     - its owner, controller, place and identity token kept, nothing else. A function of what the player sees only.
     `names_out`, when given, receives {original id: place name} (the trusted verifier's, to read a view's answer back)."""
-    hidden = private_objects(effect_state, actor)
+    # `seen` (package 15): cards the player sees when they decide - shown to them by the request itself - are not masked
+    hidden = {o: d for o, d in private_objects(effect_state, actor).items() if o not in seen}
     # each unseen card is named by its place, not by its id - an id or an order could carry what was seen before; the
     # k-th unseen card of a zone is hidden:<whose>:<zone>:<k>, in the zone's order of unseen slots (a shown card keeps
     # its place and its id)
@@ -167,11 +169,21 @@ def _procedure_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any
     problems = CE.validate_catalogue(catalogue) or CE.environment_problems(effect_state, catalogue)
     if problems:
         why.append(f"not_an_environment_state:{problems[0]}")
-    names: dict[str, str] = {}
-    view = actor_view(effect_state, actor, names_out=names)
-    back = {name: original for original, name in names.items()}
     true = DS.decision_point(timing_state, effect_state, catalogue, made)
-    seen = DS.decision_point(timing_state, view, catalogue, _renamed(made, names) if made else None)
+    shown: set = set()
+    if true["status"] == "enumerated" and true.get("decider") == actor and true.get("request") is not None:
+        step = DS._run(timing_state, effect_state, catalogue, made)
+        request = step.get("request") or {}
+        shown = {o.get("object_id") for o in list(((request.get("payload") or {}).get("choice") or {}).get("options") or [])
+                 + [o for options in (request.get("private_options") or {}).values() for o in options]}
+    # package 15 (found by the corpus: Baited Hook looks at five cards and then picks among them): the decider's view at
+    # the point's start, with the cards the request shows the decider unmasked - they are what the decider sees when
+    # deciding; every other unseen card stays masked
+    names: dict[str, str] = {}
+    view = actor_view(effect_state, actor, names_out=names, seen=shown)
+    back = {name: original for original, name in names.items()}
+    with IR.frozen_inputs(view):
+        seen = DS.decision_point(timing_state, view, catalogue, _renamed(made, names) if made else None)
     point = {"procedure": procedure.get("procedure"), "label": true.get("label"), "status": true["status"],
              "request": true.get("request"), "decider": true.get("decider")}
     keys: list[str] = []
@@ -180,16 +192,18 @@ def _procedure_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any
     elif true.get("decider") == actor:
         keys = sorted(option_key(true, o) for o in true["options"])
         hidden = private_objects(effect_state, actor)
-        step = DS._run(timing_state, effect_state, catalogue, made)
-        request = step.get("request") or {}
-        shown = {o.get("object_id") for o in list(((request.get("payload") or {}).get("choice") or {}).get("options") or [])
-                 + [o for options in (request.get("private_options") or {}).values() for o in options]}
         named = set()
         for option in true["options"]:
             named |= _named(option["answer"]["decisions"], set())
         for object_id in sorted((named & set(hidden)) - shown):
             why.append(f"leaks:{object_id} ({hidden[object_id]}) - an option names it, and the request does not show it")
-    if true["status"] == "enumerated":
+    # package 15 (found by the corpus: a Combat's Deal step): a point no player decides at - the procedure commits with no
+    # request - has no options to hold to the decider's view (its own bindings, a receipt bound to the true state's hash,
+    # never hold on a masked copy)
+    # (and only the decider's: a player who decides nothing here has no options that could depend on what they do not see)
+    if true["status"] == "enumerated" and true.get("request") is not None and true.get("decider") == actor:
+        # (an engine-made id - a Combat's, a batch's - is made from the public projection, effect_ir.public_id: the view
+        # makes the very same one, and the options are compared as they are; GPT PACKAGE15 round 2 ruling 5)
         seen_keys = sorted(option_key(seen, {"answer": _renamed(o["answer"], back)}) for o in seen.get("options") or []) \
             if seen.get("decider") == actor else []
         if seen["status"] != "enumerated" or seen.get("decider") != true.get("decider") \
@@ -209,6 +223,14 @@ def _procedure_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any
 
 def state_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any], actor: str,
                   catalogue: dict[str, Any], made: dict[str, Any] | None = None) -> dict[str, Any]:
+    # 2026-10-18 package 15: the state (and below, the player's view of it) is read many times over and never changed -
+    # held frozen (effect_ir.frozen_inputs: its hash and derived characteristics computed once, checked unchanged after)
+    with IR.frozen_inputs(effect_state):
+        return _state_receipt(timing_state, effect_state, actor, catalogue, made)
+
+
+def _state_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any], actor: str,
+                   catalogue: dict[str, Any], made: dict[str, Any] | None = None) -> dict[str, Any]:
     why: list[str] = []
     procedure = rules_core.next_procedure(timing_state)
     if procedure.get("discretionary_actions_allowed") is not True:
@@ -219,7 +241,8 @@ def state_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any], ac
     # the published set is the view's (information flow: no private value reaches it); the true state's set is
     # computed only to check it is the same
     view = actor_view(effect_state, actor)
-    result, keys = action_keys(timing_state, view, actor, catalogue)
+    with IR.frozen_inputs(view):
+        result, keys = action_keys(timing_state, view, actor, catalogue)
     _, true_keys = action_keys(timing_state, effect_state, actor, catalogue)
     families = {}
     for record in result["enumeration"]["families"]:

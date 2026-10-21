@@ -69,6 +69,9 @@ def dispatch_program(registry: dict[str, Any], chain_item: dict[str, Any]) -> tu
     return program, None
 
 
+from effect_ir import public_id  # noqa: E402 - package 15: engine-made ids from public information only
+
+
 def bind_source_identity(program: dict[str, Any], chain_item: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     """The program as it runs for this chain item: carrying the identity its source had
     when the trigger condition was met, which the chain item recorded.
@@ -180,11 +183,9 @@ def finalize_trigger(
     if program.get("source_object") is not None and program["source_object"] != item.get("source_object"):
         return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], "reason": "effect_program_source_mismatch"}
     registered = program
-    program, refusal = bind_source_identity(program, item)
+    program, refusal = finalization_program(program, item, effect_state)
     if refusal is not None:
         return {**base, "valid": True, "committed": False, "stage": "program_dispatch", "item_id": item["id"], **refusal}
-    if item.get("facedown_battlefield"):
-        program = _facedown_restricted(program, item, effect_state)
     if decision_errors := _ed.validate_engine_decisions(engine_decisions):
         return {**base, "valid": False, "committed": False, "stage": "engine_decision", "errors": decision_errors, "reason": "; ".join(decision_errors)}
     if engine_decisions is not None and engine_decisions.get("input_hash") != hash_value(effect_state):
@@ -507,6 +508,19 @@ def _swap_players(value: Any, a: str, b: str) -> Any:
     return value
 
 
+def finalization_program(program: dict[str, Any], item: dict[str, Any], effect_state: dict[str, Any]
+                         ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """The program a triggered ability is finalized with - its source's recorded identity bound (bind_source_identity),
+    restricted when it came from facedown (_facedown_restricted) - or the refusal. One function, so what decision_space
+    screens a target against is what the finalization checks it against (package 15, GPT PACKAGE15 ruling 2)."""
+    program, refusal = bind_source_identity(program, item)
+    if refusal is not None:
+        return None, refusal
+    if item.get("facedown_battlefield"):
+        program = _facedown_restricted(program, item, effect_state)
+    return program, None
+
+
 def _facedown_restricted(program: dict[str, Any], item: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
     """The on-play trigger of a permanent that came from facedown (Core 2026-10-09 811.1.d.3, 811.1.d.3.a): its targets at the
     battlefield it was played to; its source no longer that object on the board, it reads no battlefield and every
@@ -780,6 +794,7 @@ def resolve_with_program(
                 **base, "valid": True, "committed": False, "stage": "permanent_entry",
                 "replacement_decision_required": True,
                 "reason": entry_trace["reason"],
+                "replacement_decision": entry_trace.get("replacement_decision"),
                 "replacement_ids": entry_trace["replacement_ids"],
                 "event_ids": entry_trace["event_ids"],
                 "decision_controller": entry_trace["decision_controller"],
@@ -883,6 +898,7 @@ def resolve_with_program(
         attributed_sources=[program.get("source_object")] if program.get("source_object") else [],
         replacement_event_order=order_map,
         replacement_choices=choice_map,
+        later_iterations=_ed.later_iteration_maps(engine_decisions),
     )
     if cleanup_result.get("committed") is not True:
         return {
@@ -935,7 +951,7 @@ def resolve_with_program(
     # batch is the Cleanup iteration that killed the object; for a Kill
     # instruction (428.5.b) it is the instruction's own batch.
     cleanup_kill_iteration = {e.get("object_id"): e.get("cleanup_iteration") for e in cleanup_result.get("trace", []) if e.get("op") == "kill" and e.get("outcome") in {"applied", "augmented_applied"}}
-    cleanup_prefix = f"lethal-cleanup:{hash_value(after_effect).split(':', 1)[1][:12]}"
+    cleanup_prefix = f"lethal-cleanup:{public_id(after_effect)}"
     all_batches = effect_triggers + cleanup_triggers
 
     def batch_for(killed_ids: list[str], event: dict[str, Any]) -> tuple[int, str]:
@@ -1146,6 +1162,10 @@ def finalize_limited_play(
             return {**base, "valid": True, "committed": False, "stage": "choices", "item_id": item["id"],
                     "reason": "entry_location_named_by_the_effect", "location": named, "rule_locators": ["Core 355.2.b"]}
         entry_location = named
+    if kind == "unit" and named is None:
+        # package 15 (GPT PACKAGE15 ruling 3): a Unit the effect does not place is placed by its controller (355.2)
+        from effect_ir import ledger_note
+        ledger_note("entry_location", f"entry_location:{item['id']}")
     if kind == "unit" and entry_location is None:
         # Core 355.2: a Unit's location is chosen in the play's own step 2 - now
         controller = item["controller"]
@@ -1193,7 +1213,11 @@ def finalize_limited_play(
         return {**base, "valid": True, "committed": False, "stage": played.get("stage"), "item_id": item["id"],
                 "reason": played.get("reason_code"), "message": played.get("reason"),
                 "unsupported": bool(played.get("unsupported")),
-                **{k: played[k] for k in ("decision_ids", "decision_controller") if k in played},
+                # package 15 (found by the corpus survey: a card banished as it was seen, played for [A] - the
+                # allocation's options were dropped here, so no one could say how to pay): what the play's request
+                # offers travels with it, as play_card gives it (public: the payer's resources, a choice's summary)
+                **{k: played[k] for k in ("decision_ids", "decision_controller", "allocation_options", "choice")
+                   if k in played},
                 "rule_locators": played.get("rule_locators", [])}
     # Core 358.5: the play is cancelled - what its steps did is undone, the card back in the zone the
     # effect took it from, at its place there and as the object it was (a play that never happened)
@@ -1340,11 +1364,14 @@ def entry_state_for(
         order_map, _ = _ed.replacement_maps(engine_decisions)
         replacement_ids = [candidate["replacement_id"] for candidate in candidates]
         supplied = (order_map or {}).get(event_id)
+        from effect_ir import ledger_note
+        ledger_note("replacement", f"replacement:object_order:{'+'.join(replacement_ids)}:{event_id}")
         if supplied is None:
             return default, default, [], {
                 "replacement_decision_required": True,
                 "reason": f"conflicting entry-state replacements for {card} require {controller} to choose their order",
-                "replacement_ids": replacement_ids, "event_ids": [event_id], "decision_controller": controller,
+                "replacement_decision": "object_order", "replacement_ids": replacement_ids, "event_ids": [event_id],
+                "decision_controller": controller,
             }
         if len(supplied) != len(replacement_ids) or set(supplied) != set(replacement_ids):
             return default, default, [], {"error": f"replacement order for {event_id} must list exactly {replacement_ids}, once each"}

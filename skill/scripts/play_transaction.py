@@ -454,6 +454,8 @@ def _discount_order_problem(cost: dict[str, Any], intents: dict[str, bool], acto
                              f"the {tier} discounts {sorted(d['id'] for d in members)} give different costs in different orders; "
                              f"{actor} chooses the order (Core 356.4.c.1, 356.4.d.1, 356.4.e) - declare cost.discount_order",
                              decision_ids=["discount_order"], decision_controller=actor,
+                             # package 15 (C2): the discounts a declared order must name - every one that applies
+                             discount_ids=sorted(ids),
                              rule_locators=["Core 356.4.c.1", "Core 356.4.d.1", "Core 356.4.e"])
     return None
 
@@ -723,7 +725,8 @@ def catalogued_declaration_problem(effect_state: dict[str, Any], declaration: di
                                "payment": {"kind": "exhaust", "object_id": activation["source_object"]}}]
                              if row["cost"].get("exhaust") else []) + list(row["cost"].get("additional") or [])
         base = {"energy": row["cost"].get("energy", 0), "power": dict(row["cost"].get("power") or {})}
-        if set(cost) - {"base", "additional"} or cost.get("base") != base \
+        # package 15: the player's order of the discounts that apply (Core 356.4.c.1) is a choice of the play, not a cost
+        if set(cost) - {"base", "additional", "discount_order"} or cost.get("base") != base \
                 or not _catalogued_costs_match(list(cost.get("additional") or []), wanted_additional):
             return f"the ability costs {base} with {wanted_additional}, not {cost}"
         item = declaration.get("chain_item") or {}
@@ -740,7 +743,9 @@ def catalogued_declaration_problem(effect_state: dict[str, Any], declaration: di
         return None
     if not isinstance(card.get("printed_cost"), dict):
         return f"{declaration.get('card')!r} ({card['card_ref']}) carries no printed cost"
-    if cost != {"base": card["printed_cost"]}:
+    # package 15: found by C2's corpus probe - Find Your Center with Eager Apprentice in play waited for an order of its two
+    # Energy discounts (Core 356.4.c.1) and this refused every declared order, so the card could not be played at all
+    if {k: v for k, v in cost.items() if k != "discount_order"} != {"base": card["printed_cost"]}:
         return f"{declaration.get('card')!r} ({card['card_ref']}) costs {card['printed_cost']} as printed, not {cost}"
     return None
 
@@ -1437,12 +1442,12 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         from_universal = spend_universal.get(domain, 0)
         power_events = _pay_resource(resources, "power", amount - from_universal, use, domain) if amount - from_universal else []
         if from_universal:
-            power_events += [{**e, "decided_by": universal_decision["decision_id"] if universal_decision else "sole_legal_allocation"}
+            power_events += [{**e, "decided_by": universal_decision["decision_id"] if universal_decision and len(options) > 1 else "sole_legal_allocation"}
                              for e in _pay_universal(resources, from_universal, use, domain)]
         events.extend(power_events)
         _allocate(power_events, [c for c in skeleton["components"] if c["kind"] == "power" and c.get("domain") == domain and chosen(c)])
     if spend_universal.get("any"):
-        universal_events = [{**e, "decided_by": universal_decision["decision_id"] if universal_decision else "sole_legal_allocation"}
+        universal_events = [{**e, "decided_by": universal_decision["decision_id"] if universal_decision and len(options) > 1 else "sole_legal_allocation"}
                             for e in _pay_universal(resources, spend_universal["any"], use, "any")]
         events.extend(universal_events)
         _allocate(universal_events, [c for c in skeleton["components"] if c["kind"] == "power_any" and chosen(c)])
@@ -1472,7 +1477,9 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             before = resources["power"][domain]; resources["power"][domain] -= amount
             event_id = f"pay:power_any:{domain}"
             events.append({"event_id": event_id, "kind": "pay_power", "domain": domain, "amount": amount, "before": before, "after": resources["power"][domain],
-                           "allocation_of": "power_any", "decided_by": entry["decision_id"] if entry else "sole_legal_allocation", "rule_locators": ["Core 809.1.c.1", "Core 357.1"]})
+                           # package 15 (found by the corpus: a Deflect cost one Domain alone can pay): a sole legal
+                           # allocation is no one's choice, whether or not a decision names it
+                           "allocation_of": "power_any", "decided_by": entry["decision_id"] if entry and len(options) > 1 else "sole_legal_allocation", "rule_locators": ["Core 809.1.c.1", "Core 357.1"]})
             remaining_share = amount
             for comp in skeleton["components"]:
                 if comp["kind"] == "power_any" and chosen(comp) and remaining_share:
@@ -1805,20 +1812,7 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 current_identity = entity_identity(effect_state, object_id)
                 if object_id in identities and current_identity is not None and identities[object_id] != current_identity:
                     raise PlayError("choices", "selection_identity_mismatch", f"target selection {ref!r} was bound to {identities[object_id]!r}; the entity is now {entity_identity(effect_state, object_id)!r}", invalid=True)
-                selector = {k: v for k, v in template.items() if k not in {"decision_ref", "object_id"}}
-                selector["object_id"] = object_id
-                # "another unit": the exclusion is by the identity of the program's own
-                # source, which resolution binds (_bind_source_exclusion). Checked here
-                # unbound, the sentinel made every such target illegal at the moment it
-                # is chosen - found when a permanent's play trigger first had its target
-                # bound at finalization rather than compiled in by a harness.
-                selector = _bind_source_exclusion(selector, effect_state, program) if program.get("source_object") in effect_state["objects"] else selector
-                # package 11: "another" than the trigger's referent (Dragon's Rage), by the identity its event recorded
-                selector = _bind_referent_exclusion(selector, program)
-                # "here": the target must be at the source's current Battlefield when it is
-                # chosen; an unbindable source makes it illegal by name (_bind_location_ref)
-                selector = _bind_location_ref(selector, effect_state, program)
-                selector.setdefault("chosen_zone_class", "board" if template.get("kind") == "battlefield" else (zone_class(find_location(effect_state, object_id)) or "non_board"))
+                selector = bound_target_selector(effect_state, program, template, object_id)
                 if derive_targeted(selector):
                     ok, reason = evaluate_target(effect_state, selector, actor)
                     if not ok:
@@ -1918,24 +1912,64 @@ def legal_target_options(effect_state: dict[str, Any], actor: str, program: dict
     pool = list(effect_state.get("battlefields") or {}) if template.get("kind") == "battlefield" else list(effect_state["objects"])
     options = []
     for object_id in pool:
-        selector = {k: v for k, v in template.items() if k not in {"decision_ref", "object_id"}}
-        selector["object_id"] = object_id
         try:
-            if program.get("source_object") in effect_state["objects"]:
-                selector = _bind_source_exclusion(selector, effect_state, program)
-            selector = _bind_location_ref(_bind_referent_exclusion(selector, program), effect_state, program)
+            selector = bound_target_selector(effect_state, program, template, object_id)
             if "location_ref_refused" in selector and selector["location_ref_refused"] != LOCATION_REF_NO_DESTINATION:
                 # "here" that cannot be bound is refused by name where the choice is checked, not read as
                 # "no legal options" (check_location_ref.py: location_ref_source_absent at finalization)
                 return [object_id]
-            selector.setdefault("chosen_zone_class", "board" if template.get("kind") == "battlefield"
-                                else (zone_class(find_location(effect_state, object_id)) or "non_board"))
             ok, _reason = evaluate_target(effect_state, selector, actor)
         except Exception:  # noqa: BLE001 - see the docstring
             ok = True
         if ok:
             options.append(object_id)
     return options
+
+
+def refused_targets(effect_state: dict[str, Any], actor: str, program: dict[str, Any], template: dict[str, Any]) -> set[str]:
+    """2026-10-19 package 15 (GPT PACKAGE15 ruling 2): the objects (or Battlefields) _check_play_targets refuses as this
+    selector's choice whatever else is chosen - exactly the ones it refuses by this selector alone: a targeting selector
+    (derive_targeted) whose bound form (bound_target_selector: state, program, selector - no other slot's choice) the
+    object fails. A selector that does not target is not checked there and refuses none; one that reads another
+    instruction's selection (`selection_ref`) is checked at resolution and refuses none now; one whose test raises
+    refuses none (an action is never removed on a doubt)."""
+    if "selection_ref" in template:
+        return set()
+    # every id a choice could name - objects and Battlefields alike, whatever the selector's kind: the check tests a
+    # Battlefield named for a Unit as it tests any object (target_object_missing)
+    pool = list(effect_state["objects"]) + list(effect_state.get("battlefields") or {})
+    out = set()
+    for object_id in pool:
+        try:
+            selector = bound_target_selector(effect_state, program, template, object_id)
+            if derive_targeted(selector) and not evaluate_target(effect_state, selector, actor)[0]:
+                out.add(object_id)
+        except Exception:  # noqa: BLE001 - see the docstring
+            continue
+    return out
+
+
+def bound_target_selector(effect_state: dict[str, Any], program: dict[str, Any], template: dict[str, Any],
+                          object_id: str) -> dict[str, Any]:
+    """A chosen-target selector bound for one object, as _check_play_targets checks a supplied choice and
+    legal_target_options lists the options - one function, so the two cannot differ (package 15, GPT PACKAGE15 ruling
+    2). Its inputs are the state, the program and the selector: never another slot's choice, so whether this object is
+    refused here does not depend on what the other slots hold."""
+    selector = {k: v for k, v in template.items() if k not in {"decision_ref", "object_id"}}
+    selector["object_id"] = object_id
+    # "another unit": the exclusion is by the identity of the program's own source, which resolution binds
+    # (_bind_source_exclusion). Checked unbound, the sentinel made every such target illegal at the moment it is chosen -
+    # found when a permanent's play trigger first had its target bound at finalization rather than compiled in by a harness.
+    if program.get("source_object") in effect_state["objects"]:
+        selector = _bind_source_exclusion(selector, effect_state, program)
+    # package 11: "another" than the trigger's referent (Dragon's Rage), by the identity its event recorded
+    selector = _bind_referent_exclusion(selector, program)
+    # "here": the target must be at the source's current Battlefield when it is chosen; an unbindable source makes it
+    # illegal by name (_bind_location_ref)
+    selector = _bind_location_ref(selector, effect_state, program)
+    selector.setdefault("chosen_zone_class", "board" if template.get("kind") == "battlefield"
+                        else (zone_class(find_location(effect_state, object_id)) or "non_board"))
+    return selector
 
 
 def destination_refs(effects: list[dict[str, Any]]) -> list[str]:

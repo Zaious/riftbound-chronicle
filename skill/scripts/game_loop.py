@@ -57,6 +57,7 @@ PROCEDURES = {
     "finalize_oldest_pending": "resolution_bridge.finalize_trigger / complete_limited_play / rules_core.finalize_oldest_pending",
     "resolve_newest_finalized": "resolution_bridge.resolve_with_program",
     "begin_turn_pending": "turn_cycle.begin_turn",
+    "setup_mulligan": "turn_cycle.perform_mulligan (Core 117)",
     "turn_start_step_pending": "turn_cycle: awaken, beginning, channel, draw, main",
     "open_showdown_pending": "battlefield_control.open_showdown",
     "control_resolution_pending": "battlefield_control.resolve_battlefield_control",
@@ -259,6 +260,8 @@ def run_procedure(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
                      RB.resolve_with_program(timing, item["id"], effect, item_program(catalogue, effect, item), None, env))
     if name == "begin_turn_pending":
         return _done("procedure", "turn:begin", timing, effect, TC.begin_turn(timing, effect, both))
+    if name == "setup_mulligan":
+        return _done("procedure", "setup:mulligan", timing, effect, TC.perform_mulligan(timing, effect, both))
     if name == "turn_start_step_pending":
         progress = timing.get("turn_progress") or {}
         flag, label, run = next(((f, l, r) for f, l, r in TURN_STEPS if not progress.get(f)), TURN_STEPS[-1])

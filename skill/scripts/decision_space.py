@@ -115,18 +115,96 @@ class Unproved(Exception):
     """A procedure point whose ways this module cannot prove whole."""
 
 
+# package 15 (GPT PACKAGE15 ruling 2): the combinations a screening run tries of the slots the procedure asks first, and
+# the tries a screened slot's refused members get against the earlier slots' values - past either, the screening is
+# unproved by name, never cut short
+FILL_CAP = 1 << 8
+CONTEXT_CAP = 1 << 10
+
+
+def settle_screening(run, answer: dict[str, Any], *, fills: dict[str, list], screening: str | None, known: set,
+                     depth: int = 0) -> dict[str, Any]:
+    """One screening run of a member (contract_ways.screened), carried to where the procedure judges it.
+
+    Chance is answered in its identity order: chance is no one's decision, so a member is judged by what the procedure
+    does past it (Stacked Deck: the rest recycled at random after the pick); the step returned says so
+    (`screen_chance`), and a member refused on such a path is not taken as refused (screened() names it unproved). A
+    setting the slots hold (perform an optional trigger, pay its cost) is taken - the path on which the procedure reads
+    the member (Tideturner asks whether to perform before it reads its target). A request for another slot listed in
+    full (`fills`: its values) is answered by every combination of its values, counted first - more than FILL_CAP is
+    unproved by name - and the member is judged by the first combination the procedure goes on with: one value refused
+    is that value's fault, not the member's (Baited Hook asks its pick before its rest; Tideturner its unit, then its
+    destinations, of which most are illegal)."""
+    chanced = False
+    for _ in range(8):
+        step = run(answer)
+        request = step.get("request") or {}
+        asked = [i for i in request.get("decision_ids") or [] if i != screening]
+        given = {d["decision_id"] for d in answer["decisions"]}
+        if not step["committed"] and fills and asked and all(i in fills and i not in given for i in asked):
+            if depth >= 4:
+                raise Unproved(f"screening {screening}: the procedure asks {asked} after four slots asked first")
+            count = 1
+            for i in asked:
+                count *= len(fills[i])
+            if count > FILL_CAP:
+                raise Unproved(f"screening {screening}: {count} combinations of {asked}, asked first, exceed {FILL_CAP}")
+            tried = step
+            for chosen in itertools.product(*[fills[i] for i in asked]):
+                tried = settle_screening(run, _plus(answer, _answer(list(chosen))), fills=fills, screening=screening,
+                                         known=known, depth=depth + 1)
+                if tried["committed"] or (tried.get("request") is not None
+                                          and screening not in ((tried.get("request") or {}).get("decision_ids") or [])):
+                    break
+            return {**tried, "screen_chance": chanced or tried.get("screen_chance", False)}
+        chance = (request.get("payload") or {}).get("chance")
+        setting = SETTING_REQUESTS.get(request.get("code"))
+        if not step["committed"] and setting and f"setting:{setting}" in known and setting not in answer["settings"]:
+            answer = _plus(answer, _answer(settings={setting: True}))
+            continue
+        if step["committed"] or request.get("code") != "randomization_receipt_required" or not chance:
+            return {**step, "screen_chance": chanced}
+        chanced = True
+        answer = _plus(answer, _answer(receipts=[{
+            "schema_version": "randomization-receipt.v1", "receipt_id": f"screen:{chance['operation_id']}",
+            "operation": chance["operation"], "operation_id": chance["operation_id"], "player": chance["player"],
+            "permutation": list(chance["permute"]), "provenance": dict(RECEIPT_PROVENANCE)}]))
+    return {**step, "screen_chance": chanced}
+
+
 def _identity(state: dict[str, Any], object_id: str) -> str:
     return IR.object_identity(state, object_id) or f"{object_id}@0"
 
 
 def _sets(items: list[str], low: int, high: int | None, *, ordered: bool = False) -> list[list[str]]:
+    import math
     items = sorted(items)
     high = len(items) if high is None else min(high, len(items))
     pick = itertools.permutations if ordered else itertools.combinations
-    out = [list(c) for size in range(low, high + 1) for c in pick(items, size)]
-    if len(out) > VALUE_CAP:
-        raise Unproved(f"{len(out)} selections exceed {VALUE_CAP}")
-    return out
+    # 2026-10-18 package 15: counted before any is built - "any number" of a real game's 100-odd objects is 2^100 sets,
+    # and building them first exhausted the machine's memory (a corpus game grew to 111 GiB)
+    count = sum((math.perm if ordered else math.comb)(len(items), size) for size in range(low, high + 1))
+    if count > VALUE_CAP:
+        raise Unproved(f"{count} selections exceed {VALUE_CAP}")
+    return [list(c) for size in range(low, high + 1) for c in pick(items, size)]
+
+
+def _orders(items: list, exc=None) -> list[list]:
+    """Every order of `items` - counted first (package 15: n! orders are built only when there are few enough)."""
+    import math
+    if math.factorial(len(items)) > VALUE_CAP:
+        raise (exc or Unproved)(f"{math.factorial(len(items))} orders of {len(items)} exceed {VALUE_CAP}")
+    return [list(o) for o in itertools.permutations(items)]
+
+
+def _divisions(pool: list[str], amount: int, keeps: list[int], exc=None) -> list[dict[str, int]]:
+    """Every split of `amount` (each part at least 1) over every `keep` of `pool` - counted first (package 15)."""
+    import math
+    count = sum(math.comb(len(pool), keep) * math.comb(amount - 1, keep - 1) for keep in keeps if 0 < keep <= amount)
+    if count > VALUE_CAP:
+        raise (exc or Unproved)(f"{count} divisions of {amount} exceed {VALUE_CAP}")
+    return [dict(zip(kept, split)) for keep in keeps for kept in itertools.combinations(sorted(pool), keep)
+            for split in _compositions(amount, keep, 1)]
 
 
 def _compositions(total: int, parts: int, low: int) -> list[tuple[int, ...]]:
@@ -215,7 +293,9 @@ def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, A
     if label.endswith("limited_play") and code in PLAY_REQUESTS and PLAY_REQUESTS[code] != "chance":
         # a limited play's choices at its own finalization: the play's (Core 419.3.b) - play_space's domains
         card = ((effect.get("chain_items") or {}).get(item["id"]) or {}).get("card")
-        per_id = PS.domain(payload, effect, {"card": card}, program, decider)
+        # (found by the package 15 corpus survey: the request's payload carries neither the code nor the ids
+        # play_space.domain reads off a play's result - given them as the procedure named them)
+        per_id = PS.domain({**payload, "reason_code": code, "decision_ids": ids}, effect, {"card": card}, program, decider)
         return PLAY_REQUESTS[code], decider, [_answer([{**e, "stage": "play_declaration"} for e in combo])
                                               for combo in itertools.product(*per_id)]
     if code in SETTING_REQUESTS:
@@ -334,24 +414,24 @@ def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, A
         legal = list(payload.get("subset_candidates") or [])
         return "card_selection", decider, entries("card_selection", _sets(legal, 0, None), identities=True)
     if code == "trigger_order_required":
-        orders = [list(o) for o in itertools.permutations(payload["trigger_ids"])]
-        if len(orders) > VALUE_CAP:
-            raise Unproved(f"{len(orders)} orders exceed {VALUE_CAP}")
-        return "trigger_order", decider, entries("trigger_order", orders)
+        return "trigger_order", decider, entries("trigger_order", _orders(list(payload["trigger_ids"])))
     if code == "replacement_decision_required":
         rids, events = list(payload.get("replacement_ids") or []), list(payload.get("event_ids") or [])
         if not rids or not events:
             raise Unproved("a replacement request names no replacement or no event")
-        ref = f"replacement:{'+'.join(rids)}:{'+'.join(events)}"
-        if len(rids) == 1 and len(events) == 1:
+        # package 15 (found by the corpus survey, seed 109): which decision it is, as the request says (or, where it does
+        # not, by its counts) - one controller's sequence order over one event looks like that event's order
+        which = replacement_kind(payload, rids, events)
+        ref = replacement_ref(which, rids, events, int(payload.get("cleanup_iteration") or 0))
+        if which == "choice":
             return "replacement_choice", decider, entries("replacement_choice", [{rids[0]: {events[0]: v}} for v in (True, False)], decision_id=ref)
-        if len(rids) == 1:
-            return "replacement_order", decider, entries("replacement_order", [{rids[0]: list(o)} for o in itertools.permutations(events)], decision_id=ref)
-        if len(events) == 1:
-            return "replacement_order", decider, entries("replacement_order", [{events[0]: list(o)} for o in itertools.permutations(rids)], decision_id=ref)
-        # several of one controller's Replacement Effects over several simultaneous events: the controller orders its own
-        # sequences (Core 372) - keyed by that controller (effect_ir.perform_lethal_cleanup's sequence order)
-        return "replacement_order", decider, entries("replacement_order", [{decider: list(o)} for o in itertools.permutations(rids)],
+        if which == "event_order":
+            return "replacement_order", decider, entries("replacement_order", [{rids[0]: o} for o in _orders(events)], decision_id=ref)
+        if which == "object_order":
+            return "replacement_order", decider, entries("replacement_order", [{events[0]: o} for o in _orders(rids)], decision_id=ref)
+        # one controller's Replacement Effects in one batch: the controller orders its own sequences (Core 373) - keyed
+        # by that controller (effect_ir.perform_lethal_cleanup's sequence order)
+        return "replacement_order", decider, entries("replacement_order", [{decider: o} for o in _orders(rids)],
                                                      decision_id=ref)
     if code == "damage_assignment_required":
         units = [c["unit"] for c in payload["candidates"]]
@@ -371,9 +451,7 @@ def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, A
         return "damage_assignment", decider, out
     if code == "damage_division_required":
         legal, amount, keep = list(payload["division_candidates"]), payload["division_amount"], payload["division_keeps"]
-        values = [dict(zip(kept, split)) for kept in itertools.combinations(sorted(legal), keep)
-                  for split in _compositions(amount, keep, 1)]
-        return "damage_division", decider, entries("damage_division", values, identities=True)
+        return "damage_division", decider, entries("damage_division", _divisions(legal, amount, [keep]), identities=True)
     if code == "resource_allocation_required":
         pool = effect["players"][decider]["resources"]["power"]
         domains = sorted(d for d, n in pool.items() if n)
@@ -385,12 +463,15 @@ def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, A
 
 
 def _signature(request: dict[str, Any]) -> tuple:
+    # a Replacement Effect request is told by its kind too (package 15: a controller's sequence order and the order on
+    # its one Unit name the same effects and event, and both are asked in one batch)
     return (request["code"], tuple(request["decision_ids"]), request.get("controller"),
+            request["payload"].get("replacement_decision"), request["payload"].get("cleanup_iteration"),
             tuple((request["payload"].get("replacement_ids") or [])), tuple((request["payload"].get("event_ids") or [])))
 
 
 def _explore(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any], start: dict[str, Any],
-             budget: list[int]) -> tuple[list[dict[str, Any]], list[str], list[dict[str, Any]]]:
+             budget: list[int], to_chance: bool = False) -> tuple[list[dict[str, Any]], list[str], list[dict[str, Any]]]:
     """(the complete ways from `start`, the refusals, the requests met) - depth first, every answer tried."""
     ways, refused, met = [], [], []
     stack = [(start, frozenset(), 0)]
@@ -409,6 +490,11 @@ def _explore(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str
                          **({"sampled_chance": sampled} if sampled else {})})
             continue
         request = step["request"]
+        if to_chance and (node := large_chance(step)) is not None:
+            # package 15 (GPT PACKAGE15 ruling 6): the branch reaches a large chance node - its prefix, the answers read
+            # before it, is a way of the point's pre-chance part
+            ways.append({**answer, "label": step["label"], "chance": node})
+            continue
         if request is None:
             result = step["result"] or {}
             if result.get("unsupported"):
@@ -429,24 +515,101 @@ def _explore(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str
     return ways, refused, met
 
 
+def large_chance(step: dict[str, Any]) -> dict[str, Any] | None:
+    """2026-10-19 package 15 (GPT PACKAGE15 ruling 6): the chance a step stops at, when it orders more outcomes than
+    CHANCE_CAP - {operation, operation_id, player, cards (sorted)} - else None. Such a node is where a point's
+    pre-chance part ends: the decisions made before it cannot read its outcome (none is given yet), so they are whole
+    over every outcome; what comes after it is certified once the outcome is a receipt (action_certificate)."""
+    request = step.get("request") or {}
+    chance = (request.get("payload") or {}).get("chance")
+    if step.get("committed") or request.get("code") != "randomization_receipt_required" or not isinstance(chance, dict):
+        return None
+    import math
+    if math.factorial(len(chance.get("permute") or [])) <= CHANCE_CAP:
+        return None
+    return {"operation": chance.get("operation"), "operation_id": chance.get("operation_id"),
+            "player": chance.get("player"), "cards": sorted(chance.get("permute") or [])}
+
+
+def replacement_kind(payload: dict[str, Any], rids: list[str], events: list[str]) -> str:
+    """Which Replacement Effect decision a request is: as it says (`replacement_decision`), or by its counts where it
+    does not - one effect over one event its choice, over several events their order, several over one event that
+    event's order, several over several the controller's sequence order."""
+    which = payload.get("replacement_decision")
+    if which in {"choice", "event_order", "object_order", "sequence_order"}:
+        return which
+    if len(rids) == 1:
+        return "choice" if len(events) == 1 else "event_order"
+    return "object_order" if len(events) == 1 else "sequence_order"
+
+
+def replacement_ref(which: str, rids: list[str], events: list[str], iteration: int = 0) -> str:
+    """A Replacement Effect decision's id: its kind, its effects and - except a controller's sequence order, one per
+    controller and set of effects in a batch (the engine keys it by the player) - its events; and, for a Cleanup's
+    follow-up iteration k, "#cleanup<k>" (engine_decisions.CLEANUP_ITERATION_SUFFIX: that iteration's own decision)."""
+    suffix = f"#cleanup{iteration}" if iteration else ""
+    if which == "sequence_order":
+        return f"replacement:{which}:{'+'.join(rids)}{suffix}"
+    return f"replacement:{which}:{'+'.join(rids)}:{'+'.join(events)}{suffix}"
+
+
+def _minimal_way(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any], way: dict[str, Any]) -> dict[str, Any]:
+    """A committed way kept to the answers its commit needs: a setting or decision whose removal commits the same states
+    and the same record of what happened (_receipt_of) is dropped - the rule contract_ways applies to D(s)'s ways."""
+    def outcome(step):
+        return (IR.hash_value(step["next_effect_state"]), GL.RC.state_hash(step["next_timing_state"]), _receipt_of(step))
+    base = _run(timing, effect, catalogue, way)
+    if not base["committed"]:
+        raise Unproved(f"a way of the procedure does not commit again ({base['label']})")
+    target = outcome(base)
+    kept = {"decisions": list(way["decisions"]), "settings": dict(way["settings"]), "receipts": list(way["receipts"])}
+    for key in list(kept["settings"]):
+        trial = {**kept, "settings": {k: v for k, v in kept["settings"].items() if k != key}}
+        again = _run(timing, effect, catalogue, trial)
+        if again["committed"] and outcome(again) == target:
+            kept = trial
+    for index in range(len(kept["decisions"]) - 1, -1, -1):
+        trial = {**kept, "decisions": kept["decisions"][:index] + kept["decisions"][index + 1:]}
+        again = _run(timing, effect, catalogue, trial)
+        if again["committed"] and outcome(again) == target:
+            kept = trial
+    return {**way, **kept}
+
+
 def way_key(way: dict[str, Any]) -> str:
     """A complete way, canonically: its decisions (ids, kinds, deciders, values), settings and chance outcomes."""
-    decisions = sorted(({k: d[k] for k in ("decision_id", "stage", "kind", "controller", "value")} for d in way["decisions"]),
-                       key=lambda d: (d["decision_id"], d["kind"]))
+    # package 15 (found by the corpus: The Candlelit Sanctum's two looked-at cards, chosen as a set, read back from the
+    # chooser's view in the other order): a target or card selection is a set - its members compared in order of id
+    def value(d):
+        v = d["value"]
+        return sorted(v) if d["kind"] in {"target_selection", "card_selection"} and isinstance(v, list) else v
+    decisions = sorted(({**{k: d[k] for k in ("decision_id", "stage", "kind", "controller")}, "value": value(d)}
+                        for d in way["decisions"]), key=lambda d: (d["decision_id"], d["kind"]))
     receipts = sorted(({"operation_id": r["operation_id"], "permutation": r["permutation"]} for r in way["receipts"]),
                       key=lambda r: r["operation_id"])
-    return IR.hash_value({"label": way.get("label"), "decisions": decisions, "settings": way["settings"], "receipts": receipts})
+    return IR.hash_value({"label": way.get("label"), "decisions": decisions, "settings": way["settings"], "receipts": receipts,
+                          **({"chance": way["chance"]} if way.get("chance") else {})})
 
 
-def procedure_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any]) -> dict[str, Any]:
+def procedure_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any],
+                   given_receipts: list[dict[str, Any]] | tuple = (), to_chance: bool = False,
+                   given_prefix: dict[str, Any] | None = None) -> dict[str, Any]:
     budget = [0]
+    start = _answer((given_prefix or {}).get("decisions") or (), (given_prefix or {}).get("settings"), list(given_receipts))
     try:
-        ways, refused, met = _explore(timing, effect, catalogue, _answer(), budget)
+        ways, refused, met = _explore(timing, effect, catalogue, start, budget, to_chance)
     except Unproved as why:
         return {"schema_version": DECISION_SPACE_VERSION, "status": "unproved", "reason": str(why), "ways": [],
                 "refused": [], "requests": [], "calls": budget[0]}
     # every answer of a way is one the procedure asked for and read (asked, it is asked again without it), so a way is
-    # its answers as given
+    # its answers as given - kept, as D(s) keeps its ways (contract_ways), to the answers the commit needs: one whose
+    # removal commits the same states and trace is no part of it (package 15, found by the corpus: Ahri - Inquisitive's
+    # target asked before its cost, the cost then declined - the target no part of what happens)
+    try:
+        ways = [_minimal_way(timing, effect, catalogue, w) if not w.get("chance") else w for w in ways]
+    except Unproved as why:
+        return {"schema_version": DECISION_SPACE_VERSION, "status": "unproved", "reason": str(why), "ways": [],
+                "refused": [], "requests": [], "calls": budget[0]}
     keyed = {way_key(w): w for w in ways}
     sampled = max([w.get("sampled_chance") or 0 for w in ways] + [0])
     if sampled or any(r.startswith("sampled: ") for r in refused):
@@ -529,7 +692,7 @@ PROGRAM_SLOT_FIELDS = {
 EVENT_SLOTS = {"trigger_order_required": "trigger_order", "replacement_decision_required": "replacement",
                "damage_assignment_required": "damage_assignment", "randomization_receipt_required": "chance",
                "location_selection_required": "location_selection", "entry_location_required": "entry_location",
-               "optional_choice_required": "seen_banish"}
+               "optional_choice_required": "seen_banish", "card_ordering_required": "card_ordering"}
 CONTRACT_CAP = 1 << 16
 _ABSENT = object()
 
@@ -539,9 +702,143 @@ class OverCap(Exception):
 
 
 def _cap(values: list, what: str) -> list:
+    if isinstance(values, SetSpace):
+        return values
     if len(values) > VALUE_CAP:
         raise OverCap(f"{len(values)} values of {what} exceed {VALUE_CAP}")
     return values
+
+
+class SetSpace:
+    """Every set of `low`..`high` of `members` (package 15) - a program slot too big to list (every object of a real
+    game's state, up to 2^106 sets), screened along the procedure's own path before its values are built
+    (_screen_spaces). Never iterated as values."""
+
+    def __init__(self, members: list[str], low: int, high: int | None):
+        self.members, self.low = sorted(members), low
+        self.high = len(self.members) if high is None else min(high, len(self.members))
+
+    def __iter__(self):
+        raise TypeError("a SetSpace is screened (_screen_spaces) before its values are read")
+
+    def __len__(self):
+        return VALUE_CAP + 1
+
+
+def _space(items: list[str], low: int, high: int | None):
+    """The sets as a list when there are few enough to try them all, else a SetSpace to screen."""
+    import math
+    top = len(items) if high is None else min(high, len(items))
+    if sum(math.comb(len(items), size) for size in range(low, top + 1)) <= VALUE_CAP:
+        return _sets(items, low, high)
+    return SetSpace(items, low, high)
+
+
+def _bound_target_controller(effect: dict[str, Any], item: dict[str, Any] | None, ref: str | None) -> str | None:
+    """The controller of the object a play or a trigger's finalization bound to target `ref` (its chain item's record)."""
+    if not item or not ref:
+        return None
+    record = (effect.get("chain_items") or {}).get(item.get("id")) or {}
+    for entry in list(record.get("played_targets") or []) + list(record.get("finalized_targets") or []):
+        if entry.get("decision_id") == ref and entry.get("value"):
+            return ((effect.get("objects") or {}).get(entry["value"][0]) or {}).get("controller")
+    return None
+
+
+def _receipt_of(step: dict[str, Any]) -> str:
+    """What a committed procedure did, beside its states: its result without the states, and its Cleanup."""
+    result = {k: v for k, v in (step.get("result") or {}).items()
+              if k not in {"next_effect_state", "next_timing_state", "next_effect_state_hash", "next_timing_state_hash"}}
+    return IR.hash_value({"result": result, "cleanup": step.get("cleanup")})
+
+
+def _target_templates(program: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """{decision ref: the chosen-target selector naming it} - action_space._slot_templates, the play side's own reading."""
+    import action_space as AS
+    return AS._slot_templates(program)
+
+
+def finalization_refs(program: dict[str, Any] | None) -> set[str]:
+    """The decisions a play or a trigger's finalization makes (Core 355.5, 383.3), as play_transaction checks them
+    there: its instructions' targets (`target`, `units`, a bounded `targets`) and Move destinations, the top-level
+    instructions of the program and of each of its modes (_check_play_targets reads no nested one), and its mode."""
+    out: set[str] = set()
+    modal = (program or {}).get("modal") or {}
+    if isinstance(modal.get("decision_ref"), str):
+        out.add(modal["decision_ref"])
+    for effects in [(program or {}).get("effects") or []] + [o.get("effects") or [] for o in modal.get("options") or []]:
+        for effect_ in effects:
+            if not isinstance(effect_, dict):
+                continue
+            for field in ("target", "targets", "destination"):
+                value = effect_.get(field)
+                if isinstance(value, dict) and isinstance(value.get("decision_ref"), str):
+                    out.add(value["decision_ref"])
+            for unit in effect_.get("units") or []:
+                if isinstance(unit, dict) and isinstance(unit.get("decision_ref"), str):
+                    out.add(unit["decision_ref"])
+    return out
+
+
+def _forced_refs(program: dict[str, Any] | None) -> set[str]:
+    """The choices the rules make for the player: "all" of them (engine_decisions.choice_count) - no choice at all."""
+    import engine_decisions as ED
+    out: set[str] = set()
+
+    def walk(effects):
+        for effect_ in effects or []:
+            if not isinstance(effect_, dict):
+                continue
+            choice = effect_.get("choice")
+            if isinstance(choice, dict) and ED.choice_count(choice)[0] == "all":
+                # its own ref, or program_slots' default one (choice:<from>:<chooser>, any chooser)
+                out.add(effect_.get("decision_ref") or f"choice:{choice.get('from')}:*")
+            walk(effect_.get("effects"))
+    walk((program or {}).get("effects"))
+    for option in ((program or {}).get("modal") or {}).get("options") or []:
+        walk(option.get("effects"))
+    return out
+
+
+def unread_here(slot_id: str, kind: str, label: str, program: dict[str, Any] | None, item: dict[str, Any] | None,
+                timing: dict[str, Any], effect: dict[str, Any]) -> str | None:
+    """2026-10-19 package 15 (GPT PACKAGE15 ruling 7): why the program's contract says this procedure point does not read
+    the slot - or None, when it may. A finalization reads its targets, destinations and mode (finalization_refs), its
+    trigger's settings and cost, nothing of its resolution; a resolution does not read a target, destination or mode its
+    play or finalization already made (its chain item's record); a choice the rules make ("all") is read nowhere."""
+    if kind == "setting":
+        return None
+    if label.endswith("limited_play"):
+        # an effect's play finalized (Core 419.3.b): the play's own choices, its payment among them, are read here
+        return None
+    forced = _forced_refs(program)
+    if slot_id in forced or any(f.endswith(":*") and slot_id.startswith(f[:-1]) for f in forced):
+        return "the rules choose all of them"
+    fin = finalization_refs(program)
+    if label.startswith("finalize"):
+        import trigger_cost as TC
+        if slot_id in fin or (item is not None and slot_id == TC.spend_buff_decision_id(item.get("id"))):
+            return None
+        return "a choice of its resolution, made when it resolves"
+    if label.startswith("resolve") and slot_id in fin and item is not None:
+        record = (effect.get("chain_items") or {}).get(item.get("id")) or {}
+        made = {e.get("decision_id") for e in list(record.get("played_targets") or []) + list(record.get("finalized_targets") or [])
+                + list(item.get("finalized_targets") or [])}
+        if slot_id in made or ((program or {}).get("modal") or {}).get("decision_ref") == slot_id:
+            return "made when it was played or finalized"
+    return None
+
+
+def _bound_targets(effect: dict[str, Any], item: dict[str, Any] | None, ref: str | None) -> list[str] | None:
+    """The objects a play or a trigger's finalization chose for `ref` (its chain item's record), or None."""
+    if not item or not ref:
+        return None
+    record = (effect.get("chain_items") or {}).get(item.get("id")) or {}
+    for entry in list(record.get("played_targets") or []) + list(record.get("finalized_targets") or []) \
+            + list(item.get("finalized_targets") or []):
+        if entry.get("decision_id") == ref and isinstance(entry.get("value"), list):
+            return sorted(entry["value"])
+    return None
 
 
 def _everything(effect: dict[str, Any]) -> list[str]:
@@ -583,16 +880,19 @@ def program_slots(program: dict[str, Any] | None, effect: dict[str, Any], label:
             return
         target = effect_.get("target")
         if isinstance(target, dict) and target.get("decision_ref"):
-            slot(target["decision_ref"], "target_selection", [[o] for o in objects])
+            slot(target["decision_ref"], "target_selection", SetSpace(objects, 1, 1))
         for unit in effect_.get("units") or []:
             if isinstance(unit, dict) and unit.get("decision_ref"):
-                slot(unit["decision_ref"], "target_selection", [[o] for o in objects])
+                slot(unit["decision_ref"], "target_selection", SetSpace(objects, 1, 1))
         spec = effect_.get("targets")
         if isinstance(spec, dict):
             if spec.get("decision_ref"):
-                slot(spec["decision_ref"], "target_selection", _sets(objects, spec.get("min", 0), spec.get("max")))
+                slot(spec["decision_ref"], "target_selection", _space(objects, spec.get("min", 0), spec.get("max")))
             if spec.get("subset_ref"):
-                slot(spec["subset_ref"], "card_selection", _sets(objects, 0, None))
+                # package 15 (found by the corpus: Fox-Fire): which of its targets are kept (Core 355.11.b) - a subset of
+                # the targets the play made (its chain item's record), not of every object
+                made = _bound_targets(effect, item, spec.get("decision_ref"))
+                slot(spec["subset_ref"], "card_selection", _space(made if made is not None else objects, 0, None))
         destination = effect_.get("destination")
         if isinstance(destination, dict) and destination.get("decision_ref"):
             slot(destination["decision_ref"], "location_selection", _locations(effect))
@@ -601,15 +901,35 @@ def program_slots(program: dict[str, Any] | None, effect: dict[str, Any], label:
             slot(player["decision_ref"], "player_selection", sorted(effect["players"]))
         unless = effect_.get("unless")
         if isinstance(unless, dict) and unless.get("decision_ref"):
-            slot(unless["decision_ref"], "optional_choice", [True, False])
+            # package 15 (found by the corpus: Shakedown, "unless its controller has you draw 2"): the target's
+            # controller chooses the instruction or what replaces it (effect_ir's unless: UNLESS_OPTIONS) - the
+            # target the play bound (its chain item's played targets), read off the state
+            chooser = _bound_target_controller(effect, item, (effect_.get("target") or {}).get("decision_ref")) or who[0]
+            who.insert(0, chooser)
+            slot(unless["decision_ref"], "option_selection", list(IR.UNLESS_OPTIONS))
+            who.pop(0)
         if effect_.get("pay_ref"):
             slot(effect_["pay_ref"], "optional_choice", [True, False])
+        # package 15 (found by the corpus: Stacked Deck): a card looked at put into the hand, or drawn - its player's
+        # choice of `count` of them (effect_ir's put_in_hand / draw_it), from what the resolution has looked at by then
+        if op in {"put_in_hand", "draw_it"} and effect_.get("decision_ref"):
+            count = 1 if op == "draw_it" else int(effect_.get("count", 1))
+            slot(effect_["decision_ref"], "card_selection", SetSpace(sorted(effect.get("objects") or {}), count, count))
+        # package 15 (found by the corpus: [Vision], Core 817.1.b): Predict - its player recycles any number of the cards
+        # looked at (Core 436; effect_ir's predict, its recycle_ref or '<effect id>:recycle'); the rest go back in an order
+        # the procedure names (an event slot)
+        if op == "predict":
+            ref = effect_.get("recycle_ref") or f"{effect_.get('effect_id', 'predict')}:recycle"
+            slot(ref, "card_selection", SetSpace(sorted(effect.get("objects") or {}), 0, int(effect_.get("count", 1))))
+        # package 15 (found by the corpus: Salvage, Mystic Reversal, Whirlwind): an instruction its player may follow
+        optional = effect_.get("optional")
+        if isinstance(optional, dict) and optional.get("decision_ref"):
+            slot(optional["decision_ref"], "optional_choice", [True, False])
         if effect_.get("division_ref"):
             pool = sorted(effect.get("objects") or {})
             amount = effect_.get("amount") or 0
-            values = [dict(zip(kept, split)) for keep in range(1, min(len(pool), amount) + 1)
-                      for kept in itertools.combinations(pool, keep) for split in _compositions(amount, keep, 1)]
-            slot(effect_["division_ref"], "damage_division", values)
+            slot(effect_["division_ref"], "damage_division",
+                 _divisions(pool, amount, list(range(1, min(len(pool), amount) + 1)), exc=OverCap))
         choice = effect_.get("choice")
         if isinstance(choice, dict) and op not in {"spend_buffs"}:
             others = [p for p in effect["players"] if p != decider]
@@ -625,12 +945,17 @@ def program_slots(program: dict[str, Any] | None, effect: dict[str, Any], label:
                 low, high = {"one": (1, 1), "exactly": (n, n), "up_to": (0, n), "any_number": (0, None), "all": (0, None)}[form]
                 ordered = kind == "card_ordering" or choice.get("selection_kind") == "ordered_permutation"
                 pool = _everything(effect) if kind == "target_selection" else sorted(effect.get("objects") or {})
-                slot(ref, kind, _sets(pool, low, high, ordered=ordered))
+                slot(ref, kind, _sets(pool, low, high, ordered=ordered) if ordered else _space(pool, low, high))
             who.pop(0)
         if op == "discard" and choice is None and effect_.get("whole_hand") is not True and isinstance(effect_.get("count"), int):
             # "discard N": its player's choice from their own hand (Core 422.1.a) - the instruction's own default ref
             ref = effect_.get("decision_ref") or f"discard:{effect_.get('player')}"
-            slot(ref, "card_selection", _sets(sorted(effect.get("objects") or {}), effect_["count"], effect_["count"]))
+            # package 15 (found by the corpus: Jinx - Demolitionist's "discard 2"): from that player's hand as it is when
+            # they discard (Core 422.1.a) - a card drawn earlier in the resolution too - so of the cards they own
+            owner = effect_.get("player")
+            pool = sorted(o for o, obj in (effect.get("objects") or {}).items() if obj.get("owner") == owner) \
+                if owner in effect["players"] else sorted(effect.get("objects") or {})
+            slot(ref, "card_selection", _space(pool, effect_["count"], effect_["count"]))
         if op == "spend_buffs" and effect_.get("object_id") is None:
             player_id = effect_.get("player")
             ref = effect_.get("decision_ref") or f"spend_buffs:{player_id}"
@@ -641,7 +966,7 @@ def program_slots(program: dict[str, Any] | None, effect: dict[str, Any], label:
                           for split in itertools.product(*[range(counts[u] + 1) for u in units])]
                 slot(ref, "buff_spend", values)
             else:
-                slot(ref, "card_selection", _sets(units, 0, None))
+                slot(ref, "card_selection", _space(units, 0, None))
         if op == "choose_option" and effect_.get("decision_ref"):
             slot(effect_["decision_ref"], "option_selection", list(effect_.get("options") or []))
         if op == "pay_any_amount" and effect_.get("decision_ref"):
@@ -692,23 +1017,30 @@ def _event_values(request: dict[str, Any], timing: dict[str, Any], effect: dict[
         named = list(payload.get("trigger_ids") or [])
         if any(t.split(":", 1)[0] not in sources and not t.startswith(("delayed", "keyword")) for t in named):
             raise OverCap(f"the abilities {named} the procedure orders are not the state's")
-        return "trigger_order", entries("trigger_order", _cap([list(o) for o in itertools.permutations(named)], "an order"))
+        return "trigger_order", entries("trigger_order", _orders(named, exc=OverCap))
     if code == "replacement_decision_required":
         rids, events = list(payload.get("replacement_ids") or []), list(payload.get("event_ids") or [])
         if not rids or not events:
             raise OverCap("a replacement event names no replacement or no event")
-        ref = f"replacement:{'+'.join(rids)}:{'+'.join(events)}"
-        if len(rids) == 1 and len(events) == 1:
+        # package 15 (found by the corpus survey, seed 109: one controller's two Replacement Effects over one dying
+        # Unit - its sequence order and that Unit's order look alike by their counts, and the wrong one was given): the
+        # request says which decision it is (effect_ir's replacement batch), and its id says so too - the same
+        # Replacement Effects and event may need two of them in one batch
+        which = replacement_kind(payload, rids, events)
+        ref = replacement_ref(which, rids, events, int(payload.get("cleanup_iteration") or 0))
+        if which == "choice" and len(rids) == 1 and len(events) == 1:
             return "replacement_choice", entries("replacement_choice", [{rids[0]: {events[0]: v}} for v in (True, False)],
                                                  decision_id=ref)
-        if len(rids) == 1:
-            return "replacement_order", entries("replacement_order", [{rids[0]: list(o)} for o in itertools.permutations(events)],
+        if which == "event_order" and len(rids) == 1:
+            return "replacement_order", entries("replacement_order", [{rids[0]: o} for o in _orders(events, exc=OverCap)],
                                                 decision_id=ref)
-        if len(events) == 1:
-            return "replacement_order", entries("replacement_order", [{events[0]: list(o)} for o in itertools.permutations(rids)],
+        if which == "object_order" and len(events) == 1:
+            return "replacement_order", entries("replacement_order", [{events[0]: o} for o in _orders(rids, exc=OverCap)],
                                                 decision_id=ref)
-        return "replacement_order", entries("replacement_order", [{decider: list(o)} for o in itertools.permutations(rids)],
-                                            decision_id=ref)
+        if which == "sequence_order":
+            return "replacement_order", entries("replacement_order", [{decider: o} for o in _orders(rids, exc=OverCap)],
+                                                decision_id=ref)
+        raise OverCap(f"a replacement request of no known decision ({which!r}, {len(rids)} effects, {len(events)} events)")
     if code == "damage_assignment_required":
         import combat as CB
         record = timing.get("combat") or {}
@@ -742,10 +1074,28 @@ def _event_values(request: dict[str, Any], timing: dict[str, Any], effect: dict[
         if not ((effect.get("objects") or {}).get(card) or {}).get("banish_when_seen"):
             raise OverCap(f"{card!r} has no 'banish when seen' for the procedure to ask about")
         return "optional_choice", entries("optional_choice", [True, False])
+    if code == "optional_choice_required" and str(ids[0]).startswith("seen-play:"):
+        # package 15 (found by D15): a card banished as it was seen may then be played for [A] by its owner - asked of
+        # the card the procedure names, which must be one that banishes itself so
+        card = ids[0].rsplit(":", 1)[-1]
+        if not ((effect.get("objects") or {}).get(card) or {}).get("banish_when_seen"):
+            raise OverCap(f"{card!r} has no 'banish when seen' for the procedure to offer a play of")
+        return "optional_choice", entries("optional_choice", [True, False])
+    if code == "card_ordering_required":
+        # package 15 (found by the corpus: The Candlelit Sanctum puts back what it did not recycle, Core 424.2): the
+        # cards to order are the ones the resolution left looked at - named by the procedure (the event), every order
+        # of them by the rule
+        listed = [o["object_id"] for options in (request.get("private_options") or {}).values() for o in options] + \
+            [o["object_id"] for o in (payload.get("choice") or {}).get("options") or []]
+        if not listed or set(listed) - set(effect.get("objects") or {}):
+            raise OverCap(f"the cards {listed} the procedure orders are not the state's")
+        return "card_ordering", entries("card_ordering", _orders(sorted(set(listed)), exc=OverCap), identities=True)
     raise OverCap(f"{code} {ids}: the contract does not show this decision ({label})")
 
 
-def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any]) -> dict[str, Any]:
+def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any],
+                  given_receipts: list[dict[str, Any]] | tuple = (), to_chance: bool = False,
+                  given_prefix: dict[str, Any] | None = None) -> dict[str, Any]:
     """D(s): every combination of the program slots (each also left out), events expanded by the rule, the procedure as
     V; a committed way keeps only the answers the commit needs (one it does not read is no choice)."""
     first = GL.run_procedure(timing, effect, catalogue)
@@ -755,6 +1105,27 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
     decider = (item or {}).get("controller") or timing.get("turn_player")
     try:
         slots = program_slots(program, effect, label, decider, item)
+        if label == "setup:mulligan":
+            # package 15: Core 117.1 - the player whose Mulligan it is sets aside up to two cards of their own hand
+            import turn_cycle as TCY
+            player = timing["mulligans_pending"][0]
+            hand = list(effect["players"][player]["zones"]["hand"])
+            slots = [(TCY.mulligan_decision_id(player), "card_selection", "resolution", _sets(hand, 0, 2), player)]
+        if label.endswith("limited_play") and item is not None:
+            # package 15 (found by the corpus: a card banished as it was seen, played for [A]): an effect's play paid in
+            # Power of any Domain (its record's cost basis, Core 809.1.c.1's kind of payment) - every split of that
+            # amount over the player's Power, the payer's choice where there is more than one
+            import action_space as AS
+            basis = (((effect.get("chain_items") or {}).get(item["id"]) or {}).get("limited_play") or {}).get("cost_basis") or {}
+            if basis.get("kind") == "for_power_any" and int(basis.get("amount") or 0):
+                payer = item.get("controller")
+                pool = effect["players"][payer]["resources"].get("power") or {}
+                try:
+                    splits = AS._power_splits(pool, int(basis["amount"]))
+                except AS.OverCap as exc:
+                    raise OverCap(str(exc)) from exc
+                if len(splits) > 1:
+                    slots.append((f"power_any:limited:{item['id']}", "resource_allocation", "play_declaration", splits, payer))
     except (OverCap, Unproved) as exc:
         return {"status": "over_cap", "reason": str(exc), "ways": []}
     known = {s[0] for s in slots}
@@ -780,8 +1151,12 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
         return _run(timing, effect, catalogue, answer)
 
     def same(a, b):
+        # package 15 (GPT PACKAGE15 ruling 7): the same result is the same states AND the same record of what the
+        # procedure did - its result's trace (each instruction's outcome) and its Cleanup - so a decision that changes
+        # only what happened (a no-op chosen, an event) is never taken for one the procedure does not read
         return IR.hash_value(a["next_effect_state"]) == IR.hash_value(b["next_effect_state"]) \
-            and GL.RC.state_hash(a["next_timing_state"]) == GL.RC.state_hash(b["next_timing_state"])
+            and GL.RC.state_hash(a["next_timing_state"]) == GL.RC.state_hash(b["next_timing_state"]) \
+            and _receipt_of(a) == _receipt_of(b)
 
     def chase(answer, depth=0):
         """Run one candidate; expand the event slots the procedure names; record what commits."""
@@ -804,6 +1179,24 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
             ways.setdefault(way_key(way), way)
             return
         request = step["request"]
+        node = large_chance(step) if to_chance else None
+        if node is not None:
+            # package 15 (GPT PACKAGE15 ruling 6): a prefix of the pre-chance part - kept to the answers the run needs to
+            # reach this same node (one it reaches without is not read before the chance)
+            kept = answer
+            for key in list(kept["settings"]):
+                trial = copy.deepcopy(kept)
+                trial["settings"].pop(key)
+                if large_chance(run(trial)) == node:
+                    kept = trial
+            for index in range(len(kept["decisions"]) - 1, -1, -1):
+                trial = copy.deepcopy(kept)
+                trial["decisions"].pop(index)
+                if large_chance(run(trial)) == node:
+                    kept = trial
+            way = {**kept, "label": step["label"], "chance": node}
+            ways.setdefault(way_key(way), way)
+            return
         if request is None or depth > 12:
             return
         learn(request)
@@ -820,12 +1213,177 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
             return
         raise OverCap(f"the procedure asks {request['code']} {sorted(named)} ({step['label']}), which the contract does not show")
 
+    def entry_of(slot_id, kind, stage, controller, value):
+        entry = {"decision_id": slot_id, "stage": stage, "kind": kind, "controller": controller, "value": value}
+        if kind in {"target_selection", "card_selection", "card_ordering", "buff_spend", "damage_division"}:
+            entry["selection_identities"] = {o: identities.get(o) or f"{o}@0" for o in value}
+        return entry
+
+    def settled(answer, fills=None, screening=None):
+        return settle_screening(run, answer, fills=fills or {}, screening=screening, known=known)
+
+    def screened(slots_):
+        """2026-10-18 package 15: a SetSpace slot's members tried one at a time along the procedure's path - the
+        earlier screened slots holding a value they took; a member the procedure commits with, or answers by asking
+        for another decision, is viable; one it refuses, or asks this same slot again for, is not. The slot's values
+        are then the sets of its viable members; every other member is a witness (alone, and beside a viable one) -
+        a procedure that took a set holding a member it refuses alone would commit a way the discovery does not
+        find, and the differential fails."""
+        out, witness_of, earlier = [], {}, []
+        # the slots listed in full, by their values - what a screening run answers when the procedure asks one first
+        fills = {slot_id: [entry_of(slot_id, kind, stage, controller, value) for value in values]
+                 for slot_id, kind, stage, values, controller in slots_
+                 if not isinstance(values, SetSpace) and values and kind != "setting"}
+        for slot_id, kind, stage, values, controller in slots_:
+            why = unread_here(slot_id, kind, label, program, item, timing, effect)
+            if why:
+                # package 15 (GPT PACKAGE15 ruling 7): a slot the program's contract says this point does not read (a
+                # resolution's choice at its trigger's finalization, a target the play already made, a choice the rules
+                # force) is no choice here, and it is left out. That is checked, not assumed: each value alone must
+                # commit as the point does without it (the same states and the same trace), or be refused - a value
+                # that commits otherwise is a choice the contract missed, unproved by name
+                without = settled(_answer(earlier, receipts=list(given_receipts)), fills, slot_id)
+                tried = [[m] for m in values.members] if isinstance(values, SetSpace) else list(values)
+                for value in tried:
+                    step = settled(_answer(earlier + [entry_of(slot_id, kind, stage, controller, value)],
+                                           receipts=list(given_receipts)), fills, slot_id)
+                    if step["committed"] and not (without["committed"] and same(step, without)):
+                        raise Unproved(f"{slot_id} is not read at {label} by its program ({why}), yet {value} changes "
+                                       f"what the procedure does")
+                out.append((slot_id, kind, stage, [], controller))
+                continue
+            if not isinstance(values, SetSpace):
+                out.append((slot_id, kind, stage, values, controller))
+                continue
+            viable, refused = [], []
+            with IR.recording_ledger() as met:
+                without = settled(_answer(earlier, receipts=list(given_receipts)), fills, slot_id)
+            if without["committed"] and slot_id not in {decision_id for _, decision_id in met}:
+                # package 15 (GPT PACKAGE15 ruling 7; found by the corpus: The Candlelit Sanctum with an empty deck,
+                # Fox-Fire whose targets still meet their group): run without it, the procedure commits and meets no
+                # need of this choice - its record (effect_ir.recording_ledger) notes every choice that is not forced
+                # before it looks for an answer, so a procedure that stopped asking would still note it. Not read here;
+                # checked as a slot the contract leaves out: each member alone commits as without it, or is refused
+                for member in values.members:
+                    step = settled(_answer(earlier + [entry_of(slot_id, kind, stage, controller, [member])],
+                                           receipts=list(given_receipts)), fills, slot_id)
+                    if step["committed"] and not same(step, without):
+                        raise Unproved(f"{slot_id} is met by no need at {label}, yet {member} changes what the procedure does")
+                out.append((slot_id, kind, stage, [], controller))
+                continue
+            ignored = []
+            def takes(context, member):
+                step = settled(_answer(context + [entry_of(slot_id, kind, stage, controller, [member])],
+                                       receipts=list(given_receipts)), fills, slot_id)
+                asked = set((step.get("request") or {}).get("decision_ids") or [])
+                return step, step["committed"] or (step.get("request") is not None and slot_id not in asked)
+            chanced = []
+            members = list(values.members)
+            if values.low >= 2:
+                # one member alone is never a value of a slot of at least two (found by the corpus: "discard 2") - it
+                # cannot be judged one member at a time; unproved by name, never screened to nothing
+                raise Unproved(f"screening {slot_id}: a slot of at least {values.low} is not judged one member at a time")
+            template = _target_templates(program).get(slot_id) if kind == "target_selection" and program else None
+            checked = program
+            if template is not None and label.startswith("finalize") and item is not None and item.get("timing") == "triggered":
+                # the program the finalization checks a target against (resolution_bridge.finalization_program: its
+                # source's identity bound - "here" reads it); refused, the member-by-member screening is used instead
+                import resolution_bridge as RB
+                checked, refusal = RB.finalization_program(program, item, effect)
+                if refusal is not None:
+                    template = None
+            if template is not None:
+                # package 15 (GPT PACKAGE15 rulings 2 and 7; found by the corpus: Tideturner with no friendly unit, its
+                # trigger removed - the procedure reads no member, yet the slot is one its finalization makes): a target
+                # slot's members the procedure refuses as its choice whatever else is chosen are out - the same test,
+                # bound from the state, the program and this selector alone, as action_space's
+                # (play_transaction.refused_targets); every other member is a value. With none left the slot has no
+                # value here (its refused members stay witnesses)
+                out_ = PT.refused_targets(effect, controller, checked, template)
+                viable = [m for m in members if m not in out_]
+                refused = [m for m in members if m in out_]
+                members = []
+            for member in members:
+                step, took = takes(earlier, member)
+                if step["committed"] and without["committed"] and same(step, without):
+                    ignored.append(member)
+                elif took:
+                    viable.append(member)
+                else:
+                    refused.append(member)
+                    if step.get("screen_chance"):
+                        chanced.append(member)
+            if chanced:
+                # refused on a path where chance was answered in one order: another order may take it (GPT PACKAGE15
+                # ruling 2) - unproved by name
+                raise Unproved(f"screening {slot_id}: {len(chanced)} members refused after chance answered in one order")
+            if refused and earlier and template is None:
+                # a member refused with the earlier slots holding their first values may be taken with others: each
+                # refused member is tried with every combination of the earlier slots' values, counted first - more than
+                # CONTEXT_CAP tries is unproved by name, never cut short (GPT PACKAGE15 ruling 2)
+                domains = [[v for v in values_ if v not in ([], None)] for sid, _, _, values_, _ in out
+                           if sid in {e["decision_id"] for e in earlier}]
+                contexts = 1
+                for d in domains:
+                    contexts *= len(d)
+                if contexts * len(refused) > CONTEXT_CAP:
+                    raise Unproved(f"screening {slot_id}: {len(refused)} refused members against {contexts} combinations "
+                                   f"of the earlier slots exceed {CONTEXT_CAP} tries")
+                shapes = {sid: (k, st, c) for sid, k, st, _, c in out}
+                ids = [e["decision_id"] for e in earlier]
+                for member in list(refused):
+                    for combo in itertools.product(*domains):
+                        context = [entry_of(sid, shapes[sid][0], shapes[sid][1], shapes[sid][2], value)
+                                   for sid, value in zip(ids, combo)]
+                        step, took = takes(context, member)
+                        if step.get("screen_chance") and not took:
+                            raise Unproved(f"screening {slot_id}: {member} refused after chance answered in one order")
+                        if took:
+                            refused.remove(member)
+                            viable.append(member)
+                            break
+            viable = sorted(viable + ignored)
+            sets = _sets(viable, values.low, values.high) if len(viable) >= values.low else []
+            out.append((slot_id, kind, stage, sets, controller))
+            witness_of[slot_id] = [[u] for u in refused] + ([[viable[0], u] for u in refused] if viable and values.high >= 2 else [])
+            if viable:
+                earlier.append(entry_of(slot_id, kind, stage, controller, [viable[0]]))
+        return out, witness_of
+
+    def combinations_(slots_, witness_of, fixed=frozenset()):
+        # each witness with the other slots left out, and with each holding its first value that is not empty (as
+        # action_space._combinations_with_witnesses); a slot a given prefix answers is never left out
+        yield from itertools.product(*[([] if sid in fixed else [_ABSENT]) + list(values) for sid, _, _, values, _ in slots_])
+        filled = [next((v for v in values if v not in ([], None)), _ABSENT) for _, _, _, values, _ in slots_]
+        for index, (slot_id, _, _, _, _) in enumerate(slots_):
+            for witness in witness_of.get(slot_id) or []:
+                alone = [_ABSENT] * len(slots_)
+                alone[index] = witness
+                yield tuple(alone)
+                beside = list(filled)
+                beside[index] = witness
+                if beside != alone:
+                    yield tuple(beside)
+
     try:
+        slots, witness_of = screened(slots)
+        if given_prefix:
+            # package 15 (GPT PACKAGE15 ruling 6): the ways after a large chance node, given the decisions the game made
+            # before it - a slot the prefix answers holds that answer only (never left out); every other slot as before
+            fixed = {d["decision_id"]: d["value"] for d in given_prefix.get("decisions") or []}
+            fixed.update({f"setting:{k}": v for k, v in (given_prefix.get("settings") or {}).items()})
+            slots = [(sid, kind, stage, [fixed[sid]], c) if sid in fixed else (sid, kind, stage, values, c)
+                     for sid, kind, stage, values, c in slots]
+            missing_ = sorted(set(fixed) - {s[0] for s in slots})
+            if missing_:
+                raise Unproved(f"the prefix answers {missing_}, which the contract does not show")
+            witness_of = {sid: w for sid, w in witness_of.items() if sid not in fixed}
         # every slot left out comes first in the product, so a request's identities are learned before any combination
         # that answers it is built (a later slot is asked only once the earlier ones are answered, by a combination
         # that leaves it out)
-        for combo in itertools.product(*[[_ABSENT] + list(values) for _, _, _, values, _ in slots]):
-            answer = _answer()
+        for combo in combinations_(slots, witness_of, fixed=set((given_prefix and {d["decision_id"] for d in given_prefix.get("decisions") or []}
+                                                                    | {f"setting:{k}" for k in (given_prefix.get("settings") or {})}) or ())):
+            answer = _answer(receipts=list(given_receipts))
             for (slot_id, kind, stage, _, controller), value in zip(slots, combo):
                 if value is _ABSENT:
                     continue
@@ -843,17 +1401,127 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
             "ways": [ways[k] for k in sorted(ways)]}
 
 
-def differential(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any]) -> dict[str, Any]:
-    """E(s) (procedure_ways, discovery) against D(s) (contract_ways), way for way."""
-    found = procedure_ways(timing, effect, catalogue)
+LEDGER_KINDS = ("trigger_order", "damage_assignment")
+
+
+def event_ledger(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any], way: dict[str, Any]) -> list[str]:
+    """2026-10-18 package 15 (GPT PACKAGE14 ruling 3): the events of one committed way that need a player's decision,
+    read off the transition and the rules - never off the procedure's requests - each held to exactly one decision of
+    the way (and no decision of those kinds for an event that needs none). A procedure that stopped asking (ordering
+    simultaneous triggers itself, picking one of several legal assignments) leaves a needed event without its decision.
+
+      trigger_order      the abilities this transition puts on the Chain, by batch and controller: two or more of one
+                         controller in one batch are ordered by that player (Core 383.3.d) - trigger_order:<batch>:<who>
+      damage_assignment  at the Combat Damage Step, each side's player assigns its damage when more than one assignment
+                         is legal (Core 465.2.c; combat.validate_assignment counts them) -
+                         damage_assignment:<combat>:<role>
+      replacement        at a Cleanup, a dying Unit with two or more Replacement Effects that apply, or one optional one
+                         (Core 370-374), needs a replacement decision (read off the state before the Cleanup)
+
+    2026-10-19 (GPT PACKAGE15 ruling 3): the events the procedure itself meets as it runs the way - noted where the
+    rules make a decision needed, before it looks for one (effect_ir.recording_ledger) - each held to exactly one
+    decision of the way, and every decision of their kinds to a note (both ways):
+
+      replacement        a controller's own sequences (Core 373), one Replacement Effect's order of the events it
+                         qualifies for, an optional one's choice, the order of several on one event - in every iteration
+      card_ordering      a player's order of cards that is not forced (put back, Predict's rest; Core 424.2, 436)
+      seen_banish        a card that may banish itself as it is looked at, and play itself after (its printed text)
+      entry_location     a Unit an effect plays without naming where: its controller places it (Core 355.2)
+      location           two or more Combats or Showdowns staged: the Turn Player picks which opens (Core 461.1, 323.12)
+
+    Returns the problems (empty when the way holds exactly the decisions its events need)."""
+    import combat as CB
+    with IR.recording_ledger() as notes:
+        step = _run(timing, effect, catalogue, way)
+    if way.get("chance"):
+        # a pre-chance prefix (package 15): it must stop at its chance node, and its events are those met before it
+        if large_chance(step) != way["chance"]:
+            return [f"the prefix does not reach its chance node ({step['label']})"]
+    elif not step["committed"]:
+        return [f"the way does not commit ({step['label']})"]
+    needed: set[str] = set()
+    before = {item["id"] for item in timing["chain"]["items"]}
+    groups: dict[tuple, int] = {}
+    for item in (step.get("next_timing_state") or {"chain": {"items": []}})["chain"]["items"]:
+        if item["id"] in before or item.get("timing") != "triggered":
+            continue
+        key = (item.get("batch_id"), item.get("controller"))
+        groups[key] = groups.get(key, 0) + 1
+    needed |= {f"trigger_order:{batch}:{controller}" for (batch, controller), n in groups.items() if n >= 2}
+    record = timing.get("combat") or {}
+    if step["label"] == "combat:assign" and record.get("status") == "showdown_closed":
+        sides = CB.combat_sides(record, effect)
+        for role in ("attacker", "defender") if sides["attacker"] and sides["defender"] else ():
+            candidates, problem = CB.assignment_candidates(record, effect, role, None)
+            if problem is not None or not candidates:
+                continue
+            available, _ = CB.available_combat_damage(effect, sides[role])
+            several = any(len(c.get("requirements") or []) == 2 for c in candidates) or (
+                available > 0 and len(candidates) > 1 and CB._legal_assignment_count(candidates, available, {}) != 1)
+            if several:
+                needed.add(f"damage_assignment:{record['combat_id']}:{role}")
+    have = [d["decision_id"] for d in way.get("decisions") or [] if d.get("kind") in LEDGER_KINDS]
+    problems = [f"{event} needs one decision and the way has {have.count(event)}" for event in sorted(needed)
+                if have.count(event) != 1]
+    problems += [f"{d} answers no event that needs a decision" for d in sorted(set(have) - needed)]
+    noted: dict[str, set[str]] = {}
+    for kind, decision_id in notes:
+        noted.setdefault(kind, set()).add(decision_id)
+    decisions = way.get("decisions") or []
+    held = {
+        "replacement": [d["decision_id"] for d in decisions if d.get("kind") in ("replacement_order", "replacement_choice")],
+        "card_ordering": [d["decision_id"] for d in decisions if d.get("kind") == "card_ordering"],
+        "seen_banish": [d["decision_id"] for d in decisions if d.get("kind") == "optional_choice"
+                        and str(d["decision_id"]).startswith(("seen-banish:", "seen-play:"))],
+        "location": [d["decision_id"] for d in decisions if d.get("kind") == "location_selection"
+                     and d["decision_id"] in (CB.LOCATION_DECISION_ID, "showdown_location")],
+        "entry_location": [f"entry_location:{(_subject(timing, step['label']) or {}).get('id')}"]
+        if "entry_location" in (way.get("settings") or {}) else [],
+    }
+    for kind, ids in held.items():
+        for decision_id in sorted(noted.get(kind, set())):
+            if ids.count(decision_id) != 1:
+                problems.append(f"{kind} {decision_id} needs one decision and the way has {ids.count(decision_id)}")
+        for decision_id in sorted(set(ids) - noted.get(kind, set())):
+            problems.append(f"{kind} {decision_id} answers no event that needs a decision")
+    if step["label"] == "task:cleanup":
+        lethal = [o for o, obj in (effect.get("objects") or {}).items()
+                  if obj.get("kind") == "unit" and IR.find_location(effect, o) is not None
+                  and IR.zone_class(IR.find_location(effect, o)) == "board"
+                  and obj.get("damage", 0) > 0 and obj["damage"] >= IR.effective_might(effect, o)]
+        for o in sorted(lethal):
+            event = {"effect_id": f"simultaneous-kill:{o}", "op": "kill", "object_id": o,
+                     "kill_mode": "passive_lethal_cleanup", "attributed_sources": []}
+            applying = IR._applicable_replacements(effect, event)
+            if (len(applying) >= 2 or any(d.get("optional") for d in applying)) and not any(
+                    d.get("kind") in ("replacement_order", "replacement_choice") for d in way.get("decisions") or []):
+                problems.append(f"the death of {o} has {len(applying)} Replacement Effects that apply and the way decides "
+                                f"none of them")
+    return problems
+
+
+def differential(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any],
+                 given_receipts: list[dict[str, Any]] | tuple = (), to_chance: bool = False,
+                 given_prefix: dict[str, Any] | None = None) -> dict[str, Any]:
+    """E(s) (procedure_ways, discovery) against D(s) (contract_ways), way for way - and every way of both held to the
+    events its transition shows need a decision (event_ledger: exactly one decision each, package 15)."""
+    # package 15: `given_receipts` - chance's receipts for operations of more outcomes than CHANCE_CAP, the ones the game
+    # really used - make both sides the procedure's ways given those outcomes (a state certified as reached)
+    # `to_chance` (GPT PACKAGE15 ruling 6): the point's pre-chance part - every way stopped at a chance node of more
+    # outcomes than CHANCE_CAP is its prefix, compared and held to its events like a way
+    found = procedure_ways(timing, effect, catalogue, given_receipts, to_chance, given_prefix)
     if found["status"] != "enumerated":
         return {"complete": False, "stopped": f"discovery: {found['reason']}"}
-    contract = contract_ways(timing, effect, catalogue)
+    contract = contract_ways(timing, effect, catalogue, given_receipts, to_chance, given_prefix)
     if contract["status"] != "enumerated":
         return {"complete": False, "stopped": f"contract: {contract['reason']}"}
     want = {way_key(w): w for w in contract["ways"]}
     got = {way_key(w): w for w in found["ways"]}
     missing = [want[k] for k in sorted(set(want) - set(got))]
     extra = [got[k] for k in sorted(set(got) - set(want))]
-    return {"complete": not missing and not extra, "stopped": None, "contract": len(want), "discovered": len(got),
-            "missing": missing, "extra": extra, "calls": contract["calls"]}
+    ledger = sorted({problem for w in list(want.values()) + list(got.values())
+                     for problem in event_ledger(timing, effect, catalogue, w)})
+    return {"complete": not missing and not extra and not ledger, "stopped": None, "contract": len(want),
+            "discovered": len(got), "missing": missing, "extra": extra, "ledger": ledger, "calls": contract["calls"],
+            # the prefixes that stop at a large chance node (to_chance): none, and these are the point's whole ways
+            "chance_prefixes": sum(1 for w in list(want.values()) + list(got.values()) if w.get("chance"))}

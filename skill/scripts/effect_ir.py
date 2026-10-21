@@ -15,6 +15,8 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+import contextlib as _contextlib
+import contextvars as _contextvars
 
 
 STATE_VERSION = "riftbound-effect-state.v1"
@@ -654,9 +656,6 @@ class ChoiceRequired(ValueError):
 # 2026-10-16 package 14: what a choice private to its chooser offers never travels in a result or its summary (Core
 # 128.4, 355.10.a - engine_check hands results on). A trusted verifier that must enumerate the choice opts in to a side
 # record of it for the calls it makes (recording_private_options): {decision id: [{object_id, identity}]}
-import contextlib as _contextlib
-import contextvars as _contextvars
-
 _PRIVATE_OPTIONS: _contextvars.ContextVar = _contextvars.ContextVar("private_choice_options", default=None)
 
 
@@ -668,6 +667,78 @@ def recording_private_options():
         yield log
     finally:
         _PRIVATE_OPTIONS.reset(token)
+
+
+# 2026-10-19 package 15 (GPT PACKAGE15 ruling 3): the decisions an event needs, noted where the rules make them needed -
+# before the procedure looks for the decision, so a procedure that stopped asking (took a default) still notes them. A
+# trusted verifier opts in (recording_ledger) and holds a committed way to them: decision_space.event_ledger. Each note is
+# (kind, decision id); nothing is noted outside a recording, and no result carries one
+_LEDGER_NOTES: _contextvars.ContextVar = _contextvars.ContextVar("ledger_notes", default=None)
+
+
+@_contextlib.contextmanager
+def recording_ledger():
+    log: list[tuple[str, str]] = []
+    token = _LEDGER_NOTES.set(log)
+    try:
+        yield log
+    finally:
+        _LEDGER_NOTES.reset(token)
+
+
+def _shown_to_chooser(ref: str, state: dict[str, Any], card: str) -> None:
+    """A card a request asks its chooser about, private to them (package 15, found by the corpus: a card that may banish
+    itself as its owner looks at it) - in the trusted side record of what a private choice offers, as resolve_choice
+    puts its options there; never in a result."""
+    log = _PRIVATE_OPTIONS.get()
+    if log is not None:
+        log[ref] = [{"object_id": card, "identity": object_identity(state, card)}]
+
+
+# the Cleanup iteration a kill batch is run for (perform_lethal_cleanup): its replacement notes and requests name it
+_CLEANUP_ITERATION: _contextvars.ContextVar = _contextvars.ContextVar("cleanup_iteration", default=0)
+
+
+def _iteration_suffix() -> str:
+    k = _CLEANUP_ITERATION.get()
+    return f"#cleanup{k}" if k else ""
+
+
+def public_projection(state: dict[str, Any]) -> dict[str, Any]:
+    """2026-10-21 package 15 (GPT PACKAGE15 round 2, ruling 5): the state as both players see it - every card one of them
+    may not see removed: each player's hand, Main Deck and Rune Deck down to their counts, a Battlefield's facedown cards
+    down to their controllers, the look and reveal marks gone. An id the engine makes from a state (a Combat's, a batch's)
+    is made from this, so no change to what a player cannot see changes it, and a player's view makes the same one."""
+    out = copy.deepcopy(state)
+    hidden: set[str] = set()
+    for record in (out.get("players") or {}).values():
+        zones = record.get("zones") or {}
+        for zone in ("hand", "main_deck", "rune_deck"):
+            cards = zones.get(zone) or []
+            hidden |= set(cards)
+            zones[zone] = len(cards)
+    for battlefield in (out.get("battlefields") or {}).values():
+        facedown = battlefield.get("facedown")
+        if isinstance(facedown, dict):
+            cards = facedown.get("cards") or []
+            hidden |= {c.get("object_id") for c in cards}
+            facedown["cards"] = [{"controller": c.get("controller")} for c in cards]
+    out["objects"] = {o: v for o, v in (out.get("objects") or {}).items() if o not in hidden}
+    out.pop("reveals", None)
+    return out
+
+
+def public_id(*states: dict[str, Any] | None) -> str:
+    """Twelve hex digits of the public projection of these states (a timing state is public whole) - an engine-made id
+    that depends on nothing a player cannot see."""
+    parts = [s if s is None or "players" not in s or "objects" not in s else public_projection(s) for s in states]
+    return hash_value({"public": parts}).split(":", 1)[1][:12]
+
+
+def ledger_note(kind: str, decision_id: str) -> None:
+    log = _LEDGER_NOTES.get()
+    if log is not None:
+        log.append((kind, decision_id))
 
 
 class LocationSelectionRequired(ValueError):
@@ -862,9 +933,53 @@ TRIGGER_COST_PAYMENTS = {"energy": {"amount"}, "power": {"domain", "amount"}, "e
 RETURN_SELF_ZONES = {"trash"}
 
 
-def hash_value(value: Any) -> str:
+def _hash_uncached(value: Any) -> str:
     encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+# 2026-10-18 package 15 (C2's corpus): a trusted verifier that hands the same, unchanged input state to the engine
+# thousands of times (action_space.differential tries every declaration of D(s) on one state) opts in to computing that
+# state's hash and validation once (frozen_inputs). Keyed by the object itself, never by value; the verifier holds the
+# objects unchanged and checks it afterwards (frozen_inputs re-hashes them uncached on exit and raises if one moved), so
+# every result is the one the engine would give without it.
+_FROZEN: _contextvars.ContextVar = _contextvars.ContextVar("frozen_inputs", default=None)
+
+
+class FrozenInputMoved(RuntimeError):
+    """An input held frozen changed while it was frozen: every result computed under it is void."""
+
+
+@_contextlib.contextmanager
+def frozen_inputs(*values: Any):
+    own: dict[int, dict[str, Any]] = {}
+    for value in values:
+        if _frozen(value) is None:
+            own[id(value)] = {"object": value, "hash": _hash_uncached(value)}
+    # an inner block keeps what the outer one holds frozen (and checks only its own on exit)
+    memo = {**(_FROZEN.get() or {}), **own}
+    token = _FROZEN.set(memo)
+    try:
+        yield memo
+    finally:
+        _FROZEN.reset(token)
+        moved = [k for k, m in own.items() if _hash_uncached(m["object"]) != m["hash"]]
+        if moved:
+            raise FrozenInputMoved(f"{len(moved)} input(s) held frozen changed while frozen")
+
+
+def _frozen(value: Any) -> dict[str, Any] | None:
+    memo = _FROZEN.get()
+    if memo is None:
+        return None
+    entry = memo.get(id(value))
+    return entry if entry is not None and entry["object"] is value else None
+
+
+def hash_value(value: Any) -> str:
+    if (entry := _frozen(value)) is not None:
+        return entry["hash"]
+    return _hash_uncached(value)
 
 
 def _ruleset_valid(value: Any) -> bool:
@@ -872,6 +987,14 @@ def _ruleset_valid(value: Any) -> bool:
 
 
 def validate_state(state: Any) -> list[str]:
+    if (entry := _frozen(state)) is not None:
+        if "validation" not in entry:
+            entry["validation"] = validate_state_uncached(state)
+        return list(entry["validation"])
+    return validate_state_uncached(state)
+
+
+def validate_state_uncached(state: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(state, dict):
         return ["effect state must be an object"]
@@ -3265,6 +3388,7 @@ def target_group_subset(state: dict[str, Any], effect: dict[str, Any], valid_sel
     import engine_decisions as ed
     spec = effect["targets"]
     ref, legal = spec["subset_ref"], [sel["object_id"] for sel in valid_sels]
+    ledger_note("choice", ref)
     entry = next((e for e in ed.entries(decisions, kind="card_selection") if e.get("decision_id") == ref), None)
     if entry is None:
         return None, {"valid": True, "committed": False, "target_group_subset_required": True,
@@ -3656,7 +3780,10 @@ def derive_targeted(selector: dict[str, Any]) -> bool:
     the trash) is a target; a choice from a non-public zone is not (Core 355.10.a)."""
     if selector.get("chosen_zone_class") == "board":
         return True
-    return selector.get("location") in {"trash", "banishment"}
+    # 2026-10-18 package 15 (found by C2's differential: Defy's "Counter a spell" took any object as its target): the
+    # Chain is Public too (Core 108.1.b), so a spell or ability chosen there is a target (355.10; 355.9.c's own example
+    # is "Counter a spell") - checked as it is chosen like any other
+    return selector.get("location") in {"trash", "banishment", "chain"}
 
 
 def _object_id_errors(value: Any, label: str) -> list[str]:
@@ -7161,6 +7288,15 @@ def printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
     continuous effect it is while its source is on the board (Core 365.1, 476-480), read
     live from the object - never stored, so an aura that entered after the state's legacy
     fields were migrated is still read, and one that left stops at once (2026-09-24)."""
+    # package 15: on a state held frozen (frozen_inputs), computed once - a pure function of the state; a copy handed out
+    if (entry := _frozen(state)) is not None:
+        if "auras" not in entry:
+            entry["auras"] = _printed_aura_effects(state)
+        return copy.deepcopy(entry["auras"])
+    return _printed_aura_effects(state)
+
+
+def _printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
     effects = []
     for object_id in sorted(state.get("objects") or {}):
         obj = state["objects"][object_id]
@@ -7903,6 +8039,17 @@ def characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     every pass, repeating until a pass changes nothing. Within a layer the
     engine derives dependencies (478) and falls back to timestamp order (480);
     an order it cannot justify is refused rather than guessed."""
+    # package 15: on a state held frozen (frozen_inputs), each object's computed once - a pure function of the state and
+    # the object; a copy handed out (an exception it raises is not kept: it is raised again each time)
+    if (entry := _frozen(state)) is not None:
+        cache = entry.setdefault("characteristics", {})
+        if object_id not in cache:
+            cache[object_id] = _characteristics(state, object_id)
+        return copy.deepcopy(cache[object_id])
+    return _characteristics(state, object_id)
+
+
+def _characteristics(state: dict[str, Any], object_id: str) -> dict[str, Any]:
     obj = state["objects"][object_id]
     effects = [e for e in canonical_effects(state) + printed_aura_effects(state)
                if _effect_applies_to(state, e, object_id) and _effect_active(state, e)[0]]
@@ -8528,12 +8675,15 @@ def apply_simultaneous_kill_batch(
         if len(ids) == 1:
             sequence_rank[ids[0]] = 0
             continue
+        # one order per controller and set of its Replacement Effects: a follow-up iteration's batch reads the same
+        # supplied order (it is keyed by the player, _iteration_decisions) and asks for no other
+        ledger_note("replacement", f"replacement:sequence_order:{'+'.join(sorted(ids))}{_iteration_suffix()}")
         supplied = (replacement_sequence_order or {}).get(controller)
         if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(ids):
             return {
                 **base, "valid": True, "committed": False, "replacement_decision_required": True,
                 "reason": "a controller with several Replacement Effects in one batch orders its own sequences",
-                "replacement_ids": sorted(ids), "event_ids": sorted(object_ids),
+                "replacement_decision": "sequence_order", "replacement_ids": sorted(ids), "event_ids": sorted(object_ids),
                 "decision_controller": controller, "trace": [],
             }
         for position, replacement_id in enumerate(supplied):
@@ -8558,11 +8708,12 @@ def apply_simultaneous_kill_batch(
             continue
         supplied = (replacement_event_order or {}).get(sequence_id)
         if len(qualified_ids) > 1:
+            ledger_note("replacement", f"replacement:event_order:{sequence_id}:{'+'.join(qualified_ids)}{_iteration_suffix()}")
             if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(qualified_ids):
                 return {
                     **base, "valid": True, "committed": False, "replacement_decision_required": True,
                     "reason": "replacement controller must order every qualifying simultaneous event",
-                    "replacement_ids": [sequence_id], "event_ids": qualified_ids,
+                    "replacement_decision": "event_order", "replacement_ids": [sequence_id], "event_ids": qualified_ids,
                     "decision_controller": descriptor["controller"], "trace": trace,
                 }
             qualified_ids = supplied
@@ -8582,12 +8733,13 @@ def apply_simultaneous_kill_batch(
             for item in applicable_now:
                 if not item["optional"]:
                     continue
+                ledger_note("replacement", f"replacement:choice:{item['replacement_id']}:{object_id}{_iteration_suffix()}")
                 choice = ((replacement_choices or {}).get(item["replacement_id"]) or {}).get(object_id)
                 if not isinstance(choice, bool):
                     return {
                         **base, "valid": True, "committed": False, "replacement_decision_required": True,
                         "reason": "optional simultaneous replacement requires an explicit choice for the next qualifying event",
-                        "replacement_ids": [item["replacement_id"]], "event_ids": [object_id],
+                        "replacement_decision": "choice", "replacement_ids": [item["replacement_id"]], "event_ids": [object_id],
                         "decision_controller": item["controller"], "trace": trace,
                     }
                 choices[item["replacement_id"]] = choice
@@ -8607,12 +8759,13 @@ def apply_simultaneous_kill_batch(
                 continue
             if len(applicable_now) > 1:
                 ids = [item["replacement_id"] for item in applicable_now]
+                ledger_note("replacement", f"replacement:object_order:{'+'.join(sorted(ids))}:{object_id}{_iteration_suffix()}")
                 supplied = (event_replacement_order or {}).get(object_id)
                 if not isinstance(supplied, list) or len(supplied) != len(set(supplied)) or set(supplied) != set(ids):
                     return {
                         **base, "valid": True, "committed": False, "replacement_decision_required": True,
                         "reason": "the player controlling the affected object picks the order of the Replacement Effects on it",
-                        "replacement_ids": sorted(ids), "event_ids": [object_id],
+                        "replacement_decision": "object_order", "replacement_ids": sorted(ids), "event_ids": [object_id],
                         "decision_controller": decider, "trace": trace,
                     }
                 event["replacement_order"] = list(supplied)
@@ -8695,6 +8848,44 @@ def apply_simultaneous_kill_batch(
     }
 
 
+def _decision_keys(maps: dict[str, Any]) -> set:
+    """Every (map, key) a caller's cleanup decisions supply."""
+    return {(name, key) for name, given in maps.items() if isinstance(given, dict) for key in given}
+
+
+def _iteration_decisions(state: dict[str, Any], group: list[str], attributed_sources, attributed_sources_by_object,
+                         maps: dict[str, Any]) -> dict[str, Any]:
+    """The part of a cleanup's decisions one iteration's kill batch can use: keyed by a Replacement Effect that applies
+    to one of its deaths, by one of its dying objects, or by a player whose sequence order is exactly that player's
+    Replacement Effects here (Core 372) - and '_consumed', the (map, key) pairs taken. Malformed maps pass through whole,
+    for the batch to refuse."""
+    applicable: dict[str, str] = {}
+    for object_id in group:
+        event = {"effect_id": f"simultaneous-kill:{object_id}", "op": "kill", "object_id": object_id,
+                 "kill_mode": "passive_lethal_cleanup",
+                 "attributed_sources": list((attributed_sources_by_object or {}).get(object_id, attributed_sources or []))}
+        for descriptor in _applicable_replacements(state, event):
+            applicable[descriptor["replacement_id"]] = descriptor.get("controller")
+    players = set(state.get("players") or {})
+    out: dict[str, Any] = {"_consumed": set()}
+    for name, given in maps.items():
+        if not isinstance(given, dict):
+            out[name] = given
+            continue
+        kept = {}
+        for key, value in given.items():
+            if key in applicable or key in group:
+                kept[key] = value
+            elif key in players and isinstance(value, list) \
+                    and set(value) == {rid for rid, controller in applicable.items() if controller == key}:
+                kept[key] = value
+            else:
+                continue
+            out["_consumed"].add((name, key))
+        out[name] = kept or None
+    return out
+
+
 def perform_lethal_cleanup(
     state: dict[str, Any],
     *,
@@ -8705,7 +8896,12 @@ def perform_lethal_cleanup(
     event_replacement_order: dict[str, list[str]] | None = None,
     replacement_sequence_order: dict[str, list[str]] | None = None,
     turn_order: list[str] | None = None,
+    later_iterations: dict[int, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """`later_iterations` (package 15, GPT PACKAGE15 round 2 ruling 1): {k: the decision maps of follow-up iteration k}
+    (engine_decisions.later_iteration_maps) - given, an iteration from the second on reads only its own, so each batch's
+    choices are made as it is met (Core 373) and a request names its iteration (`cleanup_iteration`); not given (a caller
+    with no decisions), every iteration reads the maps above, as before."""
     base = {
         "schema_version": "riftbound-lethal-cleanup-result.v1",
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -8724,6 +8920,7 @@ def perform_lethal_cleanup(
     # unit dead of lethal damage never woke a "when a unit dies" watcher (Core 428; review 5 R2-6)
     events: list[dict[str, Any]] = []
     iterations = 0
+    consumed: set = set()
     while iterations < 16:
         lethal = []
         for object_id, obj in current["objects"].items():
@@ -8740,31 +8937,50 @@ def perform_lethal_cleanup(
             initial_group = copy.deepcopy(group)
         facts = {object_id: (might, damage) for object_id, might, damage in lethal}
         before_iteration_hash = hash_value(current)
-        batch = apply_simultaneous_kill_batch(
-            current,
-            group,
-            replacement_event_order=replacement_event_order if iterations == 0 else None,
-            replacement_choices=replacement_choices if iterations == 0 else None,
-            event_replacement_order=event_replacement_order if iterations == 0 else None,
-            replacement_sequence_order=replacement_sequence_order if iterations == 0 else None,
-            turn_order=turn_order,
-            kill_mode="passive_lethal_cleanup",
-            attributed_sources=attributed_sources,
-            attributed_sources_by_object=attributed_sources_by_object,
-        )
+        # 2026-10-18 package 15 (GPT PACKAGE14 ruling 7): every iteration gets the decisions of its own batch - those
+        # that name a Replacement Effect that applies to one of its deaths, one of its dying objects, or (a controller's
+        # sequence order) exactly its Replacement Effects of that controller; until now only the first iteration got any,
+        # so a follow-up iteration that asked again could never be answered
+        if later_iterations is not None and iterations >= 1:
+            maps = {"replacement_event_order": None, "replacement_choices": None, "event_replacement_order": None,
+                    "replacement_sequence_order": None, **(later_iterations.get(iterations) or {})}
+        else:
+            maps = {"replacement_event_order": replacement_event_order, "replacement_choices": replacement_choices,
+                    "event_replacement_order": event_replacement_order, "replacement_sequence_order": replacement_sequence_order}
+        scoped = _iteration_decisions(current, group, attributed_sources, attributed_sources_by_object, maps)
+        consumed |= {(iterations,) + key if later_iterations is not None and iterations >= 1 else key
+                     for key in scoped.pop("_consumed")}
+        token = _CLEANUP_ITERATION.set(iterations if later_iterations is not None else 0)
+        try:
+            batch = apply_simultaneous_kill_batch(
+                current,
+                group,
+                replacement_event_order=scoped["replacement_event_order"],
+                replacement_choices=scoped["replacement_choices"],
+                event_replacement_order=scoped["event_replacement_order"],
+                replacement_sequence_order=scoped["replacement_sequence_order"],
+                turn_order=turn_order,
+                kill_mode="passive_lethal_cleanup",
+                attributed_sources=attributed_sources,
+                attributed_sources_by_object=attributed_sources_by_object,
+            )
+        finally:
+            _CLEANUP_ITERATION.reset(token)
         if batch.get("committed") is not True:
             return {
                 **base, "valid": batch.get("valid", True), "committed": False,
                 "unsupported": batch.get("unsupported", False),
                 "replacement_decision_required": batch.get("replacement_decision_required", False),
+                "cleanup_iteration": iterations if later_iterations is not None else 0,
                 "reason": batch.get("reason", "; ".join(batch.get("errors", [])) or "simultaneous lethal batch failed"),
                 # ADR-0014 §3: the caller has to know which player is being
                 # asked to order which Replacement Effects, over which events.
-                **{key: batch[key] for key in ("reason_code", "replacement_ids", "event_ids", "decision_controller") if key in batch},
+                **{key: batch[key] for key in ("reason_code", "replacement_decision", "replacement_ids", "event_ids",
+                                               "decision_controller") if key in batch},
                 "batch_result": batch, "trace": trace,
             }
         current = batch["next_state"]
-        batch_id = f"lethal-cleanup:{hash_value(state).split(':', 1)[1][:12]}:{iterations}"
+        batch_id = f"lethal-cleanup:{public_id(state)}:{iterations}"
         for event in batch["trace"]:
             copied_event = copy.deepcopy(event)
             object_id = copied_event.get("object_id")
@@ -8792,6 +9008,18 @@ def perform_lethal_cleanup(
             **base, "valid": True, "committed": False, "unsupported": True,
             "reason": "lethal cleanup replacement loop exceeded 16 iterations", "trace": trace,
         }
+    # a decision no iteration's batch had any use for names a Replacement Effect, object or order that never applied -
+    # refused, as the batch itself refused one before every iteration got its own (fail closed, never ignored)
+    supplied = _decision_keys({"replacement_event_order": replacement_event_order, "replacement_choices": replacement_choices,
+                               "event_replacement_order": event_replacement_order,
+                               "replacement_sequence_order": replacement_sequence_order})
+    for k, maps in (later_iterations or {}).items():
+        supplied |= {(k,) + key for key in _decision_keys(maps)}
+    # (only once a batch ran: a Cleanup with nothing lethal reads none of them, as before - other procedures share the maps)
+    if iterations and supplied - consumed:
+        return {**base, "valid": False, "committed": False,
+                "errors": [f"cleanup decisions reference non-applicable replacements: {sorted(k[1] for k in supplied - consumed)}"],
+                "trace": trace}
     return {
         **base,
         "valid": True,
@@ -8915,6 +9143,8 @@ def offer_seen_banish_now(state: dict[str, Any], player_id: str, looked: list[st
             still.append(card)
             continue
         ref = f"{ref_prefix}:{card}"
+        ledger_note("seen_banish", ref)
+        _shown_to_chooser(ref, state, card)
         entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
         if entry is None:
             raise ChoiceRequired(f"{card!r} is being looked at from the top of {player_id}'s Main Deck; its owner may "
@@ -9187,6 +9417,11 @@ def resolve_choice(state: dict[str, Any], spec: dict[str, Any], *, decision_ref:
     if forced is not None:
         return forced, {"forced": True, "reason": "no alternative: every candidate is taken or there is none (Core 359.3.e)", "choice": summary}
     ref = decision_ref or f"choice:{spec['from']}:{chooser}{execution}"
+    # every choice that is not forced is noted as needed (package 15: a slot the procedure meets no need of is one it
+    # does not read here - decision_space.contract_ways); an order of cards is also held to the ledger (event_ledger)
+    ledger_note("choice", ref)
+    if spec.get("selection_kind") == "ordered_permutation":
+        ledger_note("card_ordering", ref)
     entry = ed.decision_entry(decisions, ref)
     if entry is None:
         log = _PRIVATE_OPTIONS.get()
@@ -12263,6 +12498,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                         or card not in current["players"][owner]["zones"]["main_deck"]:
                     continue
                 ref = f"seen-banish:{program.get('program_id')}:{effect_id}:{card}"
+                ledger_note("seen_banish", ref)
+                _shown_to_chooser(ref, current, card)
                 entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
                 if entry is None or entry.get("controller") != owner or entry.get("stage") != "resolution":
                     return {**base, "valid": True, "committed": False, "optional_choice_required": True,
@@ -12291,6 +12528,8 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
         for offer in seen_banished:
             card, owner = offer["card"], offer["owner"]
             ref = f"seen-play:{program.get('program_id')}:{card}"
+            ledger_note("seen_banish", ref)
+            _shown_to_chooser(ref, current, card)
             entry = next((e for e in ed.entries(decisions, kind="optional_choice") if e.get("decision_id") == ref), None)
             if entry is None or entry.get("controller") != owner or entry.get("stage") != "resolution":
                 return {**base, "valid": True, "committed": False, "optional_choice_required": True,

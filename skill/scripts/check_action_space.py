@@ -143,6 +143,19 @@ def main() -> int:
     if A._decision_role("cost:play-7:text-cost", ("play-7",)) != "cost:@:text-cost" \
             or A._decision_role("cost:replay-7x:text-cost", ("play-7",)) != "cost:replay-7x:text-cost":
         fail("C5 ids", "a decision id's role is not read part by part")
+    # C6 (package 15, GPT PACKAGE15 ruling 2): every refusal standard_move names is classed - a moved unit's own (in a
+    # loop over the units, reading that unit) or the Move's - so D(s) excludes a unit only for a refusal that refuses
+    # every set holding it; one added unclassed fails here (and, at run time, is unproved by name)
+    import combat
+    import inspect
+    import re as _re
+    source = inspect.getsource(combat.standard_move)
+    named = set(_re.findall(r'_refuse\(base, "([a-z_]+)"', source))
+    loose = named - combat.STANDARD_MOVE_UNIT_REFUSALS - combat.STANDARD_MOVE_WHOLE_REFUSALS - {"standard_move_timing_illegal"}
+    if not named or loose:
+        fail("C6 move refusals", f"standard_move refuses by {sorted(loose)} unclassed (named {sorted(named)})")
+    if "restriction[\"reason_code\"]" not in source or not {"move_restricted_by_location"} <= combat.STANDARD_MOVE_UNIT_REFUSALS:
+        fail("C6 move refusals", "the Battlefield restriction's refusal is not classed as a unit's own")
 
     if errors:
         print("FAILED: the action space")
@@ -151,7 +164,7 @@ def main() -> int:
         return 1
     print(f"OK: {len(A.ACTION_KINDS)} discretionary kinds match the enumerator's families, {len(A.LIMITED_ACTIONS)} "
           f"limited actions apart; every field of the {len(A.FIELD_CLASSES)} declaration shapes is classified; the action "
-          f"key keeps every rule-meaningful choice and no system field (K1-K3, F1, C1-C5)")
+          f"key keeps every rule-meaningful choice and no system field; every Standard Move refusal is classed (K1-K3, F1, C1-C6)")
     return 0
 
 

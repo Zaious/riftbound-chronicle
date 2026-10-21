@@ -261,16 +261,44 @@ def entries(decisions: dict[str, Any] | None, *, kind: str | None = None, stage:
     return out
 
 
-def replacement_maps(decisions: dict[str, Any] | None) -> tuple[dict[str, list[str]] | None, dict[str, dict[str, bool]] | None]:
-    """Collapse resolution-stage replacement decisions into the maps the cleanup batch consumes."""
+# package 15 (GPT PACKAGE15 round 2, ruling 1): a Replacement Effect decision of a Cleanup's follow-up iteration k is its own
+# - its id ends "#cleanup<k>" - so each iteration may decide differently (Core 373: each batch's sequences are ordered as
+# they are met); the first iteration's carry no suffix
+CLEANUP_ITERATION_SUFFIX = "#cleanup"
+
+
+def cleanup_iteration_of(decision_id: str) -> int:
+    head, sep, tail = str(decision_id).rpartition(CLEANUP_ITERATION_SUFFIX)
+    return int(tail) if sep and head and tail.isdigit() and int(tail) >= 1 else 0
+
+
+def replacement_maps(decisions: dict[str, Any] | None, iteration: int = 0
+                     ) -> tuple[dict[str, list[str]] | None, dict[str, dict[str, bool]] | None]:
+    """Collapse resolution-stage replacement decisions into the maps the cleanup batch consumes - those of one Cleanup
+    iteration (0: the first, and every replacement decision met outside a Cleanup)."""
     order: dict[str, list[str]] = {}
     choices: dict[str, dict[str, bool]] = {}
     for item in entries(decisions, kind="replacement_order", stage="resolution"):
-        order.update(copy.deepcopy(item["value"]))
+        if cleanup_iteration_of(item["decision_id"]) == iteration:
+            order.update(copy.deepcopy(item["value"]))
     for item in entries(decisions, kind="replacement_choice", stage="resolution"):
-        for replacement_id, by_event in item["value"].items():
-            choices.setdefault(replacement_id, {}).update(by_event)
+        if cleanup_iteration_of(item["decision_id"]) == iteration:
+            for replacement_id, by_event in item["value"].items():
+                choices.setdefault(replacement_id, {}).update(by_event)
     return (order or None), (choices or None)
+
+
+def later_iteration_maps(decisions: dict[str, Any] | None) -> dict[int, dict[str, Any]]:
+    """{k: the maps of the Cleanup's follow-up iteration k} for every k a decision names (effect_ir.perform_lethal_cleanup's
+    later_iterations)."""
+    out: dict[int, dict[str, Any]] = {}
+    for kind in ("replacement_order", "replacement_choice"):
+        for item in entries(decisions, kind=kind, stage="resolution"):
+            k = cleanup_iteration_of(item["decision_id"])
+            if k >= 1 and k not in out:
+                order, choices = replacement_maps(decisions, k)
+                out[k] = {"replacement_event_order": order, "replacement_choices": choices}
+    return out
 
 
 def randomization_receipt(decisions: dict[str, Any] | None, operation_id: str) -> dict[str, Any] | None:

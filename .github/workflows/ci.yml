@@ -703,6 +703,8 @@ jobs:
         run: python3 skill/scripts/check_game_loop.py
       - name: Decision space: every procedure point decision and its options (package 14)
         run: python3 skill/scripts/check_decision_space.py
+      - name: Action certificate: a state's actions certified whole for each player (package 15)
+        run: python3 skill/scripts/check_action_certificate.py
       - name: Catalogued objects are played as their record says (package 13, C2)
         run: python3 skill/scripts/check_catalogued_declarations.py
       - name: The closed environment's catalogue (package 13, C2)
@@ -1009,6 +1011,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_state_receipt.py"
           python3 "$REPO/skill/scripts/check_game_loop.py"
           python3 "$REPO/skill/scripts/check_decision_space.py"
+          python3 "$REPO/skill/scripts/check_action_certificate.py"
           python3 "$REPO/skill/scripts/check_catalogued_declarations.py"
           python3 "$REPO/skill/scripts/check_closed_environment.py"
           python3 "$REPO/skill/scripts/check_trigger_discard_return_self.py"

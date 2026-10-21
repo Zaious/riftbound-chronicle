@@ -28,8 +28,10 @@ number of buffs from a unit that has two; a Combat whose defenders are a Unit th
                  over each of two dying units: the controller orders its own sequences (Core 372) - both orders are
                  ways the Cleanup commits (the one replacement_order map is read by what it orders:
                  effect_ir.apply_simultaneous_kill_batch). Where the two overlap on one unit, an order can leave the
-                 batch to a follow-up iteration that asks the same question again, and the engine hands decisions to a
-                 Cleanup's first iteration only: that point is unproved by name (asked again), never guessed
+                 batch to a follow-up iteration that asks again; package 15 (GPT PACKAGE14 ruling 7): every iteration
+                 now gets its own batch's decisions (effect_ir._iteration_decisions), so that point is enumerated - and
+                 its ways equal D(s), way for way. A decision no iteration uses is refused (an unknown Replacement
+                 Effect in the answer)
   D10 chance     (GPT PACKAGE14 ruling 4) recycling five of six cards of the trash to the Main Deck: 120 orders, past
                  CHANCE_CAP. The player's choice before it is enumerated (the representative order's way shows it legal);
                  the point's complete ways are unproved by name - the random successors are not all there
@@ -60,6 +62,7 @@ for stream in (sys.stdout, sys.stderr):
 
 import closed_environment as CE  # noqa: E402
 import decision_space as DS  # noqa: E402
+import effect_ir as IR  # noqa: E402
 import engine_decisions as ED  # noqa: E402
 import game_loop as GL  # noqa: E402
 import play_space as PS  # noqa: E402
@@ -125,6 +128,10 @@ def catalogue() -> dict:
                            "effect_program_id": "draw"}},
                        "programs": {"draw": {"effects": [DRAW]}}},
             "Grunt": {"object": unit()},
+            # package 15 (D15): look at two, put them back in any order; a unit that may banish itself as it is seen
+            "Peek": spell([{"op": "look_at_top", "effect_id": "l", "player": "$controller", "count": 2},
+                           {"op": "put_back", "effect_id": "pb", "player": "$controller", "decision_ref": "order"}]),
+            "Seer": {"object": unit(banish_when_seen={"play_for_power_any": 1})},
             "Field": {"object": {"kind": "battlefield"}},
         },
         "catalogue_hash": "",
@@ -233,6 +240,19 @@ def d1_d2(cat) -> list:
         trusted = DS._run(t, e, cat)
         if sorted(o["object_id"] for o in (trusted["request"].get("private_options") or {}).get("pick") or []) != ["dk", "h1"]:
             fail("D1 options", "the trusted record does not hold the chooser's options")
+        # package 15 (GPT PACKAGE14 ruling 3): the drawn card is chosen as the object it is when the discard reads it - a
+        # new object since it left the Main Deck (Core 124); the identity it had before the draw is refused
+        drawn = next((o for o in p["options"] if o["answer"]["decisions"][0]["value"] == ["dk"]), None)
+        import effect_ir as IR
+        before = IR.object_identity(e, "dk") or "dk@0"
+        if drawn is not None:
+            entry = drawn["answer"]["decisions"][0]
+            stale = {**entry, "selection_identities": {"dk": before}}
+            now = GL.run_procedure(t, e, cat, [entry])
+            then = GL.run_procedure(t, e, cat, [stale])
+            if entry["selection_identities"].get("dk") == before or not now["committed"] or then["committed"]:
+                fail("D1 options", f"the drawn card's identity at the discard: as read {entry['selection_identities'].get('dk')} "
+                                   f"(committed {now['committed']}), as before the draw {before} (committed {then['committed']})")
         points.append(("Pick", t, e))
     t, e = resolving_point(cat, "Shuffle", [("t1", "Grunt", "p1", "trash"), ("t2", "Grunt", "p1", "trash"), ("t3", "Grunt", "p1", "trash")])
     if t is not None:
@@ -421,10 +441,506 @@ def d9_sequences() -> None:
     if apart["status"] != "enumerated" or orders != [("guard-a", "guard-b"), ("guard-b", "guard-a")]:
         fail("D9 sequences", f"two of p2's Replacement Effects, one over each unit: {apart['status']} {apart.get('reason')} {orders}")
     counts["D9 ways"] = len(apart.get("ways") or [])
-    overlap = DS.procedure_ways(t, guarded(({"target_controller_relation": "friendly"}, {"target_object_id": "u2"})),
-                                {"cards": {}, "tokens": {}})
-    if overlap["status"] != "unproved" or "asked again" not in overlap.get("reason", ""):
-        fail("D9 sequences", f"an overlap whose follow-up iteration asks again was not named: {overlap['status']} {overlap.get('reason')}")
+    overlapping = guarded(({"target_controller_relation": "friendly"}, {"target_object_id": "u2"}))
+    overlap = DS.procedure_ways(t, overlapping, {"cards": {}, "tokens": {}})
+    against = DS.differential(t, overlapping, {"cards": {}, "tokens": {}})
+    if overlap["status"] != "enumerated" or not against.get("complete") or against.get("contract", 0) < 2:
+        fail("D9 sequences", f"an overlap whose follow-up iteration asks again is not enumerated equal to D(s): "
+                             f"{overlap['status']} {overlap.get('reason')} {against.get('stopped')} {against.get('contract')}")
+    counts["D9 overlap ways"] = len(overlap.get("ways") or [])
+    # a decision that names a Replacement Effect no iteration has is refused, never ignored
+    import effect_ir as IR
+    answered = IR.perform_lethal_cleanup(guarded(({"target_object_id": "u3"}, {"target_object_id": "u2"})),
+                                         replacement_event_order={"p2": ["guard-a", "guard-b"]})
+    bogus = IR.perform_lethal_cleanup(guarded(({"target_object_id": "u3"}, {"target_object_id": "u2"})),
+                                      replacement_event_order={"p2": ["guard-a", "guard-b"]},
+                                      replacement_choices={"guard-z": {"u2": True}})
+    if answered.get("committed") is not True or bogus.get("valid") is not False:
+        fail("D9 sequences", f"a cleanup decision naming no applicable Replacement Effect was not refused: {bogus.get('reason')}")
+
+
+def d12_mulligan(cat) -> None:
+    """Package 15: Setup's Mulligan (Core 117) - p1 with four cards in hand may set aside none, one or two (1 + 4 + 6
+    answers, a choice private to p1: p2's receipt lists none); two set aside go to the Main Deck's bottom in a random
+    order (416.5: chance's two orders), so the ways are 5 + 6 x 2; three are refused (117.1); the first turn waits for
+    every Mulligan (118), and begins once both are made."""
+    import turn_cycle as TCY
+    hand = [(f"h{i}", "Grunt", "p1", "hand") for i in range(4)] + [(f"k{i}", "Grunt", "p2", "hand") for i in range(4)]
+    deck = [(f"d{i}", "Grunt", "p1", "main_deck") for i in range(6)] + [(f"e{i}", "Grunt", "p2", "main_deck") for i in range(6)]
+    e = environment(cat, hand + deck)
+    t = {**fixture(priority=None), "phase": "setup", "turns_taken": {"p1": 0, "p2": 0}, "mulligans_pending": ["p1", "p2"]}
+    point = DS.decision_point(t, e, cat)
+    sizes = sorted(len(o["answer"]["decisions"][0]["value"]) for o in point.get("options") or [])
+    whole = DS.differential(t, e, cat)
+    if point["status"] != "enumerated" or point.get("decider") != "p1" or sizes != [0] + [1] * 4 + [2] * 6 \
+            or not whole.get("complete") or whole.get("contract") != 5 + 6 * 2:
+        fail("D12 mulligan", f"{point['status']} {point.get('decider')} {sizes} {whole.get('stopped')} {whole.get('contract')}")
+    import action_receipt as AR
+    other = AR.state_receipt(t, e, "p2", cat)
+    if not other["complete"] or other["actions"]:
+        fail("D12 mulligan", f"p2's receipt at p1's Mulligan: {other['complete']} {other['actions'][:2]} {other['why'][:2]}")
+    three = [{"decision_id": TCY.mulligan_decision_id("p1"), "stage": "resolution", "kind": "card_selection",
+              "controller": "p1", "value": ["h0", "h1", "h2"],
+              "selection_identities": {c: IR.object_identity(e, c) or f"{c}@0" for c in ("h0", "h1", "h2")}}]
+    if GL.run_procedure(t, e, cat, three)["committed"]:
+        fail("D12 mulligan", "three cards set aside were taken (Core 117.1: up to two)")
+    if TCY.begin_turn(t, e)["committed"]:
+        fail("D12 mulligan", "the first turn began before the Mulligans (Core 118)")
+    none = next(o for o in point["options"] if not o["answer"]["decisions"][0]["value"])
+    first = GL.run_procedure(t, e, cat, none["answer"]["decisions"])
+    t2, e2 = first["next_timing_state"], first["next_effect_state"]
+    second = DS.decision_point(t2, e2, cat)
+    keep = next(o for o in second["options"] if not o["answer"]["decisions"][0]["value"])
+    done = GL.run_procedure(t2, e2, cat, keep["answer"]["decisions"])
+    after = GL.RC.next_procedure(done["next_timing_state"]).get("procedure") if done.get("committed") else None
+    if second.get("decider") != "p2" or after != "begin_turn_pending":
+        fail("D12 mulligan", f"after p1's Mulligan p2's ({second.get('decider')}), then the first turn ({after})")
+    counts["D12 ways"] = whole.get("contract")
+
+
+def d11_ledger() -> None:
+    """Package 15 (GPT PACKAGE14 ruling 3): two of p2's units die in one Cleanup, each with a death trigger - one batch,
+    one controller, two abilities: every way orders them (decision_space.event_ledger finds the event from the
+    transition, not from a request), and with the request deleted (the procedure ordering them itself) the
+    differential fails by the ledger."""
+    from check_effect_ir import base_state
+    import turn_cycle as TCY
+    e = base_state()
+    for object_id in ("u3", "u4"):
+        e["objects"][object_id] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2,
+                                   "might_modifiers": [], "damage": 2, "exhausted": False,
+                                   "death_triggers": [{"trigger_id": f"{object_id}:dies", "controller": "p2",
+                                                       "source_object": object_id, "controller_order": 0,
+                                                       "effect_program_id": f"{object_id}:dies",
+                                                       "optional_at_finalize": False}]}
+        e["players"]["p2"]["zones"]["base"].append(object_id)
+    t = fixture(priority=None, tasks=["cleanup"])
+    cat = {"cards": {}, "tokens": {}}
+    found = DS.procedure_ways(t, e, cat)
+    orders = [d for w in found.get("ways") or [] for d in w["decisions"] if d["kind"] == "trigger_order"]
+    whole = DS.differential(t, e, cat)
+    if found["status"] != "enumerated" or len(orders) != 2 or not whole.get("complete") or whole.get("ledger"):
+        fail("D11 ledger", f"two simultaneous death triggers of p2: {found['status']} {found.get('reason')} orders={len(orders)} "
+                           f"{whole.get('stopped')} {whole.get('ledger')}")
+    counts["D11 orders"] = len(orders)
+    real = TCY._settle_trigger_orders
+
+    def silent(triggers, decisions, base):
+        # the request deleted: the procedure orders one controller's simultaneous triggers itself
+        seen: dict = {}
+        for trigger in triggers:
+            key = (trigger.get("batch_sequence"), trigger.get("batch_id"), trigger["controller"])
+            trigger["controller_order"] = seen.get(key, 0)
+            seen[key] = trigger["controller_order"] + 1
+        return None
+    TCY._settle_trigger_orders = silent
+    try:
+        deleted = DS.differential(t, e, cat)
+    finally:
+        TCY._settle_trigger_orders = real
+    if deleted.get("complete") or not any("trigger_order" in p for p in deleted.get("ledger") or []):
+        fail("D11 ledger", f"with the trigger order request deleted the differential did not fail by the ledger: "
+                           f"{deleted.get('complete')} {deleted.get('stopped')} {deleted.get('ledger')}")
+
+
+def d13_screening_bounds() -> None:
+    """Package 15 (GPT PACKAGE15 ruling 2): screening never cuts short. On a synthetic procedure (the engine's run
+    replaced): a member taken only with the 17th value of a slot the procedure asks first is found, and past FILL_CAP
+    the run is unproved by name; a member refused with the earlier slot's first value but taken with its second is found
+    (its way is in D(s)), and past CONTEXT_CAP the point is unproved by name; a member refused after chance was answered
+    in one order is marked so."""
+    def entry(slot, value):
+        return {"decision_id": slot, "stage": "resolution", "kind": "target_selection", "controller": "p1", "value": value}
+
+    def step(committed, request=None, state=None):
+        return {"committed": committed, "label": "resolve:fake", "request": request,
+                "next_effect_state": state or {}, "next_timing_state": {}}
+
+    def ask(*ids):
+        return {"code": "target_selection_required", "decision_ids": list(ids), "payload": {}, "controller": "p1"}
+
+    fills = {"f": [entry("f", [f"v{i}"]) for i in range(20)]}
+
+    def run_fill(answer):
+        got = {d["decision_id"]: d["value"] for d in answer["decisions"]}
+        if "f" not in got:
+            return step(False, ask("f"))
+        return step(got["f"] == ["v16"], state={"f": got["f"]})
+    found = DS.settle_screening(run_fill, DS._answer([entry("m", ["x"])]), fills=fills, screening="m", known={"f", "m"})
+    if not found["committed"]:
+        fail("D13 fill", "a member taken only with the 17th value of a slot asked first was refused")
+    real_cap = DS.FILL_CAP
+    DS.FILL_CAP = 16
+    try:
+        DS.settle_screening(run_fill, DS._answer([entry("m", ["x"])]), fills=fills, screening="m", known={"f", "m"})
+        fail("D13 fill", f"20 values of a slot asked first, past a cap of 16, were not unproved")
+    except DS.Unproved:
+        pass
+    finally:
+        DS.FILL_CAP = real_cap
+
+    def run_chance(answer):
+        if not answer["receipts"]:
+            return step(False, {"code": "randomization_receipt_required", "decision_ids": [], "payload": {"chance": {
+                "operation": "recycle", "operation_id": "op1", "player": "p1", "permute": ["c1", "c2"]}}})
+        return step(False)
+    if not DS.settle_screening(run_chance, DS._answer([entry("m", ["x"])]), fills={}, screening="m", known={"m"}).get("screen_chance"):
+        fail("D13 chance", "a member refused after chance was answered in one order was not marked")
+
+    # two slots: a (x, y) asked first, b (p, q); the procedure takes (x, p) and (y, q) only - q is refused with a's first
+    # value and taken with its second
+    slots = [("a", "target_selection", "resolution", DS.SetSpace(["x", "y"], 1, 1), "p1"),
+             ("b", "target_selection", "resolution", DS.SetSpace(["p", "q"], 1, 1), "p1")]
+
+    def run_pair(timing, effect, catalogue, answer=None):
+        got = {d["decision_id"]: d["value"] for d in (answer or DS._answer())["decisions"]}
+        if "a" not in got:
+            return step(False, ask("a"))
+        if "b" not in got:
+            return step(False, ask("b"))
+        pair = (got["a"], got["b"])
+        return step(pair in ((["x"], ["p"]), (["y"], ["q"])), state={"pair": [got["a"], got["b"]]})
+    saved = (DS._run, DS.program_slots, DS._subject, GL.run_procedure, GL.item_program)
+    DS._run = run_pair
+    DS.program_slots = lambda *a, **k: list(slots)
+    DS._subject = lambda *a, **k: {"controller": "p1"}
+    GL.run_procedure = lambda *a, **k: step(False, ask("a"))
+    GL.item_program = lambda *a, **k: {}
+    try:
+        t, e = {"turn_player": "p1"}, {"objects": {}}
+        ways = DS.contract_ways(t, e, {})
+        pairs = sorted(tuple(tuple(d["value"]) for d in w["decisions"]) for w in ways.get("ways") or [])
+        if ways["status"] != "enumerated" or pairs != [(("x",), ("p",)), (("y",), ("q",))]:
+            fail("D13 context", f"a member taken only with the earlier slot's second value: {ways['status']} {ways.get('reason')} {pairs}")
+        counts["D13 ways"] = len(pairs)
+        real_context = DS.CONTEXT_CAP
+        DS.CONTEXT_CAP = 0
+        try:
+            capped = DS.contract_ways(t, e, {})
+        finally:
+            DS.CONTEXT_CAP = real_context
+        if capped["status"] == "enumerated" or "screening b" not in capped.get("reason", ""):
+            fail("D13 context", f"past CONTEXT_CAP the point was not unproved by name: {capped['status']} {capped.get('reason')}")
+    finally:
+        DS._run, DS.program_slots, DS._subject, GL.run_procedure, GL.item_program = saved
+
+
+def d14_unread_by_contract() -> None:
+    """Package 15 (GPT PACKAGE15 ruling 7): whether a point reads a slot is the program's contract, the states only a
+    check of it. On a synthetic procedure: a resolution's choice whose members all leave the same states but different
+    records of what happened (a card revealed) is a choice - every member is a way; a slot the contract says a
+    finalization does not read, whose member changes what the procedure did, is unproved by name."""
+    def step(committed, request=None, trace=None):
+        return {"committed": committed, "label": "x", "request": request, "next_effect_state": {"same": 1},
+                "next_timing_state": {}, "result": {"trace": trace or {}}, "cleanup": []}
+
+    slots = [("r", "card_selection", "resolution", DS.SetSpace(["x", "y"], 1, 1), "p1")]
+
+    noting = [True]
+
+    def run_reveal(timing, effect, catalogue, answer=None):
+        # the choice noted as needed where the procedure meets it, as the engine's choices do (effect_ir.resolve_choice)
+        if noting[0]:
+            IR.ledger_note("choice", "r")
+        got = {d["decision_id"]: d["value"] for d in (answer or DS._answer())["decisions"]}
+        return step(True, trace={"revealed": got.get("r")})
+    saved = (DS._run, DS.program_slots, DS._subject, GL.run_procedure, GL.item_program)
+    DS._run = run_reveal
+    DS.program_slots = lambda *a, **k: list(slots)
+    DS._subject = lambda *a, **k: {"controller": "p1", "id": "item"}
+    GL.item_program = lambda *a, **k: {"effects": []}
+    try:
+        t, e = {"turn_player": "p1"}, {"objects": {}}
+        GL.run_procedure = lambda *a, **k: {**step(True), "label": "resolve:spell"}
+        ways = DS.contract_ways(t, e, {})
+        values = sorted(str([d["value"] for d in w["decisions"]]) for w in ways.get("ways") or [])
+        if ways["status"] != "enumerated" or values != ["[['x']]", "[['y']]", "[]"]:
+            fail("D14 unread", f"a choice that changes only what happened was not kept: {ways['status']} {ways.get('reason')} {values}")
+        counts["D14 ways"] = len(values)
+        # the same procedure noting no need of the choice it reads (one that stopped asking and stopped noting): the slot
+        # is taken as not read here, and a member that changes what happens makes it unproved by name
+        noting[0] = False
+        silent = DS.contract_ways(t, e, {})
+        if silent["status"] == "enumerated" or "met by no need" not in silent.get("reason", ""):
+            fail("D14 unread", f"a choice read with no need noted was not unproved: {silent['status']} {silent.get('reason')}")
+        noting[0] = True
+        GL.run_procedure = lambda *a, **k: {**step(True), "label": "finalize:trigger"}
+        capped = DS.contract_ways(t, e, {})
+        if capped["status"] == "enumerated" or "is not read at finalize:trigger" not in capped.get("reason", ""):
+            fail("D14 unread", f"a slot the contract says is not read, yet read: {capped['status']} {capped.get('reason')}")
+    finally:
+        DS._run, DS.program_slots, DS._subject, GL.run_procedure, GL.item_program = saved
+
+
+def _deleting(codes):
+    """The procedure with these requests deleted: asked one, it answers it itself with the first value the rules give
+    (a procedure that stopped asking and took a default) and runs on - no request of these codes ever leaves it."""
+    real = GL.run_procedure
+
+    def run(timing, effect, catalogue, decisions=None, settings=None, receipts=None):
+        decisions, settings = list(decisions or []), dict(settings or {})
+        step = None
+        for _ in range(8):
+            with IR.recording_private_options() as log:
+                step = real(timing, effect, catalogue, decisions, settings, list(receipts or []))
+            request = step.get("request")
+            if step["committed"] or request is None or request["code"] not in codes:
+                return step
+            _, answers = DS._event_values({**request, "private_options": dict(log)}, timing, effect, step["label"],
+                                          request.get("controller"))
+            decisions += answers[0]["decisions"]
+            settings.update(answers[0]["settings"])
+        return step
+    return run
+
+
+def d15_ledger_kinds(cat) -> None:
+    """Package 15 (GPT PACKAGE15 ruling 3): each kind of event a procedure names - a player's order of cards put back, a
+    card that may banish itself as it is seen, a Unit an effect plays without naming where, two staged Combats, the
+    Replacement Effects of one Cleanup - is held by the ledger to its decisions, read from what the procedure meets as it
+    runs (effect_ir.recording_ledger), not from its requests: each point is enumerated equal to D(s) with the ledger
+    clean, and with that request deleted (the procedure answering itself with a default) the differential fails by the
+    ledger, naming the kind. A replacement decision no event needs fails it too (both ways)."""
+    from check_cleanup_orchestration import with_task
+    from check_combat_staging import contested_board
+    from check_effect_ir import base_state
+    import check_limited_play as LP
+    empty = {"cards": {}, "tokens": {}}
+    points = []
+    t, e = resolving_point(cat, "Peek", [("g1", "Grunt", "p1", "main_deck"), ("g2", "Grunt", "p1", "main_deck")])
+    points.append(("card_ordering", cat, t, e, {"card_ordering_required", "card_selection_required"}))
+    t, e = resolving_point(cat, "Peek", [("sr", "Seer", "p1", "main_deck"), ("g2", "Grunt", "p1", "main_deck")])
+    points.append(("seen_banish", cat, t, e, {"optional_choice_required"}))
+    done = LP.resolved_harrowing()
+    points.append(("entry_location", empty, done["next_timing_state"], done["next_effect_state"], {"entry_location_required"}))
+    two = contested_board(extra_units=(("u3", "p1", "bf2"), ("u4", "p2", "bf2")))
+    two["battlefields"]["bf2"].update({"contested": True, "contested_by": "p2"})
+    two["mode"] = {"victory_score": 8}
+    two["objects"]["u1"]["damage"] = 0
+    points.append(("location", empty, with_task(fixture()), two, {"location_selection_required"}))
+    guarded = base_state()
+    for object_id in ("u3", "u4", "u5"):
+        guarded["objects"][object_id] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2,
+                                         "might_modifiers": [], "damage": 0, "exhausted": False}
+        guarded["players"]["p2"]["zones"]["base"].append(object_id)
+    guarded["objects"]["u2"]["damage"] = 4
+    guarded["objects"]["u3"]["damage"] = 2
+    guarded["replacement_effects"] = [
+        {"replacement_id": "guard-a", "controller": "p2", "source_object": "u4", "mode": "prevent_event", "event_op": "kill",
+         "optional": False, "uses_remaining": None, "target_controller_relation": "friendly"},
+        {"replacement_id": "guard-b", "controller": "p2", "source_object": "u5", "mode": "prevent_event", "event_op": "kill",
+         "optional": False, "uses_remaining": None, "target_object_id": "u2"}]
+    points.append(("replacement", empty, fixture(priority=None, tasks=["cleanup"]), guarded, {"replacement_decision_required"}))
+    real = GL.run_procedure
+    for kind, catalogue_, t, e, codes in points:
+        if t is None:
+            continue
+        whole = DS.differential(t, e, catalogue_)
+        if not whole.get("complete") or whole.get("ledger"):
+            fail("D15 ledger", f"{kind}: not enumerated equal to D(s) with a clean ledger: {whole.get('stopped')} "
+                               f"{whole.get('ledger')} missing {len(whole.get('missing') or [])} extra {len(whole.get('extra') or [])}")
+            continue
+        counts[f"D15 {kind}"] = whole.get("contract")
+        GL.run_procedure = _deleting(codes)
+        try:
+            deleted = DS.differential(t, e, catalogue_)
+        finally:
+            GL.run_procedure = real
+        if deleted.get("complete") or not any(p.startswith(kind) for p in deleted.get("ledger") or []):
+            fail("D15 ledger", f"{kind}: with its request deleted the differential did not fail by the ledger: "
+                               f"{deleted.get('complete')} {deleted.get('stopped')} {(deleted.get('ledger') or [])[:2]}")
+        if kind == "replacement":
+            way = DS.procedure_ways(t, e, catalogue_)["ways"][0]
+            extra = copy.deepcopy(way)
+            extra["decisions"].append({"decision_id": "replacement:choice:guard-b:u3", "stage": "resolution",
+                                       "kind": "replacement_choice", "controller": "p2", "value": {"guard-b": {"u3": False}}})
+            problems = DS.event_ledger(t, e, catalogue_, extra)
+            if not problems:
+                fail("D15 ledger", "a replacement decision no event needs was not named")
+
+
+def d16_iterations() -> None:
+    """Package 15 (GPT PACKAGE15 round 2, ruling 1): a Cleanup's follow-up iteration decides for itself. A Unit with
+    lethal damage and three single-use "prevent its death" Replacement Effects of its controller: the first iteration
+    orders three sequences (one applies and is spent), the follow-up iteration orders the two left - its own decision
+    (id "#cleanup1"), which may differ for the same first choices; every way equals D(s) with a clean ledger. With the
+    follow-up made to reuse the first iteration's decisions (the old behavior), that choice is gone."""
+    from check_effect_ir import base_state
+    import engine_decisions as ED
+    e = base_state()
+    e["objects"]["u3"] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                          "damage": 2, "exhausted": False}
+    e["players"]["p2"]["zones"]["base"].append("u3")
+    e["replacement_effects"] = [{"replacement_id": f"guard-{x}", "controller": "p2", "source_object": "u3",
+                                 "mode": "prevent_event", "event_op": "kill", "optional": False, "uses_remaining": 1,
+                                 "target_object_id": "u3"} for x in "abc"]
+    t = fixture(priority=None, tasks=["cleanup"])
+    cat = {"cards": {}, "tokens": {}}
+
+    def follow_ups(found):
+        by_first: dict = {}
+        for way in found.get("ways") or []:
+            first = tuple(sorted((d["decision_id"], repr(d["value"])) for d in way["decisions"] if "#cleanup" not in d["decision_id"]))
+            later = tuple(sorted((d["decision_id"], repr(d["value"])) for d in way["decisions"] if "#cleanup" in d["decision_id"]))
+            by_first.setdefault(first, set()).add(later)
+        return any(any(later) for laters in by_first.values() for later in laters), \
+            any(len(laters) > 1 for laters in by_first.values())
+    found = DS.procedure_ways(t, e, cat)
+    own, differ = follow_ups(found)
+    whole = DS.differential(t, e, cat)
+    if found["status"] != "enumerated" or not own or not differ or not whole.get("complete") or whole.get("ledger"):
+        fail("D16 iterations", f"{found['status']} {found.get('reason')} own={own} differ={differ} "
+                               f"{whole.get('stopped')} {whole.get('ledger')}")
+    counts["D16 ways"] = len(found.get("ways") or [])
+    real = ED.later_iteration_maps
+    ED.later_iteration_maps = lambda decisions: None     # every iteration reads the first's decisions, as before
+    try:
+        old = DS.procedure_ways(t, e, cat)
+    finally:
+        ED.later_iteration_maps = real
+    if old["status"] == "enumerated" and all(follow_ups(old)):
+        fail("D16 iterations", "with the follow-up iteration reusing the first's decisions, it still chose for itself")
+
+
+def d17_public_ids() -> None:
+    """Package 15 (GPT PACKAGE15 round 2, ruling 5): an engine-made id depends on nothing a player cannot see. A Cleanup
+    stages a Combat on a contested Battlefield, both players holding cards in hand and Main Deck: its Combat id is the
+    same with each Main Deck reordered, a hand card swapped for another, and on each player's view (action_receipt.
+    actor_view) as on the true state. With the id made from the whole state again (the old behavior), it is not."""
+    from check_cleanup_orchestration import with_task
+    from check_combat_staging import contested_board
+    import action_receipt as AR
+    import turn_cycle as TCY
+
+    def board():
+        e = contested_board()
+        e["mode"] = {"victory_score": 8}
+        e["objects"]["u1"]["damage"] = 0
+        for player, cards in (("p1", ("a1", "a2", "a3")), ("p2", ("b1", "b2", "b3"))):
+            for index, card in enumerate(cards):
+                e["objects"][card] = {"owner": player, "controller": player, "kind": "unit", "base_might": 1 + index,
+                                      "might_modifiers": [], "damage": 0, "exhausted": False}
+            e["players"][player]["zones"]["main_deck"] += list(cards[:2])
+            e["players"][player]["zones"]["hand"].append(cards[2])
+        return e
+
+    def combat_id(e):
+        got = TCY.run_cleanup(with_task(fixture()), e)
+        return ((got.get("next_timing_state") or {}).get("combat") or {}).get("combat_id"), got.get("reason_code")
+
+    def variants():
+        e = board()
+        out = {"true": e}
+        shuffled = copy.deepcopy(e)
+        for player in ("p1", "p2"):
+            shuffled["players"][player]["zones"]["main_deck"].reverse()
+        out["decks reordered"] = shuffled
+        swapped = copy.deepcopy(e)
+        swapped["objects"]["b3"]["base_might"] = 9
+        out["a hand card changed"] = swapped
+        for player in ("p1", "p2"):
+            out[f"{player}'s view"] = AR.actor_view(e, player)
+        return out
+
+    def check():
+        ids = {name: combat_id(state) for name, state in variants().items()}
+        return ids, len({i for i, _ in ids.values()}) == 1 and None not in {i for i, _ in ids.values()}
+    ids, same = check()
+    if not same:
+        fail("D17 public ids", f"the Combat id depends on what a player cannot see: {ids}")
+    counts["D17 ids"] = len(ids)
+    real = IR.public_projection
+    IR.public_projection = lambda state: copy.deepcopy(state)   # the whole state, as before
+    try:
+        old_ids, old_same = check()
+    finally:
+        IR.public_projection = real
+    if old_same:
+        fail("D17 public ids", f"made from the whole state, the Combat id still did not change: {old_ids}")
+
+
+def d18_move_cleanup() -> None:
+    """Package 15 (GPT PACKAGE15 round 3): a Standard Move's Cleanup is given the Move's decisions. p1 moves a Unit from
+    its Base to a Battlefield; an opposing Unit with lethal damage has three single-use "prevent its death" Replacement
+    Effects of its controller. Without a choice the Move asks it by name; with legal choices - each follow-up iteration's
+    its own, in either order - it commits; and C2's Standard Move family is unproved by name there (the action space does
+    not enumerate these choices), never complete with the Move silently missing. With the Cleanup given no decisions (the
+    old behavior), the choices are not read (the Move never commits) - and C2 still names it unproved."""
+    from check_effect_ir import base_state
+    import combat as CB
+    import legal_action as LA
+    import action_receipt as AR
+    import action_space as AS
+    e = base_state()
+    e["objects"]["m1"] = {"owner": "p1", "controller": "p1", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                          "damage": 0, "exhausted": False}
+    e["players"]["p1"]["zones"]["base"].append("m1")
+    e["objects"]["u5"] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                          "damage": 2, "exhausted": False}
+    e["players"]["p2"]["zones"]["base"].append("u5")
+    e["replacement_effects"] = [{"replacement_id": f"guard-{x}", "controller": "p2", "source_object": "u5",
+                                 "mode": "prevent_event", "event_op": "kill", "optional": False, "uses_remaining": 1,
+                                 "target_object_id": "u5"} for x in "abc"]
+    t = fixture()
+    declaration = {"schema_version": CB.STANDARD_MOVE_DECLARATION_VERSION, "actor": "p1", "units": ["m1"],
+                   "destination": {"kind": "battlefield", "battlefield": "bf1"},
+                   "unit_identities": {"m1": IR.object_identity(e, "m1") or "m1@0"},
+                   "cost_confirmation": {"exhaust_confirmed": True}}
+
+    def move(decisions):
+        # a Standard Move's decisions bind to its three inputs (combat.standard_move's base input_hash)
+        envelope = {"schema_version": "engine-decisions.v1",
+                    "input_hash": IR.hash_value({"timing_state": t, "effect_state": e, "declaration": declaration}),
+                    "decisions": decisions} if decisions else None
+        return CB.standard_move(t, e, declaration, envelope)
+
+    def answered(flip_later):
+        decisions = []
+        for _ in range(12):
+            got = move(decisions)
+            if got.get("committed") or not got.get("replacement_decision_required"):
+                return got, decisions
+            rids, events, which = list(got["replacement_ids"]), list(got["event_ids"]), got.get("replacement_decision")
+            k = int(got.get("cleanup_iteration") or 0)
+            if flip_later and k:
+                rids = list(reversed(rids))
+            value = {"sequence_order": {got.get("decision_controller"): rids}, "object_order": {events[0]: rids},
+                     "event_order": {rids[0]: events}, "choice": {rids[0]: {events[0]: True}}}[which]
+            decisions.append({"decision_id": DS.replacement_ref(which, sorted(got["replacement_ids"]), got["event_ids"], k),
+                              "stage": "resolution", "kind": "replacement_choice" if which == "choice" else "replacement_order",
+                              "controller": got.get("decision_controller"), "value": value})
+        return got, decisions
+    asked = move([])
+    if not asked.get("replacement_decision_required") or asked.get("committed"):
+        fail("D18 move cleanup", f"with no choice the Move did not ask its Cleanup's: {asked.get('reason_code')} {asked.get('reason')}")
+    first, first_decisions = answered(False)
+    flipped, flipped_decisions = answered(True)
+    later = [d for d in flipped_decisions if "#cleanup" in d["decision_id"]]
+    if not first.get("committed") or not flipped.get("committed") or not later \
+            or [d["value"] for d in first_decisions] == [d["value"] for d in flipped_decisions]:
+        fail("D18 move cleanup", f"legal choices did not commit, or no follow-up iteration chose for itself: "
+                                 f"{first.get('reason')} {flipped.get('reason')} later={len(later)}")
+    counts["D18 decisions"] = len(first_decisions)
+
+    def family():
+        result = LA.enumerate_actions(AR._observation(t, e, "p1"), "p1")
+        return AS.differential("standard_move", t, e, "p1", result)
+    diff = family()
+    if diff.get("complete") or "unproved" not in str(diff.get("stopped")):
+        fail("D18 move cleanup", f"C2's Standard Move family was not unproved by name: {diff.get('complete')} {diff.get('stopped')}")
+    real = IR.perform_lethal_cleanup
+    IR.perform_lethal_cleanup = lambda state, **kwargs: real(state)     # the Cleanup given no decisions, as before
+    try:
+        old_first, _ = answered(False)
+        old = family()
+    finally:
+        IR.perform_lethal_cleanup = real
+    if old_first.get("committed"):
+        fail("D18 move cleanup", "with the Cleanup given no decisions the choices were still read")
+    # (C2 names it there too, as round 2's refusal classing does: the Move alone ends neither its own refusal nor the
+    # Move's - the family is unproved, never silently complete)
+    if old.get("complete"):
+        fail("D18 move cleanup", f"with the Cleanup given no decisions the family was silently complete: {old.get('stopped')}")
 
 
 def d10_chance_cap(cat) -> None:
@@ -456,6 +972,14 @@ def main() -> int:
     d7_exempt()
     d8_chance(cat)
     d9_sequences()
+    d11_ledger()
+    d12_mulligan(cat)
+    d13_screening_bounds()
+    d14_unread_by_contract()
+    d15_ledger_kinds(cat)
+    d16_iterations()
+    d17_public_ids()
+    d18_move_cleanup()
     d10_chance_cap(cat)
     if errors:
         print("FAILED: decision space checks")

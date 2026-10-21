@@ -270,6 +270,14 @@ def validate_state(state: dict[str, Any]) -> list[str]:
         errors.append("priority must be null or a player id")
     if state.get("phase") not in PHASES:
         errors.append(f"phase must be one of {list(PHASES)}")
+    # package 15: the players whose Mulligan is still to come, in Turn Order (Core 117) - Setup only
+    pending_mulligans = state.get("mulligans_pending")
+    if pending_mulligans is not None:
+        if not isinstance(pending_mulligans, list) or len(set(pending_mulligans)) != len(pending_mulligans) \
+                or any(p not in players for p in pending_mulligans):
+            errors.append("mulligans_pending must be a list of distinct player ids")
+        elif pending_mulligans and state.get("phase") != "setup":
+            errors.append("mulligans_pending is Setup's: the first turn begins after every Mulligan (Core 118)")
     # ADR-0010 §1, §6: typed Start of Turn progress and the per-player turn count.
     progress = state.get("turn_progress")
     if progress is not None:
@@ -542,6 +550,17 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             rule_locators=["Core 338–339"],
         )
     combat = state.get("combat")
+    if state.get("phase") == "setup" and state.get("mulligans_pending"):
+        # 2026-10-18 package 15 (C2): Setup's Mulligan - in Turn Order each player may set aside up to two cards of
+        # their hand, draw as many, and recycle those set aside (Core 117); play begins after (118)
+        return _result(
+            state,
+            valid=True,
+            procedure="setup_mulligan",
+            subject=state["mulligans_pending"][0],
+            discretionary_actions_allowed=False,
+            rule_locators=["Core 117", "Core 117.1", "Core 117.2", "Core 117.3"],
+        )
     if state.get("phase") in START_OF_TURN_PHASES or state.get("phase") == "setup":
         # ADR-0010 §1: during the Start of Turn (315) the next required
         # procedure is the phase's own step; no one plays.

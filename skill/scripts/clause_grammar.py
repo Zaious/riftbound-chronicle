@@ -401,7 +401,7 @@ def _lower_draw(params):
 
 
 def _lower_draw_if_few_in_hand(params):
-    """Core 413: draw N - only if the controller holds at most one card as it executes."""
+    """Core 414: draw N - only if the controller holds at most one card as it executes."""
     count = int(params["count"])
     condition = {"kind": "not", "of": {"kind": "zone_count_at_least", "zone": "hand", "count": 2}}
     return {"program_effects": [{"op": "draw", "effect_id": "dr", "player": "$controller", "count": count,
@@ -411,7 +411,7 @@ def _lower_draw_if_few_in_hand(params):
 
 
 def _lower_draw_per_mighty_unit(params):
-    """Core 413 with a count read on execution: N for each Mighty unit the controller controls
+    """Core 414 with a count read on execution: N for each Mighty unit the controller controls
     (708, 710). effect_ir count_per."""
     count = int(params["count"])
     per = {"kind": "units_you_control", "mighty": True}
@@ -422,7 +422,7 @@ def _lower_draw_per_mighty_unit(params):
 
 
 def _lower_discard(params):
-    """Core 422.1: the controller discards N from their own hand, chosen privately; 422.4: a
+    """Core 423.1: the controller discards N from their own hand, chosen privately; 423.4: a
     shorter hand discards what it has, an empty one ignores the instruction."""
     count = int(params["count"])
     return {"program_effects": [{"op": "discard", "effect_id": "dc", "player": "$controller", "count": count,
@@ -569,7 +569,7 @@ _SELF = {"object_ref": "program_source"}
 
 def _lower_buff_exhausted_friendly_unit(params):
     """"Buff an exhausted friendly unit." - one chosen friendly Unit that is Exhausted when it is
-    chosen and when the buff is placed (Core 414.2, 426.1, 359.3.e.2)."""
+    chosen and when the buff is placed (Core 415.2, 427.1, 359.3.e.2)."""
     target = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly",
               "exhausted": True}
     return {"program_effects": [{"op": "buff", "effect_id": "bf", "target": dict(target)}],
@@ -580,7 +580,7 @@ def _lower_buff_exhausted_friendly_unit(params):
 def _lower_ready_something_else_exhausted(params):
     """"Ready something else that's exhausted." - one chosen object of any type on the board or a Legend in
     its Legend Zone (GPT 2026-10-02: Core 107.4, 355.9.a.4), not the source, Exhausted when chosen and when
-    readied (Core 415.1, 414.2)."""
+    readied (Core 416.1, 415.2)."""
     target = {"decision_ref": "t", "chosen_zone_class": "board", "include_legend_zone": True, "exhausted": True,
               "exclude_source_identity": "$source_identity"}
     return {"program_effects": [{"op": "ready", "effect_id": "rd", "target": dict(target)}],
@@ -591,7 +591,7 @@ def _lower_give_me_might_if_ready_enemy_here(params):
     """"Give me +2 [M] this turn if there is a ready enemy unit here." - the source's Might this turn,
     only if, as the instruction executes, an enemy Unit that is Ready stands at the Battlefield the
     source stands at (Core 383.2.a.1: an "if" not right after the trigger condition is the effect's;
-    415.2; 359.3.f.2)."""
+    416.2; 359.3.f.2)."""
     amount = int(params["amount"]) * (-1 if params["sign"] == "-" else 1)
     condition = {"kind": "controls_units", "count": 1, "controller_relation": "enemy", "location": "here",
                  "exhausted": False}
@@ -604,7 +604,7 @@ def _lower_give_me_might_if_ready_enemy_here(params):
 
 def _lower_buff_up_to_two_other_friendly_units(params):
     """"Buff up to two other friendly units." - one choice of zero to two friendly Units, the source
-    not among them (Core 355.13, 426.1); each chosen one is buffed on its own (426.1.b-c)."""
+    not among them (Core 355.13, 427.1); each chosen one is buffed on its own (427.1.b-c)."""
     restrictions = {"chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly",
                     "exclude_source_identity": "$source_identity"}
     return {"program_effects": [{"op": "buff", "effect_id": "bf",
@@ -616,7 +616,7 @@ def _lower_buff_up_to_two_other_friendly_units(params):
 
 def _lower_buff_all_friendly_units(params):
     """"Buff all friendly units." - every friendly Unit on the board, found by criteria and not targeted
-    (Core 355.10.d, 426.1); one that already has a Buff is not buffed again (426.1.b.1)."""
+    (Core 355.10.d, 427.1); one that already has a Buff is not buffed again (427.1.b.1)."""
     criteria = {"kind": "unit", "controller_relation": "friendly", "location": "board"}
     return {"program_effects": [{"op": "buff", "effect_id": "bf", "affected": {"criteria": dict(criteria)}}],
             "ast": {"node": "instruction", "op": "buff", "params": {"affected": dict(criteria)}}}
@@ -625,7 +625,7 @@ def _lower_buff_all_friendly_units(params):
 def _lower_if_at_battlefield_buff_all_other_friendly_units_there(params):
     """"If I am at a battlefield, buff all other friendly units there." - only if the source stands at a
     Battlefield as the instruction executes; then every other friendly Unit at that Battlefield (Core
-    359.3.f.2, 355.10.d, 426.1). The "if" is not right after a trigger condition, so it is the
+    359.3.f.2, 355.10.d, 427.1). The "if" is not right after a trigger condition, so it is the
     effect's (Core 383.2.a.1)."""
     criteria = {"kind": "unit", "controller_relation": "friendly", "location_ref": dict(_HERE),
                 "exclude_source_identity": "$source_identity"}
@@ -639,7 +639,7 @@ def _lower_if_at_battlefield_buff_all_other_friendly_units_there(params):
 
 def _lower_kill_all_damaged_enemy_units_here(params):
     """"Kill all damaged enemy units here." - every enemy Unit at the source's current Battlefield
-    with damage marked on it as the instruction executes (Core 428, 142, 355.10.d, 359.3.f.2)."""
+    with damage marked on it as the instruction executes (Core 429, 142, 355.10.d, 359.3.f.2)."""
     criteria = {"kind": "unit", "controller_relation": "enemy", "location_ref": dict(_HERE), "damaged": True}
     return {"program_effects": [{"op": "kill", "effect_id": "kl", "affected": {"criteria": dict(criteria)}}],
             "ast": {"node": "instruction", "op": "kill", "params": {"affected": dict(criteria)}}}
@@ -717,7 +717,7 @@ def _lower_temporary_unit_at_battlefield_or_gear(params):
 
 def _lower_next_spell_discount(params):
     """"The next spell you play this turn costs [N] less." (Raging Firebrand) - a turn effect the
-    play transaction reads as a discount on the next spell and spends (Core 391, 356.4)."""
+    play transaction reads as a discount on the next spell and spends (Core 392, 356.4)."""
     amount = int(params["amount"])
     return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
                                  "turn_effect_kind": "next_spell_cost_reduction", "value": amount,
@@ -739,7 +739,7 @@ def _lower_next_spell_bonus_damage(params):
 
 def _lower_next_unit_enters_ready(params):
     """"The next unit you play this turn enters ready." (Sun Disc) - bound to that one play as an
-    entry replacement, then spent (Core 391, 369.3)."""
+    entry replacement, then spent (Core 392, 369.3)."""
     return {"program_effects": [{"op": "grant_turn_effect", "effect_id": "grant",
                                  "turn_effect_kind": "entry_state_for_next_played_unit", "value": "ready",
                                  "controller": "$controller", "source": "$chain_item"}],
@@ -772,7 +772,7 @@ def _lower_self_cost_reduction_fixed(params):
 
 def _lower_might_by_points(params):
     """"My Might is increased by your points." - a passive increase of the card's own
-    Might by its controller's points, read each time Might is computed (477.3.b)."""
+    Might by its controller's points, read each time Might is computed (479.4.b)."""
     return {"object_fields": {"dynamic_might": [{"modifier_id": "own-text", "amount": 1, "per": {"kind": "controller_points"}}]},
             "ast": {"node": "dynamic_might", "per": "controller_points", "amount": 1}}
 
@@ -799,7 +799,7 @@ def _lower_self_cost_reduction_highest_might(params):
 
 def _lower_self_cost_reduction_unit_died(params):
     """"If an enemy unit has died this turn, this costs N less." - the card's own text, a fixed
-    Energy amount, gated by a Unit of that side having died this turn (356.4, 428.1)."""
+    Energy amount, gated by a Unit of that side having died this turn (356.4, 429.1)."""
     amount = int(params["amount"])
     condition = {"kind": "unit_died_this_turn", "controller_relation": params["relation"]}
     return {"object_fields": {"printed_cost_modifications": [{
@@ -852,7 +852,7 @@ def _lower_keyworded_ability(params, slots):
 
 
 def _lower_defends_alone_aura(params, slots):
-    """Core 477.3 / 460: a standing arithmetic modifier over a named combat
+    """Core 479.4 / 462: a standing arithmetic modifier over a named combat
     condition. The engine already carries exactly this condition
     (AURA_CONDITION_KINDS), so the clause supplies the amount and nothing else."""
     delta = slots["might_delta"]
@@ -1135,7 +1135,7 @@ def _lower_recycle_a_non_unit_from_the_reveal(params):
 
 def _lower_they_discard_a_card_from_the_reveal(params):
     # 2026-10-08 package 10 (Mindsplitter): the caster chooses one card of what the reveal showed; "they" - the player
-    # whose hand that reveal (rv, they_reveal_their_hand) revealed - discards it (Core 424.2.b, 422.1)
+    # whose hand that reveal (rv, they_reveal_their_hand) revealed - discards it (Core 425.2.b, 423.1)
     return {
         "program_effects": [{"op": "discard", "effect_id": "dc", "reveal_ref": "rv",
                              "decision_ref": "revealed-card",
@@ -1188,7 +1188,7 @@ AURA_HERE = {"kind": "unit", "controller_relation": "friendly", "exclude_source"
 
 
 def _lower_aura_here(params):
-    """Core 365.1, 476-479: a printed aura over the other friendly Units at the source's
+    """Core 365.1, 478-481: a printed aura over the other friendly Units at the source's
     Battlefield, read by effect_ir.printed_aura_effects while the source is on the board."""
     amount = int(params["amount"])
     return {"object_fields": {"static_auras": [{"aura_id": "here", "amount": amount, "criteria": dict(AURA_HERE)}]},
@@ -1196,7 +1196,7 @@ def _lower_aura_here(params):
 
 
 def _lower_buffed_aura_here(params):
-    """The same aura, only over Units with a Buff counter (426.1.b)."""
+    """The same aura, only over Units with a Buff counter (427.1.b)."""
     amount = int(params["amount"])
     criteria = {**AURA_HERE, "buffed": True}
     return {"object_fields": {"static_auras": [{"aura_id": "buffed-here", "amount": amount, "criteria": criteria}]},
@@ -1241,8 +1241,8 @@ STUNNED_ENEMY_HERE = {"kind": "unit", "controller_relation": "enemy", "at_source
 def _lower_stunned_enemy_aura_here(params):
     """Package 6 (2026-09-27): "Stunned enemy units here have -N [M], to a minimum of M [M]." - a
     printed decrease over the enemy Units at the source's Battlefield that are Stunned right now
-    (Core 423.1.a), limited to its floor; a passive's limit is applied fresh, never snapshotted
-    (477.3.b). effect_ir.printed_aura_effects reads it while the source is on the board (365.1)."""
+    (Core 424.1.a), limited to its floor; a passive's limit is applied fresh, never snapshotted
+    (479.4.b). effect_ir.printed_aura_effects reads it while the source is on the board (365.1)."""
     amount, floor = -int(params["amount"]), int(params["floor"])
     aura = {"aura_id": "stunned-enemy-here", "amount": amount, "minimum": floor, "criteria": dict(STUNNED_ENEMY_HERE)}
     return {"object_fields": {"static_auras": [aura]},
@@ -1259,7 +1259,7 @@ def _lower_battlefield_aura(params):
                                                                          "on": "battlefield"}}}
 
 
-# 2026-09-27: printed keyword auras (Core 477.2, 477.2.b) and a card's own conditional
+# 2026-09-27: printed keyword auras (Core 479.3, 479.3.b) and a card's own conditional
 # keywords / Might (364.3.a). A keyword granted this
 # way is a keyword_grant in the Ability layer, read by whatever uses the keyword off the computed
 # characteristics (effect_ir.STATIC_AURA_KEYWORDS).
@@ -1455,7 +1455,7 @@ LOWERINGS = {
     "choose_an_enemy_unit_deal_n_to_it_unless_its_controller_has_you_draw_n": _lower_choose_enemy_deal_unless_draw,
     "when_any_unit_takes_damage_this_turn_kill_it": _lower_decree,
     # 2026-10-08 package 10 (Dr. Mundo - Expert): N cards of the controller's own trash, chosen by them, recycled (as many
-    # as there are when fewer, Core 416.4); several at once go to the bottom in a random order (416.5)
+    # as there are when fewer, Core 417.4); several at once go to the bottom in a random order (417.5)
     "recycle_n_from_your_trash": lambda params: {
         "program_effects": [{"op": "recycle", "effect_id": "rc", "player": "$controller", "decision_ref": "rc",
                              "order_ref": "rc-order",
@@ -1463,7 +1463,7 @@ LOWERINGS = {
                                         "count": {"exactly": int(params["count"])}}}],
         "ast": {"node": "instruction", "op": "recycle", "params": {"from": "trash", "count": int(params["count"])}}},
     # 2026-10-12 package 11 (Forge of the Future, GPT PACKAGE11 ruling 7): up to N cards from any players' trashes, chosen
-    # by the controller as it resolves (not targets, Core 416.6); each to its owner's deck (416.1)
+    # by the controller as it resolves (not targets, Core 417.6); each to its owner's deck (417.1)
     "recycle_up_to_n_cards_from_trashes": lambda params: {
         "program_effects": [{"op": "recycle", "effect_id": "rc", "player": "$controller", "decision_ref": "rc",
                              "order_ref": "rc-order",
@@ -1681,7 +1681,7 @@ TRIGGER_WRAPPERS = {
                                           {"condition": {"kind": "played_to_battlefield"}}),
     "when_you_play_me": ("play_triggers", "on-play", None),
     # 2026-10-08 package 10 (Spirit's Refuge, Forge of the Future): a Gear's own play trigger - "this" is the card, as "me"
-    # is a Unit's; collected as the play completes (Core 419.4.a), the same descriptor
+    # is a Unit's; collected as the play completes (Core 420.4.a), the same descriptor
     "when_you_play_this": ("play_triggers", "on-play", None),
     "when_i_move": ("move_triggers", "on-move", None),
     # 2026-10-12 package 11 (Treasure Trove): however the card leaves the board (effect_ir.leave_board_triggers)
@@ -1697,7 +1697,7 @@ TRIGGER_WRAPPERS = {
     "at_the_start_of_your_beginning_phase_if_you_control_a_facedown_card_at_a_battlefield": (
         "beginning_phase_triggers", "on-beginning",
         {"scope": "your_beginning_phase", "condition": {"kind": "controls_facedown_card_at_battlefield"}}),
-    # Core 469.1: the unit conquering is the one at the Battlefield being
+    # Core 471.1: the unit conquering is the one at the Battlefield being
     # scored. That is the engine's default scope for a conquer trigger; the
     # clause states it rather than relying on the default.
     "when_i_conquer": ("conquer_triggers", "on-conquer", {"scope": "unit_here"}),
@@ -1717,7 +1717,7 @@ TRIGGER_WRAPPERS = {
     # Combat (383.4.e.2.a, 383.4.f.2.a).
     "when_i_attack_or_defend": (("attack_triggers", "defend_triggers"), "on-attack-or-defend", None),
     # 2026-09-27: one ability, two conditions of different kinds - a Play Effect (Core 383.4.a,
-    # 419.4.a) and a Conquer Effect (383.4.c.2.a). The conquer field's default scope is the
+    # 420.4.a) and a Conquer Effect (383.4.c.2.a). The conquer field's default scope is the
     # Unit's own (unit_here, battlefield_control._score_triggers), so no extra is shared.
     "when_im_played_and_when_i_conquer": (("play_triggers", "conquer_triggers"), "on-play-and-conquer", None),
     # 2026-09-24: watched triggers - a typed watch over the semantic events (watchers.py),
@@ -1736,7 +1736,7 @@ TRIGGER_WRAPPERS = {
     # 2026-09-27 (Volibear - Relentless Storm): "a [Mighty] unit" is a Unit whose current Might is 5 or
     # greater (Core 708, 710), read off the played Unit when the play wakes the watch
     # 2026-10-06 package 9 (Volibear - Imposing, GPT ruling 14): an opponent's Move - a Standard Move they make or one an
-    # effect they control makes (Core 411.1, 411.4) - to a Battlefield the source is not at; one per Move action (GPT
+    # effect they control makes (Core 412.1, 412.4) - to a Battlefield the source is not at; one per Move action (GPT
     # 2026-10-07: one Standard Move of several units is one; two Move instructions in one resolution are two)
     "when_an_opponent_moves_to_a_battlefield_other_than_mine": ("event_triggers", "on-opponent-move", {"watch": {
         "kinds": ["moved"], "scope": "opponent_actor",
@@ -1755,9 +1755,9 @@ TRIGGER_WRAPPERS = {
     # where "one or more" above is one per batch
     "when_you_stun_an_enemy_unit": ("event_triggers", "on-stun-enemy", {"watch": {
         "kinds": ["stunned"], "scope": "actor", "filter": {"object_controller_relation": "enemy"}}}),
-    # "you discard": the player whose hand the card left (the event's player, Core 422.1), not
+    # "you discard": the player whose hand the card left (the event's player, Core 423.1), not
     # the controller of the effect that made them discard (an opponent's "discard 1" makes YOU
-    # discard); one trigger per batch. A discard paid as a cost counts (Core 422.2.a, 422.3)
+    # discard); one trigger per batch. A discard paid as a cost counts (Core 423.2.a, 423.3)
     "when_you_discard_one_or_more_cards": ("event_triggers", "on-discard", {"watch": {
         "kinds": ["discarded"], "scope": "player", "grouping": "one_or_more"}}),
     "when_you_recycle_one_or_more_cards_to_your_main_deck": ("event_triggers", "on-recycle", {"watch": {
@@ -1766,14 +1766,14 @@ TRIGGER_WRAPPERS = {
     "when_a_buffed_friendly_unit_dies": ("event_triggers", "on-buffed-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any",
         "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "object_was_buffed": True}}}),
-    # 2026-09-27 (Solari Shrine): "you kill" is a kill you are responsible for (Core 411.4, 428.5.b, 428.5.c.1,
-    # 428.5.c.2 - the died event's responsible_player); "a stunned enemy unit" is read off the unit as it was
+    # 2026-09-27 (Solari Shrine): "you kill" is a kill you are responsible for (Core 412.4, 429.5.b, 429.5.c.1,
+    # 429.5.c.2 - the died event's responsible_player); "a stunned enemy unit" is read off the unit as it was
     "when_you_kill_a_stunned_enemy_unit": ("event_triggers", "on-kill-stunned-enemy", {"watch": {
         "kinds": ["died"], "scope": "responsible",
         "filter": {"object_kind": "unit", "object_controller_relation": "enemy", "object_was_stunned": True}}}),
     # 2026-10-08 (package 10): "When you ready a friendly unit" (Pirate's Haven) - a Ready you perform (the event's actor:
-    # an instruction's controller, or the Turn Player in the Awaken step, Core 315.1.b, 415.3.a) of a Unit you control;
-    # each readied unit its own trigger, the unit its "it" (Core 359.3.f.3). An already Ready unit is not readied (415.1.b)
+    # an instruction's controller, or the Turn Player in the Awaken step, Core 315.1.b, 416.3.a) of a Unit you control;
+    # each readied unit its own trigger, the unit its "it" (Core 359.3.f.3). An already Ready unit is not readied (416.1.b)
     "when_you_ready_a_friendly_unit": ("event_triggers", "on-ready-friendly-unit", {"watch": {
         "kinds": ["readied"], "scope": "actor", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "grouping": "each"}}),
@@ -1786,8 +1786,8 @@ TRIGGER_WRAPPERS = {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "occurrence": "first_each_turn"}}),
     # 2026-09-27: "the Nth time I move" - the card's own Moves this turn, a Standard Move or one an
-    # effect makes (Core 420.2, 446.1), counted per object (Core 124); the count reaching N
-    # triggers it once (Core 383.1, 383.1.b). A Recall is not a Move (446.1) and emits no `moved`
+    # effect makes (Core 421.2, 448.1), counted per object (Core 124); the count reaching N
+    # triggers it once (Core 383.1, 383.1.b). A Recall is not a Move (448.1) and emits no `moved`
     "the_first_time_i_move_each_turn": ("event_triggers", "on-first-move", {"watch": {
         "kinds": ["moved"], "scope": "self", "occurrence": "first_each_turn"}}),
     "the_third_time_i_move_in_a_turn": ("event_triggers", "on-third-move", {"watch": {
@@ -1809,7 +1809,7 @@ TRIGGER_WRAPPERS = {
         "conquer_triggers", "on-you-conquer", lambda params: {"scope": "controller", "condition": {
             "kind": "controls_units", "count": int(params["count"]), "location": "here"}}),
     # 2026-09-27 (package 6): "your second card in a turn" - the play's ordinal, stamped by the play
-    # transaction as each play is Finalized (Core 419.4.b), every play of the turn counted
+    # transaction as each play is Finalized (Core 420.4.b), every play of the turn counted
     "when_you_play_your_second_card_in_a_turn": ("event_triggers", "on-play-second-card", {"watch": {
         "kinds": ["played"], "scope": "actor", "filter": {"card_played_ordinal": 2}}}),
     # 2026-09-27 (package 6): "another non-Recruit unit you control" - the dying unit's kind and tags
@@ -1818,17 +1818,17 @@ TRIGGER_WRAPPERS = {
         "kinds": ["died"], "scope": "any",
         "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "exclude_source": True,
                    "object_not_tagged": "Recruit"}}}),
-    # 2026-09-27 (package 6): works from the trash, the zone discarding puts the card in (Core 422.1,
+    # 2026-09-27 (package 6): works from the trash, the zone discarding puts the card in (Core 423.1,
     # 383.2.c.1, 385.2) - watchers.source_active reads `functions_from`, and nothing else does
     "when_you_discard_me": ("event_triggers", "on-discard-me", {"watch": {
         "kinds": ["discarded"], "scope": "self"}, "functions_from": ["trash"]}),
     # 2026-09-27 (package 6): a unit's death attributed to a spell its controller is responsible for
-    # (Core 428.5.b-d; resolution_bridge.kill_attributed). Where the ability works is the card's own
+    # (Core 429.5.b-d; resolution_bridge.kill_attributed). Where the ability works is the card's own
     # business: Immortal Phoenix says "from your trash" (Core 385.2) - its descriptor adds functions_from
     "when_you_kill_a_unit_with_a_spell": ("event_triggers", "on-spell-kill", {"watch": {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "killed_by_your_spell": True}}}),
     # 2026-09-28: watches over a Unit gaining a combat designation (combat.open_combat /
-    # sync_designations emit `attacked` / `defended`, Core 464.2.c.3). One trigger per Unit
+    # sync_designations emit `attacked` / `defended`, Core 466.2.c.3). One trigger per Unit
     # (383.3.a); the other requirements are read as the designation is gained (383.4.e.2.b,
     # 383.4.f.2.b). "a battlefield you control": the watcher's controller controlled the combat's
     # Battlefield then (control does not change during the combat, 190.4.b).
@@ -1939,7 +1939,7 @@ def _apply_mapping(compiled: dict[str, Any], mappings: dict[str, Any] | None) ->
 # clause is unparsed rather than guessed at.
 SEQUENCE_CONNECTIVES = (", then ", ", and ", " and ")
 # The three prefixes that read the *previous clause's* receipt. Core 359.3.e.14
-# and 430.5: they test what the earlier instruction did, not what the state
+# and 431.5: they test what the earlier instruction did, not what the state
 # looks like now.
 LINK_PREFIXES = {
     "if you do, ": "action_performed",
@@ -1966,7 +1966,7 @@ def _offer_of(previous: dict[str, Any] | None) -> str | None:
     return offers[0]["cost_offer_id"] if len(offers) == 1 else None
 
 
-# Core 402.2: "X or Y" is a mode chosen by the controller, not two things
+# Core 403.2: "X or Y" is a mode chosen by the controller, not two things
 # that both happen. It is deliberately *not* one of the sequence connectives -
 # a sequence performs both parts, and reading "or" as one would silently do
 # twice what the card says to do once.
@@ -2149,7 +2149,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
     if offer_linked is not None:
         return offer_linked
 
-    # Core 430.5's own example (Catalyst of Aeons): "If you couldn't channel 2 runes this
+    # Core 431.5's own example (Catalyst of Aeons): "If you couldn't channel 2 runes this
     # way" is "if you can't" with the count spelled out. It reads the SAME receipt - the
     # previous instruction's - and the words must describe that instruction: a Channel of
     # exactly that many runes. Anything else abstains rather than reading another receipt.
@@ -2189,7 +2189,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
         return {
             "production_id": "linked_prefix", "unsupported": False, "text": text, "normalized": normalized,
             "params": {}, "slots": {}, "link": link, "antecedent_effect_id": antecedent,
-            "rule_locators": ["Core 359.3.e.14", "Core 430.5"] + inner["rule_locators"],
+            "rule_locators": ["Core 359.3.e.14", "Core 431.5"] + inner["rule_locators"],
             "required_capability": sorted(set(inner["required_capability"]) | {"instruction_conditions"}),
             "ast": {"node": "linked", "link": link, "reads": antecedent, "then": inner["ast"]},
             "program_effects": effects,
@@ -2334,7 +2334,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
         return _apply_mapping(compiled, mappings)
     # Round H: a mode. Both halves must be instructions the grammar reads and
     # neither may contribute a passive - a mode that changes what the card *is*
-    # rather than what it does is not something Core 402.2 covers.
+    # rather than what it does is not something Core 403.2 covers.
     modes = _split_modes(normalized)
     if modes:
         compiled = [compile_clause(part, grammar) for part in modes]
@@ -2351,7 +2351,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
         return {
             "production_id": "modal_choice", "unsupported": False, "text": text, "normalized": normalized,
             "params": {}, "slots": {},
-            "rule_locators": sorted({"Core 402.2", "Core 820.2.a"} | {loc for e in compiled for loc in e["rule_locators"]}),
+            "rule_locators": sorted({"Core 403.2", "Core 820.2.a"} | {loc for e in compiled for loc in e["rule_locators"]}),
             "required_capability": sorted({"modal_abilities"} | {c for e in compiled for c in e["required_capability"]}),
             "ast": {"node": "modal", "choose": 1, "of": [entry["ast"] for entry in compiled]},
             "program_effects": [],
@@ -2378,7 +2378,7 @@ def compile_clause(text: str, grammar: dict[str, Any] | None = None,
             return {"production_id": "sequence", "unsupported": True, "reason_code": "clause_unparsed",
                     "text": text, "normalized": normalized,
                     "reason": f"a connective joined an instruction the grammar cannot read: {failed!r}"}
-        # ", then " is ORDER, not a condition (GPT 2026-09-25; Core 422.4's own example: with
+        # ", then " is ORDER, not a condition (GPT 2026-09-25; Core 423.4's own example: with
         # no cards in hand the discard is ignored and the draw still happens). Only a written
         # "If you do" makes a later instruction depend on an earlier one (359.3.e.14), and
         # that is the linked-prefix path (LINK_PREFIXES), not this one.

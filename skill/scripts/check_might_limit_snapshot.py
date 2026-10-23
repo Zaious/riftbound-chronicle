@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regression gate: a limited Might change is remembered, not recomputed.
 
-Core 477.3.b, in our words: a limited arithmetic effect whose source is not a
+Core 479.4.b, in our words: a limited arithmetic effect whose source is not a
 passive ability takes its limit once, when applied, and keeps that amount for
 as long as it lasts ("snapshotting"). The rule's example: -4 [M] with a floor of
 1 [M], given this turn to a Unit at 2 [M], comes to -1 [M] this turn.
@@ -15,14 +15,14 @@ correct, and disagrees the moment it does:
     the effect is limited to -4 and remembered at -4
     the buff is then removed
 
-    remembered   2 - 4 = -2, referenced as 0 (Core 143.2.b)
+    remembered   2 - 4 = -2, referenced as 0 (Core 143.2.c)
     recomputed   the floor bites now, the effect gives -1, the Unit sits at 1
 
 A Unit at 0 Might and a Unit at 1 Might are not the same Unit, and "what is my
 Might now" is a question new players ask constantly.
 
 The passive half is the other side of the same rule: a limitation from a
-passive ability is NOT snapshotted, and 479.1's worked example depends on two
+passive ability is NOT snapshotted, and 481.1's worked example depends on two
 such effects each changing what the other applies.
 
 What must hold:
@@ -94,7 +94,7 @@ def main() -> int:
     recorded = result["trace"][0].get("amount")
     if recorded != -1:
         failures.append(f"'-4 to a min of 1' on a 2 Might Unit generated {recorded}, "
-                        f"and 477.3.b's own example says -1")
+                        f"and 479.4.b's own example says -1")
     if IR.effective_might(state, "u1") != 1:
         failures.append(f"the Unit is at {IR.effective_might(state, 'u1')}, expected 1")
 
@@ -102,7 +102,7 @@ def main() -> int:
     after = apply(state, buff_effect("buff", 3))["next_state"]
     if IR.effective_might(after, "u1") != 4:
         failures.append(f"after a later +3 the Unit is at {IR.effective_might(after, 'u1')}; the "
-                        f"remembered -1 gives 2 + 3 - 1 = 4, recomputing gives 1 (477.3.b)")
+                        f"remembered -1 gives 2 + 3 - 1 = 4, recomputing gives 1 (479.4.b)")
 
     # --- a -4 taken at 5 stays -4 when the buff falls away -------------------
     state = apply(unit_at(2), buff_effect("buff", 3))["next_state"]
@@ -117,7 +117,7 @@ def main() -> int:
     got = IR.effective_might(state, "u1")
     if got != 0:
         failures.append(f"with the buff gone the Unit is at {got}; the remembered -4 gives 2 - 4 = "
-                        f"-2, read as 0 (143.2.b, 477.3.b). Recomputing the bound gives 1")
+                        f"-2, read as 0 (143.2.c, 479.4.b). Recomputing the bound gives 1")
 
     # --- a passive limitation is NOT snapshotted ----------------------------
     passive = unit_at(2)
@@ -138,7 +138,7 @@ def main() -> int:
     lifted["objects"]["u1"]["base_might"] = 9
     if IR.effective_might(lifted, "u1") != 5:
         failures.append(f"a passive limitation was not recomputed on a 9 Might Unit: got "
-                        f"{IR.effective_might(lifted, 'u1')}, expected 5 (477.3.b: a passive "
+                        f"{IR.effective_might(lifted, 'u1')}, expected 5 (479.4.b: a passive "
                         f"ability does not snapshot)")
 
     # --- a floor limits a decrease; it never raises (GPT 2026-10-02, Leona - Zealot) ----------------
@@ -177,14 +177,14 @@ def main() -> int:
     bad_passive = copy.deepcopy(passive)
     bad_passive["continuous_effects"][0]["value"]["snapshot_amount"] = -1
     if not any("snapshot" in e for e in IR.validate_state(bad_passive)):
-        failures.append("a passive entry carrying a snapshot_amount was accepted (477.3.b)")
+        failures.append("a passive entry carrying a snapshot_amount was accepted (479.4.b)")
     bare = copy.deepcopy(passive)
     bare["continuous_effects"][0]["passive"] = False
     bare["continuous_effects"][0]["value"] = {"amount": -1, "mode": "delta", "snapshot_amount": -1}
     if not any("snapshot" in e for e in IR.validate_state(bare)):
         failures.append("a snapshot_amount with no limitation to snapshot was accepted")
 
-    print("might limit snapshotting (Core 477.3.b, 477.3.e.2.b, 143.2.b, 370.1.a)")
+    print("might limit snapshotting (Core 479.4.b, 479.4.e.2.b, 143.2.c, 370.1.a)")
     print("  Riot's example reproduces: -4 to a min of 1 on a 2 Might Unit generates -1")
     print("  the limited amount is remembered: a later +3 gives 4, a buff falling away gives 0")
     print("  a passive limitation is recomputed instead, and carries no snapshot")

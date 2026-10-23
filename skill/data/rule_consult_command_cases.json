@@ -1,6 +1,6 @@
 {
   "schema_version": "consultation-command-cases.v1",
-  "ruleset_baseline": "2026-07-16",
+  "ruleset_baseline": "2026-10-09",
   "note": "Each of the five entries has a path that answers and a path that does not, and the three tiers each have cases of their own. Values written as @name are placeholders the gate replaces with objects it builds by running the real engine, so no case can pass against a stub. The source table stands in for the rules index; the service passes a retriever backed by the real one. Its synthetic records carry the Core the engine executes (2026-10-09, package 12); the gate also runs one case against the same table labelled 2026-07-16, where the engine verdict must not bind.",
   "sources": {
     "table": {
@@ -12,12 +12,12 @@
                      "record": {"document_id": "core-rules", "document_version": "2026-10-09",
                                 "locator": "Core 339.1",
                                 "text_hash": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"}},
-      "Core 423.1.b": {"status": "retrieved",
+      "Core 424.1.b": {"status": "retrieved",
                        "record": {"document_id": "core-rules", "document_version": "2026-10-09",
-                                  "locator": "Core 423.1.b",
+                                  "locator": "Core 424.1.b",
                                   "text_hash": "sha256:3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c"}},
-      "Core 341.2": {"status": "conflict", "record": null},
-      "Core 205.1": {"status": "superseded", "record": null}
+      "Core 341": {"status": "conflict", "record": null},
+      "Core 205": {"status": "superseded", "record": null}
     },
     "surfaced": {}
   },
@@ -84,7 +84,7 @@
       "question": "If my spell kills their unit, what does the official text say about the follow-up?",
       "entry": "effect",
       "entry_inputs": {"program": "@declining_program"},
-      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 423.1.b"}}],
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 424.1.b"}}],
       "expected": {"status": "answered", "tier": "B", "claims": 1, "engine_declined": true}
     },
     {
@@ -94,7 +94,7 @@
       "entry": "effect",
       "entry_inputs": {"program": "@declining_program"},
       "claims": [
-        {"template": "official_text_recorded", "slots": {"locator": "Core 423.1.b"}},
+        {"template": "official_text_recorded", "slots": {"locator": "Core 424.1.b"}},
         {"template": "effect_program_applies", "slots": {}}
       ],
       "expected": {"status": "not_attempted", "reason": "claim_binding_invalid", "tier": "C",
@@ -225,7 +225,7 @@
       "question": "Two documents describe this differently. Which one covers it?",
       "entry": "timing",
       "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
-      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 341.2"}}],
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 341"}}],
       "expected": {"status": "abstained", "tier": "C", "claims": 1,
                    "violations": ["source_not_retrievable", "unsourced_conclusion"]}
     },
@@ -236,7 +236,7 @@
       "question": "An older printing covered this. Does it still?",
       "entry": "timing",
       "entry_inputs": {"action": {"actor": "p1", "kind": "play_card", "object_kind": "spell", "timing": "default"}},
-      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 205.1"}}],
+      "claims": [{"template": "official_text_recorded", "slots": {"locator": "Core 205"}}],
       "expected": {"status": "abstained", "tier": "C", "claims": 1,
                    "violations": ["source_not_retrievable", "unsourced_conclusion"]}
     },

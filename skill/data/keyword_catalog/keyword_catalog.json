@@ -10,7 +10,7 @@
       "keyword_id": "accelerate",
       "name": "Accelerate",
       "locators": [
-        "Core 805.1",
+        "Core 805.1.a",
         "Core 805.2",
         "Core 805.4"
       ],
@@ -18,7 +18,7 @@
         "module": "play_transaction",
         "symbol": "accelerate_offer",
         "layer": "cost",
-        "note": "805.1.a offers an optional [1][C] additional cost while the unit is played, and a paid one makes it enter ready; the offer joins the declared optional costs before the intent loop, so it needs the same explicit choice, and paying writes the 805.2.b delayed replacement bound to this card and this play"
+        "note": "805.1.b offers an optional [1][C] additional cost while the unit is played, and a paid one makes it enter ready; the offer joins the declared optional costs before the intent loop, so it needs the same explicit choice, and paying writes the 805.2.b delayed replacement bound to this card and this play"
       },
       "active_zone": "chain",
       "boundary": {
@@ -28,7 +28,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-08",
-        "source": "Core Rules 2026-07-16 rule 805, quoted in the gate; the production was verified against the live play transaction and the enumeration, which read the same offer"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3) rule 805, quoted in the gate; the production was verified against the live play transaction and the enumeration, which read the same offer"
       },
       "fixture": "check_accelerate.py"
     },
@@ -53,7 +53,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_play_sources.py"
     },
@@ -79,7 +79,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-22",
-        "source": "Core Rules 2026-07-16 807; the production was verified against the live engine (check_assault.py)"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3) 807; the production was verified against the live engine (check_assault.py)"
       },
       "fixture": "check_assault.py"
     },
@@ -88,7 +88,7 @@
       "name": "Backline",
       "locators": [
         "Core 815.1.c",
-        "Core 465.2.c.6-465.2.c.9"
+        "Core 467.2.c.6-467.2.c.9"
       ],
       "production": {
         "module": "combat",
@@ -103,7 +103,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_combat_damage_assignment.py"
     },
@@ -114,7 +114,7 @@
         "Core 808.1",
         "Core 808.2",
         "Core 808.3",
-        "Core 323.4"
+        "Core 383.2.c.3"
       ],
       "production": {
         "module": "effect_ir",
@@ -130,7 +130,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-08",
-        "source": "Core Rules 2026-07-16 rule 808 and Cleanup step 3a; the production was verified against the live engine's death-trigger path, the locators against the rule text quoted in the gate"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3) rule 808 and Cleanup step 3a; the production was verified against the live engine's death-trigger path, the locators against the rule text quoted in the gate"
       },
       "fixture": "check_deathknell.py"
     },
@@ -157,7 +157,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_deflect.py"
     },
@@ -165,7 +165,7 @@
       "keyword_id": "empower",
       "name": "Empower",
       "locators": [
-        "Core 441",
+        "Core 442",
         "Core 827.1",
         "Core 827.2"
       ],
@@ -173,7 +173,7 @@
         "module": "effect_ir",
         "symbol": "_apply_one",
         "layer": "procedure",
-        "note": "the Empower action sets the binary state and refuses a second application (441.1.b, 441.1.c.1); P5 emits the become_empowered event (441.2.a)"
+        "note": "the Empower action sets the binary state and refuses a second application (442.1.b, 442.1.c.1); P5 emits the become_empowered event (442.2.a)"
       },
       "active_zone": "board",
       "boundary": {
@@ -183,7 +183,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_empower_xp.py"
     },
@@ -203,7 +203,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       }
     },
     {
@@ -229,7 +229,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_standard_move.py"
     },
@@ -256,7 +256,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_hidden.py"
     },
@@ -277,7 +277,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       }
     },
     {
@@ -288,13 +288,13 @@
         "Core 812.1.b.1",
         "Core 812.1.c",
         "Core 812.2",
-        "Core 419.4.b"
+        "Core 420.4.b"
       ],
       "production": {
         "module": "effect_ir",
         "symbol": "legion_active",
         "layer": "ability",
-        "note": "a Dependent Keyword (727.1): the ability after it exists while its controller has Finalized another card this turn (812.1.c); the play transaction records each Finalized card (419.4.b), and the grammar reads the condition on \"When you play me\" and on \"I cost N less\" only"
+        "note": "a Dependent Keyword (727.1): the ability after it exists while its controller has Finalized another card this turn (812.1.c); the play transaction records each Finalized card (420.4.b), and the grammar reads the condition on \"When you play me\" and on \"I cost N less\" only"
       },
       "active_zone": "board",
       "boundary": {
@@ -304,7 +304,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-22",
-        "source": "Core Rules 2026-07-16 812, 727.1, 419.4.b; the production was verified against the live engine (check_legion.py)"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3) 812, 727.1, 420.4.b; the production was verified against the live engine (check_legion.py)"
       },
       "fixture": "check_legion.py"
     },
@@ -325,7 +325,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       }
     },
     {
@@ -352,7 +352,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_costs_and_activation.py"
     },
@@ -378,7 +378,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_combat_characteristics.py"
     },
@@ -387,7 +387,7 @@
       "name": "Tank",
       "locators": [
         "Core 815.1.b",
-        "Core 465.2.c.6-465.2.c.9"
+        "Core 467.2.c.6-467.2.c.9"
       ],
       "production": {
         "module": "combat",
@@ -403,7 +403,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       },
       "fixture": "check_combat_damage_assignment.py"
     },
@@ -430,7 +430,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-22",
-        "source": "Core Rules 2026-07-16 816 and 315.2; the production was verified against the live engine (check_temporary.py)"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3) 816 and 315.2; the production was verified against the live engine (check_temporary.py)"
       },
       "fixture": "check_temporary.py"
     },
@@ -450,7 +450,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-07",
-        "source": "Core Rules 2026-07-16; the production was verified against the live engine, the locator against the engine's existing citations"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3); the production was verified against the live engine, the locator against the engine's existing citations"
       }
     },
     {
@@ -460,13 +460,13 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1"
+        "Core 437.1"
       ],
       "production": {
         "module": "effect_ir",
         "symbol": "vision_triggers",
         "layer": "ability",
-        "note": "817.1.b makes Vision short for \"When this is played, predict.\": as a permanent with Vision completes its play and enters the Board, the play completion schedules one trigger whose program is the engine's Predict 1 (436.1), bound by content hash; read from the computed characteristics, so a granted Vision counts. Scope: only a played permanent's entry is modelled; whether a permanent put onto the Board without being played triggers is not decided and is an exception awaiting a more direct source. Several instances (817.2) are not modelled"
+        "note": "817.1.b makes Vision short for \"When this is played, predict.\": as a permanent with Vision completes its play and enters the Board, the play completion schedules one trigger whose program is the engine's Predict 1 (437.1), bound by content hash; read from the computed characteristics, so a granted Vision counts. Scope: only a played permanent's entry is modelled; whether a permanent put onto the Board without being played triggers is not decided and is an exception awaiting a more direct source. Several instances (817.2) are not modelled"
       },
       "active_zone": "board",
       "boundary": {
@@ -476,7 +476,7 @@
       "review": {
         "reviewer": "claude",
         "date": "2026-09-22",
-        "source": "Core Rules 2026-07-16 817 and 436; the production was verified against the live engine (check_vision.py)"
+        "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3) 817 and 437; the production was verified against the live engine (check_vision.py)"
       },
       "fixture": "check_vision.py"
     }

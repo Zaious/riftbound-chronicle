@@ -1,7 +1,8 @@
 (()=>{"use strict";
 const SOURCES=[
 {source_id:"rules-hub",title:"Riftbound Rules Hub",authority:"official",document_class:"rules_hub",locale:"en-US",region:"global",status:"active",version:"live",live:true},
-{source_id:"core-rules-2026-07-16",title:"Core Rules",authority:"official",document_class:"core_rules",locale:"en-US",region:"global",status:"active",version:"2026-07-16",live:true},
+{source_id:"core-rules-2026-10-09",title:"Core Rules",authority:"official",document_class:"core_rules",locale:"en-US",region:"global",status:"active",version:"2026-10-09",live:true},
+{source_id:"core-rules-2026-07-16",title:"Core Rules",authority:"official",document_class:"core_rules",locale:"en-US",region:"global",status:"superseded",version:"2026-07-16",live:false},
 {source_id:"tournament-rules-2026-07-16",title:"Tournament Rules",authority:"official",document_class:"tournament_rules",locale:"en-US",region:"global",status:"active",version:"2026-07-16",live:true},
 {source_id:"vendetta-patch-notes-2026-07-17",title:"Vendetta Patch Notes",authority:"official",document_class:"patch_notes",locale:"en-US",region:"global",status:"active",version:"2026-07-17",live:false},
 {source_id:"vendetta-errata-2026-07-23",title:"Vendetta Errata",authority:"official",document_class:"card_errata",locale:"en-US",region:"global",status:"active",version:"2026-07-23",live:false},

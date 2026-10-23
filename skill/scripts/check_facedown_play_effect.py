@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Choices of what is played from facedown are made at that battlefield, and checked there again (package 12; Core
-2026-10-09, in effect 2026-10-16: 811.1.d.2, 811.1.d.3, 811.1.d.3.a, 811.1.d.4, 359.3.e.2.a).
+2026-10-09, in effect 2026-10-16: 811.1.d.2, 811.1.d.5, 811.1.d.3.a, 811.1.d.4, 359.3.e.2.a).
 
 A spell played from facedown chooses its targets at the battlefield it was played from; the on-play trigger of a
 permanent that came from facedown chooses at the battlefield it was played to - each target separately, a target whose own restriction

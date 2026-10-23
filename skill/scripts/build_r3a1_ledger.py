@@ -13,7 +13,7 @@ a fourth:
      words (the licensed Core Rules text stays out of this repository), the
      source id and version, and whether the clause *targets* under 355.10.
   2. Records the expected decision point: made at play (355.1–355.5), made at
-     resolution (355.17 / 436), made when a trigger is finalized (402), or
+     resolution (355.18 / 437), made when a trigger is finalized (403), or
      none.
   3. Drafts four fixtures per clause — positive, negative, missing
      information, target invalidated — as state sketches over the real
@@ -53,7 +53,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from effect_ir import SUPPORTED_OPS  # noqa: E402
 
 BATCH = "R3-A1-choices-costs-zones"
-CORE = {"source_id": "core-rules-2026-07-16", "version": "2026-07-16", "kind": "core_rules"}
+CORE = {"source_id": "core-rules-2026-10-09", "version": "2026-10-09", "kind": "core_rules"}
 ERRATA = {"source_id": "origins-errata-2025-10-28", "version": "2025-10-28", "kind": "errata"}
 # Locally captured as an official HTML snapshot. The page itself warns that it
 # may no longer reflect current rules, so default queries exclude it.
@@ -84,8 +84,8 @@ CLAUSES: dict[str, dict[str, Any]] = {
             L("Core 355.9.b", "A target must satisfy every restriction the text puts on it (the rule's example is a unit 'at a battlefield')."),
             L("Core 355.10.b", "In 'kill a unit at a battlefield' the unit is the target; the battlefield only restricts it."),
             L("Core 359.3.e.5", "Targets gone illegal by resolution are left untouched by the spell."),
-            L("Core 417.1.b", "Damage dealt to a Unit is marked on it."),
-            L("Core 417.6.a", "With no source named, the effect doing the dealing counts as the source."),
+            L("Core 418.1.b", "Damage dealt to a Unit is marked on it."),
+            L("Core 418.6.a", "With no source named, the effect doing the dealing counts as the source."),
             L("errata: Disintegrate OGN-005", "Deal 3 to a unit at battlefield. If this kills it, do this: draw 1.", ERRATA),
         ],
         "packets": ["DP-01", "DP-03"],
@@ -98,7 +98,7 @@ CLAUSES: dict[str, dict[str, Any]] = {
             L("Core 355.5", "Choices of specific Game Objects are made in this step of playing."),
             L("Core 355.10.b", "Only the unit is targeted; 'at a battlefield' restricts which unit."),
             L("Core 359.3.e.2", "At resolution a target is illegal once it fails the targeting requirements or has gone to or come from a Non-Board Zone."),
-            L("Core 417.1.b", "Damage dealt to a Unit is marked on it."),
+            L("Core 418.1.b", "Damage dealt to a Unit is marked on it."),
         ],
         "packets": ["DP-01", "DP-03"],
     },
@@ -110,20 +110,20 @@ CLAUSES: dict[str, dict[str, Any]] = {
             L("Core 355.4", "A spell or ability that Moves Units picks a legal destination for each Move it will make."),
             L("Core 355.4.a", "A legal Move destination is a Location the Units may be in, other than where they already are."),
             L("Core 355.13", "'Up to N' or 'any number' lets the player pick anything from zero to the limit."),
-            L("Core 446.3.c", "A Move does not go on the Chain and cannot be responded to."),
-            L("Core 449.1", "Limits on where a Move may go come from whatever caused the Move."),
-            L("Core 453", "A finished Move is followed by a Cleanup."),
+            L("Core 448.3.c", "A Move does not go on the Chain and cannot be responded to."),
+            L("Core 451.1", "Limits on where a Move may go come from whatever caused the Move."),
+            L("Core 455", "A finished Move is followed by a Cleanup."),
         ],
         "packets": ["DP-01", "DP-02", "DP-06"],
     },
     # Gust — "Return a unit at a battlefield with 3 Might or less to its owner's hand."
     "e661650e": {
         "targets": True, "decision_point": "at_play",
-        "why": "targeted choice with two restrictions; returning to hand is a zone change, not a Move (446.2), and the object becomes new (124)",
+        "why": "targeted choice with two restrictions; returning to hand is a zone change, not a Move (448.2), and the object becomes new (124)",
         "locators": [
             L("Core 355.9.b", "A target must meet the criteria the text states (the rule's example is a Might threshold)."),
             L("Core 359.3.e.4", "A unit chosen as having 3 Might or less stops being legal if its Might goes above 3 or it stops being a unit."),
-            L("Core 446.2", "Changing zones is not, by itself, a Move."),
+            L("Core 448.2", "Changing zones is not, by itself, a Move."),
             L("Core 124", "An object entering or leaving a Non-Board Zone is tracked as a new object."),
             L("Core 124.1", "That zone change drops every Temporary Modification on it."),
             L("Core 056", "A card never goes to a non-Board zone of a player other than its owner."),
@@ -146,13 +146,13 @@ CLAUSES: dict[str, dict[str, Any]] = {
     # Vision (Mystic Poro, Sai Scout) — keyword; "When this is played, predict."
     "f4a07c4d": {
         "targets": False, "decision_point": "at_resolution",
-        "why": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
+        "why": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 437 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
         "locators": [
             L("Core 817.1.b", "Vision stands for a trigger that predicts when the card is played."),
             L("Core 817.1.c", "It triggers on the permanent entering the Board."),
             L("Core 817.2.a", "With several Vision instances, the recycle choice is made separately for each."),
-            L("Core 436.1", "To Predict is to look at the Main Deck's top card and decide whether to Recycle it."),
-            L("Core 436.4", "Predicting more cards than the Main Deck holds predicts all that remain."),
+            L("Core 437.1", "To Predict is to look at the Main Deck's top card and decide whether to Recycle it."),
+            L("Core 437.4", "Predicting more cards than the Main Deck holds predicts all that remain."),
             L("Core 128.3", "Secret: nobody may look at the card's face."),
             L("Core 355.5.b", "Choices for permanents' Triggered Abilities are not made here, even when playing the item is what triggers them."),
         ],
@@ -189,8 +189,8 @@ CLAUSES: dict[str, dict[str, Any]] = {
             L("Core 355.10.c", "The rule's example: the 'choose a friendly unit' that precedes a replacement effect is a target, because the choice is not part of the replacement."),
             L("Core 355.5", "Choices of specific Game Objects are made in this step of playing."),
             L("Core 359.3.e.5", "Instructions tied to an illegal target are not followed."),
-            L("Core 455", "A Recall puts a Permanent into its Base from anywhere, and is not a Move."),
-            L("Core 456.1", "Recalls do not trigger abilities that watch for Moves."),
+            L("Core 457", "A Recall puts a Permanent into its Base from anywhere, and is not a Move."),
+            L("Core 458.1", "Recalls do not trigger abilities that watch for Moves."),
             L("errata: Highlander OGS-020", "Choose a friendly unit. The next time it would die this turn, heal it, exhaust it, and recall it instead.", ERRATA),
         ],
         "packets": ["DP-01", "DP-03", "DP-06"],
@@ -198,7 +198,7 @@ CLAUSES: dict[str, dict[str, Any]] = {
     # Meditation — "As an additional cost to play this, you may exhaust a friendly unit."
     "6ce549b5": {
         "targets": False, "decision_point": "at_play",
-        "why": "355.1.a the choice to pay an optional additional cost is made at play; 355.10.c a cost does not target; 356.2.b/357.2 paid in step 4; 414.4 an exhausted unit cannot pay it",
+        "why": "355.1.a the choice to pay an optional additional cost is made at play; 355.10.c a cost does not target; 356.2.b/357.2 paid in step 4; 415.4 an exhausted unit cannot pay it",
         "locators": [
             L("Core 355.1.a", "Deciding whether to pay an Optional Additional Cost happens in this step."),
             L("Core 355.10.c", "The rule's example: an additional cost that kills a friendly unit targets nothing."),
@@ -207,7 +207,7 @@ CLAUSES: dict[str, dict[str, Any]] = {
             L("Core 356.4.f.1", "An optional additional cost counts as paid once the player chose to pay it, whatever amount was actually paid."),
             L("Core 357.2", "Non-standard costs totalled in step 3 are paid as well, in any order."),
             L("Core 357.2.a", "A cost replaced by another event still counts as paid."),
-            L("Core 414.4", "The rule's example: a friendly unit that is already exhausted cannot be exhausted to pay the additional cost, so that cost goes unpaid."),
+            L("Core 415.4", "The rule's example: a friendly unit that is already exhausted cannot be exhausted to pay the additional cost, so that cost goes unpaid."),
             L("Core 358.2", "Confirm every cost was paid."),
             L("Core 358.5", "If a check fails, everything done in the process is undone and the action cancelled."),
             L("Core 205", "A resource-paying instruction with no linked Effect is not a Cost."),
@@ -217,12 +217,12 @@ CLAUSES: dict[str, dict[str, Any]] = {
     # Mobilize — "Channel 1 rune exhausted."
     "3e791d2d": {
         "targets": False, "decision_point": "none",
-        "why": "430.1 channel takes the top rune (no choice); 430.2 the effect specifies entry state; 430.3 channel as many as possible",
+        "why": "431.1 channel takes the top rune (no choice); 431.2 the effect specifies entry state; 431.3 channel as many as possible",
         "locators": [
-            L("Core 430.1", "Channel: take Runes from the top of the Rune Deck and put them onto the board."),
-            L("Core 430.2", "The rule's example: 'Channel 1 rune exhausted' puts the top rune onto the board exhausted instead of ready."),
-            L("Core 430.3", "Too few runes in the Rune Deck: channel all that are there."),
-            L("Core 430.5", "The rule's example pairs a two-rune channel with a draw if fewer than two could be channeled."),
+            L("Core 431.1", "Channel: take Runes from the top of the Rune Deck and put them onto the board."),
+            L("Core 431.2", "The rule's example: 'Channel 1 rune exhausted' puts the top rune onto the board exhausted instead of ready."),
+            L("Core 431.3", "Too few runes in the Rune Deck: channel all that are there."),
+            L("Core 431.5", "The rule's example pairs a two-rune channel with a draw if fewer than two could be channeled."),
             L("Core 161.1.a", "A rune is not a Permanent, even though it stays on the Board until Recycled or removed."),
         ],
         "packets": ["DP-05", "DP-08"],
@@ -231,7 +231,7 @@ CLAUSES: dict[str, dict[str, Any]] = {
 
 PACKETS: list[dict[str, Any]] = [
     {"id": "DP-01", "title": "Which choices are targets, and which are not",
-     "question": "Confirm the per-clause targeting classification under 355.7–355.10, and whether a non-targeted choice (355.17, resolution-time) gets its own decision artifact.",
+     "question": "Confirm the per-clause targeting classification under 355.7–355.10, and whether a non-targeted choice (355.18, resolution-time) gets its own decision artifact.",
      "rules_cited": [L("Core 355.7", "Choosing specific Game Objects to affect makes them Targets unless this section says otherwise."),
                    L("Core 355.10.a", "Objects in a non-Public zone are not targets; a unit card in your trash is one, since the trash is Public."),
                    L("Core 355.10.c", "An object picked solely for a cost, a trigger condition or a replacement effect is not a target."),
@@ -239,13 +239,13 @@ PACKETS: list[dict[str, Any]] = [
      "proposal": "typed selector carries `targeted: true|false` derived from 355.10; targeted selectors are validated at play (355.8) and re-validated at resolution (359.3.e); non-targeted resolution choices become a `play-decisions` entry with stage=resolution.",
      "failure_classification": {"missing selector on a targeted clause at play": "invalid_input", "selector names an object failing 355.9": "illegal", "selector on a zone the engine does not model": "unsupported", "resolution-time choice not yet supplied": "decision_required"}},
     {"id": "DP-02", "title": "When each choice is made: play, resolution, or trigger finalization",
-     "question": "Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost and spell-target choices at play, triggered-ability targets/performance at trigger finalization, and Predict recycle during resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
+     "question": "Adopt 355.1–355.5/355.17 and 403 as the stage model: optional-additional-cost and spell-target choices at play, triggered-ability targets/performance at trigger finalization, and Predict recycle during resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
      "rules_cited": [L("Core 355.1.a", "Deciding whether to pay an Optional Additional Cost happens in this step."),
                    L("Core 355.5.b", "Choices for permanents' Triggered Abilities are not made here, even when playing the item is what triggers them."),
-                   L("Core 355.17", "Choices this section does not describe are made when the spell or ability resolves."),
-                   L("Core 402.1", "When a Triggered Ability's effect opens with 'you may', its controller decides at this point whether to perform it."),
+                   L("Core 355.18", "Choices this section does not describe are made when the spell or ability resolves."),
+                   L("Core 403.1", "When a Triggered Ability's effect opens with 'you may', its controller decides at this point whether to perform it."),
                    L("Core 752.2", "It does not cover choices made 'as you play this' or choices about Optional Additional Costs.")],
-     "proposal": "one `engine-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play_declaration|trigger_finalization|resolution, kind, controller, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses. Vision's recycle choice is resolution-stage, not a 402.1 performance choice.",
+     "proposal": "one `engine-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play_declaration|trigger_finalization|resolution, kind, controller, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses. Vision's recycle choice is resolution-stage, not a 403.1 performance choice.",
      "failure_classification": {"decision for the wrong stage supplied early": "invalid_input", "decision owner mismatch": "illegal", "stage the engine cannot model": "unsupported", "entry absent when reached": "decision_required"}},
     {"id": "DP-03", "title": "Targets that become illegal before or during resolution",
      "question": "Adopt 359.3.e.1–359.3.e.9 as written: resolve anyway; illegal targets unaffected; instruction with all targets invalid does not execute; with some invalid executes on the valid subset; zone change to/from non-board makes a new object (124). How should the trace record a mistarget, and does a linked 'If this kills it' then evaluate false?",
@@ -260,46 +260,46 @@ PACKETS: list[dict[str, Any]] = [
      "question": "Is 'play a card' the transaction boundary — costs paid in step 4 (357), legality checked in step 5 (358), everything undone on failure (358.5)? Today the atomic bridge spans timing + one effect program; a play with an optional additional cost and a linked effect needs the same guarantee across cost payment.",
      "rules_cited": [L("Core 203.3", "If a Cost's game action is impossible, the Cost cannot be paid and the linked Effect does not happen."),
                    L("Core 357.2.a", "A cost replaced by another event still counts as paid."),
-                   L("Core 414.4", "The rule's example: a friendly unit that is already exhausted cannot be exhausted to pay the additional cost, so that cost goes unpaid."),
+                   L("Core 415.4", "The rule's example: a friendly unit that is already exhausted cannot be exhausted to pay the additional cost, so that cost goes unpaid."),
                    L("Core 358.5", "If a check fails, everything done in the process is undone and the action cancelled."),
                    L("Core 356.4.f.1", "An optional additional cost counts as paid once the player chose to pay it.")],
      "proposal": "a `play` transaction in the resolution bridge: {decisions, cost_payments[], program}. A cost payment has an explicit cost context and receipt; it may reuse typed operations but is not merely an ordinary effect carrying a boolean flag. Any failed payment/check rolls the entire play back. Optional-cost 'paid' records the declared decision and successful payment semantics, including replacement/reduction rules.",
      "failure_classification": {"cost declared but unpayable": "illegal", "cost decision missing at play": "decision_required", "cost kind not typed": "unsupported", "malformed cost declaration": "invalid_input"}},
     {"id": "DP-05", "title": "'If you do', 'Otherwise', 'If you can't' — dependency vocabulary",
-     "question": "The IR has dependency_mode if_applied|always. Meditation needs the negative branch (Otherwise); Mobilize needs 'couldn't fully perform' (430.3 channels as many as possible — is a partial channel a failure for 'If you can't'?). 055 says ignore impossible instructions; 430.5's example ties 'couldn't' to the requested count.",
+     "question": "The IR has dependency_mode if_applied|always. Meditation needs the negative branch (Otherwise); Mobilize needs 'couldn't fully perform' (431.3 channels as many as possible — is a partial channel a failure for 'If you can't'?). 055 says ignore impossible instructions; 431.5's example ties 'couldn't' to the requested count.",
      "rules_cited": [L("Core 055", "Carry out as much card text as possible and skip the instructions that are impossible."),
-                   L("Core 430.3", "Too few runes in the Rune Deck: channel all that are there."),
-                   L("Core 430.5", "The rule's example pairs a two-rune channel with a draw if fewer than two could be channeled."),
+                   L("Core 431.3", "Too few runes in the Rune Deck: channel all that are there."),
+                   L("Core 431.5", "The rule's example pairs a two-rune channel with a draw if fewer than two could be channeled."),
                    L("Core 205", "A later instruction asks whether the game action happened, not whether a cost was paid."),
                    L("Core 359.3.e.6", "Instructions that cannot be followed, for illegal targets or any other reason, are skipped.")],
      "proposal": "record instruction completion as full|partial|none, but use typed predicates rather than one generic `if_not_applied`: action_performed, action_not_performed, requested_count_not_reached, cost_paid, and caused_kill. Mobilize tests actual_count < requested_count; Meditation branches on its optional-cost receipt. ADR-0002: same program major, capability revision.",
      "failure_classification": {"dependency on an unknown effect_id": "invalid_input", "dependency mode not implemented": "unsupported"}},
     {"id": "DP-06", "title": "return, recall, move — three events, not one",
-     "question": "Return-to-hand is a zone change (446.2) producing a new object (124); Recall relocates to Base without being a Move (455–456) and keeps damage/statuses (458.1); Move is 420/446 and triggers move abilities. Confirm three distinct event ops with distinct trigger classes, and Highlander's errata ordering (heal, exhaust, recall).",
-     "rules_cited": [L("Core 446.2", "Changing zones is not, by itself, a Move."),
+     "question": "Return-to-hand is a zone change (448.2) producing a new object (124); Recall relocates to Base without being a Move (457–458) and keeps damage/statuses (460.1); Move is 421/446 and triggers move abilities. Confirm three distinct event ops with distinct trigger classes, and Highlander's errata ordering (heal, exhaust, recall).",
+     "rules_cited": [L("Core 448.2", "Changing zones is not, by itself, a Move."),
                    L("Core 124", "An object entering or leaving a Non-Board Zone is tracked as a new object."),
-                   L("Core 456.1", "Recalls do not trigger abilities that watch for Moves."),
-                   L("Core 458.1", "A Recall leaves a permanent's Damage and statuses as they were unless its source says otherwise."),
+                   L("Core 458.1", "Recalls do not trigger abilities that watch for Moves."),
+                   L("Core 460.1", "A Recall leaves a permanent's Damage and statuses as they were unless its source says otherwise."),
                    L("Core 056.2", "A card that would go to another player's such zone goes to its owner's matching zone."),
                    L("errata: Highlander OGS-020", "heal it, exhaust it, and recall it instead.", ERRATA)],
      "proposal": "new ops `return_to_hand` (board→owner's hand, new object identity, temporary modifications dropped per 124.1) and `recall` (to the permanent's current controller's base, not a Move, damage/status retained unless its source changes them), alongside existing `move_board_object`; trigger emission is keyed by event kind so Move triggers never fire on Recall.",
      "failure_classification": {"return of an object not on the board": "illegal", "recall destination not the controller's base": "invalid_input", "hand zone semantics beyond add-to-hand": "unsupported"}},
     {"id": "DP-07", "title": "Look / Predict and the information boundary",
-     "question": "Predict (436) lets a player look at a Secret card and choose to recycle it. The looked-at card becomes own-private knowledge. Under ADR-0003, how does an observation record it, and may a player2 query ever contain player1's predicted card? (424.2.b: voluntarily showing private information is not a Reveal.)",
-     "rules_cited": [L("Core 436.1", "To Predict is to look at the Main Deck's top card and decide whether to Recycle it."),
+     "question": "Predict (437) lets a player look at a Secret card and choose to recycle it. The looked-at card becomes own-private knowledge. Under ADR-0003, how does an observation record it, and may a player2 query ever contain player1's predicted card? (425.2.b: voluntarily showing private information is not a Reveal.)",
+     "rules_cited": [L("Core 437.1", "To Predict is to look at the Main Deck's top card and decide whether to Recycle it."),
                    L("Core 128.3", "Secret: nobody may look at the card's face."),
                    L("Core 128.4", "Private: the face may be read by the card's controller while it is on the board, or by its owner in any other zone."),
-                   L("Core 424.2.b", "Voluntarily showing Private information to other players is not a reveal.")],
+                   L("Core 425.2.b", "Voluntarily showing Private information to other players is not a reveal.")],
      "proposal": "a `look` event yields an own-private fact {fact_id, zone, position, card_id?} in observation.v1 for the looking player only; the recycle choice is a resolution-stage decision (DP-02); P2-A's forbidden-key list gains `player1_predicted`/`opponent_predicted`.",
-     "failure_classification": {"look on an empty deck": "supported (436.4: predict as many as possible)", "predicted card appearing in the other player's observation": "invalid_input (perspective violation)"}},
+     "failure_classification": {"look on an empty deck": "supported (437.4: predict as many as possible)", "predicted card appearing in the other player's observation": "invalid_input (perspective violation)"}},
     {"id": "DP-08", "title": "Channel: a rune entering the board with an entry state",
-     "question": "Channel moves the top rune from Rune Deck to the board (430.1) with an entry state the effect may specify (430.2). Is this a new op `channel_rune` reusing play_token's `event_modifiers.entry_state` vocabulary (375), and is the rune's arrival a zone change (new object) or a move?",
-     "rules_cited": [L("Core 430.1", "Channel: take Runes from the top of the Rune Deck and put them onto the board."),
-                   L("Core 430.2.a", "Channeled runes enter ready unless told otherwise."),
+     "question": "Channel moves the top rune from Rune Deck to the board (431.1) with an entry state the effect may specify (431.2). Is this a new op `channel_rune` reusing play_token's `event_modifiers.entry_state` vocabulary (375), and is the rune's arrival a zone change (new object) or a move?",
+     "rules_cited": [L("Core 431.1", "Channel: take Runes from the top of the Rune Deck and put them onto the board."),
+                   L("Core 431.2.a", "Channeled runes enter ready unless told otherwise."),
                    L("Core 161.1.a", "A rune is not a Permanent."),
                    L("Core 164.2", "Every Basic Rune has the same two Abilities.")],
      "proposal": "new op `channel_rune` {player, count, entry_state} — takes from rune_deck top, appends to base, sets exhausted per entry_state, records applied count for DP-05; rune identity preserved (Rune Deck is a zone the state already models).",
-     "failure_classification": {"rune deck empty": "supported (applied: none/partial per 430.3)", "entry state other than ready|exhausted": "invalid_input"}},
+     "failure_classification": {"rune deck empty": "supported (applied: none/partial per 431.3)", "entry state other than ready|exhausted": "invalid_input"}},
     {"id": "DP-09", "title": "Versioning under ADR-0002",
      "question": "Everything above adds operations and one decision artifact; nothing changes an existing field's meaning. Confirm: effect-program stays v1 with a capability revision; `engine-decisions.v1` is a new decision schema; effect-state gains optional zone contents only through an additive state capability.",
      "rules_cited": [L("ADR-0002 change table", "Add a new operation that old programs never invoke → same program major may remain; capability revision required.", {"source_id": "ADR-0002", "version": "2026-09-02", "kind": "decision"})],
@@ -308,7 +308,7 @@ PACKETS: list[dict[str, Any]] = [
     {"id": "DP-10", "title": "Failure vocabulary for R3-A1 (bullet 12 of X-09)",
      "question": "Adopt one table for the whole batch so cards do not each invent a classification.",
      "rules_cited": [],
-     "proposal": "illegal = a supported rule rejects it (355.9, 414.4, 203.3); invalid_input = the artifact is malformed or a required decision was supplied at the wrong stage; unsupported = the engine lacks the semantics (named mechanic); decision_required = a listed decision is unsupplied when reached. Resolution-time mistargets are supported with a trace outcome, per DP-03.",
+     "proposal": "illegal = a supported rule rejects it (355.9, 415.4, 203.3); invalid_input = the artifact is malformed or a required decision was supplied at the wrong stage; unsupported = the engine lacks the semantics (named mechanic); decision_required = a listed decision is unsupplied when reached. Resolution-time mistargets are supported with a trace outcome, per DP-03.",
      "failure_classification": {}},
     {"id": "DP-11", "title": "The English Origins FAQ is locally captured as historical evidence",
      "question": "The official Origins FAQ is an HTML page whose own warning defers to newer rules. How should it be retained without overriding Core 2026-07-16?",
@@ -341,7 +341,7 @@ def _fixtures_for(card: str, clause: dict[str, Any], judgement: dict[str, Any]) 
     }
     kinds = {
         "positive": "the clause's choice/cost/zone action is well-formed and every rule it cites is satisfied",
-        "negative": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+        "negative": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
         "missing_information": "a required decision or fact is absent when reached — the transition must stop with decision_required or invalid_input, never guess",
         "target_invalidated": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
     }
@@ -355,8 +355,8 @@ def _fixtures_for(card: str, clause: dict[str, Any], judgement: dict[str, Any]) 
         "2ed49f33": {"positive": "p1 chooses u1 (friendly)", "negative": "p1 chooses u2 (enemy)", "missing_information": "selector missing", "target_invalidated": "u1 chosen, then returned to hand before resolution"},
         "fd48e5d0": {"positive": "p1 chooses u2 (enemy) as the second target", "negative": "p1 chooses u1 for both targets (355.16 deterministically illegal later)", "missing_information": "second selector missing", "target_invalidated": "u2 chosen, then killed before resolution → 'They deal damage…' does not execute (359.3.e.7)"},
         "d659b2ba": {"positive": "p1 chooses u1", "negative": "p1 chooses u2 (not friendly)", "missing_information": "selector missing", "target_invalidated": "u1 chosen, then returned to hand → replacement never attaches (359.3.e.5)"},
-        "6ce549b5": {"positive": "p1 declares pay at play (355.1.a) naming u1 (ready); step 4 exhausts u1; 'paid' flag set", "negative": "p1 declares pay naming u2-like exhausted friendly unit → 414.4 unpaid → 358.5 undo", "missing_information": "pay/decline decision absent at play → decision_required", "target_invalidated": "not applicable: a cost does not target (355.10.c); recorded as n/a"},
-        "3e791d2d": {"positive": "rune_deck [r1]; channel 1 exhausted → r1 enters base exhausted", "negative": "entry_state 'stunned' (not ready|exhausted) → invalid_input", "missing_information": "rune_deck contents unknown in observation", "target_invalidated": "not applicable: no target; rune_deck empty → applied none (430.3) — feeds DP-05"},
+        "6ce549b5": {"positive": "p1 declares pay at play (355.1.a) naming u1 (ready); step 4 exhausts u1; 'paid' flag set", "negative": "p1 declares pay naming u2-like exhausted friendly unit → 415.4 unpaid → 358.5 undo", "missing_information": "pay/decline decision absent at play → decision_required", "target_invalidated": "not applicable: a cost does not target (355.10.c); recorded as n/a"},
+        "3e791d2d": {"positive": "rune_deck [r1]; channel 1 exhausted → r1 enters base exhausted", "negative": "entry_state 'stunned' (not ready|exhausted) → invalid_input", "missing_information": "rune_deck contents unknown in observation", "target_invalidated": "not applicable: no target; rune_deck empty → applied none (431.3) — feeds DP-05"},
     }
     out = []
     for kind in FIXTURE_KINDS:

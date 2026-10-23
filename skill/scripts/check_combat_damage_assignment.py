@@ -2,7 +2,7 @@
 """
 Gate for C-30 (ADR-0008 §8–9): Showdown close and Combat Damage assignment.
 
-Goldens are the official examples of Core 465.2.c:
+Goldens are the official examples of Core 467.2.c:
   - c.3: 5 damage among four 3-Might Units — 2/1/1/1 is illegal, 3/2/0/0 and
     3/0/2/0 are legal, 2/3/0/0 is not (lethal in full before another Unit);
   - c.4: the same Units with 1 damage marked — no Unit may take more than 2
@@ -14,7 +14,7 @@ Goldens are the official examples of Core 465.2.c:
     before the plain Unit; c.8: a Unit with both needs the assigning player's
     choice and cannot sit in between; c.9: two such Units may both be chosen
     as Tank;
-  - a Stunned Unit contributes no Might but needs full lethal (423.1); a Unit
+  - a Stunned Unit contributes no Might but needs full lethal (424.1); a Unit
     behind a replacement the preview cannot evaluate makes the assignment
     unsupported, never guessed; exactly one legal assignment proceeds by
     itself (one opposing Unit, or 0 damage), two or more stop naming the
@@ -157,7 +157,7 @@ def main() -> int:
         if rec["attacker"]["available"] != 5 or rec["defender"]["available"] != 12 or [x["raw_assigned"] for x in rec["attacker"]["entries"]] != [3, 2, 0, 0] or [x["lethal"] for x in rec["attacker"]["entries"]] != [True, False, False, False]:
             errors.append(f"the receipts do not record the assignment: {rec['attacker']['entries']}")
         if full["next_effect_state"] != e:
-            errors.append("assignment changed the effect state; nothing is Dealt at assignment (465.2.c.1)")
+            errors.append("assignment changed the effect state; nothing is Dealt at assignment (467.2.c.1)")
     auto = assign_combat_damage(t, e, both(t, e, {"d1": 3, "d2": 2, "d3": 0, "d4": 0}))
     if not auto.get("committed") or auto["next_timing_state"]["combat"]["assignments"]["defender"]["selection"] != "sole_legal_assignment":
         errors.append("the defender facing one opposing Unit has exactly one legal assignment; the engine should proceed with it")
@@ -217,7 +217,7 @@ def main() -> int:
     t, e = closed_combat([("cait", {"keywords": ["backline"]}), ("p1u", {}), ("p2u", {})], attacker_might=9)
     e["objects"]["cait"]["keyword_modifiers"] = [{"modifier_id": "block", "keyword": "tank", "source": "block", "duration": "this_combat", "combat_id": t["combat"]["combat_id"], "target_identity": "cait@0"}]
     undecided = assign_combat_damage(t, e, both(t, e, {"cait": 3, "p1u": 3, "p2u": 3}))
-    if undecided.get("reason_code") != "damage_assignment_illegal" or "465.2.c.8" not in undecided.get("reason", ""):
+    if undecided.get("reason_code") != "damage_assignment_illegal" or "467.2.c.8" not in undecided.get("reason", ""):
         errors.append(f"c.8: a Tank+Backline Unit without the player's requirement choice was accepted: {undecided.get('reason_code')} {undecided.get('reason')}")
     if not accepted(assign_combat_damage(t, e, both(t, e, {"cait": 3, "p1u": 3, "p2u": 3}, attacker_choices={"cait": "tank"}))):
         errors.append("c.8: choosing Tank for Caitlyn was refused")
@@ -240,13 +240,13 @@ def main() -> int:
     t, e = closed_combat([("d1", {"stunned": True})], attacker_might=5)
     stunned = assign_combat_damage(t, e)
     if not stunned.get("committed") or stunned["next_timing_state"]["combat"]["assignments"]["defender"]["available"] != 0 or stunned["next_timing_state"]["combat"]["assignments"]["attacker"]["entries"][0]["min_lethal_raw"] != 3:
-        errors.append(f"a Stunned defender contributed Might or needed less than full lethal (423.1): {stunned.get('reason_code')} {stunned.get('reason')}")
+        errors.append(f"a Stunned defender contributed Might or needed less than full lethal (424.1): {stunned.get('reason_code')} {stunned.get('reason')}")
     # --- no Units on one side: the damage step is skipped ------------------------------------------------
     t, e = closed_combat([("d1", {})])  # the only defender died during the Showdown
     e["battlefields"]["bf1"]["objects"].remove("d1"); e["players"]["p2"]["zones"]["trash"].append("d1"); del e["objects"]["d1"]["combat_designation"]
     skipped = assign_combat_damage(t, e)
     if not skipped.get("committed") or skipped["next_timing_state"]["combat"]["status"] != "damage_dealt" or skipped["next_timing_state"]["combat"].get("damage_step_skipped") is not True:
-        errors.append(f"with no defenders the damage step was not skipped (465.1): {skipped.get('reason_code')} {skipped.get('reason')}")
+        errors.append(f"with no defenders the damage step was not skipped (467.1): {skipped.get('reason_code')} {skipped.get('reason')}")
     snap_t, snap_e = copy.deepcopy(t1), copy.deepcopy(e1)
     if t1 != snap_t or e1 != snap_e or assign_combat_damage(t1, e1) != solo:
         errors.append("assign_combat_damage mutated its inputs or is not deterministic")
@@ -254,7 +254,7 @@ def main() -> int:
     if errors:
         print("FAILED: combat damage assignment checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: every player passing Focus closes the Combat Showdown into pending Combat steps; assignment is the assigning player's complete decision validated against 465.2.c in full — lethal in full before another Unit, no over-assignment while a Unit remains, Tank first and Backline last with an explicit choice for a Unit that has both, minimum lethal previewed through Prevent values that are recorded and not consumed — with the engine proceeding alone only for the sole legal assignment, unevaluable replacements unsupported, and nothing Dealt.")
+    print("OK: every player passing Focus closes the Combat Showdown into pending Combat steps; assignment is the assigning player's complete decision validated against 467.2.c in full — lethal in full before another Unit, no over-assignment while a Unit remains, Tank first and Backline last with an explicit choice for a Unit that has both, minimum lethal previewed through Prevent values that are recorded and not consumed — with the engine proceeding alone only for the sole legal assignment, unevaluable replacements unsupported, and nothing Dealt.")
     return 0
 
 

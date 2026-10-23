@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Delayed passives for the NEXT card played this turn (Core 390.4, 391).
+"""Delayed passives for the NEXT card played this turn (Core 391.4, 392).
 
   "the next spell you play this turn costs :rb_energy_5: less."   (Raging Firebrand)
   "The next unit you play this turn enters ready."                  (Sun Disc)
@@ -231,7 +231,7 @@ def main() -> int:
     else:
         errors.append(f"the early unit could not be played: {on_chain.get('reason')}")
 
-    # review 5 R2-7a: the next unit played, then countered back to hand (Core 425.1) - the effect
+    # review 5 R2-7a: the next unit played, then countered back to hand (Core 426.1) - the effect
     # was spent by that play and its replacement ends with it. Played again - under a new chain
     # item id, or the SAME id reused - it is a new object (Core 124) and enters exhausted. (The
     # replacement stayed on the card and applied again under a reused id before 2026-09-28.)
@@ -313,7 +313,7 @@ def main() -> int:
         return 1
     print("OK: 'the next spell you play this turn costs [5] less' discounts exactly the next spell of its controller "
           "this turn (to 0 at most, 356.6) and is spent by it, two stack, units/opponents/next turn untouched; "
-          "'the next unit you play this turn enters ready' binds to the next unit played after it and is spent there (391).")
+          "'the next unit you play this turn enters ready' binds to the next unit played after it and is spent there (392).")
     return 0
 
 

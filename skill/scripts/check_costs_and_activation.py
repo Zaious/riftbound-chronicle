@@ -9,11 +9,11 @@ Must hold:
     card being played is never a candidate (Core 354: it moved to the Chain
     before costs were chosen) — negative mutation: the same play with one
     more card in hand commits, so the refusal is about the played card and
-    not about an empty hand; a short hand is cost_unpayable (423.1.b); the
+    not about an empty hand; a short hand is cost_unpayable (424.1.b); the
     receipt carries a pay_discard event with the identities, and a failure
     after payment restores the hand (358.5);
   - a Recycle-from-trash cost is public, two cards wait for a randomization
-    receipt of their bottom order - never a player's card_ordering (416.5) -
+    receipt of their bottom order - never a player's card_ordering (417.5) -
     and the receipt carries pay_recycle_trash;
   - an activated ability is a chain item of object_kind ability with
     activation {source_object, ability_id}: the declaration is invalid
@@ -112,7 +112,7 @@ def envelope(state, *decisions, receipts=()):
 
 
 def receipt(operation_id, player, permutation):
-    """Core 416.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
+    """Core 417.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
     return {"schema_version": "randomization-receipt.v1", "receipt_id": "rnd-1", "operation": "recycle_simultaneous", "operation_id": operation_id,
             "player": player, "permutation": list(permutation), "provenance": {"provider": "chronicle-harness", "method": "fisher-yates", "seed": "7"}}
 
@@ -170,7 +170,7 @@ def main() -> int:
         errors.append(f"a discard naming another player's card was not illegal: {outside.get('reason_code')}")
     two_needed = {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "d", "mandatory": True, "payment": {"kind": "discard", "amount": 2}}]}
     short = play_card(timing, two, declaration(cost=two_needed))
-    if short.get("reason_code") != "cost_unpayable" or "Core 422.3" not in short.get("rule_locators", []):
+    if short.get("reason_code") != "cost_unpayable" or "Core 423.3" not in short.get("rule_locators", []):
         errors.append(f"a hand too small for the discard cost was not cost_unpayable: {short.get('reason_code')} {short.get('rule_locators')}")
 
     # --- Recycle from the trash as a cost --------------------------------------------------------
@@ -180,11 +180,11 @@ def main() -> int:
     rec_cost = {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "r", "mandatory": True, "payment": {"kind": "recycle_trash", "amount": 2}}]}
     rec = play_card(timing, trash_state, declaration(cost=rec_cost))
     if rec.get("reason_code") != "randomization_receipt_required" or rec.get("decision_ids") != ["cost:play-1:r:order"]:
-        errors.append(f"recycling two cards as a cost did not wait for their random order (416.5): {rec.get('reason_code')} {rec.get('reason')}")
+        errors.append(f"recycling two cards as a cost did not wait for their random order (417.5): {rec.get('reason_code')} {rec.get('reason')}")
     by_player = play_card(timing, trash_state, declaration(cost=rec_cost),
                           engine_decisions=envelope(trash_state, pick("cost:play-1:r:order", ["c2", "c3"], trash_state, stage="resolution", kind="card_ordering")))
     if by_player.get("committed") or by_player.get("reason_code") != "randomization_receipt_required":
-        errors.append(f"a player's card_ordering stood in for the random order of a recycle cost (416.5): {by_player.get('reason_code')}")
+        errors.append(f"a player's card_ordering stood in for the random order of a recycle cost (417.5): {by_player.get('reason_code')}")
     ordered = play_card(timing, trash_state, declaration(cost=rec_cost),
                         engine_decisions=envelope(trash_state, receipts=[receipt("cost:play-1:r:order", "p1", ["c2", "c3"])]))
     if not ordered.get("committed") or ordered["next_effect_state"]["players"]["p1"]["zones"]["main_deck"] != ["c2", "c3"]:

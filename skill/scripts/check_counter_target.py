@@ -3,7 +3,7 @@
 
 "Counter a spell." / "Counter a spell that costs no more than :rb_energy_4: and no more than :rb_rune_rainbow:." The
 spell is a target chosen as the countering card is played (Core 355.7, 355.5); countered, its card leaves the Chain for
-its owner's trash, it was not played and no cost is refunded (Core 425.1). GPT 2026-10-08 (PACKAGE10_INVENTORY ruling 6):
+its owner's trash, it was not played and no cost is refunded (Core 426.1). GPT 2026-10-08 (PACKAGE10_INVENTORY ruling 6):
 Defy compares the target's PRINTED (or copied) cost, not what was paid or added (Core 206) - Energy at most 4, Power at
 most 1 in total across Domains.
 

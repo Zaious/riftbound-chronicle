@@ -24,7 +24,7 @@ resolve_battlefield_control after a decided Combat):
   - a controller-scoped conquer trigger with functions_from trash on a spell in p1's trash fires
     on p1's Conquer with the Score's batch; in p1's hand, in p2's trash on p1's Conquer, and on a
     unit on p1's board it does not; the same spell in p2's trash fires on p2's own Conquer;
-  - card_played_ordinal (Core 419.4.a): every play completed by its card's resolution counts, the
+  - card_played_ordinal (Core 420.4.a): every play completed by its card's resolution counts, the
     ones before the watcher was on the board too; the watch with ordinal 2 triggers on the second
     play and not on the first or the third; the opponent's second play does not; the same card
     played twice counts twice; a new turn counts from zero; a countered play is not counted (GPT
@@ -35,10 +35,10 @@ resolve_battlefield_control after a decided Combat):
     package 7), a unit tagged Recruit,
     an enemy unit and the watching card itself do not; a unit whose tags were never observed is
     refused by name (object_tags_unknown), never guessed - a Recruit token without tags too;
-  - killed_by_your_spell (Core 428.5): the resolution stamps the deaths it caused - a Kill
-    instruction of the resolving spell (428.5.b), a Cleanup death of a unit it dealt damage to
-    (428.5.c), an ability whose source is a spell (428.5.d) - with the killer and the responsible
-    player (428.5.c.1); the watch triggers for p1's spell, and from the trash when the watching
+  - killed_by_your_spell (Core 429.5): the resolution stamps the deaths it caused - a Kill
+    instruction of the resolving spell (429.5.b), a Cleanup death of a unit it dealt damage to
+    (429.5.c), an ability whose source is a spell (429.5.d) - with the killer and the responsible
+    player (429.5.c.1); the watch triggers for p1's spell, and from the trash when the watching
     card is the unit killed (383.2.c.1); not for the opponent's spell, a unit's ability, a program
     resolved with no card on the Chain, or a Cleanup death the spell did not deal damage for;
   - the clause grammar lowers "When you play your second card in a turn, ...", "When another
@@ -162,7 +162,7 @@ def plays(state, cards, errors, *, actor="p1", prefix="w@"):
         entered = enter(played, decl, actor=actor)
         if not committed(entered, f"resolving {card_id}", errors):
             return counts, None
-        # Core 419.4.a (packages 3+4): a play trigger wakes when the card's play completes - as it resolves -
+        # Core 420.4.a (packages 3+4): a play trigger wakes when the card's play completes - as it resolves -
         # never at Finalize; the triggers of a play are those its resolution put on the Chain
         counts.append(len(woke(played, prefix)) + len(woke(entered, prefix)))
         state = entered["next_effect_state"]
@@ -323,7 +323,7 @@ def main() -> int:
         if got is None or any(g[0] == "rk-c" for g in got):
             errors.append(f"the trash Conquer trigger {label}: p1's Conquer scheduled {got} ({(done or {}).get('reason')})")
 
-    # --- "your second card in a turn" (Core 419.4.b) --------------------------------------------------------
+    # --- "your second card in a turn" (Core 420.4.b) --------------------------------------------------------
     def play_board(*, darius_zone="base"):
         state = board()
         card(state, "dr", darius_zone, watch=SECOND, tags=["Darius"])
@@ -335,7 +335,7 @@ def main() -> int:
     if counts != [0, 1, 0]:
         errors.append(f"three plays with the watcher on the board scheduled {counts}, wanted [0, 1, 0]")
     # plays before the watcher was on the board count: a1, then the watching card itself as the second play,
-    # then a2 (the third). GPT 2026-09-27 (package 3, section 7 item 1; Core 383.2.c.1, 419.4): the count is the
+    # then a2 (the third). GPT 2026-09-27 (package 3, section 7 item 1; Core 383.2.c.1, 420.4): the count is the
     # whole turn's, and the card's own play completes as it resolves - its ability is active by then, so the
     # second play (itself) triggers it; the third does not
     counts, _ = plays(play_board(darius_zone="hand"), ["a1", "dr", "a2"], errors)
@@ -356,13 +356,13 @@ def main() -> int:
             counts, _ = plays(back["next_effect_state"], ["a1"], errors)
             if counts != [1]:
                 errors.append(f"the same card played again as the second play scheduled {counts}, wanted [1]")
-    # a countered play is not a card played (Core 419.4.a.1; GPT 2026-09-27): a1 played and countered on the
+    # a countered play is not a card played (Core 420.4.a.1; GPT 2026-09-27): a1 played and countered on the
     # Chain, then a2 is the FIRST play completed - it schedules nothing - and a3 the second
     countered_board = play_board()
     first, decl = play(countered_board, "a1", play_id="p0-a1")
     if committed(first, "playing a1 (to be countered)", errors):
         on_chain = first["next_effect_state"]
-        # p2's spell on top of a1's chain item counters it (Core 425.1)
+        # p2's spell on top of a1's chain item counters it (Core 426.1)
         a1_item = decl["chain_item"]["id"]
         timing = fixture(priority="p1", items=[item(a1_item, "p1", "unit", "default", "finalized"),
                                                item("spell-1", "p2", "spell", "default", "finalized")],
@@ -430,7 +430,7 @@ def main() -> int:
         errors.append(f"a unit whose tags were never observed died and the watch did not refuse by name: "
                       f"{done.get('committed')} {done.get('reason_code')}")
 
-    # --- "When you kill a unit with a spell" (Core 428.5) ------------------------------------------------------
+    # --- "When you kill a unit with a spell" (Core 429.5) ------------------------------------------------------
     def spell(state, effects, *, spell_id="sp", controller="p1"):
         """`controller`'s spell `spell_id` on the Chain resolves `effects` (its card goes to the trash)."""
         state["objects"][spell_id] = {"owner": controller, "controller": controller, "kind": "spell", "base_might": 0,
@@ -460,19 +460,19 @@ def main() -> int:
 
     kill_u2 = [{"op": "kill", "effect_id": "k", "object_id": "u2"}]
     for label, run, wanted in (
-            ("p1's spell kills an enemy unit (428.5.b)", lambda: spell(phoenix_board(), kill_u2), 1),
-            ("p1's spell deals lethal damage; the Cleanup kills (428.5.c)",
+            ("p1's spell kills an enemy unit (429.5.b)", lambda: spell(phoenix_board(), kill_u2), 1),
+            ("p1's spell deals lethal damage; the Cleanup kills (429.5.c)",
              lambda: spell(phoenix_board(), [{"op": "deal_damage", "effect_id": "d", "object_id": "u2", "amount": 9}]), 1),
             ("p1's spell kills the watching card itself on the board (383.2.c.1)",
              lambda: spell(phoenix_board("base"), [{"op": "kill", "effect_id": "k", "object_id": "ph"}]), 1),
-            ("an ability originating from p1's spell in the trash kills (428.5.d)",
+            ("an ability originating from p1's spell in the trash kills (429.5.d)",
              lambda: ability(card(phoenix_board(), "sp0", "trash", kind="spell"), kill_u2, source="sp0"), 1),
             ("the same kill by a board watcher (no functions_from) in the trash",
              lambda: spell(phoenix_board(functions_from=None), kill_u2), 0),
             ("p2's spell kills p1's unit", lambda: spell(phoenix_board(), kill_u1, controller="p2"), 0),
             ("a unit's ability kills", lambda: ability(phoenix_board(), kill_u2, source="u1"), 0),
             ("a program kill with no card on the Chain (a resolved effect, not a spell)", lambda: resolve(phoenix_board(), kill_u2), 0),
-            ("p1's spell makes a damaged unit's damage lethal without dealing it (not 428.5.c)",
+            ("p1's spell makes a damaged unit's damage lethal without dealing it (not 429.5.c)",
              lambda: spell(_damaged(phoenix_board()), [{"op": "modify_might", "effect_id": "mm", "object_id": "u2", "amount": -3,
                                                        "duration": "this_turn", "source": "sp-item"}]), 0)):
         done = run()

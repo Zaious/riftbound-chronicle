@@ -30,7 +30,7 @@ The four systems all sit in the preparation phase (see
 `../product/PRODUCT_SCOPE.md`). For P2-A specifically, that is not a
 self-imposed limit but a consequence of the game's own tournament rules:
 
-- **417.1** — "Players may use electronic devices during competitions, but can't
+- **418.1** — "Players may use electronic devices during competitions, but can't
   use them during matches." This settles the question without needing to argue
   about what counts as assistance: the device may not be in use during a
   sanctioned match.

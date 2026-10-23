@@ -25,7 +25,7 @@ Visibility has two levels, and they are not the same question:
     event. A card discarded out of the hand becomes public in the Trash; a
     Unit returned to hand was public on the board and the opponent saw it
     leave. A trace entry that already computed the audience — the look /
-    reveal / put-back family, which follows Core 424 — overrides this with
+    reveal / put-back family, which follows Core 425 — overrides this with
     its own `objects_visible_to`.
 
 The module holds no state and imports the engine lazily, so `effect_ir` can
@@ -51,85 +51,85 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "ceased_to_exist": {"about": "object", "rules": ["Core 186.1"]},
     "replacement_applied": {"about": "object", "rules": ["Core 370", "Core 373"]},
     # --- object fates ----------------------------------------------------
-    "died": {"about": "object", "rules": ["Core 428"]},
-    "banished": {"about": "object", "rules": ["Core 427"]},
-    "discarded": {"about": "object", "rules": ["Core 422"]},
-    "recycled": {"about": "object", "rules": ["Core 416"]},
-    "drawn": {"about": "object", "rules": ["Core 413", "Core 431"]},
+    "died": {"about": "object", "rules": ["Core 429"]},
+    "banished": {"about": "object", "rules": ["Core 428"]},
+    "discarded": {"about": "object", "rules": ["Core 423"]},
+    "recycled": {"about": "object", "rules": ["Core 417"]},
+    "drawn": {"about": "object", "rules": ["Core 414", "Core 432"]},
     "returned_to_hand": {"about": "object", "rules": ["Core 124", "Core 124.1"]},
     "returned_to_champion_zone": {"about": "object", "rules": ["Core 108.3.c.1", "Core 124"]},
-    "recalled": {"about": "object", "rules": ["Core 454", "Core 455"]},
-    "moved": {"about": "object", "rules": ["Core 420", "Core 445"]},
-    "token_created": {"about": "object", "rules": ["Core 439", "Core 186"]},
-    "rune_channeled": {"about": "object", "rules": ["Core 430"]},
-    "put_in_hand": {"about": "object", "rules": ["Core 424.4"]},
-    "hidden_away": {"about": "object", "rules": ["Core 421", "Core 811.1", "Core 107.3.f"]},
-    "hidden_removed": {"about": "object", "rules": ["Core 323.7", "Core 811"]},
+    "recalled": {"about": "object", "rules": ["Core 456", "Core 457"]},
+    "moved": {"about": "object", "rules": ["Core 421", "Core 447"]},
+    "token_created": {"about": "object", "rules": ["Core 440", "Core 186"]},
+    "rune_channeled": {"about": "object", "rules": ["Core 431"]},
+    "put_in_hand": {"about": "object", "rules": ["Core 425.4"]},
+    "hidden_away": {"about": "object", "rules": ["Core 422", "Core 811.1", "Core 107.3.f"]},
+    "hidden_removed": {"about": "object", "rules": ["Core 323.6", "Core 811"]},
     # --- object state ----------------------------------------------------
-    "damaged": {"about": "object", "rules": ["Core 417"]},
-    "healed": {"about": "object", "rules": ["Core 418"]},
-    "readied": {"about": "object", "rules": ["Core 415"]},
-    "exhausted": {"about": "object", "rules": ["Core 414"]},
-    "might_modified": {"about": "object", "rules": ["Core 476", "Core 479"]},
-    "keyword_granted": {"about": "object", "rules": ["Core 477.2"]},
-    "empowered": {"about": "object", "rules": ["Core 441"]},
-    "disempowered": {"about": "object", "rules": ["Core 442"]},
-    "buffed": {"about": "object", "rules": ["Core 426"]},
+    "damaged": {"about": "object", "rules": ["Core 418"]},
+    "healed": {"about": "object", "rules": ["Core 419"]},
+    "readied": {"about": "object", "rules": ["Core 416"]},
+    "exhausted": {"about": "object", "rules": ["Core 415"]},
+    "might_modified": {"about": "object", "rules": ["Core 478", "Core 481"]},
+    "keyword_granted": {"about": "object", "rules": ["Core 479.3"]},
+    "empowered": {"about": "object", "rules": ["Core 442"]},
+    "disempowered": {"about": "object", "rules": ["Core 443"]},
+    "buffed": {"about": "object", "rules": ["Core 427"]},
     # 2026-09-27 package 6: a buff spent by an instruction (702.2.b) - one event per Unit it left
     "buff_spent": {"about": "object", "rules": ["Core 702.2.b"]},
-    "attached": {"about": "object", "rules": ["Core 434", "Core 435"]},
-    "detached": {"about": "object", "rules": ["Core 435.4"]},
-    "copied": {"about": "object", "rules": ["Core 477.1"]},
+    "attached": {"about": "object", "rules": ["Core 435", "Core 436"]},
+    "detached": {"about": "object", "rules": ["Core 436.4"]},
+    "copied": {"about": "object", "rules": ["Core 479.2"]},
     "replacement_granted": {"about": "object", "rules": ["Core 370", "Core 124"]},
     # package 9 (Unyielding Spirit): a replacement an effect created for this turn, for any object
-    "replacement_created": {"about": "player", "rules": ["Core 370", "Core 417.6"]},
+    "replacement_created": {"about": "player", "rules": ["Core 370", "Core 418.6"]},
     # package 11 (Time Warp): an Additional Turn queued (Core 735)
     "additional_turn_created": {"about": "player", "rules": ["Core 735", "Core 737"]},
     # package 11 (Possession): a permanent's controller changed
-    "control_changed": {"about": "object", "rules": ["Core 189", "Core 191.3"]},
-    "revealed": {"about": "object", "rules": ["Core 424.2"]},
-    "looked_at": {"about": "object", "rules": ["Core 424.1"]},
+    "control_changed": {"about": "object", "rules": ["Core 189", "Core 191.4"]},
+    "revealed": {"about": "object", "rules": ["Core 425.2"]},
+    "looked_at": {"about": "object", "rules": ["Core 425.1"]},
     # DP-94: only a Stun that actually happened. Stunning an already Stunned
     # Unit is a no_op and emits nothing, so "when you stun" cannot fire twice.
-    "stunned": {"about": "object", "rules": ["Core 423", "Core 423.2"]},
+    "stunned": {"about": "object", "rules": ["Core 424", "Core 424.2"]},
     # selection-binding.v1: "Choose a friendly unit." on its own. Nothing about
     # the object changes; the event is what the clauses after it read instead
     # of choosing again, which is the same role player_chosen plays for a
     # player. A choice with nothing to choose from establishes no selection and
     # emits nothing.
     "selection_established": {"about": "object", "rules": ["Core 355.10.a", "Core 359.3.e"]},
-    # 2026-09-24: a card played - Finalized by its play (Core 419.4.a). Emitted by the play
+    # 2026-09-24: a card played - Finalized by its play (Core 420.4.a). Emitted by the play
     # transaction, not by an effect program, so no op names it (PLAY_EVENT_KINDS).
-    "played": {"about": "object", "rules": ["Core 419.4.a"]},
+    "played": {"about": "object", "rules": ["Core 420.4.a"]},
     # 2026-09-28: a Unit gains the Attacker / Defender designation for the first time in a combat
-    # (Core 464.2.c.3, 464.2.c.3.a; 383.4.e, 383.4.f). Emitted by combat.open_combat and
+    # (Core 466.2.c.3, 466.2.c.3.a; 383.4.e, 383.4.f). Emitted by combat.open_combat and
     # combat.sync_designations, not by an op (COMBAT_EVENT_KINDS); what "When an enemy unit
     # attacks ..." and "When a friendly unit attacks or defends alone" watch.
-    "attacked": {"about": "object", "rules": ["Core 464.2.c.3", "Core 383.4.e", "Core 383.4.e.2.a"]},
-    "defended": {"about": "object", "rules": ["Core 464.2.c.3", "Core 383.4.f", "Core 383.4.f.2.a"]},
+    "attacked": {"about": "object", "rules": ["Core 466.2.c.3", "Core 383.4.e", "Core 383.4.e.2.a"]},
+    "defended": {"about": "object", "rules": ["Core 466.2.c.3", "Core 383.4.f", "Core 383.4.f.2.a"]},
     # 2026-09-28 (package 6): an effect-driven play's step 1 - the card moved to the Chain as a
-    # Pending item while the effect resolves (Core 354, 419.3). Not "played": the play is complete
-    # only when its steps are, and the play transaction emits that event then (419.4.a).
-    "play_started": {"about": "object", "rules": ["Core 354", "Core 419.3"]},
+    # Pending item while the effect resolves (Core 354, 420.3). Not "played": the play is complete
+    # only when its steps are, and the play transaction emits that event then (420.4.a).
+    "play_started": {"about": "object", "rules": ["Core 354", "Core 420.3"]},
     # --- player ----------------------------------------------------------
     # Sabotage: the instruction that only chooses. The event is what every
     # later instruction of the same program reads instead of choosing again.
-    "player_chosen": {"about": "player", "rules": ["Core 355.1", "Core 355.17"]},
-    "resource_added": {"about": "player", "rules": ["Core 429"]},
+    "player_chosen": {"about": "player", "rules": ["Core 355.1", "Core 355.18"]},
+    "resource_added": {"about": "player", "rules": ["Core 430"]},
     "xp_gained": {"about": "player", "rules": ["Core 730"]},
-    # Core 471.1: a player Gains a Point. The event is the gain itself, not a
+    # Core 473.1: a player Gains a Point. The event is the gain itself, not a
     # Battlefield being Scored - a card that says "you score 1 point" names no
-    # Battlefield, so 471.2's Score abilities have nothing to trigger at.
-    "point_gained": {"about": "player", "rules": ["Core 471.1", "Core 471.1.a.1"]},
+    # Battlefield, so 473.2's Score abilities have nothing to trigger at.
+    "point_gained": {"about": "player", "rules": ["Core 473.1", "Core 473.1.a.1"]},
     "game_won": {"about": "player", "rules": ["Core 195", "Core 196"]},
-    "burned_out": {"about": "player", "rules": ["Core 431.2"]},
-    "cards_put_back": {"about": "player", "rules": ["Core 424.3"]},
-    "predicted": {"about": "player", "rules": ["Core 436"]},
+    "burned_out": {"about": "player", "rules": ["Core 432.2"]},
+    "cards_put_back": {"about": "player", "rules": ["Core 425.3"]},
+    "predicted": {"about": "player", "rules": ["Core 437"]},
     "turn_effect_granted": {"about": "player", "rules": ["Core 317.2"]},
     "delayed_trigger_created": {"about": "player", "rules": ["Core 383.1", "Core 124"]},
     # --- chain -----------------------------------------------------------
-    "countered": {"about": "chain", "rules": ["Core 425"]},
-    "burned": {"about": "chain", "rules": ["Core 440"]},
+    "countered": {"about": "chain", "rules": ["Core 426"]},
+    "burned": {"about": "chain", "rules": ["Core 441"]},
     # 2026-09-27: a triggered ability's base cost, paid as it was finalized (Core 383.3.b.1). The
     # payment's own events (a recycle, an exhaust) are emitted when it is paid; the instruction's
     # step at resolution records the payment and is not performed, so nothing derives this kind.
@@ -138,14 +138,14 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # --- package 6 (2026-09-27): per-player iteration ----------------------
     # "Each player ...": the iteration itself changes nothing - its copies run as ordinary
     # instructions and emit their own events; the kind is named so the op is never unknown
-    "players_iterated": {"about": "player", "rules": ["Core 303.2.a", "Core 411.1"]},
+    "players_iterated": {"about": "player", "rules": ["Core 303.2.a", "Core 412.1"]},
     # "Each player chooses 2 units ...": a player chose objects as the instruction resolved (not
     # targets, Core 355.10.e); nothing about the objects changes, so the event is the player's
     "objects_chosen": {"about": "player", "rules": ["Core 355.10.e"]},
     # "Each other player chooses Cards or Runes.": a player chose a named option
     "option_chosen": {"about": "player", "rules": ["Core 355.10.e"]},
     # 2026-10-08 package 10 (Bullet Time): a player sized and paid a variable Power payment as the instruction resolved
-    "amount_paid": {"about": "player", "rules": ["Core 204.3.b"]},
+    "amount_paid": {"about": "player", "rules": ["Core 204.3.a"]},
 }
 
 # op -> the primary semantic event it emits. An op that is absent is
@@ -161,7 +161,7 @@ OP_PRIMARY: dict[str, str] = {
     "mutual_damage_current_might": "damaged",
     # Composite: apply_program expands it into two ordinary Might changes, and
     # each of those emits its own might_modified. The mapping is here so the
-    # op is never `event_kind_unknown` (Core 477).
+    # op is never `event_kind_unknown` (Core 479).
     "swap_might": "might_modified",
     "raise_might_to_match": "might_modified",
     "recycle_when_leaving_chain": "replacement_created",
@@ -238,7 +238,7 @@ DESIGNATION_EVENT_KINDS = {"attacker": "attacked", "defender": "defended"}
 def designation_event(*, combat_id: str, role: str, unit: str, identity: str, controller: str,
                       battlefield: str, battlefield_controller: str | None, alone: bool,
                       turn_player: str | None = None) -> dict[str, Any]:
-    """The event of one Unit gaining a combat designation (Core 464.2.c.3) - once per object
+    """The event of one Unit gaining a combat designation (Core 466.2.c.3) - once per object
     identity per combat, as its own Attack / Defend triggers are (383.4.e.2.a, 383.4.f.2.a).
     It carries what a watch's other requirements read at that moment (383.4.e.2.b, 383.4.f.2.b):
     the Battlefield's controller then (during a combat control does not change, 190.4.b) and
@@ -260,28 +260,28 @@ def designation_event(*, combat_id: str, role: str, unit: str, identity: str, co
 def awaken_ready_event(*, turn_id: str, obj: str, identity: str, controller: str, object_kind: str,
                        location: dict[str, Any] | None, turn_player: str | None = None) -> dict[str, Any]:
     """2026-10-08 (package 10, Pirate's Haven): one object readied by the Awaken step (Core 315.1.b: the Turn Player
-    readies every object they control that can be readied; 415.3.a) - a Ready the Turn Player performs, so its actor is
+    readies every object they control that can be readied; 416.3.a) - a Ready the Turn Player performs, so its actor is
     that player ("When you ready a friendly unit"). One action, the whole Awaken (the readies are simultaneous); an
-    object already Ready is not readied again and has no event (415.1.b, 415.1.c). Public: the board."""
+    object already Ready is not readied again and has no event (416.1.b, 416.1.c). Public: the board."""
     where = dict(location) if isinstance(location, dict) else None
     return {"schema_version": EVENT_VERSION, "event_id": f"awaken:{turn_id}#readied:{obj}", "action_id": f"awaken:{turn_id}",
             "kind": "readied", "source": {"object": None, "kind": "rule"}, "actor": controller, "controller": controller,
             "object": obj, "player": controller, "identity_before": identity, "identity_after": identity,
             "location_before": where, "location_after": dict(where) if where else None, "causal_parent": None,
             "visibility": {"fact": "public", "identity": "public"},
-            "rule_locators": list(EVENT_KINDS["readied"]["rules"]) + ["Core 315.1.b", "Core 415.3.a"],
+            "rule_locators": list(EVENT_KINDS["readied"]["rules"]) + ["Core 315.1.b", "Core 416.3.a"],
             "object_kind": object_kind, "turn_player": turn_player}
 
 
 def played_event(*, play_id: str, card: str, actor: str, object_kind: str, identity_before: str | None,
                  identity_after: str | None, from_hidden: bool, turn_player: str | None,
                  play_ordinal: int | None = None) -> dict[str, Any]:
-    """The event a card's play emits once the play has Finalized it (Core 419.4.a) - what
+    """The event a card's play emits once the play has Finalized it (Core 420.4.a) - what
     "When you play a spell / a gear / another unit / a card from [Hidden] / a card on an
     opponent's turn" reads. Public: a played card is on the Chain for all to see.
     `play_ordinal` (2026-09-27): which of the actor's plays this turn it is - "When you play your second
-    card in a turn"; stamped by resolution_bridge when the play completes (Core 419.4.a), never for a
-    countered card (419.4.a.1)."""
+    card in a turn"; stamped by resolution_bridge when the play completes (Core 420.4.a), never for a
+    countered card (420.4.a.1)."""
     event = {"schema_version": EVENT_VERSION, "event_id": f"play:{play_id}#played", "action_id": f"play:{play_id}",
              "kind": "played", "source": {"object": card, "kind": "object"}, "actor": actor, "controller": actor,
              "object": card, "player": actor, "identity_before": identity_before, "identity_after": identity_after,
@@ -295,10 +295,10 @@ def played_event(*, play_id: str, card: str, actor: str, object_kind: str, ident
 # The zone-change costs a player pays by choosing cards (Core 357.2): the semantic event each
 # card's move is, where it was, where it went, and the rules that make a cost's move that action.
 _COST_ZONE_EVENTS = {
-    # Core 422.2.a: a player discards when a cost instructs it; 422.3: Discard as a cost
-    "pay_discard": ("discarded", "discard", "hand", "trash", ["Core 422.2.a", "Core 422.3"]),
-    # Core 416.2.a: the same for Recycle; 416.3: Recycle as a cost; 416.1.c: to the owner's deck
-    "pay_recycle_trash": ("recycled", "recycle", "trash", "main_deck", ["Core 416.1.c", "Core 416.2.a", "Core 416.3"]),
+    # Core 423.2.a: a player discards when a cost instructs it; 423.3: Discard as a cost
+    "pay_discard": ("discarded", "discard", "hand", "trash", ["Core 423.2.a", "Core 423.3"]),
+    # Core 417.2.a: the same for Recycle; 417.3: Recycle as a cost; 417.1.c: to the owner's deck
+    "pay_recycle_trash": ("recycled", "recycle", "trash", "main_deck", ["Core 417.1.c", "Core 417.2.a", "Core 417.3"]),
 }
 
 
@@ -391,13 +391,13 @@ def snapshot(state: dict[str, Any]) -> dict[str, dict[str, Any]]:
         record["identity"] = obj.get("identity", f"{object_id}@0")
         record["owner"] = obj.get("owner")
         record["controller"] = obj.get("controller")
-        # whether it had a buff (Core 426) - what "a buffed unit dies" reads, as it was
+        # whether it had a buff (Core 427) - what "a buffed unit dies" reads, as it was
         record["buffed"] = bool(obj.get("buffed"))
         # 2026-09-27 (package 6): its kind and tags as they were - what "another non-Recruit unit
         # dies" reads of a token that has ceased to exist by then (Core 186.1, 133.8, 187.1)
         record["kind"] = obj.get("kind")
         record["tags"] = object_tags(state, object_id)
-        # 2026-09-27: whether it was stunned (Core 423) - what "a stunned enemy unit" reads, as it was
+        # 2026-09-27: whether it was stunned (Core 424) - what "a stunned enemy unit" reads, as it was
         record["stunned"] = bool(obj.get("stunned"))
         record["exists"] = True
     for record in out.values():
@@ -429,7 +429,7 @@ def identity_visibility(before: dict[str, Any] | None, after: dict[str, Any] | N
                         override: Any = None) -> Any:
     """`public`, or the players who may know which card this is.
 
-    The override is the audience a trace entry already computed under Core 424
+    The override is the audience a trace entry already computed under Core 425
     (look / reveal / put back); it wins, because only that instruction knows
     whom it showed the cards to.
     """
@@ -518,17 +518,17 @@ class EventLog:
             "rule_locators": list(EVENT_KINDS[kind]["rules"]),
         }
         if kind == "died":
-            # a death is read off the object as it was (Core 417): "When a buffed friendly unit
+            # a death is read off the object as it was (Core 418): "When a buffed friendly unit
             # dies" asks about the buff it had, not the card now in the trash (2026-09-24)
             event["was_buffed"] = bool(before.get("buffed"))
             # 2026-09-27 (package 6): so are its kind and tags - a unit token that died has ceased to
-            # exist (Core 186.1) and still died a unit (428.1); None: tags never observed
+            # exist (Core 186.1) and still died a unit (429.1); None: tags never observed
             event["object_kind"] = before.get("kind")
             event["object_tags"] = before.get("tags")
-            # 2026-09-27: and whether it was stunned; and who is responsible for the kill (Core 411.4:
+            # 2026-09-27: and whether it was stunned; and who is responsible for the kill (Core 412.4:
             # "when you kill" is a kill you are responsible for). A Kill instruction's is its
-            # program's controller (428.5.b, 411.1); a Cleanup's kill has none here - the caller
-            # that knows the damage's source names it (428.5.c.1, 428.5.c.2), else nobody (411.2)
+            # program's controller (429.5.b, 412.1); a Cleanup's kill has none here - the caller
+            # that knows the damage's source names it (429.5.c.1, 429.5.c.2), else nobody (412.2)
             event["was_stunned"] = bool(before.get("stunned"))
             event["responsible_player"] = self.actor
         if extra:
@@ -542,7 +542,7 @@ class EventLog:
                entry: dict[str, Any]) -> list[dict[str, Any]]:
         """Derive the events of one trace entry. Returns the new events.
 
-        package 6 (2026-09-27, Core 411.1): an entry an each_player iteration performed carries the
+        package 6 (2026-09-27, Core 412.1): an entry an each_player iteration performed carries the
         iteration's player in `performed_by`; its events name that player as the actor ("Each player
         kills one of their units" - each is responsible for their own unit's death)."""
         performer = entry.get("performed_by")
@@ -602,7 +602,7 @@ class EventLog:
             return []
 
         # The look / reveal family keeps card ids out of its public trace on
-        # purpose (Core 424, ADR-0011 §3). The state still knows which cards
+        # purpose (Core 425, ADR-0011 §3). The state still knows which cards
         # they were, so the events name them and restrict who may see them
         # rather than losing them.
         fallback = sorted(self._newly_revealed(before, after)) or sorted(moved)
@@ -674,7 +674,7 @@ class EventLog:
             "resource_added": ("resource", "amount", "domain"),
             "xp_gained": ("amount",),
             "drawn": ("player",),
-            # the player whose hand the card left (Core 422.1) - what watch scope "player" reads
+            # the player whose hand the card left (Core 423.1) - what watch scope "player" reads
             "discarded": ("player",),
             "attached": ("to",),
             "detached": ("destination",),

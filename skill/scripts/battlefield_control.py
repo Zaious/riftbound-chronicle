@@ -3,12 +3,12 @@
 Battlefield control, Conquer, Hold and scoring — ADR-0009 (G2).
 
 Procedures over the timing/effect pair, in the style of combat.py:
-`resolve_battlefield_control` (466.5 after a Combat, 348.2 after a Non-Combat
-Showdown), `stage_showdown` / `open_showdown` (316.8.b, 323.8, 323.12, 345),
-`run_board_cleanup` (323.6, 323.11, 323.11.a), `run_scoring_step` (315.2.b
-Hold). Scoring (469–471) is one atomic transaction: control change, ledger,
+`resolve_battlefield_control` (468.5 after a Combat, 348.2 after a Non-Combat
+Showdown), `stage_showdown` / `open_showdown` (316.8.b, 323.7, 323.11, 345),
+`run_board_cleanup` (323.5, 323.10, 323.10.a), `run_scoring_step` (315.2.b
+Hold). Scoring (471–473) is one atomic transaction: control change, ledger,
 point or draw-instead, and Score triggers commit together or not at all. The
-victory condition (472) is reported as facts and never enacted (G3).
+victory condition (474) is reported as facts and never enacted (G3).
 """
 
 from __future__ import annotations
@@ -55,12 +55,12 @@ def _base(step: str, timing_state: dict[str, Any], effect_state: dict[str, Any])
 # ------------------------------------------------------------------ facts --
 
 def mode_of_play(effect_state: dict[str, Any]) -> tuple[int | None, ScoringUnsupported | None]:
-    """The Victory Score comes from the Mode of Play (456.3); it is never guessed."""
+    """The Victory Score comes from the Mode of Play (458.3); it is never guessed."""
     mode = effect_state.get("mode")
     if not isinstance(mode, dict) or not isinstance(mode.get("victory_score"), int):
-        return None, ScoringUnsupported("mode_unknown", "the Mode of Play (Victory Score) is not in the state; scoring needs it (456.3, 471.1)", ["Core 456.3", "Core 471.1"])
+        return None, ScoringUnsupported("mode_unknown", "the Mode of Play (Victory Score) is not in the state; scoring needs it (458.3, 473.1)", ["Core 458.3", "Core 473.1"])
     if mode.get("teams") or any(isinstance(p, dict) and p.get("team_id") for p in effect_state["players"].values()):
-        return None, ScoringUnsupported("team_scoring", "scoring with teammates (469.1.a, 315.2.b.3) is not modelled", ["Core 469.1.a", "Core 315.2.b.3"])
+        return None, ScoringUnsupported("team_scoring", "scoring with teammates (471.1.a, 315.2.b.3) is not modelled", ["Core 471.1.a", "Core 315.2.b.3"])
     return mode["victory_score"], None
 
 
@@ -69,7 +69,7 @@ def points_of(effect_state: dict[str, Any], player: str) -> int:
 
 
 def victory_check(effect_state: dict[str, Any]) -> dict[str, Any]:
-    """Core 472 as facts: who is at or above the Victory Score, whether one of
+    """Core 474 as facts: who is at or above the Victory Score, whether one of
     them alone leads, or whether the threshold is reached in a tie. No winner
     is declared and nothing ends — the terminal state is G3."""
     victory_score, problem = mode_of_play(effect_state)
@@ -107,7 +107,7 @@ def assigned_excess(combat: dict[str, Any] | None, player: str, battlefield_id: 
 
 def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str,
                     combat: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    """Core 471.2 / 383.4.c–d: a Unit's own trigger fires when that Unit, the
+    """Core 473.2 / 383.4.c–d: a Unit's own trigger fires when that Unit, the
     scoring player's, is at the Battlefield scored (scope unit_here); a
     player-referencing trigger fires from any board object the scoring player
     controls (scope controller); the Battlefield's own trigger belongs to its
@@ -187,10 +187,10 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
 
 def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str, decisions: dict[str, Any] | None = None,
                       combat: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
-    """Core 469–471 on a copy of the effect state: once per Battlefield per
-    turn (470); up to one point (471.1); a Conquer that would reach the
+    """Core 471–473 on a copy of the effect state: once per Battlefield per
+    turn (472); up to one point (473.1); a Conquer that would reach the
     Victory Score gains the Final Point only if every Battlefield was scored
-    this turn, otherwise the player draws instead (471.1.b.1) — a draw that
+    this turn, otherwise the player draws instead (473.1.b.1) — a draw that
     would Burn Out raises ScoringUnsupported so the caller commits nothing.
     Returns (next effect, record, Score trigger descriptors)."""
     victory_score, problem = mode_of_play(effect_state)
@@ -200,18 +200,18 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
     ledger_before = scored_this_turn(working, player, turn_id)
     record: dict[str, Any] = {"player": player, "battlefield": battlefield_id, "how": how, "turn_id": turn_id, "points_before": points_of(working, player)}
     if battlefield_id in ledger_before:
-        record.update({"scored": False, "reason": "already_scored_this_turn", "points_after": record["points_before"], "rule_locators": ["Core 470", "Core 471.2.c"]})
+        record.update({"scored": False, "reason": "already_scored_this_turn", "points_after": record["points_before"], "rule_locators": ["Core 472", "Core 473.2.c"]})
         return working, record, []
     ledger = ledger_before + [battlefield_id]
     working["players"][player]["scored_this_turn"] = {turn_id: ledger}
     if how == "conquer" and record["points_before"] + 1 >= victory_score:
         if set(ledger) == set(working["battlefields"]):
             working["players"][player]["points"] = record["points_before"] + 1
-            record.update({"scored": True, "gain": "final_point", "rule_locators": ["Core 469.1", "Core 471.1.b", "Core 471.1.b.1"]})
+            record.update({"scored": True, "gain": "final_point", "rule_locators": ["Core 471.1", "Core 473.1.b", "Core 473.1.b.1"]})
         else:
             # ADR-0010 §2: the draw-instead is a real Draw — it can Burn Out
-            # (431), which needs the receipt and beneficiary inputs before
-            # anything commits, and can end the game (431.3.c).
+            # (432), which needs the receipt and beneficiary inputs before
+            # anything commits, and can end the game (432.3.c).
             try:
                 working, draw_event = perform_draw(working, player, 1, decisions=decisions, operation_prefix=f"burn_out:{player}:{turn_id}:score:{battlefield_id}")
             except (ExternalInputRequired, PlayerSelectionRequired) as exc:
@@ -219,13 +219,13 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
             except IllegalDecision as exc:
                 raise ScoringDecisionRequired("decision_controller_mismatch", str(exc), [], None)
             except NotImplementedError as exc:
-                raise ScoringUnsupported("burn_out_unsupported", str(exc), ["Core 431"])
+                raise ScoringUnsupported("burn_out_unsupported", str(exc), ["Core 432"])
             record.update({"scored": True, "gain": "draw_instead", "drew": draw_event["objects"], "identities_after": draw_event["identities_after"],
                            "burn_outs": draw_event["burn_outs"], "terminal_event": draw_event.get("terminal_event"),
-                           "rule_locators": ["Core 469.1", "Core 471.1.b", "Core 471.1.b.1", "Core 124"] + (["Core 431"] if draw_event["burn_outs"] else [])})
+                           "rule_locators": ["Core 471.1", "Core 473.1.b", "Core 473.1.b.1", "Core 124"] + (["Core 432"] if draw_event["burn_outs"] else [])})
     else:
         working["players"][player]["points"] = record["points_before"] + 1
-        record.update({"scored": True, "gain": "point", "rule_locators": ["Core 469.1" if how == "conquer" else "Core 469.2", "Core 471.1"] + (["Core 471.1.a.1"] if how == "hold" else [])})
+        record.update({"scored": True, "gain": "point", "rule_locators": ["Core 471.1" if how == "conquer" else "Core 471.2", "Core 473.1"] + (["Core 473.1.a.1"] if how == "hold" else [])})
     record["points_after"] = points_of(working, player)
     triggers = _score_triggers(working, player, battlefield_id, how, turn_id, combat)  # 383.4.c.2.c: a replaced point still triggers
     record["triggers"] = [t["trigger_id"] for t in triggers]
@@ -235,13 +235,13 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
 # ---------------------------------------------------- control resolution --
 
 def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
-    """ADR-0009 §2, §4: after a decided Combat (466.5) or a closing Non-Combat
+    """ADR-0009 §2, §4: after a decided Combat (468.5) or a closing Non-Combat
     Showdown (348.2.a), the one player whose Units remain establishes control
     if they did not hold it, Conquers unless already scored this turn, and
-    their Score triggers form the chain; Contested is cleared (466.5.a). After
+    their Score triggers form the chain; Contested is cleared (468.5.a). After
     a Combat with no Units left the Battlefield becomes Uncontrolled
-    (466.5.b); after a Showdown with no Units left nothing changes here and
-    the next board Cleanup decides (323.6). One transaction: all or nothing."""
+    (468.5.b); after a Showdown with no Units left nothing changes here and
+    the next board Cleanup decides (323.5). One transaction: all or nothing."""
     base = _base("resolve_battlefield_control", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
@@ -250,19 +250,19 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
     if record is not None and record.get("status") == "result_determined" and not record.get("result", {}).get("restage_required"):
         source, battlefield_id = "combat", record["battlefield"]
     elif record is not None and record.get("status") == "result_determined":
-        return _refuse(base, "control_resolution_not_pending", "a both-remain No Result stages the Combat again (466.3.d.1); no control is established", ["Core 466.3.d.1"])
+        return _refuse(base, "control_resolution_not_pending", "a both-remain No Result stages the Combat again (468.3.d.1); no control is established", ["Core 468.3.d.1"])
     elif showdown.get("active") and showdown.get("closing") and showdown.get("kind") == "non_combat":
         source, battlefield_id = "non_combat_showdown", showdown["battlefield"]
     else:
-        return _refuse(base, "control_resolution_not_pending", "control is resolved after a decided Combat (466.5) or a closed Non-Combat Showdown (348.2); neither is pending", ["Core 466.5", "Core 348.2"])
+        return _refuse(base, "control_resolution_not_pending", "control is resolved after a decided Combat (468.5) or a closed Non-Combat Showdown (348.2); neither is pending", ["Core 468.5", "Core 348.2"])
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
-        return _refuse(base, "combat_chain_unfinished", "the chain and outstanding tasks must be finished first (466.4, 466.6)", ["Core 466.4", "Core 466.6"])
+        return _refuse(base, "combat_chain_unfinished", "the chain and outstanding tasks must be finished first (468.4, 468.6)", ["Core 468.4", "Core 468.6"])
     if battlefield_id not in effect_state["battlefields"]:
         return _invalid(base, [f"battlefield {battlefield_id!r} is not in the state"])
     if team_state(effect_state):
         return _unsupported(base, "team_contest_unsupported",
                             f"control of {battlefield_id} would be resolved and Contested removed in a state with teams; "
-                            "team contest and scoring are not modelled", ["Core 190.3.b", "Core 348.2", "Core 466.5"])
+                            "team contest and scoring are not modelled", ["Core 190.3.b", "Core 348.2", "Core 468.5"])
     present = units_at(effect_state, battlefield_id)
     remaining = sorted(present)
     battlefield = effect_state["battlefields"][battlefield_id]
@@ -284,7 +284,7 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
             except ScoringDecisionRequired as exc:
                 return {**base, "valid": True, "committed": False, "reason_code": exc.code, "reason": exc.reason, "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
                         **({"chance": exc.chance} if exc.chance else {}),
-                        "rule_locators": ["Core 471.1.b.1", "Core 431.2"], "source": source, "would_establish_control": player}
+                        "rule_locators": ["Core 473.1.b.1", "Core 432.2"], "source": source, "would_establish_control": player}
             control_step = "control_established"
         next_effect["battlefields"][battlefield_id]["contested"] = False
         next_effect["battlefields"][battlefield_id]["contested_by"] = None
@@ -295,10 +295,10 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
             next_effect["battlefields"][battlefield_id]["contested_by"] = None
             control_step = "uncontrolled"
         else:
-            control_step = "deferred_to_board_cleanup"  # ADR-0009 §4: 466.5.b belongs to Combat; 323.6 decides later
+            control_step = "deferred_to_board_cleanup"  # ADR-0009 §4: 468.5.b belongs to Combat; 323.5 decides later
     else:
         return _unsupported(base, "showdown_participants_inconsistent" if source != "combat" else "combat_participants_inconsistent",
-                            f"Units of {remaining} are at {battlefield_id}; a decided Combat or a Non-Combat Showdown cannot end with both present (348.2, 466.3)", ["Core 348.2", "Core 466.3"])
+                            f"Units of {remaining} are at {battlefield_id}; a decided Combat or a Non-Combat Showdown cannot end with both present (348.2, 468.3)", ["Core 348.2", "Core 468.3"])
     terminal = (scoring or {}).get("terminal_event")
     from resolution_bridge import _settle_trigger_orders
     failure = _settle_trigger_orders(triggers, engine_decisions, base) if terminal is None else None
@@ -319,15 +319,15 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
         trace = {"source": source, "battlefield": battlefield_id, "remaining": remaining, "control_step": control_step, "controller_before": battlefield.get("controller"),
                  "controller_after": next_effect["battlefields"][battlefield_id].get("controller"), "scoring": scoring, "terminal": terminal,
                  "skipped_after_terminal": {"score_triggers": [t["trigger_id"] for t in triggers]}, "victory_check": victory_check(next_effect), "atomic": True}
-        return _commit(base, final_timing, next_effect, trace=trace, locators=["Core 466.5", "Core 348.2.a", "Core 471.1.b.1", "Core 431.3.c", "Core 431.3.c.1", "Core 196"])
+        return _commit(base, final_timing, next_effect, trace=trace, locators=["Core 468.5", "Core 348.2.a", "Core 473.1.b.1", "Core 432.3.c", "Core 432.3.c.1", "Core 196"])
     scheduled = schedule_triggered_items(next_timing, triggers)
     if scheduled.get("applied") is not True:
-        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Score triggers could not be scheduled", ["Core 471.2"], trigger_result=scheduled)
+        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Score triggers could not be scheduled", ["Core 473.2"], trigger_result=scheduled)
     trace = {"source": source, "battlefield": battlefield_id, "remaining": remaining, "control_step": control_step, "controller_before": battlefield.get("controller"),
              "controller_after": next_effect["battlefields"][battlefield_id].get("controller"), "scoring": scoring, "scheduled_triggers": [t["trigger_id"] for t in triggers],
              "trigger_schedule": scheduled.get("transition"), "victory_check": victory_check(next_effect), "atomic": True}
     return _commit(base, scheduled["next_state"], next_effect, trace=trace,
-                   locators=["Core 190.4", "Core 466.5", "Core 466.5.a", "Core 466.5.b", "Core 466.5.d", "Core 466.5.e", "Core 348.2.a", "Core 348.2.a.1", "Core 469.1", "Core 470", "Core 471", "Core 471.2"])
+                   locators=["Core 190.4", "Core 468.5", "Core 468.5.a", "Core 468.5.b", "Core 468.5.d", "Core 468.5.e", "Core 348.2.a", "Core 348.2.a.1", "Core 471.1", "Core 472", "Core 473", "Core 473.2"])
 
 
 # ------------------------------------------------ Non-Combat Showdowns --
@@ -345,9 +345,9 @@ def _ongoing_at(timing_state: dict[str, Any], battlefield_id: str) -> str | None
 
 
 def showdown_candidates(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Battlefields where a Non-Combat Showdown is Staged (316.8.b, 323.8,
-    323.8.a, 344.2): Contested was applied, the applier's Units are present,
-    no other player's Units are (that is a Combat, 461), and nothing is
+    """Battlefields where a Non-Combat Showdown is Staged (316.8.b, 323.7,
+    323.7.a, 344.2): Contested was applied, the applier's Units are present,
+    no other player's Units are (that is a Combat, 463), and nothing is
     ongoing there."""
     candidates: list[dict[str, Any]] = []
     considered: list[dict[str, Any]] = []
@@ -380,24 +380,24 @@ def _cleanup_boundary(timing_state: dict[str, Any], within_cleanup: bool = False
 
 
 def stage_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
-    """Core 323.8: at a quiet Cleanup boundary, rebuild the set of staged
+    """Core 323.7: at a quiet Cleanup boundary, rebuild the set of staged
     Non-Combat Showdowns from the board. Zero candidates is a supported no-op
-    that also drops stale entries (323.8.a)."""
+    that also drops stale entries (323.7.a)."""
     base = _base("stage_showdown", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
     if code := _cleanup_boundary(timing_state, within_cleanup):
-        return _refuse(base, code, "Showdowns are staged during a Cleanup with nothing on the chain and no outstanding task (323.8)", ["Core 318", "Core 323.8"])
+        return _refuse(base, code, "Showdowns are staged during a Cleanup with nothing on the chain and no outstanding task (323.7)", ["Core 318", "Core 323.7"])
     candidates, considered = showdown_candidates(timing_state, effect_state)
     next_timing = copy.deepcopy(timing_state)
     next_timing["staged_showdowns"] = candidates
     trace = {"considered": considered, "staged": [c["battlefield"] for c in candidates], "dropped": sorted({s["battlefield"] for s in timing_state.get("staged_showdowns", [])} - {c["battlefield"] for c in candidates}),
              "outcome": "staged" if candidates else "no_staged_showdown"}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 316.8.b", "Core 323.8", "Core 323.8.a", "Core 344.2"])
+    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 316.8.b", "Core 323.7", "Core 323.7.a", "Core 344.2"])
 
 
 def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
-    """Core 323.12, 345: in a Neutral Open State with staged Non-Combat
+    """Core 323.11, 345: in a Neutral Open State with staged Non-Combat
     Showdowns and no Combat staged, the Turn Player chooses one (several need
     a location_selection `showdown_location`); it opens as a non_combat
     Showdown whose Focus goes to the player who applied Contested."""
@@ -405,34 +405,34 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
     if code := _cleanup_boundary(timing_state, within_cleanup):
-        return _refuse(base, code, "a Showdown opens during a Cleanup with nothing on the chain and no outstanding task (323.12)", ["Core 318", "Core 323.12"])
+        return _refuse(base, code, "a Showdown opens during a Cleanup with nothing on the chain and no outstanding task (323.11)", ["Core 318", "Core 323.11"])
     if timing_state["showdown"]["active"]:
-        return _refuse(base, "not_neutral_open_state", "323.12 opens a Showdown only from a Neutral Open State; one is already ongoing", ["Core 323.12", "Core 344"])
+        return _refuse(base, "not_neutral_open_state", "323.11 opens a Showdown only from a Neutral Open State; one is already ongoing", ["Core 323.11", "Core 344"])
     combat = timing_state.get("combat")
     if combat is not None and combat["status"] not in {"staged", "closed"}:
-        return _refuse(base, "combat_in_progress", f"a Combat ({combat['combat_id']}) is already in progress; another Showdown cannot open", ["Core 323.12", "Core 460"])
+        return _refuse(base, "combat_in_progress", f"a Combat ({combat['combat_id']}) is already in progress; another Showdown cannot open", ["Core 323.11", "Core 462"])
     staged = timing_state.get("staged_showdowns", [])
     if not staged:
-        return _refuse(base, "no_staged_showdown", "no Non-Combat Showdown is staged; run stage_showdown at the Cleanup boundary first (323.8)", ["Core 323.8", "Core 323.12"])
+        return _refuse(base, "no_staged_showdown", "no Non-Combat Showdown is staged; run stage_showdown at the Cleanup boundary first (323.7)", ["Core 323.7", "Core 323.11"])
     current, _ = showdown_candidates(timing_state, effect_state)
     still = {c["battlefield"]: c for c in current}
     live = [s for s in staged if s["battlefield"] in still and still[s["battlefield"]] == s]
     if not live:
-        return _refuse(base, "showdown_no_longer_staged", f"none of the staged Showdowns {[s['battlefield'] for s in staged]} is still staged (323.8.a); re-run stage_showdown", ["Core 323.8.a"], staged_now=sorted(still))
+        return _refuse(base, "showdown_no_longer_staged", f"none of the staged Showdowns {[s['battlefield'] for s in staged]} is still staged (323.7.a); re-run stage_showdown", ["Core 323.7.a"], staged_now=sorted(still))
     turn_player = timing_state["turn_player"]
     options = [s["battlefield"] for s in live]
     if len(live) == 1:
         chosen, selection = live[0], "sole_candidate"
     else:
         from effect_ir import ledger_note
-        ledger_note("location", SHOWDOWN_LOCATION_DECISION_ID)   # package 15: the Turn Player picks where (323.12)
+        ledger_note("location", SHOWDOWN_LOCATION_DECISION_ID)   # package 15: the Turn Player picks where (323.11)
         entry = next((e for e in _ed.entries(engine_decisions, kind="location_selection") if e["decision_id"] == SHOWDOWN_LOCATION_DECISION_ID), None)
         if entry is None:
             return {**base, "valid": True, "committed": False, "reason_code": "location_selection_required",
-                    "reason": f"Showdowns are staged at {options}; the Turn Player {turn_player} chooses where one begins (323.12)",
-                    "decision_ids": [SHOWDOWN_LOCATION_DECISION_ID], "decision_controller": turn_player, "options": options, "rule_locators": ["Core 323.12"]}
+                    "reason": f"Showdowns are staged at {options}; the Turn Player {turn_player} chooses where one begins (323.11)",
+                    "decision_ids": [SHOWDOWN_LOCATION_DECISION_ID], "decision_controller": turn_player, "options": options, "rule_locators": ["Core 323.11"]}
         if entry["controller"] != turn_player:
-            return _refuse(base, "decision_controller_mismatch", f"the Showdown location was chosen by {entry['controller']!r}; it is the Turn Player's choice (323.12)", ["Core 323.12"])
+            return _refuse(base, "decision_controller_mismatch", f"the Showdown location was chosen by {entry['controller']!r}; it is the Turn Player's choice (323.11)", ["Core 323.11"])
         if entry["value"] not in options:
             return _invalid(base, [f"location_selection {SHOWDOWN_LOCATION_DECISION_ID} names {entry['value']!r}; the staged Showdowns are {options}"])
         chosen, selection = next(s for s in live if s["battlefield"] == entry["value"]), "turn_player_decision"
@@ -441,7 +441,7 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
     next_timing["priority"] = chosen["contested_by"]
     next_timing["staged_showdowns"] = [s for s in live if s["battlefield"] != chosen["battlefield"]]
     trace = {"options": options, "chosen": chosen["battlefield"], "selection": selection, "focus": chosen["contested_by"], "still_staged": [s["battlefield"] for s in next_timing["staged_showdowns"]]}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.12", "Core 344.2", "Core 345", "Core 316.8.b.1.a"])
+    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.11", "Core 344.2", "Core 345", "Core 316.8.b.1.a"])
 
 
 # ----------------------------------------------------------- board Cleanup --
@@ -467,7 +467,7 @@ def _step_five(effect_state: dict[str, Any]) -> tuple[list[dict[str, Any]], list
         if location is None:
             continue
         if location[0] == "battlefield" and obj.get("kind") in {"gear", "rune"}:
-            # 434.4: an attached card's location is its Top-Most card's, so it
+            # 435.4: an attached card's location is its Top-Most card's, so it
             # is not "at" the Battlefield unattached and step 5 passes it by.
             if obj.get("attached_to") is None and not attachments(effect_state, object_id):
                 recalls.append({"object_id": object_id, "from": f"battlefield:{location[1]}", "kind": obj.get("kind"),
@@ -489,11 +489,11 @@ def _step_five(effect_state: dict[str, Any]) -> tuple[list[dict[str, Any]], list
 
 
 def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, steps: tuple[str, ...] = ("control_loss", "contested"), within_cleanup: bool = False) -> dict[str, Any]:
-    """Core 323.6, 323.11, 323.11.a in an Open State: per Battlefield with no
+    """Core 323.5, 323.10, 323.10.a in an Open State: per Battlefield with no
     ongoing Showdown or Combat, a controller with no Units there loses control
     (step 4), Contested goes where its applier has no Units (step 8), and a
     removal that leaves Units of one non-controller re-applies Contested by
-    that player (323.11.a); two different non-controllers is unsupported. The
+    that player (323.10.a); two different non-controllers is unsupported. The
     victory facts are reported. Step 5 (`recall_remove`, C-58) Recalls the
     unattached non-Unit Gear and Runes at Battlefields and everything sitting
     in someone else's Base, and sends a Hidden card whose Battlefield its
@@ -503,7 +503,7 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
     if code := _cleanup_boundary(timing_state, within_cleanup):
-        return _refuse(base, code, "the board Cleanup runs in an Open State with no outstanding task (323.6, 323.11)", ["Core 318", "Core 323.6", "Core 323.11"])
+        return _refuse(base, code, "the board Cleanup runs in an Open State with no outstanding task (323.5, 323.10)", ["Core 318", "Core 323.5", "Core 323.10"])
     if set(steps) - {"control_loss", "contested", "recall_remove"} or not steps:
         return _invalid(base, ["steps must be a non-empty subset of control_loss, recall_remove, contested"])
     next_effect = copy.deepcopy(effect_state)
@@ -521,7 +521,7 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
         controller = battlefield.get("controller")
         if controller is not None and controller not in present:
             battlefield["controller"] = None
-            done_steps.append({"step": "control_lost", "battlefield": battlefield_id, "player": controller, "rule_locators": ["Core 323.6", "Core 190.4.c"]})
+            done_steps.append({"step": "control_lost", "battlefield": battlefield_id, "player": controller, "rule_locators": ["Core 323.5", "Core 190.4.c"]})
     step_five: dict[str, Any] | None = None
     if "recall_remove" in steps:
         # ADR-0015 §2: one program on this working state, so the Recalls and
@@ -544,7 +544,7 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
             if result.get("committed") is not True:
                 return _unsupported(base, result.get("reason_code", "cleanup_step_five_failed"),
                                     result.get("reason", "; ".join(result.get("errors", [])) or "Cleanup step 5 failed"),
-                                    ["Core 323.7", "Core 429", "Core 811"], step_five=step_five)
+                                    ["Core 323.6", "Core 430", "Core 811"], step_five=step_five)
             next_effect = result["next_state"]
             step_five["transitions"] = [
                 {"object_id": entry.get("object_id"), "op": entry.get("op"), "outcome": entry.get("outcome"),
@@ -555,7 +555,7 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
             ]
             done_steps.extend({"step": "recalled" if entry["op"] == "recall" else "hidden_removed",
                                "object_id": entry["object_id"], "to": entry["to"],
-                               "rule_locators": ["Core 323.7"]} for entry in step_five["transitions"])
+                               "rule_locators": ["Core 323.6"]} for entry in step_five["transitions"])
     for battlefield_id in sorted(next_effect["battlefields"]):
         if _ongoing_at(timing_state, battlefield_id) is not None or "contested" not in steps:
             continue
@@ -565,24 +565,24 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
         if battlefield.get("contested") and applier not in present and team_state(next_effect):
             return _unsupported(base, "team_contest_unsupported",
                                 f"Contested at {battlefield_id} would change in a state with teams; team contest is not modelled",
-                                ["Core 323.11", "Core 323.11.a"], battlefield=battlefield_id)
+                                ["Core 323.10", "Core 323.10.a"], battlefield=battlefield_id)
         if battlefield.get("contested") and applier not in present:
             battlefield["contested"] = False
             battlefield["contested_by"] = None
             removed.append(battlefield_id)
-            done_steps.append({"step": "contested_removed", "battlefield": battlefield_id, "applier": applier, "rule_locators": ["Core 323.11"]})
+            done_steps.append({"step": "contested_removed", "battlefield": battlefield_id, "applier": applier, "rule_locators": ["Core 323.10"]})
             others = sorted(p for p in present if p != battlefield.get("controller"))
             if len(others) > 1:
-                return _unsupported(base, "contested_reapplication_ambiguous", f"Units of {others}, none of whom controls {battlefield_id}, are there after Contested was removed; 323.11.a names one applier and the engine does not choose", ["Core 323.11.a"], battlefield=battlefield_id)
+                return _unsupported(base, "contested_reapplication_ambiguous", f"Units of {others}, none of whom controls {battlefield_id}, are there after Contested was removed; 323.10.a names one applier and the engine does not choose", ["Core 323.10.a"], battlefield=battlefield_id)
             if others:
                 battlefield["contested"] = True
                 battlefield["contested_by"] = others[0]
-                done_steps.append({"step": "contested_reapplied", "battlefield": battlefield_id, "applier": others[0], "rule_locators": ["Core 323.11.a"]})
+                done_steps.append({"step": "contested_reapplied", "battlefield": battlefield_id, "applier": others[0], "rule_locators": ["Core 323.10.a"]})
     trace = {"steps": done_steps, "requested_steps": list(steps), "exempt": exempt, "contested_removed": removed,
              "victory_check": victory_check(next_effect),
              **({"step_five": step_five} if step_five is not None else {})}
     return _commit(base, copy.deepcopy(timing_state), next_effect, trace=trace,
-                   locators=["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.7", "Core 323.11", "Core 323.11.a"])
+                   locators=["Core 190.4.a", "Core 190.4.c", "Core 323.5", "Core 323.6", "Core 323.10", "Core 323.10.a"])
 
 
 # ------------------------------------------------------------ Scoring Step --
@@ -591,24 +591,24 @@ SCORING_TASK = "scoring_step"
 
 
 def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Core 315.2.b, 469.2: in the Beginning Phase (the phase fact is
+    """Core 315.2.b, 471.2: in the Beginning Phase (the phase fact is
     caller-supplied until G3) with an empty chain and no Showdown or Combat,
     the Turn Player Holds every Battlefield they control that they have not
     scored this turn, in Battlefield-id order, gaining a point each (Hold is
-    never subject to the Final Point rule, 471.1.a.1); the Hold triggers of
+    never subject to the Final Point rule, 473.1.a.1); the Hold triggers of
     all held Battlefields are one batch. Control and Contested do not change.
     One transaction: all or nothing."""
     base = _base("run_scoring_step", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
     if timing_state.get("phase") != "beginning":
-        return _refuse(base, "scoring_step_requires_beginning_phase", "the Scoring Step is a step of the Beginning Phase (315.2.b); the phase fact must say beginning", ["Core 315.2.b", "Core 469.2"])
+        return _refuse(base, "scoring_step_requires_beginning_phase", "the Scoring Step is a step of the Beginning Phase (315.2.b); the phase fact must say beginning", ["Core 315.2.b", "Core 471.2"])
     if timing_state["chain"]["items"] or [t for t in timing_state["outstanding_tasks"] if t != SCORING_TASK]:
         return _refuse(base, "requires_quiet_cleanup_boundary", "the Scoring Step runs with nothing on the chain and no other outstanding task (315.2.b.1)", ["Core 315.2.b.1"])
     if timing_state["showdown"]["active"] or (timing_state.get("combat") is not None and timing_state["combat"]["status"] != "closed"):
         return _refuse(base, "showdown_or_combat_ongoing", "no Showdown or Combat is ongoing in the Beginning Phase", ["Core 315.2", "Core 344"])
     if timing_state.get("staged_showdowns"):
-        return _refuse(base, "showdown_open_pending", "a staged Showdown must open before the Beginning Scoring Step can run", ["Core 323.12", "Core 315.2.b"])
+        return _refuse(base, "showdown_open_pending", "a staged Showdown must open before the Beginning Scoring Step can run", ["Core 323.11", "Core 315.2.b"])
     player = timing_state["turn_player"]
     turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
     controlled = sorted(b for b, bf in effect_state["battlefields"].items() if bf.get("controller") == player)
@@ -626,7 +626,7 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
         return _unsupported(base, exc.code, exc.reason, exc.locators, would_hold=to_hold)
     except ScoringDecisionRequired as exc:
         return {**base, "valid": True, "committed": False, "reason_code": exc.code, "reason": exc.reason, "decision_ids": exc.decision_ids, "decision_controller": exc.controller,
-                **({"chance": exc.chance} if exc.chance else {}), "rule_locators": ["Core 431.2"]}
+                **({"chance": exc.chance} if exc.chance else {}), "rule_locators": ["Core 432.2"]}
     if not to_hold:
         _, problem = mode_of_play(effect_state)
         if problem is not None:
@@ -657,14 +657,14 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
         next_timing["turn_progress"] = {**next_timing["turn_progress"], "scoring_complete": True}
     scheduled = schedule_triggered_items(next_timing, triggers)
     if scheduled.get("applied") is not True:
-        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Hold triggers could not be scheduled", ["Core 471.2.b"], trigger_result=scheduled)
+        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Hold triggers could not be scheduled", ["Core 473.2.b"], trigger_result=scheduled)
     trace = {"player": player, "controlled": controlled, "held": to_hold, "skipped_already_scored": [b for b in controlled if b in already], "scoring": records,
              "scheduled_triggers": [t["trigger_id"] for t in triggers], "trigger_schedule": scheduled.get("transition"), "victory_check": victory_check(next_effect), "atomic": True}
-    return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 315.2.b", "Core 315.2.b.2", "Core 469.2", "Core 470", "Core 471.1", "Core 471.1.a.1", "Core 471.2.b"])
+    return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 315.2.b", "Core 315.2.b.2", "Core 471.2", "Core 472", "Core 473.1", "Core 473.1.a.1", "Core 473.2.b"])
 
 
 def report_victory_facts(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Core 472 as facts only (ADR-0009 §10): who is at or above the Victory
+    """Core 474 as facts only (ADR-0009 §10): who is at or above the Victory
     Score, whether one of them alone leads, whether it is a tie. Nothing
     changes and no winner is declared; the terminal state is G3."""
     base = _base("victory_facts", timing_state, effect_state)
@@ -672,8 +672,8 @@ def report_victory_facts(timing_state: dict[str, Any], effect_state: dict[str, A
         return problem
     facts = victory_check(effect_state)
     if not facts.get("available"):
-        return _unsupported(base, facts["reason"], "the victory facts need the Mode of Play and no teams", ["Core 456.3", "Core 472"])
-    return _commit(base, copy.deepcopy(timing_state), copy.deepcopy(effect_state), trace={"victory_check": facts, "winner_declared": False, "terminal_state": "not_modelled (G3)"}, locators=["Core 472"])
+        return _unsupported(base, facts["reason"], "the victory facts need the Mode of Play and no teams", ["Core 458.3", "Core 474"])
+    return _commit(base, copy.deepcopy(timing_state), copy.deepcopy(effect_state), trace={"victory_check": facts, "winner_declared": False, "terminal_state": "not_modelled (G3)"}, locators=["Core 474"])
 
 
 # ------------------------------------------------------------------------ CLI --

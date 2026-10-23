@@ -53,35 +53,35 @@ ANSWERED = {
     "target_selection_required": "target_selection: the program's selector (play_space._templates) over "
                                  "play_transaction.legal_target_options, in the counts it states (Core 355.5)",
     "move_destination_required": "location_selection: every Base and every Battlefield (Core 355.4)",
-    "location_selection_required": "location_selection: the candidates the request carries (Core 461.1, 323.11 at a "
+    "location_selection_required": "location_selection: the candidates the request carries (Core 463.1, 323.11 at a "
                                    "procedure: a Battlefield id; a Move or a token's place at resolution: a location)",
     "optional_choice_required": "optional_choice: taken or not",
     "option_selection_required": "option_selection: the options the request carries (the instruction's own)",
-    "mode_selection_required": "mode_selection: the mode options the request carries (Core 402.2)",
+    "mode_selection_required": "mode_selection: the mode options the request carries (Core 403.2)",
     "player_selection_required": "player_selection: every player (the procedure refuses one it may not name)",
     "card_selection_required": "card_selection: the options the choice offers - public in its summary; private to its "
                                "chooser, in the trusted record (effect_ir.recording_private_options), never a result - in "
                                "the count it states",
     "card_ordering_required": "card_ordering: every order of every card the choice carries",
-    "buff_spend_required": "buff_spend: how many of each Unit's buffs, 0 up to what it has (Core 426.1.b.2, 702.2.b)",
+    "buff_spend_required": "buff_spend: how many of each Unit's buffs, 0 up to what it has (Core 427.1.b.2, 702.2.b)",
     "target_group_subset_required": "card_selection: every subset of the still-legal targets it carries (Core 355.11.b)",
     "trigger_order_required": "trigger_order: every order of the abilities it names (Core 383.3.d)",
     "replacement_decision_required": "replacement_choice (one replacement, one event: applied or not) or "
                                      "replacement_order (every order of the replacements or events it names, Core 372)",
     "damage_assignment_required": "damage_assignment: every split of the available damage among the opposing Units it "
-                                  "carries, with a Tank-or-Backline choice for a Unit that has both (Core 465.2.c)",
+                                  "carries, with a Tank-or-Backline choice for a Unit that has both (Core 467.2.c)",
     "damage_division_required": "damage_division: every division of the amount among as many of the legal Targets as "
                                 "it keeps, each a positive amount (Core 355.14.e-h)",
     "resource_allocation_required": "resource_allocation: every amount of each Domain's Power in the pool, none to all "
-                                    "(Core 204.3.b, a 'pay any amount')",
+                                    "(Core 204.3.a, a 'pay any amount')",
     "trigger_finalize_choice_required": "setting perform_optional_trigger: performed or not (Core 383.3.a)",
-    "trigger_cost_choice_required": "setting pay_trigger_cost: paid or not (Core 403.1.b.1, 404.2)",
+    "trigger_cost_choice_required": "setting pay_trigger_cost: paid or not (Core 404.1.b.1, 405.2)",
     "entry_location_required": "setting entry_location: the location candidates it carries (Core 355.2)",
-    "randomization_receipt_required": "chance: every permutation of the cards it orders (Core 416.5, 431.2.b)",
+    "randomization_receipt_required": "chance: every permutation of the cards it orders (Core 417.5, 432.2.b)",
     "cost_selection_required": "card_selection: one of the Units it carries spends its buff for the trigger's base cost "
-                               "(Core 702.2.b, 404.1)",
+                               "(Core 702.2.b, 405.1)",
 }
-# a limited play's own requests at its finalization are a play's (Core 419.3.b) - answered as play_space answers them
+# a limited play's own requests at its finalization are a play's (Core 420.3.b) - answered as play_space answers them
 PLAY_REQUESTS = dict(PS.DECIDED)
 SETTING_REQUESTS = {"trigger_finalize_choice_required": "perform_optional_trigger",
                     "trigger_cost_choice_required": "pay_trigger_cost", "entry_location_required": "entry_location"}
@@ -291,7 +291,7 @@ def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, A
         return out
 
     if label.endswith("limited_play") and code in PLAY_REQUESTS and PLAY_REQUESTS[code] != "chance":
-        # a limited play's choices at its own finalization: the play's (Core 419.3.b) - play_space's domains
+        # a limited play's choices at its own finalization: the play's (Core 420.3.b) - play_space's domains
         card = ((effect.get("chain_items") or {}).get(item["id"]) or {}).get("card")
         # (found by the package 15 corpus survey: the request's payload carries neither the code nor the ids
         # play_space.domain reads off a play's result - given them as the procedure named them)
@@ -678,7 +678,7 @@ PROGRAM_SLOT_FIELDS = {
     "player.decision_ref": "player_selection",
     "modal.decision_ref": "mode_selection - the modal options",
     "unless.decision_ref": "optional_choice",
-    "pay_ref": "optional_choice (Core 204.3.b: whether to pay at all)",
+    "pay_ref": "optional_choice (Core 204.3.a: whether to pay at all)",
     "an instruction's choice (decision_ref, or its default choice:<from>:<chooser>)": "the choice's kind (engine_decisions."
                                                                                        "choice_decision_kind)",
     "spend_buffs decision_ref (or spend_buffs:<player>)": "buff_spend, or card_selection where no Unit has two buffs",
@@ -809,7 +809,7 @@ def unread_here(slot_id: str, kind: str, label: str, program: dict[str, Any] | N
     if kind == "setting":
         return None
     if label.endswith("limited_play"):
-        # an effect's play finalized (Core 419.3.b): the play's own choices, its payment among them, are read here
+        # an effect's play finalized (Core 420.3.b): the play's own choices, its payment among them, are read here
         return None
     forced = _forced_refs(program)
     if slot_id in forced or any(f.endswith(":*") and slot_id.startswith(f[:-1]) for f in forced):
@@ -916,7 +916,7 @@ def program_slots(program: dict[str, Any] | None, effect: dict[str, Any], label:
             count = 1 if op == "draw_it" else int(effect_.get("count", 1))
             slot(effect_["decision_ref"], "card_selection", SetSpace(sorted(effect.get("objects") or {}), count, count))
         # package 15 (found by the corpus: [Vision], Core 817.1.b): Predict - its player recycles any number of the cards
-        # looked at (Core 436; effect_ir's predict, its recycle_ref or '<effect id>:recycle'); the rest go back in an order
+        # looked at (Core 437; effect_ir's predict, its recycle_ref or '<effect id>:recycle'); the rest go back in an order
         # the procedure names (an event slot)
         if op == "predict":
             ref = effect_.get("recycle_ref") or f"{effect_.get('effect_id', 'predict')}:recycle"
@@ -948,10 +948,10 @@ def program_slots(program: dict[str, Any] | None, effect: dict[str, Any], label:
                 slot(ref, kind, _sets(pool, low, high, ordered=ordered) if ordered else _space(pool, low, high))
             who.pop(0)
         if op == "discard" and choice is None and effect_.get("whole_hand") is not True and isinstance(effect_.get("count"), int):
-            # "discard N": its player's choice from their own hand (Core 422.1.a) - the instruction's own default ref
+            # "discard N": its player's choice from their own hand (Core 423.1.a) - the instruction's own default ref
             ref = effect_.get("decision_ref") or f"discard:{effect_.get('player')}"
             # package 15 (found by the corpus: Jinx - Demolitionist's "discard 2"): from that player's hand as it is when
-            # they discard (Core 422.1.a) - a card drawn earlier in the resolution too - so of the cards they own
+            # they discard (Core 423.1.a) - a card drawn earlier in the resolution too - so of the cards they own
             owner = effect_.get("player")
             pool = sorted(o for o, obj in (effect.get("objects") or {}).items() if obj.get("owner") == owner) \
                 if owner in effect["players"] else sorted(effect.get("objects") or {})
@@ -1082,7 +1082,7 @@ def _event_values(request: dict[str, Any], timing: dict[str, Any], effect: dict[
             raise OverCap(f"{card!r} has no 'banish when seen' for the procedure to offer a play of")
         return "optional_choice", entries("optional_choice", [True, False])
     if code == "card_ordering_required":
-        # package 15 (found by the corpus: The Candlelit Sanctum puts back what it did not recycle, Core 424.2): the
+        # package 15 (found by the corpus: The Candlelit Sanctum puts back what it did not recycle, Core 425.2): the
         # cards to order are the ones the resolution left looked at - named by the procedure (the event), every order
         # of them by the rule
         listed = [o["object_id"] for options in (request.get("private_options") or {}).values() for o in options] + \
@@ -1413,7 +1413,7 @@ def event_ledger(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict
       trigger_order      the abilities this transition puts on the Chain, by batch and controller: two or more of one
                          controller in one batch are ordered by that player (Core 383.3.d) - trigger_order:<batch>:<who>
       damage_assignment  at the Combat Damage Step, each side's player assigns its damage when more than one assignment
-                         is legal (Core 465.2.c; combat.validate_assignment counts them) -
+                         is legal (Core 467.2.c; combat.validate_assignment counts them) -
                          damage_assignment:<combat>:<role>
       replacement        at a Cleanup, a dying Unit with two or more Replacement Effects that apply, or one optional one
                          (Core 370-374), needs a replacement decision (read off the state before the Cleanup)
@@ -1424,10 +1424,10 @@ def event_ledger(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict
 
       replacement        a controller's own sequences (Core 373), one Replacement Effect's order of the events it
                          qualifies for, an optional one's choice, the order of several on one event - in every iteration
-      card_ordering      a player's order of cards that is not forced (put back, Predict's rest; Core 424.2, 436)
+      card_ordering      a player's order of cards that is not forced (put back, Predict's rest; Core 425.2, 437)
       seen_banish        a card that may banish itself as it is looked at, and play itself after (its printed text)
       entry_location     a Unit an effect plays without naming where: its controller places it (Core 355.2)
-      location           two or more Combats or Showdowns staged: the Turn Player picks which opens (Core 461.1, 323.12)
+      location           two or more Combats or Showdowns staged: the Turn Player picks which opens (Core 463.1, 323.11)
 
     Returns the problems (empty when the way holds exactly the decisions its events need)."""
     import combat as CB

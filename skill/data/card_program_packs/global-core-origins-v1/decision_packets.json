@@ -13,34 +13,34 @@
     {
       "id": "DP-01",
       "title": "Which choices are targets, and which are not",
-      "question": "Confirm the per-clause targeting classification under 355.7–355.10, and whether a non-targeted choice (355.17, resolution-time) gets its own decision artifact.",
+      "question": "Confirm the per-clause targeting classification under 355.7–355.10, and whether a non-targeted choice (355.18, resolution-time) gets its own decision artifact.",
       "rules_cited": [
         {
           "locator": "Core 355.7",
           "gist": "Choosing specific Game Objects to affect makes them Targets unless this section says otherwise.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 355.10.a",
           "gist": "Objects in a non-Public zone are not targets; a unit card in your trash is one, since the trash is Public.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 355.10.c",
           "gist": "An object picked solely for a cost, a trigger condition or a replacement effect is not a target.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 355.10.d.2",
           "gist": "The exception does not cover an object that is the sole valid choice when the spell or ability goes on the chain.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         }
       ],
@@ -55,45 +55,45 @@
     {
       "id": "DP-02",
       "title": "When each choice is made: play, resolution, or trigger finalization",
-      "question": "Adopt 355.1–355.5/355.17 and 402 as the stage model: optional-additional-cost and spell-target choices at play, triggered-ability targets/performance at trigger finalization, and Predict recycle during resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
+      "question": "Adopt 355.1–355.5/355.17 and 403 as the stage model: optional-additional-cost and spell-target choices at play, triggered-ability targets/performance at trigger finalization, and Predict recycle during resolution. Is one decision artifact with a `stage` field acceptable, or one kind per stage?",
       "rules_cited": [
         {
           "locator": "Core 355.1.a",
           "gist": "Deciding whether to pay an Optional Additional Cost happens in this step.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 355.5.b",
           "gist": "Choices for permanents' Triggered Abilities are not made here, even when playing the item is what triggers them.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
-          "locator": "Core 355.17",
+          "locator": "Core 355.18",
           "gist": "Choices this section does not describe are made when the spell or ability resolves.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
-          "locator": "Core 402.1",
+          "locator": "Core 403.1",
           "gist": "When a Triggered Ability's effect opens with 'you may', its controller decides at this point whether to perform it.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 752.2",
           "gist": "It does not cover choices made 'as you play this' or choices about Optional Additional Costs.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         }
       ],
-      "proposal": "one `engine-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play_declaration|trigger_finalization|resolution, kind, controller, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses. Vision's recycle choice is resolution-stage, not a 402.1 performance choice.",
+      "proposal": "one `engine-decisions.v1` artifact keyed by chain item, entries {decision_id, stage: play_declaration|trigger_finalization|resolution, kind, controller, options?}; a transition that reaches an unsupplied entry returns decision_required with the entry, never guesses. Vision's recycle choice is resolution-stage, not a 403.1 performance choice.",
       "failure_classification": {
         "decision for the wrong stage supplied early": "invalid_input",
         "decision owner mismatch": "illegal",
@@ -109,36 +109,36 @@
         {
           "locator": "Core 359.3.e.1",
           "gist": "Illegal targets, even all of them, do not stop the spell resolving.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 359.3.e.5",
           "gist": "Instructions tied to an illegal target are not followed; in the rule's example the card's other instruction (Void Seeker's draw) still happens.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 359.3.e.8",
           "gist": "If some but not all of an instruction's Targets go Invalid, it executes on the ones still valid and available.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 359.3.e.4",
           "gist": "A target that leaves for a Non-Board Zone (or arrives from one) and is then back is a different object, so no longer legal.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 758.1",
           "gist": "The spell or ability mistargets on resolution and ignores the instructions about that Game Object.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         }
       ],
@@ -157,36 +157,36 @@
         {
           "locator": "Core 203.3",
           "gist": "If a Cost's game action is impossible, the Cost cannot be paid and the linked Effect does not happen.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 357.2.a",
           "gist": "A cost replaced by another event still counts as paid.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
-          "locator": "Core 414.4",
+          "locator": "Core 415.4",
           "gist": "The rule's example: a friendly unit that is already exhausted cannot be exhausted to pay the additional cost, so that cost goes unpaid.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 358.5",
           "gist": "If a check fails, everything done in the process is undone and the action cancelled.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 356.4.f.1",
           "gist": "An optional additional cost counts as paid once the player chose to pay it.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         }
       ],
@@ -201,41 +201,41 @@
     {
       "id": "DP-05",
       "title": "'If you do', 'Otherwise', 'If you can't' — dependency vocabulary",
-      "question": "The IR has dependency_mode if_applied|always. Meditation needs the negative branch (Otherwise); Mobilize needs 'couldn't fully perform' (430.3 channels as many as possible — is a partial channel a failure for 'If you can't'?). 055 says ignore impossible instructions; 430.5's example ties 'couldn't' to the requested count.",
+      "question": "The IR has dependency_mode if_applied|always. Meditation needs the negative branch (Otherwise); Mobilize needs 'couldn't fully perform' (431.3 channels as many as possible — is a partial channel a failure for 'If you can't'?). 055 says ignore impossible instructions; 431.5's example ties 'couldn't' to the requested count.",
       "rules_cited": [
         {
           "locator": "Core 055",
           "gist": "Carry out as much card text as possible and skip the instructions that are impossible.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
-          "locator": "Core 430.3",
+          "locator": "Core 431.3",
           "gist": "Too few runes in the Rune Deck: channel all that are there.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
-          "locator": "Core 430.5",
+          "locator": "Core 431.5",
           "gist": "The rule's example pairs a two-rune channel with a draw if fewer than two could be channeled.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 205",
           "gist": "A later instruction asks whether the game action happened, not whether a cost was paid.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 359.3.e.6",
           "gist": "Instructions that cannot be followed, for illegal targets or any other reason, are skipped.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         }
       ],
@@ -248,41 +248,41 @@
     {
       "id": "DP-06",
       "title": "return, recall, move — three events, not one",
-      "question": "Return-to-hand is a zone change (446.2) producing a new object (124); Recall relocates to Base without being a Move (455–456) and keeps damage/statuses (458.1); Move is 420/446 and triggers move abilities. Confirm three distinct event ops with distinct trigger classes, and Highlander's errata ordering (heal, exhaust, recall).",
+      "question": "Return-to-hand is a zone change (448.2) producing a new object (124); Recall relocates to Base without being a Move (457–458) and keeps damage/statuses (460.1); Move is 421/446 and triggers move abilities. Confirm three distinct event ops with distinct trigger classes, and Highlander's errata ordering (heal, exhaust, recall).",
       "rules_cited": [
         {
-          "locator": "Core 446.2",
+          "locator": "Core 448.2",
           "gist": "Changing zones is not, by itself, a Move.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 124",
           "gist": "An object entering or leaving a Non-Board Zone is tracked as a new object.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
-          "kind": "core_rules"
-        },
-        {
-          "locator": "Core 456.1",
-          "gist": "Recalls do not trigger abilities that watch for Moves.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 458.1",
+          "gist": "Recalls do not trigger abilities that watch for Moves.",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
+          "kind": "core_rules"
+        },
+        {
+          "locator": "Core 460.1",
           "gist": "A Recall leaves a permanent's Damage and statuses as they were unless its source says otherwise.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 056.2",
           "gist": "A card that would go to another player's such zone goes to its owner's matching zone.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
@@ -303,80 +303,80 @@
     {
       "id": "DP-07",
       "title": "Look / Predict and the information boundary",
-      "question": "Predict (436) lets a player look at a Secret card and choose to recycle it. The looked-at card becomes own-private knowledge. Under ADR-0003, how does an observation record it, and may a player2 query ever contain player1's predicted card? (424.2.b: voluntarily showing private information is not a Reveal.)",
+      "question": "Predict (437) lets a player look at a Secret card and choose to recycle it. The looked-at card becomes own-private knowledge. Under ADR-0003, how does an observation record it, and may a player2 query ever contain player1's predicted card? (425.2.b: voluntarily showing private information is not a Reveal.)",
       "rules_cited": [
         {
-          "locator": "Core 436.1",
+          "locator": "Core 437.1",
           "gist": "To Predict is to look at the Main Deck's top card and decide whether to Recycle it.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 128.3",
           "gist": "Secret: nobody may look at the card's face.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 128.4",
           "gist": "Private: the face may be read by the card's controller while it is on the board, or by its owner in any other zone.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
-          "locator": "Core 424.2.b",
+          "locator": "Core 425.2.b",
           "gist": "Voluntarily showing Private information to other players is not a reveal.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         }
       ],
       "proposal": "a `look` event yields an own-private fact {fact_id, zone, position, card_id?} in observation.v1 for the looking player only; the recycle choice is a resolution-stage decision (DP-02); P2-A's forbidden-key list gains `player1_predicted`/`opponent_predicted`.",
       "failure_classification": {
-        "look on an empty deck": "supported (436.4: predict as many as possible)",
+        "look on an empty deck": "supported (437.4: predict as many as possible)",
         "predicted card appearing in the other player's observation": "invalid_input (perspective violation)"
       }
     },
     {
       "id": "DP-08",
       "title": "Channel: a rune entering the board with an entry state",
-      "question": "Channel moves the top rune from Rune Deck to the board (430.1) with an entry state the effect may specify (430.2). Is this a new op `channel_rune` reusing play_token's `event_modifiers.entry_state` vocabulary (375), and is the rune's arrival a zone change (new object) or a move?",
+      "question": "Channel moves the top rune from Rune Deck to the board (431.1) with an entry state the effect may specify (431.2). Is this a new op `channel_rune` reusing play_token's `event_modifiers.entry_state` vocabulary (375), and is the rune's arrival a zone change (new object) or a move?",
       "rules_cited": [
         {
-          "locator": "Core 430.1",
+          "locator": "Core 431.1",
           "gist": "Channel: take Runes from the top of the Rune Deck and put them onto the board.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
-          "locator": "Core 430.2.a",
+          "locator": "Core 431.2.a",
           "gist": "Channeled runes enter ready unless told otherwise.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 161.1.a",
           "gist": "A rune is not a Permanent.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         },
         {
           "locator": "Core 164.2",
           "gist": "Every Basic Rune has the same two Abilities.",
-          "source_id": "core-rules-2026-07-16",
-          "version": "2026-07-16",
+          "source_id": "core-rules-2026-10-09",
+          "version": "2026-10-09",
           "kind": "core_rules"
         }
       ],
       "proposal": "new op `channel_rune` {player, count, entry_state} — takes from rune_deck top, appends to base, sets exhausted per entry_state, records applied count for DP-05; rune identity preserved (Rune Deck is a zone the state already models).",
       "failure_classification": {
-        "rune deck empty": "supported (applied: none/partial per 430.3)",
+        "rune deck empty": "supported (applied: none/partial per 431.3)",
         "entry state other than ready|exhausted": "invalid_input"
       }
     },
@@ -401,7 +401,7 @@
       "title": "Failure vocabulary for R3-A1 (bullet 12 of X-09)",
       "question": "Adopt one table for the whole batch so cards do not each invent a classification.",
       "rules_cited": [],
-      "proposal": "illegal = a supported rule rejects it (355.9, 414.4, 203.3); invalid_input = the artifact is malformed or a required decision was supplied at the wrong stage; unsupported = the engine lacks the semantics (named mechanic); decision_required = a listed decision is unsupplied when reached. Resolution-time mistargets are supported with a trace outcome, per DP-03.",
+      "proposal": "illegal = a supported rule rejects it (355.9, 415.4, 203.3); invalid_input = the artifact is malformed or a required decision was supplied at the wrong stage; unsupported = the engine lacks the semantics (named mechanic); decision_required = a listed decision is unsupplied when reached. Resolution-time mistargets are supported with a trace outcome, per DP-03.",
       "failure_classification": {}
     },
     {
@@ -413,5 +413,5 @@
       "failure_classification": {}
     }
   ],
-  "content_hash": "sha256:29cc717cecd7ad9ee258ad7ef40b597e3d2efc4388b8fc85e49b9582eb3e8c6b"
+  "content_hash": "sha256:45246bf2ac2589896b7f2d02b49a77c1ef496a40897c72ece373e4f77ac1782e"
 }

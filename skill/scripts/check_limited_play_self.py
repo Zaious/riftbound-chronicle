@@ -3,9 +3,9 @@
 
 "When you kill a unit with a spell, you may pay [1][Fury] to play me from your trash." (Immortal Phoenix) and
 "When you discard me, you may pay [Fury] to play me." (Flame Chompers). GPT 2026-10-04 (PACKAGE8_INVENTORY
-section 6, ruling 1): X is the triggered ability's base cost, paid as it is finalized (Core 204.3.a, 383.3.b);
+section 6, ruling 1): X is the triggered ability's base cost, paid as it is finalized (Core 204.1.c, 383.3.b);
 the card is then played paying its own cost - X is not a "for X" replacement (356.1.a). The engine's shape:
-`trigger_base_cost` X, then `limited_play` with `self: {from: trash}` and cost basis `printed` (419.3.b: the
+`trigger_base_cost` X, then `limited_play` with `self: {from: trash}` and cost basis `printed` (420.3.b: the
 steps are the normal ones). The card is the program's own source as the chain item recorded it; it is not
 chosen, so it is not a target (355.7).
 

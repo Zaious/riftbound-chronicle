@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Per-player iteration and each-player choices (package 6, 2026-09-27).
 
-"Each player kills one of their units." (Core 411.1's own example), "Each player discards their
+"Each player kills one of their units." (Core 412.1's own example), "Each player discards their
 hand, then draws 4.", "Starting with the next player, each player may return a unit to its owner's
 hand.", "Starting with the next player, each other player chooses a unit you don't control that
 hasn't been chosen for this spell. Kill those units.", "Each player chooses 2 units, 2 gear, 2
@@ -19,15 +19,15 @@ it claims has a failing case here:
                (Core 355.10.e): another player's decision is refused, a decision made at play is
                refused, "one of their units" offers only the chooser's units, nothing to choose
                from does nothing for that player and the rest runs
-  responsibility  each copy's game actions are its player's (Core 411.1): a unit killed in p2's
+  responsibility  each copy's game actions are its player's (Core 412.1): a unit killed in p2's
                iteration died with p2 as the actor
   may          "each player may": the iteration's player decides (optional.by)
-  hand         "discards their hand": every card in it; an empty hand discards nothing (422.4)
+  hand         "discards their hand": every card in it; an empty hand discards nothing (423.4)
   groups       choose_objects fills a group; "hasn't been chosen for this spell" keeps a chosen
                object out of the next player's candidates; "a unit you don't control" keeps the
                controller's units out; "Kill those units" kills every chosen object still on the
                board; "Recycle the rest" recycles what was offered and not chosen, each to its
-               owner's deck (Core 416.1.c), each deck's order its owner's (416.5.a)
+               owner's deck (Core 417.1.c), each deck's order its owner's (417.5.a)
   options      "Each other player chooses Cards or Runes": recorded per player; "for each player
                that chooses Cards" iterates exactly those; an option not offered, or made by
                another player, is refused
@@ -148,7 +148,7 @@ def three_players(state: dict) -> dict:
 def judgment_case(state: dict) -> tuple[dict, list[dict]]:
     """Divine Judgment's board and choices: p1 has three units, three gear, three runes and three cards in
     hand and keeps two of each; p2 keeps two of its three units (its one rune and one card are forced). The
-    four cards bound for p1's Main Deck go to its bottom in a random order (Core 416.5; GPT 2026-09-27 ruling
+    four cards bound for p1's Main Deck go to its bottom in a random order (Core 417.5; GPT 2026-09-27 ruling
     11), which arrives as a randomization receipt for that deck's own operation."""
     judge = copy.deepcopy(state)
     unit(judge, "a3", "p1")
@@ -172,7 +172,7 @@ def program(effects) -> dict:
 
 
 def receipt(operation_id, player, permutation):
-    """A randomization receipt (ADR-0010 section 2) for a simultaneous recycle to one Main Deck (Core 416.5)."""
+    """A randomization receipt (ADR-0010 section 2) for a simultaneous recycle to one Main Deck (Core 417.5)."""
     return {"randomization_receipt": {"schema_version": "randomization-receipt.v1", "receipt_id": f"{operation_id}:rnd",
                                       "operation": "recycle_simultaneous", "operation_id": operation_id, "player": player,
                                       "permutation": list(permutation), "provenance": {"provider": "gate", "method": "listed-order"}}}
@@ -222,7 +222,7 @@ def main() -> int:
         died = [e for e in done.get("events") or [] if e.get("kind") == "died"]
         actors = {e["object"]: e.get("actor") for e in died}
         if actors != {"a1": "p1", "b1": "p2"}:
-            errors.append(f"Core 411.1: each player's kill is theirs; died events name {actors}")
+            errors.append(f"Core 412.1: each player's kill is theirs; died events name {actors}")
     on_p2 = run(state, CULL, cull, context=TURN_P2)
     if not on_p2.get("committed") or on_p2["trace"][0].get("players") != ["p2", "p1"]:
         errors.append(f"turn_order on p2's turn must run p2 first: {on_p2.get('trace', [{}])[0].get('players')}")
@@ -281,7 +281,7 @@ def main() -> int:
     if usurp.get("committed") or usurp.get("reason_code") != "decision_controller_mismatch":
         errors.append(f"p1 deciding p2's 'may' was not refused: {usurp.get('reason_code')}")
 
-    # ---------------------------------------------------------------- the whole hand (422.4)
+    # ---------------------------------------------------------------- the whole hand (423.4)
     done = run(state, INVERT)
     if not done.get("committed"):
         errors.append(f"Invert Timelines refused: {done.get('reason') or done.get('errors')}")
@@ -446,8 +446,8 @@ def main() -> int:
             print("  - " + error)
         return 1
     print("per-player iteration: order (303.2.a, next player, others, unknown refused), each player's own choice "
-          "(355.10.e: another's, at play, not theirs refused; none is a no_op), responsibility (411.1), 'may' by "
-          "the player, the whole hand (422.4), groups (distinct, not yours, gone, unbound; the rest to each owner's "
+          "(355.10.e: another's, at play, not theirs refused; none is a no_op), responsibility (412.1), 'may' by "
+          "the player, the whole hand (423.4), groups (distinct, not yours, gone, unbound; the rest to each owner's "
           "deck in its owner's order), options (recorded, filtered, refused), the bridge's Turn Order, and shapes")
     return 0
 

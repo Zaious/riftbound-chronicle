@@ -47,7 +47,7 @@ DECISIONS_VERSION = "engine-decisions.v1"
 PAYMENT_CONTEXT = {"add_window_closed": True, "confirmed_by": "game_loop"}
 # the choices a procedure takes as arguments rather than as engine decisions, and the procedure that asks each
 SETTINGS = {"perform_optional_trigger": "resolution_bridge.finalize_trigger (Core 383.3.a)",
-            "pay_trigger_cost": "resolution_bridge.finalize_trigger (Core 403.1.b.1, 404)",
+            "pay_trigger_cost": "resolution_bridge.finalize_trigger (Core 404.1.b.1, 405)",
             "entry_location": "resolution_bridge.finalize_limited_play (Core 355.2)"}
 # rules_core.next_procedure's procedures and what runs each (DISCRETIONARY: a player acts - run_action)
 DISCRETIONARY = {"execute_or_pass_priority", "showdown_focus_window", "neutral_turn_window"}
@@ -127,7 +127,7 @@ def _delayed(value: Any, program_id: str) -> dict[str, Any] | None:
 
 def item_program(catalogue: dict[str, Any], effect_state: dict[str, Any], item: dict[str, Any]) -> dict[str, Any] | None:
     """The program a chain item recorded, its symbols bound to the item: a card's program by its effect_program_id
-    ('<card>#<program>'); a delayed trigger's (Core 390) is the instructions the create_delayed_trigger that made it
+    ('<card>#<program>'); a delayed trigger's (Core 391) is the instructions the create_delayed_trigger that made it
     carries, found on its source's card (resolution_bridge.dispatch_program then checks them against the hash the
     trigger carried - a mismatch is refused by name, never run)."""
     program_id = item.get("effect_program_id")
@@ -336,7 +336,7 @@ def _board(effect: dict[str, Any]) -> dict[str, Any]:
 #   Buffed                buffed, buff_count    Empowered             empowered
 #   Controlled            controller            Attacking / Defending combat_designation
 #   Attached / Equipped   attached_to           Revealed              the state's reveal marks
-#   Layer effects         every applied Layer effect (Core 124.2, 476-480: effect_ir.characteristics) - which
+#   Layer effects         every applied Layer effect (Core 124.2, 478-482: effect_ir.characteristics) - which
 #                         effects apply, in which layer, and what they make of the object: its kind (Trait layer:
 #                         copy_traits), its triggered abilities (Ability layer: ability_append, a copy's rules text),
 #                         its keywords and its Might (Arithmetic); and the rules-facing Might (effective_might)

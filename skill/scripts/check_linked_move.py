@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regression gate for "Buff a friendly unit in your base, then move it to a battlefield."
 (Showstopper): a later LINKED instruction on the same chosen object, and a chosen Move
-destination that must be a Battlefield (Core 359.3.e.14, 359.3.e.14.a, 355.4.a, 144.4.b, 426.1.c).
+destination that must be a Battlefield (Core 359.3.e.14, 359.3.e.14.a, 355.4.a, 144.4.b, 427.1.c).
 
 The program: buff {target t: friendly unit in base}; move_board_object {target t (the SAME
 decision - "it"), destination chosen, restriction battlefield, depends_on the buff,
@@ -9,7 +9,7 @@ dependency_mode unless_ignored}. Must hold:
   - the unit in its Base is Buffed and moved to the Battlefield chosen at resolution;
   - with no destination chosen, the candidates offered are exactly the Battlefields (no Base);
     a Base named as the destination is refused by name;
-  - a Unit that already has a Buff is still chosen (426.1.c): the Buff is a no_op and the Move
+  - a Unit that already has a Buff is still chosen (427.1.c): the Buff is a no_op and the Move
     still happens - the earlier instruction executed;
   - the unit moved to a Battlefield before resolution: the Buff is ignored (illegal target), and
     the linked Move is skipped with it (359.3.e.14.a) - the unit stays where it was;
@@ -106,7 +106,7 @@ def main() -> int:
     state, chosen = board(buffed=True)
     done = run(state, chosen)
     if not done.get("committed") or outcomes(done).get("bf") != "no_op" or where(done["next_state"], "u1") != "battlefield:bf2":
-        errors.append(f"an already Buffed unit was not still moved (426.1.c; the Buff executed): {outcomes(done)}")
+        errors.append(f"an already Buffed unit was not still moved (427.1.c; the Buff executed): {outcomes(done)}")
     wrong = run(state, chosen, effects=[BUFF, {**MOVE, "dependency_mode": "if_applied"}])
     if wrong.get("committed") and where(wrong["next_state"], "u1") == "battlefield:bf2":
         errors.append("mutation not caught: with if_applied the already Buffed unit still moved; the gate cannot tell the modes apart")
@@ -174,7 +174,7 @@ def main() -> int:
         return 1
     print("OK: 'Buff a friendly unit in your base, then move it to a battlefield': the chosen unit is Buffed and moved "
           "to the Battlefield chosen at resolution (a Base is never a candidate); an already Buffed unit is still moved "
-          "(426.1.c); a unit that left its Base is neither Buffed nor moved (359.3.e.14.a); both mutations bite.")
+          "(427.1.c); a unit that left its Base is neither Buffed nor moved (359.3.e.14.a); both mutations bite.")
     return 0
 
 

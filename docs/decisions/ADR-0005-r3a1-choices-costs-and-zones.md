@@ -20,7 +20,7 @@ the same words. C-13 therefore produced a clause ledger, 48 expectation-free
 fixture drafts, and decision packets DP-01 through DP-11. This ADR resolves
 those packets before executable programs are added.
 
-The controlling baseline is Core Rules 2026-07-16 plus current card errata.
+The controlling baseline is Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3) plus current card errata.
 The 2025-10-16 Origins FAQ is retained locally as superseded historical
 evidence because its own page directs readers to newer rules. It is not a
 controlling override for this ADR.
@@ -70,7 +70,7 @@ require it. Other choices are made during resolution.
 
 Vision is explicit: the triggered ability is finalized, then Predict executes;
 the recycle-or-keep decision occurs during resolution. It is not the optional
-trigger-performance choice described by Core 402.1.
+trigger-performance choice described by Core 403.1.
 
 ### 3. Mistargeting and linked causality (DP-03)
 
@@ -236,7 +236,7 @@ path and current-text hash pass. No deck-level support follows automatically.
 
 - Card-specific branching in engine code.
 - Treating every choice as a target.
-- Treating Vision as a Core 402.1 optional triggered ability.
+- Treating Vision as a Core 403.1 optional triggered ability.
 - Using `if_applied` to mean “caused a kill.”
 - Treating cost payment as an ordinary effect outside the play transaction.
 - Treating Recall or return-to-hand as Move.

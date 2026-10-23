@@ -46,7 +46,7 @@ OUTCOMES = {"supported", "illegal", "unsupported", "decision_required", "invalid
 FEATURE_RULES = {
     "typed_selectors": ["Core 108.6.e", "Core 355.7–355.10.d.2", "Core 359.3.e.1–359.3.e.10"],
     "object_identity": ["Core 124–124.1", "Core 359.3.e.4"],
-    "engine_decisions": ["Core 355.1–355.17", "Core 370–373", "Core 402–402.1"],
+    "engine_decisions": ["Core 355.1–355.18", "Core 370–373", "Core 403–403.1"],
     # C-15 (ADR-0005 §4–5): the play transaction and its receipt.
     "atomic_play_transaction": ["Core 354–358", "Core 358.5"],
     "typed_cost_payment": ["Core 356.1–356.7", "Core 357.1–357.2.a"],
@@ -54,24 +54,24 @@ FEATURE_RULES = {
     "cost_predicates": ["Core 356.4.f.1", "Core 359.3.e.14"],
     # C-19 (ADR-0007 §1–3).
     "permanent_entry": ["Core 359.2–359.2.d", "Core 143.4", "Core 124", "Core 190.3.a.1"],
-    "play_triggers": ["Core 419.4.a", "Core 355.5.b", "Core 383.2.c"],
+    "play_triggers": ["Core 420.4.a", "Core 355.5.b", "Core 383.2.c"],
     # 2026-09-24: triggers woken by what happened to anything - a play, a stun, a death
-    "watched_triggers": ["Core 383.1", "Core 383.3.a", "Core 383.3.e", "Core 419.4.a"],
+    "watched_triggers": ["Core 383.1", "Core 383.3.a", "Core 383.3.e", "Core 420.4.a"],
     # 2026-09-28: a watched trigger's "it" - the object its event was about, as it was then
     "trigger_referent": ["Core 359.3.f.3", "Core 383.2.c", "Core 124", "Core 359.3.e.6"],
     # 2026-09-28: a Unit gaining a combat designation wakes watchers, its other requirements read then
-    "designation_watchers": ["Core 464.2.c.3", "Core 383.4.e.2.b", "Core 383.4.f.2.b", "Core 740.2.a"],
+    "designation_watchers": ["Core 466.2.c.3", "Core 383.4.e.2.b", "Core 383.4.f.2.b", "Core 740.2.a"],
     # 2026-09-28: a Battlefield's "When a unit moves from here", controlled per 190.6.a / 190.6.b
-    "battlefield_move_from_triggers": ["Core 190.6.a", "Core 190.6.b", "Core 446.1"],
+    "battlefield_move_from_triggers": ["Core 190.6.a", "Core 190.6.b", "Core 448.1"],
     "open_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.c"],
     # DP-95: one more place a card may enter. "occupied" is 170.11.a - a Unit
-    # is there - and "enemy" is the controller relation; 323.6 is why a
+    # is there - and "enemy" is the controller relation; 323.5 is why a
     # Battlefield whose controller has nothing left is no longer theirs.
-    "occupied_enemy_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.a", "Core 323.6"],
+    "occupied_enemy_battlefield_permission": ["Core 355.2.a–355.2.b", "Core 170.11.a", "Core 323.5"],
     # C-20 (ADR-0007 §4–5).
     "battlefield_targets": ["Core 355.10.b", "Core 359.3.e.2", "Core 359.3.e.5"],
     "criteria_expansion": ["Core 355.5.a", "Core 355.10.d"],
-    "bonus_damage": ["Core 713–715.4", "Core 437.1.a.1"],
+    "bonus_damage": ["Core 713–715.4", "Core 438.1.a.1"],
     # C-21 (ADR-0007 §6–8).
     "entry_replacements": ["Core 369.3", "Core 143.4", "Core 359.2.c–359.2.d"],
     "conditional_passives": ["Core 364.3", "Core 365.1"],
@@ -79,71 +79,71 @@ FEATURE_RULES = {
     "expiration_step": ["Core 317.2–317.2.d", "Core 324.2"],
     # C-22 (ADR-0007 §9–10).
     "instruction_conditions": ["Core 135.2.b.5.a", "Core 359.3.e.14.a"],
-    "move_triggers": ["Core 383.1", "Core 319.8", "Core 446.2", "Core 456.1"],
+    "move_triggers": ["Core 383.1", "Core 319.8", "Core 448.2", "Core 458.1"],
     # 2026-10-12 package 11 (Treasure Trove): "When this leaves the board" - noted before it moves, however it leaves
     "leave_board_triggers": ["Core 383.1", "Core 319.6", "Core 359.3.e.13", "Core 124"],
-    "private_discard": ["Core 422.1–422.4", "Core 355.10.a", "Core 124"],
+    "private_discard": ["Core 423.1–423.4", "Core 355.10.a", "Core 124"],
     # C-23 (ADR-0007 §11).
     "deflect": ["Core 809.1.c–809.1.d", "Core 809.2", "Core 356.2.a.2"],
     "any_domain_power_allocation": ["Core 809.1.c.1", "Core 357.1"],
     # C-24 (ADR-0007 §12).
     "granted_replacements": ["Core 370–373", "Core 355.10.c", "Core 124", "Core 317.2.c"],
     # C-26 (ADR-0008 §1–3).
-    "combat_staging": ["Core 323.9", "Core 323.13", "Core 323.14", "Core 460–462"],
-    "combat_opening": ["Core 464.2.b–464.2.g", "Core 345", "Core 464.2.c.1.a–464.2.c.1.b"],
-    "combat_designations": ["Core 323.2–323.2.c", "Core 464.2.c.3–464.2.c.3.a"],
-    "attack_defend_triggers": ["Core 383.4.e–383.4.f.3", "Core 464.2.e.1"],
+    "combat_staging": ["Core 323.8", "Core 323.12", "Core 323.13", "Core 462–464"],
+    "combat_opening": ["Core 466.2.b–466.2.f", "Core 345", "Core 466.2.c.1.a–466.2.c.1.b"],
+    "combat_designations": ["Core 323.2–323.2.c", "Core 466.2.c.3–466.2.c.3.a"],
+    "attack_defend_triggers": ["Core 383.4.e–383.4.f.3", "Core 466.2.d.1"],
     # C-27 (ADR-0008 §4–5).
     "battlefield_defend_triggers": ["Core 190.6.a", "Core 190.6.d", "Core 383.4.f"],
-    "combat_relative_might": ["Core 814.1.c–814.2", "Core 740.2.a", "Core 143.2.b", "Core 364.3"],
-    "keyword_modifiers": ["Core 814.2", "Core 466.7.c", "Core 317.2.c"],
+    "combat_relative_might": ["Core 814.1.c–814.2", "Core 740.2.a", "Core 143.2.c", "Core 364.3"],
+    "keyword_modifiers": ["Core 814.2", "Core 468.7.c", "Core 317.2.c"],
     # C-28 (ADR-0008 §6).
-    "standard_move": ["Core 144.1–144.4.b", "Core 446"],
+    "standard_move": ["Core 144.1–144.4.b", "Core 448"],
     "ganking": ["Core 144.4.c–144.4.c.1", "Core 810.1–810.3"],
     # C-29 (ADR-0008 §7).
     "active_combat_criteria": ["Core 740.2.c", "Core 355.10.d", "Core 355.5.a"],
-    "mutual_current_might_damage": ["Core 417.1.d", "Core 417.6.b.3–417.6.b.4", "Core 143.2.b"],
+    "mutual_current_might_damage": ["Core 418.1.d", "Core 418.6.b.3–418.6.b.4", "Core 143.2.c"],
     # C-30 (ADR-0008 §8–9).
     "combat_showdown_close": ["Core 347.2–347.2.b", "Core 348–348.1"],
-    "combat_damage_assignment": ["Core 465.1–465.2.c.4.a", "Core 423.1.b", "Core 143.2.b"],
-    "tank_backline_priority": ["Core 465.2.c.6–465.2.c.9", "Core 815.1.b–815.1.c.2"],
-    "assignment_replacement_preview": ["Core 465.2.c.5", "Core 417.1.a", "Core 465.2.c.10"],
+    "combat_damage_assignment": ["Core 467.1–467.2.c.4.a", "Core 424.1.b", "Core 143.2.c"],
+    "tank_backline_priority": ["Core 467.2.c.6–467.2.c.9", "Core 815.1.b–815.1.c.2"],
+    "assignment_replacement_preview": ["Core 467.2.c.5", "Core 418.1.a", "Core 467.2.c.10"],
     # C-31 (ADR-0008 §10).
-    "combat_damage_deal": ["Core 465.2.c.1.a", "Core 465.2.d", "Core 417.6.c–417.6.c.1", "Core 465.3"],
-    "combat_cleanup": ["Core 466.1–466.1.a.2", "Core 323.2–323.5", "Core 428.5.c.2", "Core 143.3.b.2"],
-    "combat_result": ["Core 466.2–466.3.d.1"],
-    "combat_close": ["Core 466.5.a", "Core 466.7–466.7.c"],
-    "combat_restage": ["Core 466.3.d.1", "Core 323.13"],
+    "combat_damage_deal": ["Core 467.2.c.1.a", "Core 467.2.d", "Core 418.6.c–418.6.c.1", "Core 467.3"],
+    "combat_cleanup": ["Core 468.1–468.1.a.2", "Core 323.2–323.4", "Core 429.5.c.2", "Core 143.3.b.2"],
+    "combat_result": ["Core 468.2–468.3.d.1"],
+    "combat_close": ["Core 468.5.a", "Core 468.7–468.7.c"],
+    "combat_restage": ["Core 468.3.d.1", "Core 323.12"],
     # C-33 (ADR-0009 §1–2, §5–7).
-    "battlefield_control_resolution": ["Core 190.4", "Core 466.5–466.5.e", "Core 348.2.a–348.2.a.1"],
-    "conquer_scoring": ["Core 469.1", "Core 470", "Core 471.1–471.1.b.1"],
-    "score_triggers": ["Core 471.2–471.2.c", "Core 383.4.c–383.4.d"],
-    "victory_facts": ["Core 472", "Core 323.1"],
+    "battlefield_control_resolution": ["Core 190.4", "Core 468.5–468.5.e", "Core 348.2.a–348.2.a.1"],
+    "conquer_scoring": ["Core 471.1", "Core 472", "Core 473.1–473.1.b.1"],
+    "score_triggers": ["Core 473.2–473.2.c", "Core 383.4.c–383.4.d"],
+    "victory_facts": ["Core 474", "Core 323.1"],
     # C-34 (ADR-0009 §3, §4, §9).
-    "non_combat_showdown": ["Core 316.8.b–316.8.b.1.a", "Core 323.8–323.8.a", "Core 323.12", "Core 344.2", "Core 345", "Core 348.2–348.2.a.1"],
-    "board_cleanup": ["Core 190.4.a", "Core 190.4.c", "Core 323.6", "Core 323.11–323.11.a"],
+    "non_combat_showdown": ["Core 316.8.b–316.8.b.1.a", "Core 323.7–323.7.a", "Core 323.11", "Core 344.2", "Core 345", "Core 348.2–348.2.a.1"],
+    "board_cleanup": ["Core 190.4.a", "Core 190.4.c", "Core 323.5", "Core 323.10–323.10.a"],
     # C-35 (ADR-0009 §8, §10).
-    "hold_scoring": ["Core 315.2.b–315.2.b.2", "Core 469.2", "Core 471.1.a.1", "Core 471.2.b"],
+    "hold_scoring": ["Core 315.2.b–315.2.b.2", "Core 471.2", "Core 473.1.a.1", "Core 473.2.b"],
     # C-36 (ADR-0010 §3–4, §10).
-    "terminal_state": ["Core 194.2–194.2.b", "Core 196", "Core 323.1", "Core 472"],
+    "terminal_state": ["Core 194.2–194.2.b", "Core 196", "Core 323.1", "Core 474"],
     "game_over_guard": ["Core 196"],
     "declared_terminal": ["Core 196"],
     # C-37 (ADR-0010 §2).
-    "burn_out_draw": ["Core 413.4", "Core 431.1.a", "Core 431.2–431.2.d", "Core 431.3–431.3.c.1", "Core 194.1.d"],
-    "randomization_receipt": ["Core 431.2.b"],
-    "terminal_event_bridge": ["Core 431.3.c.1", "Core 196"],
-    "burn_out_draw_instead": ["Core 471.1.b.1", "Core 431"],
+    "burn_out_draw": ["Core 414.4", "Core 432.1.a", "Core 432.2–432.2.d", "Core 432.3–432.3.c.1", "Core 194.1.d"],
+    "randomization_receipt": ["Core 432.2.b"],
+    "terminal_event_bridge": ["Core 432.3.c.1", "Core 196"],
+    "burn_out_draw_instead": ["Core 473.1.b.1", "Core 432"],
     # C-38 (ADR-0010 §1, §6–9).
     "turn_start_state_machine": ["Core 315", "Core 316.1", "Core 319.2"],
     "turn_transition": ["Core 115", "Core 317.3"],
-    "first_turn_process": ["Core 483.7", "Core 485.7", "Core 487.7"],
-    "awaken_step": ["Core 315.1", "Core 415.1.b–415.1.c", "Core 415.3.a"],
+    "first_turn_process": ["Core 485.7", "Core 487.7", "Core 489.7"],
+    "awaken_step": ["Core 315.1", "Core 416.1.b–416.1.c", "Core 416.3.a"],
     "beginning_phase_triggers": ["Core 315.2.a–315.2.a.1", "Core 383.1"],
-    "channel_step": ["Core 315.3–315.3.b.1", "Core 430.2.a", "Core 430.3", "Core 430.4.a"],
-    "draw_step": ["Core 315.4–315.4.b.2", "Core 413.2.a"],
+    "channel_step": ["Core 315.3–315.3.b.1", "Core 431.2.a", "Core 431.3", "Core 431.4.a"],
+    "draw_step": ["Core 315.4–315.4.b.2", "Core 414.2.a"],
     "main_phase_entry": ["Core 316.1–316.4"],
     # C-39 (ADR-0010 §5).
-    "cleanup_orchestration": ["Core 318–320", "Core 323–323.14"],
+    "cleanup_orchestration": ["Core 318–320", "Core 323–323.13"],
     "cleanup_iterations": ["Core 322–322.1"],
 }
 KIND_CONFIG = {

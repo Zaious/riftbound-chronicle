@@ -9,7 +9,7 @@ Must hold:
     order and identities alone, and its trace carries a count and hash but no
     ids (negative mutation: reveal from main_deck_top lists ids and
     identities in its trace because it is public); a short deck looks at as
-    many as possible with completion partial and no Burn Out (431.1.c);
+    many as possible with completion partial and no Burn Out (432.1.c);
   - put_back over two looked cards stops as card_ordering_required with a
     private summary; a card_selection for it is invalid_input (kind
     mismatch); a permutation missing a card is invalid_input; one naming a
@@ -17,15 +17,15 @@ Must hold:
     becomes the deck's top order with identities unchanged, and the trace
     carries the ordering's hash and who may see it, never the order; one
     looked card needs no decision;
-  - the reveal marks are gone from the committed state (424.3.a) and the
+  - the reveal marks are gone from the committed state (425.3.a) and the
     result says how many ended; a draw of a looked card drops its mark;
   - put_in_hand takes the chosen looked card as a new object; draw_it does
     the same and marks the event as a Draw;
   - recycle of two trash cards to one Main Deck needs a randomization receipt
-    (Core 416.5: a random order, never a player's card_ordering - an ordering
+    (Core 417.5: a random order, never a player's card_ordering - an ordering
     alone, a receipt naming another player or another operation are refused),
     applies it to the bottom as one action with new identities; two runes go
-    to the Rune Deck in their OWNER's order (416.5.a), even when another player
+    to the Rune Deck in their OWNER's order (417.5.a), even when another player
     was told to recycle them; one card needs no decision; a token ceases to
     exist;
   - predict 2 stops for the recycle choice (private card_selection); with
@@ -62,7 +62,7 @@ def envelope(state, *decisions, receipts=()):
 
 
 def receipt(operation_id, player, permutation, operation="recycle_simultaneous", receipt_id="rnd-1"):
-    """Core 416.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
+    """Core 417.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
     return {"schema_version": "randomization-receipt.v1", "receipt_id": receipt_id, "operation": operation, "operation_id": operation_id,
             "player": player, "permutation": list(permutation), "provenance": {"provider": "chronicle-harness", "method": "fisher-yates", "seed": "7"}}
 
@@ -166,17 +166,17 @@ def main() -> int:
     rec = program("rec", {"op": "recycle", "effect_id": "r", "player": "p1", "objects": ["c3", "c2"], "order_ref": "bottom"})
     ask_rec = apply_program(trash, rec)
     if ask_rec.get("reason_code") != "randomization_receipt_required" or ask_rec.get("decision_ids") != ["bottom"]:
-        errors.append(f"recycling two cards to one Main Deck did not wait for the random order (416.5): {ask_rec.get('reason_code')} {ask_rec.get('errors')}")
-    # 416.5: a player's ordering is not a random order - alone it still waits for the receipt
+        errors.append(f"recycling two cards to one Main Deck did not wait for the random order (417.5): {ask_rec.get('reason_code')} {ask_rec.get('errors')}")
+    # 417.5: a player's ordering is not a random order - alone it still waits for the receipt
     by_player = apply_program(trash, rec, decisions=envelope(trash, ordering("bottom", ["c2", "c3"], trash)))
     if by_player.get("committed") or by_player.get("reason_code") != "randomization_receipt_required":
-        errors.append(f"a player's card_ordering stood in for the random order of 416.5: {by_player.get('reason_code')}")
+        errors.append(f"a player's card_ordering stood in for the random order of 417.5: {by_player.get('reason_code')}")
     for label, bad in (("another player", receipt("bottom", "p2", ["c2", "c3"])),
                        ("another operation", receipt("bottom", "p1", ["c2", "c3"], operation="recycle_trash")),
                        ("another set of cards", receipt("bottom", "p1", ["c2", "c1"]))):
         refused = apply_program(trash, rec, decisions=envelope(trash, receipts=[bad]))
         if refused.get("committed"):
-            errors.append(f"a randomization receipt for {label} was accepted for a 416.5 recycle")
+            errors.append(f"a randomization receipt for {label} was accepted for a 417.5 recycle")
     recycled = apply_program(trash, rec, decisions=envelope(trash, receipts=[receipt("bottom", "p1", ["c2", "c3"])]))
     if not recycled.get("committed") or recycled["next_state"]["players"]["p1"]["zones"]["main_deck"] != ["c1", "c2", "c3"] or ev(recycled).get("simultaneous") is not True or ev(recycled).get("identities_after") != {"c2": "c2@1", "c3": "c3@1"}:
         errors.append(f"multi-card recycle did not apply the order to the bottom as one action: {recycled.get('reason') or recycled.get('errors')} {ev(recycled)}")
@@ -188,7 +188,7 @@ def main() -> int:
     if not gone.get("committed") or "t1" in gone["next_state"]["objects"] or ev(gone).get("destinations", {}).get("t1") != "ceased_to_exist" or ev(gone).get("order_decision") is not None:
         errors.append(f"a recycled token did not cease to exist (and the single deck card needed no order): {gone.get('reason') or gone.get('errors')} {ev(gone)}")
 
-    # 416.5.a: runes go to the Rune Deck in their OWNER's order, whoever was told to recycle them
+    # 417.5.a: runes go to the Rune Deck in their OWNER's order, whoever was told to recycle them
     runes = base_state()
     for rune in ("rx1", "rx2"):
         runes["objects"][rune] = {"owner": "p1", "controller": "p1", "kind": "rune", "domain": "calm", "base_might": 0,
@@ -198,10 +198,10 @@ def main() -> int:
     rune_rec = program("recr", {"op": "recycle", "effect_id": "r", "player": "p2", "objects": ["rx1", "rx2"], "order_ref": "rbottom"})
     ask_runes = apply_program(runes, rune_rec)
     if ask_runes.get("reason_code") != "card_ordering_required" or ask_runes.get("decision_ids") != ["rbottom"] or ask_runes.get("decision_controller") != "p1":
-        errors.append(f"two runes recycled by p2's instruction did not ask their owner p1 for the order (416.5.a): {ask_runes.get('reason_code')} {ask_runes.get('decision_controller')} {ask_runes.get('errors')}")
+        errors.append(f"two runes recycled by p2's instruction did not ask their owner p1 for the order (417.5.a): {ask_runes.get('reason_code')} {ask_runes.get('decision_controller')} {ask_runes.get('errors')}")
     runes_done = apply_program(runes, rune_rec, decisions=envelope(runes, ordering("rbottom", ["rx2", "rx1"], runes)))
     if not runes_done.get("committed") or runes_done["next_state"]["players"]["p1"]["zones"]["rune_deck"][-2:] != ["rx2", "rx1"]:
-        errors.append(f"the owner's rune order was not applied (416.5.a): {runes_done.get('reason') or runes_done.get('errors')}")
+        errors.append(f"the owner's rune order was not applied (417.5.a): {runes_done.get('reason') or runes_done.get('errors')}")
 
     # --- predict --------------------------------------------------------------------------------------------------
     pred = program("pred", {"op": "predict", "effect_id": "p", "player": "p1", "count": 2, "recycle_ref": "rc", "order_ref": "ro", "put_back_ref": "pb"})
@@ -217,7 +217,7 @@ def main() -> int:
         errors.append(f"predict did not put both back in the chosen order: {kept.get('reason') or kept.get('errors')} {ev(kept)}")
     both = apply_program(state, pred, decisions=envelope(state, ordering("rc", ["c1", "c2"], state, kind="card_selection")))
     if both.get("reason_code") != "randomization_receipt_required" or both.get("decision_ids") != ["ro"]:
-        errors.append(f"predict recycling two cards did not wait for the random order (416.5): {both.get('reason_code')} {both.get('errors')}")
+        errors.append(f"predict recycling two cards did not wait for the random order (417.5): {both.get('reason_code')} {both.get('errors')}")
     both_done = apply_program(state, pred, decisions=envelope(state, ordering("rc", ["c1", "c2"], state, kind="card_selection"), receipts=[receipt("ro", "p1", ["c1", "c2"])]))
     if not both_done.get("committed") or both_done["next_state"]["players"]["p1"]["zones"]["main_deck"] != ["c3", "c1", "c2"] or ev(both_done).get("recycled_count") != 2 or ev(both_done).get("put_back_count") != 0 or object_identity(both_done["next_state"], "c1") != "c1@0":
         errors.append(f"predict recycling both did not bottom them in order (same deck, same identity): {both_done.get('reason') or both_done.get('errors')} {ev(both_done)}")

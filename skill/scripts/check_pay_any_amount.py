@@ -2,8 +2,8 @@
 """Pay any amount as it resolves, and deal that much (package 10, Bullet Time; GPT 2026-10-08 ruling 8).
 
 The card pays any amount of Power of any Domain to deal that much damage to each enemy unit at the Battlefield it
-targets. The amount is chosen and paid as the instruction resolves (Core 204.3.b); 0 may be paid, and then the Deal deals
-nothing (417.1.e); choosing not to pay at all is a receipt of its own (declined), and the Deal is ignored with it.
+targets. The amount is chosen and paid as the instruction resolves (Core 204.3.a); 0 may be paid, and then the Deal deals
+nothing (418.1.e); choosing not to pay at all is a receipt of its own (declined), and the Deal is ignored with it.
 
   B1 asked         the resolution stops for p1: pay at all? (optional_choice_required)
   B2 declined      not paid: the Power stays, the Deal skipped as linked to it, the receipt says declined

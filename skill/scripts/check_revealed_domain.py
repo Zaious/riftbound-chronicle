@@ -3,8 +3,8 @@
 attack, reveal the top rune of your rune deck, then recycle it. Do one of the following based on its domain: [Fury] Deal 2
 to an enemy unit here and 1 to all other enemy units here. [Mind] Draw 1. [Order] Stun an enemy unit.").
 
-Core 387.1 / 387.1.b: "Do one of the following" marks Reflexive Triggers, the effect saying which goes on the Chain; each
-is its own Chain item (388.1), its targets chosen as it is finalized. GPT 2026-10-12 (PACKAGE11 ruling 18): the rune's
+Core 388.1 / 388.1.b: "Do one of the following" marks Reflexive Triggers, the effect saying which goes on the Chain; each
+is its own Chain item (389.1), its targets chosen as it is finalized. GPT 2026-10-12 (PACKAGE11 ruling 18): the rune's
 identity and Domain are noted as it is revealed, and recycling it does not erase them; an empty Rune Deck, or a Domain no
 branch lists, is handled by name, never guessed. The engine's shape: reveal {from: rune_deck_top} notes each rune's
 Domains in its trace; conditional_triggers {condition: {kind: revealed_domain, effect_id, domain}} - the bridge adds the

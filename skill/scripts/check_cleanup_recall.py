@@ -10,8 +10,8 @@ controller does not control goes to its owner's Trash.
 Must hold:
   - an unattached non-Unit Gear or Rune at a Battlefield is Recalled to its
     controller's Base, keeping its identity because a Battlefield and a Base
-    are both board Locations (429, 124), and an **attached** one
-    is not — its location is its Top-Most card's (434.4). The negative
+    are both board Locations (430, 124), and an **attached** one
+    is not — its location is its Top-Most card's (435.4). The negative
     mutation attaches the same Gear and it stays;
   - a Permanent or Rune sitting in a Base that is not its controller's is
     Recalled to its own controller's Base, and one already in its controller's
@@ -109,7 +109,7 @@ def main() -> int:
             errors.append(f"{object_id} changed identity on a board-to-board Recall (Core 124 changes it only "
                           f"across a non-board zone): {before[object_id]} -> {object_identity(after, object_id)}")
     if find_location(after, "g_worn") != ("battlefield", "bf1", None):
-        errors.append("an attached Gear was Recalled; its location is its Top-Most card's (434.4)")
+        errors.append("an attached Gear was Recalled; its location is its Top-Most card's (435.4)")
     if object_identity(after, "g_home") != before["g_home"] or find_location(after, "g_home") != ("player", "p1", "base"):
         errors.append("a Permanent already in its controller's Base was disturbed")
 

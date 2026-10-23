@@ -24,7 +24,7 @@ Must hold:
     Battlefield, and Gear may (overriding the Base-only rule, 811.4); a
     choice outside that Battlefield is refused, and the same play with
     hidden_targeting free_by_restriction is allowed (negative mutation);
-  - Core 811.1.d.3 (GPT 2026-09-27, Sprite Call): a spell played from Hidden at bf1 that plays a
+  - Core 811.1.d.5 (GPT 2026-09-27, Sprite Call): a spell played from Hidden at bf1 that plays a
     unit token its controller places asks with bf1 as the only place; the Base or bf2 is refused;
     the same spell played from the hand may place it at the Base;
   - engine-check has the hide_step kind with its scope, a refused hide wraps
@@ -192,7 +192,7 @@ def main() -> int:
             errors.append("the played card did not leave the Facedown Zone for the chain")
         if played["cost_receipt"]["total"] != {"energy": 0, "power": {}} or played["trace"][0].get("hidden", {}).get("battlefield") != "bf1":
             errors.append(f"the hidden play did not ignore its base cost or record its battlefield: {played['trace'][0].get('hidden')}")
-    # Core 811.1.d.3 (GPT 2026-09-27, Sprite Call): the unit a hidden spell plays is played at that battlefield
+    # Core 811.1.d.5 (GPT 2026-09-27, Sprite Call): the unit a hidden spell plays is played at that battlefield
     from resolution_bridge import resolve_with_program
     from check_rules_core import item
     sprite = {**program("sprite", {"op": "play_token", "effect_id": "tok", "object_id": "sprite-1", "owner": "p1", "controller": "p1",
@@ -208,7 +208,7 @@ def main() -> int:
         kwargs = {"source": source, "cost_override": override, "payment_context": None} if source else {}
         on_chain = play_card(timing, start, declaration(**kwargs))
         if not on_chain.get("committed"):
-            errors.append(f"811.1.d.3: the {label} play did not commit: {on_chain.get('reason_code')} {on_chain.get('reason')}")
+            errors.append(f"811.1.d.5: the {label} play did not commit: {on_chain.get('reason_code')} {on_chain.get('reason')}")
             continue
         after_play = on_chain["next_effect_state"]
         resolving = fixture(priority="p2", items=[item("spell-1", "p1", "spell", "default", "finalized")], passes=["p1", "p2"])
@@ -223,13 +223,13 @@ def main() -> int:
         base_ok = place("player:p1").get("committed") or place("base:p1").get("committed")
         if label == "hidden":
             if not place("battlefield:bf1").get("committed"):
-                errors.append(f"811.1.d.3: a hidden spell's unit token could not be played at bf1: {place('battlefield:bf1').get('reason')}")
+                errors.append(f"811.1.d.5: a hidden spell's unit token could not be played at bf1: {place('battlefield:bf1').get('reason')}")
             if base_ok or place("battlefield:bf2").get("committed"):
-                errors.append("811.1.d.3: a hidden spell's unit token was played away from the battlefield it was hidden at")
+                errors.append("811.1.d.5: a hidden spell's unit token was played away from the battlefield it was hidden at")
             if offered is not None and offered != ["battlefield:bf1"]:
-                errors.append(f"811.1.d.3: a hidden spell offered {offered} as places, not only bf1")
+                errors.append(f"811.1.d.5: a hidden spell offered {offered} as places, not only bf1")
         elif not place("battlefield:bf2").get("committed"):
-            errors.append("811.1.d.3 must not bind a spell played from the hand: its token could not be played at bf2")
+            errors.append("811.1.d.5 must not bind a spell played from the hand: its token could not be played at bf2")
 
     gear = copy.deepcopy(next_turn)
     gear["objects"]["c1"]["kind"] = "gear"

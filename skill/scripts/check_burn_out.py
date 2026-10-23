@@ -96,7 +96,7 @@ def main() -> int:
         if ns["players"]["p1"]["zones"]["hand"] != ["c1", "c2", "c3"] or ns["players"]["p1"]["zones"]["main_deck"] != [] or ns["players"]["p1"]["zones"]["trash"] != []:
             errors.append(f"the Trash was not recycled and drawn: {ns['players']['p1']['zones']}")
         if ns["players"]["p2"].get("points") != 1 or ns["players"]["p2"].get("scored_this_turn") or ns["players"]["p1"].get("points", 0) != 0:
-            errors.append("the sole opponent did not gain exactly one non-Score point (431.2.c, 194.1.d)")
+            errors.append("the sole opponent did not gain exactly one non-Score point (432.2.c, 194.1.d)")
         if object_identity(ns, "c3") != "c3@2" or ev["burn_outs"][0].get("recycled") != ["c3"] or ev["burn_outs"][0].get("provenance", {}).get("method") != "fisher-yates" or ev["burn_outs"][0].get("immediate_victory") is not False:
             errors.append(f"the Burn Out record or the recycled identity is wrong: {ev.get('burn_outs')} {object_identity(ns, 'c3')}")
         if burned.get("terminal_event") is not None or validate_state(ns):
@@ -180,7 +180,7 @@ def main() -> int:
     first_only = copy.deepcopy(ahead); first_only["players"]["p1"]["zones"]["trash"] = ["c9"]; first_only["objects"]["c9"] = copy.deepcopy(state["objects"]["c3"])
     single = apply_program(first_only, draw("p1", 1), decisions=envelope(first_only, receipts=[receipt(op, "p1", ["c9"])]))
     if not single.get("committed") or single.get("terminal_event") is not None or single["next_state"]["players"]["p2"]["points"] != 3:
-        errors.append(f"a first Burn Out that reaches the Victory Score ended the game at once instead of waiting for Cleanup step 1 (431.3.c): {single.get('terminal_event')} {single.get('reason')}")
+        errors.append(f"a first Burn Out that reaches the Victory Score ended the game at once instead of waiting for Cleanup step 1 (432.3.c): {single.get('terminal_event')} {single.get('reason')}")
     team = copy.deepcopy(empty); team["players"]["p1"]["team_id"] = "A"
     if apply_program(team, draw("p1", 1)).get("unsupported") is not True:
         errors.append("a Burn Out with teammates was attempted")

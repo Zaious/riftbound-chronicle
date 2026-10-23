@@ -5,15 +5,15 @@ with its timing-chain removal, and [Burn N].
 
 Must hold:
   - banish moves a card from any zone straight into its owner's Banishment as
-    a new object (427.1, 124); a token ceases to exist; it is not a Kill —
+    a new object (428.1, 124); a token ceases to exist; it is not a Kill —
     a banished Unit with a death trigger schedules none, while killing the
     same Unit does (negative mutation), and it is not a Discard;
   - a banish driven by a `choice` resolves that choice exactly once: only the
     chosen card moves and the trace names the decision (counterexample for a
     self-resolving op being pre-resolved as a single-object choice);
   - counter clears the effect-side chain entry, sends the card to its owner's
-    trash as a new object (425.1.a), records that it was not played (425.1.b)
-    and that no cost is refunded (425.1.c); `card_to: hand` returns it
+    trash as a new object (426.1.a), records that it was not played (426.1.b)
+    and that no cost is refunded (426.1.c); `card_to: hand` returns it
     instead; an ability item has no card; an unknown item is
     illegal_operation; `counterable: false` is unsupported
     (cannot_be_countered);
@@ -77,8 +77,8 @@ def main() -> int:
         if object_identity(from_board["next_state"], "u1") != "u1@1" or e.get("not_kill") is not True or e.get("not_discard") is not True:
             errors.append(f"banish did not make a new object or claimed to be a Kill / Discard: {e}")
         if e.get("pending_triggers") or from_board.get("pending_triggers"):
-            errors.append("banishing a unit scheduled its death trigger (Core 427.2.a: Banish is not a subset of Kill)")
-        if "Core 427.1" not in e.get("rule_locators", []) or validate_state(from_board["next_state"]):
+            errors.append("banishing a unit scheduled its death trigger (Core 428.2.a: Banish is not a subset of Kill)")
+        if "Core 428.1" not in e.get("rule_locators", []) or validate_state(from_board["next_state"]):
             errors.append(f"banish locators or state are wrong: {e.get('rule_locators')} {validate_state(from_board['next_state'])}")
     killed = apply_program(state, program("k", {"op": "kill", "effect_id": "k", "object_id": "u1"}))
     if not killed.get("committed") or not ev(killed).get("pending_triggers"):

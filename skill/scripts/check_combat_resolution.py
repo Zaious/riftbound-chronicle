@@ -9,15 +9,15 @@ Must hold:
     now and not applied a second time; FEPR is skipped; a Unit that left is
     skipped;
   - combat_cleanup kills Units with lethal damage and attributes each kill
-    to the opposing side's Units and their controller (428.5.c.2), schedules
+    to the opposing side's Units and their controller (429.5.c.2), schedules
     their death triggers, heals every remaining Unit, Recalls Attackers when
-    Defenders remain (466.1.a.2), and keeps designations in step;
+    Defenders remain (468.1.a.2), and keeps designations in step;
   - determine_combat_result refuses while the Cleanup's chain is pending
-    (466.2); a Recall is No Result; a lone remaining designated player wins;
+    (468.2); a Recall is No Result; a lone remaining designated player wins;
     both remaining is No Result that stages again; neither is No Result;
   - close_combat removes designations, clears the Combat and Showdown
     records, expires every 'this combat' grant of this Combat at once, and
-    runs only after resolve_battlefield_control (466.5, ADR-0009) or after a
+    runs only after resolve_battlefield_control (468.5, ADR-0009) or after a
     both-remain restage;
   - each step refuses out of order; determinism; engine-check wrapping.
 """
@@ -80,14 +80,14 @@ def main() -> int:
         errors.append(f"the Cleanup did not kill d1, heal u1: {t3['combat'].get('cleanup')}")
     attribution = t3["combat"]["cleanup"]["attribution"].get("d1", {})
     if attribution.get("killed_by") != ["u1"] or attribution.get("responsible_player") != "p1":
-        errors.append(f"the Combat-Damage kill was not attributed to the source Unit and its controller (428.5.c.2): {attribution}")
+        errors.append(f"the Combat-Damage kill was not attributed to the source Unit and its controller (429.5.c.2): {attribution}")
     if [i["id"] for i in t3["chain"]["items"]] != ["d1-deathknell"] or t3["combat"]["cleanup"]["recalled"]:
         errors.append(f"the death trigger was not scheduled, or Attackers were recalled with no Defender left: {[i.get('id') for i in t3['chain']['items']]} {t3['combat']['cleanup'].get('recalled')}")
     if validate_timing(t3) or validate_state(e3):
         errors.append(f"states after the Cleanup invalid: {validate_timing(t3)} {validate_state(e3)}")
     early = determine_combat_result(t3, e3)
     if early.get("committed") or early.get("reason_code") != "combat_chain_unfinished":
-        errors.append(f"the result was determined while the death trigger was pending (466.2): {early.get('reason_code')}")
+        errors.append(f"the result was determined while the death trigger was pending (468.2): {early.get('reason_code')}")
     settled = copy.deepcopy(t3); settled["chain"] = {"initiated_by": None, "items": [], "consecutive_passes": []}
     resulted = determine_combat_result(settled, e3)
     if not resulted.get("committed") or resulted["next_timing_state"]["combat"]["result"].get("outcome") != "win" or resulted["next_timing_state"]["combat"]["result"].get("winner") != "p1":
@@ -99,7 +99,7 @@ def main() -> int:
             errors.append("engine-check does not declare the result step")
         early_close = close_combat(t4, e4)
         if early_close.get("committed") or early_close.get("reason_code") != "control_resolution_pending":
-            errors.append(f"a decisive Combat closed before 466.5 resolved control: {early_close.get('reason_code')}")
+            errors.append(f"a decisive Combat closed before 468.5 resolved control: {early_close.get('reason_code')}")
         owned = copy.deepcopy(e4); owned["battlefields"]["bf1"]["controller"] = "p1"; owned["mode"] = {"victory_score": 8}
         resolved_control = resolve_battlefield_control(t4, owned)
         closed = close_combat(resolved_control["next_timing_state"], resolved_control["next_effect_state"]) if resolved_control.get("committed") else {}
@@ -132,7 +132,7 @@ def main() -> int:
             errors.append(f"Attackers were not Recalled with Defenders remaining, or Units were not healed: {tc['combat'].get('cleanup')} {ec['objects']['u1'].get('combat_designation')}")
         r = determine_combat_result(tc, ec)
         if not r.get("committed") or r["next_timing_state"]["combat"]["result"].get("outcome") != "no_result" or r["next_timing_state"]["combat"]["result"].get("reason") != "attackers_recalled":
-            errors.append(f"a Recall did not give No Result (466.3.d): {r.get('reason_code')} {r.get('next_timing_state', {}).get('combat', {}).get('result')}")
+            errors.append(f"a Recall did not give No Result (468.3.d): {r.get('reason_code')} {r.get('next_timing_state', {}).get('combat', {}).get('result')}")
         else:
             if close_combat(r["next_timing_state"], r["next_effect_state"]).get("reason_code") != "control_resolution_pending":
                 errors.append("the Recall case closed before control resolution")
@@ -150,7 +150,7 @@ def main() -> int:
         both_e["objects"]["u1"]["combat_designation"] = {"combat_id": both_t["combat"]["combat_id"], "role": "attacker"}
         rr = determine_combat_result(both_t, both_e)
         if not rr.get("committed") or rr["next_timing_state"]["combat"]["result"].get("reason") != "both_remain" or rr["next_timing_state"]["combat"]["result"].get("restage_required") is not True:
-            errors.append(f"both remaining did not give a No Result that stages again (466.3.d.1): {rr.get('reason_code')} {rr.get('next_timing_state', {}).get('combat', {}).get('result')}")
+            errors.append(f"both remaining did not give a No Result that stages again (468.3.d.1): {rr.get('reason_code')} {rr.get('next_timing_state', {}).get('combat', {}).get('result')}")
         else:
             reclosed = close_combat(rr["next_timing_state"], rr["next_effect_state"])
             if not reclosed.get("committed") or reclosed["trace"].get("restage_required") is not True or reclosed["next_effect_state"]["battlefields"]["bf1"].get("contested") is not True:
@@ -158,7 +158,7 @@ def main() -> int:
             else:
                 staged_again = reclosed["next_timing_state"].get("combat") or {}
                 if staged_again.get("status") != "staged" or staged_again.get("restaged_from") != rr["next_timing_state"]["combat"]["combat_id"] or staged_again.get("triggered_identities") != {"attacker": [], "defender": []}:
-                    errors.append(f"466.3.d.1: closing a both-remain No Result did not stage a new Combat with a fresh identity: {staged_again}")
+                    errors.append(f"468.3.d.1: closing a both-remain No Result did not stage a new Combat with a fresh identity: {staged_again}")
                 if next_procedure(reclosed["next_timing_state"]).get("discretionary_actions_allowed") is not False:
                     errors.append("after the restage the state allowed discretionary actions before the Combat opens")
                 again = open_combat(reclosed["next_timing_state"], reclosed["next_effect_state"])

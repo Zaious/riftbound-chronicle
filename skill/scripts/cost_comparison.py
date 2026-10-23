@@ -12,7 +12,7 @@ three of them and they routinely disagree:
   payment_receipt  what was actually paid, including a Repeat cost paid N
                    times and an optional cost declined.
 
-The Core Rules 2026-07-16 define all three quantities (356, 357) but never
+The Core Rules (2026-07-16 and 2026-10-09 alike) define all three quantities (356, 357) but never
 define which one the phrase "costs no more than" reads. Nothing in this module
 picks for a card. A limit that does not name its basis is refused, and a card
 mapping - which is service data, not engine data - supplies it along with the

@@ -5,8 +5,8 @@
   families, Cleanup step 5 (Core 323, "Recall all Unattached non-Unit Gear…")
   on the P3 attachment and facedown topology, and free-for-all play for three
   and four players.
-- Rules baseline: English Core Rules 2026-07-16, especially 196, 316–324, 429,
-  431.2.c, 488, 811.
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3), especially 196, 316–324, 430,
+  432.2.c, 490, 811.
 - Not decided here: team play, teammate scoring and team rewards, which stay
   unsupported; and the clause-grammar compiler, which is P7 (ADR-0016).
 
@@ -56,8 +56,8 @@ Three actions, one working state — the same one steps 4 and 8 already act on,
 so the Cleanup stays one atomic run:
 
 1. every non-Unit Gear and non-Unit Rune at a Battlefield that is **not
-   attached** to anything is Recalled (429) — an attached one is not, because
-   its location is its Top-Most card's (434.4);
+   attached** to anything is Recalled (430) — an attached one is not, because
+   its location is its Top-Most card's (435.4);
 2. every Permanent and Rune in a Base that is not its controller's is
    Recalled to the controller's own Base;
 3. every Hidden card at a Battlefield whose controller is not the

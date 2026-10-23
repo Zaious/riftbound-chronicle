@@ -18,7 +18,7 @@ Must hold:
   - visibility is two questions: the fact is public, the identity is private
     only while the card is hidden at both ends. A draw is private to the
     drawer, a discard out of the hand is public in the Trash, and the look /
-    reveal family's own Core 424 audience wins over both;
+    reveal family's own Core 425 audience wins over both;
   - `redact_event` hands a non-viewer the occurrence without the card;
   - the whole card-program corpus derives events with no coverage hole: every
     instruction that was performed emits at least one event, and every object
@@ -193,7 +193,7 @@ def main() -> int:
     if [e["kind"] for e in looked["events"]] != ["looked_at", "looked_at"]:
         errors.append(f"a look did not emit one event per card seen: {[e['kind'] for e in looked['events']]}")
     elif any(e["visibility"] != {"fact": "public", "identity": ["p1"]} for e in looked["events"]):
-        errors.append("a look is not a public fact with a private card (Core 424.1)")
+        errors.append("a look is not a public fact with a private card (Core 425.1)")
     elif any(e["location_before"] != e["location_after"] for e in looked["events"]):
         errors.append("looking at the top of the deck moved the cards")
 

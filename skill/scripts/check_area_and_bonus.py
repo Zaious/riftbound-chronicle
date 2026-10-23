@@ -16,7 +16,7 @@ Must hold:
   - Bonus Damage: the controller's sources add once to their own spells
     only; a location source adds only to units at that Battlefield; two
     sources sum once (714); each affected unit gets it separately (715.2);
-    reduce_damage sees the total including Bonus (437.1.a.1); a source off
+    reduce_damage sees the total including Bonus (438.1.a.1); a source off
     the board contributes nothing; heal is untouched; unknown scope →
     unsupported; non-positive amount → invalid_input;
   - determinism, purity, engine-check wrapping.
@@ -157,7 +157,7 @@ def main() -> int:
     shielded["replacement_effects"] = [{"replacement_id": "shield", "controller": "p2", "source_object": "u2", "mode": "reduce_damage", "event_op": "deal_damage", "optional": False, "uses_remaining": None, "prevent_remaining": 1, "target_object_id": "u2"}]
     reduced = apply_program(shielded, program("bolt", {"op": "deal_damage", "object_id": "u2", "amount": 2, "effect_id": "dmg"}))
     if not reduced.get("committed") or reduced["next_state"]["objects"]["u2"]["damage"] != 2 or ev(reduced).get("outcome") != "replaced_modified_applied":
-        errors.append(f"Prevent did not see the total including Bonus (437.1.a.1): {ev(reduced).get('outcome')} {reduced['next_state']['objects']['u2']['damage'] if reduced.get('committed') else reduced.get('reason')}")
+        errors.append(f"Prevent did not see the total including Bonus (438.1.a.1): {ev(reduced).get('outcome')} {reduced['next_state']['objects']['u2']['damage'] if reduced.get('committed') else reduced.get('reason')}")
     healed = apply_program(fiery, program("mend", {"op": "heal_damage", "object_id": "u1", "amount": 1, "effect_id": "h"}))
     if healed["next_state"]["objects"]["u1"]["damage"] != 0 or "bonus_damage" in ev(healed):
         errors.append("Bonus Damage touched a heal")

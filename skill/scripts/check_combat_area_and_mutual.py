@@ -15,7 +15,7 @@ Must hold:
   - "They deal damage equal to their Mights to each other" (Gentlemen's
     Duel): both Units revalidated, both rules-facing Mights snapshotted
     before either Deal, two Deal events as one action with the Units as
-    sources and their controllers responsible (417.6.b.3–4); no spell-scoped
+    sources and their controllers responsible (418.6.b.3–4); no spell-scoped
     Bonus Damage; a Prevent on one Unit replaces that Deal only; a Might
     reading 0 deals nothing; an illegal Unit or the same Unit twice skips
     the pair; deferred choices need their target_selection; not Combat
@@ -119,7 +119,7 @@ def main() -> int:
     fiery["damage_modifiers"] = [{"modifier_id": "annie-fiery", "source_object": "g1", "controller": "p1", "amount": 1, "scope": {"kind": "controller_sources"}}]
     no_bonus = apply_program(fiery, program("duel", DUEL))
     if not no_bonus.get("committed") or no_bonus["next_state"]["objects"]["u2"]["damage"] != 3 or no_bonus["next_state"]["objects"]["u1"]["damage"] != 5:
-        errors.append("spell-scoped Bonus Damage reached Unit-sourced damage (417.6.b.3)")
+        errors.append("spell-scoped Bonus Damage reached Unit-sourced damage (418.6.b.3)")
     shielded = copy.deepcopy(plain)
     shielded["replacement_effects"] = [{"replacement_id": "guard", "controller": "p2", "source_object": "u2", "mode": "reduce_damage", "event_op": "deal_damage", "optional": False, "uses_remaining": None, "prevent_remaining": 1, "target_object_id": "u2"}]
     prevented = apply_program(shielded, program("duel", DUEL))

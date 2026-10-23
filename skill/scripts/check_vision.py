@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Regression gate for Vision (Core 817; 436).
+"""Regression gate for Vision (Core 817; 437).
 
     817.1.b  short for "When this is played, predict."
     817.1.c  it triggers when its permanent enters the Board
     817.2.a  the player chooses to recycle or not
     817.3    Vision is a characteristic
-    436.1    Predict with no number is Predict 1
+    437.1    Predict with no number is Predict 1
 
 Must hold, through the real play transaction, play completion and resolution:
   - a Unit with Vision played to its Base: its play completion schedules one Vision
@@ -146,7 +146,7 @@ def main() -> int:
     if errors:
         print("FAILED: Vision checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: a Vision Unit's play completion schedules one trigger bound to the engine's Predict 1 (817.1.b-c, 436.1); "
+    print("OK: a Vision Unit's play completion schedules one trigger bound to the engine's Predict 1 (817.1.b-c, 437.1); "
           "recycling or keeping the top card is the controller's private choice (817.2.a); a Unit without Vision, a "
           "forged program and a missing production are all caught.")
     return 0

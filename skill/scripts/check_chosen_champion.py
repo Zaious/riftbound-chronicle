@@ -5,7 +5,7 @@ an EMPTY Champion Zone.
 
 "you may return your Chosen Champion from your trash to your Champion Zone if it is empty." Must hold,
 through apply_program:
-  - Core 103.2.a.3: the chosen card and any Champion Unit with its name are the Chosen Champion; a unit
+  - Core 103.3.a.3: the chosen card and any Champion Unit with its name are the Chosen Champion; a unit
     of that name that is not a Champion Unit, a Champion Unit of another name, and a card in the
     opponent's trash are not legal targets;
   - with two copies in the trash the program stops for its controller's choice (a target, the trash is

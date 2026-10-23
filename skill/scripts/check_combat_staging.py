@@ -126,10 +126,10 @@ def main() -> int:
     uncontested = contested_board(); uncontested["battlefields"]["bf1"].pop("contested"); uncontested["battlefields"]["bf1"].pop("contested_by")
     # two opposing players' Units at a Battlefield without Contested is not a reachable board
     # (the arrival applies Contested, 190.3.a.1): the validator refuses it and staging refuses
-    # it as invalid input, so such a board never stages a Combat (323.9)
+    # it as invalid input, so such a board never stages a Combat (323.8)
     refused_uncontested = stage_combat(quiet, uncontested)
     if not any("not contested (Core 190.3.a)" in e for e in validate_state(uncontested)) or refused_uncontested.get("committed") or refused_uncontested.get("valid") is not False:
-        errors.append(f"a Battlefield without Contested was not refused before staging (190.3.a, 323.9): {refused_uncontested.get('reason')}")
+        errors.append(f"a Battlefield without Contested was not refused before staging (190.3.a, 323.8): {refused_uncontested.get('reason')}")
     busy = fixture(priority="p2", items=[item("spell-0", "p2", "spell", "default")])
     if stage_combat(busy, board).get("reason_code") != "combat_requires_quiet_cleanup_boundary":
         errors.append("staging ran with a chain open")
@@ -168,7 +168,7 @@ def main() -> int:
             errors.append(f"triggered identities not recorded: {rec['triggered_identities']}")
         sched = armed_open["next_timing_state"]["chain"]["items"]
         if sched[0].get("batch_sequence") != 0 or sched[1].get("batch_sequence") != 2:
-            errors.append("the attacker's batch does not precede the defender's (464.2.e.1)")
+            errors.append("the attacker's batch does not precede the defender's (466.2.d.1)")
     collide = copy.deepcopy(armed); collide["objects"]["u1"]["attack_triggers"].append(trigger("u1-attack-2", "p1", "u1"))
     collide_staged = stage_combat(quiet, collide)
     ask_order = open_combat(collide_staged["next_timing_state"], collide) if collide_staged.get("committed") else {}
@@ -189,18 +189,18 @@ def main() -> int:
         errors.append(f"a Combat whose participants changed after staging still opened: {gone.get('reason_code')}")
     restaged = stage_combat(staged_timing, drifted)
     if not restaged.get("committed") or "combat" in restaged["next_timing_state"]:
-        errors.append("re-staging after the participants left did not clear the stale staged record (461.2)")
+        errors.append("re-staging after the participants left did not clear the stale staged record (463.2)")
     # showdowns: existing at this battlefield keeps Focus; elsewhere blocks
     showdown_here = fixture(priority="p2", showdown=True, focus="p2"); showdown_here["showdown"]["kind"] = "non_combat"; showdown_here["showdown"]["battlefield"] = "bf1"
     here_staged = stage_combat(showdown_here, board)
     here_open = open_combat(here_staged["next_timing_state"], board) if here_staged.get("committed") else {}
     if not here_open.get("committed") or here_open["next_timing_state"]["showdown"] != {"active": True, "kind": "combat", "focus": "p2", "battlefield": "bf1"} or here_open["trace"]["opened_with"] != "existing_showdown":
-        errors.append(f"an existing Showdown at the Battlefield did not keep its Focus (464.2.c.1.b): {here_open.get('reason')} {here_open.get('next_timing_state', {}).get('showdown')}")
+        errors.append(f"an existing Showdown at the Battlefield did not keep its Focus (466.2.c.1.b): {here_open.get('reason')} {here_open.get('next_timing_state', {}).get('showdown')}")
     showdown_elsewhere = copy.deepcopy(showdown_here); showdown_elsewhere["showdown"]["battlefield"] = "bf2"
     elsewhere_state = copy.deepcopy(two)
     elsewhere_staged = stage_combat(showdown_elsewhere, elsewhere_state)
     if not elsewhere_staged.get("committed") or elsewhere_staged["next_timing_state"].get("combat", {}).get("battlefield") != "bf2":
-        errors.append(f"during a Showdown, staging did not restrict itself to the Showdown's Battlefield (323.14): {elsewhere_staged.get('reason')}")
+        errors.append(f"during a Showdown, staging did not restrict itself to the Showdown's Battlefield (323.13): {elsewhere_staged.get('reason')}")
     stale_record = copy.deepcopy(staged_timing); stale_record["showdown"] = {"active": True, "kind": "non_combat", "focus": "p2", "battlefield": "bf2"}; stale_record["priority"] = "p2"
     if open_combat(stale_record, board).get("reason_code") != "showdown_elsewhere":
         errors.append("a Showdown at another Battlefield did not block opening")

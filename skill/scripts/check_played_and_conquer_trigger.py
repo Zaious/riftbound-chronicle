@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """One Unit ability, two trigger conditions of different kinds: "When I'm played and when I conquer".
 
-A Play Effect (Core 383.4.a, 419.4.a: it triggers when the act of playing the card is completed by
+A Play Effect (Core 383.4.a, 420.4.a: it triggers when the act of playing the card is completed by
 its resolution) and a Conquer Effect (Core 383.4.c, 383.4.c.2.a: the Unit is present at the
-Battlefield its controller Conquers, 469.1) - one ability. The clause grammar lowers it to the
+Battlefield its controller Conquers, 471.1) - one ability. The clause grammar lowers it to the
 SAME descriptor, the same trigger_id, in play_triggers and conquer_triggers. Held here:
 
   lowering   both fields carry one identical descriptor each; "When you play me" alone still

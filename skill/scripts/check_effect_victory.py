@@ -13,7 +13,7 @@ Must hold:
   T2  six units there: the trigger is not scheduled at all (not "scheduled and doing nothing")
   T3  scheduled with seven, then units leave before it resolves: it still resolves and p1 still wins (the condition
       is the trigger's, not the effect's)
-  T4  scheduled, then countered (removed from the Chain, Core 425.1): no terminal state, nothing happens
+  T4  scheduled, then countered (removed from the Chain, Core 426.1): no terminal state, nothing happens
   T5  units of p2 there do not count toward p1's seven
   T6  after the win the snapshot is frozen: a further procedure is refused as game_over (Core 196)
   S   shapes: a condition on a non-hold trigger, a condition of another kind, a win_game with no player - refused

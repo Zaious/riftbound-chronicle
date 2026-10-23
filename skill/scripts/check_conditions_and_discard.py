@@ -20,7 +20,7 @@ Must hold:
     selection outside the hand or by another player is illegal; a stale
     identity is invalid_input; a short hand discards what it has
     (completion partial);
-  - "then" is sequence, not a condition (Core 422.4, Undercover Agent's
+  - "then" is sequence, not a condition (Core 423.4, Undercover Agent's
     "Discard 2, then draw 2"): an empty hand ignores the discard and still
     draws 2, a one-card hand discards 1 and still draws 2, and the draw
     carries no predicate;
@@ -182,20 +182,20 @@ def main() -> int:
         errors.append(f"a whole-hand discard did not proceed without a decision: {forced.get('reason') or forced.get('errors')} {ev(forced)}")
     short = apply_program(hand2, program("d3", {"op": "discard", "player": "p1", "count": 3, "effect_id": "d"}))
     if not short.get("committed") or ev(short).get("completion") != "partial" or ev(short).get("applied_count") != 2:
-        errors.append(f"a short hand did not discard what it had as partial (422.4): {ev(short)}")
-    # --- "then" is sequence, not a condition (Core 422.4) ------------------------------------
-    # Core 422.4's own example is Undercover Agent, "Discard 2, then draw 2": with no cards in
+        errors.append(f"a short hand did not discard what it had as partial (423.4): {ev(short)}")
+    # --- "then" is sequence, not a condition (Core 423.4) ------------------------------------
+    # Core 423.4's own example is Undercover Agent, "Discard 2, then draw 2": with no cards in
     # hand the whole discard instruction is ignored, and the draw of 2 happens however many
     # cards were discarded. A bare "then" carries no backward reference, so it is not a
     # Core 359.3.e.14 linked instruction and the draw takes no predicate. This fixture used to
     # put an action_performed predicate on exactly this pattern and assert the draw was
-    # skipped - the opposite of 422.4 (corrected 2026-09-19).
+    # skipped - the opposite of 423.4 (corrected 2026-09-19).
     undercover = program("undercover-agent", {"op": "discard", "player": "p1", "count": 2, "effect_id": "d"},
                          {"op": "draw", "player": "p1", "count": 2, "effect_id": "then"})
     empty = apply_program(state, undercover)  # base_state: p1's hand is empty, main deck c1, c2
     if not empty.get("committed") or ev(empty).get("outcome") != "no_op" or ev(empty, 1).get("outcome") != "applied" \
             or len(empty["next_state"]["players"]["p1"]["zones"]["hand"]) != 2:
-        errors.append(f"an empty-handed 'Discard 2, then draw 2' did not still draw 2 (Core 422.4): "
+        errors.append(f"an empty-handed 'Discard 2, then draw 2' did not still draw 2 (Core 423.4): "
                       f"{ev(empty).get('outcome')} / {ev(empty, 1).get('outcome')}")
     one = copy.deepcopy(state)
     one["players"]["p1"]["zones"]["main_deck"].remove("c1"); one["players"]["p1"]["zones"]["hand"].append("c1")
@@ -203,7 +203,7 @@ def main() -> int:
     short_then = apply_program(one, undercover)  # one card in hand: discard 1, the rest ignored, still draw 2
     if not short_then.get("committed") or ev(short_then).get("completion") != "partial" or ev(short_then, 1).get("outcome") != "applied" \
             or len(short_then["next_state"]["players"]["p1"]["zones"]["hand"]) != 2:
-        errors.append(f"a one-card 'Discard 2, then draw 2' did not discard 1 and draw 2 (Core 422.4): "
+        errors.append(f"a one-card 'Discard 2, then draw 2' did not discard 1 and draw 2 (Core 423.4): "
                       f"{ev(short_then).get('completion')} / {ev(short_then, 1).get('outcome')}")
 
     # --- a real linked instruction: "if you do" (Core 359.3.e.14.b) --------------------------
@@ -237,7 +237,7 @@ def main() -> int:
     if errors:
         print("FAILED: conditions / discard checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: the named condition reads the earlier instruction's legal referent and its current location, counts only the controller's own units, and fails as a skipped instruction; only a completed Move raises move triggers; discard is the player's private card_selection — forced when the whole hand goes, stopped without leaking the hand otherwise, illegal outside the hand or by another player, partial on a short hand; 'then' is sequence (an empty-handed 'Discard 2, then draw 2' still draws 2, Core 422.4) while a real linked 'If you do, draw 1' is skipped when nothing was discarded (Core 359.3.e.14.b).")
+    print("OK: the named condition reads the earlier instruction's legal referent and its current location, counts only the controller's own units, and fails as a skipped instruction; only a completed Move raises move triggers; discard is the player's private card_selection — forced when the whole hand goes, stopped without leaking the hand otherwise, illegal outside the hand or by another player, partial on a short hand; 'then' is sequence (an empty-handed 'Discard 2, then draw 2' still draws 2, Core 423.4) while a real linked 'If you do, draw 1' is skipped when nothing was discarded (Core 359.3.e.14.b).")
     return 0
 
 

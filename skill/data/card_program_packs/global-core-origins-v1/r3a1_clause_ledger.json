@@ -5,8 +5,8 @@
   "inventory_manifest_id": "global-core-origins-v1-inventory-draft",
   "sources": {
     "core": {
-      "source_id": "core-rules-2026-07-16",
-      "version": "2026-07-16",
+      "source_id": "core-rules-2026-10-09",
+      "version": "2026-10-09",
       "kind": "core_rules"
     },
     "errata": {
@@ -65,50 +65,50 @@
             {
               "locator": "Core 355.5",
               "gist": "Choices of specific Game Objects are made in this step of playing.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.8",
               "gist": "Every target needs a valid choice before the spell or ability can go on the Chain.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.9.b",
               "gist": "A target must satisfy every restriction the text puts on it (the rule's example is a unit 'at a battlefield').",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.10.b",
               "gist": "In 'kill a unit at a battlefield' the unit is the target; the battlefield only restricts it.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 359.3.e.5",
               "gist": "Targets gone illegal by resolution are left untouched by the spell.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 417.1.b",
+              "locator": "Core 418.1.b",
               "gist": "Damage dealt to a Unit is marked on it.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 417.6.a",
+              "locator": "Core 418.6.a",
               "gist": "With no source named, the effect doing the dealing counts as the source.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
@@ -148,43 +148,43 @@
             {
               "locator": "Core 355.4",
               "gist": "A spell or ability that Moves Units picks a legal destination for each Move it will make.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.4.a",
               "gist": "A legal Move destination is a Location the Units may be in, other than where they already are.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.13",
               "gist": "'Up to N' or 'any number' lets the player pick anything from zero to the limit.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 446.3.c",
+              "locator": "Core 448.3.c",
               "gist": "A Move does not go on the Chain and cannot be responded to.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 449.1",
+              "locator": "Core 451.1",
               "gist": "Limits on where a Move may go come from whatever caused the Move.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 453",
+              "locator": "Core 455",
               "gist": "A finished Move is followed by a Cleanup.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -219,29 +219,29 @@
             {
               "locator": "Core 355.5",
               "gist": "Choices of specific Game Objects are made in this step of playing.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.9.b",
               "gist": "A target must meet the criteria the text states (the rule's example is a unit its player controls).",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 359.3.e.2",
               "gist": "A target that no longer fits the spell's targeting requirements is illegal at resolution.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 135.2.e.3",
               "gist": "(Might modifier accounting, as effect_ir already cites for modify_might)",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -264,22 +264,22 @@
             {
               "locator": "Core 355.5",
               "gist": "Choices of specific Game Objects are made in this step of playing.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.16",
               "gist": "Choices here may not force an illegal choice or action later in the process, unless there is no alternative.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 359.3.e.7",
               "gist": "An instruction whose every target is Invalid or Unavailable when resolution begins does not execute.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -306,48 +306,48 @@
           "implemented_ops": [],
           "targets": true,
           "decision_point": "at_play",
-          "rationale": "targeted choice with two restrictions; returning to hand is a zone change, not a Move (446.2), and the object becomes new (124)",
+          "rationale": "targeted choice with two restrictions; returning to hand is a zone change, not a Move (448.2), and the object becomes new (124)",
           "locators": [
             {
               "locator": "Core 355.9.b",
               "gist": "A target must meet the criteria the text states (the rule's example is a Might threshold).",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 359.3.e.4",
               "gist": "A unit chosen as having 3 Might or less stops being legal if its Might goes above 3 or it stops being a unit.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 446.2",
+              "locator": "Core 448.2",
               "gist": "Changing zones is not, by itself, a Move.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 124",
               "gist": "An object entering or leaving a Non-Board Zone is tracked as a new object.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 124.1",
               "gist": "That zone change drops every Temporary Modification on it.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 056",
               "gist": "A card never goes to a non-Board zone of a player other than its owner.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -379,36 +379,36 @@
             {
               "locator": "Core 355.10.c",
               "gist": "The rule's example: the 'choose a friendly unit' that precedes a replacement effect is a target, because the choice is not part of the replacement.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.5",
               "gist": "Choices of specific Game Objects are made in this step of playing.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 359.3.e.5",
               "gist": "Instructions tied to an illegal target are not followed.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 455",
+              "locator": "Core 457",
               "gist": "A Recall puts a Permanent into its Base from anywhere, and is not a Move.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 456.1",
+              "locator": "Core 458.1",
               "gist": "Recalls do not trigger abilities that watch for Moves.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
@@ -449,29 +449,29 @@
             {
               "locator": "Core 355.5",
               "gist": "Choices of specific Game Objects are made in this step of playing.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.10.b",
               "gist": "Only the unit is targeted; 'at a battlefield' restricts which unit.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 359.3.e.2",
               "gist": "At resolution a target is illegal once it fails the targeting requirements or has gone to or come from a Non-Board Zone.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 417.1.b",
+              "locator": "Core 418.1.b",
               "gist": "Damage dealt to a Unit is marked on it.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -499,83 +499,83 @@
           ],
           "targets": false,
           "decision_point": "at_play",
-          "rationale": "355.1.a the choice to pay an optional additional cost is made at play; 355.10.c a cost does not target; 356.2.b/357.2 paid in step 4; 414.4 an exhausted unit cannot pay it",
+          "rationale": "355.1.a the choice to pay an optional additional cost is made at play; 355.10.c a cost does not target; 356.2.b/357.2 paid in step 4; 415.4 an exhausted unit cannot pay it",
           "locators": [
             {
               "locator": "Core 355.1.a",
               "gist": "Deciding whether to pay an Optional Additional Cost happens in this step.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.10.c",
               "gist": "The rule's example: an additional cost that kills a friendly unit targets nothing.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 204.2.a",
               "gist": "Additional Costs are paid on top of the base cost to finalize the spell or ability.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 356.2.b.1",
               "gist": "Optional Costs are paid only if chosen in step 2; their wording pairs 'as an additional cost' with 'may'.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 356.4.f.1",
               "gist": "An optional additional cost counts as paid once the player chose to pay it, whatever amount was actually paid.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 357.2",
               "gist": "Non-standard costs totalled in step 3 are paid as well, in any order.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 357.2.a",
               "gist": "A cost replaced by another event still counts as paid.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 414.4",
+              "locator": "Core 415.4",
               "gist": "The rule's example: a friendly unit that is already exhausted cannot be exhausted to pay the additional cost, so that cost goes unpaid.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 358.2",
               "gist": "Confirm every cost was paid.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 358.5",
               "gist": "If a check fails, everything done in the process is undone and the action cancelled.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 205",
               "gist": "A resource-paying instruction with no linked Effect is not a Cost.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -602,41 +602,41 @@
           "implemented_ops": [],
           "targets": false,
           "decision_point": "none",
-          "rationale": "430.1 channel takes the top rune (no choice); 430.2 the effect specifies entry state; 430.3 channel as many as possible",
+          "rationale": "431.1 channel takes the top rune (no choice); 431.2 the effect specifies entry state; 431.3 channel as many as possible",
           "locators": [
             {
-              "locator": "Core 430.1",
+              "locator": "Core 431.1",
               "gist": "Channel: take Runes from the top of the Rune Deck and put them onto the board.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 430.2",
+              "locator": "Core 431.2",
               "gist": "The rule's example: 'Channel 1 rune exhausted' puts the top rune onto the board exhausted instead of ready.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 430.3",
+              "locator": "Core 431.3",
               "gist": "Too few runes in the Rune Deck: channel all that are there.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 430.5",
+              "locator": "Core 431.5",
               "gist": "The rule's example pairs a two-rune channel with a draw if fewer than two could be channeled.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 161.1.a",
               "gist": "A rune is not a Permanent, even though it stays on the Board until Recycled or removed.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -668,36 +668,36 @@
             {
               "locator": "Core 355.9.a",
               "gist": "The rule's example: recycling a unit from your trash targets that card.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.10.a",
               "gist": "A unit card in your trash can be a target because the trash is Public.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.10.a.1",
               "gist": "Public zones: Trashes, Bases, Battlefield Zones, Facedown Zones, and the Legend and Champion Zones.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 359.3.e.2",
               "gist": "A target that has entered or left a Non-Board Zone is illegal at resolution.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 108.2.c",
               "gist": "Trash contents have no order.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -727,55 +727,55 @@
           ],
           "targets": false,
           "decision_point": "at_resolution",
-          "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
+          "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 437 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
           "locators": [
             {
               "locator": "Core 817.1.b",
               "gist": "Vision stands for a trigger that predicts when the card is played.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 817.1.c",
               "gist": "It triggers on the permanent entering the Board.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 817.2.a",
               "gist": "With several Vision instances, the recycle choice is made separately for each.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 436.1",
+              "locator": "Core 437.1",
               "gist": "To Predict is to look at the Main Deck's top card and decide whether to Recycle it.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 436.4",
+              "locator": "Core 437.4",
               "gist": "Predicting more cards than the Main Deck holds predicts all that remain.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 128.3",
               "gist": "Secret: nobody may look at the card's face.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.5.b",
               "gist": "Choices for permanents' Triggered Abilities are not made here, even when playing the item is what triggers them.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -804,55 +804,55 @@
           ],
           "targets": false,
           "decision_point": "at_resolution",
-          "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 436 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
+          "rationale": "817.1.b Vision is a triggered ability short for 'When this is played, predict'; 437 the recycle choice is made as Predict executes; the top card is Secret (128.3) and does not target (355.10.a)",
           "locators": [
             {
               "locator": "Core 817.1.b",
               "gist": "Vision stands for a trigger that predicts when the card is played.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 817.1.c",
               "gist": "It triggers on the permanent entering the Board.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 817.2.a",
               "gist": "With several Vision instances, the recycle choice is made separately for each.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 436.1",
+              "locator": "Core 437.1",
               "gist": "To Predict is to look at the Main Deck's top card and decide whether to Recycle it.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
-              "locator": "Core 436.4",
+              "locator": "Core 437.4",
               "gist": "Predicting more cards than the Main Deck holds predicts all that remain.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 128.3",
               "gist": "Secret: nobody may look at the card's face.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             },
             {
               "locator": "Core 355.5.b",
               "gist": "Choices for permanents' Triggered Abilities are not made here, even when playing the item is what triggers them.",
-              "source_id": "core-rules-2026-07-16",
-              "version": "2026-07-16",
+              "source_id": "core-rules-2026-10-09",
+              "version": "2026-10-09",
               "kind": "core_rules"
             }
           ],
@@ -864,5 +864,5 @@
       ]
     }
   ],
-  "content_hash": "sha256:c86c9850f15961c53aec9ba33102663e518f7da1fef7960d3e919d6290b8e161"
+  "content_hash": "sha256:9ec4c3e70f787a01f4a9399b475f0d3c2b639b97d0808ecc4a00058377b8dd72"
 }

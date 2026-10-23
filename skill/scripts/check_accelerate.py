@@ -3,8 +3,8 @@
 
 The rule, cited by locator and said in our words:
 
-    805.1    Accelerate is an ability of Units.
-    805.1.a  it offers an optional additional cost of [1][C] while the unit is
+    805.1.a    Accelerate is an ability of Units.
+    805.1.b  it offers an optional additional cost of [1][C] while the unit is
              played; a unit whose cost was paid enters ready.
              The Power portion can be paid only with a Power matching one of
              the unit's Domains; with no Domain, any Domain's Power.

@@ -2,7 +2,7 @@
 """Regression gate for `cost-comparison.v1` (DP-93).
 
 "A spell that costs no more than X" has three possible referents and the Core
-Rules 2026-07-16 define none of them as *the* one. So this module's job is not
+Rules (2026-07-16 and 2026-10-09 alike) define none of them as *the* one. So this module's job is not
 to be right about the phrase - it is to make sure no answer is produced
 without saying which cost it read and on whose authority.
 

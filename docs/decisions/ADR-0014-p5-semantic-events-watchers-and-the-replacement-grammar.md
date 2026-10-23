@@ -5,10 +5,10 @@
   visibility, cross-object watchers, delayed triggers, per-turn counters and
   trigger multipliers, and the general replacement grammar with the Core
   ordering law.
-- Rules baseline: English Core Rules 2026-07-16, especially 124, 303.2,
-  319–324, 367–375, 383, 417–443.
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3), especially 124, 303.2,
+  319–324, 367–375, 383, 418–444.
 - Not decided here: multi-player and per-player simultaneous choices,
-  revealed-knowledge persistence, and the 323.7 Cleanup edges — Codex's G-2
+  revealed-knowledge persistence, and the 323.6 Cleanup edges — Codex's G-2
   ruling puts those in P6; the clause-grammar compiler is P7.
 
 ## Context
@@ -52,10 +52,10 @@ controller.
 Amendment (2026-09-24 / 2026-09-26): two scopes were added. `actor` matches
 the player who performed the event ("When you stun ..."); `player` matches
 the player the event happened to, the event's `player` field ("When you
-discard ..." is whose hand the card left, Core 422.1). A play also wakes
+discard ..." is whose hand the card left, Core 423.1). A play also wakes
 watchers: the costs it paid (a discard or recycle as a cost, what a cost
 instruction such as a Kill did, with a killed unit's own death triggers,
-Core 428.1.a.1.b) form one batch, and the play's own `played` event the next;
+Core 429.1.a.1.b) form one batch, and the play's own `played` event the next;
 several triggers of one player in a batch are that player's to order
 (Core 383.3.d), asked for as a `trigger_order` decision.
 
@@ -142,7 +142,7 @@ order.
 Declared unsupported: `event_kind_unknown`, `trigger_multiplier_depth`,
 replacement combinations outside the golden fixtures, and everything G-2
 assigned to P6 — multi-player choices, revealed-knowledge persistence and the
-323.7 Cleanup edges. `complete_game` and `complete_legality` stay false.
+323.6 Cleanup edges. `complete_game` and `complete_legality` stay false.
 
 ## Rejected alternatives
 

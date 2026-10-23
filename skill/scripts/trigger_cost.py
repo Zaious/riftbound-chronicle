@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""A triggered ability's base cost, paid as the ability is finalized (Core 204.3.a, 383.3.b).
+"""A triggered ability's base cost, paid as the ability is finalized (Core 204.1.c, 383.3.b).
 
 "[do X] to [do Y]" at the start of a triggered ability's effect - or right after the "you may"
 that opens it - is a cost within instructions that is taken as the ability's BASE cost (Core
-204.3.a, 383.3.b, 403.1.b.1). It is paid while the ability is finalized to the Chain (383.3.b.1,
+204.1.c, 383.3.b, 404.1.b.1). It is paid while the ability is finalized to the Chain (383.3.b.1,
 740.4.a.2), not as it resolves. A player may decline to pay it, and a cost a player cannot pay
 is not paid (Core 203.3); either way the ability leaves the Chain and never becomes a Finalized
-Chain Item (Core 404.2), which is not the ability being countered (404.2.a).
+Chain Item (Core 405.2), which is not the ability being countered (405.2.a).
 
 The program carries the cost as its first instruction, `trigger_base_cost` (effect_ir: its
 content hash covers the cost like any instruction). This module pays it with the play
 transaction's own machinery - determine_total_cost and _pay: Energy and Power (Core 357.1, with
-the Add window the payer confirms, 429.3), exhausting the ability's own source (a Legend from
+the Add window the payer confirms, 430.3), exhausting the ability's own source (a Legend from
 its Legend Zone, Core 174.8, or a permanent on the board), spending a buff from a unit its
 controller controls (Core 702.2.b, 702.2.b.1, 702.2.b.2) - plus recycling the ability's own
-source from its owner's trash (Core 416.1, 416.3; Ekko, Recurrent is 383.3.b's own example). It
+source from its owner's trash (Core 417.1, 417.3; Ekko, Recurrent is 383.3.b's own example). It
 writes the cost receipt the chain item keeps (cost_receipt.py) and returns the events the costs
-caused, for the watchers (a recycle as a cost is a recycle, Core 416.2.a).
+caused, for the watchers (a recycle as a cost is a recycle, Core 417.2.a).
 
 Nothing here decides whether to pay: finalize_trigger asks, and calls this only when the
 controller pays.
@@ -32,18 +32,18 @@ from effect_ir import (_recycle_batch, find_location, hash_value, object_identit
                        zone_class)
 
 BASE_COST_OP = "trigger_base_cost"
-RULES = ["Core 204.3.a", "Core 383.3.b", "Core 383.3.b.1", "Core 403.1.b.1", "Core 740.4.a.2"]
-DECLINE_RULES = ["Core 404.2", "Core 404.2.a", "Core 383.3.b.1"]
-UNPAYABLE_RULES = ["Core 203.3", "Core 404.2", "Core 404.2.a", "Core 383.3.b.1"]
+RULES = ["Core 204.1.c", "Core 383.3.b", "Core 383.3.b.1", "Core 404.1.b.1", "Core 740.4.a.2"]
+DECLINE_RULES = ["Core 405.2", "Core 405.2.a", "Core 383.3.b.1"]
+UNPAYABLE_RULES = ["Core 203.3", "Core 405.2", "Core 405.2.a", "Core 383.3.b.1"]
 # package 11: an opponent's Deflect on an object the ability chose, paid with its costs (Core 809.1.c, 809.1.d, 356.2.a.2)
-DEFLECT_RULES = ["Core 809.1.c", "Core 809.1.c.1", "Core 809.1.d", "Core 809.2", "Core 356.2.a.2", "Core 404.1"]
+DEFLECT_RULES = ["Core 809.1.c", "Core 809.1.c.1", "Core 809.1.d", "Core 809.2", "Core 356.2.a.2", "Core 405.1"]
 # play_transaction.PlayError reason codes that are a decision the payer still owes, not a refusal
 DECISION_CODES = {"add_window_confirmation_required", "resource_allocation_required", "card_selection_required",
                   "card_ordering_required"}
 
 
 class TriggerCostError(Exception):
-    """The cost was not paid. `kind`: unpayable (the ability leaves the Chain, 203.3 / 404.2),
+    """The cost was not paid. `kind`: unpayable (the ability leaves the Chain, 203.3 / 405.2),
     decision_required (the payer owes a choice first), invalid (malformed input) or refused."""
 
     def __init__(self, kind: str, reason_code: str, message: str, **extra: Any):
@@ -88,7 +88,7 @@ def _chosen_buff(state: dict[str, Any], item: dict[str, Any], decisions: dict[st
         raise TriggerCostError("decision_required", "cost_selection_required",
                                f"{controller} chooses which of {candidates} spends its buff to pay the cost",
                                decision_ids=[decision_id], decision_controller=controller, candidates=candidates,
-                               rule_locators=["Core 702.2.b", "Core 404.1"])
+                               rule_locators=["Core 702.2.b", "Core 405.1"])
     if entry["stage"] != "trigger_finalization":
         raise TriggerCostError("invalid", "decision_stage_mismatch",
                                f"{decision_id!r} was supplied for stage {entry['stage']!r}, not trigger_finalization")
@@ -123,7 +123,7 @@ def _source_is_me(state: dict[str, Any], item: dict[str, Any], *, where: str) ->
         if zone_class(location) != "board" and not in_legend_zone:
             raise TriggerCostError("unpayable", "cost_unpayable",
                                    f"{source!r} is at {location}, not on the board, so it cannot exhaust itself (Core 203.3)",
-                                   rule_locators=["Core 203.3", "Core 414.1"])
+                                   rule_locators=["Core 203.3", "Core 415.1"])
         recorded = item.get("source_identity")
         if recorded is not None and object_identity(state, source) != recorded:
             raise TriggerCostError("unpayable", "cost_unpayable",
@@ -134,7 +134,7 @@ def _source_is_me(state: dict[str, Any], item: dict[str, Any], *, where: str) ->
         if location != ("player", owner, "trash"):
             raise TriggerCostError("unpayable", "cost_unpayable",
                                    f"{source!r} is at {location}, not in its owner's trash, so 'recycle me' cannot be "
-                                   f"completed (Core 416.3, 203.3)", rule_locators=["Core 416.3", "Core 203.3"])
+                                   f"completed (Core 417.3, 203.3)", rule_locators=["Core 417.3", "Core 203.3"])
     return source
 
 
@@ -192,7 +192,7 @@ def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: d
             recycle_source = _source_is_me(working, item, where="trash")
         elif kind == "discard":
             # 2026-10-12 (package 11, Super Mega Death Rocket!): N cards of the paying player's hand, chosen as the
-            # ability is finalized (Core 383.3.b.1) - the play transaction's own discard payment (Core 422.1, 422.3)
+            # ability is finalized (Core 383.3.b.1) - the play transaction's own discard payment (Core 423.1, 423.3)
             additional.append({"cost_id": "trigger:discard", "mandatory": True,
                                "payment": {"kind": "discard", "amount": part["amount"]}})
         else:   # validate_program admits nothing else; a hand-built program is refused by name
@@ -225,11 +225,11 @@ def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: d
                            "objects": [recycle_source], "identities_before": {recycle_source: before},
                            "identities_after": sub["identities_after"], "order_decision": None,
                            "decided_by": "the ability's own source",
-                           "rule_locators": ["Core 357.2", "Core 416.1", "Core 416.3", "Core 124"]})
+                           "rule_locators": ["Core 357.2", "Core 417.1", "Core 417.3", "Core 124"]})
         components.append({"cost_id": "trigger:recycle-self", "kind": "recycle_self", "mandatory": True, "intent": None,
                            "requested": {"object_id": recycle_source}, "increases": [], "reductions": [],
                            "final": {"object_id": recycle_source}, "payment_refs": [{"event_id": event_id}],
-                           "paid": True, "rule_locators": ["Core 204.3.a", "Core 383.3.b", "Core 416.3"]})
+                           "paid": True, "rule_locators": ["Core 204.1.c", "Core 383.3.b", "Core 417.3"]})
     receipt = {
         "schema_version": RECEIPT_VERSION, "play_id": play_id, "actor": actor, "card": item.get("source_object"),
         "chain_item": item_id, "base": skeleton["base"], "after_base_modifications": skeleton["after_base_modifications"],

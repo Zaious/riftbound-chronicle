@@ -2,12 +2,12 @@
 """
 Gate: "When you kill a stunned enemy unit" (2026-09-27, Solari Shrine) - who is responsible for a kill.
 
-A trigger worded around "you" listens for the game actions its controller is responsible for (Core 411.4).
-A Kill instruction kills (428.5.b) and its controller performs it (411.1); a Unit that dies in a Cleanup
+A trigger worded around "you" listens for the game actions its controller is responsible for (Core 412.4).
+A Kill instruction kills (429.5.b) and its controller performs it (412.1); a Unit that dies in a Cleanup
 counts as killed by the last spell or ability to resolve before that Cleanup when that one damaged it, and
-the player who made that damage is responsible (428.5.c, 428.5.c.1); a Combat Cleanup's kills belong to the
-Combat Damage's sources and their controller (428.5.c.2). A game action performed by the game's own
-procedures is nobody's (411.2). Every `died` event now carries `responsible_player` and `was_stunned`
+the player who made that damage is responsible (429.5.c, 429.5.c.1); a Combat Cleanup's kills belong to the
+Combat Damage's sources and their controller (429.5.c.2). A game action performed by the game's own
+procedures is nobody's (412.2). Every `died` event now carries `responsible_player` and `was_stunned`
 (the unit as it was, like `was_buffed`); the watch scope `responsible` and the fact `object_was_stunned`
 read them, never guessing.
 
@@ -78,7 +78,7 @@ def resolution_cases(watch: dict) -> list[tuple[str, dict, int]]:
     out.append(("p1 kills an unstunned enemy unit", resolve(watcher(base_state(), watch), kill("u2")), 0))
     out.append(("p1 kills a stunned friendly unit", resolve(stunned(with_friend(watcher(base_state(), watch)), "u3"), kill("u3")), 0))
     out.append(("p2 kills its own stunned unit", resolve(stunned(watcher(base_state(), watch), "u2"), kill("u2"), controller="p2"), 0))
-    out.append(("p1's lethal damage to a stunned enemy (Cleanup, Core 428.5.c.1)",
+    out.append(("p1's lethal damage to a stunned enemy (Cleanup, Core 429.5.c.1)",
                 resolve(stunned(watcher(base_state(), watch), "u2"), deal("u2", 9)), 1))
     out.append(("p2's lethal damage to its own stunned unit",
                 resolve(stunned(watcher(base_state(), watch), "u2"), deal("u2", 9), controller="p2"), 0))
@@ -147,7 +147,7 @@ def main() -> int:
             errors.append(f"{label}: harness - u2 did not die")
     mine, theirs = combat_case(watch, "p1"), combat_case(watch, "p2")
     if len(mine) != 1 or theirs != []:
-        errors.append(f"the Combat Cleanup kill (Core 428.5.c.2): p1's watcher {mine}, p2's {theirs}")
+        errors.append(f"the Combat Cleanup kill (Core 429.5.c.2): p1's watcher {mine}, p2's {theirs}")
     if (turn := turn_cleanup_case(watch)) != []:
         errors.append(f"a Beginning Phase Cleanup kill was someone's: {turn}")
 
@@ -194,13 +194,13 @@ def main() -> int:
             watchers._filter_holds, watchers.watch_matches = real_filter, real_matches
         if not broken:
             errors.append(f"negative mutation not caught: {label}")
-    # the Cleanup attribution removed (resolution_bridge's 428.5.c.1 step undone before the watchers read the
+    # the Cleanup attribution removed (resolution_bridge's 429.5.c.1 step undone before the watchers read the
     # events): the lethal-damage case must stop firing
     real_schedule = watchers.schedule_live
 
     def schedule_without_attribution(state, events, **kw):
         return real_schedule(state, [{**e, "responsible_player": None} if e.get("kind") == "died"
-                                     and "Core 428.5.c.1" in (e.get("rule_locators") or []) else e for e in events], **kw)
+                                     and "Core 429.5.c.1" in (e.get("rule_locators") or []) else e for e in events], **kw)
 
     watchers.schedule_live = schedule_without_attribution
     try:
@@ -214,8 +214,8 @@ def main() -> int:
         print("FAILED: kill responsibility checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
     print("OK: 'When you kill a stunned enemy unit' lowers to a died watch, scope responsible, enemy, was stunned; p1's "
-          "Kill of a stunned enemy and p1's lethal damage to one (Cleanup, 428.5.c.1) and p1's attacker's Combat Damage "
-          "(428.5.c.2) schedule it; an unstunned enemy, a stunned friend, p2 killing its own, a death p1's program did "
+          "Kill of a stunned enemy and p1's lethal damage to one (Cleanup, 429.5.c.1) and p1's attacker's Combat Damage "
+          "(429.5.c.2) schedule it; an unstunned enemy, a stunned friend, p2 killing its own, a death p1's program did "
           "not damage, a Beginning Phase Cleanup, and p2's watcher on p1's combat kill do not; died events carry "
           "responsible_player and was_stunned; a missing responsibility is refused by name; three mutations caught.")
     return 0

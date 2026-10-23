@@ -25,7 +25,7 @@
       ],
       "properties": {
         "core": {
-          "const": "2026-07-16"
+          "const": "2026-10-09"
         },
         "faq_as_of": {
           "const": "2026-08-14"
@@ -63,7 +63,7 @@
       "required": [
         "victory_score"
       ],
-      "description": "ADR-0009 §1 / ADR-0010 §6: the Mode of Play facts scoring and the First Turn Process need (456.3, 483). Absent makes scoring unsupported; teams are not modelled; match is unsupported as a whole.",
+      "description": "ADR-0009 §1 / ADR-0010 §6: the Mode of Play facts scoring and the First Turn Process need (458.3, 485). Absent makes scoring unsupported; teams are not modelled; match is unsupported as a whole.",
       "properties": {
         "victory_score": {
           "type": "integer",
@@ -98,7 +98,7 @@
               }
             }
           },
-          "description": "Explicit First Turn Process facts (483.7) when mode.id does not supply them."
+          "description": "Explicit First Turn Process facts (485.7) when mode.id does not supply them."
         }
       }
     },
@@ -284,7 +284,7 @@
           "source_object": {
             "type": "string",
             "minLength": 1,
-            "description": "ADR-0011 §4: an activated ability on the chain names its source instead of a card (Core 402)."
+            "description": "ADR-0011 §4: an activated ability on the chain names its source instead of a card (Core 403)."
           },
           "ability_id": {
             "type": "string",
@@ -345,7 +345,7 @@
     },
     "reveals": {
       "type": "array",
-      "description": "ADR-0011 §3: look-at / reveal marks that last while a program runs (Core 424.3.a); the resolver clears them when it returns, so a committed state carries none unless a caller left them. Each is bound to the object's current identity and zone.",
+      "description": "ADR-0011 §3: look-at / reveal marks that last while a program runs (Core 425.3.a); the resolver clears them when it returns, so a committed state carries none unless a caller left them. Each is bound to the object's current identity and zone.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -402,7 +402,7 @@
     },
     "continuous_effects": {
       "type": "array",
-      "description": "ADR-0013 §1: the canonical continuous effects. Every modification of a characteristic lives here with its source identity, layer, timestamp, condition and duration; the legacy per-object and per-state families are translated at the input boundary and never read at runtime. Core 476-480.",
+      "description": "ADR-0013 §1: the canonical continuous effects. Every modification of a characteristic lives here with its source identity, layer, timestamp, condition and duration; the legacy per-object and per-state families are translated at the input boundary and never read at runtime. Core 478-482.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -484,19 +484,19 @@
               "ability",
               "arithmetic"
             ],
-            "description": "Core 477.1-477.3."
+            "description": "Core 479.2-479.4."
           },
           "sublayer": {
             "enum": [
               "increase",
               "decrease"
             ],
-            "description": "Core 477.3.a: increases apply before decreases."
+            "description": "Core 479.4.a: increases apply before decreases."
           },
           "timestamp": {
             "type": "integer",
             "minimum": 0,
-            "description": "Core 480: a relative comparison only; no rules text reads it."
+            "description": "Core 482: a relative comparison only; no rules text reads it."
           },
           "value": {
             "type": "object"
@@ -532,7 +532,7 @@
           },
           "passive": {
             "type": "boolean",
-            "description": "Core 477.3.b: a passive ability never snapshots its limit."
+            "description": "Core 479.4.b: a passive ability never snapshots its limit."
           }
         }
       }
@@ -647,7 +647,7 @@
         "points": {
           "type": "integer",
           "minimum": 0,
-          "description": "ADR-0009 §1: points gained by scoring (468, 471.1). Absent means 0."
+          "description": "ADR-0009 §1: points gained by scoring (468, 473.1). Absent means 0."
         },
         "scored_this_turn": {
           "type": "object",
@@ -658,7 +658,7 @@
               "type": "string"
             }
           },
-          "description": "turn_id -> battlefields this player scored that turn (470); only the current turn's entry is read."
+          "description": "turn_id -> battlefields this player scored that turn (472); only the current turn's entry is read."
         },
         "zones": {
           "$ref": "#/$defs/zones"
@@ -756,7 +756,7 @@
             "type": "integer",
             "minimum": 1
           },
-          "description": "Core 428.1 (package 5): turn id -> how many Units this player controlled when they died that turn; only the current turn's entry is kept."
+          "description": "Core 429.1 (package 5): turn id -> how many Units this player controlled when they died that turn; only the current turn's entry is kept."
         }
       }
     },
@@ -1168,7 +1168,7 @@
               }
             }
           },
-          "description": "ADR-0008 §5: granted characteristics bound to the identity they were granted to and to the Combat (this_combat, expires at 466.7.c) or turn (this_turn) they last for."
+          "description": "ADR-0008 §5: granted characteristics bound to the identity they were granted to and to the Combat (this_combat, expires at 468.7.c) or turn (this_turn) they last for."
         },
         "deflect_value": {
           "type": "integer",
@@ -1315,7 +1315,7 @@
         },
         "stunned": {
           "type": "boolean",
-          "description": "Core 423.1: a Stunned Unit contributes no Might to Combat Damage (423.1.b) but still needs its full Might in lethal damage (423.1.c)."
+          "description": "Core 424.1: a Stunned Unit contributes no Might to Combat Damage (424.1.b) but still needs its full Might in lethal damage (424.1.c)."
         },
         "identity": {
           "type": "string",
@@ -1347,7 +1347,7 @@
         "attached_to": {
           "type": "string",
           "minLength": 1,
-          "description": "ADR-0012 §4 / Core 434.1.b: the Top-Most card this card is attached to. The other direction is derived, never stored."
+          "description": "ADR-0012 §4 / Core 435.1.b: the Top-Most card this card is attached to. The other direction is derived, never stored."
         },
         "might_bonus": {
           "type": "integer",
@@ -1361,7 +1361,7 @@
             "reason",
             "battlefield"
           ],
-          "description": "Core 435.4.a: a detached Gear now at a Battlefield is Recalled by the next Cleanup; recorded here because that Cleanup step is not modelled yet.",
+          "description": "Core 436.4.a: a detached Gear now at a Battlefield is Recalled by the next Cleanup; recorded here because that Cleanup step is not modelled yet.",
           "properties": {
             "reason": {
               "const": "detached_gear_at_battlefield"
@@ -1378,15 +1378,15 @@
         },
         "empowered": {
           "type": "boolean",
-          "description": "Core 442.1: a binary state for an object on the board; an Empowered object cannot be Empowered again (441.1.b)."
+          "description": "Core 443.1: a binary state for an object on the board; an Empowered object cannot be Empowered again (442.1.b)."
         },
         "buffed": {
           "type": "boolean",
-          "description": "Core 426.1.b / 702: the Unit carries a Buff counter. A Unit never carries two."
+          "description": "Core 427.1.b / 702: the Unit carries a Buff counter. A Unit never carries two."
         },
         "effect_text": {
           "type": "object",
-          "description": "ADR-0013 §6 / Core 477.2: the abilities this card appends to its Top-Most card while attached. Maps an appendable trigger list to its descriptors; absent means the card appends nothing.",
+          "description": "ADR-0013 §6 / Core 479.3: the abilities this card appends to its Top-Most card while attached. Maps an appendable trigger list to its descriptors; absent means the card appends nothing.",
           "additionalProperties": {
             "type": "array",
             "minItems": 1,

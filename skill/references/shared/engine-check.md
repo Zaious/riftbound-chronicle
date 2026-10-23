@@ -186,11 +186,11 @@ a malformed declaration or a stale unit identity is `invalid_input`.
 `check_kind: control_step` wraps `battlefield_control.py`: `control-step
 <timing> <effect> --step resolve|stage_showdown|open_showdown|board_cleanup|
 scoring_step|victory_facts`. Supported scope names control resolution after a
-Combat or a Non-Combat Showdown (466.5, 348.2), Conquer scoring with the Final
+Combat or a Non-Combat Showdown (468.5, 348.2), Conquer scoring with the Final
 Point rule, Hold in the Scoring Step, Score triggers from modelled board
 sources, Non-Combat Showdown staging and opening, the board Cleanup steps
-323.6 / 323.11 / 323.11.a, and the victory facts. Unsupported and declared:
-team scoring, Hidden cards (466.5.c), Gear/Rune Recall in Cleanup (323.7),
+323.5 / 323.10 / 323.10.a, and the victory facts. Unsupported and declared:
+team scoring, Hidden cards (468.5.c), Gear/Rune Recall in Cleanup (323.6),
 point sources other than Conquer and Hold, "activate" of named triggers
 (383.4.g), the Beginning Phase state machine (the phase fact is supplied by
 the caller), the terminal state and Burn Out (G3).
@@ -205,7 +205,7 @@ ending with both players present (`showdown_participants_inconsistent`) and
 two non-controllers left after Contested removal
 (`contested_reapplication_ambiguous`) wrap as `unsupported`. `victory_check`
 in every trace and the `victory_facts` step report `threshold_met`,
-`strict_leader` and `tied_at_threshold` (472) without declaring a winner.
+`strict_leader` and `tied_at_threshold` (474) without declaring a winner.
 
 ## Turn cycle, terminal state and Cleanup (ADR-0010)
 
@@ -219,7 +219,7 @@ names the terminal state and its guard, the typed Start of Turn machine with
 319.2 Cleanup gating, the First Turn Process from the Mode of Play, Burn Out
 on Draw with its terminal bridge, and the atomic Cleanup with 322
 iterations. Unsupported and declared: Setup, the Match mode, teams, ready
-blockers, opponent or global phase watchers, 323.7, a multi-player
+blockers, opponent or global phase watchers, 323.6, a multi-player
 concession, the facedown reveal at game end.
 
 The effect kind names `burn_out_draw` and `randomization_receipt` in its

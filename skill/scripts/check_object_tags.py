@@ -7,7 +7,7 @@ that name them (133.8.a). The object carries them as `tags`, as printed ("Poro")
 through effect_ir.object_tags. condition.v1's controls_units takes an optional `tag`. "When you play
 me, if you control a Poro, buff me and draw 1." (Poro Herder) lowers to a play trigger whose
 condition is controls_units {count 1, tag Poro}: the conditional statement right after the trigger
-condition is part of it (Core 383.2.a.1), read as the play completes (419.4.a).
+condition is part of it (Core 383.2.a.1), read as the play completes (420.4.a).
 
 Must hold:
   - validation: tags a list of distinct non-empty strings; a condition tag a non-empty string; the

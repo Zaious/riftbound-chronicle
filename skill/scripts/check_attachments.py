@@ -6,23 +6,23 @@ leaves.
 
 Must hold:
   - attach links two board cards: the attached card takes the Top-Most card's
-    location (434.4) and keeps everything else — an exhausted Equipment stays
-    exhausted (434.5.a); attaching to a new host detaches it from the old one
-    (434.2.a); attaching to its current host is a no_op (434.2.b); attaching
+    location (435.4) and keeps everything else — an exhausted Equipment stays
+    exhausted (435.5); attaching to a new host detaches it from the old one
+    (435.2.a); attaching to its current host is a no_op (435.2); attaching
     to a card that is not on the board, to itself, or to a card that is
     itself attached is refused;
   - the Top-Most card's Might is modulated by every attached card's Might
     Bonus (159.1) and stops as soon as the card detaches;
-  - detach puts the card where its Top-Most card is (435.4); a detached Gear
-    that lands at a Battlefield records the Cleanup Recall (435.4.a) rather
+  - detach puts the card where its Top-Most card is (436.4); a detached Gear
+    that lands at a Battlefield records the Cleanup Recall (436.4.a) rather
     than moving early, and the same Gear detaching at a Base records none
-    (negative mutation); detaching an unattached card does nothing (435.1.a);
+    (negative mutation); detaching an unattached card does nothing (436.1.a);
   - a host that leaves the board for a non-board zone detaches to the last
-    board location it occupied (435.4.b) — killed, banished, returned to hand
+    board location it occupied (436.4.b) — killed, banished, returned to hand
     and recycled hosts all route through the one derivation, and the
     attachment never follows the host into the trash (negative mutation: the
     host itself does go there);
-  - a host that moves on the board carries its attachments (434.4);
+  - a host that moves on the board carries its attachments (435.4);
   - the program validator refuses a malformed attach or detach; the effect
     scope declares attachments and keeps nested attachments and Effect Text
     unsupported; the manifest cites both operations; determinism and purity.
@@ -74,7 +74,7 @@ def main() -> int:
         if find_location(after, "g1") != ("battlefield", "bf1", None):
             errors.append(f"the attached card did not take its Top-Most card's location: {find_location(after, 'g1')}")
         if after["objects"]["g1"]["exhausted"] is not True or ev(attached).get("not_a_move") is not True:
-            errors.append("attaching readied the Equipment or counted as a Move (434.5.a, 434.4)")
+            errors.append("attaching readied the Equipment or counted as a Move (435.5, 435.4)")
         if effective_might(after, "u1") != effective_might(state, "u1") + 2:
             errors.append(f"the Might Bonus did not reach the Top-Most card: {effective_might(after, 'u1')} vs {effective_might(state, 'u1')}")
         if validate_state(after):
@@ -109,9 +109,9 @@ def main() -> int:
     else:
         after = detached["next_state"]
         if find_location(after, "g1") != ("battlefield", "bf1", None):
-            errors.append(f"the detached card did not stay at its Top-Most card's location (435.4): {find_location(after, 'g1')}")
+            errors.append(f"the detached card did not stay at its Top-Most card's location (436.4): {find_location(after, 'g1')}")
         if after["objects"]["g1"].get("pending_recall") != {"reason": "detached_gear_at_battlefield", "battlefield": "bf1"}:
-            errors.append(f"a detached Gear at a Battlefield did not record the Cleanup Recall (435.4.a): {after['objects']['g1'].get('pending_recall')}")
+            errors.append(f"a detached Gear at a Battlefield did not record the Cleanup Recall (436.4.a): {after['objects']['g1'].get('pending_recall')}")
         if effective_might(after, "u1") != effective_might(state, "u1"):
             errors.append("the Might Bonus survived the detach")
     at_base = copy.deepcopy(state)
@@ -120,10 +120,10 @@ def main() -> int:
     base_attached = apply_program(at_base, attach)["next_state"]
     base_detached = apply_program(base_attached, program("de", {"op": "detach", "effect_id": "d", "object_id": "g1"}))
     if not base_detached.get("committed") or base_detached["next_state"]["objects"]["g1"].get("pending_recall") is not None:
-        errors.append("negative mutation failed: a Gear detaching at a Base also recorded a Recall, so the 435.4.a record is not about the Battlefield")
+        errors.append("negative mutation failed: a Gear detaching at a Base also recorded a Recall, so the 436.4.a record is not about the Battlefield")
     idle = apply_program(state, program("de", {"op": "detach", "effect_id": "d", "object_id": "g1"}))
     if not idle.get("committed") or ev(idle).get("outcome") != "no_op":
-        errors.append(f"detaching an unattached card was not a no_op (435.1.a): {ev(idle).get('outcome')}")
+        errors.append(f"detaching an unattached card was not a no_op (436.1.a): {ev(idle).get('outcome')}")
 
     # --- the host leaves the board ------------------------------------------------------------------------
     for label, effect, host_zone in (
@@ -140,7 +140,7 @@ def main() -> int:
         if find_location(after, "u1") != host_zone:
             errors.append(f"negative mutation failed: the {label} host did not reach {host_zone}, so the attachment's fate proves nothing")
         if find_location(after, "g1") != ("battlefield", "bf1", None) or after["objects"]["g1"].get("attached_to") is not None:
-            errors.append(f"the attachment of a {label} host did not detach to its last board location (435.4.b): {find_location(after, 'g1')}")
+            errors.append(f"the attachment of a {label} host did not detach to its last board location (436.4.b): {find_location(after, 'g1')}")
         if after["objects"]["g1"].get("pending_recall", {}).get("battlefield") != "bf1":
             errors.append(f"the detached Gear of a {label} host did not record the Cleanup Recall")
         if not ev(gone).get("detached"):
@@ -150,7 +150,7 @@ def main() -> int:
 
     moved = apply_program(at_battlefield, program("mv", {"op": "move_board_object", "effect_id": "m", "object_id": "u1", "destination": {"kind": "base", "player": "p1"}}))
     if not moved.get("committed") or find_location(moved["next_state"], "g1") != ("player", "p1", "base") or moved["next_state"]["objects"]["g1"].get("attached_to") != "u1":
-        errors.append(f"a moving host did not carry its attachment (434.4): {find_location(moved['next_state'], 'g1') if moved.get('committed') else moved.get('reason')}")
+        errors.append(f"a moving host did not carry its attachment (435.4): {find_location(moved['next_state'], 'g1') if moved.get('committed') else moved.get('reason')}")
 
     # --- validation, scope, manifest, determinism -------------------------------------------------------------
     if not validate_program(program("bad", {"op": "attach", "effect_id": "a", "object_id": "g1"})):

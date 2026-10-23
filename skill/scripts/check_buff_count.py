@@ -2,7 +2,7 @@
 """A Unit that may have any number of buffs (package 9, Lee Sin - Ascetic).
 
 "I can have any number of buffs." GPT 2026-10-06 (PACKAGE9_INVENTORY section 7, ruling 12): it lifts the one-buff limit
-(Core 426.1.b.2); each buff adds +1.
+(Core 427.1.b.2); each buff adds +1.
 
 The engine's shape: object fields any_number_of_buffs (true) and buff_count (2 or more; absent = one while buffed). A
 Buff of such a unit that already has one adds one more; Might counts each (703); spending a buff takes one (702.2.b).

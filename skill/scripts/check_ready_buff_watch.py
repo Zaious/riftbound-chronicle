@@ -2,9 +2,9 @@
 """A Ready or a Buff the player performs on a friendly Unit (package 10, Pirate's Haven and Mistfall).
 
 "When you ready a friendly unit, give it +1 :rb_might: this turn." / "When you buff a friendly unit, you may pay
-:rb_rune_body: and exhaust this to ready it." "You" is the player who performs it (the event's actor, Core 411.4): an
+:rb_rune_body: and exhaust this to ready it." "You" is the player who performs it (the event's actor, Core 412.4): an
 instruction's controller, or the Turn Player in the Awaken step, who readies every object they control that can be
-readied (Core 315.1.b, 415.3.a). A Unit already Ready is not readied again (415.1.b, 415.1.c) and one that already has a
+readied (Core 315.1.b, 416.3.a). A Unit already Ready is not readied again (416.1.b, 416.1.c) and one that already has a
 buff is not buffed again: neither wakes anything. Each unit readied or buffed is its own trigger, the unit its "it".
 
 The engine's shape: watches over `readied` / `buffed` events, scope actor, filters object_kind unit and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression gate for stun.v1 (DP-94; Core 423).
+"""Regression gate for stun.v1 (DP-94; Core 424).
 
 Rune Prison: "Stun a unit."
 
@@ -14,7 +14,7 @@ Codex's contract, and what each line here is trying to break:
     `turn_effects` entry, the Expiration Step's 3d clears both together, and
     the state validator rejects a Stunned object with no owner - so the shape
     that never expires cannot even be written down.
-  - **it becomes a Might change.** Core 423.1.b zeroes what a Stunned Unit
+  - **it becomes a Might change.** Core 424.1.b zeroes what a Stunned Unit
     *contributes to Combat Damage*. It does not set the Unit's Might to 0.
     A Unit with 3 Might that is Stunned still has 3 Might, still dies to 3
     damage and not to 1, and still reads as 3 to every other effect. This
@@ -96,10 +96,10 @@ def main() -> int:
     if not validate_state(lying):
         errors.append("an owner entry naming a Unit that is not Stunned was accepted")
 
-    # --- 423.1.b: Combat contribution only. Might, lethal threshold and every -----------------------
+    # --- 424.1.b: Combat contribution only. Might, lethal threshold and every -----------------------
     #     other reader are untouched.
     if effective_might(stunned_state, "u2") != effective_might(state, "u2"):
-        errors.append("Stun changed the Unit's Might; 423.1.b is about Combat Damage, not Might")
+        errors.append("Stun changed the Unit's Might; 424.1.b is about Combat Damage, not Might")
     total, parts = available_combat_damage(stunned_state, ["u2"])
     if total != 0 or parts[0]["contributed"] != 0:
         errors.append(f"a Stunned Unit still contributed Combat Damage: {parts}")
@@ -116,7 +116,7 @@ def main() -> int:
     if "u2" in kills["next_state"]["objects"] and kills["next_state"]["objects"]["u2"].get("damage", 0) < might:
         errors.append("a Stunned Unit did not take its full damage")
 
-    # --- 423.2: stunning again is legal and does nothing --------------------------------------------
+    # --- 424.2: stunning again is legal and does nothing --------------------------------------------
     again = apply_program(stunned_state, stun_program())
     step = again["trace"][0]
     if not again.get("committed"):

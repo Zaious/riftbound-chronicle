@@ -59,12 +59,12 @@ CHAIN_TIMINGS = {"default", "action", "reaction"}
 # statuses and the designation roles are the kernels' own vocabularies, so a
 # draft cannot name a Combat state the engine does not have; the keywords a
 # unit may carry are the object keywords the assignment path actually consults
-# (Tank first, Backline last, 465.2.c.6-c.9), taken from effect_ir rather than
+# (Tank first, Backline last, 467.2.c.6-c.9), taken from effect_ir rather than
 # restated here.
 COMBAT_STATUSES = frozenset(rules_core.COMBAT_STATUSES)
 COMBAT_ROLES = frozenset(effect_ir.COMBAT_ROLES)
 UNIT_KEYWORDS = frozenset(effect_ir.OBJECT_KEYWORDS)
-# S-01c. The Mode of Play ids the kernel sanctions (Core 484-489). Imported: a
+# S-01c. The Mode of Play ids the kernel sanctions (Core 486-491). Imported: a
 # mode id is a choice from the kernel's list, not a name a draft invents.
 SANCTIONED_MODES = effect_ir.SANCTIONED_MODES
 CHAIN_STATUSES = {"pending", "finalized"}
@@ -177,7 +177,7 @@ def _check_units(value: Any) -> str | None:
         if "location" in entry and not _is_id(entry["location"]):
             return f"{label}.location must be 'base' or a battlefield id"
         if "stunned" in entry and not isinstance(entry["stunned"], bool):
-            return f"{label}.stunned must be true or false (Core 423.1.a)"
+            return f"{label}.stunned must be true or false (Core 424.1.a)"
         if "keywords" in entry:
             keywords = entry["keywords"]
             if not isinstance(keywords, list) or any(k not in UNIT_KEYWORDS for k in keywords) \
@@ -201,7 +201,7 @@ def _check_combat(value: Any) -> str | None:
     if value["status"] not in COMBAT_STATUSES:
         return f"combat.status must be one of {sorted(COMBAT_STATUSES)}"
     if value["attacker"] == value["defender"]:
-        return "combat.attacker and combat.defender must be different players (Core 464.2.c)"
+        return "combat.attacker and combat.defender must be different players (Core 466.2.c)"
     return None
 
 
@@ -225,11 +225,11 @@ def _check_combat_designations(value: Any) -> str | None:
 
 
 def _check_mode(value: Any) -> str | None:
-    """The Mode of Play facts the kernels read (Core 456.3, 483). Stated, never guessed.
+    """The Mode of Play facts the kernels read (Core 458.3, 485). Stated, never guessed.
 
     Three fields, all required: the mode's id, its Victory Score, and whether
     it is a team mode. Team modes are refused rather than modelled — the
-    scoring kernel itself declines them (469.1.a, 315.2.b.3) — so `teams`
+    scoring kernel itself declines them (471.1.a, 315.2.b.3) — so `teams`
     must be stated and must be false. The kernel treats absence as "not a
     team mode"; this builder does not pass absence through as a fact.
     """
@@ -242,10 +242,10 @@ def _check_mode(value: Any) -> str | None:
         return f"mode is missing {sorted(missing)}"
     if value["id"] not in SANCTIONED_MODES:
         return f"mode.id must be one of the sanctioned Modes of Play {sorted(SANCTIONED_MODES)} " \
-               f"(Core 484-489)"
+               f"(Core 486-491)"
     score = value["victory_score"]
     if not isinstance(score, int) or isinstance(score, bool) or score < 1:
-        return "mode.victory_score must be a positive integer (Core 456.3)"
+        return "mode.victory_score must be a positive integer (Core 458.3)"
     if not isinstance(value["teams"], bool):
         return "mode.teams must be true or false"
     return None
@@ -253,7 +253,7 @@ def _check_mode(value: Any) -> str | None:
 
 def _check_turn_effects(value: Any) -> str | None:
     """The turn effects a draft states. S-01d carries one kind: the effect that
-    owns a Stun's lifetime (DP-94, Core 423.2). Its fields are the kernel's:
+    owns a Stun's lifetime (DP-94, Core 424.2). Its fields are the kernel's:
     the unit, the controller, and the turn it expires with."""
     if not isinstance(value, list):
         return "turn_effects must be an array"
@@ -754,7 +754,7 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
         conditional_missing.append("showdown_focus")
     combat = draft.get("combat")
     if combat is not None:
-        # A Combat in progress is a Combat Showdown (464.2). A draft that
+        # A Combat in progress is a Combat Showdown (466.2). A draft that
         # states a Combat and no open Showdown has left out a fact the record
         # depends on, so the slot is named as missing rather than switched on.
         if draft.get("showdown_active") is not True:
@@ -774,7 +774,7 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
                                      f"which is not one of the units")
             elif unit.get("location", "base") == "base":
                 # A designated unit that is not at a Battlefield is not in the
-                # fight (465.1); saying it is designated and leaving it at base
+                # fight (467.1); saying it is designated and leaving it at base
                 # is a position the kernel would read as "no combatant here".
                 out_of_scope.append(f"combat_designations[{index}].object_id")
                 scope_details.append(f"combat_designations[{index}] designates {entry['object_id']!r}, "
@@ -784,7 +784,7 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
             scope_details.append("combat_designations name more than one Combat; a board carries one")
     if family == "effect":
         # S-01d. A Stunned unit and the turn effect that expires it travel
-        # together (Core 423.2, 317.2.d). The status without the effect is a
+        # together (Core 424.2, 317.2.d). The status without the effect is a
         # fact with its end left out, named as missing; the effect without
         # the status, or for a unit not in play, or from another turn, is
         # out of scope rather than reconciled.
@@ -807,18 +807,18 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
             if draft.get("turn_id") is not None and entry["turn_id"] != draft["turn_id"]:
                 out_of_scope.append(f"turn_effects[{index}].turn_id")
                 scope_details.append(f"turn_effects[{index}] belongs to turn {entry['turn_id']!r}; a Stun lasts the "
-                                     f"turn it was applied (Core 423.2), and this position is in turn {draft['turn_id']!r}")
+                                     f"turn it was applied (Core 424.2), and this position is in turn {draft['turn_id']!r}")
         for slot in ("energy", "power", "points"):
             if slot in draft and set(draft[slot]) != set(players):
                 out_of_scope.append(slot)
                 scope_details.append(f"{slot} must name exactly the players {sorted(players)}")
         if draft.get("mode") is not None and draft["mode"]["teams"] is True:
             # Refused, not modelled: the scoring kernel declines team modes
-            # (469.1.a, 315.2.b.3), and this builder does not add what the
+            # (471.1.a, 315.2.b.3), and this builder does not add what the
             # kernel does not have.
             out_of_scope.append("mode.teams")
             scope_details.append("team modes are not modelled; the scoring kernel declines them "
-                                 "(Core 469.1.a, 315.2.b.3)")
+                                 "(Core 471.1.a, 315.2.b.3)")
     for slot, id_fields in (("chain_items", ("controller",)), ("units", ("controller",))):
         for index, entry in enumerate(draft.get(slot, []) or []):
             for field in id_fields:
@@ -845,9 +845,9 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
         reasons = {
             "showdown_focus": "an open Showdown has a Focus holder, and who holds it is not "
                               "derivable from the rest of the draft",
-            "showdown_active": "a Combat in progress is a Combat Showdown (Core 464.2); a draft "
+            "showdown_active": "a Combat in progress is a Combat Showdown (Core 466.2); a draft "
                                "that states a Combat and no open Showdown has left that out",
-            "turn_effects": "a Stunned unit is owned by the turn effect that expires it (Core 423.2, "
+            "turn_effects": "a Stunned unit is owned by the turn effect that expires it (Core 424.2, "
                             "317.2.d); a draft that states the status and no turn effect has left out "
                             "what ends it",
         }

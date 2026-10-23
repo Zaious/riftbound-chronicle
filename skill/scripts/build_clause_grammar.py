@@ -109,7 +109,7 @@ PRODUCTIONS = [
                                "it", "that_unit", "another_unit", "another_friendly_unit"],
                   "might_delta": ["increase", "decrease"], "duration": ["this_turn", "this_combat"]},
         "normalization": N,
-        "rule_locators": ["Core 476", "Core 479", "Core 317.2"],
+        "rule_locators": ["Core 478", "Core 481", "Core 317.2"],
         "ast_node": "instruction",
         "required_capability": ["modify_might", "targeting"],
         "boundary": "One signed Might change for a duration. A second linked grant, or a value read from the board, is a different production.",
@@ -143,7 +143,7 @@ PRODUCTIONS = [
                                "it", "that_unit", "another_unit", "another_friendly_unit"],
                   "grantable_keyword": sorted(grantable_alternatives()), "duration": ["this_turn", "this_combat"]},
         "normalization": N,
-        "rule_locators": ["Core 477.2", "Core 317.2"],
+        "rule_locators": ["Core 479.3", "Core 317.2"],
         "ast_node": "instruction",
         "required_capability": ["grant_keyword", "targeting"],
         "boundary": "Only the keywords the engine can grant. A keyword outside that list is a different clause and stays unparsed.",
@@ -192,7 +192,7 @@ PRODUCTIONS = [
         "template": r"while a friendly unit defends alone, it gets {might_delta} \[m\]",
         "slots": {"might_delta": ["increase", "decrease"]},
         "normalization": N,
-        "rule_locators": ["Core 477.3", "Core 460", "Core 462"],
+        "rule_locators": ["Core 479.4", "Core 462", "Core 464"],
         "ast_node": "passive",
         "required_capability": ["might_aura", "combat_state"],
         "boundary": ("A standing Might aura whose condition the engine names exactly: a lone defender. "
@@ -213,7 +213,7 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 415", "Core 355.9"],
+        "rule_locators": ["Core 416", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["ready", "targeting"],
         "boundary": "One chosen object is readied. A count ('ready up to 2 runes') or a rune selector is a different production.",
@@ -230,7 +230,7 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 423", "Core 423.1", "Core 423.2", "Core 355.9"],
+        "rule_locators": ["Core 424", "Core 424.1", "Core 424.2", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["stun", "targeting"],
         "boundary": ("Direct application only: one chosen Unit on the board becomes Stunned until the "
@@ -248,7 +248,7 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9"],
+        "rule_locators": ["Core 421", "Core 355.4", "Core 355.4.a", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["move_board_object", "targeting"],
         "boundary": ("One chosen object moves to a board Location its controller's opponent does not "
@@ -266,7 +266,7 @@ PRODUCTIONS = [
         "template": r"move {selector} to or from its base",
         "slots": {"selector": ["a_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9"],
+        "rule_locators": ["Core 421", "Core 355.4", "Core 355.4.a", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["move_board_object", "targeting"],
         "boundary": ("One chosen friendly unit moves: from a Battlefield only to its own Base, from its Base "
@@ -282,7 +282,7 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 441", "Core 355.9"],
+        "rule_locators": ["Core 442", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["heal_all_damage", "targeting"],
         "boundary": "All damage is removed from one chosen object. 'Heal N' is a different production.",
@@ -297,7 +297,7 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 416", "Core 355.9"],
+        "rule_locators": ["Core 417", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["exhaust", "targeting"],
         "boundary": "One chosen object is exhausted. A count or a rune selector is a different production.",
@@ -312,10 +312,10 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 434", "Core 355.9"],
+        "rule_locators": ["Core 435", "Core 355.9"],
         "ast_node": "instruction",
         "required_capability": ["recall", "targeting"],
-        "boundary": "One chosen object is sent to its controller's Base. Recall is not a Move (434.1).",
+        "boundary": "One chosen object is sent to its controller's Base. Recall is not a Move (435.1).",
         "golden": ["Recall a unit.", "Recall a friendly unit.", "Recall an enemy unit.", "Recall me.",
                    "Recall another unit.", "Recall another friendly unit.", "Recall it.", "Recall that unit."],
         "negative": ["Recall a unit exhausted.", "Recall all friendly units.", "Recall the strongest unit."],
@@ -327,10 +327,10 @@ PRODUCTIONS = [
         "slots": {"selector": ["a_unit", "a_friendly_unit", "an_enemy_unit", "me", "it", "that_unit",
                                "another_unit", "another_friendly_unit"]},
         "normalization": N,
-        "rule_locators": ["Core 426.1", "Core 702"],
+        "rule_locators": ["Core 427.1", "Core 702"],
         "ast_node": "instruction",
         "required_capability": ["buff", "targeting"],
-        "boundary": "One chosen Unit gets a Buff counter. A Unit that already has one is still chosen and is not Buffed again (426.1.c).",
+        "boundary": "One chosen Unit gets a Buff counter. A Unit that already has one is still chosen and is not Buffed again (427.1.c).",
         "golden": [
             "Buff a unit.", "Buff a friendly unit.", "Buff an enemy unit.", "Buff me.",
             "Buff another unit.", "Buff another friendly unit.", "Buff it.", "Buff that unit.",
@@ -368,42 +368,42 @@ PRODUCTIONS = [
 ]
 
 LITERAL = [
-    ("draw_n", r"draw (?P<count>\d+)", ["Core 413", "Core 431"], "instruction", ["draw"],
+    ("draw_n", r"draw (?P<count>\d+)", ["Core 414", "Core 432"], "instruction", ["draw"],
      "The controller draws. 'Each player draws' and 'draw until' are not this production.",
      ["Draw 1.", "Draw 2."], ["each player draws 1", "draw 1, then discard 1"]),
     # 2026-09-25 (Jinx - Loose Cannon): a draw conditioned on the controller's own hand size, read
     # as the instruction executes (effect_ir predicate state_holds)
     ("draw_n_if_you_have_one_or_fewer_cards_in_your_hand",
      r"draw (?P<count>\d+) if you have one or fewer cards in your hand",
-     ["Core 413", "Core 359.3.d"], "instruction", ["draw", "condition_v1"],
+     ["Core 414", "Core 359.3.d"], "instruction", ["draw", "condition_v1"],
      "A draw that happens only if the controller holds at most one card when it executes. Another count or zone is a different clause.",
      ["Draw 1 if you have one or fewer cards in your hand."],
      ["draw 1 if you have two or fewer cards in your hand", "draw 1 if an opponent has one or fewer cards in their hand", "draw 1"]),
     # 2026-09-27 (Kadregrin the Infernal): a draw counted as it executes - the printed number for
     # each unit its controller controls that is Mighty, Might 5 or greater (Core 708, 710)
     ("draw_n_for_each_of_your_mighty_units", r"draw (?P<count>\d+) for each of your \[mighty\] units",
-     ["Core 413", "Core 708", "Core 710"], "instruction", ["draw"],
+     ["Core 414", "Core 708", "Core 710"], "instruction", ["draw"],
      "The controller draws the number times how many units they control are Mighty when it executes; none is no draw. "
      "Another quality, or another player's units, is a different clause.",
      ["Draw 1 for each of your [Mighty] units."],
      ["draw 1 for each of your units", "draw 1 for each enemy [mighty] unit", "draw 1 if you control a [mighty] unit"]),
-    # 2026-09-25: the controller discards N from their own hand, chosen privately (Core 422.1);
-    # a hand shorter than N discards what it has, an empty hand ignores it (422.4). Returned
+    # 2026-09-25: the controller discards N from their own hand, chosen privately (Core 423.1);
+    # a hand shorter than N discards what it has, an empty hand ignores it (423.4). Returned
     # now that ", then" no longer makes the next instruction depend on it (GPT 2026-09-25).
-    ("discard_n", r"discard (?P<count>\d+)", ["Core 422.1", "Core 422.1.a", "Core 422.4"], "instruction",
+    ("discard_n", r"discard (?P<count>\d+)", ["Core 423.1", "Core 423.1.a", "Core 423.4"], "instruction",
      ["private_discard"],
      "The controller discards from their own hand. Discarding at random, or another player's discard, is a different production.",
      ["Discard 1.", "Discard 2."], ["discard 2 at random", "each player discards 1", "discard your hand"]),
     ("deal_n_to_a_unit_at_a_battlefield", r"deal (?P<amount>\d+) to a unit at (?:a )?battlefield",
-     ["Core 417", "Core 355.9"], "instruction", ["deal_damage", "targeting"],
+     ["Core 418", "Core 355.9"], "instruction", ["deal_damage", "targeting"],
      "One chosen Unit at a Battlefield. A Might restriction on the target is a different production.",
      ["Deal 2 to a unit at a battlefield.", "Deal 3 to a unit at battlefield."],
      ["deal 2 to a unit at a battlefield with 3 [m] or less", "deal 2 to all units at a battlefield"]),
     # 2026-09-25 (The Syren): a chosen friendly Unit at a Battlefield goes to its own Base
     # 2026-10-06 package 9 (Kayn - Unleashed, GPT ruling 8): a printed statement - while the card has really moved
-    # at least twice this turn, every Deal to it is prevented, combat damage included (Core 370, 417)
+    # at least twice this turn, every Deal to it is prevented, combat damage included (Core 370, 418)
     ("if_i_have_moved_twice_this_turn_i_dont_take_damage", r"if i have moved twice this turn, i don't take damage",
-     ["Core 370", "Core 205", "Core 417.6.c", "Core 420", "Core 124"], "passive", ["replacement_effects", "condition_v1"],
+     ["Core 370", "Core 205", "Core 418.6.c", "Core 421", "Core 124"], "passive", ["replacement_effects", "condition_v1"],
      "The card's own replacement: a Deal to it is prevented while it has made two or more real Moves this turn. A "
      "Recall is not a Move; a new object starts at zero. 'I don't take combat damage' or 'the first time ...' are "
      "different productions.",
@@ -495,7 +495,7 @@ LITERAL = [
     # together at most N as they are chosen; a group grown past it as it resolves is cut to a subset its controller keeps
     ("kill_any_number_of_units_at_a_battlefield_with_total_might_n_or_less",
      r"kill any number of units at a battlefield with total might (?P<total>\d+) or less",
-     ["Core 355.11", "Core 355.11.a", "Core 355.11.b", "Core 355.13", "Core 417"], "instruction", ["kill", "targeting"],
+     ["Core 355.11", "Core 355.11.a", "Core 355.11.b", "Core 355.13", "Core 418"], "instruction", ["kill", "targeting"],
      "Any number of units, all at one Battlefield, whose Mights add up to at most N as they are chosen, are killed; if "
      "their total has grown past N as it resolves, its controller keeps a subset of them within it, at one Battlefield "
      "(not necessarily the first). A count, or units anywhere, is a different production.",
@@ -505,7 +505,7 @@ LITERAL = [
     # 2026-10-08 package 10 (Facebreaker): two targets that meet a requirement together (Core 355.11)
     ("stun_a_friendly_unit_and_an_enemy_unit_at_the_same_battlefield",
      r"stun a friendly unit and an enemy unit at the same battlefield",
-     ["Core 423", "Core 355.11", "Core 355.11.a", "Core 355.11.b"], "instruction", ["stun", "targeting"],
+     ["Core 424", "Core 355.11", "Core 355.11.a", "Core 355.11.b"], "instruction", ["stun", "targeting"],
      "One friendly and one enemy unit, both at one Battlefield as they are chosen, are Stunned; if they no longer stand "
      "together as it resolves, its controller keeps one of them. Two units of one side, or any Battlefield each, is a "
      "different production.",
@@ -522,7 +522,7 @@ LITERAL = [
       "opponents can hide cards ignoring costs this turn"]),
     # 2026-10-08 package 10 (Dr. Mundo - Expert): the controller recycles N cards of their own trash, chosen by them
     ("recycle_n_from_your_trash", r"recycle (?P<count>\d+) from your trash",
-     ["Core 416.1", "Core 416.4", "Core 416.5"], "instruction", ["recycle"],
+     ["Core 417.1", "Core 417.4", "Core 417.5"], "instruction", ["recycle"],
      "The controller picks N cards from their own Trash as it resolves and recycles them (several together: shuffled "
      "under the deck, per the locators); with fewer there, every one. 'Up to N', another player's trash, or a named card "
      "is a different production.",
@@ -530,8 +530,8 @@ LITERAL = [
      ["recycle up to 3 from your trash", "recycle 3 from a trash", "recycle me from your trash"]),
     # 2026-10-12 package 11 (Forge of the Future): up to N cards of any players' trashes, chosen as it resolves
     ("recycle_up_to_n_cards_from_trashes", r"recycle up to (?P<count>\d+) cards from trashes",
-     ["Core 416.1", "Core 416.5", "Core 416.6", "Core 355.13"], "instruction", ["recycle"],
-     "The controller picks up to N cards from any players' trashes as it resolves - not targets (Core 416.6) - and each "
+     ["Core 417.1", "Core 417.5", "Core 417.6", "Core 355.13"], "instruction", ["recycle"],
+     "The controller picks up to N cards from any players' trashes as it resolves - not targets (Core 417.6) - and each "
      "is recycled to its owner's deck; zero is allowed (355.13). 'From your trash', an exact N, or 'a card' is a different "
      "production.",
      ["Recycle up to 4 cards from trashes."],
@@ -587,7 +587,7 @@ LITERAL = [
     # resolution the first's Might is raised, this turn, to the second's - an increase only, read once
     ("choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit",
      r"choose a friendly unit\. this turn, increase its might to the might of another friendly unit",
-     ["Core 477.3.a", "Core 355.8", "Core 359.3.e.5", "Core 370.1.a"], "instruction",
+     ["Core 479.4.a", "Core 355.8", "Core 359.3.e.5", "Core 370.1.a"], "instruction",
      ["raise_might_to_match", "targeting"],
      "Two different friendly Units chosen at play; the first gets, this turn, the difference when the second's Might "
      "is higher, read once at resolution - never a decrease. 'Set its Might', an enemy Unit, or a lasting change is a "
@@ -597,11 +597,11 @@ LITERAL = [
       "choose a friendly unit. increase its might to the might of another friendly unit",
       "this turn, increase its might to the might of another friendly unit"]),
     # 2026-10-06 package 9 (Portal Rescue, GPT ruling 2): a friendly Unit chosen at play is banished (a new object in
-    # its owner's Banishment, Core 427), then its OWNER plays it - and so controls it (127.1, 419.1) - to their own
+    # its owner's Banishment, Core 428), then its OWNER plays it - and so controls it (127.1, 420.1) - to their own
     # Base (355.2.b), its base cost's Energy and Power ignored (356.1.b.1), any additional cost offered as usual
     ("banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost",
      r"banish a friendly unit, then its owner plays it to their base, ignoring its cost",
-     ["Core 427", "Core 419.3", "Core 127.1", "Core 419.1", "Core 355.2.b", "Core 356.1.b.1"], "instruction",
+     ["Core 428", "Core 420.3", "Core 127.1", "Core 420.1", "Core 355.2.b", "Core 356.1.b.1"], "instruction",
      ["banish", "limited_play", "targeting"],
      "One friendly Unit chosen at play, banished, then played by its owner to their Base ignoring its cost. 'You play "
      "it', 'here', or 'ignoring its Energy cost' are different productions.",
@@ -610,9 +610,9 @@ LITERAL = [
       "banish an enemy unit, then its owner plays it to their base, ignoring its cost",
       "banish a friendly unit, then its owner plays it, ignoring its energy cost"]),
     # 2026-10-06 package 9 (Caitlyn - Patrolling, GPT ruling 4): the card's own statement of the Backline shape - an
-    # attacker assigns it combat damage only after every other defender has lethal (Core 465.2.c.7)
+    # attacker assigns it combat damage only after every other defender has lethal (Core 467.2.c.7)
     ("i_must_be_assigned_combat_damage_last", r"i must be assigned combat damage last",
-     ["Core 465.2.c.7", "Core 365.1"], "passive", ["keyword_catalogue_v1"],
+     ["Core 467.2.c.7", "Core 365.1"], "passive", ["keyword_catalogue_v1"],
      "The card's own combat-damage order: last, as [Backline]. 'First' is [Tank]'s; another object's order is a "
      "different production.",
      ["I must be assigned combat damage last."],
@@ -622,7 +622,7 @@ LITERAL = [
     # the source's Might as the instruction executes; a source no longer on the board has no Might, and nothing is dealt
     ("deal_damage_equal_to_my_might_to_a_unit_at_a_battlefield",
      r"deal damage equal to my might to a unit at (?:a )?battlefield",
-     ["Core 417", "Core 355.9", "Core 359.3.e.12"], "instruction", ["deal_damage", "targeting"],
+     ["Core 418", "Core 355.9", "Core 359.3.e.12"], "instruction", ["deal_damage", "targeting"],
      "One chosen Unit at a Battlefield, of either side, takes damage equal to the source's Might when the instruction "
      "executes. 'An enemy unit here', 'its Might' or a printed number are different productions.",
      ["Deal damage equal to my Might to a unit at a battlefield."],
@@ -630,7 +630,7 @@ LITERAL = [
       "deal 3 to a unit at a battlefield"]),
     # 2026-10-06 package 9 (Lee Sin - Ascetic, GPT ruling 12): the card's permission to be Buffed several times
     ("i_can_have_any_number_of_buffs", r"i can have any number of buffs",
-     ["Core 426.1.b.2", "Core 702.3", "Core 703"], "passive", ["buff"],
+     ["Core 427.1.b.2", "Core 702.3", "Core 703"], "passive", ["buff"],
      "The card itself may have any number of buffs; each adds +1 Might. Another unit's, or a number of buffs, is a "
      "different production.",
      ["I can have any number of buffs."],
@@ -639,7 +639,7 @@ LITERAL = [
     # from the top by its owner, it may be banished, and then played for [A] once the effect that looked is done
     ("as_you_look_at_or_reveal_me_from_the_top_of_your_deck_banish_me_then_play_me_for_a",
      r"as you look at or reveal me from the top of your deck, you may banish me\. if you do, you may play me for \[a\]",
-     ["Core 427", "Core 419.3", "Core 356.1.a", "Core 385.1"], "passive", ["banish", "limited_play"],
+     ["Core 428", "Core 420.3", "Core 356.1.a", "Core 385.1"], "passive", ["banish", "limited_play"],
      "The card's own permission, from the top of its owner's Main Deck as its owner looks at or reveals it: banish it, "
      "and then play it for [A]. A draw is not a look; another card's, or another cost, is a different production.",
      ["As you look at or reveal me from the top of your deck, you may banish me. If you do, you may play me for :rb_rune_rainbow:."],
@@ -653,14 +653,14 @@ LITERAL = [
      "game' are different productions.",
      ["You win the game."], ["you lose the game", "you win", "an opponent wins the game"]),
     ("move_a_friendly_unit_at_a_battlefield_to_its_base", r"move a friendly unit at (?:a )?battlefield to its base",
-     ["Core 420", "Core 355.4", "Core 355.4.a", "Core 355.9"], "instruction", ["move_board_object", "targeting"],
+     ["Core 421", "Core 355.4", "Core 355.4.a", "Core 355.9"], "instruction", ["move_board_object", "targeting"],
      "One chosen friendly Unit at a Battlefield moves to its own Base. A Unit in a Base, an enemy Unit, or "
      "'to or from its base' is a different production.",
      ["Move a friendly unit at a battlefield to its base."],
      ["move a friendly unit to its base", "move an enemy unit at a battlefield to its base",
       "move a friendly unit to or from its base"]),
     ("move_a_unit_from_a_battlefield_to_its_base", r"move a unit from (?:a )?battlefield to its base",
-     ["Core 420", "Core 355.4", "Core 355.4.a", "Core 141.1.a.1", "Core 144.4.b", "Core 355.9.b", "Core 355.10.b"],
+     ["Core 421", "Core 355.4", "Core 355.4.a", "Core 141.1.a.1", "Core 144.4.b", "Core 355.9.b", "Core 355.10.b"],
      "instruction", ["move_board_object", "targeting"],
      "One chosen Unit at a Battlefield, of either side, moves to its own Base (its controller's). A Unit in a "
      "Base is not a legal target; 'a friendly unit at a battlefield' is a different production.",
@@ -668,7 +668,7 @@ LITERAL = [
      ["move a unit to its base", "move a friendly unit from a battlefield to its base",
       "move a unit from a battlefield to your base"]),
     ("deal_n_to_all_enemy_units_at_a_battlefield", r"deal (?P<amount>\d+) to all enemy units at a battlefield",
-     ["Core 417", "Core 355.10.b", "Core 715.2"], "instruction", ["deal_damage", "criteria_expansion"],
+     ["Core 418", "Core 355.10.b", "Core 715.2"], "instruction", ["deal_damage", "criteria_expansion"],
      "One chosen Battlefield, then every enemy Unit there.",
      ["Deal 3 to all enemy units at a battlefield."],
      ["deal 3 to all units at a battlefield", "deal 3 to all enemy units in combat"]),
@@ -677,7 +677,7 @@ LITERAL = [
     # unlike "at a battlefield"'s own Battlefield choice above. Anivia - Primal
     # is this production's real card (round 2 / D, when i attack).
     ("deal_n_to_all_enemy_units_here", r"deal (?P<amount>\d+) to all enemy units here",
-     ["Core 417", "Core 355.10.b", "Core 715.2", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
+     ["Core 418", "Core 355.10.b", "Core 715.2", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
      ["deal_damage", "criteria_expansion"],
      "The resolving program's own source's current Battlefield, read fresh at execution - not a decision.",
      ["Deal 3 to all enemy units here."],
@@ -692,7 +692,7 @@ LITERAL = [
     # no more than the damage, each at the source's current Battlefield; the division at resolution
     ("deal_n_damage_split_among_any_number_of_enemy_units_here",
      r"deal (?P<amount>\d+) damage split among any number of enemy units here",
-     ["Core 417", "Core 355.14", "Core 355.14.a", "Core 355.14.b", "Core 355.14.c", "Core 355.14.e",
+     ["Core 418", "Core 355.14", "Core 355.14.a", "Core 355.14.b", "Core 355.14.c", "Core 355.14.e",
       "Core 355.14.f", "Core 355.14.h", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
      ("Up to N chosen enemy Units at the source's current Battlefield, the N divided among them at resolution, a "
       "positive amount each. Damage to every enemy Unit here, one chosen Unit, a split at a chosen Battlefield, or a "
@@ -704,7 +704,7 @@ LITERAL = [
     # unit here found by criteria
     ("deal_n_to_an_enemy_unit_here_and_m_to_all_other_enemy_units_here",
      r"deal (?P<amount>\d+) to an enemy unit here and (?P<rest>\d+) to all other enemy units here",
-     ["Core 417", "Core 355.9", "Core 355.10.d", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
+     ["Core 418", "Core 355.9", "Core 355.10.d", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
      ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield takes the first amount; every other enemy Unit there, "
      "found by criteria (none chosen), takes the second. Friendly units, or enemy units elsewhere, are untouched.",
@@ -714,14 +714,14 @@ LITERAL = [
     # 'it' bound inside the one sentence: the rune that reveal showed, still that object (recycle revealed_by)
     ("reveal_the_top_rune_of_your_rune_deck_then_recycle_it",
      r"reveal the top rune of your rune deck, then recycle it",
-     ["Core 424", "Core 424.2", "Core 416", "Core 124"], "instruction", ["reveal", "recycle"],
+     ["Core 425", "Core 425.2", "Core 417", "Core 124"], "instruction", ["reveal", "recycle"],
      "The top card of its controller's Rune Deck is shown to all, its Domains noted, then that same rune goes to the "
      "bottom of its owner's Rune Deck. An empty Rune Deck reveals and recycles nothing.",
      ["Reveal the top rune of your rune deck, then recycle it."],
      ["reveal the top rune of your rune deck, then channel it", "reveal the top card of your main deck, then recycle it",
       "reveal the top 2 runes of your rune deck, then recycle them"]),
     ("reveal_the_top_rune_of_your_rune_deck", r"reveal the top rune of your rune deck",
-     ["Core 424", "Core 424.2", "Core 105"], "instruction", ["reveal"],
+     ["Core 425", "Core 425.2", "Core 105"], "instruction", ["reveal"],
      "The top card of its controller's Rune Deck is shown to all and stays where it is; its Domains are noted as it "
      "is revealed. An empty Rune Deck reveals nothing.",
      ["Reveal the top rune of your rune deck."],
@@ -746,14 +746,14 @@ LITERAL = [
       "your opponents' cards can't be revealed here"]),
     ("while_im_at_a_battlefield_spells_and_abilities_cant_ready_enemy_units_and_gear",
      r"while i'm at a battlefield, spells and abilities can't ready enemy units and gear",
-     ["Core 358.3.a", "Core 415"], "passive", ["battlefield_restrictions"],
+     ["Core 358.3.a", "Core 416"], "passive", ["battlefield_restrictions"],
      "While the card is at a Battlefield, a spell's or ability's instruction to ready an enemy Unit or Gear is "
      "skipped as it resolves; the Awaken Step still readies them.",
      ["While I'm at a battlefield, spells and abilities can't ready enemy units and gear."],
      ["spells and abilities can't ready enemy units and gear", "while i'm at a battlefield, enemy units can't ready",
       "while i'm at a battlefield, spells can't ready enemy units"]),
     ("deal_n_to_an_enemy_unit_here", r"deal (?P<amount>\d+) to an enemy unit here",
-     ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
+     ["Core 418", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield. 'For each', a second target, or "
      "damage to all enemy Units here is a different production.",
      ["Deal 1 to an enemy unit here."],
@@ -763,7 +763,7 @@ LITERAL = [
     # (Core 359.3.f.2's own Yasuo, Remorseful example, Stupefied in response); the target
     # is "an enemy unit here" as above.
     ("deal_damage_equal_to_my_might_to_an_enemy_unit_here", r"deal damage equal to my might to an enemy unit here",
-     ["Core 417", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2", "Core 359.3.f.4"], "instruction",
+     ["Core 418", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2", "Core 359.3.f.4"], "instruction",
      ["deal_damage", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield takes damage equal to the source's Might "
      "as it is when the instruction executes.",
@@ -771,13 +771,13 @@ LITERAL = [
      ["deal damage equal to my might to an enemy unit", "deal 3 to an enemy unit here",
       "deal damage equal to its might to an enemy unit here"]),
     ("stun_an_enemy_unit_here", r"stun an enemy unit here",
-     ["Core 423", "Core 423.1", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["stun", "targeting"],
+     ["Core 424", "Core 424.1", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction", ["stun", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield becomes Stunned.",
      ["Stun an enemy unit here."],
      ["stun an enemy unit", "stun all enemy units here", "stun a unit here"]),
     ("give_an_enemy_unit_here_might_this_turn",
      r"give an enemy unit here (?P<sign>[+-])(?P<amount>\d+) \[m\] this turn(?:, to a minimum of (?P<floor>\d+) \[m\])?",
-     ["Core 476", "Core 479", "Core 317.2", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
+     ["Core 478", "Core 481", "Core 317.2", "Core 355.9", "Core 359.3.f.1", "Core 359.3.f.2"], "instruction",
      ["modify_might", "targeting"],
      "One chosen enemy Unit at the source's current Battlefield, a signed Might change this turn, with "
      "the floor the text states.",
@@ -786,26 +786,26 @@ LITERAL = [
      ["give an enemy unit -2 [m] this turn", "give enemy units here -2 [m] this turn",
       "give an enemy unit here -2 [m] this combat"]),
     ("deal_n_to_all_enemy_units_in_combat", r"deal (?P<amount>\d+) to all enemy units in combat",
-     ["Core 417", "Core 715.2", "Core 460"], "instruction", ["deal_damage", "criteria_expansion", "combat_state"],
+     ["Core 418", "Core 715.2", "Core 462"], "instruction", ["deal_damage", "criteria_expansion", "combat_state"],
      "The Combat in progress. Outside one the instruction finds nothing.",
      ["Deal 2 to all enemy units in combat."],
      ["deal 2 to all enemy units at a battlefield", "deal 2 to all units in combat"]),
     ("deal_n_to_all_units_at_battlefields", r"deal (?P<amount>\d+) to all units at battlefields",
-     ["Core 417", "Core 355.10.b"], "instruction", ["deal_damage", "criteria_expansion"],
+     ["Core 418", "Core 355.10.b"], "instruction", ["deal_damage", "criteria_expansion"],
      "Every Unit at every Battlefield, and none in a Base.",
      ["Deal 3 to all units at battlefields."],
      ["deal 3 to all enemy units at a battlefield", "deal 3 to all units at a battlefield"]),
     ("channel_n_rune_exhausted", r"channel (?P<count>\d+) runes? exhausted",
-     ["Core 430", "Core 430.3"], "instruction", ["channel_rune"],
+     ["Core 431", "Core 431.3"], "instruction", ["channel_rune"],
      "Entering exhausted. A Channel with no entry state is a different production.",
      ["Channel 1 rune exhausted."], ["channel 1 rune", "channel 1 rune ready"]),
     ("return_a_unit_from_your_trash_to_your_hand", r"return a unit from your trash to your hand",
-     ["Core 415", "Core 124"], "instruction", ["return_to_hand", "targeting"],
+     ["Core 416", "Core 124"], "instruction", ["return_to_hand", "targeting"],
      "A Unit, from the controller's own Trash.",
      ["Return a unit from your trash to your hand."],
      ["return a spell from your trash to your hand", "return a unit at a battlefield to its owner's hand"]),
     ("while_you_have_n_runes_i_have_might", r"while you have (?P<runes>\d+)\+ runes, i have \+(?P<amount>\d+) \[m\]",
-     ["Core 364.3", "Core 476", "Core 479"], "conditional_might", ["continuous_effects", "condition_v1"],
+     ["Core 364.3", "Core 478", "Core 481"], "conditional_might", ["continuous_effects", "condition_v1"],
      "A condition on the controller's own Runes on the board.",
      ["While you have 8+ runes, I have +4 [M]."],
      ["while i'm attacking or defending alone, i have +2 [m]", "while you have 8+ runes, i have [tank]"]),
@@ -830,15 +830,15 @@ LITERAL = [
      ["give a unit or a gear [temporary]", "give a unit at a battlefield or a gear [temporary] this turn",
       "give a unit at a battlefield or a gear [tank]"]),
     ("units_you_play_this_turn_enter_ready", r"units you play this turn enter ready",
-     ["Core 317.2", "Core 419.4"], "instruction", ["grant_turn_effect"],
+     ["Core 317.2", "Core 420.4"], "instruction", ["grant_turn_effect"],
      "Entry state for this turn's own plays.",
      ["Units you play this turn enter ready."],
      ["units you play this turn enter exhausted", "i enter ready"]),
     # 2026-09-27: delayed passives for the NEXT card of a kind played this turn, spent by that play
-    # (Core 390.4, 391): a discount on the next spell's cost (356.4), and the next unit's entry state
+    # (Core 391.4, 392): a discount on the next spell's cost (356.4), and the next unit's entry state
     ("the_next_spell_you_play_this_turn_costs_n_less",
      r"the next spell you play this turn costs \[e(?P<amount>\d+)\] less",
-     ["Core 390.4", "Core 391", "Core 356.4", "Core 356.6"], "instruction", ["grant_turn_effect"],
+     ["Core 391.4", "Core 392", "Core 356.4", "Core 356.6"], "instruction", ["grant_turn_effect"],
      "One discount of a fixed Energy amount on the next spell its controller plays this turn, spent by that play "
      "whether or not it lowered anything. Every spell, a Power amount, or a unit is a different clause.",
      ["The next spell you play this turn costs :rb_energy_5: less."],
@@ -848,14 +848,14 @@ LITERAL = [
     # each of that spell's own Deals gets +N (Core 713-715); spent by that play
     ("the_next_spell_you_play_this_turn_deals_n_bonus_damage",
      r"the next spell you play this turn deals (?P<amount>\d+) bonus damage",
-     ["Core 390.4", "Core 391", "Core 713", "Core 714", "Core 715.1"], "instruction", ["grant_turn_effect"],
+     ["Core 391.4", "Core 392", "Core 713", "Core 714", "Core 715.1"], "instruction", ["grant_turn_effect"],
      "A Bonus Damage of N bound to the next spell its controller plays this turn: each of that spell's own Deals. Every "
      "spell, a unit, or 'your spells and abilities' is a different clause.",
      ["The next spell you play this turn deals 1 Bonus Damage."],
      ["your spells and abilities deal 1 bonus damage", "the next spell you play this turn costs :rb_energy_1: less",
       "the next unit you play this turn deals 1 bonus damage"]),
     ("the_next_unit_you_play_this_turn_enters_ready", r"the next unit you play this turn enters ready",
-     ["Core 390.4", "Core 391", "Core 369.3", "Core 143.4"], "instruction", ["grant_turn_effect"],
+     ["Core 391.4", "Core 392", "Core 369.3", "Core 143.4"], "instruction", ["grant_turn_effect"],
      "The next unit its controller plays this turn enters ready: bound to that play as an entry replacement, "
      "then spent. Every unit this turn is 'Units you play this turn enter ready.'",
      ["The next unit you play this turn enters ready."],
@@ -875,8 +875,8 @@ LITERAL = [
      ["I cost :rb_energy_2: less."],
      ["i cost :rb_rune_rainbow: less", "i cost [e] less", "units cost :rb_energy_2: less"]),
     ("my_might_is_increased_by_your_points", r"my might is increased by your points",
-     ["Core 477.3", "Core 477.3.b", "Core 364.3"], "dynamic_might", ["continuous_effects"],
-     "A passive increase of the card's own Might by its controller's points, computed fresh each time (477.3.b). Another quantity, or another object's Might, is a different clause.",
+     ["Core 479.4", "Core 479.4.b", "Core 364.3"], "dynamic_might", ["continuous_effects"],
+     "A passive increase of the card's own Might by its controller's points, computed fresh each time (479.4.b). Another quantity, or another object's Might, is a different clause.",
      ["My Might is increased by your points."],
      ["my might is increased by your opponent's points", "your units' might is increased by your points", "my might is doubled"]),
     ("self_cost_reduction_per_trash_card", r"i cost \[e(?P<amount>\d+)\] less for each card in your trash",
@@ -899,10 +899,10 @@ LITERAL = [
       "this spell's energy cost is reduced by the total might of units you control",
       "this spell's power cost is reduced by the highest might among units you control"]),
     # 2026-09-27 package 5: a card's own fixed Energy reduction gated by a death this turn (Core
-    # 356.4, 428.1): a Unit on the named side of its player died this turn.
+    # 356.4, 429.1): a Unit on the named side of its player died this turn.
     ("self_cost_reduction_unit_died",
      r"if an? (?P<relation>enemy|friendly) unit has died this turn, this costs \[e(?P<amount>\d+)\] less",
-     ["Core 356.4", "Core 356.4.b", "Core 428.1", "Core 428.2.a"], "self_cost_reduction",
+     ["Core 356.4", "Core 356.4.b", "Core 429.1", "Core 429.2.a"], "self_cost_reduction",
      ["self_card_conditional_fixed_energy_reduction.v1"],
      ("The card's own text, a fixed Energy amount, gated by a Unit of the named side having died this turn - the "
       "side as it was when it died. A unit that died last turn, a unit that left the board another way, or a "
@@ -916,7 +916,7 @@ LITERAL = [
     # board (effect_ir.printed_aura_effects; check_static_auras.py).
     ("other_friendly_units_have_might_here",
      r"other friendly units have \+(?P<amount>\d+) \[m\] here",
-     ["Core 365.1", "Core 476", "Core 477.3", "Core 479"], "passive", ["might_aura"],
+     ["Core 365.1", "Core 478", "Core 479.4", "Core 481"], "passive", ["might_aura"],
      ("A printed aura: +N Might to every other friendly Unit at the Battlefield where the source is, while the "
       "source is on the board. Not a target, not snapshotted. A keyword instead of Might, a whole-board aura, "
       "or an aura on enemy units is a different clause."),
@@ -925,7 +925,7 @@ LITERAL = [
       "friendly units have +1 :rb_might: here", "stunned enemy units here have -8 :rb_might:"]),
     ("other_buffed_friendly_units_at_my_battlefield_have_might",
      r"other buffed friendly units at my battlefield have \+(?P<amount>\d+) \[m\]",
-     ["Core 365.1", "Core 476", "Core 477.3", "Core 479", "Core 426.1.b"], "passive", ["might_aura"],
+     ["Core 365.1", "Core 478", "Core 479.4", "Core 481", "Core 427.1.b"], "passive", ["might_aura"],
      ("The same aura restricted to Units with a Buff counter: a Unit that loses its Buff stops receiving it at "
       "once. An unbuffed or a whole-board variant is a different clause."),
      ["Other buffed friendly units at my battlefield have +2 :rb_might:."],
@@ -933,7 +933,7 @@ LITERAL = [
       "other buffed friendly units have [deflect]"]),
     ("units_here_have_might",
      r"units here have \+(?P<amount>\d+) \[m\]",
-     ["Core 365.1", "Core 190.6", "Core 476", "Core 477.3", "Core 479"], "passive", ["might_aura"],
+     ["Core 365.1", "Core 190.6", "Core 478", "Core 479.4", "Core 481"], "passive", ["might_aura"],
      ("A Battlefield's printed aura: +N Might to every Unit at it, whoever controls it, while the Battlefield is "
       "in play. A keyword instead of Might, or 'friendly' / 'enemy' units, is a different clause."),
      ["Units here have +1 :rb_might:."],
@@ -963,24 +963,24 @@ LITERAL = [
       "other units enter ready", "friendly units enter ready"]),
     # 2026-09-27 package 6: a printed decrease over the Stunned enemy units at the source's
     # Battlefield, with its own floor - re-applied each time Might is computed (a passive does not
-    # snapshot, 477.3.b); effect_ir.printed_aura_effects, check_stunned_aura.py
+    # snapshot, 479.4.b); effect_ir.printed_aura_effects, check_stunned_aura.py
     ("stunned_enemy_units_here_have_might_to_a_minimum",
      r"stunned enemy units here have -(?P<amount>\d+) \[m\], to a minimum of (?P<floor>\d+) \[m\]",
-     ["Core 365.1", "Core 423.1.a", "Core 476", "Core 477.3", "Core 477.3.b", "Core 479"], "passive", ["might_aura"],
+     ["Core 365.1", "Core 424.1.a", "Core 478", "Core 479.4", "Core 479.4.b", "Core 481"], "passive", ["might_aura"],
      ("A printed aura: -N Might, to a minimum of M, to every enemy Unit at the Battlefield where the source is that "
-      "is Stunned right now (423.1.a), while the source is on the board. The floor is applied fresh each time the "
-      "Might is computed (477.3.b). Friendly or unstunned units, a decrease without the floor, or a whole-board "
+      "is Stunned right now (424.1.a), while the source is on the board. The floor is applied fresh each time the "
+      "Might is computed (479.4.b). Friendly or unstunned units, a decrease without the floor, or a whole-board "
       "aura is a different clause."),
      ["Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:."],
      ["stunned enemy units here have -8 :rb_might:", "enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:",
       "stunned friendly units here have -8 :rb_might:, to a minimum of 1 :rb_might:",
       "stunned enemy units have -8 :rb_might:, to a minimum of 1 :rb_might:"]),
-    # 2026-09-27: printed keyword auras - a keyword granted in the Ability layer (477.2, 477.2.b),
+    # 2026-09-27: printed keyword auras - a keyword granted in the Ability layer (479.3, 479.3.b),
     # read live off the source (effect_ir.printed_aura_effects; check_keyword_auras.py). Each
     # admits only the keywords its gate exercises.
     ("units_here_have_keyword",
      r"units here have \[(?P<keyword>ganking)\]",
-     ["Core 365.1", "Core 190.6", "Core 476", "Core 477.2", "Core 477.2.b", "Core 810.1.b"], "passive", ["might_aura", "layer_engine"],
+     ["Core 365.1", "Core 190.6", "Core 478", "Core 479.3", "Core 479.3.b", "Core 810.1.b"], "passive", ["might_aura", "layer_engine"],
      ("A Battlefield's printed keyword aura: every Unit at it, whoever controls it, has the keyword while it is "
       "there. A Might amount, 'friendly' / 'enemy' units, a keyword with a value, or a timed grant is a different clause."),
      ["Units here have [Ganking]."],
@@ -988,7 +988,7 @@ LITERAL = [
       "units here have [ganking] this turn"]),
     ("other_friendly_units_here_have_keyword",
      r"other friendly units here have \[(?P<keyword>assault|shield)\]",
-     ["Core 365.1", "Core 476", "Core 477.2", "Core 477.2.b", "Core 807.2", "Core 814.2"], "passive", ["might_aura", "layer_engine"],
+     ["Core 365.1", "Core 478", "Core 479.3", "Core 479.3.b", "Core 807.2", "Core 814.2"], "passive", ["might_aura", "layer_engine"],
      ("A printed keyword aura over every other friendly Unit at the Battlefield where the source is, while the source "
       "is on the board; values are summed with the Unit's own (807.2, 814.2). A Might amount, the source itself, "
       "a whole-board aura or a keyword with a value is a different clause."),
@@ -999,7 +999,7 @@ LITERAL = [
     # one that does not otherwise have it - never a second instance summed onto its own
     ("friendly_buffed_units_have_keyword_if_they_didnt_already",
      r"friendly buffed units have \[(?P<keyword>deflect)\] if they didn't already",
-     ["Core 365.1", "Core 477.2", "Core 477.2.b", "Core 702.2.a"], "passive", ["might_aura", "layer_engine", "buff_counters"],
+     ["Core 365.1", "Core 479.3", "Core 479.3.b", "Core 702.2.a"], "passive", ["might_aura", "layer_engine", "buff_counters"],
      ("A printed keyword aura over the friendly Units that have a buff, while the source is on the board: each that does "
       "not otherwise have the keyword gets it; one that already has it keeps exactly its own. 'Other', an unbuffed set, or "
       "an aura that adds on top is a different clause."),
@@ -1008,7 +1008,7 @@ LITERAL = [
       "other friendly buffed units have [deflect] if they didn't already"]),
     ("other_friendly_units_have_keyword",
      r"other friendly units have \[(?P<keyword>vision)\]",
-     ["Core 365.1", "Core 476", "Core 477.2", "Core 477.2.b", "Core 817.2"], "passive", ["might_aura", "layer_engine"],
+     ["Core 365.1", "Core 478", "Core 479.3", "Core 479.3.b", "Core 817.2"], "passive", ["might_aura", "layer_engine"],
      ("A printed keyword aura over every other friendly Unit on the board, while the source is there. Each "
       "instance of Vision triggers separately (817.2), so a Unit with its own Vision played under this aura "
       "triggers twice. 'here', the source itself, or another keyword is a different clause."),
@@ -1016,10 +1016,10 @@ LITERAL = [
      ["other friendly units here have [vision]", "friendly units have [vision]", "other friendly units have [tank]"]),
     # 2026-09-27: a card's own conditional keywords (364.3.a), each a keyword_grant on the card
     # itself that applies only while its condition holds; the condition is evaluated in the
-    # Ability layer - for Mighty (708) from the layer result in progress (476.2, 476.3).
+    # Ability layer - for Mighty (708) from the layer result in progress (478.3, 478.4).
     ("while_im_buffed_i_have_keywords",
      r"while i'm buffed, i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
-     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 477.2", "Core 702.2.a"], "conditional_keywords",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 479.3", "Core 702.2.a"], "conditional_keywords",
      ["continuous_effects", "condition_v1", "conditional_passives", "buff_counters"],
      ("The card's own keywords while it has a Buff counter (702.2.a); spent, it no longer has them. Another "
       "object's Buff, a Might amount, or a keyword with a value is a different clause."),
@@ -1028,27 +1028,27 @@ LITERAL = [
       "while i'm buffed, i have [ganking 2]"]),
     ("if_you_discarded_a_card_this_turn_i_have_keywords",
      r"if you've discarded a card this turn, i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
-     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 477.2", "Core 422.1"], "conditional_keywords",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 479.3", "Core 423.1"], "conditional_keywords",
      ["continuous_effects", "condition_v1", "conditional_passives", "private_discard"],
      ("The card's own keywords while its controller has discarded at least one card this turn - by an "
-      "instruction or as a cost (422.1, 422.3). An opponent's discard, another turn, or a count other than one "
+      "instruction or as a cost (423.1, 423.3). An opponent's discard, another turn, or a count other than one "
       "is a different clause."),
      ["If you've discarded a card this turn, I have [Assault] and [Ganking]."],
      ["if an opponent has discarded a card this turn, i have [assault]", "if you've discarded two cards this turn, i have [assault]",
       "when you discard a card, i have [assault]"]),
     ("while_im_mighty_i_have_keywords",
      r"while i'm \[mighty\], i have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
-     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 476.2", "Core 476.3", "Core 477.2", "Core 708"], "conditional_keywords",
+     ["Core 364.3", "Core 364.3.a", "Core 365.1", "Core 478.3", "Core 478.4", "Core 479.3", "Core 708"], "conditional_keywords",
      ["continuous_effects", "condition_v1", "conditional_passives", "layer_engine"],
      ("The card's own keywords while its own Might is 5 or more (708), read from the layers in progress: a Buff "
-      "added in the Arithmetic layer makes it Mighty and the Ability layer is evaluated again (476.2); once the "
-      "grant is disqualified it is not re-applied (476.3). Another unit's Might is a different clause."),
+      "added in the Arithmetic layer makes it Mighty and the Ability layer is evaluated again (478.3); once the "
+      "grant is disqualified it is not re-applied (478.4). Another unit's Might is a different clause."),
      ["While I'm [Mighty], I have [Deflect], [Ganking], and [Shield]."],
      ["while a friendly unit is [mighty], i have [ganking]", "while i'm [mighty], i have +2 :rb_might:",
       "when i become [mighty], i have [ganking]"]),
     ("while_im_buffed_i_have_an_additional_might",
      r"while i'm buffed, i have an additional \+(?P<amount>\d+) \[m\]",
-     ["Core 364.3", "Core 364.3.a", "Core 702.2.a", "Core 703", "Core 477.3"], "conditional_might",
+     ["Core 364.3", "Core 364.3.a", "Core 702.2.a", "Core 703", "Core 479.4"], "conditional_might",
      ["continuous_effects", "condition_v1", "conditional_passives", "buff_counters"],
      ("+N Might on the card itself while it has a Buff counter, on top of the Buff's own +1 (703). Another "
       "object's Buff or a keyword is a different clause."),
@@ -1057,18 +1057,18 @@ LITERAL = [
       "while i'm buffed, i have +1 :rb_might:"]),
     ("i_get_might_for_each_buffed_friendly_unit_at_my_battlefield",
      r"i get \+(?P<amount>\d+) \[m\] for each buffed friendly unit at my battlefield",
-     ["Core 364.1", "Core 477.3", "Core 477.3.b", "Core 702.2.a"], "dynamic_might", ["continuous_effects", "buff_counters"],
+     ["Core 364.1", "Core 479.4", "Core 479.4.b", "Core 702.2.a"], "dynamic_might", ["continuous_effects", "buff_counters"],
      ("A passive increase of the card's own Might by the number of Units with a Buff counter, friendly to its "
       "controller, at the Battlefield it is at - itself included ('friendly', not 'other'); none while it is in "
-      "a Base. Computed fresh each time (477.3.b). Enemy or unbuffed units, or 'here' elsewhere, are a different clause."),
+      "a Base. Computed fresh each time (479.4.b). Enemy or unbuffed units, or 'here' elsewhere, are a different clause."),
      ["I get +1 :rb_might: for each buffed friendly unit at my battlefield."],
      ["i get +1 :rb_might: for each friendly unit at my battlefield", "i get +1 :rb_might: for each buffed enemy unit at my battlefield",
       "i get +1 :rb_might: for each other buffed friendly unit at my battlefield"]),
     ("my_might_is_increased_by_the_number_of_cards_in_your_trash",
      r"my might is increased by the number of cards in your trash",
-     ["Core 364.1", "Core 477.3", "Core 477.3.b", "Core 108.2.b"], "dynamic_might", ["continuous_effects"],
+     ["Core 364.1", "Core 479.4", "Core 479.4.b", "Core 108.2.b"], "dynamic_might", ["continuous_effects"],
      ("A passive increase of the card's own Might by the number of cards in its controller's Trash, a public "
-      "zone, computed fresh each time (477.3.b). An opponent's Trash, or another zone, is a different clause."),
+      "zone, computed fresh each time (479.4.b). An opponent's Trash, or another zone, is a different clause."),
      ["My Might is increased by the number of cards in your trash."],
      ["my might is increased by the number of cards in your hand", "my might is increased by your points",
       "my might is increased by the number of cards in your opponent's trash"]),
@@ -1108,7 +1108,7 @@ LITERAL = [
     # (107.3.b.1); hidden.hide_card reads the capacity; check_battlefield_passives.py
     ("you_may_hide_an_additional_card_here",
      r"you may hide an additional card here",
-     ["Core 107.3.b", "Core 107.3.b.1", "Core 107.3.c", "Core 421.1"], "passive", ["facedown_zone", "hide_action"],
+     ["Core 107.3.b", "Core 107.3.b.1", "Core 107.3.c", "Core 422.1"], "passive", ["facedown_zone", "hide_action"],
      ("A Battlefield's printed statement: its Facedown Zone holds one card more than the one of 107.3.b - two - "
       "while it is in play. Only this Battlefield's zone; hiding still needs control of it (107.3.c). 'Two "
       "additional cards', or a statement on another object, is a different clause."),
@@ -1205,8 +1205,8 @@ LITERAL = [
     # 2026-10-12 package 11 (Symbol of the Solari)
     ("if_a_combat_where_you_are_the_attacker_ends_in_a_tie_recall_all_units_instead",
      r"if a combat where you are the attacker ends in a tie, recall all units instead",
-     ["Core 466.3.d", "Core 370.1", "Core 455"], "passive", ["combat_result", "recall"],
-     ("The result of a Combat its controller attacked in, when it is a tie (No Result, 466.3.d), is replaced: every unit "
+     ["Core 468.3.d", "Core 370.1", "Core 457"], "passive", ["combat_result", "recall"],
+     ("The result of a Combat its controller attacked in, when it is a tie (No Result, 468.3.d), is replaced: every unit "
       "still at that Battlefield, either side's, is recalled. As the defender, or with a winner, nothing changes."),
      ["If a combat where you are the attacker ends in a tie, recall ALL units instead."],
      ["if a combat where you are the defender ends in a tie, recall all units instead",
@@ -1234,7 +1234,7 @@ LITERAL = [
       "counter a spell",
       "counter a spell that costs no more than [e4] and no more than [c]"]),
     # 2026-10-08 (package 10, Wind Wall): one spell on the Chain, chosen as the countering card is played (Core 355.7,
-    # 355.5), countered (Core 425.1)
+    # 355.5), countered (Core 426.1)
     # 2026-10-13 package 11 (Treasure Trove: "[C], [T]: Kill this."): the ability's own source killed - its typed
     # self-reference, resolved as the instruction executes (gone or a new object: ignored, Core 359.3.e.6)
     # 2026-10-13 package 11 (Time Warp): an Additional Turn for the card's controller, and the spell banishing itself
@@ -1242,7 +1242,7 @@ LITERAL = [
     # its controller becomes the caster, then it is recalled - to its NEW controller's Base
     ("choose_an_enemy_unit_at_a_battlefield_take_control_of_it_and_recall_it",
      r"choose an enemy unit at a battlefield\. take control of it and recall it",
-     ["Core 189", "Core 191.3", "Core 355.5", "Core 455", "Core 456.1"], "instruction", ["gain_control", "recall", "targeting"],
+     ["Core 189", "Core 191.4", "Core 355.5", "Core 457", "Core 458.1"], "instruction", ["gain_control", "recall", "targeting"],
      "One enemy Unit at a Battlefield, chosen as the spell is played (the same chosen object for both instructions): "
      "its controller becomes the spell's controller - its owner, damage, exhaustion and buff unchanged - and it is "
      "recalled to that new controller's Base (not a Move). A friendly Unit, or one in a Base, is not a legal choice.",
@@ -1262,7 +1262,7 @@ LITERAL = [
     # 2026-10-13 package 11 (Heimerdinger - Inventor, GPT ruling 14)
     ("i_have_all_exhaust_abilities_of_all_friendly_legends_units_and_gear",
      r"i have all :rb_exhaust: abilities of all friendly legends, units, and gear",
-     ["Core 377", "Core 191.4", "Core 359.3.f.1"], "passive", ["copied_abilities"],
+     ["Core 377", "Core 191.5", "Core 359.3.f.1"], "passive", ["copied_abilities"],
      "The card has every activated ability with [Exhaust] in its cost that a friendly Legend, Unit or Gear on the Board "
      "prints, for as long as that permanent is there: 'me'/'this' is the card, its [Exhaust] exhausts the card, every "
      "other printed cost is paid as printed.",
@@ -1272,7 +1272,7 @@ LITERAL = [
     # 2026-10-13 package 11 (Mystic Reversal, GPT ruling 13; Core 750-755)
     ("gain_control_of_a_spell_you_may_make_new_choices_for_it",
      r"gain control of a spell\. you may make new choices for it",
-     ["Core 191.2", "Core 191.4.b", "Core 751", "Core 752.1", "Core 753.1", "Core 755"], "instruction",
+     ["Core 191.3", "Core 191.5.b", "Core 751", "Core 752.1", "Core 753.1", "Core 755"], "instruction",
      ["gain_control_of_spell", "make_new_choices", "counter"],
      "One spell on the Chain, chosen as this is played, becomes its controller's - what was paid for it moves nowhere - "
      "and that player may then remake any of its targets, destinations or mode, each new choice something it did not "
@@ -1290,43 +1290,43 @@ LITERAL = [
      ["take an additional turn after this one", "each player takes a turn after this one", "skip your next turn"]),
     ("banish_this",
      r"banish this",
-     ["Core 157", "Core 427.1", "Core 124"], "instruction", ["banish_this"],
+     ["Core 157", "Core 428.1", "Core 124"], "instruction", ["banish_this"],
      ("The resolving spell's own instruction: it leaves the Chain for its owner's banishment, not the trash. Not on the "
       "Chain, nothing is banished. 'Banish it' or 'banish a unit' is a different production."),
      ["Banish this."],
      ["banish it", "banish a unit", "banish this instead"]),
     ("kill_this",
      r"kill this",
-     ["Core 428", "Core 359.3.f.1", "Core 359.3.e.6"], "instruction", ["kill"],
+     ["Core 429", "Core 359.3.f.1", "Core 359.3.e.6"], "instruction", ["kill"],
      ("The ability's own source is killed (object_ref program_source): no target, nothing chosen. 'Kill it', a chosen "
       "unit, or 'kill this instead' (a replacement) is a different production."),
      ["Kill this."],
      ["kill it", "kill a unit", "kill this instead"]),
     ("counter_a_spell",
      r"counter a spell",
-     ["Core 425.1", "Core 355.7", "Core 355.5"], "instruction", ["counter", "typed_selectors"],
+     ["Core 426.1", "Core 355.7", "Core 355.5"], "instruction", ["counter", "typed_selectors"],
      ("Counter one chosen spell on the Chain: its card leaves the Chain to its owner's trash, it was not played and no "
-      "cost is refunded (Core 425.1). The target is chosen as the countering card is played."),
+      "cost is refunded (Core 426.1). The target is chosen as the countering card is played."),
      ["Counter a spell."],
      ["counter a spell that costs no more than [e4] and no more than [a]", "counter an ability",
       "counter a unit", "counter target spell"]),
     ("choose_an_opponent",
      r"choose an opponent",
-     ["Core 355.1", "Core 355.17"], "instruction", ["choose_player"],
+     ["Core 355.1", "Core 355.18"], "instruction", ["choose_player"],
      ("The whole instruction is a choice of one opponent. It changes nothing; what it leaves is the "
       "receipt the clauses after it read, so 'they' means this opponent and not whoever matches later."),
      ["Choose an opponent."],
      ["choose a player", "choose an opponent unit", "each opponent"]),
     ("they_reveal_their_hand",
      r"they reveal their hand",
-     ["Core 424.2.b", "Core 128.4"], "instruction", ["reveal"],
-     ("The opponent an earlier clause chose reveals their whole hand (424.2.b: a hand reveal shows every "
+     ["Core 425.2.b", "Core 128.4"], "instruction", ["reveal"],
+     ("The opponent an earlier clause chose reveals their whole hand (425.2.b: a hand reveal shows every "
       "card, so it takes no count). The clause abstains unless an earlier clause chose the player."),
      ["They reveal their hand."],
      ["reveal your hand", "they reveal 2 cards", "each opponent reveals their hand"]),
     ("choose_a_non_unit_card_from_it_and_recycle_that_card",
      r"choose a non-unit card from it, and recycle that card",
-     ["Core 424.3.a", "Core 433", "Core 355.10.a"], "instruction", ["recycle", "reveal"],
+     ["Core 425.3.a", "Core 434", "Core 355.10.a"], "instruction", ["recycle", "reveal"],
      ("One card from what the preceding reveal actually put on the table, excluding Units, recycled. "
       "The candidates are the reveal's own marks, so nothing still private is choosable."),
      ["Choose a non-unit card from it, and recycle that card."],
@@ -1336,7 +1336,7 @@ LITERAL = [
     # 2026-10-08 package 10 (Mindsplitter)
     ("choose_a_card_from_it_and_they_discard_that_card",
      r"choose a card from it, and they discard that card",
-     ["Core 424.2.b", "Core 422.1", "Core 128.4", "Core 355.10.a"], "instruction", ["discard", "reveal"],
+     ["Core 425.2.b", "Core 423.1", "Core 128.4", "Core 355.10.a"], "instruction", ["discard", "reveal"],
      ("One card from what the preceding reveal actually put on the table, chosen by the caster; the player an earlier "
       "clause chose discards it. The candidates are the reveal's own marks in that player's hand, so nothing still "
       "private is choosable; nothing revealed, nothing is discarded."),
@@ -1345,7 +1345,7 @@ LITERAL = [
       "choose a card from their hand, and they discard that card"]),
     ("you_may_play_me_to_an_occupied_enemy_battlefield",
      r"you may play me to an occupied enemy battlefield",
-     ["Core 355.2.a", "Core 355.2.b", "Core 170.11.a", "Core 323.6"], "passive",
+     ["Core 355.2.a", "Core 355.2.b", "Core 170.11.a", "Core 323.5"], "passive",
      ["occupied_enemy_battlefield"],
      ("A printed permission that widens where this card may enter, and nothing else: 170.11.a makes "
       "'occupied' a Unit being there, of anyone's, and 'enemy' is the controller relation. It does not "
@@ -1405,18 +1405,18 @@ LITERAL = [
       "i can't move to base",
       "they can't move it this turn",
       "units can't move from here to a battlefield"]),
-    # 2026-09-27 package 6: a state the chosen object or the set must be in (Core 414.2 Exhausted,
-    # 415.2 Ready, 142 damage marked), bounded and criteria buffs, and two effect conditions read as
+    # 2026-09-27 package 6: a state the chosen object or the set must be in (Core 415.2 Exhausted,
+    # 416.2 Ready, 142 damage marked), bounded and criteria buffs, and two effect conditions read as
     # the instruction executes (Core 383.2.a.1: an "if" not right after the trigger condition)
     ("buff_an_exhausted_friendly_unit", r"buff an exhausted friendly unit",
-     ["Core 426.1", "Core 702.2.a", "Core 414.2", "Core 355.9", "Core 359.3.e.2"], "instruction", ["buff", "targeting"],
+     ["Core 427.1", "Core 702.2.a", "Core 415.2", "Core 355.9", "Core 359.3.e.2"], "instruction", ["buff", "targeting"],
      "One chosen friendly Unit that is Exhausted when chosen and when buffed. Any friendly unit, an enemy unit, "
      "a Ready unit, or every exhausted unit is a different clause.",
      ["Buff an exhausted friendly unit."],
      ["buff a friendly unit", "buff an exhausted enemy unit", "buff a ready friendly unit",
       "buff all exhausted friendly units"]),
     ("ready_something_else_thats_exhausted", r"ready something else that's exhausted",
-     ["Core 415.1", "Core 414.2", "Core 355.9.a", "Core 359.3.e.2"], "instruction", ["ready", "targeting"],
+     ["Core 416.1", "Core 415.2", "Core 355.9.a", "Core 359.3.e.2"], "instruction", ["ready", "targeting"],
      "One chosen object of any type on the board, or a Legend in its Legend Zone (GPT 2026-10-02), not the source "
      "itself, that is Exhausted when chosen and when readied. The source included, a Ready object, or one type only "
      "is a different clause.",
@@ -1425,7 +1425,7 @@ LITERAL = [
       "ready a unit that's exhausted"]),
     ("give_me_might_this_turn_if_there_is_a_ready_enemy_unit_here",
      r"give me (?P<sign>[+-])(?P<amount>\d+) \[m\] this turn if there is a ready enemy unit here",
-     ["Core 476", "Core 479", "Core 317.2", "Core 383.2.a.1", "Core 415.2", "Core 359.3.f.2"], "instruction",
+     ["Core 478", "Core 481", "Core 317.2", "Core 383.2.a.1", "Core 416.2", "Core 359.3.f.2"], "instruction",
      ["modify_might", "condition_v1"],
      "The source's own Might this turn, only if an enemy Unit that is Ready stands at the source's Battlefield as "
      "the instruction executes. Any enemy unit, an exhausted one, or a condition right after the trigger "
@@ -1435,14 +1435,14 @@ LITERAL = [
       "give me +2 [m] this turn if there is an exhausted enemy unit here",
       "give me +2 [m] this turn if there is a ready friendly unit here"]),
     ("buff_up_to_two_other_friendly_units", r"buff up to two other friendly units",
-     ["Core 426.1", "Core 355.13", "Core 355.8", "Core 359.3.e.8"], "instruction", ["buff", "targeting"],
+     ["Core 427.1", "Core 355.13", "Core 355.8", "Core 359.3.e.8"], "instruction", ["buff", "targeting"],
      "One choice of zero to two friendly Units, the source not among them, each buffed on its own. The source "
      "allowed, exactly two, or every friendly unit is a different clause.",
      ["Buff up to two other friendly units."],
      ["buff up to two friendly units", "buff two other friendly units", "buff all other friendly units",
       "buff up to three other friendly units"]),
     ("buff_all_friendly_units", r"(?:then )?buff all friendly units",
-     ["Core 426.1", "Core 426.1.b.1", "Core 355.10.d"], "instruction", ["buff", "criteria_expansion"],
+     ["Core 427.1", "Core 427.1.b.1", "Core 355.10.d"], "instruction", ["buff", "criteria_expansion"],
      "Every friendly Unit on the board - Bases and Battlefields - found by criteria, not targeted. Other friendly "
      "units, enemy units, or friendly units at one place is a different clause.",
      ["Buff all friendly units.", "Then buff all friendly units."],
@@ -1450,7 +1450,7 @@ LITERAL = [
       "buff a friendly unit"]),
     ("if_i_am_at_a_battlefield_buff_all_other_friendly_units_there",
      r"(?:then, )?if i am at (?:a )?battlefield, buff all other friendly units there",
-     ["Core 426.1", "Core 355.10.d", "Core 359.3.f.2", "Core 383.2.a.1", "Core 107.2.b"], "instruction",
+     ["Core 427.1", "Core 355.10.d", "Core 359.3.f.2", "Core 383.2.a.1", "Core 107.2.b"], "instruction",
      ["buff", "criteria_expansion", "condition_v1"],
      "Only if the source stands at a Battlefield as the instruction executes: every friendly Unit at that "
      "Battlefield but the source. The source included, every friendly unit, or a condition right after the "
@@ -1460,7 +1460,7 @@ LITERAL = [
      ["if i am at a battlefield, buff all friendly units there", "buff all other friendly units there",
       "if i am at a battlefield, buff all other friendly units", "if i am in my base, buff all other friendly units there"]),
     ("kill_all_damaged_enemy_units_here", r"kill all damaged enemy units here",
-     ["Core 428", "Core 142", "Core 355.10.d", "Core 359.3.f.2"], "instruction", ["kill", "criteria_expansion"],
+     ["Core 429", "Core 142", "Core 355.10.d", "Core 359.3.f.2"], "instruction", ["kill", "criteria_expansion"],
      "Every enemy Unit at the source's current Battlefield with damage marked on it as the instruction executes. "
      "Undamaged units, friendly units, or units at another place is a different clause.",
      ["Kill all damaged enemy units here."],
@@ -1479,26 +1479,26 @@ WRAPPERS = [
     # 2026-09-27 package 6 (Poro Herder): before when_you_play_me, which would take the condition for
     # the instruction; the tag is a closed alternation (clause_grammar.PRINTED_TAGS)
     ("when_you_play_me_if_you_control_a_tag", r"when you play me, if you control an? (?P<tag>poro), (?P<inner>.+)",
-     ["Core 383.1", "Core 419.4.a", "Core 383.2.a.1", "Core 133.8.a"], ["play_triggers", "condition_v1"],
+     ["Core 383.1", "Core 420.4.a", "Core 383.2.a.1", "Core 133.8.a"], ["play_triggers", "condition_v1"],
      ["When you play me, if you control a Poro, draw 1."],
      ["when you play me, draw 1 if you control a poro", "when you play me, if you control a unit, draw 1",
       "when you play a poro, draw 1", "when i move, if you control a poro, draw 1"]),
     # 2026-10-08 package 10 (Clockwork Keeper): before when_you_play_me, which would take the condition for the instruction
     ("when_you_play_me_if_you_paid_the_additional_cost", r"when you play me, if you paid the additional cost, (?P<inner>.+)",
-     ["Core 383.1", "Core 419.4.a", "Core 383.2.a.1", "Core 356.4.f.1"], ["play_triggers"],
+     ["Core 383.1", "Core 420.4.a", "Core 383.2.a.1", "Core 356.4.f.1"], ["play_triggers"],
      ["When you play me, if you paid the additional cost, draw 1."],
      ["when you play me, draw 1", "when you play me, if you paid the cost, draw 1",
       "when i move, if you paid the additional cost, draw 1"]),
     # 2026-10-12 package 11 (Blitzcrank - Impassive): before when_you_play_me, which would not take "to a battlefield"
     ("when_you_play_me_to_a_battlefield", r"when you play me to a battlefield, (?P<inner>.+)",
-     ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
+     ["Core 383.1", "Core 420.4.a"], ["play_triggers"],
      ["When you play me to a battlefield, draw 1."],
      ["when you play me, draw 1", "when i move to a battlefield, draw 1", "when you play me to your base, draw 1"]),
-    ("when_you_play_me", r"when you play me, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
+    ("when_you_play_me", r"when you play me, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a"], ["play_triggers"],
      ["When you play me, channel 1 rune exhausted.", "When you play me, draw 1."],
      ["when you play a unit, draw 1", "when i move, draw 1"]),
     # 2026-10-08 package 10: a Gear's "When you play this" - the card's own play trigger, as "When you play me"
-    ("when_you_play_this", r"when you play this, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"], ["play_triggers"],
+    ("when_you_play_this", r"when you play this, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a"], ["play_triggers"],
      ["When you play this, draw 1."],
      ["when you play a gear, draw 1", "when you play me, draw 1"]),
     # 2026-10-12 package 11 (Treasure Trove)
@@ -1506,73 +1506,73 @@ WRAPPERS = [
      ["leave_board_triggers"],
      ["When this leaves the board, draw 1."],
      ["when i die, draw 1", "when this moves, draw 1", "when a unit leaves the board, draw 1"]),
-    ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 420"], ["move_triggers"],
+    ("when_i_move", r"when i move, (?P<inner>.+)", ["Core 383.1", "Core 421"], ["move_triggers"],
      ["When I move, draw 1."], ["when a unit moves, draw 1", "when you play me, draw 1"]),
     # 2026-09-24: the same Move trigger, met only when the completed Move's destination is a
     # Battlefield (effect_ir: condition moved_to_battlefield, read on move_triggers only)
-    ("when_i_move_to_a_battlefield", r"when i move to a battlefield, (?P<inner>.+)", ["Core 383.1", "Core 420"],
+    ("when_i_move_to_a_battlefield", r"when i move to a battlefield, (?P<inner>.+)", ["Core 383.1", "Core 421"],
      ["move_triggers"], ["When I move to a battlefield, draw 1."],
      ["when i move, draw 1", "when i move to base, draw 1", "when a unit moves to a battlefield, draw 1"]),
     # 2026-10-06 package 9 (The Grand Plaza): the conditional statement right after "When you hold here" is part of
     # the Trigger Condition (Core 383.2.a.1) - on the Battlefield's hold descriptor, read as the Hold is processed
     ("when_you_hold_here_if_you_have_n_units_here",
      r"when you hold here, if you have (?P<count>\d+)\+ units here, (?P<inner>.+)",
-     ["Core 469.2", "Core 190.6.a", "Core 383.2.a.1"], ["hold_triggers"],
+     ["Core 471.2", "Core 190.6.a", "Core 383.2.a.1"], ["hold_triggers"],
      ["When you hold here, if you have 7+ units here, you win the game."],
      ["when you hold here, you win the game", "when you conquer here, if you have 7+ units here, draw 1",
       "when you hold here, if you control 7 units, draw 1"]),
     ("when_you_hold_here", r"when you hold here, (?P<optional>you may )?(?P<inner>.+)",
-     ["Core 469.2", "Core 190.6.a", "Core 383.3"], ["hold_triggers"],
+     ["Core 471.2", "Core 190.6.a", "Core 383.3"], ["hold_triggers"],
      ["When you hold here, draw 1.", "When you hold here, you may channel 1 rune exhausted."],
      ["when you conquer here, draw 1", "when i hold, draw 1", "when you hold here, summon a dragon"]),
     # A Battlefield's own Conquer trigger: its controller - the player who just established
-    # control there and Conquered (Core 348.2.a, 469.1) - controls it (190.6.a); it goes on
-    # the Chain with the Score's other triggers (471.2). Distinct from a Unit's "When I conquer".
+    # control there and Conquered (Core 348.2.a, 471.1) - controls it (190.6.a); it goes on
+    # the Chain with the Score's other triggers (473.2). Distinct from a Unit's "When I conquer".
     ("when_you_conquer_here", r"when you conquer here, (?P<optional>you may )?(?P<inner>.+)",
-     ["Core 469.1", "Core 471.2", "Core 190.6.a", "Core 383.3"], ["conquer_triggers"],
+     ["Core 471.1", "Core 473.2", "Core 190.6.a", "Core 383.3"], ["conquer_triggers"],
      ["When you conquer here, draw 1.", "When you conquer here, you may channel 1 rune exhausted."],
      ["when you hold here, draw 1", "when i conquer, draw 1", "when you conquer, draw 1"]),
     # A Battlefield's own Defend trigger: it triggers when its controller gains the Defender
     # designation in a Combat there (Core 383.4.f, 190.6.a, 190.6.d); open_combat schedules
-    # it after the Attack triggers (464.2.e.1). Distinct from a Unit's "When I defend".
+    # it after the Attack triggers (466.2.d.1). Distinct from a Unit's "When I defend".
     ("when_you_defend_here", r"when you defend here, (?P<optional>you may )?(?P<inner>.+)",
-     ["Core 383.4.f", "Core 190.6.a", "Core 190.6.d", "Core 464.2.e.1", "Core 383.3"], ["defend_triggers"],
+     ["Core 383.4.f", "Core 190.6.a", "Core 190.6.d", "Core 466.2.d.1", "Core 383.3"], ["defend_triggers"],
      ["When you defend here, draw 1.", "When you defend here, you may channel 1 rune exhausted."],
      ["when you attack here, draw 1", "when i defend, draw 1", "when you conquer here, draw 1"]),
     # A Unit's own Hold Effect (Core 383.4.d): it goes on the Chain after the Unit is present
     # at a Battlefield its controller Holds and scores from (383.4.d.2.a) - the Scoring Step's
     # unit_here scope. Distinct from the Battlefield's own "When you hold here".
-    ("when_i_hold", r"when i hold, (?P<inner>.+)", ["Core 469.2", "Core 383.4.d", "Core 383.4.d.2.a"], ["hold_triggers"],
+    ("when_i_hold", r"when i hold, (?P<inner>.+)", ["Core 471.2", "Core 383.4.d", "Core 383.4.d.2.a"], ["hold_triggers"],
      ["When I hold, draw 1."], ["when you hold here, draw 1", "when i conquer, draw 1", "when i move, draw 1"]),
-    ("when_i_conquer", r"when i conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.1"], ["conquer_triggers"],
+    ("when_i_conquer", r"when i conquer, (?P<inner>.+)", ["Core 471.1", "Core 383.1"], ["conquer_triggers"],
      ["When I conquer, draw 1."], ["when you conquer, draw 1", "when i hold, draw 1", "when i move, draw 1"]),
     # A Unit's own Attack Trigger (Core 383.4.e): it goes on the Chain the first time this
     # combat the Unit becomes an Attacker (383.4.e.2, .2.a), attacker before
-    # defender (464.2.e.1). Distinct from the player-level "When you attack" (not modelled).
+    # defender (466.2.d.1). Distinct from the player-level "When you attack" (not modelled).
     ("when_i_attack", r"when i attack, (?P<inner>.+)",
-     ["Core 383.4.e", "Core 383.4.e.1", "Core 383.4.e.2", "Core 383.4.e.2.a", "Core 464.2.e", "Core 464.2.e.1"],
+     ["Core 383.4.e", "Core 383.4.e.1", "Core 383.4.e.2", "Core 383.4.e.2.a", "Core 466.2.d", "Core 466.2.d.1"],
      ["attack_triggers"],
      ["When I attack, draw 1."], ["when you attack, draw 1", "when i defend, draw 1", "when i conquer, draw 1"]),
     # 2026-10-12 package 11 (Teemo - Strategist): a Unit's own Defend trigger (Core 383.4.f), the object-level
     # defend_triggers the attack-or-defend row already files its descriptor under
     ("when_i_defend", r"when i defend, (?P<inner>.+)",
-     ["Core 383.4.f", "Core 383.4.f.1", "Core 383.4.f.2", "Core 383.4.f.2.a", "Core 464.2.e", "Core 464.2.e.1"],
+     ["Core 383.4.f", "Core 383.4.f.1", "Core 383.4.f.2", "Core 383.4.f.2.a", "Core 466.2.d", "Core 466.2.d.1"],
      ["attack_triggers"],
      ["When I defend, draw 1."], ["when you defend here, draw 1", "when i attack, draw 1", "when i conquer, draw 1"]),
     # One Unit ability with two trigger conditions (Core 383.4.e, 383.4.f): it goes on the
     # Chain the first time this Combat the Unit becomes an Attacker, or a Defender - never
     # both, since a Unit holds one designation per Combat.
     ("when_i_attack_or_defend", r"when i attack or defend, (?P<inner>.+)",
-     ["Core 383.4.e", "Core 383.4.e.2.a", "Core 383.4.f", "Core 383.4.f.2.a", "Core 464.2.e", "Core 464.2.e.1"],
+     ["Core 383.4.e", "Core 383.4.e.2.a", "Core 383.4.f", "Core 383.4.f.2.a", "Core 466.2.d", "Core 466.2.d.1"],
      ["attack_triggers"],
      ["When I attack or defend, draw 1."],
      ["when i attack, draw 1", "when i defend, draw 1", "when you attack or defend, draw 1"]),
     # 2026-09-27: one Unit ability with two trigger conditions of different kinds - a Play Effect
-    # (Core 383.4.a, 419.4.a: on play completion) and a Conquer Effect (383.4.c, 383.4.c.2.a: the
+    # (Core 383.4.a, 420.4.a: on play completion) and a Conquer Effect (383.4.c, 383.4.c.2.a: the
     # Unit present at the Battlefield Conquered). The same descriptor in play_triggers and
     # conquer_triggers; the two events are different, so each schedules it at most once.
     ("when_im_played_and_when_i_conquer", r"when i'm played and when i conquer, (?P<inner>.+)",
-     ["Core 383.4.a", "Core 419.4.a", "Core 383.4.c", "Core 383.4.c.2.a", "Core 469.1"],
+     ["Core 383.4.a", "Core 420.4.a", "Core 383.4.c", "Core 383.4.c.2.a", "Core 471.1"],
      ["play_triggers", "conquer_triggers"],
      ["When I'm played and when I conquer, draw 1."],
      ["when i'm played, draw 1", "when i conquer, draw 1", "when i'm played or when i hold, draw 1"]),
@@ -1603,62 +1603,62 @@ WRAPPERS = [
     # 2026-09-24: triggers that watch what happens to ANYTHING, not to the card itself - an
     # event_triggers descriptor with a typed watch (watchers.py), woken by the play
     # transaction ("played") and by every resolution's events. Each row states its watch.
-    ("when_you_play_a_spell", r"when you play a spell, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
+    ("when_you_play_a_spell", r"when you play a spell, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a"],
      ["event_triggers"], ["When you play a spell, draw 1."],
      ["when you play a spell that costs 5 or more, draw 1", "when you play me, draw 1", "when you play a gear, draw 1"]),
     ("when_you_play_a_spell_that_costs_n_or_more",
-     r"when you play a spell that costs \[e(?P<cost>\d+)\] or more, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a", "Core 206"],
+     r"when you play a spell that costs \[e(?P<cost>\d+)\] or more, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a", "Core 206"],
      ["event_triggers"], ["When you play a spell that costs :rb_energy_5: or more, draw 1."],
      ["when you play a spell, draw 1", "when you play a spell that costs :rb_energy_5: or less, draw 1",
       "when you play a unit that costs :rb_energy_5: or more, draw 1"]),
-    ("when_you_play_a_gear", r"when you play a gear, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
+    ("when_you_play_a_gear", r"when you play a gear, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a"],
      ["event_triggers"], ["When you play a gear, draw 1."], ["when you play a spell, draw 1", "when you play me, draw 1"]),
-    ("when_you_play_another_unit", r"when you play another unit, (?P<inner>.+)", ["Core 383.1", "Core 419.4.a"],
+    ("when_you_play_another_unit", r"when you play another unit, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a"],
      ["event_triggers"], ["When you play another unit, draw 1."], ["when you play a unit, draw 1", "when you play me, draw 1"]),
     # 2026-10-06 package 9 (Volibear - Imposing): an opponent's Move to a Battlefield the source is not at
     ("when_an_opponent_moves_to_a_battlefield_other_than_mine",
      r"when an opponent moves to a battlefield other than mine, (?P<inner>.+)",
-     ["Core 383.1", "Core 420", "Core 411.1", "Core 411.4"], ["event_triggers"],
+     ["Core 383.1", "Core 421", "Core 412.1", "Core 412.4"], ["event_triggers"],
      ["When an opponent moves to a battlefield other than mine, draw 1."],
      ["when an opponent moves to my battlefield, draw 1", "when you move to a battlefield other than mine, draw 1",
       "when an opponent moves to a battlefield, draw 1"]),
     # 2026-09-27: "a [Mighty] unit" - a Unit whose current Might is 5 or greater (Core 708, 710)
     ("when_you_play_a_mighty_unit", r"when you play a \[mighty\] unit, (?P<inner>.+)",
-     ["Core 383.1", "Core 419.4.a", "Core 708", "Core 710"], ["event_triggers"],
+     ["Core 383.1", "Core 420.4.a", "Core 708", "Core 710"], ["event_triggers"],
      ["When you play a [Mighty] unit, draw 1."],
      ["when you play a unit, draw 1", "when you play another unit, draw 1", "when an opponent plays a [mighty] unit, draw 1",
       "when a unit becomes [mighty], draw 1", "when you play a [mighty] gear, draw 1"]),
     ("when_you_play_a_card_on_an_opponents_turn", r"when you play a card on an opponent's turn, (?P<inner>.+)",
-     ["Core 383.1", "Core 419.4.a"], ["event_triggers"], ["When you play a card on an opponent's turn, draw 1."],
+     ["Core 383.1", "Core 420.4.a"], ["event_triggers"], ["When you play a card on an opponent's turn, draw 1."],
      ["when you play a card, draw 1", "when an opponent plays a card, draw 1"]),
     ("when_you_play_a_card_from_hidden", r"when you play a card from \[hidden\], (?P<inner>.+)",
-     ["Core 383.1", "Core 419.4.a", "Core 811.1"], ["event_triggers"], ["When you play a card from [Hidden], draw 1."],
+     ["Core 383.1", "Core 420.4.a", "Core 811.1"], ["event_triggers"], ["When you play a card from [Hidden], draw 1."],
      ["when you play a card, draw 1", "when you hide a card, draw 1"]),
     ("when_you_stun_one_or_more_enemy_units", r"when you stun one or more enemy units, (?P<inner>.+)",
-     ["Core 383.1", "Core 423"], ["event_triggers"], ["When you stun one or more enemy units, draw 1."],
+     ["Core 383.1", "Core 424"], ["event_triggers"], ["When you stun one or more enemy units, draw 1."],
      ["when you stun an enemy unit, draw 1", "when a unit is stunned, draw 1"]),
     ("when_you_stun_an_enemy_unit", r"when you stun an enemy unit, (?P<inner>.+)",
-     ["Core 383.1", "Core 423", "Core 423.1.a.1"], ["event_triggers"], ["When you stun an enemy unit, draw 1."],
+     ["Core 383.1", "Core 424", "Core 424.1.a.1"], ["event_triggers"], ["When you stun an enemy unit, draw 1."],
      ["when you stun one or more enemy units, draw 1", "when you stun a unit, draw 1", "when a unit is stunned, draw 1"]),
     ("when_you_discard_one_or_more_cards", r"when you discard one or more cards, (?P<inner>.+)",
-     ["Core 383.1", "Core 422", "Core 422.1.b"], ["event_triggers"], ["When you discard one or more cards, draw 1."],
+     ["Core 383.1", "Core 423", "Core 423.1.b"], ["event_triggers"], ["When you discard one or more cards, draw 1."],
      ["when you discard a card, draw 1", "when an opponent discards one or more cards, draw 1", "when you discard me, draw 1"]),
     ("when_you_recycle_one_or_more_cards_to_your_main_deck",
-     r"when you recycle one or more cards to your main deck, (?P<inner>.+)", ["Core 383.1", "Core 420"],
+     r"when you recycle one or more cards to your main deck, (?P<inner>.+)", ["Core 383.1", "Core 421"],
      ["event_triggers"], ["When you recycle one or more cards to your Main Deck, draw 1."],
      ["when you recycle a card, draw 1", "when a card is recycled, draw 1"]),
     ("when_a_buffed_friendly_unit_dies", r"when a buffed friendly unit dies, (?P<inner>.+)",
-     ["Core 383.1", "Core 417", "Core 426"], ["event_triggers"], ["When a buffed friendly unit dies, draw 1."],
+     ["Core 383.1", "Core 418", "Core 427"], ["event_triggers"], ["When a buffed friendly unit dies, draw 1."],
      ["when a friendly unit dies, draw 1", "when a buffed enemy unit dies, draw 1"]),
-    # 2026-09-27: "you kill" - a kill you are responsible for (Core 411.4, 428.5); "stunned", as the unit was
+    # 2026-09-27: "you kill" - a kill you are responsible for (Core 412.4, 429.5); "stunned", as the unit was
     ("when_you_kill_a_stunned_enemy_unit", r"when you kill a stunned enemy unit, (?P<inner>.+)",
-     ["Core 383.1", "Core 411.4", "Core 428.5.b", "Core 428.5.c.1", "Core 428.5.c.2", "Core 423"], ["event_triggers"],
+     ["Core 383.1", "Core 412.4", "Core 429.5.b", "Core 429.5.c.1", "Core 429.5.c.2", "Core 424"], ["event_triggers"],
      ["When you kill a stunned enemy unit, draw 1."],
      ["when you kill an enemy unit, draw 1", "when a stunned enemy unit dies, draw 1", "when you kill a stunned unit, draw 1",
       "when you stun an enemy unit, draw 1", "when an opponent kills a stunned enemy unit, draw 1"]),
     # 2026-10-08 (package 10): a Ready / a Buff the player performs on a friendly Unit (Pirate's Haven, Mistfall)
     ("when_you_ready_a_friendly_unit", r"when you ready a friendly unit, (?P<inner>.+)",
-     ["Core 383.1", "Core 415", "Core 315.1.b", "Core 415.3.a", "Core 359.3.f.3"], ["event_triggers"],
+     ["Core 383.1", "Core 416", "Core 315.1.b", "Core 416.3.a", "Core 359.3.f.3"], ["event_triggers"],
      ["When you ready a friendly unit, draw 1."],
      ["when you ready a unit, draw 1", "when a friendly unit becomes ready, draw 1", "when you ready an enemy unit, draw 1",
       "when you exhaust a friendly unit, draw 1"]),
@@ -1668,19 +1668,19 @@ WRAPPERS = [
      ["when you buff a unit, draw 1", "when a friendly unit is buffed, draw 1", "when you buff an enemy unit, draw 1",
       "when you spend a buff, draw 1"]),
     ("the_first_time_a_friendly_unit_dies_each_turn", r"the first time a friendly unit dies each turn, (?P<inner>.+)",
-     ["Core 383.1", "Core 417", "Core 383.3.e"], ["event_triggers"],
+     ["Core 383.1", "Core 418", "Core 383.3.e"], ["event_triggers"],
      ["The first time a friendly unit dies each turn, draw 1."],
      ["when a friendly unit dies, draw 1", "the first time an enemy unit dies each turn, draw 1"]),
     # 2026-09-27: "the Nth time I move" - a watch over the card's own `moved` events (a Standard
-    # Move or an effect's, Core 420.2, 446.1), counted per turn and per object; the count reaching
+    # Move or an effect's, Core 421.2, 448.1), counted per turn and per object; the count reaching
     # N triggers it once (Core 383.1, 383.1.b)
     ("the_first_time_i_move_each_turn", r"the first time i move each turn, (?P<inner>.+)",
-     ["Core 383.1", "Core 383.1.b", "Core 420.2", "Core 446.1"], ["event_triggers"],
+     ["Core 383.1", "Core 383.1.b", "Core 421.2", "Core 448.1"], ["event_triggers"],
      ["The first time I move each turn, draw 1."],
      ["the first time a friendly unit dies each turn, draw 1", "when i move, draw 1",
       "the third time i move in a turn, draw 1", "the first time i move each combat, draw 1"]),
     ("the_third_time_i_move_in_a_turn", r"the third time i move in a turn, (?P<inner>.+)",
-     ["Core 383.1", "Core 383.1.b", "Core 420.2", "Core 446.1"], ["event_triggers"],
+     ["Core 383.1", "Core 383.1.b", "Core 421.2", "Core 448.1"], ["event_triggers"],
      ["The third time I move in a turn, draw 1."],
      ["the first time i move each turn, draw 1", "the second time i move in a turn, draw 1",
       "when i move, draw 1", "the third time a unit moves in a turn, draw 1"]),
@@ -1691,58 +1691,58 @@ WRAPPERS = [
     # reading and not a published ruling)
     ("when_i_conquer_after_an_attack_if_you_assigned_n_or_more_excess_damage_to_enemy_units",
      r"when i conquer after an attack, if you assigned (?P<amount>\d+) or more excess damage to enemy units, (?P<inner>.+)",
-     ["Core 469.1", "Core 383.4.c", "Core 383.2.a.1", "Core 467.2.c.4"], ["conquer_triggers"],
+     ["Core 471.1", "Core 383.4.c", "Core 383.2.a.1", "Core 467.2.c.4"], ["conquer_triggers"],
      ["When I conquer after an attack, if you assigned 5 or more excess damage to enemy units, draw 1."],
      ["when i conquer, if you assigned 5 or more excess damage to enemy units, draw 1",
       "when i conquer after an attack, draw 1",
       "when you conquer after an attack, if you assigned 5 or more excess damage to enemy units, draw 1"]),
     ("when_you_conquer_if_you_have_n_units_at_that_battlefield",
      r"when you conquer, if you have (?P<count>\d+)\+ units at that battlefield, (?P<inner>.+)",
-     ["Core 469.1", "Core 383.4.c", "Core 383.4.c.2.b", "Core 383.2.a.1"], ["conquer_triggers"],
+     ["Core 471.1", "Core 383.4.c", "Core 383.4.c.2.b", "Core 383.2.a.1"], ["conquer_triggers"],
      ["When you conquer, if you have 4+ units at that battlefield, draw 2."],
      ["when you conquer, draw 2", "when you conquer here, if you have 4+ units here, draw 2",
       "when you conquer, if you have 4+ units, draw 2", "when you hold, if you have 4+ units at that battlefield, draw 2"]),
-    ("when_you_conquer", r"when you conquer, (?P<inner>.+)", ["Core 469.1", "Core 383.4.c", "Core 383.4.c.2.b"],
+    ("when_you_conquer", r"when you conquer, (?P<inner>.+)", ["Core 471.1", "Core 383.4.c", "Core 383.4.c.2.b"],
      ["conquer_triggers"], ["When you conquer, draw 1."],
      ["when you conquer here, draw 1", "when i conquer, draw 1", "when you hold, draw 1",
       "when an opponent conquers, draw 1"]),
     # 2026-09-27 (package 6): the Nth card a player plays in a turn - every play of the turn counts,
-    # one per play Finalized (Core 419.4.b), the ones before the watching card was on the board too
+    # one per play Finalized (Core 420.4.b), the ones before the watching card was on the board too
     ("when_you_play_your_second_card_in_a_turn", r"when you play your second card in a turn, (?P<inner>.+)",
-     ["Core 383.1", "Core 419.4.a", "Core 419.4.b"], ["event_triggers"],
+     ["Core 383.1", "Core 420.4.a", "Core 420.4.b"], ["event_triggers"],
      ["When you play your second card in a turn, draw 1."],
      ["when you play a card, draw 1", "when you play your third card in a turn, draw 1",
       "when an opponent plays their second card in a turn, draw 1", "when you play a spell, draw 1"]),
-    # 2026-09-27 (package 6): a death watched with the dying unit's tags as it was (Core 133.8, 417;
+    # 2026-09-27 (package 6): a death watched with the dying unit's tags as it was (Core 133.8, 418;
     # a Recruit token has the Recruit tag by Core 187.1); the watching card must still be on the board
     # after the death (Core 383.2.c.2: dying with it, it does not trigger)
     ("when_another_non_recruit_unit_you_control_dies",
      r"when another non-recruit unit you control dies, (?P<inner>.+)",
-     ["Core 383.1", "Core 383.2.c.2", "Core 428", "Core 133.8", "Core 187.1"], ["event_triggers"],
+     ["Core 383.1", "Core 383.2.c.2", "Core 429", "Core 133.8", "Core 187.1"], ["event_triggers"],
      ["When another non-Recruit unit you control dies, draw 1."],
      ["when another unit you control dies, draw 1", "when a non-recruit unit you control dies, draw 1",
       "when another non-recruit unit an opponent controls dies, draw 1", "when a buffed friendly unit dies, draw 1"]),
     # 2026-09-27 (package 6): "When you discard me" works from the trash, the zone discarding puts the
-    # card in (Core 422.1, 422.1.b): it is evaluated as the card enters it (383.2.c.1) - from the hand
+    # card in (Core 423.1, 423.1.b): it is evaluated as the card enters it (383.2.c.1) - from the hand
     # it could not be, since the card leaves the hand as the condition is met (383.2.c.2)
     ("when_you_discard_me", r"when you discard me, (?P<inner>.+)",
-     ["Core 383.1", "Core 383.2.c.1", "Core 385.2", "Core 422.1", "Core 422.1.b"], ["event_triggers"],
+     ["Core 383.1", "Core 383.2.c.1", "Core 385.2", "Core 423.1", "Core 423.1.b"], ["event_triggers"],
      ["When you discard me, draw 1."],
      ["when you discard one or more cards, draw 1", "when i am discarded, draw 1",
       "when an opponent discards me, draw 1", "when you discard a card, draw 1"]),
-    # 2026-09-27 (package 6): a kill attributed to a spell (Core 428.5.b, 428.5.c, 428.5.d) its controller
-    # is responsible for (428.5.c.1)
+    # 2026-09-27 (package 6): a kill attributed to a spell (Core 429.5.b, 429.5.c, 429.5.d) its controller
+    # is responsible for (429.5.c.1)
     ("when_you_kill_a_unit_with_a_spell", r"when you kill a unit with a spell, (?P<inner>.+)",
-     ["Core 383.1", "Core 428.5", "Core 428.5.b", "Core 428.5.c", "Core 428.5.c.1", "Core 428.5.d"], ["event_triggers"],
+     ["Core 383.1", "Core 429.5", "Core 429.5.b", "Core 429.5.c", "Core 429.5.c.1", "Core 429.5.d"], ["event_triggers"],
      ["When you kill a unit with a spell, draw 1."],
      ["when you kill a unit, draw 1", "when a unit dies, draw 1", "when an opponent kills a unit with a spell, draw 1",
       "when you kill a gear with a spell, draw 1"]),
     # 2026-09-28: watches over a Unit gaining a combat designation (combat emits `attacked` /
-    # `defended`, Core 464.2.c.3), their other requirements read then (383.4.e.2.b, 383.4.f.2.b).
+    # `defended`, Core 466.2.c.3), their other requirements read then (383.4.e.2.b, 383.4.f.2.b).
     # The inner clause's "it" is the Unit the event is about (REFERENT_WRAPPERS, Core 359.3.f.3)
     ("when_an_enemy_unit_attacks_a_battlefield_you_control",
      r"when an enemy unit attacks a battlefield you control, (?P<inner>.+)",
-     ["Core 383.4.e", "Core 383.4.e.2.b", "Core 464.2.c.3", "Core 190.4.b", "Core 359.3.f.3"],
+     ["Core 383.4.e", "Core 383.4.e.2.b", "Core 466.2.c.3", "Core 190.4.b", "Core 359.3.f.3"],
      ["event_triggers", "combat_designations", "trigger_referent"],
      ["When an enemy unit attacks a battlefield you control, draw 1.",
       "When an enemy unit attacks a battlefield you control, give it -2 :rb_might: this turn, to a minimum of 1 :rb_might:."],
@@ -1755,10 +1755,10 @@ WRAPPERS = [
       "When a friendly unit attacks or defends alone, give it +2 :rb_might: this turn."],
      ["when a friendly unit attacks or defends, draw 1", "when a friendly unit attacks alone, draw 1",
       "when an enemy unit attacks or defends alone, draw 1", "when i attack or defend alone, draw 1"]),
-    # a Battlefield's own: a Unit's Move whose location before was this Battlefield (Core 446.1); the
+    # a Battlefield's own: a Unit's Move whose location before was this Battlefield (Core 448.1); the
     # Battlefield's controller controls it, or, uncontrolled, the Turn Player (190.6.a, 190.6.b)
     ("when_a_unit_moves_from_here", r"when a unit moves from here, (?P<inner>.+)",
-     ["Core 383.1", "Core 446.1", "Core 190.6.a", "Core 190.6.b", "Core 359.3.f.3"],
+     ["Core 383.1", "Core 448.1", "Core 190.6.a", "Core 190.6.b", "Core 359.3.f.3"],
      ["move_from_triggers", "trigger_referent"],
      ["When a unit moves from here, draw 1.", "When a unit moves from here, give it +2 :rb_might: this turn."],
      ["when a unit moves here, draw 1", "when a unit moves to here, draw 1", "when i move from here, draw 1",

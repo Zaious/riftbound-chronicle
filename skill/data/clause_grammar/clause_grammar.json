@@ -338,8 +338,8 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 476",
-        "Core 479",
+        "Core 478",
+        "Core 481",
         "Core 317.2"
       ],
       "ast_node": "instruction",
@@ -412,7 +412,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 477.2",
+        "Core 479.3",
         "Core 317.2"
       ],
       "ast_node": "instruction",
@@ -497,9 +497,9 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 477.3",
-        "Core 460",
-        "Core 462"
+        "Core 479.4",
+        "Core 462",
+        "Core 464"
       ],
       "ast_node": "passive",
       "required_capability": [
@@ -537,7 +537,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 415",
+        "Core 416",
         "Core 355.9"
       ],
       "ast_node": "instruction",
@@ -580,9 +580,9 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 423",
-        "Core 423.1",
-        "Core 423.2",
+        "Core 424",
+        "Core 424.1",
+        "Core 424.2",
         "Core 355.9"
       ],
       "ast_node": "instruction",
@@ -625,7 +625,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 420",
+        "Core 421",
         "Core 355.4",
         "Core 355.4.a",
         "Core 355.9"
@@ -663,7 +663,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 420",
+        "Core 421",
         "Core 355.4",
         "Core 355.4.a",
         "Core 355.9"
@@ -701,7 +701,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 441",
+        "Core 442",
         "Core 355.9"
       ],
       "ast_node": "instruction",
@@ -744,7 +744,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 416",
+        "Core 417",
         "Core 355.9"
       ],
       "ast_node": "instruction",
@@ -787,7 +787,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 434",
+        "Core 435",
         "Core 355.9"
       ],
       "ast_node": "instruction",
@@ -795,7 +795,7 @@
         "recall",
         "typed_selectors"
       ],
-      "boundary": "One chosen object is sent to its controller's Base. Recall is not a Move (434.1).",
+      "boundary": "One chosen object is sent to its controller's Base. Recall is not a Move (435.1).",
       "golden": [
         "Recall a unit.",
         "Recall a friendly unit.",
@@ -830,7 +830,7 @@
       },
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 426.1",
+        "Core 427.1",
         "Core 702"
       ],
       "ast_node": "instruction",
@@ -838,7 +838,7 @@
         "buff",
         "typed_selectors"
       ],
-      "boundary": "One chosen Unit gets a Buff counter. A Unit that already has one is still chosen and is not Buffed again (426.1.c).",
+      "boundary": "One chosen Unit gets a Buff counter. A Unit that already has one is still chosen and is not Buffed again (427.1.c).",
       "golden": [
         "Buff a unit.",
         "Buff a friendly unit.",
@@ -992,8 +992,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 413",
-        "Core 431"
+        "Core 414",
+        "Core 432"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -1016,7 +1016,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 413",
+        "Core 414",
         "Core 359.3.d"
       ],
       "ast_node": "instruction",
@@ -1041,7 +1041,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 413",
+        "Core 414",
         "Core 708",
         "Core 710"
       ],
@@ -1066,9 +1066,9 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 422.1",
-        "Core 422.1.a",
-        "Core 422.4"
+        "Core 423.1",
+        "Core 423.1.a",
+        "Core 423.4"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -1092,7 +1092,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.9"
       ],
       "ast_node": "instruction",
@@ -1119,8 +1119,8 @@
       "rule_locators": [
         "Core 370",
         "Core 205",
-        "Core 417.6.c",
-        "Core 420",
+        "Core 418.6.c",
+        "Core 421",
         "Core 124"
       ],
       "ast_node": "passive",
@@ -1335,7 +1335,7 @@
         "Core 355.11.a",
         "Core 355.11.b",
         "Core 355.13",
-        "Core 417"
+        "Core 418"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -1359,7 +1359,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 423",
+        "Core 424",
         "Core 355.11",
         "Core 355.11.a",
         "Core 355.11.b"
@@ -1410,9 +1410,9 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 416.1",
-        "Core 416.4",
-        "Core 416.5"
+        "Core 417.1",
+        "Core 417.4",
+        "Core 417.5"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -1435,16 +1435,16 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 416.1",
-        "Core 416.5",
-        "Core 416.6",
+        "Core 417.1",
+        "Core 417.5",
+        "Core 417.6",
         "Core 355.13"
       ],
       "ast_node": "instruction",
       "required_capability": [
         "recycle"
       ],
-      "boundary": "The controller picks up to N cards from any players' trashes as it resolves - not targets (Core 416.6) - and each is recycled to its owner's deck; zero is allowed (355.13). 'From your trash', an exact N, or 'a card' is a different production.",
+      "boundary": "The controller picks up to N cards from any players' trashes as it resolves - not targets (Core 417.6) - and each is recycled to its owner's deck; zero is allowed (355.13). 'From your trash', an exact N, or 'a card' is a different production.",
       "golden": [
         "Recycle up to 4 cards from trashes."
       ],
@@ -1567,7 +1567,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 477.3.a",
+        "Core 479.4.a",
         "Core 355.8",
         "Core 359.3.e.5",
         "Core 370.1.a"
@@ -1594,10 +1594,10 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 427",
-        "Core 419.3",
+        "Core 428",
+        "Core 420.3",
         "Core 127.1",
-        "Core 419.1",
+        "Core 420.1",
         "Core 355.2.b",
         "Core 356.1.b.1"
       ],
@@ -1624,7 +1624,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 465.2.c.7",
+        "Core 467.2.c.7",
         "Core 365.1"
       ],
       "ast_node": "passive",
@@ -1648,7 +1648,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.9",
         "Core 359.3.e.12"
       ],
@@ -1674,7 +1674,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 426.1.b.2",
+        "Core 427.1.b.2",
         "Core 702.3",
         "Core 703"
       ],
@@ -1699,8 +1699,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 427",
-        "Core 419.3",
+        "Core 428",
+        "Core 420.3",
         "Core 356.1.a",
         "Core 385.1"
       ],
@@ -1750,7 +1750,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 420",
+        "Core 421",
         "Core 355.4",
         "Core 355.4.a",
         "Core 355.9"
@@ -1777,7 +1777,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 420",
+        "Core 421",
         "Core 355.4",
         "Core 355.4.a",
         "Core 141.1.a.1",
@@ -1807,7 +1807,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.10.b",
         "Core 715.2"
       ],
@@ -1832,7 +1832,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.10.b",
         "Core 715.2",
         "Core 359.3.f.1",
@@ -1859,7 +1859,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.14",
         "Core 355.14.a",
         "Core 355.14.b",
@@ -1893,7 +1893,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.9",
         "Core 355.10.d",
         "Core 359.3.f.1",
@@ -1921,9 +1921,9 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 424",
-        "Core 424.2",
-        "Core 416",
+        "Core 425",
+        "Core 425.2",
+        "Core 417",
         "Core 124"
       ],
       "ast_node": "instruction",
@@ -1948,8 +1948,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 424",
-        "Core 424.2",
+        "Core 425",
+        "Core 425.2",
         "Core 105"
       ],
       "ast_node": "instruction",
@@ -2024,7 +2024,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 358.3.a",
-        "Core 415"
+        "Core 416"
       ],
       "ast_node": "passive",
       "required_capability": [
@@ -2047,7 +2047,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.9",
         "Core 359.3.f.1",
         "Core 359.3.f.2"
@@ -2074,7 +2074,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.9",
         "Core 359.3.f.1",
         "Core 359.3.f.2",
@@ -2102,8 +2102,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 423",
-        "Core 423.1",
+        "Core 424",
+        "Core 424.1",
         "Core 355.9",
         "Core 359.3.f.1",
         "Core 359.3.f.2"
@@ -2130,8 +2130,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 476",
-        "Core 479",
+        "Core 478",
+        "Core 481",
         "Core 317.2",
         "Core 355.9",
         "Core 359.3.f.1",
@@ -2161,9 +2161,9 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 715.2",
-        "Core 460"
+        "Core 462"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -2187,7 +2187,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 417",
+        "Core 418",
         "Core 355.10.b"
       ],
       "ast_node": "instruction",
@@ -2211,8 +2211,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 430",
-        "Core 430.3"
+        "Core 431",
+        "Core 431.3"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -2234,7 +2234,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 415",
+        "Core 416",
         "Core 124"
       ],
       "ast_node": "instruction",
@@ -2259,8 +2259,8 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 364.3",
-        "Core 476",
-        "Core 479"
+        "Core 478",
+        "Core 481"
       ],
       "ast_node": "conditional_might",
       "required_capability": [
@@ -2337,7 +2337,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 317.2",
-        "Core 419.4"
+        "Core 420.4"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -2359,8 +2359,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 390.4",
-        "Core 391",
+        "Core 391.4",
+        "Core 392",
         "Core 356.4",
         "Core 356.6"
       ],
@@ -2385,8 +2385,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 390.4",
-        "Core 391",
+        "Core 391.4",
+        "Core 392",
         "Core 713",
         "Core 714",
         "Core 715.1"
@@ -2412,8 +2412,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 390.4",
-        "Core 391",
+        "Core 391.4",
+        "Core 392",
         "Core 369.3",
         "Core 143.4"
       ],
@@ -2485,15 +2485,15 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 477.3",
-        "Core 477.3.b",
+        "Core 479.4",
+        "Core 479.4.b",
         "Core 364.3"
       ],
       "ast_node": "dynamic_might",
       "required_capability": [
         "continuous_effects"
       ],
-      "boundary": "A passive increase of the card's own Might by its controller's points, computed fresh each time (477.3.b). Another quantity, or another object's Might, is a different clause.",
+      "boundary": "A passive increase of the card's own Might by its controller's points, computed fresh each time (479.4.b). Another quantity, or another object's Might, is a different clause.",
       "golden": [
         "My Might is increased by your points."
       ],
@@ -2563,8 +2563,8 @@
       "rule_locators": [
         "Core 356.4",
         "Core 356.4.b",
-        "Core 428.1",
-        "Core 428.2.a"
+        "Core 429.1",
+        "Core 429.2.a"
       ],
       "ast_node": "self_cost_reduction",
       "required_capability": [
@@ -2588,9 +2588,9 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 365.1",
-        "Core 476",
-        "Core 477.3",
-        "Core 479"
+        "Core 478",
+        "Core 479.4",
+        "Core 481"
       ],
       "ast_node": "passive",
       "required_capability": [
@@ -2615,10 +2615,10 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 365.1",
-        "Core 476",
-        "Core 477.3",
-        "Core 479",
-        "Core 426.1.b"
+        "Core 478",
+        "Core 479.4",
+        "Core 481",
+        "Core 427.1.b"
       ],
       "ast_node": "passive",
       "required_capability": [
@@ -2643,9 +2643,9 @@
       "rule_locators": [
         "Core 365.1",
         "Core 190.6",
-        "Core 476",
-        "Core 477.3",
-        "Core 479"
+        "Core 478",
+        "Core 479.4",
+        "Core 481"
       ],
       "ast_node": "passive",
       "required_capability": [
@@ -2723,17 +2723,17 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 365.1",
-        "Core 423.1.a",
-        "Core 476",
-        "Core 477.3",
-        "Core 477.3.b",
-        "Core 479"
+        "Core 424.1.a",
+        "Core 478",
+        "Core 479.4",
+        "Core 479.4.b",
+        "Core 481"
       ],
       "ast_node": "passive",
       "required_capability": [
         "continuous_effects"
       ],
-      "boundary": "A printed aura: -N Might, to a minimum of M, to every enemy Unit at the Battlefield where the source is that is Stunned right now (423.1.a), while the source is on the board. The floor is applied fresh each time the Might is computed (477.3.b). Friendly or unstunned units, a decrease without the floor, or a whole-board aura is a different clause.",
+      "boundary": "A printed aura: -N Might, to a minimum of M, to every enemy Unit at the Battlefield where the source is that is Stunned right now (424.1.a), while the source is on the board. The floor is applied fresh each time the Might is computed (479.4.b). Friendly or unstunned units, a decrease without the floor, or a whole-board aura is a different clause.",
       "golden": [
         "Stunned enemy units here have -8 :rb_might:, to a minimum of 1 :rb_might:."
       ],
@@ -2753,9 +2753,9 @@
       "rule_locators": [
         "Core 365.1",
         "Core 190.6",
-        "Core 476",
-        "Core 477.2",
-        "Core 477.2.b",
+        "Core 478",
+        "Core 479.3",
+        "Core 479.3.b",
         "Core 810.1.b"
       ],
       "ast_node": "passive",
@@ -2782,9 +2782,9 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 365.1",
-        "Core 476",
-        "Core 477.2",
-        "Core 477.2.b",
+        "Core 478",
+        "Core 479.3",
+        "Core 479.3.b",
         "Core 807.2",
         "Core 814.2"
       ],
@@ -2813,8 +2813,8 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 365.1",
-        "Core 477.2",
-        "Core 477.2.b",
+        "Core 479.3",
+        "Core 479.3.b",
         "Core 702.2.a"
       ],
       "ast_node": "passive",
@@ -2841,9 +2841,9 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 365.1",
-        "Core 476",
-        "Core 477.2",
-        "Core 477.2.b",
+        "Core 478",
+        "Core 479.3",
+        "Core 479.3.b",
         "Core 817.2"
       ],
       "ast_node": "passive",
@@ -2871,7 +2871,7 @@
         "Core 364.3",
         "Core 364.3.a",
         "Core 365.1",
-        "Core 477.2",
+        "Core 479.3",
         "Core 702.2.a"
       ],
       "ast_node": "conditional_keywords",
@@ -2901,8 +2901,8 @@
         "Core 364.3",
         "Core 364.3.a",
         "Core 365.1",
-        "Core 477.2",
-        "Core 422.1"
+        "Core 479.3",
+        "Core 423.1"
       ],
       "ast_node": "conditional_keywords",
       "required_capability": [
@@ -2911,7 +2911,7 @@
         "private_discard",
         "typed_conditions"
       ],
-      "boundary": "The card's own keywords while its controller has discarded at least one card this turn - by an instruction or as a cost (422.1, 422.3). An opponent's discard, another turn, or a count other than one is a different clause.",
+      "boundary": "The card's own keywords while its controller has discarded at least one card this turn - by an instruction or as a cost (423.1, 423.3). An opponent's discard, another turn, or a count other than one is a different clause.",
       "golden": [
         "If you've discarded a card this turn, I have [Assault] and [Ganking]."
       ],
@@ -2931,9 +2931,9 @@
         "Core 364.3",
         "Core 364.3.a",
         "Core 365.1",
-        "Core 476.2",
-        "Core 476.3",
-        "Core 477.2",
+        "Core 478.3",
+        "Core 478.4",
+        "Core 479.3",
         "Core 708"
       ],
       "ast_node": "conditional_keywords",
@@ -2943,7 +2943,7 @@
         "layer_engine",
         "typed_conditions"
       ],
-      "boundary": "The card's own keywords while its own Might is 5 or more (708), read from the layers in progress: a Buff added in the Arithmetic layer makes it Mighty and the Ability layer is evaluated again (476.2); once the grant is disqualified it is not re-applied (476.3). Another unit's Might is a different clause.",
+      "boundary": "The card's own keywords while its own Might is 5 or more (708), read from the layers in progress: a Buff added in the Arithmetic layer makes it Mighty and the Ability layer is evaluated again (478.3); once the grant is disqualified it is not re-applied (478.4). Another unit's Might is a different clause.",
       "golden": [
         "While I'm [Mighty], I have [Deflect], [Ganking], and [Shield]."
       ],
@@ -2964,7 +2964,7 @@
         "Core 364.3.a",
         "Core 702.2.a",
         "Core 703",
-        "Core 477.3"
+        "Core 479.4"
       ],
       "ast_node": "conditional_might",
       "required_capability": [
@@ -2991,8 +2991,8 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 364.1",
-        "Core 477.3",
-        "Core 477.3.b",
+        "Core 479.4",
+        "Core 479.4.b",
         "Core 702.2.a"
       ],
       "ast_node": "dynamic_might",
@@ -3000,7 +3000,7 @@
         "buff_counters",
         "continuous_effects"
       ],
-      "boundary": "A passive increase of the card's own Might by the number of Units with a Buff counter, friendly to its controller, at the Battlefield it is at - itself included ('friendly', not 'other'); none while it is in a Base. Computed fresh each time (477.3.b). Enemy or unbuffed units, or 'here' elsewhere, are a different clause.",
+      "boundary": "A passive increase of the card's own Might by the number of Units with a Buff counter, friendly to its controller, at the Battlefield it is at - itself included ('friendly', not 'other'); none while it is in a Base. Computed fresh each time (479.4.b). Enemy or unbuffed units, or 'here' elsewhere, are a different clause.",
       "golden": [
         "I get +1 :rb_might: for each buffed friendly unit at my battlefield."
       ],
@@ -3018,15 +3018,15 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 364.1",
-        "Core 477.3",
-        "Core 477.3.b",
+        "Core 479.4",
+        "Core 479.4.b",
         "Core 108.2.b"
       ],
       "ast_node": "dynamic_might",
       "required_capability": [
         "continuous_effects"
       ],
-      "boundary": "A passive increase of the card's own Might by the number of cards in its controller's Trash, a public zone, computed fresh each time (477.3.b). An opponent's Trash, or another zone, is a different clause.",
+      "boundary": "A passive increase of the card's own Might by the number of cards in its controller's Trash, a public zone, computed fresh each time (479.4.b). An opponent's Trash, or another zone, is a different clause.",
       "golden": [
         "My Might is increased by the number of cards in your trash."
       ],
@@ -3127,7 +3127,7 @@
         "Core 107.3.b",
         "Core 107.3.b.1",
         "Core 107.3.c",
-        "Core 421.1"
+        "Core 422.1"
       ],
       "ast_node": "passive",
       "required_capability": [
@@ -3355,16 +3355,16 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 466.3.d",
+        "Core 468.3.d",
         "Core 370.1",
-        "Core 455"
+        "Core 457"
       ],
       "ast_node": "passive",
       "required_capability": [
         "combat_result",
         "recall"
       ],
-      "boundary": "The result of a Combat its controller attacked in, when it is a tie (No Result, 466.3.d), is replaced: every unit still at that Battlefield, either side's, is recalled. As the defender, or with a winner, nothing changes.",
+      "boundary": "The result of a Combat its controller attacked in, when it is a tie (No Result, 468.3.d), is replaced: every unit still at that Battlefield, either side's, is recalled. As the defender, or with a winner, nothing changes.",
       "golden": [
         "If a combat where you are the attacker ends in a tie, recall ALL units instead."
       ],
@@ -3434,10 +3434,10 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 189",
-        "Core 191.3",
+        "Core 191.4",
         "Core 355.5",
-        "Core 455",
-        "Core 456.1"
+        "Core 457",
+        "Core 458.1"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -3488,7 +3488,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 377",
-        "Core 191.4",
+        "Core 191.5",
         "Core 359.3.f.1"
       ],
       "ast_node": "passive",
@@ -3512,8 +3512,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 191.2",
-        "Core 191.4.b",
+        "Core 191.3",
+        "Core 191.5.b",
         "Core 751",
         "Core 752.1",
         "Core 753.1",
@@ -3569,7 +3569,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 157",
-        "Core 427.1",
+        "Core 428.1",
         "Core 124"
       ],
       "ast_node": "instruction",
@@ -3593,7 +3593,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 428",
+        "Core 429",
         "Core 359.3.f.1",
         "Core 359.3.e.6"
       ],
@@ -3618,7 +3618,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 425.1",
+        "Core 426.1",
         "Core 355.7",
         "Core 355.5"
       ],
@@ -3627,7 +3627,7 @@
         "counter",
         "typed_selectors"
       ],
-      "boundary": "Counter one chosen spell on the Chain: its card leaves the Chain to its owner's trash, it was not played and no cost is refunded (Core 425.1). The target is chosen as the countering card is played.",
+      "boundary": "Counter one chosen spell on the Chain: its card leaves the Chain to its owner's trash, it was not played and no cost is refunded (Core 426.1). The target is chosen as the countering card is played.",
       "golden": [
         "Counter a spell."
       ],
@@ -3646,7 +3646,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 355.1",
-        "Core 355.17"
+        "Core 355.18"
       ],
       "ast_node": "instruction",
       "required_capability": [
@@ -3669,14 +3669,14 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 424.2.b",
+        "Core 425.2.b",
         "Core 128.4"
       ],
       "ast_node": "instruction",
       "required_capability": [
         "reveal"
       ],
-      "boundary": "The opponent an earlier clause chose reveals their whole hand (424.2.b: a hand reveal shows every card, so it takes no count). The clause abstains unless an earlier clause chose the player.",
+      "boundary": "The opponent an earlier clause chose reveals their whole hand (425.2.b: a hand reveal shows every card, so it takes no count). The clause abstains unless an earlier clause chose the player.",
       "golden": [
         "They reveal their hand."
       ],
@@ -3693,8 +3693,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 424.3.a",
-        "Core 433",
+        "Core 425.3.a",
+        "Core 434",
         "Core 355.10.a"
       ],
       "ast_node": "instruction",
@@ -3719,8 +3719,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 424.2.b",
-        "Core 422.1",
+        "Core 425.2.b",
+        "Core 423.1",
         "Core 128.4",
         "Core 355.10.a"
       ],
@@ -3749,7 +3749,7 @@
         "Core 355.2.a",
         "Core 355.2.b",
         "Core 170.11.a",
-        "Core 323.6"
+        "Core 323.5"
       ],
       "ast_node": "passive",
       "required_capability": [
@@ -3874,9 +3874,9 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 426.1",
+        "Core 427.1",
         "Core 702.2.a",
-        "Core 414.2",
+        "Core 415.2",
         "Core 355.9",
         "Core 359.3.e.2"
       ],
@@ -3903,8 +3903,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 415.1",
-        "Core 414.2",
+        "Core 416.1",
+        "Core 415.2",
         "Core 355.9.a",
         "Core 359.3.e.2"
       ],
@@ -3931,11 +3931,11 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 476",
-        "Core 479",
+        "Core 478",
+        "Core 481",
         "Core 317.2",
         "Core 383.2.a.1",
-        "Core 415.2",
+        "Core 416.2",
         "Core 359.3.f.2"
       ],
       "ast_node": "instruction",
@@ -3961,7 +3961,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 426.1",
+        "Core 427.1",
         "Core 355.13",
         "Core 355.8",
         "Core 359.3.e.8"
@@ -3989,8 +3989,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 426.1",
-        "Core 426.1.b.1",
+        "Core 427.1",
+        "Core 427.1.b.1",
         "Core 355.10.d"
       ],
       "ast_node": "instruction",
@@ -4017,7 +4017,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 426.1",
+        "Core 427.1",
         "Core 355.10.d",
         "Core 359.3.f.2",
         "Core 383.2.a.1",
@@ -4048,7 +4048,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 428",
+        "Core 429",
         "Core 142",
         "Core 355.10.d",
         "Core 359.3.f.2"
@@ -4122,7 +4122,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a",
+        "Core 420.4.a",
         "Core 383.2.a.1",
         "Core 133.8.a"
       ],
@@ -4150,7 +4150,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a",
+        "Core 420.4.a",
         "Core 383.2.a.1",
         "Core 356.4.f.1"
       ],
@@ -4176,7 +4176,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a"
+        "Core 420.4.a"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4200,7 +4200,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a"
+        "Core 420.4.a"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4224,7 +4224,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a"
+        "Core 420.4.a"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4272,7 +4272,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 420"
+        "Core 421"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4295,7 +4295,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 420"
+        "Core 421"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4318,7 +4318,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.2",
+        "Core 471.2",
         "Core 190.6.a",
         "Core 383.2.a.1"
       ],
@@ -4343,7 +4343,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.2",
+        "Core 471.2",
         "Core 190.6.a",
         "Core 383.3"
       ],
@@ -4369,8 +4369,8 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.1",
-        "Core 471.2",
+        "Core 471.1",
+        "Core 473.2",
         "Core 190.6.a",
         "Core 383.3"
       ],
@@ -4399,7 +4399,7 @@
         "Core 383.4.f",
         "Core 190.6.a",
         "Core 190.6.d",
-        "Core 464.2.e.1",
+        "Core 466.2.d.1",
         "Core 383.3"
       ],
       "ast_node": "triggered",
@@ -4424,7 +4424,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.2",
+        "Core 471.2",
         "Core 383.4.d",
         "Core 383.4.d.2.a"
       ],
@@ -4449,7 +4449,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.1",
+        "Core 471.1",
         "Core 383.1"
       ],
       "ast_node": "triggered",
@@ -4477,8 +4477,8 @@
         "Core 383.4.e.1",
         "Core 383.4.e.2",
         "Core 383.4.e.2.a",
-        "Core 464.2.e",
-        "Core 464.2.e.1"
+        "Core 466.2.d",
+        "Core 466.2.d.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4505,8 +4505,8 @@
         "Core 383.4.f.1",
         "Core 383.4.f.2",
         "Core 383.4.f.2.a",
-        "Core 464.2.e",
-        "Core 464.2.e.1"
+        "Core 466.2.d",
+        "Core 466.2.d.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4533,8 +4533,8 @@
         "Core 383.4.e.2.a",
         "Core 383.4.f",
         "Core 383.4.f.2.a",
-        "Core 464.2.e",
-        "Core 464.2.e.1"
+        "Core 466.2.d",
+        "Core 466.2.d.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4558,10 +4558,10 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.4.a",
-        "Core 419.4.a",
+        "Core 420.4.a",
         "Core 383.4.c",
         "Core 383.4.c.2.a",
-        "Core 469.1"
+        "Core 471.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4685,7 +4685,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a"
+        "Core 420.4.a"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4709,7 +4709,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a",
+        "Core 420.4.a",
         "Core 206"
       ],
       "ast_node": "triggered",
@@ -4734,7 +4734,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a"
+        "Core 420.4.a"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4757,7 +4757,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a"
+        "Core 420.4.a"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4780,9 +4780,9 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 420",
-        "Core 411.1",
-        "Core 411.4"
+        "Core 421",
+        "Core 412.1",
+        "Core 412.4"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4806,7 +4806,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a",
+        "Core 420.4.a",
         "Core 708",
         "Core 710"
       ],
@@ -4834,7 +4834,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a"
+        "Core 420.4.a"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4857,7 +4857,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a",
+        "Core 420.4.a",
         "Core 811.1"
       ],
       "ast_node": "triggered",
@@ -4881,7 +4881,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 423"
+        "Core 424"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4904,8 +4904,8 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 423",
-        "Core 423.1.a.1"
+        "Core 424",
+        "Core 424.1.a.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4929,8 +4929,8 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 422",
-        "Core 422.1.b"
+        "Core 423",
+        "Core 423.1.b"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4954,7 +4954,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 420"
+        "Core 421"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -4977,8 +4977,8 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 417",
-        "Core 426"
+        "Core 418",
+        "Core 427"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -5001,11 +5001,11 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 411.4",
-        "Core 428.5.b",
-        "Core 428.5.c.1",
-        "Core 428.5.c.2",
-        "Core 423"
+        "Core 412.4",
+        "Core 429.5.b",
+        "Core 429.5.c.1",
+        "Core 429.5.c.2",
+        "Core 424"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -5031,9 +5031,9 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 415",
+        "Core 416",
         "Core 315.1.b",
-        "Core 415.3.a",
+        "Core 416.3.a",
         "Core 359.3.f.3"
       ],
       "ast_node": "triggered",
@@ -5085,7 +5085,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 417",
+        "Core 418",
         "Core 383.3.e"
       ],
       "ast_node": "triggered",
@@ -5110,8 +5110,8 @@
       "rule_locators": [
         "Core 383.1",
         "Core 383.1.b",
-        "Core 420.2",
-        "Core 446.1"
+        "Core 421.2",
+        "Core 448.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -5137,8 +5137,8 @@
       "rule_locators": [
         "Core 383.1",
         "Core 383.1.b",
-        "Core 420.2",
-        "Core 446.1"
+        "Core 421.2",
+        "Core 448.1"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -5162,7 +5162,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.1",
+        "Core 471.1",
         "Core 383.4.c",
         "Core 383.2.a.1",
         "Core 467.2.c.4"
@@ -5188,7 +5188,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.1",
+        "Core 471.1",
         "Core 383.4.c",
         "Core 383.4.c.2.b",
         "Core 383.2.a.1"
@@ -5215,7 +5215,7 @@
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
-        "Core 469.1",
+        "Core 471.1",
         "Core 383.4.c",
         "Core 383.4.c.2.b"
       ],
@@ -5242,8 +5242,8 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 419.4.a",
-        "Core 419.4.b"
+        "Core 420.4.a",
+        "Core 420.4.b"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -5269,7 +5269,7 @@
       "rule_locators": [
         "Core 383.1",
         "Core 383.2.c.2",
-        "Core 428",
+        "Core 429",
         "Core 133.8",
         "Core 187.1"
       ],
@@ -5298,8 +5298,8 @@
         "Core 383.1",
         "Core 383.2.c.1",
         "Core 385.2",
-        "Core 422.1",
-        "Core 422.1.b"
+        "Core 423.1",
+        "Core 423.1.b"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -5324,11 +5324,11 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 428.5",
-        "Core 428.5.b",
-        "Core 428.5.c",
-        "Core 428.5.c.1",
-        "Core 428.5.d"
+        "Core 429.5",
+        "Core 429.5.b",
+        "Core 429.5.c",
+        "Core 429.5.c.1",
+        "Core 429.5.d"
       ],
       "ast_node": "triggered",
       "required_capability": [
@@ -5354,7 +5354,7 @@
       "rule_locators": [
         "Core 383.4.e",
         "Core 383.4.e.2.b",
-        "Core 464.2.c.3",
+        "Core 466.2.c.3",
         "Core 190.4.b",
         "Core 359.3.f.3"
       ],
@@ -5416,7 +5416,7 @@
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
         "Core 383.1",
-        "Core 446.1",
+        "Core 448.1",
         "Core 190.6.a",
         "Core 190.6.b",
         "Core 359.3.f.3"

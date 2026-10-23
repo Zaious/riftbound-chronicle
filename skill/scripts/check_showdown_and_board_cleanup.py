@@ -18,7 +18,7 @@ Must hold:
     a sole occupant who did not control the Battlefield establishes control
     and Conquers with Score triggers on the chain, a sole occupant who did
     controls it and gains nothing, no Units at all closes the Showdown with
-    control untouched (deferred to 323.6), both players present is
+    control untouched (deferred to 323.5), both players present is
     unsupported;
   - run_board_cleanup drops control where the controller has no Units,
     exempts only an ongoing Showdown or Combat (not a merely staged one),
@@ -56,7 +56,7 @@ RUNNER = SCRIPT_DIR / "engine_check.py"
 
 
 def lone_board(applier="p1", *, controller=None):
-    """u1 (p1) alone at bf1 after a Move that applied Contested (447.2); u2 (p2) at its Base."""
+    """u1 (p1) alone at bf1 after a Move that applied Contested (449.2); u2 (p2) at its Base."""
     state = base_state()
     state["players"]["p1"]["zones"]["base"].remove("u1")
     state["battlefields"]["bf1"]["objects"].append("u1")
@@ -87,9 +87,9 @@ def main() -> int:
         errors.append("stage_showdown mutated its inputs or is not deterministic")
     absent = lone_board(applier="p2")
     if stage_showdown(quiet, absent).get("next_timing_state", {}).get("staged_showdowns") != [] or stage_showdown(quiet, absent)["trace"]["considered"][0]["verdict"] != "applier_absent":
-        errors.append("a Battlefield whose Contested applier has no Units there was staged (323.8.a)")
+        errors.append("a Battlefield whose Contested applier has no Units there was staged (323.7.a)")
     if stage_showdown(quiet, contested_board())["trace"]["considered"][0]["verdict"] != "opposing_units_present":
-        errors.append("a Battlefield with opposing Units was staged as a Non-Combat Showdown (that is a Combat, 461)")
+        errors.append("a Battlefield with opposing Units was staged as a Non-Combat Showdown (that is a Combat, 463)")
     stale = {**quiet, "staged_showdowns": [{"battlefield": "bf1", "battlefield_identity": "bf1@0", "contested_by": "p1"}]}
     dropped = stage_showdown(stale, base_state())
     if not dropped.get("committed") or dropped["next_timing_state"]["staged_showdowns"] != [] or dropped["trace"].get("dropped") != ["bf1"]:
@@ -120,11 +120,11 @@ def main() -> int:
         errors.append("a Showdown opened without staging")
     moved_away = copy.deepcopy(board); moved_away["battlefields"]["bf1"]["objects"].remove("u1"); moved_away["players"]["p1"]["zones"]["base"].append("u1")
     if open_showdown(t1, moved_away).get("reason_code") != "showdown_no_longer_staged":
-        errors.append("a Showdown whose applier left opened anyway (323.8.a)")
+        errors.append("a Showdown whose applier left opened anyway (323.7.a)")
     with_combat = copy.deepcopy(t1); with_combat["combat"] = {"combat_id": "combat:bf2:x", "battlefield": "bf2", "battlefield_identity": "bf2@0", "status": "staged", "attacker": None, "defender": None, "participants": ["p1", "p2"], "triggered_identities": {"attacker": [], "defender": []}}
     opened_before_combat = open_showdown(with_combat, board)
     if not opened_before_combat.get("committed") or opened_before_combat["next_timing_state"].get("combat", {}).get("status") != "staged":
-        errors.append("323.12 did not open the staged Non-Combat Showdown before the separately staged Combat of 323.13")
+        errors.append("323.11 did not open the staged Non-Combat Showdown before the separately staged Combat of 323.12")
     two = lone_board()
     two["battlefields"]["bf2"] = {"controller": None, "objects": [], "contested": True, "contested_by": "p2"}
     add_unit(two, "u3", "p2", "bf2")
@@ -182,7 +182,7 @@ def main() -> int:
     empty = lone_board(controller="p2"); empty["battlefields"]["bf1"]["objects"].remove("u1"); empty["players"]["p1"]["zones"]["base"].append("u1")
     deferred = resolve_battlefield_control(t4, empty)
     if not deferred.get("committed") or deferred["trace"]["control_step"] != "deferred_to_board_cleanup" or deferred["next_effect_state"]["battlefields"]["bf1"] != empty["battlefields"]["bf1"] or deferred["next_timing_state"]["showdown"]["active"]:
-        errors.append(f"a Showdown ending with no Units touched control instead of deferring to 323.6: {deferred.get('reason_code')} {deferred.get('trace', {}).get('control_step')}")
+        errors.append(f"a Showdown ending with no Units touched control instead of deferring to 323.5: {deferred.get('reason_code')} {deferred.get('trace', {}).get('control_step')}")
     both = lone_board(); both["battlefields"]["bf1"]["objects"].append("u2"); both["players"]["p2"]["zones"]["base"].remove("u2")
     if resolve_battlefield_control(t4, both).get("reason_code") != "showdown_participants_inconsistent" or resolve_battlefield_control(t4, both).get("unsupported") is not True:
         errors.append("a Non-Combat Showdown ending with both players present was resolved")
@@ -193,21 +193,21 @@ def main() -> int:
     gone = base_state(); gone["battlefields"]["bf1"]["controller"] = "p1"; gone["mode"] = {"victory_score": 8}  # p1 controls bf1 with no Units there
     lost = run_board_cleanup(quiet, gone)
     if not lost.get("committed") or lost["next_effect_state"]["battlefields"]["bf1"]["controller"] is not None or [s["step"] for s in lost["trace"]["steps"]] != ["control_lost"] or lost["next_timing_state"] != quiet:
-        errors.append(f"an absent controller kept the Battlefield (323.6): {lost.get('reason_code')} {lost.get('trace')}")
+        errors.append(f"an absent controller kept the Battlefield (323.5): {lost.get('reason_code')} {lost.get('trace')}")
     if lost.get("committed") and (lost["trace"]["victory_check"].get("threshold_met") != [] or run_board_cleanup(quiet, gone) != lost):
         errors.append("the board Cleanup did not report victory facts or is not deterministic")
     showdown_here = {**quiet, "showdown": {"active": True, "kind": "non_combat", "focus": "p1", "battlefield": "bf1", "focus_passes": []}}
     exempt = run_board_cleanup(showdown_here, gone)
     if not exempt.get("committed") or exempt["next_effect_state"]["battlefields"]["bf1"]["controller"] != "p1" or exempt["trace"]["exempt"] != [{"battlefield": "bf1", "ongoing": "showdown"}]:
-        errors.append(f"an ongoing Showdown did not exempt its Battlefield from 323.6: {exempt.get('trace')}")
+        errors.append(f"an ongoing Showdown did not exempt its Battlefield from 323.5: {exempt.get('trace')}")
     staged_only = {**quiet, "staged_showdowns": [{"battlefield": "bf1", "battlefield_identity": "bf1@0", "contested_by": "p2"}]}
     if run_board_cleanup(staged_only, gone)["next_effect_state"]["battlefields"]["bf1"]["controller"] is not None:
-        errors.append("a merely staged Showdown exempted its Battlefield from 323.6 (ADR-0009 §9)")
+        errors.append("a merely staged Showdown exempted its Battlefield from 323.5 (ADR-0009 §9)")
     left = lone_board(applier="p2", controller="p2")  # p2 applied Contested, left; p1's u1 remains
     reapplied = run_board_cleanup(quiet, left)
     bf = reapplied.get("next_effect_state", {}).get("battlefields", {}).get("bf1", {})
     if not reapplied.get("committed") or [s["step"] for s in reapplied["trace"]["steps"]] != ["control_lost", "contested_removed", "contested_reapplied"] or bf.get("controller") is not None or bf.get("contested") is not True or bf.get("contested_by") != "p1":
-        errors.append(f"Contested removal and re-application went wrong (323.11, 323.11.a): {reapplied.get('reason_code')} {reapplied.get('trace', {}).get('steps')} {bf}")
+        errors.append(f"Contested removal and re-application went wrong (323.10, 323.10.a): {reapplied.get('reason_code')} {reapplied.get('trace', {}).get('steps')} {bf}")
     stays = lone_board(applier="p1", controller="p2")  # p1 applied and is present: Contested stays, p2 loses control
     stayed = run_board_cleanup(quiet, stays)
     if not stayed.get("committed") or stayed["next_effect_state"]["battlefields"]["bf1"].get("contested") is not True or stayed["next_effect_state"]["battlefields"]["bf1"].get("controller") is not None:
@@ -239,7 +239,7 @@ def main() -> int:
         tt, ee = o1["next_timing_state"], o1["next_effect_state"]
         during = stage_combat(tt, ee)
         if not during.get("committed") or during["trace"].get("outcome") != "no_staged_combat":
-            errors.append(f"during the Non-Combat Showdown at bf1 a Combat elsewhere was staged (323.14): {during.get('reason_code')} {during.get('trace')}")
+            errors.append(f"during the Non-Combat Showdown at bf1 a Combat elsewhere was staged (323.13): {during.get('reason_code')} {during.get('trace')}")
         tt = pass_focus(pass_focus(tt, "p1")["next_state"], "p2")["next_state"]
         done = resolve_battlefield_control(tt, ee)
         after = stage_combat(done["next_timing_state"], done["next_effect_state"]) if done.get("committed") else {}
@@ -256,7 +256,7 @@ def main() -> int:
     if errors:
         print("FAILED: showdown and board cleanup checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: Non-Combat Showdowns are staged as the set of Contested Battlefields held only by their applier, opened from a Neutral Open State by the Turn Player's choice with Focus to the applier before a separately staged Combat may open, closed by every player passing into a control resolution that hands a sole occupant control and a Conquer, defers an empty Battlefield to 323.6 and refuses both present; the board Cleanup drops absent controllers, exempts only what is ongoing, removes and re-applies Contested per 323.11 and refuses an ambiguous re-application.")
+    print("OK: Non-Combat Showdowns are staged as the set of Contested Battlefields held only by their applier, opened from a Neutral Open State by the Turn Player's choice with Focus to the applier before a separately staged Combat may open, closed by every player passing into a control resolution that hands a sole occupant control and a Conquer, defers an empty Battlefield to 323.5 and refuses both present; the board Cleanup drops absent controllers, exempts only what is ongoing, removes and re-applies Contested per 323.10 and refuses an ambiguous re-application.")
     return 0
 
 

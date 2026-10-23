@@ -7,7 +7,7 @@ the flag went true, and the Unit's Might did not move - a signed mapping that
 validates and then does less than the card says, which is the one failure mode
 the whole mapping-review apparatus exists to catch.
 
-476.3's own worked example is what it costs. Fiora, Victorious has printed
+478.4's own worked example is what it costs. Fiora, Victorious has printed
 Might 4 and reads "While I'm Mighty, I have Deflect, Ganking, and Shield". The
 rule walks through a player placing a buff on her: the +1 lands in the
 Arithmetic layer, the Ability-Altering layer is then re-checked, and she
@@ -22,13 +22,13 @@ What must hold:
   - a buffed Unit of printed Might 4 is 5, and the trace says where the 1 came
     from;
   - Buffing an already-Buffed Unit is a no_op and does NOT add a second +1
-    (702.3, 426.1.b.1);
+    (702.3, 427.1.b.1);
   - the Buff is in the Arithmetic layer, so a later limited decrease snapshots
-    against the buffed number (477.3.b);
-  - taking the Buff away takes the +1 away, which is 476.3's second example.
+    against the buffed number (479.4.b);
+  - taking the Buff away takes the +1 away, which is 478.4's second example.
 
 Not covered, and named rather than left implicit: the engine does not model
-Mighty (Core 706), so the half of 476.3's example where 5 Might turns keywords
+Mighty (Core 706), so the half of 478.4's example where 5 Might turns keywords
 on cannot be asserted here. That is a gap in Mighty, not in Buff.
 
     python3 skill/scripts/check_buff_contributes_might.py
@@ -72,7 +72,7 @@ def main() -> int:
     result = buff(unit_at(4))
     state = result["next_state"]
     if not state["objects"]["u1"].get("buffed"):
-        failures.append("the Buff counter was not placed (426.1.b)")
+        failures.append("the Buff counter was not placed (427.1.b)")
     got = IR.effective_might(state, "u1")
     if got != 5:
         failures.append(f"a buffed 4 Might Unit reads {got}; Core 703 gives each Buff +1 Might")
@@ -82,14 +82,14 @@ def main() -> int:
         failures.append("the +1 does not appear in the applied trace; a number that moved with "
                         "no record of what moved it is not reviewable")
     elif buff_rows[0].get("layer") != "arithmetic":
-        failures.append(f"the Buff was applied in layer {buff_rows[0].get('layer')!r}; 476.3 puts "
+        failures.append(f"the Buff was applied in layer {buff_rows[0].get('layer')!r}; 478.4 puts "
                         f"it in the Arithmetic layer")
 
-    # --- 702.3 / 426.1.b.1: one Buff at a time ------------------------------
+    # --- 702.3 / 427.1.b.1: one Buff at a time ------------------------------
     again = IR.apply_program(state, program("b2", {"op": "buff", "effect_id": "bf2",
                                                    "object_id": "u1"}))
     if again["trace"][0].get("outcome") != "no_op":
-        failures.append("Buffing an already-Buffed Unit was not a no_op (426.1.b.1)")
+        failures.append("Buffing an already-Buffed Unit was not a no_op (427.1.b.1)")
     if again.get("committed") and IR.effective_might(again["next_state"], "u1") != 5:
         failures.append(f"a second Buff added another +1: the Unit reads "
                         f"{IR.effective_might(again['next_state'], 'u1')}, and 702.3 allows one "
@@ -106,22 +106,22 @@ def main() -> int:
         if moved != -4:
             failures.append(f"'-4 to a minimum of 1' on a buffed 4 Might Unit moved {moved}; the "
                             f"Unit is at 5, so the floor does not bite and the whole -4 applies "
-                            f"(477.3.b). Reading the Buff after the decrease would give -3")
+                            f"(479.4.b). Reading the Buff after the decrease would give -3")
         if IR.effective_might(floored["next_state"], "u1") != 1:
             failures.append(f"the buffed Unit ends at "
                             f"{IR.effective_might(floored['next_state'], 'u1')}, expected 1")
 
-    # --- 476.3's second example: the Buff goes, the +1 goes ------------------
+    # --- 478.4's second example: the Buff goes, the +1 goes ------------------
     unbuffed = copy.deepcopy(state)
     unbuffed["objects"]["u1"]["buffed"] = False
     if IR.effective_might(unbuffed, "u1") != 4:
         failures.append(f"with the Buff removed the Unit reads "
-                        f"{IR.effective_might(unbuffed, 'u1')}, expected its printed 4 (476.3)")
+                        f"{IR.effective_might(unbuffed, 'u1')}, expected its printed 4 (478.4)")
 
-    print("Buff counters contribute Might (Core 703, 476.3, 702.3, 426.1.b.1)")
+    print("Buff counters contribute Might (Core 703, 478.4, 702.3, 427.1.b.1)")
     print("  a buffed 4 Might Unit is 5, recorded in the Arithmetic layer")
     print("  a second Buff is a no_op and adds nothing; removing the Buff removes the +1")
-    print("  NOT covered: Mighty (Core 706) is not modelled, so the keywords half of 476.3's")
+    print("  NOT covered: Mighty (Core 706) is not modelled, so the keywords half of 478.4's")
     print("  example cannot be asserted. That is a gap in Mighty, not in Buff.")
     for failure in failures:
         print("\nFAILED: " + failure)

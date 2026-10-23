@@ -3,9 +3,9 @@
 recall it.").
 
 GPT 2026-10-12 (PACKAGE11 ruling 12): control and ownership are apart; damage, exhaustion and buff stay; an ability already
-on the Chain does not change controller (Core 191.4.b); it is recalled to its new controller's Base; taken during a Combat,
+on the Chain does not change controller (Core 191.5.b); it is recalled to its new controller's Base; taken during a Combat,
 the recall takes it out of that Combat. The engine's shape: op gain_control {target, player}; recall reads the current
-controller's Base (455).
+controller's Base (457).
 
   P1 resolved      Possession played by p1 choosing p2's e1 at bf1 (2 damage, exhausted, buffed): e1 is p1's, in p1's
                    Base, still damaged, exhausted and buffed; its owner is p2

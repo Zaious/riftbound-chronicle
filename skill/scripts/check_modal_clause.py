@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression gate for modal clauses — "X or Y" (Round H, Core 402.2).
+"""Regression gate for modal clauses — "X or Y" (Round H, Core 403.2).
 
 Qiyana, Victorious: "When I conquer, draw 1 or channel 1 rune exhausted."
 
@@ -79,7 +79,7 @@ def main() -> int:
         elif len(modal["options"]) != 2 or modal["choose"] != 1:
             errors.append(f"the modes were not two choices of one: {modal}")
         elif modal["timing"] != "trigger_finalization":
-            errors.append(f"a triggered ability chose its mode at {modal['timing']!r}, not at finalization (402.2)")
+            errors.append(f"a triggered ability chose its mode at {modal['timing']!r}, not at finalization (403.2)")
         trigger = (compiled.get("passive") or {}).get("object_fields", {}).get("conquer_triggers")
         if not trigger or trigger[0].get("scope") != "unit_here":
             errors.append(f"the conquer trigger did not name the unit at the Battlefield scored: {trigger}")

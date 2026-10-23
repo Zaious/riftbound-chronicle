@@ -4,7 +4,7 @@
   K1 kinds       action_space.ACTION_KINDS names exactly the enumerator's families (legal_action.ENUMERABLE_FAMILIES)
   K2 timing      every kind the timing kernel judges is one it knows (no unsupported_action_kind); hide is judged by
                  the hide procedure itself
-  K3 limited     no Limited Action (Core 410.2) is also a discretionary kind
+  K3 limited     no Limited Action (Core 411.2) is also a discretionary kind
   F1 fields      each declaration validator's accepted fields are exactly the fields FIELD_CLASSES classifies, each
                  as a choice, a derived value or a system field
   C1 same        two plays differing only in system fields - play_id, chain_item.id, payment_context.confirmed_by,

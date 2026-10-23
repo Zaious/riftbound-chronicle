@@ -3,7 +3,7 @@
 Regression gate: a delayed trigger "at the end of this turn" that carries its own program (2026-09-27).
 
 "When you conquer here, ready up to 2 runes at the end of this turn." (Targon's Peak) creates a
-Delayed Trigger (Core 390.2) whose window is the turn it is created in. The creating instruction is
+Delayed Trigger (Core 391.2) whose window is the turn it is created in. The creating instruction is
 create_delayed_trigger with `waits_for {kind: turn, moment: end_of_turn, turn: this_turn}` and the
 delayed trigger's own instructions in `effects`. The engine binds the turn and the program's content
 hash as it creates the trigger; the Ending Step fires it (begin_ending_step); its choices are made as

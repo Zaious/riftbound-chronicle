@@ -28,8 +28,8 @@
         "Core 355.9.b",
         "Core 355.10.b",
         "Core 359.3.e.5",
-        "Core 417.1.b",
-        "Core 417.6.a",
+        "Core 418.1.b",
+        "Core 418.6.a",
         "errata: Disintegrate OGN-005"
       ],
       "packets": [
@@ -69,8 +69,8 @@
         "Core 355.9.b",
         "Core 355.10.b",
         "Core 359.3.e.5",
-        "Core 417.1.b",
-        "Core 417.6.a",
+        "Core 418.1.b",
+        "Core 418.6.a",
         "errata: Disintegrate OGN-005"
       ],
       "packets": [
@@ -89,7 +89,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "p1 chooses u2 while u2 is at base (not 'at battlefield')"
     },
     {
@@ -110,8 +110,8 @@
         "Core 355.9.b",
         "Core 355.10.b",
         "Core 359.3.e.5",
-        "Core 417.1.b",
-        "Core 417.6.a",
+        "Core 418.1.b",
+        "Core 418.6.a",
         "errata: Disintegrate OGN-005"
       ],
       "packets": [
@@ -151,8 +151,8 @@
         "Core 355.9.b",
         "Core 355.10.b",
         "Core 359.3.e.5",
-        "Core 417.1.b",
-        "Core 417.6.a",
+        "Core 418.1.b",
+        "Core 418.6.a",
         "errata: Disintegrate OGN-005"
       ],
       "packets": [
@@ -190,9 +190,9 @@
         "Core 355.4",
         "Core 355.4.a",
         "Core 355.13",
-        "Core 446.3.c",
-        "Core 449.1",
-        "Core 453"
+        "Core 448.3.c",
+        "Core 451.1",
+        "Core 455"
       ],
       "packets": [
         "DP-01",
@@ -230,9 +230,9 @@
         "Core 355.4",
         "Core 355.4.a",
         "Core 355.13",
-        "Core 446.3.c",
-        "Core 449.1",
-        "Core 453"
+        "Core 448.3.c",
+        "Core 451.1",
+        "Core 455"
       ],
       "packets": [
         "DP-01",
@@ -251,7 +251,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "destination equals current location (355.4.a)"
     },
     {
@@ -270,9 +270,9 @@
         "Core 355.4",
         "Core 355.4.a",
         "Core 355.13",
-        "Core 446.3.c",
-        "Core 449.1",
-        "Core 453"
+        "Core 448.3.c",
+        "Core 451.1",
+        "Core 455"
       ],
       "packets": [
         "DP-01",
@@ -310,9 +310,9 @@
         "Core 355.4",
         "Core 355.4.a",
         "Core 355.13",
-        "Core 446.3.c",
-        "Core 449.1",
-        "Core 453"
+        "Core 448.3.c",
+        "Core 451.1",
+        "Core 455"
       ],
       "packets": [
         "DP-01",
@@ -407,7 +407,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "p1 chooses u2 (enemy)"
     },
     {
@@ -551,7 +551,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "p1 chooses u1 for both targets (355.16 deterministically illegal later)"
     },
     {
@@ -636,7 +636,7 @@
       "locators": [
         "Core 355.9.b",
         "Core 359.3.e.4",
-        "Core 446.2",
+        "Core 448.2",
         "Core 124",
         "Core 124.1",
         "Core 056"
@@ -675,7 +675,7 @@
       "locators": [
         "Core 355.9.b",
         "Core 359.3.e.4",
-        "Core 446.2",
+        "Core 448.2",
         "Core 124",
         "Core 124.1",
         "Core 056"
@@ -697,7 +697,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "p1 chooses u2 (4 Might > 3)"
     },
     {
@@ -714,7 +714,7 @@
       "locators": [
         "Core 355.9.b",
         "Core 359.3.e.4",
-        "Core 446.2",
+        "Core 448.2",
         "Core 124",
         "Core 124.1",
         "Core 056"
@@ -753,7 +753,7 @@
       "locators": [
         "Core 355.9.b",
         "Core 359.3.e.4",
-        "Core 446.2",
+        "Core 448.2",
         "Core 124",
         "Core 124.1",
         "Core 056"
@@ -792,8 +792,8 @@
         "Core 355.10.c",
         "Core 355.5",
         "Core 359.3.e.5",
-        "Core 455",
-        "Core 456.1",
+        "Core 457",
+        "Core 458.1",
         "errata: Highlander OGS-020"
       ],
       "packets": [
@@ -830,8 +830,8 @@
         "Core 355.10.c",
         "Core 355.5",
         "Core 359.3.e.5",
-        "Core 455",
-        "Core 456.1",
+        "Core 457",
+        "Core 458.1",
         "errata: Highlander OGS-020"
       ],
       "packets": [
@@ -851,7 +851,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "p1 chooses u2 (not friendly)"
     },
     {
@@ -868,8 +868,8 @@
         "Core 355.10.c",
         "Core 355.5",
         "Core 359.3.e.5",
-        "Core 455",
-        "Core 456.1",
+        "Core 457",
+        "Core 458.1",
         "errata: Highlander OGS-020"
       ],
       "packets": [
@@ -906,8 +906,8 @@
         "Core 355.10.c",
         "Core 355.5",
         "Core 359.3.e.5",
-        "Core 455",
-        "Core 456.1",
+        "Core 457",
+        "Core 458.1",
         "errata: Highlander OGS-020"
       ],
       "packets": [
@@ -946,7 +946,7 @@
         "Core 355.5",
         "Core 355.10.b",
         "Core 359.3.e.2",
-        "Core 417.1.b"
+        "Core 418.1.b"
       ],
       "packets": [
         "DP-01",
@@ -983,7 +983,7 @@
         "Core 355.5",
         "Core 355.10.b",
         "Core 359.3.e.2",
-        "Core 417.1.b"
+        "Core 418.1.b"
       ],
       "packets": [
         "DP-01",
@@ -1001,7 +1001,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "p1 chooses c3 (a card in trash, not a unit on the board)"
     },
     {
@@ -1020,7 +1020,7 @@
         "Core 355.5",
         "Core 355.10.b",
         "Core 359.3.e.2",
-        "Core 417.1.b"
+        "Core 418.1.b"
       ],
       "packets": [
         "DP-01",
@@ -1057,7 +1057,7 @@
         "Core 355.5",
         "Core 355.10.b",
         "Core 359.3.e.2",
-        "Core 417.1.b"
+        "Core 418.1.b"
       ],
       "packets": [
         "DP-01",
@@ -1098,7 +1098,7 @@
         "Core 356.4.f.1",
         "Core 357.2",
         "Core 357.2.a",
-        "Core 414.4",
+        "Core 415.4",
         "Core 358.2",
         "Core 358.5",
         "Core 205"
@@ -1143,7 +1143,7 @@
         "Core 356.4.f.1",
         "Core 357.2",
         "Core 357.2.a",
-        "Core 414.4",
+        "Core 415.4",
         "Core 358.2",
         "Core 358.5",
         "Core 205"
@@ -1165,8 +1165,8 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
-      "setup": "p1 declares pay naming u2-like exhausted friendly unit → 414.4 unpaid → 358.5 undo"
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
+      "setup": "p1 declares pay naming u2-like exhausted friendly unit → 415.4 unpaid → 358.5 undo"
     },
     {
       "card": "Meditation",
@@ -1188,7 +1188,7 @@
         "Core 356.4.f.1",
         "Core 357.2",
         "Core 357.2.a",
-        "Core 414.4",
+        "Core 415.4",
         "Core 358.2",
         "Core 358.5",
         "Core 205"
@@ -1233,7 +1233,7 @@
         "Core 356.4.f.1",
         "Core 357.2",
         "Core 357.2.a",
-        "Core 414.4",
+        "Core 415.4",
         "Core 358.2",
         "Core 358.5",
         "Core 205"
@@ -1269,10 +1269,10 @@
       "decision_point": "none",
       "targets": false,
       "locators": [
-        "Core 430.1",
-        "Core 430.2",
-        "Core 430.3",
-        "Core 430.5",
+        "Core 431.1",
+        "Core 431.2",
+        "Core 431.3",
+        "Core 431.5",
         "Core 161.1.a"
       ],
       "packets": [
@@ -1305,10 +1305,10 @@
       "decision_point": "none",
       "targets": false,
       "locators": [
-        "Core 430.1",
-        "Core 430.2",
-        "Core 430.3",
-        "Core 430.5",
+        "Core 431.1",
+        "Core 431.2",
+        "Core 431.3",
+        "Core 431.5",
         "Core 161.1.a"
       ],
       "packets": [
@@ -1327,7 +1327,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "entry_state 'stunned' (not ready|exhausted) → invalid_input"
     },
     {
@@ -1341,10 +1341,10 @@
       "decision_point": "none",
       "targets": false,
       "locators": [
-        "Core 430.1",
-        "Core 430.2",
-        "Core 430.3",
-        "Core 430.5",
+        "Core 431.1",
+        "Core 431.2",
+        "Core 431.3",
+        "Core 431.5",
         "Core 161.1.a"
       ],
       "packets": [
@@ -1377,10 +1377,10 @@
       "decision_point": "none",
       "targets": false,
       "locators": [
-        "Core 430.1",
-        "Core 430.2",
-        "Core 430.3",
-        "Core 430.5",
+        "Core 431.1",
+        "Core 431.2",
+        "Core 431.3",
+        "Core 431.5",
         "Core 161.1.a"
       ],
       "packets": [
@@ -1400,7 +1400,7 @@
       "actor": "p1",
       "kind": "target_invalidated",
       "intent": "the chosen object stops meeting 355.9 or changes zone (359.3.e.2) between play and resolution",
-      "setup": "not applicable: no target; rune_deck empty → applied none (430.3) — feeds DP-05"
+      "setup": "not applicable: no target; rune_deck empty → applied none (431.3) — feeds DP-05"
     },
     {
       "card": "Morbid Return",
@@ -1475,7 +1475,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "p1 chooses c1 (in deck, not trash)"
     },
     {
@@ -1571,8 +1571,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1612,8 +1612,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1633,7 +1633,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "recycle decision supplied at play time (wrong stage, 355.5.b)"
     },
     {
@@ -1653,8 +1653,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1694,8 +1694,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1735,8 +1735,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1776,8 +1776,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1797,7 +1797,7 @@
       },
       "actor": "p1",
       "kind": "negative",
-      "intent": "a supported rule rejects it (355.9 restriction unmet, 414.4 cost unpayable, 203.3 impossible cost)",
+      "intent": "a supported rule rejects it (355.9 restriction unmet, 415.4 cost unpayable, 203.3 impossible cost)",
       "setup": "recycle decision supplied at play time (wrong stage, 355.5.b)"
     },
     {
@@ -1817,8 +1817,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1858,8 +1858,8 @@
         "Core 817.1.b",
         "Core 817.1.c",
         "Core 817.2.a",
-        "Core 436.1",
-        "Core 436.4",
+        "Core 437.1",
+        "Core 437.4",
         "Core 128.3",
         "Core 355.5.b"
       ],
@@ -1883,5 +1883,5 @@
       "setup": "not applicable: Predict targets nothing (355.10.a, deck is Secret); recorded as n/a"
     }
   ],
-  "content_hash": "sha256:a16887676e40d530b45621cad1140b53b0dee1b84ed8bc1db061f2d3e030ebf4"
+  "content_hash": "sha256:f9cfe742a5121bc4653807fda8fe587ab4863a11170689197f86e9b00923129a"
 }

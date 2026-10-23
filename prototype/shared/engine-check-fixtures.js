@@ -25,7 +25,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "faq_as_of": "2026-08-14"
         },
         "rule_numbering": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "applies_to": "rule_locators"
         },
         "component": {
@@ -91,7 +91,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "faq_as_of": "2026-08-14"
         },
         "rule_numbering": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "applies_to": "rule_locators"
         },
         "component": {
@@ -155,7 +155,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "faq_as_of": "2026-08-14"
         },
         "rule_numbering": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "applies_to": "rule_locators"
         },
         "component": {
@@ -278,7 +278,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "faq_as_of": "2026-08-14"
         },
         "rule_numbering": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "applies_to": "rule_locators"
         },
         "component": {
@@ -352,7 +352,7 @@ window.RC_ENGINE_CHECK_FIXTURES = Object.freeze({
           "faq_as_of": "2026-08-14"
         },
         "rule_numbering": {
-          "core": "2026-07-16",
+          "core": "2026-10-09",
           "applies_to": "rule_locators"
         },
         "component": {

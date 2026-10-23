@@ -3,8 +3,8 @@
 read as the instruction executes (2026-09-27, package 6).
 
   selector state     `exhausted` / `damaged` on a target selector: "an exhausted friendly unit"
-                     (exhausted: true - Core 414.2), "something else that's exhausted" (any type
-                     on the board, the source excluded, Core 415.1). The state is read when the
+                     (exhausted: true - Core 415.2), "something else that's exhausted" (any type
+                     on the board, the source excluded, Core 416.1). The state is read when the
                      target is chosen and again when it is used: a target readied in between is no
                      longer legal and the instruction does nothing to it (Core 359.3.e.2).
   criteria state     the same fields on an `affected` set, and `exclude_source_identity` ("other"):
@@ -12,7 +12,7 @@ read as the instruction executes (2026-09-27, package 6).
                      friendly units there" - found by criteria, not targeted (Core 355.10.d).
   buff over a set    `buff` with `targets {min, max}` ("buff up to two other friendly units", Core
                      355.13) or `affected` ("buff all friendly units"): each object is buffed on its
-                     own, and one already buffed is not buffed again (Core 426.1.b.1, 702.3).
+                     own, and one already buffed is not buffed again (Core 427.1.b.1, 702.3).
   conditions         controls_units narrowed by state and located "here" (the Battlefield the
                      condition's object stands at now), and at_a_battlefield ("if I am at a
                      battlefield"). A state_holds predicate reads them as the instruction executes,
@@ -208,7 +208,7 @@ def main() -> int:
     done = run(state, [READY_SOMETHING_ELSE], t=["u5"])
     check("'that's exhausted': a ready unit is not a legal target", illegal(done), str(outcomes(done)))
     # GPT 2026-10-02: "something" is not only Units - an exhausted Legend in its Legend Zone is a Game Object that
-    # can be readied (Core 107.4, 355.9.a.4, 415.1); a Ready one is not "that's exhausted"
+    # can be readied (Core 107.4, 355.9.a.4, 416.1); a Ready one is not "that's exhausted"
     legends = copy.deepcopy(state)
     for legend, owner, tired in (("lg1", "p1", True), ("lg2", "p2", False)):
         legends["objects"][legend] = {"owner": owner, "controller": owner, "kind": "legend", "base_might": 0,
@@ -304,7 +304,7 @@ def main() -> int:
     already = copy.deepcopy(state)
     already["objects"]["u3"]["buffed"] = True
     done = run(already, [BUFF_UP_TO_TWO_OTHER], t=["u3"])
-    check("an already buffed unit gets no second buff (Core 426.1.b.1)", done.get("committed")
+    check("an already buffed unit gets no second buff (Core 427.1.b.1)", done.get("committed")
           and effective_might(done["next_state"], "u3") == effective_might(already, "u3"), str(outcomes(done)))
 
     # --- "Then buff all friendly units." -------------------------------------------------------

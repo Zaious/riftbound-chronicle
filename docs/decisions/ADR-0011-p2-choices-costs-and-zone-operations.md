@@ -6,9 +6,9 @@
   ordering decision, the cost catalogue with activated abilities, Repeat, Add
   and resource restrictions, and the Banish / multi-card Recycle / Counter /
   Burn zone operations.
-- Rules baseline: English Core Rules 2026-07-16, especially 124, 128–130,
-  204, 303.2, 355, 376–377, 398–404, 416, 422, 424–429, 431.1.c, 436, 440,
-  446–447, 820.
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3), especially 124, 128–130,
+  204, 303.2, 355, 376–377, 399–405, 417, 423, 425–430, 432.1.c, 437, 441,
+  448–449, 820.
 - Not decided here: the sources, conditions and layers of cost modifications
   ("costs less if / for each", P4); XP, Buff and Empower costs (P4);
   "choose one that hasn't been chosen this turn" (P5 counters); "can't be
@@ -67,7 +67,7 @@ A program with `modal: {choose: 1, timing, decision_ref, options:
 [{option_id, effects}]}` carries its instructions inside the options and an
 empty top-level `effects`. The mode is a `mode_selection` decision whose
 value is the option's stable `option_id`, never an index; its stage is the
-`timing` the compiled clause states — `play_declaration` for a spell (402.2:
+`timing` the compiled clause states — `play_declaration` for a spell (403.2:
 targets and modes are chosen while playing) or `trigger_finalization` for a
 triggered ability. The play transaction requires the mode at play and checks
 only the chosen option's targets; the resolver refuses a mode chosen at
@@ -80,10 +80,10 @@ own mode and target decisions (820.2.a) under the `#<n>` suffix.
 
 `look_at_top {player, count}` makes the top cards of a Main Deck readable by
 the program's controller (128.4: private to them); `reveal {player, from:
-main_deck_top | hand | object}` makes cards readable by every player (424.1,
-424.2: they stay in their zone, in order). Both stop at the deck's end
-without a Burn Out (431.1.c) and record the shortfall as `partial`. Reveals
-last until the resolution finishes (424.3.a): the marks live in the effect
+main_deck_top | hand | object}` makes cards readable by every player (425.1,
+425.2: they stay in their zone, in order). Both stop at the deck's end
+without a Burn Out (432.1.c) and record the shortfall as `partial`. Reveals
+last until the resolution finishes (425.3.a): the marks live in the effect
 state's `reveals` list only while the program runs and are cleared when it
 returns. What a player remembers afterwards is
 `unsupported: revealed_knowledge_persistence`.
@@ -98,18 +98,18 @@ is strictly not the external randomization receipt of Burn Out (ADR-0010
 order. A single remaining card needs no decision. `put_in_hand {player,
 decision_ref | objects}` and `draw_it {player, object_id}` take a
 looked-at card into the hand as a new object (124); `draw_it` is a Draw
-(413) and emits the Draw event. `predict {player, count, recycle_ref,
-order_ref}` is the 436 composite — look, Recycle any number (a
+(414) and emits the Draw event. `predict {player, count, recycle_ref,
+order_ref}` is the 437 composite — look, Recycle any number (a
 `card_selection` over the looked cards; two or more Recycled cards go to
-the bottom in a random order, 416.5), put the rest back — with
-no Burn Out for a short deck (436.4).
+the bottom in a random order, 417.5), put the rest back — with
+no Burn Out for a short deck (437.4).
 
 ### 4. The cost catalogue, activated abilities, Repeat, Add and restrictions (DP-63)
 
 The declaration's non-standard payment kinds grow from `exhaust` / `kill` to
-`discard {amount}` (422.1.a: the payer's private `card_selection` at
-`play_declaration` stage; 423.1.b: the whole amount must be payable),
-`recycle_trash {amount}` (416.3, a public `card_selection` from the payer's
+`discard {amount}` (423.1.a: the payer's private `card_selection` at
+`play_declaration` stage; 424.1.b: the whole amount must be payable),
+`recycle_trash {amount}` (417.3, a public `card_selection` from the payer's
 trash), `kill_this`, `recall_self` and `banish_self` (the chain item's own
 source, 204.2). `spend_xp`, `spend_buff` and `disempower_self` stay
 `unsupported: xp_buff_costs` until P4. Every payment is a receipt event with
@@ -117,12 +117,12 @@ the objects and identities it consumed.
 
 An activated ability is a chain item of `object_kind: ability` declared
 with `activation: {source_object, ability_id}` through the same transaction
-(377: it goes onto the chain and resolves like a played card; 402: a Closed
+(377: it goes onto the chain and resolves like a played card; 403: a Closed
 State with no card). The source must be a permanent the actor controls on
 the Board; the chain entry binds `source_object` instead of a card, nothing
 leaves the hand, and the item's resolution never sends a card to the trash.
 An `[Add]` ability (`ability_kind: add`) finalizes and resolves at once
-(400.2, 429.2) — the timing kernel already refuses reactions to it. An
+(401.2, 430.2) — the timing kernel already refuses reactions to it. An
 activation condition ("use only while I'm at a battlefield", 377.2.b) is a
 P4 condition; a declaration that carries one is `unsupported`.
 
@@ -154,24 +154,24 @@ temporary condition grammar.
 ### 5. Banish, multi-card Recycle, Counter and Burn (DP-64)
 
 `banish` moves a card or permanent from any zone straight into its owner's
-Banishment (427.1, 427.2) as a new object (124); a token ceases to exist;
-Banish is not Kill nor Discard (427.2.a–b). `recycle {objects |
+Banishment (428.1, 428.2) as a new object (124); a token ceases to exist;
+Banish is not Kill nor Discard (428.2.a–b). `recycle {objects |
 decision_ref, order_ref?}` Recycles several cards as one Game Action
-(303.2): to the owner's Main Deck or Rune Deck bottom (416.1–416.2); two
+(303.2): to the owner's Main Deck or Rune Deck bottom (417.1–417.2); two
 or more cards to one Main Deck go in a random order that arrives as a
 randomization receipt (`operation: recycle_simultaneous`, ADR-0010 §2) - no
-player orders them (416.5, GPT 2026-09-27); two or more runes to one Rune
-Deck go in their owner's `card_ordering` (416.5.a); a single card needs none. `counter {chain_item_id, card_to}`
-clears the chain item (425.1): its card goes to the owner's trash (425.1.a)
+player orders them (417.5, GPT 2026-09-27); two or more runes to one Rune
+Deck go in their owner's `card_ordering` (417.5.a); a single card needs none. `counter {chain_item_id, card_to}`
+clears the chain item (426.1): its card goes to the owner's trash (426.1.a)
 unless the countering effect names `card_to: hand`; it was not played
-(425.1.b) so no play trigger fires; no cost is refunded (425.1.c). The
+(426.1.b) so no play trigger fires; no cost is refunded (426.1.c). The
 effect IR removes the effect-side entry and reports
 `countered_chain_items`; the resolution bridge removes the timing item in
 the same commit through `rules_core.remove_chain_item` and commits neither
 state when the timing chain does not carry it. A chain entry marked
 `counterable: false` is `unsupported: cannot_be_countered` — the static
 that grants it is a P4 contract. `burn {player, count}`
-moves the top cards of a Main Deck to the trash (440.1) as new objects; a
+moves the top cards of a Main Deck to the trash (441.1) as new objects; a
 deck shorter than the count is `unsupported: burn_out_non_draw` and nothing
 changes — the Draw-path receipt is not borrowed (Codex G-1).
 

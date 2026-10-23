@@ -11,7 +11,7 @@ that the grammar's lowering, bound onto a Battlefield, does what the sentence sa
     - one Deal over every Unit at battlefields adds 1 to each Unit there and to no
       other (715.2: each target separately);
     - without the statement, every Deal is 2 (the lowering is what bites).
-  you_may_hide_an_additional_card_here (Core 107.3.b, 107.3.b.1, 421.1)
+  you_may_hide_an_additional_card_here (Core 107.3.b, 107.3.b.1, 422.1)
     - at that Battlefield (p1 controls it) a first and a second hide commit and a
       third is refused facedown_zone_full;
     - at another Battlefield p1 controls, a second hide is refused;

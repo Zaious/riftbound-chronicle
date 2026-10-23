@@ -313,7 +313,7 @@ def main() -> int:
 
     # 2026-09-28: the bridge rebuilds the decision envelope around the recorded targets; it must keep what
     # else the envelope carries. A spell played with a target that also recycles two looked-at cards to its
-    # Main Deck (Core 416.5: a random order, a randomization receipt) resolves with the receipt it was given.
+    # Main Deck (Core 417.5: a random order, a randomization receipt) resolves with the receipt it was given.
     deck_board = board()
     for card in ("d1", "d2", "d3"):
         deck_board["objects"][card] = {"owner": "p1", "controller": "p1", "kind": "spell", "base_might": 0,

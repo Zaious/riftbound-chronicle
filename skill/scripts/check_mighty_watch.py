@@ -4,7 +4,7 @@ Gate: "When you play a [Mighty] unit" (2026-09-27, Volibear - Relentless Storm).
 
 A Unit is Mighty while its Might is 5 or greater (Core 708), and a Unit is read at its current
 Might, every modifier included (Core 710). The clause grammar lowers the sentence to a watch over
-the play transaction's `played` event (Core 383.1, 419.4.a) with the named fact
+the play transaction's `played` event (Core 383.1, 420.4.a) with the named fact
 `object_might_at_least: 5` (watchers.WATCH_FILTERS), read off the PLAYED Unit when the play wakes
 the watch.
 
@@ -19,7 +19,7 @@ Must hold, each through play_card with the watch the grammar itself lowers:
     a -1 modifier does not;
   - the played Unit is what is read, not the watcher: a 6-Might watcher and a 4-Might Unit played
     schedule none;
-  - p2 playing a 5-Might Unit schedules none (the player who plays, Core 411.4); p1 playing a spell
+  - p2 playing a 5-Might Unit schedules none (the player who plays, Core 412.4); p1 playing a spell
     or a gear schedules none;
   - a Legend's watch works from its Legend Zone: scheduled there, not when it is banished; a
     watcher card in a hand schedules nothing;
@@ -96,7 +96,7 @@ def play(state: dict, card: str, *, actor: str = "p1", kind: str = "unit") -> di
     played = play_card(window, state, decl)
     if not played.get("committed") or kind not in ("unit", "gear"):
         return played
-    # Core 419.4.a (packages 3+4): a play trigger wakes as the card's play completes - when it resolves,
+    # Core 420.4.a (packages 3+4): a play trigger wakes as the card's play completes - when it resolves,
     # never at Finalize - so the card resolves here, and its resolution's Chain is what is read
     from check_rules_core import item
     from resolution_bridge import resolve_with_program

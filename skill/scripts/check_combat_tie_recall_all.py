@@ -3,11 +3,11 @@
 you are the attacker ends in a tie, recall ALL units instead.").
 
 GPT 2026-10-08 (package 10 ruling 14), affirmed 2026-10-12: the result is read after combat damage and the Combat Cleanup;
-under Core 466.3.d a tie is No Result - both players still with units there, neither, or attackers recalled in step 3d
+under Core 468.3.d a tie is No Result - both players still with units there, neither, or attackers recalled in step 3d
 because defenders remained. "ALL units" are the units still at that Battlefield. A permanent's field combat_tie_replacement
 {mode: recall_all_units, when: controller_is_attacker} is read by combat.determine_combat_result: while its controller is
 the combat's attacker and it is on the board, a tie recalls every unit still at the Battlefield, either side's, to its
-controller's Base (Core 455; not a Move, 456.1), and no Combat is staged again.
+controller's Base (Core 457; not a Move, 458.1), and no Combat is staged again.
 
   T1 tie (3d recall)   p1 attacks with the gear in its Base, both units survive damage: the attacker is recalled in the
                        Cleanup; the result recalls the defender too; nobody is left, the Battlefield ends uncontrolled

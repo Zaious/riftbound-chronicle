@@ -330,6 +330,10 @@ RULE_OCCASIONS = {
     "in_a_neutral_state": "while the turn is in a Neutral State, ",
     "when_the_chain_resolves": "when the chain resolves, ",
     "when_combat_opens": "when Combat opens, ",
+    # C3 (2026-10-22): Core 2026-10-09 466.2.c.1.a/b split "the Attacker gains Focus" by whether Combat opens a
+    # Showdown or opens during one
+    "when_a_showdown_opens_as_part_of_combat": "as a Showdown that opens as part of Combat begins, ",
+    "when_combat_opens_during_a_showdown": "when Combat opens while a Showdown is ongoing, ",
 }
 RULE_ROLES = {
     "focus": "Focus is held by",
@@ -343,6 +347,7 @@ RULE_HOLDERS = {
     "the_passing_player": "the player who passed",
     "no_player": "no player",
     "the_attacker": "the Attacker",
+    "the_player_who_held_focus": "the player who already held Focus",
     "newest_finalized_chain_item": "the newest Finalized Chain Item",
 }
 RULE_STEPS = {

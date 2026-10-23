@@ -5,7 +5,7 @@
 "When you play me, spend any number of buffs. For each buff spent, channel 1 rune exhausted." The
 first instruction is no cost: its player chooses, as it resolves, any number of the Units they
 control that have a buff (Core 702.2.b, 702.2.b.1, 702.2.b.2); buffs are counters, not targets
-(Core 704.1), so the choice is made on resolution (355.17). Each chosen Unit loses its buff. How many
+(Core 704.1), so the choice is made on resolution (355.18). Each chosen Unit loses its buff. How many
 it spent is its receipt; "for each buff spent" is a linked later instruction that reads it (Core
 359.3.e.14) - count_per {kind: linked_applied_count, effect_id}.
 

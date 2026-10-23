@@ -155,15 +155,15 @@ def finalize_trigger(
     uses the record (Core 359.3.e - a target illegal by then is mistargeted, never
     re-chosen).
 
-    2026-09-27: a program that opens with a `trigger_base_cost` (Core 204.3.a, 383.3.b,
-    403.1.b.1) has that cost paid here, after its targets are bound (402 before 404), and
+    2026-09-27: a program that opens with a `trigger_base_cost` (Core 204.1.c, 383.3.b,
+    404.1.b.1) has that cost paid here, after its targets are bound (403 before 405), and
     only here (383.3.b.1, 740.4.a.2). Its controller says whether to pay
     (`pay_trigger_cost`; `payment_context` confirms the Add window for a resource cost, Core
-    429.3). Declined, or not payable (Core 203.3), the ability leaves the Chain and never
-    becomes a Finalized Chain Item (404.2) - not a counter (404.2.a) - and nothing is paid.
+    430.3). Declined, or not payable (Core 203.3), the ability leaves the Chain and never
+    becomes a Finalized Chain Item (405.2) - not a counter (405.2.a) - and nothing is paid.
     Paid, the chain item keeps the cost receipt resolution checks, the effect state after
     payment is returned, and what the costs did wakes the watchers (a recycle as a cost is
-    a recycle, 416.2.a) - their triggers go on the Chain after this one."""
+    a recycle, 417.2.a) - their triggers go on the Chain after this one."""
     from play_transaction import PlayError, _check_play_targets  # late: play_transaction imports effect_ir too
     from rules_core import finalize_oldest_pending, next_procedure
     base = {"schema_version": "riftbound-trigger-finalization-result.v1",
@@ -204,15 +204,15 @@ def finalize_trigger(
     # a program that chooses something may owe Deflect (809.1.c) once its choices are known; asked below, not here
     if cost is None and pay_trigger_cost is not None and not _target_refs(program):
         return {**base, "valid": True, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
-                "reason": "unexpected_trigger_cost_choice", "rule_locators": ["Core 403.1.b"]}
+                "reason": "unexpected_trigger_cost_choice", "rule_locators": ["Core 404.1.b"]}
     if declining and pay_trigger_cost:
         return {**base, "valid": False, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
                 "reason": "declined_trigger_cannot_pay_its_cost", "rule_locators": ["Core 383.3.a.2"]}
     recorded: list[dict[str, Any]] = []
     performing = not declining and (item.get("optional_at_finalize") is not True or perform_optional_trigger is True)
     if performing and (lacking := _lacking_choices(effect_state, item["controller"], program)):
-        # GPT 2026-09-29, Core 402.4: not enough options to make its legal choices - it leaves the Chain now,
-        # never becomes a Finalized Chain Item, and is not countered (402.4.a)
+        # GPT 2026-09-29, Core 403.4: not enough options to make its legal choices - it leaves the Chain now,
+        # never becomes a Finalized Chain Item, and is not countered (403.4.a)
         removal = remove_chain_item(timing_state, item["id"], reason="no_legal_choices")
         if removal.get("applied") is not True:
             return {**base, "valid": removal.get("valid", True), "committed": False, "stage": "target_binding",
@@ -225,7 +225,7 @@ def finalize_trigger(
                 "finalized_targets": [], "lacking_choices": lacking,
                 "transition": {"type": "no_legal_choices", "item_id": item["id"], "never_finalized": True,
                                "countered": False, "why": f"no legal options for {lacking}"},
-                "rule_locators": ["Core 402.2", "Core 402.4", "Core 402.4.a"]}
+                "rule_locators": ["Core 403.2", "Core 403.4", "Core 403.4.a"]}
     if not declining:
         try:
             chosen = _check_play_targets(effect_state, item["controller"], program, engine_decisions, stage="trigger_finalization")
@@ -249,16 +249,16 @@ def finalize_trigger(
             recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value") if k in entry})
     # 2026-10-12 (package 11, GPT PACKAGE11 ruling 4): each time an ability an opponent controls chooses an object with
     # Deflect, it costs that much more Power of any Domain - a mandatory additional cost (Core 809.1.c, 809.1.d,
-    # 356.2.a.2), paid with the ability's other costs at this step (404.1) or declined, and the ability leaves (404.2)
+    # 356.2.a.2), paid with the ability's other costs at this step (405.1) or declined, and the ability leaves (405.2)
     from play_transaction import deflect_costs
     deflect = deflect_costs(effect_state, item["controller"], chosen) if not declining else []
     if cost is None and not deflect and pay_trigger_cost is not None:
         return {**base, "valid": True, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
-                "reason": "unexpected_trigger_cost_choice", "rule_locators": ["Core 403.1.b"]}
+                "reason": "unexpected_trigger_cost_choice", "rule_locators": ["Core 404.1.b"]}
     paid = None
     choosing_first = item.get("optional_at_finalize") is True and perform_optional_trigger is None
     if (cost is not None or deflect) and not declining and not choosing_first:
-        # Core 403.1.b.1 / 404: the ability's base cost, paid now or never (383.3.b.1)
+        # Core 404.1.b.1 / 405: the ability's base cost, paid now or never (383.3.b.1)
         cost_rules = locators + TC.RULES + (TC.DEFLECT_RULES if deflect else [])
         if pay_trigger_cost is None:
             return {**base, "valid": True, "committed": False, "stage": "trigger_cost", "item_id": item["id"],
@@ -266,7 +266,7 @@ def finalize_trigger(
                     "decision_controller": item["controller"],
                     "base_cost": copy.deepcopy(cost["payment"]) if cost is not None else [],
                     **({"deflect_costs": copy.deepcopy(deflect)} if deflect else {}),
-                    "rule_locators": cost_rules + ["Core 404.2"]}
+                    "rule_locators": cost_rules + ["Core 405.2"]}
         if pay_trigger_cost is False:
             return _trigger_left_unpaid(base, timing_state, effect_state, item, "trigger_cost_declined",
                                         "its controller declined to pay the base cost", TC.DECLINE_RULES)
@@ -315,9 +315,9 @@ def finalize_trigger(
 
 def _trigger_left_unpaid(base: dict[str, Any], timing_state: dict[str, Any], effect_state: dict[str, Any],
                          item: dict[str, Any], kind: str, why: str, rule_locators: list[str]) -> dict[str, Any]:
-    """Core 404.2: a triggered ability whose base cost is not paid - declined, or not payable
+    """Core 405.2: a triggered ability whose base cost is not paid - declined, or not payable
     (203.3) - leaves the Chain and never becomes a Finalized Chain Item; it is not countered
-    (404.2.a). Nothing was paid, so the effect state is the one given."""
+    (405.2.a). Nothing was paid, so the effect state is the one given."""
     removal = remove_chain_item(timing_state, item["id"], reason=kind)
     if removal.get("applied") is not True:
         return {**base, "valid": removal.get("valid", True), "committed": False, "stage": "trigger_cost", "item_id": item["id"],
@@ -332,12 +332,12 @@ def _trigger_left_unpaid(base: dict[str, Any], timing_state: dict[str, Any], eff
 
 def _unconditional_reflexive(ct: dict[str, Any], event: dict[str, Any], program: dict[str, Any],
                              after_effect: dict[str, Any], conditional_trace: list[dict[str, Any]]) -> dict[str, Any]:
-    """The Pending descriptor of a Reflexive Trigger with no condition (Core 387.2), batched with the instruction it follows.
+    """The Pending descriptor of a Reflexive Trigger with no condition (Core 388.2), batched with the instruction it follows.
     When that instruction moved an object (Dragon's Rage: "Move an enemy unit. Then do this: Choose another enemy unit at
     its destination."), the descriptor carries what the move did - the object as `trigger_event` with the identity it had
     once moved, and where it went as `noted_location` - so "its" and "its destination" read the move, not whatever is
     where later (resolution_bridge.bind_trigger_event hands both to the program). A move that did not happen hands
-    nothing: no object is at a destination that does not exist (Core 402.4 at finalization)."""
+    nothing: no object is at a destination that does not exist (Core 403.4 at finalization)."""
     descriptor = {k: ct[k] for k in ("trigger_id", "controller", "source_object", "controller_order", "effect_program_id",
                                      "optional_at_finalize")}
     descriptor.update({"trigger_kind": "reflexive", "batch_sequence": event.get("index", 0),
@@ -355,14 +355,14 @@ def _unconditional_reflexive(ct: dict[str, Any], event: dict[str, Any], program:
     descriptor.update(bound)
     conditional_trace.append({"trigger_id": ct["trigger_id"], "condition": dict(ct["condition"]), "held": True,
                               "action_performed": bool(moved), **bound,
-                              "rule_locators": ["Core 387.2", "Core 388.1"]})
+                              "rule_locators": ["Core 388.2", "Core 389.1"]})
     return descriptor
 
 
 def _domain_reflexive(ct: dict[str, Any], event: dict[str, Any], program: dict[str, Any],
                       conditional_trace: list[dict[str, Any]], after_effect: dict[str, Any]) -> dict[str, Any] | None:
     """2026-10-13 (package 11, Twisted Fate - Gambler): "Do one of the following based on its domain:" - the Reflexive
-    Trigger of one Domain (Core 387.1.b, 388.1) is added when the card the named reveal showed was of that Domain, read
+    Trigger of one Domain (Core 388.1.b, 389.1) is added when the card the named reveal showed was of that Domain, read
     off what the reveal noted (its Domains as revealed; recycling it after does not change them, GPT PACKAGE11 ruling 18).
     Nothing revealed (an empty Rune Deck), or a rune of another Domain: this branch is not added, and the trace says
     why by name. A rune of several Domains matching several branches is refused as unsupported by the caller."""
@@ -373,7 +373,7 @@ def _domain_reflexive(ct: dict[str, Any], event: dict[str, Any], program: dict[s
     why = None if held else ("nothing_revealed" if not revealed else f"revealed_domain_not_{domain}")
     conditional_trace.append({"trigger_id": ct["trigger_id"], "condition": dict(ct["condition"]), "held": held,
                               "revealed": [r.get("object_id") for r in revealed], "noted_domains": noted,
-                              **({"why": why} if why else {}), "rule_locators": ["Core 387.1.b", "Core 388.1"]})
+                              **({"why": why} if why else {}), "rule_locators": ["Core 388.1.b", "Core 389.1"]})
     if not held:
         return None
     descriptor = {k: ct[k] for k in ("trigger_id", "controller", "source_object", "controller_order", "effect_program_id",
@@ -393,11 +393,11 @@ def _domain_reflexive(ct: dict[str, Any], event: dict[str, Any], program: dict[s
 
 def kill_attributed(effect_events: list[dict[str, Any]], cleanup_events: list[dict[str, Any]], *,
                     killer: str | None, responsible: str | None) -> list[dict[str, Any]]:
-    """The events of one resolution, its deaths stamped with the kill's attribution (Core 428.5): a
-    death by one of its own instructions (428.5.b), or a death in the Cleanup right after it of a unit
-    it dealt damage to (428.5.c), is a kill by the resolving card - or, for an ability, by the object
-    it originates from, which is attributed with it (428.5.d) - and its controller is the player
-    responsible (428.5.c.1). Copies are stamped; the events themselves are not changed. A death the
+    """The events of one resolution, its deaths stamped with the kill's attribution (Core 429.5): a
+    death by one of its own instructions (429.5.b), or a death in the Cleanup right after it of a unit
+    it dealt damage to (429.5.c), is a kill by the resolving card - or, for an ability, by the object
+    it originates from, which is attributed with it (429.5.d) - and its controller is the player
+    responsible (429.5.c.1). Copies are stamped; the events themselves are not changed. A death the
     resolution did not cause (a Cleanup death of a unit it did not damage) is left unattributed."""
     if killer is None or responsible is None:
         return effect_events + cleanup_events
@@ -405,16 +405,16 @@ def kill_attributed(effect_events: list[dict[str, Any]], cleanup_events: list[di
 
     def stamp(event: dict[str, Any], rules: list[str]) -> dict[str, Any]:
         return {**event, "killed_by": {"objects": [killer], "responsible_player": responsible,
-                                       "rule_locators": rules + ["Core 428.5.d"]}}
-    return ([stamp(e, ["Core 428.5.b"]) if e.get("kind") == "died" else e for e in effect_events]
-            + [stamp(e, ["Core 428.5.c", "Core 428.5.c.1"]) if e.get("kind") == "died" and e.get("object") in damaged else e
+                                       "rule_locators": rules + ["Core 429.5.d"]}}
+    return ([stamp(e, ["Core 429.5.b"]) if e.get("kind") == "died" else e for e in effect_events]
+            + [stamp(e, ["Core 429.5.c", "Core 429.5.c.1"]) if e.get("kind") == "died" and e.get("object") in damaged else e
                for e in cleanup_events])
 
 
 def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], next_effect: dict[str, Any],
                             paid: dict[str, Any], engine_decisions: dict[str, Any] | None, item_id: str) -> dict[str, Any]:
     """What the base cost did happened while the ability was finalized: a card recycled as a cost
-    (Core 416.2.a), a permanent exhausted as one. The watchers those events wake join the Chain,
+    (Core 417.2.a), a permanent exhausted as one. The watchers those events wake join the Chain,
     Pending, behind the finalized ability (Core 383.3), one batch, the way the play
     transaction schedules what its costs woke."""
     import watchers
@@ -447,7 +447,7 @@ def _schedule_cost_watchers(base: dict[str, Any], next_timing: dict[str, Any], n
 
 
 def _lacking_choices(effect_state: dict[str, Any], controller: str, program: dict[str, Any]) -> list[str]:
-    """Core 402.4: the choices this triggered ability must make now for which there are not enough legal
+    """Core 403.4: the choices this triggered ability must make now for which there are not enough legal
     options - a target with no legal object, a set of targets with fewer than its minimum, a pair of slots
     with no two different legal objects. The legality test is the one finalization applies to a choice
     (play_transaction._check_play_targets); only its answer to "is there any" is asked here."""
@@ -468,7 +468,7 @@ def _lacking_choices(effect_state: dict[str, Any], controller: str, program: dic
         if isinstance(target, dict) and isinstance(target.get("decision_ref"), str) and isinstance(destination, dict) \
                 and isinstance(destination.get("decision_ref"), str) and target["decision_ref"] not in lacking:
             # package 11 (Blitzcrank - Impassive): a Move needs somewhere to go - no legal target with any legal
-            # destination (every enemy unit already "here") is no legal choice (Core 355.4.a, 402.4)
+            # destination (every enemy unit already "here") is no legal choice (Core 355.4.a, 403.4)
             from effect_ir import bind_move_here, move_destination_candidates
             bound = bind_move_here(destination, effect_state, program)
             if not any(move_destination_candidates(effect_state, o, bound)
@@ -642,7 +642,7 @@ def resolve_with_program(
                        if isinstance(s, dict) and s.get("decision_ref")}
         choice_refs = {e.get("decision_ref") for e in effects if isinstance(e.get("choice"), dict) and e.get("decision_ref")} - target_refs
         # package 6 (2026-09-27): "Spend any number of buffs." chooses as it resolves by its own decision_ref too -
-        # buffs are counters, not targets (Core 704.1, 355.17)
+        # buffs are counters, not targets (Core 704.1, 355.18)
         from effect_ir import DECISION_REF_CHOICE_OPS
         choice_refs |= {e.get("decision_ref") for e in effects if e.get("op") in DECISION_REF_CHOICE_OPS
                         and e.get("decision_ref")} - target_refs
@@ -664,7 +664,7 @@ def resolve_with_program(
         others = [entry for entry in ((engine_decisions or {}).get("decisions") or []) if entry.get("kind") != "target_selection"
                   and entry.get("decision_id") not in recorded] + resolution_choices
         if finalized or others:
-            # the rebuilt envelope keeps what else it carried - a randomization receipt (Core 416.5) is
+            # the rebuilt envelope keeps what else it carried - a randomization receipt (Core 417.5) is
             # not a decision, and dropping it left a trigger that recycles two cards unable to resolve
             engine_decisions = {**_envelope_extras(engine_decisions), "schema_version": "engine-decisions.v1",
                                 "input_hash": hash_value(effect_state),
@@ -706,7 +706,7 @@ def resolve_with_program(
     if entry_before.get("repeat") is not None:
         context = {**(context or {}), "repeat": copy.deepcopy(entry_before["repeat"])}  # ADR-0011 §4: paid Repeats
     if entry_before.get("played_from_hidden"):
-        # Core 811.1.d.3 (GPT 2026-09-27): the battlefield this card was played from Hidden at
+        # Core 811.1.d.5 (GPT 2026-09-27): the battlefield this card was played from Hidden at
         context = {**(context or {}), "hidden_battlefield": entry_before["played_from_hidden"]}
         # package 12 (Core 2026-10-09 811.1.d.2, 359.3.e.2.a): its targets are checked at that battlefield again now
         if program and entry_before.get("hidden_targeting", "restricted") == "restricted":
@@ -773,18 +773,18 @@ def resolve_with_program(
     chain_card_trace = []
     entry_triggers: list[dict[str, Any]] = []
     chain_entry = (after_effect.get("chain_items") or {}).get(item_id)
-    # Core 419.4.a (GPT 2026-09-27): the play this item's card was made by is complete only now,
+    # Core 420.4.a (GPT 2026-09-27): the play this item's card was made by is complete only now,
     # by its resolution; the event recorded at Finalize wakes the play watchers below
     played_event = copy.deepcopy((chain_entry or {}).get("played_event"))
     if chain_entry is not None and "card" not in chain_entry:
-        # ADR-0011 §4 / Core 402: an activated ability has no card; it just
+        # ADR-0011 §4 / Core 403: an activated ability has no card; it just
         # leaves the chain. Its source stays wherever the cost left it.
         after_effect = copy.deepcopy(after_effect)
         del after_effect["chain_items"][item_id]
         if not after_effect["chain_items"]:
             del after_effect["chain_items"]
         chain_card_trace.append({"ability_id": chain_entry["ability_id"], "source_object": chain_entry["source_object"], "chain_item_id": item_id, "no_card": True,
-                                 "rule_locators": ["Core 377", "Core 402"]})
+                                 "rule_locators": ["Core 377", "Core 403"]})
         chain_entry = None
     if chain_entry is not None and after_effect["objects"][chain_entry["card"]]["kind"] in {"unit", "gear"}:
         # ADR-0007 §1–2: the permanent entry procedure, then "When you play me".
@@ -815,23 +815,23 @@ def resolve_with_program(
             del after_effect["chain_items"]
         owner = after_effect["objects"][card]["owner"]
         if (chain_entry.get("leave_replacement") or {}).get("kind") == "recycle":
-            # package 9 (Kai'Sa - Evolutionary, GPT 2026-10-04 ruling 2): Core 390.3.a - its resolution done, it would
-            # leave the Chain for the trash (157); it is recycled instead, to the bottom of its owner's Main Deck (416)
+            # package 9 (Kai'Sa - Evolutionary, GPT 2026-10-04 ruling 2): Core 391.3.a - its resolution done, it would
+            # leave the Chain for the trash (157); it is recycled instead, to the bottom of its owner's Main Deck (417)
             after_effect["players"][owner]["zones"]["main_deck"].append(card)
             chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.main_deck",
                                      "recycled_instead": True, "identity_after": _bump_identity(after_effect, card),
-                                     "rule_locators": ["Core 390.3.a", "Core 416", "Core 124"]})
+                                     "rule_locators": ["Core 391.3.a", "Core 417", "Core 124"]})
         elif (chain_entry.get("leave_replacement") or {}).get("kind") == "banish":
             # package 11 (Time Warp): "Banish this." - its own instruction sends it to its owner's banishment
             after_effect["players"][owner]["zones"].setdefault("banishment", []).append(card)
             chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.banishment",
                                      "banished_by_its_instruction": True, "identity_after": _bump_identity(after_effect, card),
-                                     "rule_locators": ["Core 157", "Core 427.1", "Core 124"]})
+                                     "rule_locators": ["Core 157", "Core 428.1", "Core 124"]})
         else:
             after_effect["players"][owner]["zones"]["trash"].append(card)
             chain_card_trace.append({"card": card, "chain_item_id": item_id, "destination": f"{owner}.trash",
                                      "identity_after": _bump_identity(after_effect, card), "rule_locators": ["Core 157", "Core 124"]})
-    # ADR-0011 §5 / Core 425.1: a countered item leaves the timing chain in the
+    # ADR-0011 §5 / Core 426.1: a countered item leaves the timing chain in the
     # same commit as the effect state that cleared it.
     # package 11 (Mystic Reversal): a Chain item whose control changed - the timing chain's record follows, same commit
     retaken = effect_result.get("controlled_chain_items") or []
@@ -870,7 +870,7 @@ def resolve_with_program(
                       "skipped_after_terminal": {"combat_designations": True, "lethal_cleanup": True, "trigger_schedule": True,
                                                  "pending_triggers": [t.get("trigger_id") for t in effect_result.get("pending_triggers", [])] + [t.get("trigger_id") for t in entry_triggers]},
                       "timing": timing_result["transition"]},
-            "rule_locators": list(dict.fromkeys([locator for event in effect_result["trace"] for locator in event.get("rule_locators", [])] + ["Core 431.3.c.1", "Core 196"])),
+            "rule_locators": list(dict.fromkeys([locator for event in effect_result["trace"] for locator in event.get("rule_locators", [])] + ["Core 432.3.c.1", "Core 196"])),
         }
     # ADR-0008 §3 / Core 323.2: the Cleanup's step 2 comes before 3a/3b — while
     # a Combat is in progress, designations follow presence first, so a Unit
@@ -911,24 +911,24 @@ def resolve_with_program(
             "cleanup_result": cleanup_result,
         }
     final_effect_state = cleanup_result["next_state"]
-    # 2026-09-27: Core 428.5.c, 428.5.c.1 - a Unit dying in a Cleanup counts as killed by the last spell or
+    # 2026-09-27: Core 429.5.c, 429.5.c.1 - a Unit dying in a Cleanup counts as killed by the last spell or
     # ability to resolve before that Cleanup only when that one damaged the Unit; the player responsible for the
-    # damage (its controller, 411.1) is responsible for the kill. A Unit this program never damaged died for no one's
-    # action here (411.2): its event keeps responsible_player None
+    # damage (its controller, 412.1) is responsible for the kill. A Unit this program never damaged died for no one's
+    # action here (412.2): its event keeps responsible_player None
     damaged_here = {e.get("object") for e in effect_result.get("events") or [] if e.get("kind") == "damaged"}
     for event in cleanup_result.get("events") or []:
         if event.get("kind") == "died" and event.get("object") in damaged_here:
             event["responsible_player"] = program.get("controller")
-            event["rule_locators"] = list(dict.fromkeys(list(event.get("rule_locators") or []) + ["Core 428.5.c", "Core 428.5.c.1"]))
+            event["rule_locators"] = list(dict.fromkeys(list(event.get("rule_locators") or []) + ["Core 429.5.c", "Core 429.5.c.1"]))
     effect_triggers = [dict(trigger) for trigger in effect_result.get("pending_triggers", [])]
     # Play-completion triggers form one batch after the item's own effect
-    # triggers and before anything the board-entry Cleanup raises (419.4.a).
+    # triggers and before anything the board-entry Cleanup raises (420.4.a).
     play_batch = max((trigger.get("batch_sequence", -1) for trigger in effect_triggers), default=-1) + 1
     for trigger in entry_triggers:
         trigger["batch_sequence"] = play_batch
         trigger["batch_id"] = f"play:{item_id}"
     effect_triggers += entry_triggers
-    # step 2 designation triggers precede the Cleanup's 3a death triggers (323.2, 323.4)
+    # step 2 designation triggers precede the Cleanup's 3a death triggers (323.2, 383.2.c.3)
     sync_batch = max((trigger.get("batch_sequence", -1) for trigger in effect_triggers), default=-1) + 1
     for trigger in combat_sync_triggers:
         trigger["batch_sequence"] = sync_batch
@@ -939,9 +939,9 @@ def resolve_with_program(
         trigger["batch_sequence"] = trigger.get("batch_sequence", 0) + next_batch
     # ADR-0005 §5 / Codex Q4 (b): "If this kills it" is a conditional reflexive
     # trigger. The spell has left the chain, Cleanup has killed (or not), and
-    # 428.5.c attributes a Cleanup kill to the spell that dealt the damage
+    # 429.5.c attributes a Cleanup kill to the spell that dealt the damage
     # immediately before it. Only then is the Pending reflexive item built
-    # (387–388); a death a replacement prevented builds nothing.
+    # (388–389); a death a replacement prevented builds nothing.
     conditional_trace = []
     conditional_triggers = []
     events = {e.get("effect_id"): e for e in effect_result.get("trace", [])}
@@ -949,7 +949,7 @@ def resolve_with_program(
     # triggers of the same Cleanup kill are simultaneously triggered — one
     # chronological batch, ordered by controller in Turn Order (383.3.d). The
     # batch is the Cleanup iteration that killed the object; for a Kill
-    # instruction (428.5.b) it is the instruction's own batch.
+    # instruction (429.5.b) it is the instruction's own batch.
     cleanup_kill_iteration = {e.get("object_id"): e.get("cleanup_iteration") for e in cleanup_result.get("trace", []) if e.get("op") == "kill" and e.get("outcome") in {"applied", "augmented_applied"}}
     cleanup_prefix = f"lethal-cleanup:{public_id(after_effect)}"
     all_batches = effect_triggers + cleanup_triggers
@@ -971,7 +971,7 @@ def resolve_with_program(
                 return {**base, "valid": True, "committed": False, "unsupported": True, "stage": "conditional_triggers",
                         "reason_code": "revealed_card_of_several_listed_domains",
                         "reason": "the revealed card is of more than one of the listed Domains; 'one of the following' "
-                                  "would then add more than one (Core 387.1.b) - not modelled",
+                                  "would then add more than one (Core 388.1.b) - not modelled",
                         "effect_result": effect_result}
     for ct in program.get("conditional_triggers", []) or []:
         event = events.get(ct["condition"]["effect_id"], {})
@@ -982,18 +982,18 @@ def resolve_with_program(
             continue
         if ct["condition"]["kind"] == "unconditional":
             # 2026-10-12 (package 11, GPT PACKAGE11 ruling 4, Dragon's Rage): "Then do this:" with no condition is always
-            # added (Core 387.2, 388.1) once the instruction before it is done - its own Chain item, its targets chosen as
+            # added (Core 388.2, 389.1) once the instruction before it is done - its own Chain item, its targets chosen as
             # it is finalized, not inside the spell's resolution
             conditional_triggers.append(_unconditional_reflexive(ct, event, program, after_effect, conditional_trace))
             continue
         performed = action_performed(event)
         touched = [event["object_id"]] if isinstance(event.get("object_id"), str) else [x.get("object_id") for x in event.get("expansion_trace", []) if action_performed(x)]
         if event.get("op") == "kill":
-            killed = [o for o in touched if performed]  # 428.5.b: a Kill instruction kills directly
-            locators = ["Core 428.5.b", "Core 387.2", "Core 388.1"]
+            killed = [o for o in touched if performed]  # 429.5.b: a Kill instruction kills directly
+            locators = ["Core 429.5.b", "Core 388.2", "Core 389.1"]
         else:
             killed = [o for o in touched if performed and o in cleanup_result.get("killed_objects", [])]
-            locators = ["Core 428.5.c", "Core 428.5.c.1", "Core 387.2", "Core 388.1"]
+            locators = ["Core 429.5.c", "Core 429.5.c.1", "Core 388.2", "Core 389.1"]
         prevented = [o for o in touched if o in cleanup_result.get("stable_prevented_objects", [])]
         held = bool(killed)
         conditional_trace.append({
@@ -1012,20 +1012,20 @@ def resolve_with_program(
     # its Cleanup's - once Cleanup has run, as the batch after its death triggers.
     import watchers
     # 2026-09-27 (package 6): the deaths this resolution is responsible for name what killed them and
-    # who is responsible (Core 428.5) - what "When you kill a unit with a spell" reads (kill_attributed)
+    # who is responsible (Core 429.5) - what "When you kill a unit with a spell" reads (kill_attributed)
     watched_events = kill_attributed(list(effect_result.get("events") or []), list(cleanup_result.get("events") or []),
                                      killer=entry_before.get("card") or chain_item.get("source_object"),
                                      responsible=chain_item.get("controller"))
     if played_event is not None:
-        # Core 419.4.a: "abilities that trigger on playing cards" - the card's play, completed by
-        # this resolution (a countered card never gets here: 419.4.a.1). It is counted here too - which
+        # Core 420.4.a: "abilities that trigger on playing cards" - the card's play, completed by
+        # this resolution (a countered card never gets here: 420.4.a.1). It is counted here too - which
         # of its player's plays this turn it is ("your second card in a turn"): a countered card was
         # not played, so it is never counted (GPT 2026-09-27, package 3 section 7 item 1)
         from effect_ir import record_card_played
         played_event["play_ordinal"] = record_card_played(final_effect_state, played_event["actor"])
         watched_events.append({**played_event, "completed_by": f"resolve:{item_id}",
                                "rule_locators": list(dict.fromkeys(list(played_event.get("rule_locators") or [])
-                                                                   + ["Core 419.4.a", "Core 419.4.a.1"]))})
+                                                                   + ["Core 420.4.a", "Core 420.4.a.1"]))})
     watch_triggers: list[dict[str, Any]] = []
     if watched_events:
         try:
@@ -1041,7 +1041,7 @@ def resolve_with_program(
         watchers.batch_with_same_action(watch_triggers, watched_events, effect_triggers + cleanup_triggers + conditional_triggers,
                                         own_sequence=watch_batch, own_id=f"watch:{item_id}")
     pending_triggers = effect_triggers + cleanup_triggers + conditional_triggers + watch_triggers
-    # 2026-09-28 (package 6): a card this resolution played (Core 419.3) moved to the Chain at the
+    # 2026-09-28 (package 6): a card this resolution played (Core 420.3) moved to the Chain at the
     # play's step 1 as its instruction executed (354), before anything this resolution triggered was
     # put on the Chain, so its Pending item comes first; its remaining steps wait until this
     # resolution is done (354.3) - finalize_limited_play takes them as the oldest Pending item
@@ -1108,7 +1108,7 @@ def resolve_with_program(
 # - its cost cannot be paid with the Add window closed (357.1), or its player cannot play cards now
 # (054.1). Any other refusal is of a choice supplied for it, which its player makes again.
 LIMITED_PLAY_CANCEL_REASONS = {"cost_unpayable", "play_prohibited"}
-LIMITED_PLAY_RULES = ["Core 419.3", "Core 419.3.a", "Core 419.3.b", "Core 354.3", "Core 337.1"]
+LIMITED_PLAY_RULES = ["Core 420.3", "Core 420.3.a", "Core 420.3.b", "Core 354.3", "Core 337.1"]
 
 
 def finalize_limited_play(
@@ -1120,11 +1120,11 @@ def finalize_limited_play(
     payment_context: dict[str, Any] | None = None,
     effect_program: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """2026-09-28 (package 6): the rest of an effect-driven play (Core 419.3). An effect's resolution
+    """2026-09-28 (package 6): the rest of an effect-driven play (Core 420.3). An effect's resolution
     took step 1 - its card is on the Chain as the oldest Pending item (Core 354, 354.3, 337.1) - and its
     controller now completes steps 2 to 5 through the play transaction, like any play but as the effect
-    notes (419.3.b): the source and the permission are the effect's, its base cost is the card's
-    printed one with the effect's change (356.1.b), and no timing permission is asked (419.3.a). A Unit
+    notes (420.3.b): the source and the permission are the effect's, its base cost is the card's
+    printed one with the effect's change (356.1.b), and no timing permission is asked (420.3.a). A Unit
     enters where its controller chooses now (355.2; `entry_location`); Accelerate and every other
     optional cost are offered as usual (356.1.b.3).
 
@@ -1255,7 +1255,7 @@ def complete_limited_play(
 ) -> dict[str, Any]:
     """2026-09-28 (package 6): finalize_limited_play, and - for a Unit or Gear, which resolves as soon as
     it is Finalized (Core 337.2) - its resolution: it enters the Board and "When you play me" triggers
-    (359.2, 419.4.a). A Spell stays on the Chain, Finalized, and resolves when the players have passed
+    (359.2, 420.4.a). A Spell stays on the Chain, Finalized, and resolves when the players have passed
     (337.4, 340.1). The result carries both steps."""
     finalized = finalize_limited_play(timing_state, effect_state, engine_decisions, entry_location=entry_location,
                                       payment_context=payment_context, effect_program=effect_program)
@@ -1392,7 +1392,7 @@ def complete_permanent_play(
     new object on the board (124); entry replacements apply; a Unit enters the
     location chosen at play, a Non-Unit Gear its controller's Base (359.2.d);
     the play is then complete and "When you play me" triggers are collected
-    (419.4.a) for the caller to schedule before the board-entry Cleanup."""
+    (420.4.a) for the caller to schedule before the board-entry Cleanup."""
     working = copy.deepcopy(state)
     entry = working["chain_items"][item_id]
     card, controller = entry["card"], entry["controller"]
@@ -1416,7 +1416,7 @@ def complete_permanent_play(
     drop_play_bound_replacements(obj, item_id)
     trace: dict[str, Any] = {"card": card, "chain_item_id": item_id, "kind": obj["kind"], "default_entry_state": default,
                              "entry_replacements": replacements, "entry_state": final, "not_a_move": True,
-                             "rule_locators": ["Core 359.2", "Core 359.2.a", "Core 143.4", "Core 124", "Core 446.2"]}
+                             "rule_locators": ["Core 359.2", "Core 359.2.a", "Core 143.4", "Core 124", "Core 448.2"]}
     if obj["kind"] == "unit" and location["kind"] == "battlefield":
         battlefield = working["battlefields"][location["battlefield"]]
         battlefield["objects"].append(card)
@@ -1449,7 +1449,7 @@ def complete_permanent_play(
         condition = descriptor.get("condition")
         if condition is not None and condition.get("kind") == "another_card_finalized_this_turn":
             # Core 812.1.c: the Legion text exists only while another card this
-            # player Finalized this turn is on record; read as the play completes (419.4.a).
+            # player Finalized this turn is on record; read as the play completes (420.4.a).
             from effect_ir import evaluate_condition
             if not evaluate_condition(working, condition, controller=controller, object_id=card):
                 inactive.append({"trigger_id": descriptor["trigger_id"], "reason": "legion_not_active", "rule_locators": ["Core 812.1.c"]})
@@ -1457,10 +1457,10 @@ def complete_permanent_play(
             descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
         elif condition is not None and condition.get("kind") == "played_to_battlefield":
             # 2026-10-12 package 11 (Blitzcrank - Impassive): "When you play me to a battlefield" - this play put the card
-            # at a Battlefield (Core 383.1, 419.4.a); played to its Base, it does not trigger
+            # at a Battlefield (Core 383.1, 420.4.a); played to its Base, it does not trigger
             if location.get("kind") != "battlefield":
                 inactive.append({"trigger_id": descriptor["trigger_id"], "reason": "trigger_condition_not_met",
-                                 "rule_locators": ["Core 383.1", "Core 419.4.a"]})
+                                 "rule_locators": ["Core 383.1", "Core 420.4.a"]})
                 continue
             descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
         elif condition is not None and condition.get("kind") == "paid_additional_cost":
@@ -1507,7 +1507,7 @@ def complete_permanent_play(
     trace["play_triggers"] = [t["trigger_id"] for t in triggers]
     if inactive:
         trace["play_triggers_inactive"] = inactive
-    trace["rule_locators"] += ["Core 419.4.a"] if triggers else []
+    trace["rule_locators"] += ["Core 420.4.a"] if triggers else []
     return working, trace, triggers
 
 
@@ -1651,7 +1651,7 @@ def run_expiration_step(timing_state: dict[str, Any], effect_state: dict[str, An
     expired_granted = [r["replacement_id"] for r in working["replacement_effects"] if _this_turns(r)]
     working["replacement_effects"] = [r for r in working["replacement_effects"] if not _this_turns(r)]
     expired_effects = [e for e in working.get("turn_effects", []) if e.get("turn_id") == turn_id]
-    # Core 317.2.d / 423.2: a Stun is a "this turn" effect, so 3d is where it
+    # Core 317.2.d / 424.2: a Stun is a "this turn" effect, so 3d is where it
     # ends. The status comes off with the entry that owned it, in the same
     # simultaneous step as every other expiry.
     unstunned = []

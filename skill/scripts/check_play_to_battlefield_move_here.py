@@ -3,7 +3,7 @@
 a battlefield, you may move an enemy unit to here.").
 
 "When you play me to a battlefield" is met as the play completes only when the play put the card at a Battlefield (Core
-383.1, 419.4.a): the play trigger's condition {kind: played_to_battlefield}; played to its Base, it does not trigger. The
+383.1, 420.4.a): the play trigger's condition {kind: played_to_battlefield}; played to its Base, it does not trigger. The
 Move's destination is chosen as the ability is finalized (Core 355.4, 355.15) and can only be "here" - the source's current
 Battlefield (destination restriction "here"); a unit already there has nowhere to go (355.4.a). "here" is read again as the
 Move executes (359.3.f.2): the source gone from that Battlefield - to its Base or elsewhere - and the chosen destination is
@@ -19,7 +19,7 @@ not carried out; it is never re-chosen and never becomes the Base (GPT 2026-10-1
   B3 already here      an enemy unit already at bf1: refused at finalization - no legal destination for it
   B4 source to base    finalized, then the source recalled to its Base: the Move is not carried out, the unit stays
   B5 source moved      finalized, then the source moved to bf2: the destination bf1 is no longer here - not carried out
-  B6 nobody to move    every enemy unit already here: the trigger leaves the Chain at finalization (402.4)
+  B6 nobody to move    every enemy unit already here: the trigger leaves the Chain at finalization (403.4)
   B7 declined          the optional trigger declined: nothing moves
   V  validation        here_battlefield is the engine's; "here" only on a chosen destination
 

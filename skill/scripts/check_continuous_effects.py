@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Regression gate for C-49 (ADR-0013 §1–2; Codex G-2 on DP-73): the canonical
-`continuous_effects[]`, the legacy input adapter, and the Core 476–480 layer
+`continuous_effects[]`, the legacy input adapter, and the Core 478–482 layer
 engine.
 
 Must hold:
@@ -13,10 +13,10 @@ Must hold:
   - a state carrying a legacy family *and* the canonical list is
     invalid_input — the shape that would be counted twice — while the same
     state with either one alone validates (negative mutation);
-  - the layer engine: increases apply before decreases (477.3.a), timestamp
-    orders the rest (480), and the fixpoint runs each effect exactly once
-    (476.2);
-  - dependency (478–479): the Core example — a passive "Might increased to 5"
+  - the layer engine: increases apply before decreases (479.4.a), timestamp
+    orders the rest (482), and the fixpoint runs each effect exactly once
+    (478.3);
+  - dependency (480–481): the Core example — a passive "Might increased to 5"
     on a 4-Might Unit plus Discipline's +2 — reads 6, because the depended-on
     effect goes first; plain timestamp order would read 7 (negative
     mutation), and a pair the engine cannot order is
@@ -26,7 +26,7 @@ Must hold:
   - this-turn effects expire at the Expiration Step and this-combat grants at
     close_combat, both with a removal reason;
   - `effective_might` clamps at zero while `characteristics` keeps the
-    arithmetic value (143.2.b); keywords, Shield and Bonus Damage all read off
+    arithmetic value (143.2.c); keywords, Shield and Bonus Damage all read off
     the one computation;
   - the schema carries the list and the effect scope declares the slice.
 """
@@ -122,23 +122,23 @@ def main() -> int:
     ordered = canonical(effect("plus", amount=2, timestamp=5), effect("minus", amount=-1, timestamp=0))
     computed = characteristics(ordered, "u1")
     if computed["might"] != 4 or [a["effect_id"] for a in computed["applied"]] != ["plus", "minus"]:
-        errors.append(f"increases did not apply before decreases (477.3.a): {computed['might']} {[a['effect_id'] for a in computed['applied']]}")
+        errors.append(f"increases did not apply before decreases (479.4.a): {computed['might']} {[a['effect_id'] for a in computed['applied']]}")
     stamped = canonical(effect("late", amount=3, timestamp=9), effect("early", amount=1, timestamp=1))
     if [a["effect_id"] for a in characteristics(stamped, "u1")["applied"]] != ["early", "late"]:
-        errors.append("timestamp order was not used within a sublayer (480)")
+        errors.append("timestamp order was not used within a sublayer (482)")
     once = canonical(effect("a", amount=1, timestamp=0), effect("b", amount=1, timestamp=1))
     result = characteristics(once, "u1")
     if result["might"] != 5 or len(result["applied"]) != 2:
-        errors.append(f"an effect applied more than once across passes (476.2): {result}")
+        errors.append(f"an effect applied more than once across passes (478.3): {result}")
 
-    # dependency: Core 479's example — "Might increased to 5" plus Discipline +2 on a 4-Might Unit
+    # dependency: Core 481's example — "Might increased to 5" plus Discipline +2 on a 4-Might Unit
     dependency = canonical(
         effect("passive-to-5", amount=5, mode="increase_to", timestamp=0, passive=True),
         effect("discipline", amount=2, timestamp=1),
     )
     dependency["objects"]["u1"]["base_might"] = 4
     if characteristics(dependency, "u1")["might"] != 6:
-        errors.append(f"the dependency was not resolved by Core 478-479: {characteristics(dependency, 'u1')['might']} (expected 6)")
+        errors.append(f"the dependency was not resolved by Core 480-481: {characteristics(dependency, 'u1')['might']} (expected 6)")
     naive = sorted(dependency["continuous_effects"], key=lambda e: e["timestamp"])
     might = 4
     for e in naive:
@@ -156,7 +156,7 @@ def main() -> int:
         if "layer_dependency_unresolved" not in str(exc):
             errors.append(f"an unorderable pair was refused with the wrong reason: {exc}")
     else:
-        pass  # mutually altering effects establish no dependency (478.1) and fall back to timestamp
+        pass  # mutually altering effects establish no dependency (480.1) and fall back to timestamp
 
     # --- identity, duration and pruning -----------------------------------------------------------------
     bound = canonical(effect("bound", amount=2, timestamp=0))
@@ -183,7 +183,7 @@ def main() -> int:
         errors.append(f"the ability layer did not grant the keywords: {characteristics(keywords, 'u1')['keywords']}")
     weak = canonical(effect("curse", amount=-5, timestamp=0))
     if effective_might(weak, "u1") != 0 or characteristics(weak, "u1")["might"] != -2:
-        errors.append("the rules-facing read did not clamp at zero while the arithmetic value stayed (143.2.b)")
+        errors.append("the rules-facing read did not clamp at zero while the arithmetic value stayed (143.2.c)")
     bonus = canonical(effect("fiery", kind="bonus_damage", source="u1", timestamp=0, amount=1))
     bonus["continuous_effects"][0]["affects"] = {"scope": "criteria", "criteria": {"bonus_scope": {"kind": "controller_sources"}, "controller": "p1"}}
     total, sources = bonus_damage(bonus, "p1", "u2")

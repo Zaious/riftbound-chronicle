@@ -4,21 +4,21 @@ Regression gate for C-52 (ADR-0013 §5; Codex G-2 on DP-71 / DP-72): Empower,
 Disempower, Buff, XP and the three costs that spend them.
 
 Must hold:
-  - Empowered is a binary state for an object on the board (441.2): the action
+  - Empowered is a binary state for an object on the board (442.2): the action
     sets it and records the event hook P5 will emit; an object that is already
     Empowered is a no_op with `became_empowered: false` — nothing additional
-    happens (441.1.b, 441.1.c.1) — while the first Empower on the same object
+    happens (442.1.b, 442.1.c.1) — while the first Empower on the same object
     does emit it (negative mutation); an object off the board is illegal;
   - Disempower removes the state and does nothing to a card that is not
-    Empowered (442.1.a.1);
-  - a Buff is one counter on a Unit (426.1.b): buffing a Unit that already has
+    Empowered (443.1.a.1);
+  - a Buff is one counter on a Unit (427.1.b): buffing a Unit that already has
     one is a no_op with `was_buffed: false`, which is what "chosen but not
-    Buffed" (426.1.c) needs; buffing a non-Unit or an off-board Unit is
+    Buffed" (427.1.c) needs; buffing a non-Unit or an off-board Unit is
     illegal;
   - XP is a non-negative value on the player (730.1) and `gain_xp` adds to it;
   - the three costs spend real state: `spend_xp` needs the XP (730.2),
     `spend_buff` needs a Buff counter on a Unit the payer controls (702.2.b),
-    `disempower_self` needs the source to be Empowered (442.1.a); each writes
+    `disempower_self` needs the source to be Empowered (443.1.a); each writes
     its own receipt event, and each refuses when the state is not there while
     the same play with the state commits (negative mutation);
   - a Level ability is expressible as a continuous effect gated by
@@ -69,20 +69,20 @@ def main() -> int:
         errors.append(f"the Empowered state is invalid: {validate_state(empowered['next_state'])}")
     again = apply_program(empowered["next_state"], program("e2", {"op": "empower", "effect_id": "e", "object_id": "u1"}))
     if not again.get("committed") or ev(again).get("outcome") != "no_op" or ev(again).get("became_empowered") is not False:
-        errors.append(f"Empowering an Empowered object was not a no_op without an event (441.1.c.1): {ev(again)}")
+        errors.append(f"Empowering an Empowered object was not a no_op without an event (442.1.c.1): {ev(again)}")
     if ev(again).get("event_hook"):
         errors.append("negative mutation failed: the second Empower still recorded the event hook")
     off_board = copy.deepcopy(state)
     off_board["players"]["p1"]["zones"]["base"].remove("u1")
     off_board["players"]["p1"]["zones"]["hand"].append("u1")
     if apply_program(off_board, program("e", {"op": "empower", "effect_id": "e", "object_id": "u1"})).get("reason_code") != "illegal_operation":
-        errors.append("Empowering an object off the board was accepted (441.2)")
+        errors.append("Empowering an object off the board was accepted (442.2)")
     dis = apply_program(empowered["next_state"], program("d", {"op": "disempower", "effect_id": "d", "object_id": "u1"}))
     if not dis.get("committed") or dis["next_state"]["objects"]["u1"].get("empowered"):
         errors.append("disempower did not remove the state")
     idle = apply_program(state, program("d", {"op": "disempower", "effect_id": "d", "object_id": "u1"}))
     if not idle.get("committed") or ev(idle).get("outcome") != "no_op":
-        errors.append("disempowering a card that is not Empowered was not a no_op (442.1.a.1)")
+        errors.append("disempowering a card that is not Empowered was not a no_op (443.1.a.1)")
 
     # --- Buff --------------------------------------------------------------------------------------
     buffed = apply_program(state, program("b", {"op": "buff", "effect_id": "b", "object_id": "u1"}))
@@ -90,7 +90,7 @@ def main() -> int:
         errors.append(f"buff did not place the counter: {ev(buffed)}")
     twice = apply_program(buffed["next_state"], program("b2", {"op": "buff", "effect_id": "b", "object_id": "u1"}))
     if ev(twice).get("outcome") != "no_op" or ev(twice).get("was_buffed") is not False:
-        errors.append(f"a second Buff counter was placed (426.1.b): {ev(twice)}")
+        errors.append(f"a second Buff counter was placed (427.1.b): {ev(twice)}")
     if apply_program(state, program("b3", {"op": "buff", "effect_id": "b", "object_id": "c1"})).get("reason_code") != "illegal_operation":
         errors.append("buffing a non-Unit was accepted (702)")
     bad_state = copy.deepcopy(state)

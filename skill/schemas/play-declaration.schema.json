@@ -27,7 +27,7 @@
       ],
       "properties": {
         "core": {
-          "const": "2026-07-16"
+          "const": "2026-10-09"
         },
         "faq_as_of": {
           "const": "2026-08-14"
@@ -79,7 +79,7 @@
         "add_window_closed",
         "confirmed_by"
       ],
-      "description": "Core 429.3: the controller may use Add reactions while paying. When the pool is short, the engine will not assume they decline; a human must confirm the window is closed before the play is illegal.",
+      "description": "Core 430.3: the controller may use Add reactions while paying. When the pool is short, the engine will not assume they decline; a human must confirm the window is closed before the play is illegal.",
       "properties": {
         "add_window_closed": {
           "type": "boolean"
@@ -213,7 +213,7 @@
                   "order_ref": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "recycle_trash: the card_ordering for two or more recycled cards (Core 416.5)."
+                    "description": "recycle_trash: the card_ordering for two or more recycled cards (Core 417.5)."
                   }
                 }
               },
@@ -638,7 +638,7 @@
         "source_object",
         "ability_id"
       ],
-      "description": "ADR-0011 §4: an activated ability (chain_item.object_kind ability) names its source permanent and ability; card equals source_object and nothing leaves the hand (Core 377, 402).",
+      "description": "ADR-0011 §4: an activated ability (chain_item.object_kind ability) names its source permanent and ability; card equals source_object and nothing leaves the hand (Core 377, 403).",
       "properties": {
         "source_object": {
           "type": "string",

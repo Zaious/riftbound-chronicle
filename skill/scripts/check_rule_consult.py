@@ -121,7 +121,7 @@ def main():
         created_by="test",
     )
     valid["facts"].append({"text": "A supplied fact", "origin": "user"})
-    valid["sources"].append({"source_id": "core-rules-2026-07-16", "locator": "fixture clause", "accessed_at": now_iso()})
+    valid["sources"].append({"source_id": "core-rules-2026-10-09", "locator": "fixture clause", "accessed_at": now_iso()})
     valid["rules_core_check"] = summarize_result({
         "valid": True,
         "legal": True,

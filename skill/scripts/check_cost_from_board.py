@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Regression gate for a card's own Energy reduction read off the board as its cost is
-determined (Core 356.4, 356.4.b, 356.4.e, 356.6; 428.1).
+determined (Core 356.4, 356.4.b, 356.4.e, 356.6; 429.1).
 
 Sky Splitter, "This spell's Energy cost is reduced by the highest Might among units you
 control." (Core 356.4.e and 206 use this very card; 8 Energy):
@@ -18,9 +18,9 @@ control." (Core 356.4.e and 206 use this very card; 8 Energy):
   - mutations: without the per-each the reduction is 1; the per-each shape is closed.
 
 Spoils of War, "If an enemy unit has died this turn, this costs [2] less." (4 Energy):
-  - the Kill action counts a Unit's death for its controller as it died, per turn (428.1):
+  - the Kill action counts a Unit's death for its controller as it died, per turn (429.1):
     an enemy Unit killed this turn makes the cost 2; a token killed counts (it died, then
-    ceased to exist, 186.1); a Unit killed by lethal damage in a Cleanup counts (428.4);
+    ceased to exist, 186.1); a Unit killed by lethal damage in a Cleanup counts (429.4);
   - no death, only a friendly death, a death last turn, a Unit returned to its owner's hand,
     and a Gear killed are not "an enemy unit has died this turn" - the cost stays 4;
   - the death is its controller's as it died, not its owner's (review 5 R2-2): a Unit p2 owns
@@ -194,7 +194,7 @@ def main() -> int:
     lethal_done = perform_lethal_cleanup(lethal)
     last_turn = run(spoils_board(), {"op": "kill", "effect_id": "k", "object_id": "e"})
     last_turn["turn_id"] = "turn-8"
-    # review 5 R2-2: a death counts for the unit's CONTROLLER as it died (428.1), not its owner
+    # review 5 R2-2: a death counts for the unit's CONTROLLER as it died (429.1), not its owner
     stolen = spoils_board()
     stolen["objects"]["e"]["controller"] = "p1"          # p2 owns e; p1 controls it
     lost = spoils_board()
@@ -228,7 +228,7 @@ def main() -> int:
     stolen_dead = run(stolen, {"op": "kill", "effect_id": "k", "object_id": "e"})
     stolen_dead["objects"]["c1"].update(copy.deepcopy(friendly))
     if left(play(stolen_dead, 4)) != 2:
-        errors.append("the leaf's friendly side did not read the death of a Unit p1 controlled but p2 owned (428.1)")
+        errors.append("the leaf's friendly side did not read the death of a Unit p1 controlled but p2 owned (429.1)")
     if validate_condition({"kind": "unit_died_this_turn"}) == []:
         errors.append("unit_died_this_turn without a controller_relation was accepted")
     try:

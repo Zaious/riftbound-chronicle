@@ -2,7 +2,7 @@
 """A banished card played by its owner, to their Base (package 9, Portal Rescue).
 
 "Banish a friendly unit, then its owner plays it to their base, ignoring its cost." GPT 2026-10-06 (PACKAGE9_INVENTORY
-section 7, ruling 2): the owner plays it to their own Base and controls it (Core 127.1, 419.1); ignoring its cost is the
+section 7, ruling 2): the owner plays it to their own Base and controls it (Core 127.1, 420.1); ignoring its cost is the
 base cost's Energy and Power set to zero (356.1.b.1), not an additional cost (356.1.b.3).
 
 The engine's shape: limited_play `linked` {effect_id, from: banishment} with player "owner" (only on a linked play) and

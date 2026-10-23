@@ -8,7 +8,7 @@ controller's Legend Zone, and that Legend can pay its own exhaust cost there.
 Must hold:
   - a ready Legend activates its ability from its Legend Zone: the play commits, the
     Legend is exhausted, the Energy is spent, the ability is on the Chain;
-  - negatives: an already exhausted Legend cannot pay (414.1); a non-Legend is not
+  - negatives: an already exhausted Legend cannot pay (415.1); a non-Legend is not
     activated from anywhere but the board (a Unit in hand); an opponent's Legend is not
     the actor's to activate; a card PLAY whose cost names the Legend is not an activation
     and cannot exhaust it;
@@ -127,7 +127,7 @@ def main() -> int:
     if errors:
         print("FAILED: Legend activation checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: a ready Legend activates from its Legend Zone and pays its own exhaust cost (Core 174.8, 414.1); an "
+    print("OK: a ready Legend activates from its Legend Zone and pays its own exhaust cost (Core 174.8, 415.1); an "
           "exhausted Legend, a non-Legend off the board, an opponent's Legend and a card play naming the Legend are "
           "refused; board selectors still cannot exhaust or ready it; removing the path is caught.")
     return 0

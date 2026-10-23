@@ -12,7 +12,7 @@ place as it is made (bind_move_here); as the Moves execute, the recorded places 
   S1 base <-> bf1     the source in p1's Base, f1 at bf1: the source goes to bf1, f1 to p1's Base, in that order
   S2 not the places   a destination other than f1's place, or other than the source's, is refused at finalization
   S3 same place       a unit where the source already is: refused - it is not 'at another location'; with only such units
-                      the trigger leaves the Chain (Core 402.4)
+                      the trigger leaves the Chain (Core 403.4)
   S4 source gone      finalized, then the source killed: its Move is ignored; f1 still goes to the source's original place
   S5 target moved     finalized, then f1 moved to bf2: the source still goes to bf1 (f1's place when chosen); f1, now at
                       bf2, goes to p1's Base

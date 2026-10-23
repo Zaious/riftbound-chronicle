@@ -4,7 +4,7 @@ Regression gate: a card's printed static aura (2026-09-24).
 
 "Other friendly units have +1 [M] here." is a passive ability of a unit on the board
 (Core 365.1): a continuous effect over a set found by criteria, applied in the arithmetic
-layer (Core 476-480) for as long as its source is active. The object carries it as
+layer (Core 478-482) for as long as its source is active. The object carries it as
 `static_auras`, read live - it is never copied into the state's effect list.
 
 Must hold:

@@ -23,11 +23,11 @@ SCHEMA_VERSION = "riftbound-rules-core-state.v1"
 # (the same three as effect_ir) 2026-10-14 package 12 (GPT's review, point 1): `ruleset.core` names the Core Rules whose BEHAVIOUR this engine
 # executes - 2026-10-09, in effect 2026-10-16 - and nothing else. A state, program or decision labelled with another
 # Core is refused, so an older label never runs the newer behaviour (check_semantics_version.py). The rule locators the
-# engine cites are still numbered by the 2026-07-16 document until C3: RULE_NUMBERING, carried as its own field
+# engine cites are numbered by the 2026-10-09 document since C3 (by 2026-07-16 before): RULE_NUMBERING, its own field
 # wherever locators reach a consumer (engine_check.rule_numbering, the capability manifest), never inside `ruleset`.
 CORE_RULESET = "2026-10-09"
 CORE_EFFECTIVE = "2026-10-16"
-RULE_NUMBERING = "2026-07-16"
+RULE_NUMBERING = "2026-10-09"
 FAQ_AS_OF = "2026-08-14"
 
 TIMINGS = {"default", "action", "reaction", "triggered"}
@@ -39,7 +39,7 @@ CHAIN_ORIGINS = {"played_card", "activated_ability", "triggered_ability", "add_a
 # later steps are named so the record can carry them without a schema change.
 COMBAT_STATUSES = {"staged", "open", "showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved", "closed"}
 # Statuses in which the Combat's own steps are the next required procedure and
-# no discretionary play is available while the chain is empty (465–466).
+# no discretionary play is available while the chain is empty (467–468).
 COMBAT_STEP_PENDING = {"showdown_closed", "damage_assigned", "damage_dealt", "cleanup_done", "result_determined", "control_resolved"}
 # ADR-0010 §3: the game's end. Derived reasons are written by the engine only;
 # declared reasons are recorded from the caller and never derived.
@@ -74,7 +74,7 @@ RULES = {
 # topic such as ``showdown`` is not evidence that the complete Showdown
 # procedure is implemented. The capability manifest must only advertise
 # callable, bounded procedures and the locators those implementations use.
-RULES_COUNTER = ["Core 425.1", "Core 425.1.a", "Core 425.1.b", "Core 425.1.c"]
+RULES_COUNTER = ["Core 426.1", "Core 426.1.a", "Core 426.1.b", "Core 426.1.c"]
 
 SUPPORTED_PROCEDURES = {
     "remove_chain_item": RULES_COUNTER,
@@ -96,22 +96,22 @@ SUPPORTED_PROCEDURES = {
         "Core 144.1–144.1.c",
     ],
     "finalize_oldest_pending": [
-        "Core 337.1–337.4", "Core 383.3.a–383.3.a.3", "Core 429.2.a",
+        "Core 337.1–337.4", "Core 383.3.a–383.3.a.3", "Core 430.2.a",
     ],
     "add_pending_item": ["Core 328–330", "Core 334–337", "Core 358.4"],
     "pass_priority": ["Core 338.1.b", "Core 339"],
-    "pass_focus": ["Core 347.2–347.2.b", "Core 348–348.2", "Core 465.2"],
+    "pass_focus": ["Core 347.2–347.2.b", "Core 348–348.2", "Core 467.2"],
     "complete_resolution": [
-        "Core 337.2", "Core 339.1", "Core 340", "Core 346", "Core 429.2.a",
+        "Core 337.2", "Core 339.1", "Core 340", "Core 346", "Core 430.2.a",
     ],
     "schedule_triggered_items": [
-        "Core 383.3", "Core 383.3.c–383.3.d.1", "Core 428.1.a.1.b",
+        "Core 383.3", "Core 383.3.c–383.3.d.1", "Core 429.1.a.1.b",
     ],
-    # 2026-09-28 (package 6): the cards an effect's resolution played (Core 419.3), each put on the
+    # 2026-09-28 (package 6): the cards an effect's resolution played (Core 420.3), each put on the
     # Chain, Pending, by the play's step 1 (354, 354.2) whatever the state and Priority -
-    # a Limited Action, taken when instructed (419.3.a, 312.1.b.1, 410.2.b)
+    # a Limited Action, taken when instructed (420.3.a, 312.1.b.1, 411.2.b)
     "add_limited_play_items": [
-        "Core 354", "Core 354.2", "Core 354.3", "Core 419.3", "Core 419.3.a", "Core 312.1.b.1",
+        "Core 354", "Core 354.2", "Core 354.3", "Core 420.3", "Core 420.3.a", "Core 312.1.b.1",
     ],
 }
 
@@ -156,8 +156,8 @@ def summarize_result(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-TERMINAL_LOCATORS = {"victory_score": ["Core 194.2", "Core 194.2.a", "Core 196", "Core 323.1", "Core 472"],
-                     "burn_out_victory": ["Core 431.3.c", "Core 431.3.c.1", "Core 196"],
+TERMINAL_LOCATORS = {"victory_score": ["Core 194.2", "Core 194.2.a", "Core 196", "Core 323.1", "Core 474"],
+                     "burn_out_victory": ["Core 432.3.c", "Core 432.3.c.1", "Core 196"],
                      "effect_victory": ["Core 195", "Core 196"],
                      "concession": ["Core 196"], "external": ["Core 196"]}
 
@@ -173,7 +173,7 @@ def terminal_record(effect_state: dict[str, Any], reason: str, winner: str | Non
 
 
 def terminal_event(reason: str, winner: str, *, immediate: bool, source: str) -> dict[str, Any]:
-    """ADR-0010 §2: the typed event a Draw emits when 431.3.c ends the game; the
+    """ADR-0010 §2: the typed event a Draw emits when 432.3.c ends the game; the
     effect IR never writes the timing state itself."""
     if reason not in DERIVED_TERMINAL_REASONS:
         raise ValueError(f"a terminal_event carries a derived reason, not {reason!r}")
@@ -337,17 +337,17 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"combat.status must be one of {sorted(COMBAT_STATUSES)}")
             participants = combat["participants"]
             if not isinstance(participants, list) or len(participants) != 2 or len(set(participants)) != 2 or any(p not in players for p in participants):
-                errors.append("combat.participants must name exactly two distinct players (Core 462)")
+                errors.append("combat.participants must name exactly two distinct players (Core 464)")
             if combat["status"] == "staged":
                 if combat["attacker"] is not None or combat["defender"] is not None:
-                    errors.append("a staged combat has no attacker or defender yet (464.2.c)")
+                    errors.append("a staged combat has no attacker or defender yet (466.2.c)")
             else:
                 if combat["attacker"] not in players or combat["defender"] not in players or combat["attacker"] == combat["defender"]:
-                    errors.append("an open combat names distinct attacker and defender players (464.2.c.1–464.2.c.2)")
+                    errors.append("an open combat names distinct attacker and defender players (466.2.c.1–466.2.c.2)")
                 elif isinstance(participants, list) and sorted(participants) != sorted([combat["attacker"], combat["defender"]]):
                     errors.append("combat.participants must be the attacker and the defender")
                 if combat["status"] != "closed" and not (showdown.get("active") and showdown.get("kind") == "combat" and showdown.get("battlefield") == combat["battlefield"]):
-                    errors.append("a Combat in progress is a Combat Showdown at its Battlefield (464.2)")
+                    errors.append("a Combat in progress is a Combat Showdown at its Battlefield (466.2)")
             identities = combat["triggered_identities"]
             if not isinstance(identities, dict) or set(identities) != {"attacker", "defender"} or any(
                     not isinstance(ids, list) or any(not isinstance(i, str) or "@" not in i for i in ids) or len(ids) != len(set(ids)) for ids in identities.values()):
@@ -432,7 +432,7 @@ def validate_state(state: dict[str, Any]) -> list[str]:
             errors.append(f"{label}.ability_kind is invalid")
         if "limited_play" in item and (item["limited_play"] is not True or item.get("object_kind") not in {"unit", "gear", "spell"}
                                        or item.get("timing") != "default"):
-            # 2026-09-28 (package 6, Core 419.3): a card an effect's resolution is playing
+            # 2026-09-28 (package 6, Core 420.3): a card an effect's resolution is playing
             errors.append(f"{label}.limited_play marks a card an effect plays (true, a unit, gear or spell, default timing)")
         if "limited_play_steps" in item and (item["limited_play_steps"] != "taken" or item.get("limited_play") is not True):
             errors.append(f"{label}.limited_play_steps is 'taken', on a limited play whose steps 2 to 5 the play transaction took")
@@ -575,7 +575,7 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             rule_locators=["Core 315", "Core 316.1", "Core 316.5.a"],
         )
     if state.get("staged_showdowns") and not state["showdown"]["active"]:
-        # 323.12 precedes 323.13 in the same Cleanup. Once one or more
+        # 323.11 precedes 323.12 in the same Cleanup. Once one or more
         # Non-Combat Showdowns are staged, the Turn Player must open one
         # before any discretionary action or staged Combat can proceed.
         return _result(
@@ -584,7 +584,7 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             procedure="open_showdown_pending",
             subject=[entry["battlefield"] for entry in state["staged_showdowns"]],
             discretionary_actions_allowed=False,
-            rule_locators=["Core 323.12", "Core 323.13"],
+            rule_locators=["Core 323.11", "Core 323.12"],
         )
     if state["showdown"].get("active") and state["showdown"].get("closing"):
         return _result(
@@ -596,7 +596,7 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             rule_locators=["Core 348.2", "Core 348.2.a"],
         )
     if combat is not None and combat.get("status") == "staged" and not state["showdown"]["active"]:
-        # 323.13 / 466.3.d.1: a staged Combat opens in this Cleanup; no
+        # 323.12 / 468.3.d.1: a staged Combat opens in this Cleanup; no
         # discretionary action comes first.
         return _result(
             state,
@@ -605,10 +605,10 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             subject=combat["combat_id"],
             combat_status="staged",
             discretionary_actions_allowed=False,
-            rule_locators=["Core 323.13", "Core 460", "Core 466.3.d.1"],
+            rule_locators=["Core 323.12", "Core 462", "Core 468.3.d.1"],
         )
     if state["showdown"]["active"] and combat is not None and combat.get("status") in COMBAT_STEP_PENDING:
-        # 465–466: after the Combat Showdown closed, the Combat's own steps are
+        # 467–468: after the Combat Showdown closed, the Combat's own steps are
         # the next required procedure; no one plays until the chain the steps
         # raise has been resolved and the Combat closes.
         return _result(
@@ -618,7 +618,7 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             subject=combat["combat_id"],
             combat_status=combat["status"],
             discretionary_actions_allowed=False,
-            rule_locators=["Core 348.1", "Core 465", "Core 466"],
+            rule_locators=["Core 348.1", "Core 467", "Core 468"],
         )
     if state["showdown"]["active"]:
         return _result(
@@ -741,7 +741,7 @@ def validate_timing(state: dict[str, Any], action: dict[str, Any]) -> dict[str, 
         if label != "neutral_open":
             reason, explanation = "standard_move_requires_neutral_open", "A Standard Move needs an Open State outside any Showdown or Combat (144.1.b–144.1.c)."
         elif combat is not None and combat.get("status") != "closed":
-            reason, explanation = "standard_move_blocked_by_combat", "A Combat is staged or in progress; Standard Moves wait for it to close (144.1.c, 460)."
+            reason, explanation = "standard_move_blocked_by_combat", "A Combat is staged or in progress; Standard Moves wait for it to close (144.1.c, 462)."
         elif state.get("phase") != "main" or actor != state["turn_player"]:
             reason, explanation = "standard_move_requires_own_main_phase", "Only the Turn Player moves, during their Main Phase (144.1.a)."
         else:
@@ -826,10 +826,10 @@ def finalize_oldest_pending(state: dict[str, Any], *, perform_optional_trigger: 
         return _result(state, valid=True, applied=False, reason_code="finalize_not_next", next_procedure=next_step)
     original_item = next(item for item in state["chain"]["items"] if item["status"] == "pending")
     if original_item.get("limited_play") is True and original_item.get("limited_play_steps") != "taken":
-        # 2026-09-28 (package 6, Core 419.3.b): a card an effect played is finalized by the play's own
+        # 2026-09-28 (package 6, Core 420.3.b): a card an effect played is finalized by the play's own
         # steps (resolution_bridge.finalize_limited_play), never marked Finalized without them
         return _result(state, valid=True, applied=False, reason_code="limited_play_steps_required", subject=original_item["id"],
-                       rule_locators=["Core 419.3.b", "Core 337.1"])
+                       rule_locators=["Core 420.3.b", "Core 337.1"])
     optional_trigger = original_item.get("timing") == "triggered" and original_item.get("optional_at_finalize") is True
     if optional_trigger and perform_optional_trigger is None:
         return _result(
@@ -886,7 +886,7 @@ def finalize_oldest_pending(state: dict[str, Any], *, perform_optional_trigger: 
             "immediate_resolution_required": immediate,
             "effect_execution_owned": False,
         },
-        rule_locators=["Core 337.1–337.4", "Core 429.2.a"] if immediate else ["Core 337.1–337.4"],
+        rule_locators=["Core 337.1–337.4", "Core 430.2.a"] if immediate else ["Core 337.1–337.4"],
     )
 
 
@@ -932,10 +932,10 @@ def add_pending_item(state: dict[str, Any], proposal: dict[str, Any]) -> dict[st
 
 
 def add_limited_play_items(state: dict[str, Any], plays: list[dict[str, Any]]) -> dict[str, Any]:
-    """2026-09-28 (package 6): the cards an effect played as it resolved (Core 419.3). Each play's step
+    """2026-09-28 (package 6): the cards an effect played as it resolved (Core 420.3). Each play's step
     1 moved its card to the Chain as a Pending item (Core 354, 354.2); the timing Chain gets that item
     here, in the order the plays began, after the items already on it. A Limited Action is taken when
-    an effect instructs it, whatever the state and whoever has Priority (419.3.a, 312.1.b.1, 410.2.b),
+    an effect instructs it, whatever the state and whoever has Priority (420.3.a, 312.1.b.1, 411.2.b),
     so no timing permission is asked. The play's remaining steps wait until the effect that played it
     has finished resolving (354.3): this is called once it has (resolution_bridge)."""
     errors = validate_state(state)
@@ -976,10 +976,10 @@ def add_limited_play_items(state: dict[str, Any], plays: list[dict[str, Any]]) -
 
 
 def remove_chain_item(state: dict[str, Any], item_id: str, *, reason: str = "countered") -> dict[str, Any]:
-    """Core 425.1: a countered card or ability is cleared from the chain. The
-    effect side moves the card (425.1.a); this removes the timing item, and the
-    caller commits both states together. It was never played (425.1.b) so no
-    play trigger follows, and no cost is refunded (425.1.c)."""
+    """Core 426.1: a countered card or ability is cleared from the chain. The
+    effect side moves the card (426.1.a); this removes the timing item, and the
+    caller commits both states together. It was never played (426.1.b) so no
+    play trigger follows, and no cost is refunded (426.1.c)."""
     errors = validate_state(state)
     if errors:
         return _result(state, valid=False, errors=errors)
@@ -1044,7 +1044,7 @@ def pass_focus(state: dict[str, Any], actor: str) -> dict[str, Any]:
     """Core 347.2 / 348: the Focus holder passes. Until every player has passed
     once in sequence, Focus (and Priority) move to the next player (347.2.b).
     When all have, the Showdown closes (348): a Combat Showdown proceeds to
-    the Combat Damage Step (348.1, 465.2) — the record moves to
+    the Combat Damage Step (348.1, 467.2) — the record moves to
     showdown_closed and the state stays a Showdown State (343.1) with no
     discretionary play; a Non-Combat Showdown becomes `closing`, and
     battlefield_control.resolve_battlefield_control (348.2, ADR-0009 §4) is
@@ -1082,7 +1082,7 @@ def pass_focus(state: dict[str, Any], actor: str) -> dict[str, Any]:
             new_state["showdown"]["focus_passes"] = []
             new_state["priority"] = new_state["showdown"]["focus"]
             transition = {"type": "combat_showdown_closed", "actor": actor, "combat_id": combat["combat_id"], "showdown_closed": True}
-            locators = ["Core 347.2.a", "Core 348", "Core 348.1", "Core 465.2"]
+            locators = ["Core 347.2.a", "Core 348", "Core 348.1", "Core 467.2"]
     return _result(
         state,
         valid=True,
@@ -1146,7 +1146,7 @@ def complete_resolution(state: dict[str, Any], item_id: str, *, effect_execution
         next_state_hash=state_hash(new_state),
         transition=transition,
         next_procedure=next_procedure(new_state),
-        rule_locators=["Core 337.2", "Core 340", "Core 346", "Core 429.2.a"] if immediate else ["Core 339.1", "Core 340", "Core 346"],
+        rule_locators=["Core 337.2", "Core 340", "Core 346", "Core 430.2.a"] if immediate else ["Core 339.1", "Core 340", "Core 346"],
     )
 
 
@@ -1274,7 +1274,7 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             "batches": batch_trace,
         },
         next_procedure=next_procedure(new_state),
-        rule_locators=["Core 383.3", "Core 383.3.c–383.3.d.1", "Core 428.1.a.1.b"],
+        rule_locators=["Core 383.3", "Core 383.3.c–383.3.d.1", "Core 429.1.a.1.b"],
     )
 
 

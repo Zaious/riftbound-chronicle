@@ -3,7 +3,7 @@
 
 The gear's static ability gives each friendly unit that has a buff the [Deflect] keyword, unless that unit already has
 Deflect from anywhere else - then it keeps exactly its own (Deflect values are summed, so a second instance would change
-what opponents pay). Read live while the source is on the board (Core 365.1, 477.2).
+what opponents pay). Read live while the source is on the board (Core 365.1, 479.3).
 
   A1 given         a buffed friendly unit with no Deflect: Deflect 1
   A2 not added     a buffed friendly unit with its own Deflect 2: still 2 (not 3)

@@ -5,7 +5,7 @@ appended in the Ability layer, and copy over the traits the engine models.
 
 Must hold:
   - attaching a card that carries an Effect Text appends its abilities to the
-    Top-Most card (477.2): the host's trigger list gains them while the host's
+    Top-Most card (479.3): the host's trigger list gains them while the host's
     own printed abilities stay, and the attached card keeps its own;
   - the append is a continuous effect with `until_detached` duration, so
     detaching removes it and the host's abilities go back to what they were —
@@ -14,7 +14,7 @@ Must hold:
   - every scheduler reads through `object_triggers`, so an appended death or
     play trigger really fires: killing a host with an appended death trigger
     schedules it, and the same host without the attachment schedules nothing;
-  - copy applies the modelled copyable traits (477.1): the target's type and
+  - copy applies the modelled copyable traits (479.2): the target's type and
     rules text become the source's, while its Might and damage do not change;
   - a copy that needs a trait the model does not carry — name, tags, printed
     cost, domain — is `unsupported: copy_unmodelled_traits` and changes
@@ -76,7 +76,7 @@ def main() -> int:
     # --- the append -------------------------------------------------------------------------
     host = [t["trigger_id"] for t in object_triggers(after, "u1", "death_triggers")]
     if host != ["printed", "appended"]:
-        errors.append(f"the Effect Text was not appended to the Top-Most card (477.2): {host}")
+        errors.append(f"the Effect Text was not appended to the Top-Most card (479.3): {host}")
     if [t["trigger_id"] for t in object_triggers(after, "g1", "death_triggers")] != []:
         errors.append("the attached card's own death triggers changed")
     if attached["trace"][0].get("appended_effect_text") != "effect_text:g1:u1":
@@ -117,7 +117,7 @@ def main() -> int:
     else:
         computed = characteristics(copied["next_state"], "c1")
         if computed["kind"] != "unit":
-            errors.append(f"the copy did not take the source's type (477.1): {computed['kind']}")
+            errors.append(f"the copy did not take the source's type (479.2): {computed['kind']}")
         if [t["trigger_id"] for t in object_triggers(copied["next_state"], "c1", "play_triggers")] != ["source-play"]:
             errors.append("the copy did not take the source's rules text")
         if copied["next_state"]["objects"]["c1"]["base_might"] != source["objects"]["c1"]["base_might"]:

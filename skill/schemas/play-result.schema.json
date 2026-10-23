@@ -33,7 +33,7 @@
       ],
       "properties": {
         "core": {
-          "const": "2026-07-16"
+          "const": "2026-10-09"
         },
         "faq_as_of": {
           "const": "2026-08-14"

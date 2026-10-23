@@ -140,7 +140,7 @@ def main() -> int:
     # left there, so Contested comes off rather than naming a seat that no longer exists
     changed = [c["battlefield"] for c in result["trace"].get("contested_changes", [])]
     if next_e["battlefields"]["bf1"].get("contested_by") is not None or changed != ["bf1"]:
-        errors.append(f"Contested applied by the removed player was not taken off (190.3.b.1, 323.11): "
+        errors.append(f"Contested applied by the removed player was not taken off (190.3.b.1, 323.10): "
                       f"{next_e['battlefields']['bf1']} {result['trace'].get('contested_changes')}")
 
     # the Battlefield they contributed becomes a token with no abilities, and

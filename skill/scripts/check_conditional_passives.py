@@ -4,13 +4,13 @@ Regression gate: a card's conditional passives and Might read off a count (2026-
 
 Core 364.3.a: "if" or "while" marks a conditional passive ability. The card carries:
   - `conditional_keywords` - a keyword it has only while its condition holds, a keyword_grant on
-    itself in the Ability layer (477.2), read live like a printed aura;
+    itself in the Ability layer (479.3), read live like a printed aura;
   - `conditional_might` with the new leaf `is_buffed` ("I have an additional +1 [M]");
   - `dynamic_might` per two new counts: buffed friendly Units at its Battlefield, and the cards
-    in its controller's Trash (477.3.b: read fresh, never snapshotted).
+    in its controller's Trash (479.4.b: read fresh, never snapshotted).
 Conditions: `is_buffed` (702.2.a), `cards_discarded_this_turn_at_least` over a per-turn ledger
-the discard instruction and a Discard cost both write (422.1, 422.3), and `might_at_least` on the
-card itself - Mighty (708) - read from the layer result in progress (476.2, 476.3), never through
+the discard instruction and a Discard cost both write (423.1, 423.3), and `might_at_least` on the
+card itself - Mighty (708) - read from the layer result in progress (478.3, 478.4), never through
 effective_might, which is the function computing it (the old path recursed forever).
 
 Must hold:
@@ -20,7 +20,7 @@ Must hold:
   - discarded: [Assault] and [Ganking] only after its controller discarded this turn - by the
     discard instruction or as a Discard cost; not when only the opponent discarded, not on a
     later turn; Assault counts while it is the Attacker; the ledger shape is validated;
-  - Mighty, read per 476.2-476.3: printed 4 + a Buff is 5 with Deflect, Ganking and Shield,
+  - Mighty, read per 478.3-476.3: printed 4 + a Buff is 5 with Deflect, Ganking and Shield,
     6 as a Defender; the same Unit without the Buff is 4 with none; plus the orders the layers
     fix: a Buff and -1 leave it at 4 with none, as a Defender too (the Ability layer first sees
     4, so no Shield props it up), +1 this turn
@@ -236,10 +236,10 @@ def read(state):
 
 
 MIGHTY_CASES = {
-    # 476.3: printed 4 + a Buff = 5, Mighty; as a Defender, +1 from Shield = 6
+    # 478.4: printed 4 + a Buff = 5, Mighty; as a Defender, +1 from Shield = 6
     "buffed": ({"buffed": True}, {"might": 5, "keywords": ["deflect", "ganking", "shield"], "shield": 1}),
     "buffed_defending": ({"buffed": True, "role": "defender"}, {"might": 6, "keywords": ["deflect", "ganking", "shield"], "shield": 1}),
-    # 476.3: the Buff gone - straight to 4 with no keywords
+    # 478.4: the Buff gone - straight to 4 with no keywords
     "unbuffed_defending": ({"role": "defender"}, {"might": 4, "keywords": [], "shield": None}),
     "unbuffed": ({}, {"might": 4, "keywords": [], "shield": None}),
     # the Ability layer first sees 4 (before the Arithmetic layer adds the Buff and takes 1)
@@ -269,7 +269,7 @@ def check_mighty(errors):
     want = {label: expected for label, (_, expected) in MIGHTY_CASES.items()}
     for label in want:
         if got[label] != want[label]:
-            errors.append(f"Mighty ({label}) read {got[label]}, not {want[label]} (Core 476.2, 476.3, 708)")
+            errors.append(f"Mighty ({label}) read {got[label]}, not {want[label]} (Core 478.3, 478.4, 708)")
     spent = spend_buff(fiora(buffed=True), "fi")
     if spent is None or read(spent) != {"might": 4, "keywords": [], "shield": None}:
         errors.append(f"spending the Buff did not take the Mighty keywords away: {spent and read(spent)}")
@@ -426,14 +426,14 @@ def main() -> int:
         check_invalid(errors)
         check_mutations(errors)
     except RecursionError:
-        errors.append("a self-Might condition recursed (Core 476.3 is read from the layers in progress)")
+        errors.append("a self-Might condition recursed (Core 478.4 is read from the layers in progress)")
     if errors:
         print("FAILED: conditional passive checks")
         for e in errors:
             print("  - " + e)
         return 1
     print("OK: 'while I'm buffed' / 'if you've discarded a card this turn' / 'while I'm [Mighty]' keywords and Might hold "
-          "exactly where their condition does (476.2-476.3, no recursion), Might per count reads "
+          "exactly where their condition does (478.3-476.3, no recursion), Might per count reads "
           "buffed friendly units at its battlefield and its controller's trash, invalid shapes are refused, and five "
           "mutations are caught.")
     return 0

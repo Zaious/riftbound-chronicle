@@ -101,13 +101,13 @@ into the Combat Damage Step (348.1) — the record moves to `showdown_closed`,
 and `combat.assign_combat_damage` takes over: if both sides still have
 designated Units, each side's Might is summed (Stunned Units contribute
 nothing, negative Might reads 0) and, attacker first, each player's
-complete `damage_assignment` is validated against 465.2.c in full — lethal
+complete `damage_assignment` is validated against 467.2.c in full — lethal
 in full before another Unit, no over-assignment while another Unit remains,
 Tank first and Backline last with a per-Unit choice when a Unit has both,
 minimum lethal computed with the Unit's damage replacements previewed
-(465.2.c.5; only Prevent values are previewable, anything else is
-unsupported — so this is a bounded slice of 465.2.c, not the full contract:
-damage-exemption sources (465.2.c.10) and non-Prevent assignment
+(467.2.c.5; only Prevent values are previewable, anything else is
+unsupported — so this is a bounded slice of 467.2.c, not the full contract:
+damage-exemption sources (467.2.c.10) and non-Prevent assignment
 replacements are declared unsupported). The engine proceeds by itself only when exactly one
 assignment is legal. A receipt per side records raw, prevented and applied
 amounts and the replacements the Deal step will consume exactly once. A
@@ -117,62 +117,62 @@ the G2 boundary.
 The rest of the Combat is four refusable steps. `deal_combat_damage` Deals
 every applied amount at once from the receipts, consuming the previewed
 Prevent values now and never applying a replacement twice, with the
-opposing Units as sources (465.2.d, 417.6.c); FEPR is skipped (465.3).
+opposing Units as sources (467.2.d, 418.6.c); FEPR is skipped (467.3).
 `combat_cleanup` runs one Combat Special Cleanup in the order of 323 — step 2
 designations follow presence first (a Unit that arrived during the Showdown
 is a Defender before lethal damage is judged), then 3a/3b lethal Cleanup with
 each Combat-Damage kill attributed to the opposing side's Units and their
-controller (428.5.c.2), heal all Units, Recall Attackers if Defenders remain,
+controller (429.5.c.2), heal all Units, Recall Attackers if Defenders remain,
 and a 324.2 follow-up Cleanup that drops the recalled Units' designations —
 scheduling the designation triggers before the death triggers.
-`determine_combat_result` waits for that chain to empty (466.2) and applies
-466.3: win only when one designated player alone has Units remaining, No
+`determine_combat_result` waits for that chain to empty (468.2) and applies
+468.3: win only when one designated player alone has Units remaining, No
 Result on a Recall, on both remaining (which stages again) or on neither.
 `deal_combat_damage` requires the effect state and the receipts exactly as
-they were at assignment (465.2.c.1.a leaves no window); anything else is a
+they were at assignment (467.2.c.1.a leaves no window); anything else is a
 stale receipt and nothing is Dealt. `close_combat` removes designations, the
 Combat and Showdown records and every 'this combat' effect of this Combat at
-once (466.7), stages a fresh Combat when both sides remain (466.3.d.1, with
-`open_combat` the next required procedure). Before it, 466.5 is
+once (468.7), stages a fresh Combat when both sides remain (468.3.d.1, with
+`open_combat` the next required procedure). Before it, 468.5 is
 `battlefield_control.resolve_battlefield_control` (ADR-0009): the one player
 whose Units remain establishes control if they did not hold it and Conquers
-unless they already scored that Battlefield this turn (469.1, 470), Contested
-is cleared (466.5.a), no Units left makes the Battlefield Uncontrolled
-(466.5.b), and the Score triggers of the scoring player's board objects and
+unless they already scored that Battlefield this turn (471.1, 472), Contested
+is cleared (468.5.a), no Units left makes the Battlefield Uncontrolled
+(468.5.b), and the Score triggers of the scoring player's board objects and
 of the Battlefield form the chain that must empty before the Combat closes
-(466.6). Scoring is one transaction: the Final Point rule (471.1.b) gives the
+(468.6). Scoring is one transaction: the Final Point rule (473.1.b) gives the
 point only when every Battlefield was scored this turn and otherwise draws
 instead, and a draw that would Burn Out refuses the whole transaction as
 unsupported. The victory condition is reported as facts (threshold_met,
-strict_leader, tied_at_threshold; 472) and never enacted.
+strict_leader, tied_at_threshold; 474) and never enacted.
 
 Non-Combat Showdowns (ADR-0009 §3, §4, §9) live in the same module. At a
 quiet Cleanup boundary `stage_showdown` rebuilds `staged_showdowns` from the
 board (Contested applied, the applier's Units present, no opposing Units,
-nothing ongoing there; 316.8.b, 323.8, 323.8.a) and `open_showdown` opens one
+nothing ongoing there; 316.8.b, 323.7, 323.7.a) and `open_showdown` opens one
 from a Neutral Open State — several staged need the Turn Player's
-`location_selection` `showdown_location` (323.12) — as a `non_combat`
+`location_selection` `showdown_location` (323.11) — as a `non_combat`
 Showdown whose Focus goes to the player who applied Contested (345), before
-323.13 stages any Combat. When every player has passed Focus in it,
+323.12 stages any Combat. When every player has passed Focus in it,
 `pass_focus` marks the Showdown `closing` and `resolve_battlefield_control`
 is the next required procedure (348.2): exactly one player with Units there
 establishes control and may Conquer, no Units at all closes the Showdown and
-leaves control loss to the next board Cleanup (323.6), both players present
+leaves control loss to the next board Cleanup (323.5), both players present
 is refused as unsupported. `run_board_cleanup` applies, per Battlefield with
-no ongoing Showdown or Combat (a merely staged one exempts nothing), 323.6
-control loss, 323.11 Contested removal and 323.11.a re-application by the
+no ongoing Showdown or Combat (a merely staged one exempts nothing), 323.5
+control loss, 323.10 Contested removal and 323.10.a re-application by the
 one non-controller present (two different ones are unsupported), and reports
 the victory facts. A Cleanup boundary runs it before `stage_showdown`, then
 `stage_combat`; if an eligible Non-Combat Showdown exists, `open_showdown` is
-the next required procedure (323.12), otherwise the staged Combat opens
-(323.13). No discretionary action occurs between staging and that choice.
+the next required procedure (323.11), otherwise the staged Combat opens
+(323.12). No discretionary action occurs between staging and that choice.
 `run_scoring_step` is the Scoring Step (315.2.b, ADR-0009 §8): with the
 caller-supplied phase `beginning`, an empty chain and no Showdown or Combat,
 the Turn Player Holds every Battlefield they control and have not scored this
-turn (469.2, 470), gaining a point each with no Final Point restriction
-(471.1.a.1); the Hold triggers of all held Battlefields form one batch
-(315.2.b.2, 471.2.b). Every scoring trace and the `victory_facts` step report
-472 as facts only.
+turn (471.2, 472), gaining a point each with no Final Point restriction
+(473.1.a.1); the Hold triggers of all held Battlefields form one batch
+(315.2.b.2, 473.2.b). Every scoring trace and the `victory_facts` step report
+474 as facts only.
 
 The terminal state (ADR-0010 §3–4) is `terminal.check_terminal`, Cleanup
 step 1 (323.1, 194.2): the one player at or above the Victory Score with more
@@ -207,7 +207,7 @@ and team modes are unsupported as a whole; Setup itself is not modelled.
 `turn_cycle.run_cleanup` (ADR-0010 §5) is one Cleanup as one atomic run:
 steps 1–10a of 323 in order on a working state — the terminal check, the
 designation sync, the lethal Cleanup whose death triggers go Pending on the
-chain while nothing resolves (320), control loss, 323.7 (refused as
+chain while nothing resolves (320), control loss, 323.6 (refused as
 unsupported whenever a non-Unit Gear or Rune is at a Battlefield), Showdown
 staging, Combat staging, Contested maintenance, Showdown opening and Combat
 opening — then the 322 follow-up Cleanups on the same working state until
@@ -227,7 +227,7 @@ at once as the cost (144.2–144.3.c; an unconfirmed cost is
 `decision_required`), Base→Battlefield and Battlefield→own Base by default,
 Battlefield→Battlefield only with active Ganking (144.4.c, 810.1.c — a
 permission, never an extra move), a Battlefield holding a teammate's Units
-(447.2.b) or two other players' Units (144.4.a.1) refused. Its decisions
+(449.2.b) or two other players' Units (144.4.a.1) refused. Its decisions
 bind to the hash of timing state, effect state and declaration together. The
 relocation delegates to the Move operation so Move triggers and Cleanup stay
 one implementation; engine-check wraps it as `standard_move`.
@@ -235,8 +235,8 @@ one implementation; engine-check wraps it as `standard_move`.
 ## Removing a countered chain item (ADR-0011 §5)
 
 `remove_chain_item` clears one item from the Chain when an effect Counters
-it (425.1). It is the timing half of a Counter: the effect IR moves the card
-(425.1.a) and reports `countered_chain_items`, and the resolution bridge
+it (426.1). It is the timing half of a Counter: the effect IR moves the card
+(426.1.a) and reports `countered_chain_items`, and the resolution bridge
 calls this in the same commit. Removing the item clears the pass sequence
 and, when the Chain empties, reopens the state exactly as a completed
 resolution would. An item that is not on the Chain answers

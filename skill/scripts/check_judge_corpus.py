@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import copy
 import json
+import withheld_output  # noqa: E402
 import sys
 from pathlib import Path
 
@@ -61,7 +62,7 @@ def main() -> int:
     if problems := validate_corpus(stored):
         failures.append(f"the shipped corpus does not validate: {problems}")
         for failure in failures:
-            print(f"FAIL: {failure}")
+            print(f"FAIL: {withheld_output.shown(failure)}")
         return 1
     # Everything below reads the in-memory form: every contract carries the
     # debt list derived from the ledger.
@@ -547,13 +548,26 @@ def main() -> int:
     for item in report["results"]:
         counts[item["outcome"]] = counts.get(item["outcome"], 0) + 1
     engine_templates = {t for t, spec in rule_consult_command.CLAIM_TEMPLATES.items() if spec["basis"]["kind"] == "engine"}
-    # held are exactly the routable questions whose contract requires an engine claim (a position conclusion)
     binds_engine = {q["question_id"] for q in corpus["questions"] if q["consultation_entry"]
                     and {c["template"] for c in q["expected_answer_contract"]["required_claims"]} & engine_templates}
-    if {i["question_id"] for i in held} != binds_engine:
-        failures.append(f"the questions held for the engine's version are not exactly those whose contract requires an "
-                        f"engine claim: held {sorted(i['question_id'] for i in held)}, require {sorted(binds_engine)}")
-    if any(i["status"] != "not_attempted" or i["tier"] != "C" for i in held):
+    # 2026-10-22 C3 (package 16): the source table is the 10-09 text the engine executes, so nothing is held - the
+    # questions whose contract requires an engine claim (a position conclusion) are answered with the engine's verdict
+    if held:
+        failures.append(f"questions held for the engine's version although the source table is Core "
+                        f"{rule_consult_command.CORE_RULESET}: "
+                        f"{sorted(i['question_id'] for i in held)}")
+    # the counterfactual: the same table labelled 2026-07-16 holds exactly those questions, and answers none of them
+    relabelled = copy.deepcopy(runs)
+    for entry in relabelled.get("sources", {}).values():
+        if entry.get("record"):
+            entry["record"]["document_version"] = "2026-07-16"
+    old_report = judge_corpus_runner.run_corpus(corpus, relabelled)
+    old_held = [i for i in old_report["results"] if i["outcome"] == "held_engine_version"]
+    if {i["question_id"] for i in old_held} != binds_engine:
+        failures.append(f"with the source table labelled 2026-07-16, the questions held are not exactly those whose "
+                        f"contract requires an engine claim: held {sorted(i['question_id'] for i in old_held)}, "
+                        f"require {sorted(binds_engine)}")
+    if any(i["status"] != "not_attempted" or i["tier"] != "C" for i in old_held):
         failures.append("a question held for the engine's version was answered anyway")
 
     undeclared = judge_corpus_runner.undeclared_differences(report)
@@ -642,7 +656,7 @@ def main() -> int:
 
     if failures:
         for failure in failures:
-            print(f"FAIL: {failure}")
+            print(f"FAIL: {withheld_output.shown(failure)}")
         print(f"\n{len(failures)} failure(s) across the judge corpus contract")
         return 1
 
@@ -663,8 +677,8 @@ def main() -> int:
           f"no package yet: {len(parked)} (review by {sorted({d['review_by'] for d in parked}) or '-'})")
     print(f"run against the real consultation command: "
           + ", ".join(f"{value} {key}" for key, value in sorted(counts.items())))
-    print(f"held for the engine's Core ({rule_consult_command.CORE_RULESET}, not the rules text's): {len(held)} "
-          f"question(s), each judged above by its aligned run")
+    print(f"held for the engine's Core ({rule_consult_command.CORE_RULESET}): {len(held)} question(s) - the source table "
+          f"is that Core's text; labelled 2026-07-16 it holds {len(old_held)}, exactly those requiring an engine claim")
     print(f"semantic authority: {authority}")
     return 0
 

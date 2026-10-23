@@ -12,7 +12,7 @@ who plays it controls it, the rest go to each owner's own deck), 6 (Reinforce's 
 not below 0, Power still paid), 7 (Baited Hook compares with the killed unit's Might as it died; no unit killed ->
 the reference is null, nothing may be chosen by it, the rest is still recycled).
 
-The engine's shape: banish moves the card to its OWNER's Banishment (Core 427, 127.1); limited_play `linked`
+The engine's shape: banish moves the card to its OWNER's Banishment (Core 428, 127.1); limited_play `linked`
 {effect_id, from: banishment} plays exactly the card that banish moved, still that object (Core 124) - bound by
 the earlier instruction's result, not chosen again; cost bases ignore_all and discount_energy {amount}. A choice
 among revealed cards may name a kind and max_might_of {effect_id, plus} (the earlier Kill's might_at_death);

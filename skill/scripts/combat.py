@@ -96,7 +96,7 @@ def _commit(base: dict[str, Any], next_timing: dict[str, Any], next_effect: dict
 # ------------------------------------------------------------------ board reads --
 
 def units_at(effect_state: dict[str, Any], battlefield_id: str) -> dict[str, list[str]]:
-    """controller -> Units present at the Battlefield (Units only, 461)."""
+    """controller -> Units present at the Battlefield (Units only, 463)."""
     present: dict[str, list[str]] = {}
     for object_id in effect_state["battlefields"][battlefield_id]["objects"]:
         obj = effect_state["objects"].get(object_id, {})
@@ -106,9 +106,9 @@ def units_at(effect_state: dict[str, Any], battlefield_id: str) -> dict[str, lis
 
 
 def combat_candidates(effect_state: dict[str, Any]) -> tuple[list[str], list[dict[str, Any]]]:
-    """Battlefields where Combat is Staged (323.9, 461): Contested was applied
+    """Battlefields where Combat is Staged (323.8, 463): Contested was applied
     and Units of exactly two opposing players are present. A Battlefield with
-    three or more controllers is reported, never reduced to a pair (462.3)."""
+    three or more controllers is reported, never reduced to a pair (464.3)."""
     candidates: list[str] = []
     considered: list[dict[str, Any]] = []
     for battlefield_id in sorted(effect_state["battlefields"]):
@@ -144,25 +144,25 @@ def _quiet(timing_state: dict[str, Any], within_cleanup: bool = False) -> str | 
 # --------------------------------------------------------------------- staging --
 
 def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
-    """Core 323.9 / 323.13 / 323.14, 461–462: from a quiet Cleanup boundary,
+    """Core 323.8 / 323.12 / 323.13, 463–464: from a quiet Cleanup boundary,
     mark the Combat that will open. Zero candidates is a supported no-op. Two
     or more in a Neutral Open State need the Turn Player's location_selection;
-    during a Showdown only that Showdown's Battlefield can stage (323.14)."""
+    during a Showdown only that Showdown's Battlefield can stage (323.13)."""
     base = _base("stage_combat", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
     if code := _quiet(timing_state, within_cleanup):
-        return _refuse(base, code, "Combat is staged during a Cleanup with nothing on the chain and no outstanding task (460)", ["Core 460", "Core 323.13"])
+        return _refuse(base, code, "Combat is staged during a Cleanup with nothing on the chain and no outstanding task (462)", ["Core 462", "Core 323.12"])
     existing = timing_state.get("combat")
     if existing is not None and existing["status"] not in {"staged", "closed"}:
-        return _refuse(base, "combat_in_progress", f"a Combat ({existing['combat_id']}) is in progress; no other Combat opens while it lasts (460)", ["Core 460"])
+        return _refuse(base, "combat_in_progress", f"a Combat ({existing['combat_id']}) is in progress; no other Combat opens while it lasts (462)", ["Core 462"])
     showdown = timing_state["showdown"]
     if showdown["active"] and not showdown.get("battlefield"):
-        return _unsupported(base, "showdown_location_unknown", "the active Showdown does not say which Battlefield it is at; the staged Combat cannot be matched to it (323.14)", ["Core 323.14", "Core 464.1"])
+        return _unsupported(base, "showdown_location_unknown", "the active Showdown does not say which Battlefield it is at; the staged Combat cannot be matched to it (323.13)", ["Core 323.13", "Core 466.1"])
     candidates, considered = combat_candidates(effect_state)
     crowded = [c["battlefield"] for c in considered if c["verdict"] == "more_than_two_controllers"]
     if crowded:
-        return _unsupported(base, "multi_player_battlefield", f"Units of three or more players are at {crowded}; Combat between more than two players is not modelled and is never reduced to a pair (462, 462.3)", ["Core 462", "Core 462.3"], battlefields=crowded)
+        return _unsupported(base, "multi_player_battlefield", f"Units of three or more players are at {crowded}; Combat between more than two players is not modelled and is never reduced to a pair (464, 464.3)", ["Core 464", "Core 464.3"], battlefields=crowded)
     turn_player = timing_state["turn_player"]
     selection = "none"
     if showdown["active"]:
@@ -172,23 +172,23 @@ def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], eng
     if not candidates:
         next_timing = copy.deepcopy(timing_state)
         if existing is not None and existing["status"] == "staged":
-            del next_timing["combat"]  # 461.2: a Combat that stopped being staged is not resolved
+            del next_timing["combat"]  # 463.2: a Combat that stopped being staged is not resolved
         trace.update({"chosen": None, "selection": selection, "outcome": "no_staged_combat"})
-        return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.9", "Core 461", "Core 461.2"])
+        return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.8", "Core 463", "Core 463.2"])
     if len(candidates) == 1:
         chosen = candidates[0]
         selection = selection if selection != "none" else "sole_candidate"
     else:
         from effect_ir import ledger_note
-        ledger_note("location", LOCATION_DECISION_ID)   # package 15: the Turn Player picks which opens first (461.1)
+        ledger_note("location", LOCATION_DECISION_ID)   # package 15: the Turn Player picks which opens first (463.1)
         entry = next((e for e in _ed.entries(engine_decisions, kind="location_selection") if e["decision_id"] == LOCATION_DECISION_ID), None)
         if entry is None:
             return {**base, "valid": True, "committed": False, "reason_code": "location_selection_required",
-                    "reason": f"Combats are staged at {candidates}; the Turn Player {turn_player} chooses which opens first (461.1, 323.13)",
+                    "reason": f"Combats are staged at {candidates}; the Turn Player {turn_player} chooses which opens first (463.1, 323.12)",
                     "decision_ids": [LOCATION_DECISION_ID], "decision_controller": turn_player, "options": candidates,
-                    "rule_locators": ["Core 461.1", "Core 323.13"], "trace": trace}
+                    "rule_locators": ["Core 463.1", "Core 323.12"], "trace": trace}
         if entry["controller"] != turn_player:
-            return _refuse(base, "decision_controller_mismatch", f"the Combat location was chosen by {entry['controller']!r}; it is the Turn Player's choice (461.1)", ["Core 461.1"])
+            return _refuse(base, "decision_controller_mismatch", f"the Combat location was chosen by {entry['controller']!r}; it is the Turn Player's choice (463.1)", ["Core 463.1"])
         if entry["value"] not in candidates:
             return _invalid(base, [f"location_selection {LOCATION_DECISION_ID} names {entry['value']!r}; the staged Battlefields are {candidates}"])
         chosen = entry["value"]
@@ -204,7 +204,7 @@ def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], eng
     next_timing = copy.deepcopy(timing_state)
     next_timing["combat"] = record
     trace.update({"chosen": chosen, "selection": selection, "outcome": "staged", "combat_id": record["combat_id"], "participants": record["participants"]})
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.9", "Core 323.13", "Core 461", "Core 461.1", "Core 462"])
+    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.8", "Core 323.12", "Core 463", "Core 463.1", "Core 464"])
 
 
 # --------------------------------------------------------------------- opening --
@@ -271,36 +271,36 @@ def _designation_watchers(effect_state: dict[str, Any], record: dict[str, Any], 
 
 
 def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
-    """Core 464.2: open the staged Combat — attacker is the player who applied
-    Contested (464.2.c.1), the defender the other participant; a new Combat
+    """Core 466.2: open the staged Combat — attacker is the player who applied
+    Contested (466.2.c.1), the defender the other participant; a new Combat
     Showdown gives the attacker Focus, an existing Showdown at that Battlefield
-    keeps its Focus (464.2.c.1.a–b); Units present gain designations; their
+    keeps its Focus (466.2.c.1.a–b); Units present gain designations; their
     Attack/Defend triggers go on the Combat Chain attacker first, then the
-    defender (464.2.e.1); the State closes only when an item was scheduled."""
+    defender (466.2.d.1); the State closes only when an item was scheduled."""
     base = _base("open_combat", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
     record = timing_state.get("combat")
     if record is None or record["status"] != "staged":
-        return _refuse(base, "combat_not_staged", "open_combat needs a staged Combat record from stage_combat (461, 464.1)", ["Core 461", "Core 464.1"])
+        return _refuse(base, "combat_not_staged", "open_combat needs a staged Combat record from stage_combat (463, 466.1)", ["Core 463", "Core 466.1"])
     if code := _quiet(timing_state, within_cleanup):
-        return _refuse(base, code, "Combat opens during a Cleanup with nothing on the chain and no outstanding task (460)", ["Core 460", "Core 464.1"])
+        return _refuse(base, code, "Combat opens during a Cleanup with nothing on the chain and no outstanding task (462)", ["Core 462", "Core 466.1"])
     battlefield_id = record["battlefield"]
     battlefield = effect_state["battlefields"].get(battlefield_id)
     if battlefield is None or (battlefield_identity(effect_state, battlefield_id) or f"{battlefield_id}@0") != record["battlefield_identity"]:
-        return _refuse(base, "combat_battlefield_changed", f"the staged Battlefield {battlefield_id} is not the same entity any more", ["Core 461.2"])
+        return _refuse(base, "combat_battlefield_changed", f"the staged Battlefield {battlefield_id} is not the same entity any more", ["Core 463.2"])
     present = units_at(effect_state, battlefield_id)
     candidates, _ = combat_candidates(effect_state)
     if battlefield_id not in candidates or sorted(present) != record["participants"]:
-        return _refuse(base, "combat_no_longer_staged", f"Units of exactly the two staged players are no longer present at {battlefield_id}; the Combat is not resolved (461.2, 462)", ["Core 461.2", "Core 462"], participants_now=sorted(present))
+        return _refuse(base, "combat_no_longer_staged", f"Units of exactly the two staged players are no longer present at {battlefield_id}; the Combat is not resolved (463.2, 464)", ["Core 463.2", "Core 464"], participants_now=sorted(present))
     attacker = battlefield.get("contested_by")
     if not battlefield.get("contested") or attacker not in record["participants"]:
-        return _unsupported(base, "attacker_attribution_missing", f"the player who applied Contested to {battlefield_id} is not recorded among the participants {record['participants']} (contested_by={attacker!r}); the attacker is not guessed (464.2.c.1)", ["Core 464.2.c.1", "Core 464.2.c.2"])
+        return _unsupported(base, "attacker_attribution_missing", f"the player who applied Contested to {battlefield_id} is not recorded among the participants {record['participants']} (contested_by={attacker!r}); the attacker is not guessed (466.2.c.1)", ["Core 466.2.c.1", "Core 466.2.c.2"])
     defender = next(p for p in record["participants"] if p != attacker)
     showdown = timing_state["showdown"]
     if showdown["active"]:
         if showdown.get("battlefield") != battlefield_id:
-            return _refuse(base, "showdown_elsewhere", f"a Showdown is ongoing at {showdown.get('battlefield')!r}; Combat cannot open at {battlefield_id} while it lasts (460)", ["Core 460", "Core 464.1"])
+            return _refuse(base, "showdown_elsewhere", f"a Showdown is ongoing at {showdown.get('battlefield')!r}; Combat cannot open at {battlefield_id} while it lasts (462)", ["Core 462", "Core 466.1"])
         opened_with, focus = "existing_showdown", showdown["focus"]
     else:
         opened_with, focus = "new_showdown", attacker
@@ -322,8 +322,8 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             designations.append({"object_id": object_id, "role": role, "identity": object_identity(next_effect, object_id) or f"{object_id}@0", "triggers": [d["trigger_id"] for d in found]})
     # 2026-09-28: the same designations, as events a watch reads ("When an enemy unit attacks a
     # battlefield you control", "When a friendly unit attacks or defends alone"): all gained at
-    # once (464.2.c.3), their triggers put on the Chain with the Attack and Defend triggers,
-    # each in the group of the player who controls it (464.2.e.1)
+    # once (466.2.c.3), their triggers put on the Chain with the Attack and Defend triggers,
+    # each in the group of the player who controls it (466.2.d.1)
     try:
         watch_triggers, next_effect = _designation_watchers(
             next_effect, next_record, battlefield_id, gained_first, batch_label=f"combat:{record['combat_id']}:open",
@@ -332,7 +332,7 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
                                          else (f"combat:{record['combat_id']}:open:defender", 2) if controller == defender
                                          else (f"combat:{record['combat_id']}:open:other", 1)))
     except _watchers().WatchUnsupported as exc:
-        return _unsupported(base, exc.reason_code, str(exc), ["Core 383.1", "Core 464.2.e"])
+        return _unsupported(base, exc.reason_code, str(exc), ["Core 383.1", "Core 466.2.d"])
     descriptors += watch_triggers
     # ADR-0008 §4 / Core 190.6: the Battlefield's own "When you attack/defend
     # here" — "you" is the Battlefield's controller, who must be the player
@@ -367,13 +367,13 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     next_timing["priority"] = focus
     scheduled = schedule_triggered_items(next_timing, descriptors)
     if scheduled.get("applied") is not True:
-        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "the Combat Chain could not be built", ["Core 464.2.e"], trigger_result=scheduled)
+        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "the Combat Chain could not be built", ["Core 466.2.d"], trigger_result=scheduled)
     final_timing = scheduled["next_state"]
     trace = {"attacker": attacker, "defender": defender, "opened_with": opened_with, "focus": focus,
              "designations": designations, "battlefield_triggers": battlefield_triggers, "combat_chain": [d["trigger_id"] for d in descriptors],
              "state_closed": bool(descriptors), "trigger_schedule": scheduled.get("transition")}
     return _commit(base, final_timing, next_effect, trace=trace,
-                   locators=["Core 464.2.b", "Core 464.2.c.1", "Core 464.2.c.1.a", "Core 464.2.c.1.b", "Core 464.2.c.2", "Core 464.2.c.3", "Core 464.2.d", "Core 464.2.e.1", "Core 464.2.f", "Core 345", "Core 383.4.e", "Core 383.4.f", "Core 190.6.a", "Core 190.6.d"])
+                   locators=["Core 466.2.b", "Core 466.2.c.1", "Core 466.2.c.1.a", "Core 466.2.c.1.b", "Core 466.2.c.2", "Core 466.2.c.3", "Core 466.2.c.1.a", "Core 466.2.d.1", "Core 466.2.e", "Core 345", "Core 383.4.e", "Core 383.4.f", "Core 190.6.a", "Core 190.6.d"])
 
 
 # ------------------------------------------------------------- designation sync --
@@ -411,7 +411,7 @@ def sync_designations(record: dict[str, Any], effect_state: dict[str, Any], batc
         gained.append({"object_id": object_id, "role": desired["role"], "was": current, "identity": object_identity(next_effect, object_id) or f"{object_id}@0",
                        "triggers": [d["trigger_id"] for d in found], "already_triggered_identity": identity is None})
     # 2026-09-28: a Unit that becomes present mid-combat gains its designation in this Cleanup
-    # (464.2.c.3.a); a watch reading that designation wakes here, in this sync's own batch. Raises
+    # (466.2.c.3.a); a watch reading that designation wakes here, in this sync's own batch. Raises
     # watchers.WatchUnsupported (a watch the engine will not answer) for the caller to report.
     watch_triggers, next_effect = _designation_watchers(
         next_effect, next_record, battlefield_id, gained_first, batch_label=batch_id, turn_player=None,
@@ -446,7 +446,7 @@ def sync_combat_designations(timing_state: dict[str, Any], effect_state: dict[st
     if scheduled.get("applied") is not True:
         return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "designation triggers could not be scheduled", ["Core 383.4.e.2"], trigger_result=scheduled)
     trace.update({"scheduled_triggers": [d["trigger_id"] for d in descriptors], "trigger_schedule": scheduled.get("transition")})
-    return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 323.2", "Core 323.2.a", "Core 323.2.b", "Core 323.2.c", "Core 464.2.c.3.a", "Core 383.4.e.2.a", "Core 383.4.f.2.a"])
+    return _commit(base, scheduled["next_state"], next_effect, trace=trace, locators=["Core 323.2", "Core 323.2.a", "Core 323.2.b", "Core 323.2.c", "Core 466.2.c.3.a", "Core 383.4.e.2.a", "Core 383.4.f.2.a"])
 
 
 # ------------------------------------------------------ Combat Damage assignment --
@@ -459,7 +459,7 @@ UNREACHABLE_LETHAL = 10 ** 6
 
 def combat_sides(record: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, list[str]]:
     """The Units of each role that are at the Combat Battlefield and carry
-    this Combat's designation (the only Units that fight, 465.1–465.2)."""
+    this Combat's designation (the only Units that fight, 467.1–467.2)."""
     sides: dict[str, list[str]] = {"attacker": [], "defender": []}
     for object_id in effect_state["battlefields"][record["battlefield"]]["objects"]:
         obj = effect_state["objects"][object_id]
@@ -470,8 +470,8 @@ def combat_sides(record: dict[str, Any], effect_state: dict[str, Any]) -> dict[s
 
 
 def available_combat_damage(effect_state: dict[str, Any], units: list[str]) -> tuple[int, list[dict[str, Any]]]:
-    """Core 465.2.a–b: the side's Might summed, each Unit's rules-facing Might
-    read as at least 0 (143.2.b); a Stunned Unit contributes nothing (423.1.b)."""
+    """Core 467.2.a–b: the side's Might summed, each Unit's rules-facing Might
+    read as at least 0 (143.2.c); a Stunned Unit contributes nothing (424.1.b)."""
     from effect_ir import effective_might
     parts, total = [], 0
     for unit in units:
@@ -485,13 +485,13 @@ def available_combat_damage(effect_state: dict[str, Any], units: list[str]) -> t
 
 def _preview_replacements(effect_state: dict[str, Any], unit: str, event_id: str, engine_decisions: dict[str, Any] | None):
     """The deal_damage replacements that would apply to damage Dealt to the
-    Unit, considered at assignment instead (465.2.c.5). Only descriptors the
+    Unit, considered at assignment instead (467.2.c.5). Only descriptors the
     preview can evaluate (reduce_damage) are allowed; a Unit's controller
     orders several by the existing replacement_order decision for the
     assignment event and answers optional ones by replacement_choice.
     Returns (ordered descriptors, problem) where problem is a result stub."""
     from effect_ir import _applicable_replacements
-    # package 9 (Core 417.6.c): damage assigned in combat has the units as its source - a replacement that prevents only
+    # package 9 (Core 418.6.c): damage assigned in combat has the units as its source - a replacement that prevents only
     # a spell's or ability's damage does not apply to it
     applicable = _applicable_replacements(effect_state, {"op": "deal_damage", "object_id": unit, "source_kind": "unit",
                                                          "combat": True})
@@ -500,7 +500,7 @@ def _preview_replacements(effect_state: dict[str, Any], unit: str, event_id: str
     unknown = [r["replacement_id"] for r in applicable if r["mode"] not in PREVIEW_MODES]
     if unknown:
         return None, {"unsupported": True, "reason_code": "assignment_replacement_not_previewable",
-                      "reason": f"replacement(s) {unknown} on {unit} would alter the damage Dealt in a way the assignment preview cannot evaluate (465.2.c.5); the assignment is not guessed", "replacement_ids": unknown}
+                      "reason": f"replacement(s) {unknown} on {unit} would alter the damage Dealt in a way the assignment preview cannot evaluate (467.2.c.5); the assignment is not guessed", "replacement_ids": unknown}
     controller = effect_state["objects"][unit]["controller"]
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
     ids = [r["replacement_id"] for r in applicable]
@@ -509,7 +509,7 @@ def _preview_replacements(effect_state: dict[str, Any], unit: str, event_id: str
         from effect_ir import ledger_note
         ledger_note("replacement", f"replacement:object_order:{'+'.join(ids)}:{event_id}")
         if supplied is None:
-            return None, {"replacement_decision_required": True, "reason": f"{controller} orders the replacements {ids} that apply to damage assigned to {unit} (465.2.c.5)",
+            return None, {"replacement_decision_required": True, "reason": f"{controller} orders the replacements {ids} that apply to damage assigned to {unit} (467.2.c.5)",
                           "replacement_decision": "object_order", "replacement_ids": ids, "event_ids": [event_id],
                           "decision_controller": controller}
         if sorted(supplied) != sorted(ids):
@@ -549,8 +549,8 @@ def preview_assignment(descriptors: list[dict[str, Any]], raw: int) -> tuple[int
 def assignment_candidates(record: dict[str, Any], effect_state: dict[str, Any], role: str, engine_decisions: dict[str, Any] | None) -> tuple[list[dict[str, Any]] | None, dict[str, Any] | None]:
     """Per opposing Unit: identity, Might, marked damage, the minimum raw
     assignment that is lethal once replacements are previewed
-    (465.2.c.4.a, 465.2.c.5), and its assignment requirements (Tank first,
-    Backline last; both is a per-Unit choice, 465.2.c.6–c.9)."""
+    (467.2.c.4.a, 467.2.c.5), and its assignment requirements (Tank first,
+    Backline last; both is a per-Unit choice, 467.2.c.6–c.9)."""
     from effect_ir import effective_might, has_keyword, object_identity
     opposing = combat_sides(record, effect_state)["defender" if role == "attacker" else "attacker"]
     candidates = []
@@ -561,10 +561,10 @@ def assignment_candidates(record: dict[str, Any], effect_state: dict[str, Any], 
         if problem is not None:
             return None, {**problem, "unit": unit}
         might, damage = effective_might(effect_state, unit), obj["damage"]
-        need = might - damage if might > damage else (0 if damage > 0 else 1)  # 143.2.a: nonzero damage at or above Might
+        need = might - damage if might > damage else (0 if damage > 0 else 1)  # 143.2.b: nonzero damage at or above Might
         raw = need
         reachable = True
-        # 2026-10-16 package 14, Core 465.2.c.10: a Unit that cannot be dealt damage - a replacement that prevents every
+        # 2026-10-16 package 14, Core 467.2.c.10: a Unit that cannot be dealt damage - a replacement that prevents every
         # Deal to it, never used up (Kayn, Unleashed is the rule's own example) - has no lethal amount and is exempt from
         # every consideration of mandatory assignment. One that only prevents the next Deal (the rule's Counter Strike
         # example) can still be dealt damage and is not exempt.
@@ -579,9 +579,9 @@ def assignment_candidates(record: dict[str, Any], effect_state: dict[str, Any], 
         elif not reachable:
             if len(opposing) != 1:
                 # whether a Unit no amount can make lethal must take everything before another Unit gets any is
-                # not settled here (465.2.c.3-c.4); refused by name, never guessed
+                # not settled here (467.2.c.3-c.4); refused by name, never guessed
                 return None, {"unsupported": True, "reason_code": "assignment_lethal_not_reachable", "reason": f"no raw assignment within 64 above the need makes {unit} take lethal damage under its replacements", "unit": unit}
-            # package 9 (Kayn - Unleashed): the only opposing Unit - no further Units remain (465.2.c.4), so it is
+            # package 9 (Kayn - Unleashed): the only opposing Unit - no further Units remain (467.2.c.4), so it is
             # assigned everything; the preview prevents what its replacements prevent
             raw = UNREACHABLE_LETHAL
         requirements = [k for k in ("tank", "backline") if has_keyword(effect_state, unit, k)]
@@ -600,17 +600,17 @@ def _tier(candidate: dict[str, Any], choices: dict[str, str]) -> int:
 
 
 def validate_assignment(candidates: list[dict[str, Any]], available: int, amounts: dict[str, int], choices: dict[str, str]) -> list[str]:
-    """Core 465.2.c.3–c.9 over one complete raw assignment. Returns problems."""
+    """Core 467.2.c.3–c.9 over one complete raw assignment. Returns problems."""
     problems = []
     units = {c["unit"]: c for c in candidates}
     if set(amounts) != set(units):
         return [f"the assignment must name every opposing Unit exactly once: {sorted(units)}"]
     if sum(amounts.values()) != available:
-        return [f"assigned {sum(amounts.values())}, but the side's Combat Damage is {available} (465.2.c)"]
+        return [f"assigned {sum(amounts.values())}, but the side's Combat Damage is {available} (467.2.c)"]
     for c in candidates:
         if "tank" in c["requirements"] and "backline" in c["requirements"] and c["unit"] not in choices:
-            return [f"{c['unit']} has both Tank and Backline; the assigning player chooses which applies (465.2.c.8)"]
-    # Core 465.2.c.10: an exempt Unit (it cannot be dealt damage) is outside every ordering below - it takes any amount,
+            return [f"{c['unit']} has both Tank and Backline; the assigning player chooses which applies (467.2.c.8)"]
+    # Core 467.2.c.10: an exempt Unit (it cannot be dealt damage) is outside every ordering below - it takes any amount,
     # at any point, never waits for another Unit and never makes one wait
     bound = [c for c in candidates if not c.get("exempt")]
     tiers: dict[int, list[dict[str, Any]]] = {}
@@ -626,17 +626,17 @@ def validate_assignment(candidates: list[dict[str, Any]], available: int, amount
             first_open = tier
             partial = [m for m in members if 0 < amounts[m["unit"]] < m["min_lethal_raw"]]
             if len(partial) > 1:
-                problems.append(f"lethal damage must be assigned in full before another Unit receives any: {[m['unit'] for m in partial]} are both partial (465.2.c.3)")
+                problems.append(f"lethal damage must be assigned in full before another Unit receives any: {[m['unit'] for m in partial]} are both partial (467.2.c.3)")
         else:
             for m in members:
                 if amounts[m["unit"]] > 0:
-                    problems.append(f"{m['unit']} received damage while a Unit that must be assigned first still lacks lethal damage (465.2.c.6–c.7)")
+                    problems.append(f"{m['unit']} received damage while a Unit that must be assigned first still lacks lethal damage (467.2.c.6–c.7)")
     # GPT PACKAGE14 ruling 1: the exempt Unit may be assigned damage whether or not the others have their lethal yet;
-    # 465.2.c.3 and c.4 hold among the Units that are not exempt (the loops above and below read only those)
+    # 467.2.c.3 and c.4 hold among the Units that are not exempt (the loops above and below read only those)
     for c in bound:
         others_open = any(not lethal[o["unit"]] for o in candidates if o["unit"] != c["unit"])
         if amounts[c["unit"]] > c["min_lethal_raw"] and others_open:
-            problems.append(f"{c['unit']} was assigned {amounts[c['unit']]}, above the minimum lethal {c['min_lethal_raw']}, while another Unit still lacks lethal damage (465.2.c.4)")
+            problems.append(f"{c['unit']} was assigned {amounts[c['unit']]}, above the minimum lethal {c['min_lethal_raw']}, while another Unit still lacks lethal damage (467.2.c.4)")
     return problems
 
 
@@ -666,11 +666,11 @@ def _legal_assignment_count(candidates: list[dict[str, Any]], available: int, ch
 
 
 def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
-    """ADR-0008 §8–9 / Core 465.2: once the Combat Showdown has closed, if
+    """ADR-0008 §8–9 / Core 467.2: once the Combat Showdown has closed, if
     both sides still have designated Units at the Battlefield, sum each
     side's Might and, starting with the attacker, take each player's complete
-    damage_assignment; validate 465.2.c in full with replacements previewed
-    (465.2.c.5); record a receipt per side. Nothing is Dealt here (465.2.c.1)
+    damage_assignment; validate 467.2.c in full with replacements previewed
+    (467.2.c.5); record a receipt per side. Nothing is Dealt here (467.2.c.1)
     and no replacement is consumed yet — the Deal step does that from the
     receipt, exactly once."""
     from effect_ir import object_identity
@@ -679,9 +679,9 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
         return problem
     record = timing_state.get("combat")
     if record is None or record["status"] != "showdown_closed":
-        return _refuse(base, "combat_showdown_not_closed", "Combat Damage is assigned when the Combat Showdown closes (348.1, 465.2); the Combat is not at that step", ["Core 348.1", "Core 465.2"])
+        return _refuse(base, "combat_showdown_not_closed", "Combat Damage is assigned when the Combat Showdown closes (348.1, 467.2); the Combat is not at that step", ["Core 348.1", "Core 467.2"])
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
-        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before damage is assigned", ["Core 465.1"])
+        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before damage is assigned", ["Core 467.1"])
     sides = combat_sides(record, effect_state)
     next_timing = copy.deepcopy(timing_state)
     next_record = next_timing["combat"]
@@ -689,7 +689,7 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
         next_record["status"] = "damage_dealt"
         next_record["assignments"] = None
         next_record["damage_step_skipped"] = True
-        return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"sides": sides, "damage_step": "skipped", "reason": "both Attacking and Defending Units must remain for the Combat Damage Step (465.1)"}, locators=["Core 465.1", "Core 466"])
+        return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"sides": sides, "damage_step": "skipped", "reason": "both Attacking and Defending Units must remain for the Combat Damage Step (467.1)"}, locators=["Core 467.1", "Core 468"])
     receipts: dict[str, Any] = {}
     trace_sides = {}
     for role in ("attacker", "defender"):
@@ -698,11 +698,11 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
         candidates, problem = assignment_candidates(record, effect_state, role, engine_decisions)
         if problem is not None:
             if problem.get("unsupported"):
-                return _unsupported(base, problem["reason_code"], problem["reason"], ["Core 465.2.c.5", "Core 465.2.c.10"], unit=problem.get("unit"), replacement_ids=problem.get("replacement_ids", []))
+                return _unsupported(base, problem["reason_code"], problem["reason"], ["Core 467.2.c.5", "Core 467.2.c.10"], unit=problem.get("unit"), replacement_ids=problem.get("replacement_ids", []))
             if problem.get("replacement_decision_required"):
                 return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": problem["reason"],
                         "replacement_decision": problem.get("replacement_decision"), "replacement_ids": problem["replacement_ids"],
-                        "event_ids": problem["event_ids"], "decision_controller": problem["decision_controller"], "rule_locators": ["Core 465.2.c.5"]}
+                        "event_ids": problem["event_ids"], "decision_controller": problem["decision_controller"], "rule_locators": ["Core 467.2.c.5"]}
             return _invalid(base, problem.get("invalid", ["assignment preview failed"]))
         public = [{k: v for k, v in c.items() if not k.startswith("_")} for c in candidates]
         decision_id = f"damage_assignment:{record['combat_id']}:{role}"
@@ -732,13 +732,13 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
                 auto = find(0, available, {})
             if auto is None:
                 return {**base, "valid": True, "committed": False, "reason_code": "damage_assignment_required",
-                        "reason": f"{player} assigns {available} Combat Damage among {[c['unit'] for c in candidates]} (465.2.c); the engine only proceeds when exactly one assignment is legal",
+                        "reason": f"{player} assigns {available} Combat Damage among {[c['unit'] for c in candidates]} (467.2.c); the engine only proceeds when exactly one assignment is legal",
                         "decision_ids": [decision_id], "decision_controller": player, "role": role, "available": available, "candidates": public,
-                        "rule_locators": ["Core 465.2.c", "Core 465.2.c.3", "Core 465.2.c.4", "Core 465.2.c.6"]}
+                        "rule_locators": ["Core 467.2.c", "Core 467.2.c.3", "Core 467.2.c.4", "Core 467.2.c.6"]}
             amounts, choices, how = auto, {}, "sole_legal_assignment"
         else:
             if entry["controller"] != player:
-                return _refuse(base, "decision_controller_mismatch", f"the {role}'s assignment was supplied by {entry['controller']!r}, not {player}", ["Core 465.2.c"])
+                return _refuse(base, "decision_controller_mismatch", f"the {role}'s assignment was supplied by {entry['controller']!r}, not {player}", ["Core 467.2.c"])
             value = entry["value"]
             amounts = dict(value["amounts"]) if isinstance(value, dict) and "amounts" in value else dict(value)
             choices = dict(value.get("requirement_choices", {})) if isinstance(value, dict) and "amounts" in value else {}
@@ -746,10 +746,10 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
                 if unit in effect_state["objects"] and identity != (object_identity(effect_state, unit) or f"{unit}@0"):
                     return _invalid(base, [f"damage_assignment {decision_id} binds {unit} to {identity!r}; it is now {object_identity(effect_state, unit) or f'{unit}@0'!r}"])
             if set(amounts) != {c["unit"] for c in candidates} or sum(amounts.values()) != available:
-                return _invalid(base, [f"damage_assignment {decision_id} must name every opposing Unit {sorted(c['unit'] for c in candidates)} exactly once and sum to {available} (465.2.c); got {amounts}"])
+                return _invalid(base, [f"damage_assignment {decision_id} must name every opposing Unit {sorted(c['unit'] for c in candidates)} exactly once and sum to {available} (467.2.c); got {amounts}"])
             problems = validate_assignment(candidates, available, amounts, choices)
             if problems:
-                return _refuse(base, "damage_assignment_illegal", "; ".join(problems), ["Core 465.2.c.3", "Core 465.2.c.4", "Core 465.2.c.6", "Core 465.2.c.7", "Core 465.2.c.8"], role=role, candidates=public)
+                return _refuse(base, "damage_assignment_illegal", "; ".join(problems), ["Core 467.2.c.3", "Core 467.2.c.4", "Core 467.2.c.6", "Core 467.2.c.7", "Core 467.2.c.8"], role=role, candidates=public)
             how = "player_decision"
         entries = []
         for c in candidates:
@@ -758,25 +758,25 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
                             "lethal": amounts[c["unit"]] >= c["min_lethal_raw"], "min_lethal_raw": c["min_lethal_raw"], "might": c["might"], "marked_damage": c["damage"],
                             "requirement_applied": choices.get(c["unit"]) or (c["requirements"][0] if c["requirements"] else None), "consumed_replacements": consumed, "event_id": c["event_id"]})
         receipts[role] = {"schema_version": ASSIGNMENT_RECEIPT_VERSION, "assigning_player": player, "available": available, "contributions": parts,
-                          "sources": sides[role], "entries": entries, "selection": how, "rule_locators": ["Core 465.2.a", "Core 465.2.b", "Core 465.2.c", "Core 465.2.c.5", "Core 465.2.c.1"]}
+                          "sources": sides[role], "entries": entries, "selection": how, "rule_locators": ["Core 467.2.a", "Core 467.2.b", "Core 467.2.c", "Core 467.2.c.5", "Core 467.2.c.1"]}
         trace_sides[role] = {"available": available, "selection": how, "amounts": amounts}
     next_record["status"] = "damage_assigned"
     next_record["assignments"] = receipts
-    # There is no window between assignment and Deal (465.2.c.1.a): the Deal
+    # There is no window between assignment and Deal (467.2.c.1.a): the Deal
     # step must see exactly this effect state and exactly these receipts.
     next_record["assignment_snapshot"] = {"effect_state_hash": hash_value(effect_state), "receipts_hash": hash_value(receipts)}
     return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"sides": sides, "assignments": trace_sides, "dealt": False, "assignment_snapshot": next_record["assignment_snapshot"]},
-                   locators=["Core 465.1", "Core 465.2.a", "Core 465.2.b", "Core 465.2.c", "Core 465.2.c.1", "Core 465.2.c.3", "Core 465.2.c.4", "Core 465.2.c.4.a", "Core 465.2.c.5", "Core 465.2.c.6", "Core 465.2.c.7", "Core 465.2.c.8", "Core 465.2.c.9", "Core 423.1.b", "Core 143.2.b"])
+                   locators=["Core 467.1", "Core 467.2.a", "Core 467.2.b", "Core 467.2.c", "Core 467.2.c.1", "Core 467.2.c.3", "Core 467.2.c.4", "Core 467.2.c.4.a", "Core 467.2.c.5", "Core 467.2.c.6", "Core 467.2.c.7", "Core 467.2.c.8", "Core 467.2.c.9", "Core 424.1.b", "Core 143.2.c"])
 
 
 # ------------------------------------------------ Combat Deal, Cleanup, result, close --
 
 def deal_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
-    """Core 465.2.c.1.a / 465.2.d: when every assignment is complete, the
+    """Core 467.2.c.1.a / 467.2.d: when every assignment is complete, the
     assigned damage is Dealt to every Unit at once from the receipts — the
     applied amounts, with the previewed replacements consumed now and never
-    applied a second time (465.2.c.5). The opposing side's Units are the
-    sources (417.6.c–417.6.c.1). FEPR is skipped afterwards (465.3): nothing
+    applied a second time (467.2.c.5). The opposing side's Units are the
+    sources (418.6.c–418.6.c.1). FEPR is skipped afterwards (467.3): nothing
     is scheduled here."""
     from effect_ir import object_identity
     base = _base("deal_combat_damage", timing_state, effect_state)
@@ -784,12 +784,12 @@ def deal_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any
         return problem
     record = timing_state.get("combat")
     if record is None or record["status"] != "damage_assigned":
-        return _refuse(base, "combat_damage_not_assigned", "Combat Damage is Dealt once both assignments are complete (465.2.c.1.a); the Combat is not at that step", ["Core 465.2.c.1.a", "Core 465.2.d"])
+        return _refuse(base, "combat_damage_not_assigned", "Combat Damage is Dealt once both assignments are complete (467.2.c.1.a); the Combat is not at that step", ["Core 467.2.c.1.a", "Core 467.2.d"])
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
-        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before Combat Damage is Dealt", ["Core 465.2"])
+        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before Combat Damage is Dealt", ["Core 467.2"])
     snapshot = record.get("assignment_snapshot") or {}
     if snapshot.get("effect_state_hash") != hash_value(effect_state) or snapshot.get("receipts_hash") != hash_value(record["assignments"]):
-        return _invalid(base, ["stale assignment receipt: the effect state or the receipts changed after assignment; nothing may happen between assignment and Deal (465.2.c.1.a), so the assignment must be redone on the current state"])
+        return _invalid(base, ["stale assignment receipt: the effect state or the receipts changed after assignment; nothing may happen between assignment and Deal (467.2.c.1.a), so the assignment must be redone on the current state"])
     next_effect = copy.deepcopy(effect_state)
     dealt: dict[str, list[dict[str, Any]]] = {"attacker": [], "defender": []}
     consumed: list[dict[str, Any]] = []
@@ -816,13 +816,13 @@ def deal_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any
     next_timing["combat"]["status"] = "damage_dealt"
     next_timing["combat"]["damage_dealt"] = {role: [{"unit": d["unit"], "applied": d["applied"]} for d in dealt[role]] for role in dealt}
     trace = {"simultaneous": True, "dealt": dealt, "consumed_replacements": consumed, "replacements_reapplied": False, "fepr_skipped": True}
-    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 465.2.c.1.a", "Core 465.2.c.5", "Core 465.2.d", "Core 417.6.c", "Core 417.6.c.1", "Core 465.3"])
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 467.2.c.1.a", "Core 467.2.c.5", "Core 467.2.d", "Core 418.6.c", "Core 418.6.c.1", "Core 467.3"])
 
 
 def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Core 466.1: one Combat Special Cleanup — the ordinary lethal Cleanup
-    (323.4–323.5; Combat-Damage kills attributed to the opposing side's Units
-    and their controller, 428.5.c.2), then 3c heal all Units, then 3d Recall
+    """Core 468.1: one Combat Special Cleanup — the ordinary lethal Cleanup
+    (383.2.c.3–323.4; Combat-Damage kills attributed to the opposing side's Units
+    and their controller, 429.5.c.2), then 3c heal all Units, then 3d Recall
     Attackers present if Defenders remain, then designations follow presence
     (323.2). Death triggers form the batch this step schedules."""
     from effect_ir import perform_lethal_cleanup
@@ -831,9 +831,9 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
         return problem
     record = timing_state.get("combat")
     if record is None or record["status"] != "damage_dealt":
-        return _refuse(base, "combat_damage_not_dealt", "the Combat Cleanup follows the Combat Damage Step (466.1); the Combat is not at that step", ["Core 466.1"])
+        return _refuse(base, "combat_damage_not_dealt", "the Combat Cleanup follows the Combat Damage Step (468.1); the Combat is not at that step", ["Core 468.1"])
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
-        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before the Combat Cleanup", ["Core 466.1"])
+        return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before the Combat Cleanup", ["Core 468.1"])
     # Core 323 order: step 2 designations follow presence first (a Unit that
     # arrived during the Showdown becomes a Defender — Shield, alone — before
     # lethal damage is judged), then 3a death triggers / 3b kills.
@@ -854,7 +854,7 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
             return {**base, "valid": True, "committed": False, "replacement_decision_required": True, "reason": cleanup.get("reason"),
                     "replacement_decision": batch.get("replacement_decision"), "cleanup_iteration": cleanup.get("cleanup_iteration", 0),
                     "replacement_ids": batch.get("replacement_ids", []),
-                    "event_ids": batch.get("event_ids", []), "decision_controller": batch.get("decision_controller"), "rule_locators": ["Core 323.5", "Core 370–373"]}
+                    "event_ids": batch.get("event_ids", []), "decision_controller": batch.get("decision_controller"), "rule_locators": ["Core 323.4", "Core 370–373"]}
         return {**base, "valid": cleanup.get("valid", True), "committed": False, "unsupported": cleanup.get("unsupported", False), "reason": cleanup.get("reason", "lethal cleanup failed"), "cleanup_result": cleanup}
     working = cleanup["next_state"]
     attribution = {}
@@ -862,12 +862,12 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
         role = "attacker" if killed in sides_before["attacker"] else "defender" if killed in sides_before["defender"] else None
         if role is not None:
             sources = sides_before["defender" if role == "attacker" else "attacker"]
-            attribution[killed] = {"role": role, "killed_by": sources, "responsible_player": record["defender" if role == "attacker" else "attacker"], "rule_locators": ["Core 428.5.c.2"]}
-    # 2026-09-27: the death's event carries that responsibility too (Core 428.5.c.2, 411.4), for "when you kill"
+            attribution[killed] = {"role": role, "killed_by": sources, "responsible_player": record["defender" if role == "attacker" else "attacker"], "rule_locators": ["Core 429.5.c.2"]}
+    # 2026-09-27: the death's event carries that responsibility too (Core 429.5.c.2, 412.4), for "when you kill"
     for event in cleanup.get("events") or []:
         if event.get("kind") == "died" and event.get("object") in attribution:
             event["responsible_player"] = attribution[event["object"]]["responsible_player"]
-            event["rule_locators"] = list(dict.fromkeys(list(event.get("rule_locators") or []) + ["Core 428.5.c.2"]))
+            event["rule_locators"] = list(dict.fromkeys(list(event.get("rule_locators") or []) + ["Core 429.5.c.2"]))
     healed = []
     for object_id, obj in working["objects"].items():
         if obj.get("kind") == "unit" and obj["damage"] > 0 and zone_class(find_location(working, object_id)) == "board":
@@ -880,7 +880,7 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
             controller = working["objects"][unit]["controller"]
             working["battlefields"][record["battlefield"]]["objects"].remove(unit)
             working["players"][controller]["zones"]["base"].append(unit)
-            recalled.append({"unit": unit, "to": f"base:{controller}", "not_a_move": True, "rule_locators": ["Core 466.1.a.2", "Core 455", "Core 456.1"]})
+            recalled.append({"unit": unit, "to": f"base:{controller}", "not_a_move": True, "rule_locators": ["Core 468.1.a.2", "Core 457", "Core 458.1"]})
     # Recalled Attackers are no longer at the Battlefield: a follow-up normal
     # Cleanup (324.2) removes their designations — recorded as such, not as
     # this Cleanup's step 2.
@@ -899,7 +899,7 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     for trigger in death_triggers:
         trigger["batch_id"] = f"combat:{record['combat_id']}:cleanup"
         trigger["batch_sequence"] = 1
-    # 2026-09-28: the deaths of Combat Damage are deaths (Core 428.1.a.2, 323.5): they wake
+    # 2026-09-28: the deaths of Combat Damage are deaths (Core 429.1.a.2, 323.4): they wake
     # watchers ("When a unit dies", "The first time a friendly unit dies each turn") exactly as a
     # resolution's Cleanup does - once the Combat Cleanup has run, as the batch after its death
     # triggers. This Cleanup scheduled death triggers only and no watcher ever heard a combat death.
@@ -925,30 +925,30 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     next_timing["combat"] = next_record
     scheduled = schedule_triggered_items(next_timing, sync_triggers + death_triggers + watch_triggers)
     if scheduled.get("applied") is not True:
-        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "the Cleanup's triggers could not be scheduled", ["Core 323.4"], trigger_result=scheduled)
+        return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "the Cleanup's triggers could not be scheduled", ["Core 383.2.c.3"], trigger_result=scheduled)
     trace = {"designations": sync_trace, "lethal_cleanup": cleanup["trace"], "killed": cleanup.get("killed_objects", []), "attribution": attribution, "healed": healed, "recalled": recalled,
              "follow_up_cleanup": follow_up, "scheduled_triggers": [t["trigger_id"] for t in sync_triggers + death_triggers + watch_triggers], "trigger_schedule": scheduled.get("transition"),
              "watch_triggers": [t["trigger_id"] for t in watch_triggers],
-             "order": ["323.2 designations", "323.4 death triggers", "323.5 kills", "466.1.a.1 heal all Units", "466.1.a.2 Recall Attackers if Defenders remain", "324.2 follow-up Cleanup for recalled Units"]}
-    return _commit(base, scheduled["next_state"], working, trace=trace, locators=["Core 466.1", "Core 466.1.a", "Core 466.1.a.1", "Core 466.1.a.2", "Core 323.2", "Core 323.4", "Core 323.5", "Core 428.5.c.2", "Core 143.3.b.2"]
-                   + (["Core 428.1.a.2"] if watch_triggers else []))
+             "order": ["323.2 designations", "383.2.c.3 death triggers", "323.4 kills", "468.1.a.1 heal all Units", "468.1.a.2 Recall Attackers if Defenders remain", "324.2 follow-up Cleanup for recalled Units"]}
+    return _commit(base, scheduled["next_state"], working, trace=trace, locators=["Core 468.1", "Core 468.1.a", "Core 468.1.a.1", "Core 468.1.a.2", "Core 323.2", "Core 383.2.c.3", "Core 323.4", "Core 429.5.c.2", "Core 143.3.b.2"]
+                   + (["Core 429.1.a.2"] if watch_triggers else []))
 
 
 def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
-    """Core 466.3, after every item the damage and the Cleanup raised has
-    resolved (466.2): a player won if they hold a designation and are the
+    """Core 468.3, after every item the damage and the Cleanup raised has
+    resolved (468.2): a player won if they hold a designation and are the
     only one with Units remaining here; lost if the only one without; No
     Result when Attackers were Recalled, when both or neither remain
-    (466.3.d) — with both remaining a Showdown and Combat stage again
-    (466.3.d.1)."""
+    (468.3.d) — with both remaining a Showdown and Combat stage again
+    (468.3.d.1)."""
     base = _base("determine_combat_result", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, None):
         return problem
     record = timing_state.get("combat")
     if record is None or record["status"] != "cleanup_done":
-        return _refuse(base, "combat_cleanup_not_done", "the result follows the Combat Cleanup (466.2–466.3); the Combat is not at that step", ["Core 466.2", "Core 466.3"])
+        return _refuse(base, "combat_cleanup_not_done", "the result follows the Combat Cleanup (468.2–468.3); the Combat is not at that step", ["Core 468.2", "Core 468.3"])
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
-        return _refuse(base, "combat_chain_unfinished", "items raised by the Combat Damage and the Combat Cleanup (death triggers) resolve before the result is determined (466.2)", ["Core 466.2"])
+        return _refuse(base, "combat_chain_unfinished", "items raised by the Combat Damage and the Combat Cleanup (death triggers) resolve before the result is determined (468.2)", ["Core 468.2"])
     present = units_at(effect_state, record["battlefield"])
     attacker_here, defender_here = bool(present.get(record["attacker"])), bool(present.get(record["defender"]))
     recalled = bool(record.get("cleanup", {}).get("recalled"))
@@ -964,12 +964,12 @@ def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str
         result = {"outcome": "no_result", "reason": "neither_remains", "winner": None, "loser": None}
     result["units_remaining"] = {record["attacker"]: present.get(record["attacker"], []), record["defender"]: present.get(record["defender"], [])}
     next_effect = copy.deepcopy(effect_state)
-    locators = ["Core 466.2", "Core 466.3", "Core 466.3.a", "Core 466.3.b", "Core 466.3.c", "Core 466.3.d", "Core 466.3.d.1"]
+    locators = ["Core 468.2", "Core 468.3", "Core 468.3.a", "Core 468.3.b", "Core 468.3.c", "Core 468.3.d", "Core 468.3.d.1"]
     if result["outcome"] == "no_result":
         # 2026-10-12 package 11 (Symbol of the Solari; GPT 2026-10-12 ruling 14 of package 10): a tie - No Result after
-        # combat damage and the Cleanup, both or neither still here (466.3.d) - in a Combat whose attacker controls a
+        # combat damage and the Cleanup, both or neither still here (468.3.d) - in a Combat whose attacker controls a
         # permanent on the board that says "recall ALL units instead": every unit still at this Battlefield, either
-        # side's, is recalled to its controller's Base (Core 455, not a Move), in place of the tie's own outcome - no
+        # side's, is recalled to its controller's Base (Core 457, not a Move), in place of the tie's own outcome - no
         # Combat is staged again; with no unit here, nothing is recalled
         from effect_ir import COMBAT_TIE_RECALL_ALL, PROGRAM_VERSION, apply_program
         sources = sorted(o for o, obj in effect_state["objects"].items()
@@ -986,12 +986,12 @@ def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str
                     "effects": [{"op": "recall", "effect_id": f"recall:{o}", "object_id": o} for o in here]})
                 if recalled.get("committed") is not True:
                     return _refuse(base, "combat_tie_recall_failed", str(recalled.get("reason") or recalled.get("errors")),
-                                   ["Core 455"])
+                                   ["Core 457"])
                 next_effect = recalled["next_state"]
             result.pop("restage_required", None)
             result.update({"tie_replaced_by": sources, "recalled_all": here,
                            "units_remaining": {record["attacker"]: [], record["defender"]: []}})
-            locators += ["Core 370.1", "Core 455", "Core 456.1"]
+            locators += ["Core 370.1", "Core 457", "Core 458.1"]
     next_timing = copy.deepcopy(timing_state)
     next_timing["combat"]["status"] = "result_determined"
     next_timing["combat"]["result"] = result
@@ -999,38 +999,38 @@ def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str
 
 
 def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
-    """Core 466.6–466.7: Combat ends — designations and the Combat and
+    """Core 468.6–468.7: Combat ends — designations and the Combat and
     Showdown records go, every 'this combat' effect of this Combat expires
-    at once (466.7.a, 466.7.c). Before that, 466.5 establishes control and
+    at once (468.7.a, 468.7.c). Before that, 468.5 establishes control and
     scores: that is resolve_battlefield_control (ADR-0009), so this procedure
-    requires the control_resolved status and an empty chain (466.6), except
+    requires the control_resolved status and an empty chain (468.6), except
     after a both-remain No Result, which stages the Combat again without any
-    control step (466.3.d.1)."""
+    control step (468.3.d.1)."""
     base = _base("close_combat", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, None):
         return problem
     record = timing_state.get("combat")
     if record is None or record["status"] not in {"result_determined", "control_resolved"}:
-        return _refuse(base, "combat_result_not_determined", "Combat closes after its result and the control resolution (466.4–466.7); the Combat is not at that step", ["Core 466.4", "Core 466.7"])
+        return _refuse(base, "combat_result_not_determined", "Combat closes after its result and the control resolution (468.4–468.7); the Combat is not at that step", ["Core 468.4", "Core 468.7"])
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
-        return _refuse(base, "combat_chain_unfinished", "items raised by the result or by establishing control resolve before Combat ends (466.4, 466.6)", ["Core 466.4", "Core 466.6"])
+        return _refuse(base, "combat_chain_unfinished", "items raised by the result or by establishing control resolve before Combat ends (468.4, 468.6)", ["Core 468.4", "Core 468.6"])
     result = record["result"]
     remaining = [p for p, units in result["units_remaining"].items() if units]
-    # ADR-0009 §2: 466.5 is resolve_battlefield_control, an atomic procedure of
+    # ADR-0009 §2: 468.5 is resolve_battlefield_control, an atomic procedure of
     # its own; Combat closes after it, or straight after a both-remain No
-    # Result that stages the Combat again (466.3.d.1).
+    # Result that stages the Combat again (468.3.d.1).
     if result.get("restage_required"):
         if record["status"] != "result_determined":
-            return _refuse(base, "control_resolution_not_pending", "a both-remain No Result closes without control resolution", ["Core 466.3.d.1"])
+            return _refuse(base, "control_resolution_not_pending", "a both-remain No Result closes without control resolution", ["Core 468.3.d.1"])
         control_step = "skipped_restage"
     elif record["status"] != "control_resolved":
-        return _refuse(base, "control_resolution_pending", f"466.5 establishes control for {record['battlefield']} before Combat ends; run resolve_battlefield_control first", ["Core 466.5", "Core 466.6"])
+        return _refuse(base, "control_resolution_pending", f"468.5 establishes control for {record['battlefield']} before Combat ends; run resolve_battlefield_control first", ["Core 468.5", "Core 468.6"])
     else:
         control_step = record["control"]["step"]
     from effect_ir import migrate_legacy_effects
     next_effect = migrate_legacy_effects(copy.deepcopy(effect_state))
     removed_designations, expired = [], []
-    # ADR-0013 §1 / Core 466.7.c: the Combat's grants expire with it.
+    # ADR-0013 §1 / Core 468.7.c: the Combat's grants expire with it.
     kept_effects = []
     for effect in next_effect.get("continuous_effects", []):
         if effect["duration"]["kind"] == "this_combat" and effect["duration"].get("combat_id") == record["combat_id"]:
@@ -1050,7 +1050,7 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
     next_timing["priority"] = next_timing["turn_player"] if next_timing.get("phase") == "main" else None
     restaged = None
     if control_step == "skipped_restage":
-        # 466.3.d.1: a Showdown and a Combat are staged again here — a new
+        # 468.3.d.1: a Showdown and a Combat are staged again here — a new
         # Combat identity with no trigger history; opening it is the next
         # required procedure, so no discretionary action opens in between.
         restaged = {"combat_id": f"combat:{record['battlefield']}:{_public_id(timing_state, effect_state)}:restage", "battlefield": record["battlefield"],
@@ -1060,7 +1060,7 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
         next_timing["combat"] = restaged
     trace = {"result": result, "control_step": control_step, "control": record.get("control"), "designations_removed": removed_designations, "expired_this_combat": expired, "restage_required": bool(result.get("restage_required")),
              "restaged_combat": restaged, "simultaneous_expiry": True, "end_of_combat_effects": "not_modelled"}
-    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 466.7", "Core 466.7.a", "Core 466.7.c", "Core 466.3.d.1"])
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 468.7", "Core 468.7.a", "Core 468.7.c", "Core 468.3.d.1"])
 
 
 # ---------------------------------------------------------------- Standard Move --
@@ -1151,9 +1151,9 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
         others = {effect_state["objects"][o]["controller"] for o in effect_state["battlefields"][target_id]["objects"] if effect_state["objects"][o].get("kind") == "unit"} - {actor}
         teammates = {p for p in others if same_side(effect_state, actor, p)}
         if teammates:
-            return _refuse(base, "destination_has_teammate_units", f"{target_id} holds a teammate's Units ({sorted(teammates)}); a Battlefield occupied by a teammate is an invalid destination (447.2.b)", ["Core 447.2.b"])
+            return _refuse(base, "destination_has_teammate_units", f"{target_id} holds a teammate's Units ({sorted(teammates)}); a Battlefield occupied by a teammate is an invalid destination (449.2.b)", ["Core 449.2.b"])
         if len(others) >= 2:
-            return _refuse(base, "destination_has_two_other_players", f"{target_id} already has Units of two other players; it is not a valid destination (144.4.a.1)", ["Core 144.4.a.1", "Core 447.2"])
+            return _refuse(base, "destination_has_two_other_players", f"{target_id} already has Units of two other players; it is not a valid destination (144.4.a.1)", ["Core 144.4.a.1", "Core 449.2"])
         for unit in units:
             origin = find_location(effect_state, unit)
             if origin[0] == "battlefield":
@@ -1219,7 +1219,7 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
                     "reason": cleanup.get("reason"), "replacement_decision": batch.get("replacement_decision"),
                     "cleanup_iteration": cleanup.get("cleanup_iteration", 0), "replacement_ids": batch.get("replacement_ids", []),
                     "event_ids": batch.get("event_ids", []), "decision_controller": batch.get("decision_controller"),
-                    "rule_locators": ["Core 323.5", "Core 370–373"]}
+                    "rule_locators": ["Core 323.4", "Core 370–373"]}
         return {**base, "valid": cleanup.get("valid", True), "committed": False, "unsupported": cleanup.get("unsupported", False), "reason": cleanup.get("reason", "cleanup failed"), "cleanup_result": cleanup}
     triggers = [dict(t) for t in moved.get("pending_triggers", [])]
     for index, trigger in enumerate(triggers):
@@ -1228,7 +1228,7 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
     cleanup_triggers = [dict(t) for t in cleanup.get("pending_triggers", [])]
     for trigger in cleanup_triggers:
         trigger["batch_sequence"] = trigger.get("batch_sequence", 0) + 1
-    # 2026-09-27: a Standard Move is a Move (Core 420.2.b, 446.1), so it wakes watchers exactly as
+    # 2026-09-27: a Standard Move is a Move (Core 421.2.b, 448.1), so it wakes watchers exactly as
     # a resolution does (resolution_bridge): on the Move's own events and its Cleanup's, once the
     # Cleanup has run, as the batch after the Move and death triggers. "The third time I move in a
     # turn" counts this Move with every other Move of the unit this turn (watchers.schedule_live)
@@ -1260,8 +1260,8 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
              "ganking_used": [r["unit"] for r in routes if r["permission"] == "ganking"], "move": moved["trace"], "cleanup": cleanup["trace"],
              "scheduled_triggers": [t["trigger_id"] for t in triggers + cleanup_triggers + watch_triggers], "trigger_schedule": scheduled.get("transition")}
     return _commit(base, scheduled["next_state"], final_effect, trace=trace,
-                   locators=["Core 144.1", "Core 144.2", "Core 144.3", "Core 144.3.a", "Core 144.3.c", "Core 144.4.a", "Core 144.4.b", "Core 144.4.c", "Core 810.1.b", "Core 810.1.c", "Core 446", "Core 383.1"]
-                   + (["Core 420.2.b", "Core 446.1"] if watch_triggers else [])
+                   locators=["Core 144.1", "Core 144.2", "Core 144.3", "Core 144.3.a", "Core 144.3.c", "Core 144.4.a", "Core 144.4.b", "Core 144.4.c", "Core 810.1.b", "Core 810.1.c", "Core 448", "Core 383.1"]
+                   + (["Core 421.2.b", "Core 448.1"] if watch_triggers else [])
                    + list(dict.fromkeys(l for e in moved["trace"] for l in e.get("rule_locators", []))))
 
 

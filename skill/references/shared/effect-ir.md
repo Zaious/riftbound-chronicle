@@ -26,30 +26,30 @@ core: `rules_core.py` determines when and what procedure occurs;
 
 | Operation | Scope | Official locator |
 | --- | --- | --- |
-| `draw` | draw known available cards from the top of Main Deck | Core 413 |
-| `recycle_one` | recycle one known object to its owner's corresponding deck | Core 416 |
-| `move_board_object` | move one known object between Base/Battlefield locations; a Base destination may be `player_relation: object_controller` (each moved unit's own controller's Base, 355.4.a) | Core 420, 445 |
-| `modify_might` | append a typed Might modifier with source and duration | Core 135.2.e.3, 477 |
-| `deal_damage` | mark positive damage on one unit/object | Core 417 |
-| `heal_damage` | clear up to a specified amount of marked damage | Core 418 |
-| `ready` | ready a supported board object; already ready is a no-op | Core 415 |
-| `exhaust` | exhaust a supported board object; already exhausted is a no-op | Core 414 |
-| `add_resource` | add Energy or domain-labelled Power | Core 429 |
+| `draw` | draw known available cards from the top of Main Deck | Core 414 |
+| `recycle_one` | recycle one known object to its owner's corresponding deck | Core 417 |
+| `move_board_object` | move one known object between Base/Battlefield locations; a Base destination may be `player_relation: object_controller` (each moved unit's own controller's Base, 355.4.a) | Core 421, 447 |
+| `modify_might` | append a typed Might modifier with source and duration | Core 135.2.e.3, 479 |
+| `deal_damage` | mark positive damage on one unit/object | Core 418 |
+| `heal_damage` | clear up to a specified amount of marked damage | Core 419 |
+| `ready` | ready a supported board object; already ready is a no-op | Core 416 |
+| `exhaust` | exhaust a supported board object; already exhausted is a no-op | Core 415 |
+| `add_resource` | add Energy or domain-labelled Power | Core 430 |
 | `play_token` | create one explicitly identified Unit/Gear token at a Base or Battlefield; Units default exhausted and Gear ready | Core 143.4, 149.1, 184–186, 349, 375 |
-| `kill` | kill a supported Unit/Gear permanent with typed self-death trigger capture and replacement handling | Core 428 |
-| `return_to_hand` | return a board object or a card in its owner's trash to its owner's hand as a new object with nothing of the old one; not a Move; a token ceases to exist | Core 124, 124.1, 446.2, 186.1 |
-| `recall` | relocate a board object to its current controller's Base keeping damage, exhaustion and modifiers; not a Move, so Move triggers never fire; already there is a no-op | Core 455, 456.1, 458.1 |
+| `kill` | kill a supported Unit/Gear permanent with typed self-death trigger capture and replacement handling | Core 429 |
+| `return_to_hand` | return a board object or a card in its owner's trash to its owner's hand as a new object with nothing of the old one; not a Move; a token ceases to exist | Core 124, 124.1, 448.2, 186.1 |
+| `recall` | relocate a board object to its current controller's Base keeping damage, exhaustion and modifiers; not a Move, so Move triggers never fire; already there is a no-op | Core 457, 458.1, 460.1 |
 | `grant_turn_effect` | record a 'this turn' effect for the controller (entry state for units played this turn), expiring at the Expiration Step | Core 369.3, 317.2.c |
-| `discard` | the player moves `count` cards from hand to trash by a private card_selection decision; short hands discard what they have (Core 422.4); not a target | Core 422.1, 422.1.a, 422.4, 124 |
+| `discard` | the player moves `count` cards from hand to trash by a private card_selection decision; short hands discard what they have (Core 423.4); not a target | Core 423.1, 423.1.a, 423.4, 124 |
 | `grant_replacement` | create a granted replacement bound to a board object's identity, once, for this turn ($granted_target binds inside its replacement_effects) | Core 370, 355.10.c, 124, 317.2.c |
-| `heal_all_damage` | clear all marked damage on one object; already clean is a no-op | Core 418 |
-| `grant_keyword` | grant Shield X / Tank / Ganking / Backline to a Unit on the board for this combat or this turn, bound to its identity | Core 814.2, 466.7.c, 317.2.c, 124 |
-| `mutual_damage_current_might` | two chosen Units deal their current rules-facing Might to each other as one simultaneous action, the Units being the sources; one illegal Unit skips the pair | Core 417.1.d, 417.6.b.3–417.6.b.4, 143.2.b |
-| `channel_rune` | put the top runes of a player's Rune Deck on the board in the stated entry state, as many as possible when short; new objects | Core 430.1, 430.2.a, 430.3, 124 |
+| `heal_all_damage` | clear all marked damage on one object; already clean is a no-op | Core 419 |
+| `grant_keyword` | grant Shield X / Tank / Ganking / Backline to a Unit on the board for this combat or this turn, bound to its identity | Core 814.2, 468.7.c, 317.2.c, 124 |
+| `mutual_damage_current_might` | two chosen Units deal their current rules-facing Might to each other as one simultaneous action, the Units being the sources; one illegal Unit skips the pair | Core 418.1.d, 418.6.b.3–418.6.b.4, 143.2.c |
+| `channel_rune` | put the top runes of a player's Rune Deck on the board in the stated entry state, as many as possible when short; new objects | Core 431.1, 431.2.a, 431.3, 124 |
 
 Return, Recall and Move are three events with three trigger classes; the
 engine never derives one from another (DP-06). This version deliberately
-excludes Burn Out from instructions other than Draw (431.1.b), simultaneous multi-card recycle, the full Cleanup procedure, open-ended target choice and target
+excludes Burn Out from instructions other than Draw (432.1.b), simultaneous multi-card recycle, the full Cleanup procedure, open-ended target choice and target
 groups, countering, attachments, unrestricted replacement modification inheritance,
 layers, cross-object triggers,
 scoring, and open-ended token construction. Those require additional state and ordering
@@ -160,7 +160,7 @@ owner's Trash. A killed token ceases to exist after entering the non-board zone.
 Typed self-death triggers are captured before the object leaves and handed to
 the resolution bridge for Pending-item scheduling.
 
-`perform_lethal_cleanup` implements Core 322–323.5 for the supported slice: a
+`perform_lethal_cleanup` implements Core 322–323.4 for the supported slice: a
 board Unit is lethal when it has a non-zero marked damage value greater than or
 equal to its current Might. It processes the simultaneous Kill group through
 the bounded replacement sequence above, repeats after a state-changing cleanup,
@@ -282,7 +282,7 @@ Power are paid from the player's pool (357.1) as unique payment events that
 the receipt's components reference with exact allocations. Any non-zero resource
 cost first needs a human to confirm the Add window closed in
 `payment_context` — the controller may use Add reactions during payment
-(429.3) and the engine never assumes they decline, whether or not the pool
+(430.3) and the engine never assumes they decline, whether or not the pool
 already covers the cost; until then the play is `decision_required`; exhaust and kill costs are paid through the ordinary
 operations with a friendly-only selector (357.2), and a payment a replacement
 effect prevents still counts as paid (357.2.a). Other non-standard costs are
@@ -306,7 +306,7 @@ and add nothing. Any-domain Power is paid by the player's
 amount, each domain within the confirmed pool. When only one allocation is
 legal the engine proceeds; otherwise the play is `decision_required`
 (`cost_choice`), and the engine never spends domains in an arbitrary
-order. The Add window (429.3) is settled first; a pool still short after it
+order. The Add window (430.3) is settled first; a pool still short after it
 is `illegal`; a non-positive Deflect value is `invalid_input`.
 
 A program may carry the receipt as `cost_receipt` and gate an instruction
@@ -321,7 +321,7 @@ game action happened — a partly prevented deal did (359.3.e.14.c), a wholly
 prevented or replaced one did not (359.3.e.14.b, 205), a no-op did not;
 `requested_count_not_reached` compares the event's applied count with its
 requested count (a short Channel satisfies Mobilize's "If you couldn't",
-430.5). It may only reference an instruction with a count contract —
+431.5). It may only reference an instruction with a count contract —
 `channel_rune` or a bounded `targets` instruction; referencing anything else
 is `invalid_input`, never a guess. Every predicate must name an earlier
 instruction; otherwise `invalid_input`.
@@ -338,13 +338,13 @@ Only a completed `move_board_object` raises "When I move" (`move_triggers`;
 383.1, 319.8); Recall, return to hand and board entry are not Moves.
 
 `discard {player, count, decision_ref?}` moves cards from the player's hand
-to their owner's trash as new objects (422.1, 124). The choice is the
-discarding player's, made with private information (422.1.a): a
+to their owner's trash as new objects (423.1, 124). The choice is the
+discarding player's, made with private information (423.1.a): a
 `card_selection` decision (stage resolution, the player as controller, hand
 object ids with their identities) that belongs to that player's own-private
 artifacts only — the engine's `decision_required` names the decision and
 the player, never the hand. When the whole hand must go the engine proceeds
-(422.4); a choice outside the hand or by another player is `illegal`; an
+(423.4); a choice outside the hand or by another player is `illegal`; an
 unknown or stale identity is `invalid_input`. "Discard 1, then draw 1" is an
 `action_performed` gate: nothing discarded → nothing drawn.
 
@@ -357,15 +357,15 @@ is valid. A granted replacement stops applying after its use, at the
 Expiration Step, when the target's identity changes (it left and came back,
 Core 124) or when the target is no longer a board object; while it applies
 it takes part in the ordinary replacement order and choice decisions.
-`heal_all_damage` clears every point of marked damage (418).
+`heal_all_damage` clears every point of marked damage (419).
 
 `caused_kill` is not an in-program predicate. A Cleanup kill is only known
 after the spell has left the chain, so "If this kills it, …" is declared as
 a program-level `conditional_triggers` entry: the resolution bridge runs the
 instructions, sends the spell to the trash, runs Cleanup, attributes each
 Cleanup kill to the spell that dealt the damage immediately before it
-(428.5.c) — or to a Kill instruction directly (428.5.b) — and only then
-builds the Pending reflexive item (387–388). It shares the chronological
+(429.5.c) — or to a Kill instruction directly (429.5.b) — and only then
+builds the Pending reflexive item (388–389). It shares the chronological
 batch of the death triggers the same Cleanup kill produced, so the two are
 ordered together by controller in Turn Order (383.3.d). When one controller
 owns several triggers in that batch with missing or colliding orders, the
@@ -398,7 +398,7 @@ current Battlefield); an object source is active on the board, a
 Battlefield source while it exists. Once a Deal with a non-zero base is
 known to happen (715.4), every active Bonus is summed once (714) and added
 per target (715.1–715.2) *before* any replacement, Prevent or
-`reduce_damage` sees the amount (437.1.a.1); the event records the base,
+`reduce_damage` sees the amount (438.1.a.1); the event records the base,
 the bonus and its sources. An unknown scope is `unsupported`.
 
 ## Entry replacements, conditional passives, and the end of the turn
@@ -439,7 +439,7 @@ path: it leaves the shared chain and becomes a new object on the board
 (143.4, 359.2.c), Non-Unit Gear ready (359.2.d); the Unit enters the
 `entry_location` chosen while playing (355.2) and stored on the chain entry,
 Gear its controller's Base; then the play is complete and "When you play
-me" triggers are collected (419.4.a) as one batch, scheduled with the
+me" triggers are collected (420.4.a) as one batch, scheduled with the
 resolution's other triggers, before the board-entry Cleanup (319.6). A Unit
 entering a Battlefield its controller does not control marks it `contested`
 with `contested_by`; no control transfer, Showdown or Combat is inferred.
@@ -473,7 +473,7 @@ ADR-0009 §1, §7 add the scoring state: `mode: {victory_score, teams}` (the
 Mode of Play; absent makes every scoring procedure `unsupported: mode_unknown`,
 teams or any `team_id` make it `unsupported: team_scoring`), each player's
 `points` (absent means 0) and `scored_this_turn: {turn_id: [battlefields]}`
-(only the current turn's entry is read; 470), and `conquer_triggers` /
+(only the current turn's entry is read; 472), and `conquer_triggers` /
 `hold_triggers` on objects — scope `unit_here` fires for the scoring player's
 Unit at the Battlefield scored, scope `controller` from any board object the
 scoring player controls (383.4.c–d) — and on Battlefields, whose own Score
@@ -489,12 +489,12 @@ conditional passives: Shield while the Unit carries the Defender designation
 no other friendly Unit at the location, team-aware, 740.2.a), and
 `might_auras` with the bounded `friendly_unit_defends_alone` condition (an
 external source, active on the board, over each friendly lone Defender). A
-negative total is read as 0 (143.2.b) while `current_might` keeps the
+negative total is read as 0 (143.2.c) while `current_might` keeps the
 arithmetic value. The keywords `shield` (with `shield_value`), `tank`,
 `ganking` and `backline` are printed characteristics; `grant_keyword` adds
 a `keyword_modifiers` entry bound to the object's identity now and to the
 Combat in progress (`this_combat`, active only while the Unit's designation
-names that Combat, expiring together at 466.7.c) or to this turn
+names that Combat, expiring together at 468.7.c) or to this turn
 (`this_turn`). A 'this combat' grant outside a Combat is unsupported: the
 context comes from the resolution bridge, never from a caller's flag.
 
@@ -509,13 +509,13 @@ no-op, and a claimed Combat whose Battlefield the state cannot confirm is
 unsupported. `mutual_damage_current_might` revalidates both chosen Units,
 snapshots both rules-facing Mights before either Deal, then performs the two
 Deal events as one simultaneous Deal batch with the Units as the damage
-sources (417.6.b.3, so no spell-scoped Bonus Damage and the responsible
+sources (418.6.b.3, so no spell-scoped Bonus Damage and the responsible
 player is each Unit's controller): every replacement's applicability is read
 from the one pre-Deal state, and only mandatory Prevent values that belong to
 exactly one of the two Deals are applied; any other mode, an optional
 descriptor, or one descriptor over both Deals is unsupported rather than
 resolved one Deal after the other; a Might that reads 0 deals nothing
-(417.1.e); it is not Combat Damage.
+(418.1.e); it is not Combat Damage.
 
 ## Choices, modes and privacy (ADR-0011 §1–2)
 
@@ -541,7 +541,7 @@ its options with identities up to the enumerable cap.
 A **modal** program (`modal: {choose: 1, timing, decision_ref, options}`)
 keeps its instructions inside the options and its top-level `effects` empty.
 The mode is a `mode_selection` decision whose value is the stable
-`option_id`, never an index; a spell chooses it while playing (402.2) and
+`option_id`, never an index; a spell chooses it while playing (403.2) and
 the transaction records it on the chain entry, so resolution needs no second
 decision and an envelope contradicting it is `invalid_input`. Only the
 chosen option's targets are checked at play.
@@ -549,10 +549,10 @@ chosen option's targets are checked at play.
 ## Look, reveal, put back and Predict (ADR-0011 §3)
 
 `look_at_top` marks the top cards readable by the program's controller;
-`reveal` marks them readable by everyone (424.1–424.2: the cards stay in
-their zone, in order). Neither Burns Out on a short deck (431.1.c); they
+`reveal` marks them readable by everyone (425.1–425.2: the cards stay in
+their zone, in order). Neither Burns Out on a short deck (432.1.c); they
 record `partial`. The marks live in the state's `reveals` list only while
-the program runs and are cleared when it returns (424.3.a); what a player
+the program runs and are cleared when it returns (425.3.a); what a player
 remembers afterwards is `unsupported: revealed_knowledge_persistence`.
 
 `put_back` returns the still-present cards in the order a **`card_ordering`**
@@ -564,8 +564,8 @@ who may see it, never the order. `put_in_hand` and `draw_it` take a chosen
 looked-at card into the hand as a new object (124); `draw_it` is a Draw.
 `recycle` Recycles several cards as one Game Action (303.2), each to its
 owner's deck bottom; two or more to one Main Deck go in a random order, a
-randomization receipt `recycle_simultaneous` (416.5); two or more runes to one
-Rune Deck in their owner's `card_ordering` (416.5.a). `predict` is the 436 composite: look, Recycle any
+randomization receipt `recycle_simultaneous` (417.5); two or more runes to one
+Rune Deck in their owner's `card_ordering` (417.5.a). `predict` is the 437 composite: look, Recycle any
 number, put the rest back in the chosen order, no Burn Out.
 
 ## Costs, activated abilities, Repeat and restricted resources (ADR-0011 §4)
@@ -575,7 +575,7 @@ Payment kinds are `energy`, `power`, `power_any`, `exhaust`, `kill`,
 A Discard cost is the payer's private `card_selection` at play stage and a
 Recycle cost a public one; the card being played is never a candidate,
 because it moved to the Chain before costs were chosen (354). The whole
-amount must be payable (423.1.b, 416.3) or the cost is `illegal`. XP, Buff
+amount must be payable (424.1.b, 417.3) or the cost is `illegal`. XP, Buff
 and Empower costs stay `unsupported: xp_buff_costs`.
 
 An **activated ability** is a chain item of `object_kind: ability` with
@@ -603,22 +603,22 @@ grammar.
 ## Banish, Counter and Burn (ADR-0011 §5)
 
 `banish` moves a card or permanent from any zone straight into its owner's
-Banishment as a new object (427.1, 124); a token ceases to exist. It is not
-a Kill (427.2.a) — a banished Unit's death trigger never fires — and not a
-Discard (427.2.b).
+Banishment as a new object (428.1, 124); a token ceases to exist. It is not
+a Kill (428.2.a) — a banished Unit's death trigger never fires — and not a
+Discard (428.2.b).
 
-`counter` clears a chain item (425.1): the effect side removes the entry and
-sends the card to its owner's trash as a new object (425.1.a), or to the
-hand when the effect says `card_to: hand`. The item was not played (425.1.b)
-so nothing triggers on playing it, and no cost is refunded (425.1.c). The
+`counter` clears a chain item (426.1): the effect side removes the entry and
+sends the card to its owner's trash as a new object (426.1.a), or to the
+hand when the effect says `card_to: hand`. The item was not played (426.1.b)
+so nothing triggers on playing it, and no cost is refunded (426.1.c). The
 result reports `countered_chain_items`, and the resolution bridge removes
 the timing item through `rules_core.remove_chain_item` in the same commit;
 if the timing chain does not carry it, neither state commits. A chain entry
 marked `counterable: false` answers `unsupported: cannot_be_countered`.
 
 `burn` moves the top cards of a Main Deck to the trash as new objects
-(440.1). A deck shorter than the count would Burn Out on a non-Draw path
-(431.1.b), which stays `unsupported: burn_out_non_draw`: nothing changes,
+(441.1). A deck shorter than the count would Burn Out on a non-Draw path
+(432.1.b), which stays `unsupported: burn_out_non_draw`: nothing changes,
 and the Draw-path receipt is never borrowed.
 
 ## Play sources, Hidden, attachments, Legends and tokens (ADR-0012)
@@ -648,13 +648,13 @@ the compiled clause states `hidden_targeting: free_by_restriction`.
 
 **Attachments** are one direction of state: an attached card names its
 Top-Most card in `attached_to` and the engine derives the rest. Attaching
-takes the Top-Most card's location (434.4, not a Move) and changes nothing
-else (434.5.a); a new host detaches the old link (434.2.a); the same host is
-a no-op (434.2.b). Every attached card's Might Bonus modulates the Top-Most
+takes the Top-Most card's location (435.4, not a Move) and changes nothing
+else (435.5); a new host detaches the old link (435.2.a); the same host is
+a no-op (435.2). Every attached card's Might Bonus modulates the Top-Most
 card (159.1). Detaching derives its destination and never assumes the Base:
-the Top-Most card's location (435.4), the host's last board location when the
-host left for a non-board zone (435.4.b), and a detached Gear at a
-Battlefield records the Cleanup Recall (435.4.a) instead of moving early.
+the Top-Most card's location (436.4), the host's last board location when the
+host left for a non-board zone (436.4.b), and a detached Gear at a
+Battlefield records the Cleanup Recall (436.4.a) instead of moving early.
 Killing, banishing, returning, recycling and moving a host all route through
 that one derivation.
 

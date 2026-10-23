@@ -16,8 +16,8 @@ Three things the completeness proof stands on, each closed and gated (check_acti
                  chain_item.id, a decision id's play prefix, an identity token or a provenance note yields the same key,
                  so the action space of a state is finite.
 
-Rule locators use the 2026-07-16 numbering (RULE_NUMBERING): discretionary actions 410.1, limited actions 410.2, Play
-419.2, the Standard Move 420.3, Hide 421.2, activated abilities 377, Priority and Focus 312-313, ending the turn 316.9.
+Rule locators use the 2026-10-09 numbering (RULE_NUMBERING; 2026-07-16 until C3): discretionary actions 411.1, limited actions 411.2, Play
+420.2, the Standard Move 421.3, Hide 422.2, activated abilities 377, Priority and Focus 312-313, ending the turn 316.9.
 """
 from __future__ import annotations
 
@@ -26,16 +26,16 @@ from typing import Any
 
 # --------------------------------------------------------------------------------------------- the kinds of action
 ACTION_KINDS: dict[str, dict[str, Any]] = {
-    "play_card": {"declaration": "play", "rule_locators": ["Core 410.1", "Core 419.1", "Core 419.2"]},
-    "activate_ability": {"declaration": "play", "rule_locators": ["Core 410.1", "Core 377", "Core 377.3"]},
-    "standard_move": {"declaration": "standard_move", "rule_locators": ["Core 410.1", "Core 420.3"]},
-    "hide": {"declaration": "hide", "rule_locators": ["Core 410.1", "Core 421.2", "Core 811.1"]},
+    "play_card": {"declaration": "play", "rule_locators": ["Core 411.1", "Core 420.1", "Core 420.2"]},
+    "activate_ability": {"declaration": "play", "rule_locators": ["Core 411.1", "Core 377", "Core 377.3"]},
+    "standard_move": {"declaration": "standard_move", "rule_locators": ["Core 411.1", "Core 421.3"]},
+    "hide": {"declaration": "hide", "rule_locators": ["Core 411.1", "Core 422.2", "Core 811.1"]},
     "pass_priority": {"declaration": None, "rule_locators": ["Core 312", "Core 338.1.b", "Core 339"]},
     "pass_focus": {"declaration": None, "rule_locators": ["Core 313", "Core 347.2"]},
     "end_main_phase": {"declaration": None, "rule_locators": ["Core 305", "Core 316.9"]},
 }
-# The game actions of 413-444 a player takes only when a spell, an ability or the turn's progression instructs it
-# (Core 410.2) - never at will, so no enumerator family. Play (419), Move (420, the Standard Move) and Hide (421) are
+# The game actions of 414-444 a player takes only when a spell, an ability or the turn's progression instructs it
+# (Core 411.2) - never at will, so no enumerator family. Play (420), Move (421, the Standard Move) and Hide (422) are
 # the discretionary ones above; every other kind reaches the action space only as part of a cost or an effect.
 LIMITED_ACTIONS = ("draw", "exhaust", "ready", "recycle", "deal", "heal", "discard", "stun", "reveal", "counter", "buff",
                    "banish", "kill", "add", "channel", "burn_out", "double", "swap", "attach", "detach", "predict",
@@ -277,7 +277,7 @@ def _broad_play(family: str, timing_state: dict[str, Any], effect_state: dict[st
             raise OverCap(f"more than {PLAY_BROAD_CAP} calls")
         at_play = None if any("cost_offer_id" in (e.get("predicate") or {}) for e in (prog or {}).get("effects") or []) else prog
         # package 15 (found by the corpus: Garbage Grabber's "Recycle 3 from your trash" puts three cards on the Main
-        # Deck's bottom at random, Core 416.5): chance inside an action is nature's, and whether the action is legal does
+        # Deck's bottom at random, Core 417.5): chance inside an action is nature's, and whether the action is legal does
         # not depend on its order - tried in the cards' identity order, as the discovery tries it (play_space)
         receipts: list = []
         for _ in range(4):
@@ -356,7 +356,7 @@ PLAY_BROAD_CAP = 1 << 17
 
 def _payment_pool(payment: dict[str, Any], effect_state: dict[str, Any], actor: str) -> list[str]:
     """The objects a printed additional cost's payment can take by the rules: a discard, a card of the player's hand
-    (Core 422.1.a); a buff spent, a buffed Unit the player controls (702.2.b); a kill or an exhaust paid as a cost, a
+    (Core 423.1.a); a buff spent, a buffed Unit the player controls (702.2.b); a kill or an exhaust paid as a cost, a
     permanent the player controls on the Board (357.1). Any other kind: every object (no pool is assumed)."""
     import effect_ir
     objects = effect_state.get("objects") or {}

@@ -179,13 +179,15 @@ def main() -> int:
             # Registry hygiene must fire on a broken registry, in memory only.
             broken = json.loads(REGISTRY.read_text(encoding="utf-8"))
             broken["sources"] = [dict(source) for source in broken["sources"]]
-            broken["sources"][1]["status"] = "superseded"
-            broken["sources"][1]["superseded_by"] = None
-            broken["sources"][2]["superseded_by"] = "no-such-source"
-            broken["sources"][3]["url"] = broken["sources"][4]["url"]
-            broken["sources"][5]["url"] = "http://insecure.example/rules.pdf"
-            broken["sources"][6]["status"] = "superseded"
-            broken["sources"][6]["superseded_by"] = "also-missing"
+            # entries picked by what they are, not by position (C3 put a superseded Core beside the current one)
+            a = [i for i, source in enumerate(broken["sources"]) if source.get("status") == "active"]
+            broken["sources"][a[1]]["status"] = "superseded"
+            broken["sources"][a[1]]["superseded_by"] = None
+            broken["sources"][a[2]]["superseded_by"] = "no-such-source"
+            broken["sources"][a[3]]["url"] = broken["sources"][a[4]]["url"]
+            broken["sources"][a[5]]["url"] = "http://insecure.example/rules.pdf"
+            broken["sources"][a[6]]["status"] = "superseded"
+            broken["sources"][a[6]]["superseded_by"] = "also-missing"
             hygiene = {finding["kind"] for finding in rs.registry_hygiene(broken)}
             missing_hygiene = sorted(HYGIENE_KINDS - hygiene)
             if missing_hygiene:

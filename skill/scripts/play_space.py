@@ -59,17 +59,17 @@ FIELD_GENERATORS = {
             "row's cost; an object a payer-named cost names: every object on the Board",
     "activation": "every catalogued ability id of the object",
     "payment_context": "the Add window closed: an [Add] is an activate_ability action of its own, taken before the play "
-                       "(Core 429.3)",
+                       "(Core 430.3)",
     "source_permission": None,
 }
 NOT_DISCRETIONARY = {
     "source_permission": "only a play from the trash or banishment carries one, and only an effect's limited play "
-                         "reaches those (Core 419.3): the play's steps are a procedure of that effect's resolution - "
+                         "reaches those (Core 420.3): the play's steps are a procedure of that effect's resolution - "
                          "decision_space enumerates them at the limited play's finalization (package 14)",
 }
 SOURCES = {"hand": "play_skeletons", "champion_zone": "play_skeletons", "facedown": "play_skeletons",
-           "trash": "a limited play only (Core 419.3): decision_space, at its finalization",
-           "banishment": "a limited play only (Core 419.3): decision_space, at its finalization"}
+           "trash": "a limited play only (Core 420.3): decision_space, at its finalization",
+           "banishment": "a limited play only (Core 420.3): decision_space, at its finalization"}
 REQUESTS_LEFT = {
     "add_window_confirmation_required": "never asked: every declaration closes the Add window (payment_context)",
     # package 15: answered as a field of the declaration, not a decision - the play again with each order of the
@@ -77,7 +77,7 @@ REQUESTS_LEFT = {
     "discount_order_required": "an order of the discounts that apply is declared in cost.discount_order: the play is "
                                "tried again with each order of the discounts the procedure names (discount_ids)",
 }
-# Chance inside an action (a cost that recycles two or more cards to a Main Deck, Core 416.5) is nature's, not a choice
+# Chance inside an action (a cost that recycles two or more cards to a Main Deck, Core 417.5) is nature's, not a choice
 # of the action: whether the action is legal does not depend on the order, so discovery checks it under the cards'
 # own order; the action carries no receipt - whoever applies it supplies the one chance gives (game_loop.run_action)
 CHANCE_ORDER = "identity"

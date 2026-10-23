@@ -117,7 +117,7 @@ def main() -> int:
     partial = run_scoring_step(t, e2)
     ids = [i["id"] for i in partial.get("next_timing_state", {}).get("chain", {}).get("items", [])]
     if not partial.get("committed") or partial["trace"]["held"] != ["bf2"] or partial["trace"]["skipped_already_scored"] != ["bf1"] or partial["next_effect_state"]["players"]["p1"].get("points") != 1:
-        errors.append(f"a Battlefield already scored this turn was held again (470): {partial.get('reason_code')} {partial.get('trace', {}).get('held')}")
+        errors.append(f"a Battlefield already scored this turn was held again (472): {partial.get('reason_code')} {partial.get('trace', {}).get('held')}")
     elif ids != ["g1-you-hold", "u3-hold", "bf2-hold"] or len({i["batch_id"] for i in partial["next_timing_state"]["chain"]["items"]}) != 1:
         errors.append(f"the Hold triggers are not one batch from the right sources: {ids}")
     # --- Hold is not restricted by the Final Point rule --------------------------------------------------------
@@ -125,7 +125,7 @@ def main() -> int:
     del e3["battlefields"]["bf2"]; del e3["objects"]["u3"]
     final = run_scoring_step(t, e3)
     if not final.get("committed") or final["next_effect_state"]["players"]["p1"].get("points") != 3 or final["trace"]["scoring"][0].get("gain") != "point" or len(final["next_effect_state"]["players"]["p1"]["zones"]["hand"]) != 0:
-        errors.append(f"a Hold at Victory Score - 1 did not gain the point outright (471.1.a.1): {final.get('trace', {}).get('scoring')}")
+        errors.append(f"a Hold at Victory Score - 1 did not gain the point outright (473.1.a.1): {final.get('trace', {}).get('scoring')}")
     else:
         facts = final["trace"]["victory_check"]
         if facts.get("threshold_met") != ["p1"] or facts.get("strict_leader") != "p1" or facts.get("tied_at_threshold") is not False or "winner" in facts:

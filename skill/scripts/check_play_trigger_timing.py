@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Regression gate: when a play wakes the watchers (Core 419.4.a / 419.4.a.1; GPT 2026-09-27).
+Regression gate: when a play wakes the watchers (Core 420.4.a / 420.4.a.1; GPT 2026-09-27).
 
 Abilities that trigger on a card being played trigger when the act of playing it has been
 completed by the card's resolution; if the card does not resolve - it was countered - they do not
@@ -87,7 +87,7 @@ def main() -> int:
         errors.append(f"the spell was not played: {played.get('reason')}")
     else:
         if scheduled(played, "spellwatch"):
-            errors.append("the play watcher was scheduled at Finalize (Core 419.4.a: at resolution)")
+            errors.append("the play watcher was scheduled at Finalize (Core 420.4.a: at resolution)")
         resolved = resolve(played, [item("spell-9", "p1", "spell", "default", "finalized")], "spell-9", draw_body())
         if not resolved.get("committed") or len(scheduled(resolved, "spellwatch")) != 1:
             errors.append(f"the resolving spell did not schedule its play watcher exactly once: {resolved.get('reason')} "
@@ -109,7 +109,7 @@ def main() -> int:
             if "spell-9" in (countered["next_effect_state"].get("chain_items") or {}):
                 errors.append("the countered spell is still on the Chain")
             if scheduled(countered, "spellwatch"):
-                errors.append("a countered spell's play woke its play watcher (Core 419.4.a.1)")
+                errors.append("a countered spell's play woke its play watcher (Core 420.4.a.1)")
             if any(t.get("trigger_id", "").startswith("spellwatch") for t in countered.get("pending_triggers") or []):
                 errors.append("a countered spell's play is pending a play-watcher trigger")
 
@@ -143,12 +143,12 @@ def main() -> int:
             errors.append(f"the unit's entry did not wake 'When you play a unit': {entered.get('reason')}")
 
     if errors:
-        print("FAILED: play trigger timing (Core 419.4.a)")
+        print("FAILED: play trigger timing (Core 420.4.a)")
         for e in errors:
             print("  - " + e)
         return 1
     print("OK: play watchers wake when the card resolves (a spell, a unit), never at Finalize; a countered card's play "
-          "wakes nothing; a cost's discard wakes its watcher at payment (Core 419.4.a, 419.4.a.1)")
+          "wakes nothing; a cost's discard wakes its watcher at payment (Core 420.4.a, 420.4.a.1)")
     return 0
 
 

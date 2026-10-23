@@ -296,7 +296,7 @@ def instantiate_program(catalogue: dict[str, Any], ref: str, key: str, bindings:
     if "modal" in template:
         program["modal"] = bind(template["modal"], bindings)
     if template.get("conditional_triggers"):
-        # each one's id per source, its program per card (Core 387: added to the Chain as the program resolves)
+        # each one's id per source, its program per card (Core 388: added to the Chain as the program resolves)
         program["conditional_triggers"] = [{**bind(ct, bindings),
                                             "trigger_id": ability_id(bindings["$source_object"], ct["trigger_id"]),
                                             "effect_program_id": program_id(ref, ct["effect_program_id"])}

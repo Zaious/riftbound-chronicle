@@ -3,8 +3,8 @@
 GPT 2026-10-12 PACKAGE11 ruling 7).
 
 The cards are chosen by the ability's controller as the instruction executes, from every player's trash - not targets
-(Core 416.6: "Recycle X from [Zone]" does not target) - zero to N of them (355.13); each goes to the bottom of its OWNER's
-deck (416.1).
+(Core 417.6: "Recycle X from [Zone]" does not target) - zero to N of them (355.13); each goes to the bottom of its OWNER's
+deck (417.1).
 
   R1 two owners    one card of p1's trash and one of p2's: each at the bottom of its owner's Main Deck
   R2 none          zero chosen: nothing moves (no_op)

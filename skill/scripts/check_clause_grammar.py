@@ -231,7 +231,7 @@ def main() -> int:
         second = then["program_effects"][1]
         if "predicate" in second:
             errors.append(f"'then' made the second instruction depend on the first: {second}")
-    # Core 422.4's own example: "Discard 2, then draw 2." with an empty hand ignores the
+    # Core 423.4's own example: "Discard 2, then draw 2." with an empty hand ignores the
     # discard and still draws 2
     import copy as _copy
     from check_effect_ir import base_state as _base_state
@@ -249,7 +249,7 @@ def main() -> int:
         ran = _apply(state, {"schema_version": _PROGRAM_VERSION, "ruleset": state["ruleset"],
                              "program_id": "discard-then-draw", "controller": "p1", "effects": effects})
         if not ran.get("committed") or len(ran["next_state"]["players"]["p1"]["zones"]["hand"]) != 2:
-            errors.append(f"Core 422.4: an empty hand's 'Discard 2, then draw 2' did not draw 2: "
+            errors.append(f"Core 423.4: an empty hand's 'Discard 2, then draw 2' did not draw 2: "
                           f"{ran.get('reason') or ran.get('errors')} {ran.get('trace')}")
     # a connective outside the white-list joins nothing
     for text in ("Draw 1 and summon a dragon.", "Draw 1 while you have 2 runes."):

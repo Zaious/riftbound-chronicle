@@ -3,8 +3,8 @@
 - Status: Accepted (Codex rulings, 2026-09-05)
 - Scope: `R3-A3-combat`, the G1 Combat milestone, and the minimum Standard
   Move procedure required by Ganking.
-- Rules baseline: English Core Rules 2026-07-16, especially 143–144,
-  190.6, 323, 341–348, 383.4.e–f, 417, 428.5.c.2, 459–466, 740.2,
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3), especially 143–144,
+  190.6, 323, 341–348, 383.4.e–f, 418, 429.5.c.2, 461–468, 740.2,
   810, and 814–815.
 - Not decided here: Battlefield control/Conquer/scoring (G2), terminal state
   and Burn Out (G3), Hidden, attachment, or a general continuous-effect layer
@@ -46,21 +46,21 @@ new ADR and migration.
 
 `stage_combat` runs only from a quiet Cleanup boundary. A Battlefield is a
 candidate when Units controlled by exactly two opposing players are present
-(461–462). Zero candidates is a supported no-op. More than one candidate
+(463–464). Zero candidates is a supported no-op. More than one candidate
 requires a Turn Player `location_selection`; the engine never chooses the
 first key. A Battlefield involving more than two players is not silently
 reduced to a pair.
 
 `open_combat` requires the selected Battlefield still to qualify. The attacker
 is the player recorded as having applied Contested; the defender is the other
-participant (464.2.c). Missing or contradictory attribution is insufficient
+participant (466.2.c). Missing or contradictory attribution is insufficient
 state, not a guessed attacker. A new Combat Showdown gives Focus to the
 attacker; an already-open Showdown at the same Battlefield keeps its Focus
-(464.2.c.1.a–b). Other active Showdowns/Combats block opening.
+(466.2.c.1.a–b). Other active Showdowns/Combats block opening.
 
 The procedure then assigns player and Unit designations, evaluates start /
 Attack / Defend triggers, gives the attacker Focus, and schedules the resulting
-Combat Chain in the order required by 464.2.e. A Chain opens only when an item
+Combat Chain in the order required by 466.2.d. A Chain opens only when an item
 was actually scheduled.
 
 ### 3. Designations are synchronized by Cleanup and trigger once per identity
@@ -69,7 +69,7 @@ was actually scheduled.
 At opening, every Unit at the Combat Battlefield controlled by the attacker or
 defender gains the matching designation. A later Unit of either participant
 that becomes present gains it during the following Cleanup; a Unit no longer
-there loses it (323.2, 464.2.c.3.a). The Combat record stores which object
+there loses it (323.2, 466.2.c.3.a). The Combat record stores which object
 identity has already produced its Attack/Defend trigger. Losing and regaining
 the designation does not trigger twice for the same identity in one Combat
 (383.4.e.2.a, 383.4.f.2.a). Leaving through a non-Board zone and returning is a
@@ -105,13 +105,13 @@ granted Shield is bound to the chosen identity and the current `combat_id`.
   Legend clause; it applies to each friendly Unit that is a lone Defender.
 
 Combat contributions clamp a negative final Might to zero without changing
-the stored arithmetic value (143.2.b). `current_might` keeps its existing
+the stored arithmetic value (143.2.c). `current_might` keeps its existing
 context-free compatibility contract.
 
 Shield/Tank/Ganking are characteristics. Permanent printed instances live on
 the object. Granted instances use typed `keyword_modifiers` with source,
 optional value, duration, and `combat_id`/`turn_id`; `this combat` grants are
-active only for the matching Combat and expire together at 466.7.c.
+active only for the matching Combat and expire together at 468.7.c.
 
 The Legend-object gap remains real. Master Yi - Wuju Bladesman's clause may be
 tested through a clearly marked probe, but stays `partial:
@@ -153,13 +153,13 @@ must not quietly turn the action into sequential damage or reuse Combat Damage.
 
 At Showdown close, if both sides still have designated Units at the Battlefield,
 sum the non-negative rules-facing Might of all non-Stunned Units on each side
-(423.1.b, 465.1–465.2.b). Starting with the attacker, each player supplies a
+(424.1.b, 467.1–467.2.b). Starting with the attacker, each player supplies a
 `damage_assignment` decision mapping every opposing Unit identity to a
 non-negative raw amount. The sum must equal that side's available Combat
 Damage. The engine may auto-advance only when exactly one legal assignment
 exists; otherwise it stops and names the assigning player.
 
-Validation enforces 465.2.c in full:
+Validation enforces 467.2.c in full:
 
 - lethal before moving to another Unit;
 - no over-assignment above minimum lethal while another eligible Unit remains;
@@ -178,16 +178,16 @@ interaction.
 
 ### 9. Assignment previews consume replacements exactly once (DP-33)
 
-Assignment is not Deal (417.1.a), but replacement effects that would alter the
-resulting damage are considered during assignment (465.2.c.5). Chronicle uses
+Assignment is not Deal (418.1.a), but replacement effects that would alter the
+resulting damage are considered during assignment (467.2.c.5). Chronicle uses
 the existing replacement descriptors in a non-committing preview. If order or
 choice changes legal minimum lethal, the affected Unit's controller supplies
 the existing replacement decision for the assignment event. The preview emits
 a receipt recording the transformed/prevented assigned amount and consumed
 replacement effects.
 
-When assignment completes, damage is Dealt simultaneously (465.2.c.1.a,
-465.2.d). The Deal step consumes the assignment receipt and must not apply the
+When assignment completes, damage is Dealt simultaneously (467.2.c.1.a,
+467.2.d). The Deal step consumes the assignment receipt and must not apply the
 same replacement a second time. Any descriptor the preview engine cannot
 evaluate makes the assignment `unsupported`; it must not be ignored to produce
 a seemingly legal allocation.
@@ -195,14 +195,14 @@ a seemingly legal allocation.
 ### 10. Combat Cleanup, result, and closure are separate refusable steps
 (DP-34)
 
-After simultaneous Deal, skip FEPR and enter Combat Resolution (465.3). Run one
+After simultaneous Deal, skip FEPR and enter Combat Resolution (467.3). Run one
 Combat Special Cleanup: ordinary lethal Cleanup, heal all Units, then Recall
-Attackers still present if Defenders remain (466.1). Combat-damage kills are
+Attackers still present if Defenders remain (468.1). Combat-damage kills are
 attributed to the Combat Damage source Units and their controllers
-(428.5.c.2). Pending death/reflexive items and associated FEPR finish before
+(429.5.c.2). Pending death/reflexive items and associated FEPR finish before
 result determination.
 
-`determine_combat_result` follows 466.3 exactly: win/loss only when one of the
+`determine_combat_result` follows 468.3 exactly: win/loss only when one of the
 two designated players alone has Units remaining; otherwise No Result,
 including the Recall case. A No Result with both sides remaining stages a new
 Showdown and Combat. G2 control establishment and points do not run here; the
@@ -211,7 +211,7 @@ boundary rather than inventing control or scoring.
 
 `close_combat` removes all player/Unit designations, clears the Combat and
 Showdown records, and expires all matching `this combat` effects simultaneously
-(466.7.a, 466.7.c). It may run only after the result and any required G2 handoff
+(468.7.a, 468.7.c). It may run only after the result and any required G2 handoff
 are recorded. No generic turn advance is implied.
 
 ### 11. R3-A3 status is derived from procedure coverage (DP-35)
@@ -223,7 +223,7 @@ fixtures as applicable. No card status is copied from this ADR.
   Wielder of Water, and the two vanilla Units may become full only when their
   corresponding procedure gates above pass.
 - Master Yi - Wuju Bladesman stays partial on `legend_zone_object`.
-- Tank stays partial if any required 465.2 assignment interaction remains
+- Tank stays partial if any required 467.2 assignment interaction remains
   unsupported.
 - A vanilla Unit uses a named intrinsic Unit-Combat program/probe; `(no rules
   text)` is never represented as a fabricated card instruction.

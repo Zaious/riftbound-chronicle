@@ -18,7 +18,7 @@ Must hold:
   - two staged Combats need the Turn Player's location choice and nothing
     commits until it arrives; with it the Combat opens at step 10 and its
     Attack triggers are scheduled;
-  - a non-Unit Gear at a Battlefield (323.7) fails the whole run closed;
+  - a non-Unit Gear at a Battlefield (323.6) fails the whole run closed;
     the combined result commits or commits nothing;
   - the staging and opening procedures called on their own still require
     the quiet boundary; determinism, engine-check wrapping, CLI off-cwd.
@@ -146,7 +146,7 @@ def main() -> int:
     if run_cleanup(t, two, stale_choice).get("valid") is not False:
         errors.append("a location that is not staged in the working state was accepted through the rebound envelope")
 
-    # --- 323.7 runs inside the same Cleanup (C-58, ADR-0015 §2) ---------------------------------------------------------
+    # --- 323.6 runs inside the same Cleanup (C-58, ADR-0015 §2) ---------------------------------------------------------
     # This used to fail the whole run closed; step 5 now Recalls the Gear on
     # the working state the other steps act on.
     geared = copy.deepcopy(scene)
@@ -156,7 +156,7 @@ def main() -> int:
     if not recalled.get("committed") or step5 is None or step5.get("recalled") != ["g1"]:
         errors.append(f"step 5 did not Recall an unattached Gear at a Battlefield: {recalled.get('reason_code')} {step5}")
     elif "g1" not in recalled["next_effect_state"]["players"]["p1"]["zones"]["base"]:
-        errors.append("the Recalled Gear did not arrive in its controller's Base (429)")
+        errors.append("the Recalled Gear did not arrive in its controller's Base (430)")
     elif recalled["next_effect_state"]["battlefields"]["bf1"]["objects"].count("g1"):
         errors.append("the Recalled Gear was left at the Battlefield")
 
@@ -170,7 +170,7 @@ def main() -> int:
     if errors:
         print("FAILED: cleanup orchestration checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: one Cleanup runs steps 1-10a in order on one working state with its 322 follow-ups, death triggers stay Pending while nothing resolves, control loss and staging and opening follow in the same run, a terminal at step 1 skips the rest, a location choice or a 323.7 case commits nothing, and the staging procedures on their own still require the quiet boundary.")
+    print("OK: one Cleanup runs steps 1-10a in order on one working state with its 322 follow-ups, death triggers stay Pending while nothing resolves, control loss and staging and opening follow in the same run, a terminal at step 1 skips the rest, a location choice or a 323.6 case commits nothing, and the staging procedures on their own still require the quiet boundary.")
     return 0
 
 

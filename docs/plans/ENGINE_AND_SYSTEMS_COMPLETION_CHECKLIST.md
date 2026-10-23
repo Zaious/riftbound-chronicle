@@ -2,7 +2,7 @@
 
 Status: active implementation ledger
 
-Baseline: Core Rules 2026-07-16; FAQ as of 2026-08-14
+Baseline: Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3); FAQ as of 2026-08-14
 
 Last reconciled: 2026-09-08
 
@@ -141,13 +141,13 @@ frozen, fixture expansion and official-example encoding become
 - [x] Atomic timing/effect resolution bridge with rollback.
 - [x] Permanent entry procedure: Units enter exhausted at the location chosen
   at play, Gear ready at the Base, new identity, not a Move (C-19; Core 359.2,
-  143.4, 446.2).
+  143.4, 448.2).
 - [x] Battlefield targets whose criteria-found affected objects are not
   targets; "all units at battlefields" targets nothing (C-20; Core 355.10.b/d).
 - [x] Bonus Damage as a property of the Deal action: summed once from active
-  sources, per affected object, before Prevent (C-20; Core 713–715, 437.1.a.1).
+  sources, per affected object, before Prevent (C-20; Core 713–715, 438.1.a.1).
 - [x] Discard from hand by the discarding player's private card_selection, as
-  many as possible (C-22; Core 422).
+  many as possible (C-22; Core 423).
 - [x] Deflect as a mandatory any-domain Power additional cost, paid by the
   player's resource_allocation (C-23; Core 809, 356.2.a.2).
 - [x] Granted one-turn, one-use replacement bound to an object's identity, and
@@ -168,7 +168,7 @@ frozen, fixture expansion and official-example encoding become
 - [x] Versioned cleanup decision artifact and atomic resubmission path.
 - [x] Play triggers on play completion and Move triggers on completed Moves,
   scheduled as chronological batches with trigger_order decisions (C-19, C-22;
-  Core 419.4.a, 383.2.c).
+  Core 420.4.a, 383.2.c).
 - [x] Entry-state replacements: an object's own "I enter ready" and a this-turn
   effect over the controller's played units; conflicting results require the
   controller's replacement_order decision (C-21; Core 369.3).
@@ -207,22 +207,22 @@ Claude may implement one bounded operation plus tests at a time.
   abilities; `play_token` is not a substitute.
   (C-19: Units and Gear resolve by the permanent entry procedure with the
   location chosen at play and the open-Battlefield permission, 355.2; play
-  triggers fire on play completion, 419.4.a; Spells since C-15, Runes via
+  triggers fire on play completion, 420.4.a; Spells since C-15, Runes via
   channel since C-16; C-42: activated abilities are chain items of kind
   `ability` with their source, [Add] included; C-44/C-45: typed play sources
   — hand, Champion Zone, trash with a granted permission, and facedown — with
-  Ambush and the Hidden path. 421.4 and the Cleanup removal of hidden cards
+  Ambush and the Hidden path. 422.4 and the Cleanup removal of hidden cards
   remain unsupported.)
 - [x] Look, reveal, search, shuffle, randomize, discard, and banish operations.
-  (C-22: discard as the player's private selection, 422; C-41: `look_at_top`,
+  (C-22: discard as the player's private selection, 423; C-41: `look_at_top`,
   `reveal`, `put_back` by the player's `card_ordering`, `put_in_hand`,
   `draw_it`, multi-card `recycle` as one Game Action and `predict`, none of
-  which Burn Out on a short deck, 431.1.c; C-43: `banish` and `burn`.
+  which Burn Out on a short deck, 432.1.c; C-43: `banish` and `burn`.
   Searching a deck and shuffling as a player action remain; randomization
   itself stays an external receipt, ADR-0010 §2.)
 - [x] Recall as its own non-Move action and correct destination semantics.
   (C-16: `recall` to the current controller's Base, damage/exhaustion/modifiers
-  retained, no Move trigger; Core 455–458.1.)
+  retained, no Move trigger; Core 457–460.1.)
 - [x] Countering Chain Items and counter-prevention interactions.
   (C-43, ADR-0011 §5: `counter` clears the effect-side entry and sends the
   card to its owner's trash — or hand — as a new object, records that it was
@@ -233,23 +233,23 @@ Claude may implement one bounded operation plus tests at a time.
 - [x] Attach, detach, Equip, Equipment, Gear Unit, Top-Most, and host changes.
   (C-46, ADR-0012 §4: `attached_to` names the Top-Most card and the other
   direction is derived; attaching takes the host's location and changes
-  nothing else, 434.4–434.5.a; every attached card's Might Bonus modulates the
+  nothing else, 435.4–435.5; every attached card's Might Bonus modulates the
   host, 159.1; detaching derives its destination — the host's location, the
   host's last board location when it left for a non-board zone, and a
-  Cleanup Recall record for a Gear left at a Battlefield, 435.4–435.4.b.
+  Cleanup Recall record for a Gear left at a Battlefield, 436.4–436.4.b.
   Equip runs through the activation path. Nested attachments and Effect Text
   appending are declared unsupported.)
 - [x] Buff/debuff objects and spend/remove/copy behavior beyond raw Might.
   (C-52, ADR-0013 §5: Empowered and Buffed as binary states with the rules'
   own idempotence — an already-Empowered object is a no-op with no second
-  event, 441.1.c.1, and a Unit that already carries a Buff counter is chosen
-  but not Buffed, 426.1.c — XP as a player value, and the three costs that
+  event, 442.1.c.1, and a Unit that already carries a Buff counter is chosen
+  but not Buffed, 427.1.c — XP as a player value, and the three costs that
   spend them: spend_xp, spend_buff and disempower_self. A Level ability needs
   no new machinery: it is a continuous effect gated by `xp_at_least` that
   stops applying when the XP drops. C-53, ADR-0013 §6: copy as a Trait-layer
   effect over the traits the model carries.)
 - [x] Channel and Rune-specific entry, ready/exhaust, and zone behavior.
-  (C-16: `channel_rune` with entry state, partial completion per 430.3, new
+  (C-16: `channel_rune` with entry state, partial completion per 431.3, new
   identity per 124.)
 - [ ] Create/copy predefined tokens from a versioned token catalog.
   (C-48, ADR-0012 §6: `token-catalog.v1` with its schema, the promotion tool
@@ -268,7 +268,7 @@ Claude may implement one bounded operation plus tests at a time.
   Combat or a Non-Combat Showdown and lost in Cleanup; Conquer and Hold once
   per Battlefield per turn with the Final Point rule; Score triggers from
   modelled board sources; the victory condition reported as facts only.
-  Still open: team scoring, Hidden (466.5.c), non-Conquer/Hold point
+  Still open: team scoring, Hidden (468.5.c), non-Conquer/Hold point
   sources, "activate" of named triggers, the Beginning Phase machine, the
   terminal state and Burn Out.)
 - [ ] Burn Out and its complete loss/continuation semantics.
@@ -276,7 +276,7 @@ Claude may implement one bounded operation plus tests at a time.
   beneficiary's point, the empty-Trash sequence with the immediate victory
   from the second Burn Out and a score-derived bound, the terminal written
   by every Draw entry's two-state commit; Burn Out from non-Draw
-  instructions (431.1.b) and the Predict / look / reveal exceptions remain.)
+  instructions (432.1.b) and the Predict / look / reveal exceptions remain.)
 
 ### Conditions, targets, and instruction grammar still required
 
@@ -349,10 +349,10 @@ accepted is `[CLAUDE-READY]`.
 - [ ] Instruction-level optional choices made during resolution.
 - [x] Complete continuous-effect dependency/layer system.
   (C-49, ADR-0013 §1–2: six legacy representations collapsed into one
-  canonical `continuous_effects[]`, and a real Core 476–480 engine over it —
+  canonical `continuous_effects[]`, and a real Core 478–482 engine over it —
   Trait, Ability and Arithmetic layers applied to a fixpoint, each effect
   applied once, dependency detected by trial application rather than declared,
-  and a timestamp fallback where nothing depends on anything. The Core 479
+  and a timestamp fallback where nothing depends on anything. The Core 481
   dependency example is a fixture: the dependency-aware order reads 6 where
   plain timestamp order reads 7. A dependency the engine cannot resolve is
   `layer_dependency_unresolved`, not a guess.)
@@ -415,13 +415,13 @@ Dependency milestones are defined in
   C-35 implement `battlefield_control.py`: atomic control resolution after
   a Combat or a Non-Combat Showdown, Conquer with the Final Point rule and
   its Burn Out rollback, typed Score triggers, staged Non-Combat Showdowns
-  opened by the Turn Player's choice, the board Cleanup steps 323.6 /
-  323.11 / 323.11.a, Hold as the Scoring Step, and `victory_check` facts.
+  opened by the Turn Player's choice, the board Cleanup steps 323.5 /
+  323.10 / 323.10.a, Hold as the Scoring Step, and `victory_check` facts.
   C-58, ADR-0015 §2: Cleanup step 5 — the unattached non-Unit Gear and Runes
   at Battlefields and everything in someone else's Base Recalled, and a Hidden
   card at a Battlefield its controller does not control sent to its owner's
   Trash, all on the working state the rest of the Cleanup acts on. An attached
-  Gear is passed by, its location being its Top-Most card's (434.4); a card
+  Gear is passed by, its location being its Top-Most card's (435.4); a card
   that stays facedown is never named in the public trace.
   Still open: team scoring, non-Conquer/Hold point sources, 383.4.g
   "activate", the Beginning Phase state machine.)
@@ -452,7 +452,7 @@ Dependency milestones are defined in
   steps 4, 6, 8–8a and 9 as `run_board_cleanup`, `stage_showdown` and
   `open_showdown`; C-36/C-39: step 1 as `check_terminal` and the whole
   sequence 1–10a with the 322 follow-ups as one atomic `run_cleanup` that
-  never pauses on the chain; step 5 (323.7) remains and fails the run
+  never pauses on the chain; step 5 (323.6) remains and fails the run
   closed whenever it applies.)
 - [ ] Special, Combat, and End-of-Turn Cleanup additions.
   (C-21: the Ending Special Cleanup; C-31: the Combat Special Cleanup —
@@ -460,12 +460,12 @@ Dependency milestones are defined in
 - [x] Attack declaration, attacker/defender designations, and legal defenders.
   (C-26: attacker = the player who applied Contested, defender the other
   participant, never guessed; designations on opening and by Cleanup; Core
-  464.2.c, 323.2.)
+  466.2.c, 323.2.)
 - [ ] Combat damage assignment, Tank/Backline conflicts, and simultaneous Deal.
   (C-30/C-31, bounded implementation slice: `damage_assignment` decisions validated for
-  465.2.c.3–c.9 with the official examples as goldens, Prevent values
+  467.2.c.3–c.9 with the official examples as goldens, Prevent values
   previewed and consumed once, receipts bound to the effect-state snapshot,
-  Units as sources; damage-exemption sources (465.2.c.10) and non-Prevent
+  Units as sources; damage-exemption sources (467.2.c.10) and non-Prevent
   assignment replacements remain unsupported, so Tank clauses stay partial.)
 - [x] Showdown staging, opening, action cycle, resolution, and closure.
   (C-26/C-30/C-31: staging, opening with Focus, Focus passes closing a
@@ -476,8 +476,8 @@ Dependency milestones are defined in
   (C-19: `contested` / `contested_by` recorded on entering an uncontrolled
   Battlefield, 190.3.a.1; C-33/C-34: control established after a Combat
   or a Non-Combat Showdown, Uncontrolled after an emptied Combat, lost in
-  the board Cleanup, Contested cleared / removed / re-applied per 466.5.a,
-  323.11, 323.11.a; 466.5.c Hidden unsupported.)
+  the board Cleanup, Contested cleared / removed / re-applied per 468.5.a,
+  323.10, 323.10.a; 468.5.c Hidden unsupported.)
 - [x] Implement the Conquer/point/control components required by G2.
   (C-33/C-35: `points`, `scored_this_turn`, `mode`, `score_battlefield`,
   Conquer and Hold, Score triggers, `victory_check` facts; bounded per
@@ -897,9 +897,9 @@ push” does not isolate a commit on shared `main`.
 | C-12 — completed 2026-09-03 | Execute R3-A0 Annie/Master Yi clause inventory | Selection record accepted; no engine changes allowed | Verify current text/errata, stable clause ids, draft unsupported/stale labels plus non-authoritative future recommendations, source ledger; no production activation |
 | C-13 — completed 2026-09-03 | R3-A1 clause ledger, fixture drafts, decision packets | Inventory accepted | Per-clause Core locators, four drafts per clause without expected outcomes, eleven packets for X-09 |
 | C-14 — completed 2026-09-04 | engine-decisions.v1, typed selectors, object identity, mistarget traces | ADR-0005 §1–3 | One decision envelope with stages; derived target status; identity across non-board zone changes; applied_full / applied_to_subset / skipped_illegal_target |
-| C-15 — completed 2026-09-04 | Atomic play/cost transaction and cost receipts | ADR-0005 §4; Codex conditional review applied | play_transaction.py; riftbound-cost-receipt.v1 with unique payment events; shared chain_items; Add window (429.3); cost_paid / cost_not_paid predicates |
+| C-15 — completed 2026-09-04 | Atomic play/cost transaction and cost receipts | ADR-0005 §4; Codex conditional review applied | play_transaction.py; riftbound-cost-receipt.v1 with unique payment events; shared chain_items; Add window (430.3); cost_paid / cost_not_paid predicates |
 | C-16 — completed 2026-09-04 | return_to_hand, recall, channel_rune | ADR-0005 §6, §8; Codex Q1–Q3 | Three distinct zone events with their own trigger classes and identity rules |
-| C-17 — completed 2026-09-04 | Typed linked-result predicates and caused_kill | ADR-0005 §5; Codex Q4 (b), Q5 | action_performed on the original action; requested_count_not_reached; conditional reflexive triggers built after Cleanup with 428.5.c attribution |
+| C-17 — completed 2026-09-04 | Typed linked-result predicates and caused_kill | ADR-0005 §5; Codex Q4 (b), Q5 | action_performed on the original action; requested_count_not_reached; conditional reflexive triggers built after Cleanup with 429.5.c attribution |
 | C-18 — completed 2026-09-04 | R3-A1 card programs and derived behavior manifest | C-14..C-17 landed; Codex Q7, Q10 | r3a1_programs.json with cited fixtures; r3a1_programs.py derives a draft card-behavior-manifest.v1; Vision unsupported; stale cards stay stale |
 | C-19 — completed 2026-09-05 | Permanent entry procedure, play triggers, open-Battlefield permission | ADR-0007 §1–3 | complete_permanent_play; entry_location chosen at play; contested_by without control; play triggers batch play:<item>; no Battlefield-control or Showdown claim |
 | C-20 — completed 2026-09-05 | Battlefield targets with criteria expansion, Bonus Damage | ADR-0007 §4–5 | `affected.criteria` next to targets, affected units never targets; damage_modifiers summed once, per unit, before Prevent |
@@ -912,18 +912,18 @@ push” does not isolate a commit on shared `main`.
 | C-27 — completed 2026-09-05 | Battlefield Defend triggers and combat-relative characteristics | ADR-0008 §4–5 | Battlefield attack/defend triggers fire for the Battlefield's controller only; effective_might adds Shield while defending, attacking_or_defending_alone, friendly_unit_defends_alone auras, clamps negatives at 0; grant_keyword with keyword_modifiers bound to the Combat in progress |
 | C-28 — completed 2026-09-05 | Atomic Standard Move and Ganking | ADR-0008 §6 | standard_move as a player action (validate_timing kind); simultaneous exhaust cost with confirmation; one destination; Base↔Battlefield routes; Battlefield→Battlefield only with active Ganking; relocation delegated to the Move operation |
 | C-29 — completed 2026-09-05 | Active-Combat criteria and mutual Might damage | ADR-0008 §7 | affected.criteria.location active_combat under the bridge's Combat context, empty without a Combat, unsupported when the claimed Combat cannot be confirmed; mutual_damage_current_might snapshots both Mights and Deals at once with the Units as sources |
-| C-30 — bounded slice completed 2026-09-05 | Combat Damage assignment and replacement preview receipts | ADR-0008 §8–9 | pass_focus closes the Combat Showdown; assign_combat_damage validates damage_assignment decisions against 465.2.c.3–c.9 (official examples as goldens), previews Prevent values only (other modes and 465.2.c.10 exemptions unsupported), auto-advances only for the sole legal assignment, records receipts bound to the effect-state snapshot |
-| C-31 — completed 2026-09-05 | Simultaneous Combat Deal, Cleanup, result and closure boundary | ADR-0008 §10 | deal_combat_damage from snapshot-bound receipts with replacements consumed once; combat_cleanup in 323 order (designations, death triggers, kills attributed per object to the opposing side, heal, Recall, 324.2 follow-up); determine_combat_result after the chain empties; close_combat expires this-combat effects, stages the both-remain Combat again, and abstains as unsupported battlefield_control_resolution where 466.5 would change control |
+| C-30 — bounded slice completed 2026-09-05 | Combat Damage assignment and replacement preview receipts | ADR-0008 §8–9 | pass_focus closes the Combat Showdown; assign_combat_damage validates damage_assignment decisions against 467.2.c.3–c.9 (official examples as goldens), previews Prevent values only (other modes and 467.2.c.10 exemptions unsupported), auto-advances only for the sole legal assignment, records receipts bound to the effect-state snapshot |
+| C-31 — completed 2026-09-05 | Simultaneous Combat Deal, Cleanup, result and closure boundary | ADR-0008 §10 | deal_combat_damage from snapshot-bound receipts with replacements consumed once; combat_cleanup in 323 order (designations, death triggers, kills attributed per object to the opposing side, heal, Recall, 324.2 follow-up); determine_combat_result after the chain empties; close_combat expires this-combat effects, stages the both-remain Combat again, and abstains as unsupported battlefield_control_resolution where 468.5 would change control |
 | C-32 — completed 2026-09-05 | R3-A3 card programs and re-derived manifest | C-26..C-31 landed; ADR-0008 §11; Codex review-fix | 13 clauses / 12 cards with combat-scenario fixtures staged by the real procedures; 9 full, 4 partial (the Legend clause, the two Tank clauses, the mutual-damage clause); vanilla Units probed as intrinsic unit_combat; mirrored runs |
-| C-33 — completed 2026-09-06 | Battlefield control resolution, Conquer scoring and Score triggers | ADR-0009 §1–2, §5–7, §11 | battlefield_control.resolve_battlefield_control atomic after a decided Combat (466.5, control_resolved); score_battlefield once per Battlefield per turn with the Final Point rule, draw-instead and unsupported burn_out rollback; Score triggers unit_here / controller / Battlefield; close_combat after control resolution; engine-check kind control_step |
-| C-34 — completed 2026-09-06 | Non-Combat Showdowns and board Cleanup | ADR-0009 §3–4, §9 | stage_showdown rebuilds staged_showdowns; open_showdown with showdown_location and Focus to the applier before 323.13; pass_focus marks a Non-Combat Showdown closing; sole occupant hands over to control resolution, empty defers to 323.6, both present unsupported; run_board_cleanup for 323.6 / 323.11 / 323.11.a with an ongoing-only exemption |
+| C-33 — completed 2026-09-06 | Battlefield control resolution, Conquer scoring and Score triggers | ADR-0009 §1–2, §5–7, §11 | battlefield_control.resolve_battlefield_control atomic after a decided Combat (468.5, control_resolved); score_battlefield once per Battlefield per turn with the Final Point rule, draw-instead and unsupported burn_out rollback; Score triggers unit_here / controller / Battlefield; close_combat after control resolution; engine-check kind control_step |
+| C-34 — completed 2026-09-06 | Non-Combat Showdowns and board Cleanup | ADR-0009 §3–4, §9 | stage_showdown rebuilds staged_showdowns; open_showdown with showdown_location and Focus to the applier before 323.12; pass_focus marks a Non-Combat Showdown closing; sole occupant hands over to control resolution, empty defers to 323.5, both present unsupported; run_board_cleanup for 323.5 / 323.10 / 323.10.a with an ongoing-only exemption |
 | C-35 — completed 2026-09-06 | Scoring Step (Hold), victory facts, control_step scope and docs | ADR-0009 §8, §10, §12 | run_scoring_step Holds every controlled Battlefield not yet scored with no Final Point restriction, one trigger batch; victory_facts step reports threshold_met / strict_leader / tied_at_threshold without a winner; engine-check.md, rules-core.md, effect-ir.md |
 | C-36 — completed 2026-09-06 | Terminal state, shared game-over guard and reward projection | ADR-0010 §3–4, §10 | terminal.check_terminal as Cleanup step 1 (strict leader ends, tie continues); declare_terminal records concession / external; one guard in the timing kernel and the two-state validators; frozen snapshot; reward_adapter.py read-only +1 / −1 / 0 |
 | C-37 — completed 2026-09-06 | Burn Out on Draw, randomization receipts and the terminal bridge | ADR-0010 §2 | effect_ir.perform_draw with randomization-receipt.v1 and player_selection; the empty-Trash sequence wins immediately from the second Burn Out; every Draw entry (bridge, control transaction, scoring step, draw step) writes the terminal in its own commit; Draw clauses derive full |
 | C-38 — completed 2026-09-06 | Start of Turn state machine, Mode of Play and turn transition | ADR-0010 §1, §6–9 | turn_cycle.py begin_turn / awaken / enter_beginning / channel / draw / enter_main with typed turn_progress and 319.2 Cleanup gating; First Turn Process from mode.id (duel, skirmish) or mode.first_turn; match and team modes unsupported |
-| C-39 — completed 2026-09-06 | Atomic Cleanup orchestration with 322 iterations and G3 docs | ADR-0010 §5, §11 | run_cleanup runs 323 steps 1–10a on one working state, death triggers stay Pending, follow-up Cleanups iterate to a stable state, any decision or unsupported step commits nothing, 323.7 fails closed |
+| C-39 — completed 2026-09-06 | Atomic Cleanup orchestration with 322 iterations and G3 docs | ADR-0010 §5, §11 | run_cleanup runs 323 steps 1–10a on one working state, death triggers stay Pending, follow-up Cleanups iterate to a stable state, any decision or unsupported step commits nothing, 323.6 fails closed |
 | C-40 — completed 2026-09-06 | Choice grammar, modal abilities and the new decision kinds | ADR-0011 §1–2, §6 | One typed `choice` specification over engine-decisions.v1; `mode_selection` by stable option id recorded on the chain entry; `card_ordering` for permutations; private options never listed in a result or an engine-check |
-| C-41 — completed 2026-09-06 | Look, reveal, put back, recycle and Predict | ADR-0011 §3 | look_at_top / reveal marks that live only while a program runs (424.3.a), put_back by the player's card_ordering, put_in_hand / draw_it, multi-card recycle as one Game Action with the 416.5 order, Predict without Burn Out |
+| C-41 — completed 2026-09-06 | Look, reveal, put back, recycle and Predict | ADR-0011 §3 | look_at_top / reveal marks that live only while a program runs (425.3.a), put_back by the player's card_ordering, put_in_hand / draw_it, multi-card recycle as one Game Action with the 417.5 order, Predict without Burn Out |
 | C-42 — completed 2026-09-06 | Payment catalogue, activated abilities, Repeat and restricted resources | ADR-0011 §4 | discard / recycle_trash / kill_this / recall_self payments with receipt events; activated abilities as chain items of kind `ability`; [Repeat] executions with suffixed choices; restricted Add resources spent only on their named uses; cost modifications accepted only as evaluated typed input |
 | C-43 — completed 2026-09-06 | Banish, Counter and [Burn N] | ADR-0011 §5 | banish (not a Kill, not a Discard); counter clearing the chain item on both sides in one commit via rules_core.remove_chain_item; burn, with a short deck refused as burn_out_non_draw rather than borrowing the Draw receipt |
 | C-44 — completed 2026-09-06 | Play sources, cost overrides, Ambush and Unique | ADR-0012 §1–2 | Typed `source` (hand, Champion Zone, trash with a granted permission), `cost_override`, Ambush as a play permission with its timing; Unique recorded as the deck-construction constraint Core 825.3 makes it, never a play restriction |

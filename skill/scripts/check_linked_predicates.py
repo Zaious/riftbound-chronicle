@@ -14,8 +14,8 @@ Must hold:
     effect predicate is unsupported;
   - conditional_triggers: "If this kills it" builds a Pending reflexive item
     only after Cleanup kills the damaged object, attributed to the resolving
-    spell (428.5.c); a prevented death, non-lethal damage, or a prevented
-    deal builds nothing; a Kill instruction attributes directly (428.5.b);
+    spell (429.5.c); a prevented death, non-lethal damage, or a prevented
+    deal builds nothing; a Kill instruction attributes directly (429.5.b);
   - the bridge stays deterministic and pure; engine-check wraps it.
 """
 
@@ -84,7 +84,7 @@ def main() -> int:
     if outcome(subset, 1) != "applied":
         errors.append(f"a multi-target subset did not satisfy requested_count_not_reached: {outcome(subset, 0)} / {outcome(subset, 1)}")
 
-    # --- Catalyst of Aeons (Core 430.5's own example) through the grammar ---------------------------
+    # --- Catalyst of Aeons (Core 431.5's own example) through the grammar ---------------------------
     # "If you couldn't channel 2 runes this way, draw 1." reads THAT Channel's receipt:
     # 2 channelled -> no draw, 1 -> draw 1, 0 -> draw 1 (GPT 2026-09-24).
     import json as _json
@@ -162,7 +162,7 @@ def main() -> int:
     ct = (res.get("trace", {}).get("conditional_triggers") or [{}])[0]
     if not res.get("committed") or [i["id"] for i in items] != ["disintegrate-draw"] or items[0].get("trigger_kind") != "reflexive" or items[0].get("status") != "pending":
         errors.append(f"'If this kills it' did not build a Pending reflexive item after Cleanup: {res.get('stage')} {res.get('reason')} {[i.get('id') for i in items]}")
-    if ct.get("held") is not True or ct.get("killed_objects") != ["u2"] or ct.get("attributed_to") != "spell-1" or "Core 428.5.c" not in ct.get("rule_locators", []):
+    if ct.get("held") is not True or ct.get("killed_objects") != ["u2"] or ct.get("attributed_to") != "spell-1" or "Core 429.5.c" not in ct.get("rule_locators", []):
         errors.append(f"conditional trigger trace lacks attribution: {ct}")
     if res.get("committed") and "u2" not in res["next_effect_state"]["players"]["p2"]["zones"]["trash"]:
         errors.append("Cleanup did not kill the damaged unit")
@@ -222,19 +222,19 @@ def main() -> int:
     kill_prog = {**program("spell-1-effects", {"op": "kill", "object_id": "u2", "effect_id": "dmg"}), "source_object": "spell-1", "conditional_triggers": [trigger]}
     direct = resolve_with_program(timing, "spell-1", state, kill_prog)
     dct = (direct.get("trace", {}).get("conditional_triggers") or [{}])[0]
-    if not direct.get("committed") or [i["id"] for i in direct["next_timing_state"]["chain"]["items"]] != ["disintegrate-draw"] or "Core 428.5.b" not in dct.get("rule_locators", []):
-        errors.append(f"a Kill instruction did not attribute directly (428.5.b): {dct}")
+    if not direct.get("committed") or [i["id"] for i in direct["next_timing_state"]["chain"]["items"]] != ["disintegrate-draw"] or "Core 429.5.b" not in dct.get("rule_locators", []):
+        errors.append(f"a Kill instruction did not attribute directly (429.5.b): {dct}")
     kill_guarded = copy.deepcopy(state); kill_guarded["replacement_effects"] = guarded["replacement_effects"]
     if resolve_with_program(timing, "spell-1", kill_guarded, kill_prog).get("next_timing_state", {}).get("chain", {}).get("items"):
         errors.append("a prevented Kill instruction still built the trigger")
     check = build_engine_check("resolution", res, input_hashes={"timing_state": state_hash(timing), "effect_state": hash_value(lethal), "effect_program": "sha256:" + "2" * 64})
-    if check["outcome"] != "supported" or "Core 428.5.c" not in check["rule_locators"]:
+    if check["outcome"] != "supported" or "Core 429.5.c" not in check["rule_locators"]:
         errors.append(f"engine-check did not wrap the conditional resolution: {check['outcome']}")
 
     if errors:
         print("FAILED: linked predicate checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: action predicates read the earlier instruction's event (partly prevented is performed, wholly prevented or replaced is not, a no-op is not), requested_count_not_reached fires on a short Channel or a target subset, unknown or forward references are invalid_input, caused_kill is not an in-program predicate, and 'If this kills it' becomes a Pending reflexive item only after Cleanup kills the object with 428.5.c attribution — never when a replacement prevented the death.")
+    print("OK: action predicates read the earlier instruction's event (partly prevented is performed, wholly prevented or replaced is not, a no-op is not), requested_count_not_reached fires on a short Channel or a target subset, unknown or forward references are invalid_input, caused_kill is not an in-program predicate, and 'If this kills it' becomes a Pending reflexive item only after Cleanup kills the object with 429.5.c attribution — never when a replacement prevented the death.")
     return 0
 
 

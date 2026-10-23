@@ -373,7 +373,7 @@ def _declaration(clause: dict[str, Any], fixture: dict[str, Any], program_id: st
     declaration.update(copy.deepcopy(template))
     if program_id and "effect_program_id" not in declaration:
         declaration["effect_program_id"] = program_id
-    # Core 429.3: fixtures state a human-confirmed closed Add window unless the
+    # Core 430.3: fixtures state a human-confirmed closed Add window unless the
     # fixture is about the window itself (payment_context: null).
     if "payment_context" in fixture:
         if fixture["payment_context"] is not None:
@@ -649,7 +649,7 @@ def _compare(fixture: dict[str, Any], run: dict[str, Any]) -> list[str]:
                 problems.append(f"printed might of {item['printed_might']} is {current_might(obj) if obj else None}, expected {item['equals']}")
         elif "might" in item:
             # ADR-0013 §2: the arithmetic value the layers produce, before the
-            # rules-facing clamp that `effective_might` applies (143.2.b).
+            # rules-facing clamp that `effective_might` applies (143.2.c).
             obj = (next_state or {}).get("objects", {}).get(item["might"])
             value = characteristics(next_state, item["might"])["might"] if obj is not None else None
             if value != item["equals"]:

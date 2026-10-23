@@ -23,7 +23,7 @@
       ],
       "properties": {
         "core": {
-          "const": "2026-07-16"
+          "const": "2026-10-09"
         },
         "faq_as_of": {
           "const": "2026-08-14"
@@ -39,7 +39,7 @@
     },
     "conditional_triggers": {
       "type": "array",
-      "description": "Reflexive triggers whose condition is only known after Cleanup (Core 428.5.c, 387–388). The resolution bridge evaluates them and builds Pending items for those that hold; a prevented death builds nothing.",
+      "description": "Reflexive triggers whose condition is only known after Cleanup (Core 429.5.c, 388–389). The resolution bridge evaluates them and builds Pending items for those that hold; a prevented death builds nothing.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -240,7 +240,7 @@
               "ready",
               "exhausted"
             ],
-            "description": "channel_rune: the state the runes enter with (Core 430.2); ready by default (430.2.a)."
+            "description": "channel_rune: the state the runes enter with (Core 431.2); ready by default (431.2.a)."
           },
           "turn_effect_kind": {
             "enum": [
@@ -251,7 +251,7 @@
           "decision_ref": {
             "type": "string",
             "minLength": 1,
-            "description": "discard: the card_selection decision the discarding player supplies (Core 422.1.a); not needed when the whole hand must go."
+            "description": "discard: the card_selection decision the discarding player supplies (Core 423.1.a); not needed when the whole hand must go."
           },
           "replacement": {
             "type": "object",
@@ -277,7 +277,7 @@
             "items": {
               "type": "object"
             },
-            "description": "mutual_damage_current_might: the two Unit selectors (each may defer to a decision_ref); they deal their current Might to each other simultaneously with the Units as sources (417.6.b.3)."
+            "description": "mutual_damage_current_might: the two Unit selectors (each may defer to a decision_ref); they deal their current Might to each other simultaneously with the Units as sources (418.6.b.3)."
           },
           "value": {},
           "base_might": {
@@ -467,7 +467,7 @@
               "main_deck_top",
               "hand"
             ],
-            "description": "reveal: the zone revealed (Core 424.2); a hand reveal shows every card."
+            "description": "reveal: the zone revealed (Core 425.2); a hand reveal shows every card."
           },
           "position": {
             "enum": [
@@ -484,12 +484,12 @@
           "order_ref": {
             "type": "string",
             "minLength": 1,
-            "description": "recycle / predict: the card_ordering for two or more cards Recycled to one deck (Core 416.5)."
+            "description": "recycle / predict: the card_ordering for two or more cards Recycled to one deck (Core 417.5)."
           },
           "put_back_ref": {
             "type": "string",
             "minLength": 1,
-            "description": "predict: the card_ordering of the cards put back on top (Core 436.1.a)."
+            "description": "predict: the card_ordering of the cards put back on top (Core 437.1.a)."
           },
           "objects": {
             "type": "array",
@@ -532,14 +532,14 @@
           "chain_item_id": {
             "type": "string",
             "minLength": 1,
-            "description": "counter: the chain item cleared from the chain (Core 425.1). The caller removes the timing item in the same commit."
+            "description": "counter: the chain item cleared from the chain (Core 426.1). The caller removes the timing item in the same commit."
           },
           "card_to": {
             "enum": [
               "trash",
               "hand"
             ],
-            "description": "counter: where the countered card goes — its owner's trash (Core 425.1.a), or their hand when the countering effect says so."
+            "description": "counter: where the countered card goes — its owner's trash (Core 426.1.a), or their hand when the countering effect says so."
           },
           "player": {
             "type": "string",
@@ -548,7 +548,7 @@
           "to": {
             "type": "string",
             "minLength": 1,
-            "description": "attach: the Top-Most card (Core 434.1.b)."
+            "description": "attach: the Top-Most card (Core 435.1.b)."
           },
           "source_object": {
             "type": "string",
@@ -574,7 +574,7 @@
                 "rules_text"
               ]
             },
-            "description": "copy_object: the copyable traits to apply (Core 477.1). A trait the model does not carry is refused as copy_unmodelled_traits."
+            "description": "copy_object: the copyable traits to apply (Core 479.2). A trait the model does not carry is refused as copy_unmodelled_traits."
           },
           "division_ref": {
             "type": "string",
@@ -639,11 +639,11 @@
           "rest_of": {
             "type": "string",
             "minLength": 1,
-            "description": "recycle (package 6): recycle what the group's choices were offered and did not take ('Recycle the rest'), each to its owner's deck (Core 416.1.c), each deck ordered by its owner under order_ref:<owner>.<deck>."
+            "description": "recycle (package 6): recycle what the group's choices were offered and did not take ('Recycle the rest'), each to its owner's deck (Core 417.1.c), each deck ordered by its owner under order_ref:<owner>.<deck>."
           },
           "whole_hand": {
             "const": true,
-            "description": "discard (package 6): every card in the player's hand as the instruction executes ('discards their hand'); an empty hand discards nothing (Core 422.4)."
+            "description": "discard (package 6): every card in the player's hand as the instruction executes ('discards their hand'); an empty hand discards nothing (Core 423.4)."
           },
           "record": {
             "type": "string",
@@ -696,7 +696,7 @@
         "decision_ref",
         "options"
       ],
-      "description": "ADR-0011 §2: a 'Choose one —' program. The instructions live in the options; a mode_selection decision names one by its stable option_id at the stated timing (Core 402.2). A modal program's top-level effects is empty.",
+      "description": "ADR-0011 §2: a 'Choose one —' program. The instructions live in the options; a mode_selection decision names one by its stable option_id at the stated timing (Core 403.2). A modal program's top-level effects is empty.",
       "properties": {
         "choose": {
           "const": 1

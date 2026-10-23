@@ -80,7 +80,7 @@ def main() -> int:
             errors.append(f"'kill all gear' did not kill exactly every gear on the board: {where}")
     # 2026-09-25 (GPT's counterexample): an ATTACHED gear on the same board. After "Kill all
     # gear" it is in its owner's trash, no longer attached; its host has lost the Might Bonus
-    # (Core 435.1.e); the state is valid; the unattached gear is in the trash too
+    # (Core 436.1.e); the state is valid; the unattached gear is in the trash too
     armed = board()
     armed["objects"]["g3"] = {"owner": "p1", "controller": "p1", "kind": "gear", "base_might": 0, "might_modifiers": [],
                               "damage": 0, "exhausted": False, "attached_to": "u1", "might_bonus": 2}

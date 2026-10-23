@@ -14,7 +14,7 @@ Must hold:
     enemy's does not); without a designation it never holds;
   - friendly_unit_defends_alone auras add to each friendly lone Defender
     only while the source is on the board; attackers and enemies get none;
-  - a negative total reads as 0 (143.2.b) while current_might keeps the
+  - a negative total reads as 0 (143.2.c) while current_might keeps the
     arithmetic value; lethal Cleanup reads the clamped value;
   - a Battlefield's Defend trigger fires at opening only when the
     Battlefield's controller is the defender (190.6.a, 190.6.d): controlled
@@ -144,9 +144,9 @@ def main() -> int:
     weak = base_state()
     weak["objects"]["u1"]["might_modifiers"] = [{"amount": -5, "duration": "persistent", "source": "curse"}]
     # ADR-0013 §2: the layer engine keeps the arithmetic value; the rules-facing
-    # read clamps it (143.2.b).
+    # read clamps it (143.2.c).
     if effective_might(weak, "u1") != 0 or characteristics(weak, "u1")["might"] != -2:
-        errors.append(f"negative Might was not read as 0 while keeping its arithmetic value (143.2.b): {effective_might(weak, 'u1')} {characteristics(weak, 'u1')['might']}")
+        errors.append(f"negative Might was not read as 0 while keeping its arithmetic value (143.2.c): {effective_might(weak, 'u1')} {characteristics(weak, 'u1')['might']}")
     cleanup = perform_lethal_cleanup(weak)  # u1 carries 1 damage
     if not cleanup.get("committed") or "u1" not in cleanup["next_state"]["players"]["p1"]["zones"]["trash"]:
         errors.append("lethal Cleanup did not read the clamped Might (1 damage on Might 0)")

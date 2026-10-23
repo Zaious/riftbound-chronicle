@@ -199,7 +199,7 @@ def main() -> int:
     if not other_unit.get("committed"):
         errors.append(f"'another unit' refused a different friendly unit: {other_unit.get('reason')} {other_unit.get('message')}")
 
-    # --- a Battlefield's own trigger: "When you hold here" (Core 190.6.a, 469.2, 383.4.d) --------
+    # --- a Battlefield's own trigger: "When you hold here" (Core 190.6.a, 471.2, 383.4.d) --------
     # Its descriptor names no controller (the Battlefield's controller when it triggers) and
     # lives on the Battlefield, not an object; the Scoring Step schedules it. It is finalized
     # and dispatched exactly like an object's trigger, and its program hash binds the same way.

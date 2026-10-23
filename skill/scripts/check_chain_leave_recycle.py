@@ -3,7 +3,7 @@
 
 "When I conquer, you may play a spell from your trash with Energy cost less than your points without paying its Energy
 cost. Then recycle it. (You must still pay its Power cost.)" GPT 2026-10-04 (PACKAGE8_INVENTORY section 6, ruling 2):
-"Then recycle it" is, by Core 390.3.a, a delayed replacement bound to that spell - once it is a Finalized Chain item,
+"Then recycle it" is, by Core 391.3.a, a delayed replacement bound to that spell - once it is a Finalized Chain item,
 if it would leave the Chain and that leaving is not instructed by its own execution, it is recycled instead; not a
 recycle of the Pending spell while the ability resolves, not an unconditional recycle after it resolves normally; the
 countered path is witnessed too.

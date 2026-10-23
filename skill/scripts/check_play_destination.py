@@ -8,7 +8,7 @@ Codex read the phrase off the Core rather than off a ruling:
     170.11.a  "occupied" means a Unit is there - *a* Unit, not an enemy's.
     355.2.a   the default is the actor's own Base or a Battlefield the actor
               controls; 355.2.b lets a card widen that.
-    323.6     Cleanup removes a controller from a Battlefield with none of
+    323.5     Cleanup removes a controller from a Battlefield with none of
               their Units left, so by the next window to play a Unit, a
               Battlefield whose owner has nothing there is no longer theirs.
 
@@ -175,9 +175,9 @@ def main() -> int:
         if offered != {"bf1"}:
             errors.append(f"the enumerator offered the wrong Battlefields: {offered}")
 
-    # --- 323.6: a controller with no Units left loses the Battlefield, so the ----------------------------
+    # --- 323.5: a controller with no Units left loses the Battlefield, so the ----------------------------
     #     permission finds nothing there at the next window to play a Unit.
-    vacated = board(controller=None, units=[])   # what 323.6 leaves behind
+    vacated = board(controller=None, units=[])   # what 323.5 leaves behind
     vacated["objects"]["c1"]["play_permissions"] = ["occupied_enemy_battlefield"]
     if play(vacated).get("committed"):
         errors.append("the permission reached a Battlefield whose controller Cleanup had already removed")

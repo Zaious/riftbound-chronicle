@@ -5,7 +5,7 @@ Gate (package 9): damage prevention - Unyielding Spirit and Kayn - Unleashed.
 GPT 2026-10-06 rulings 8 and 9.
   Unyielding Spirit "Prevent all spell and ability damage this turn." - every Deal this turn whose source is a spell or
   an ability is prevented, on any player's object, a spell played after it included; combat damage is not (its source
-  is the units, Core 417.6.c), nor a Deal a spell names a Unit as the source of (417.6.b.3).
+  is the units, Core 418.6.c), nor a Deal a spell names a Unit as the source of (418.6.b.3).
   Kayn - Unleashed "If I have moved twice this turn, I don't take damage." - at least two real Moves this turn (the
   third does not undo it); a standard Move and an effect's Move both count, a Recall does not; read each time he would
   take damage; combat damage included; a new object with the same id does not keep the old one's Moves (Core 124).

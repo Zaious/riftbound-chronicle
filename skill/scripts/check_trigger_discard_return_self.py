@@ -4,7 +4,7 @@ conquer, you may discard 1 to return this from your trash to your hand.").
 
 "You may discard 1 to ..." opens the effect, so discarding is the ability's base cost (Core 383.3.b), paid as it is
 finalized (383.3.b.1): the payer chooses the card from their hand then (trigger_finalization), and with none to discard
-the cost cannot be paid and the ability leaves the Chain (203.3, 404.2). "Return this from your trash to your hand" is
+the cost cannot be paid and the ability leaves the Chain (203.3, 405.2). "Return this from your trash to your hand" is
 the program's own source (return_to_hand self {from: trash}), as its chain item recorded it: still there, it goes to its
 owner's hand as a new object; gone, or back as a new object, the instruction is ignored - the discard stays paid, and no
 other card is taken (GPT 2026-10-12 PACKAGE11 ruling 6).

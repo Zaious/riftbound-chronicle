@@ -1,6 +1,6 @@
 {
   "schema_version": "rule-consult-cases.v1",
-  "ruleset_baseline": "2026-07-16 rules, effective 2026-07-24",
+  "ruleset_baseline": "2026-10-09 rules, effective 2026-10-16",
   "last_verified": "2026-08-26",
   "cases": [
     {
@@ -13,7 +13,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 117.1–117.3"
     },
     {
@@ -26,7 +26,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 339.1, 340.1–340.4"
     },
     {
@@ -39,7 +39,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 310.1.a"
     },
     {
@@ -52,7 +52,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 308.1.a, 806.1"
     },
     {
@@ -65,8 +65,8 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16", "vendetta-patch-notes-2026-07-17"],
-      "locator": "Core Rules 465.2.c; current replacement-effect assignment rules"
+      "source_ids": ["core-rules-2026-10-09", "vendetta-patch-notes-2026-07-17"],
+      "locator": "Core Rules 467.2.c; current replacement-effect assignment rules"
     },
     {
       "case_id": "RC-006",
@@ -78,7 +78,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 344.2, 345, 348.2.a"
     },
     {
@@ -91,8 +91,8 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
-      "locator": "Core Rules 431.2"
+      "source_ids": ["core-rules-2026-10-09"],
+      "locator": "Core Rules 432.2"
     },
     {
       "case_id": "RC-008",
@@ -104,7 +104,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["tournament-rules-2026-07-16", "core-rules-2026-07-16"],
+      "source_ids": ["tournament-rules-2026-07-16", "core-rules-2026-10-09"],
       "locator": "Tournament Rules 104.1; event addendum caveat 104.3"
     },
     {
@@ -130,7 +130,7 @@
         "confidence": "Medium",
         "escalation_required": false
       },
-      "source_ids": ["vendetta-rules-faq-2026-08-14", "core-rules-2026-07-16"],
+      "source_ids": ["vendetta-rules-faq-2026-08-14", "core-rules-2026-10-09"],
       "locator": "Vendetta FAQ opening precedence statement; current Core Rules version/effective date"
     },
     {
@@ -182,8 +182,8 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
-      "locator": "Core Rules 413.4.a–413.4.c"
+      "source_ids": ["core-rules-2026-10-09"],
+      "locator": "Core Rules 414.4.a–414.4.c"
     },
     {
       "case_id": "RC-015",
@@ -195,8 +195,8 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
-      "locator": "Core Rules 416.1, 416.1.c, 416.5"
+      "source_ids": ["core-rules-2026-10-09"],
+      "locator": "Core Rules 417.1, 417.1.c, 417.5"
     },
     {
       "case_id": "RC-016",
@@ -208,7 +208,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 142.4.a–142.4.b"
     },
     {
@@ -221,7 +221,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 370.1.b, 370.2, 372"
     },
     {
@@ -234,7 +234,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 371.1–371.2.b"
     },
     {
@@ -247,7 +247,7 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
+      "source_ids": ["core-rules-2026-10-09"],
       "locator": "Core Rules 370.1.b–370.1.c"
     },
     {
@@ -260,8 +260,8 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
-      "locator": "Core Rules 428.4, 428.5.c"
+      "source_ids": ["core-rules-2026-10-09"],
+      "locator": "Core Rules 429.4, 429.5.c"
     },
     {
       "case_id": "RC-021",
@@ -273,8 +273,8 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
-      "locator": "Core Rules 387.1.a, 388.1–388.2"
+      "source_ids": ["core-rules-2026-10-09"],
+      "locator": "Core Rules 388.1.a, 389.1–389.2"
     },
     {
       "case_id": "RC-022",
@@ -286,8 +286,8 @@
         "confidence": "High",
         "escalation_required": false
       },
-      "source_ids": ["core-rules-2026-07-16"],
-      "locator": "Core Rules 429.2–429.2.b"
+      "source_ids": ["core-rules-2026-10-09"],
+      "locator": "Core Rules 430.2–430.2.b"
     }
   ]
 }

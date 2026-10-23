@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regression gate: swapping two Units' Might is two Might changes, not a write.
 
-"Swap the Might of two units this turn" reads as one instruction, but Core 477
+"Swap the Might of two units this turn" reads as one instruction, but Core 479
 has no operation that assigns a Might. What it has is Might changes, and the
 official reading is that the difference is worked out first and then applied to
 both Units - a decrease on one and an increase on the other. That is not a
@@ -81,7 +81,7 @@ def main() -> int:
             failures.append(f"the swap event does not record one snapshot and one delta: {parent}")
         children = [event_for(result, "sw:a"), event_for(result, "sw:b")]
         if any(child is None or child.get("op") != "modify_might" for child in children):
-            failures.append("the swap did not expand into two ordinary modify_might events (Core 477)")
+            failures.append("the swap did not expand into two ordinary modify_might events (Core 479)")
         elif [child["amount"] for child in children] != [-4, 4]:
             failures.append(f"the two Might changes are not the one difference, both ways: {children}")
 
@@ -130,7 +130,7 @@ def main() -> int:
         "op": "swap_might", "effect_id": "sw", "source": "kayle", "amount": 3,
         "units": pair, "duration": "this_turn"}))
     if bad.get("valid") is not False:
-        failures.append("swap_might accepted an amount of its own; the change is the difference (Core 477)")
+        failures.append("swap_might accepted an amount of its own; the change is the difference (Core 479)")
 
     junk = IR.apply_program(two_units(6, 2), program("swap", {
         "op": "swap_might", "effect_id": "sw", "source": "kayle", "duration": "this_turn",
@@ -144,7 +144,7 @@ def main() -> int:
     if one.get("valid") is not False:
         failures.append("swap_might accepted a single Unit")
 
-    print("swap_might (Core 477, 135.2.e.3, 370.1.a, 373.2, 359.3.e.5)")
+    print("swap_might (Core 479, 135.2.e.3, 370.1.a, 373.2, 359.3.e.5)")
     print(f"  rule locators: {IR.OP_RULES['swap_might']}")
     print("  6/2 -> 2/6 as two modify_might events; equal Mights leave no event;")
     print("  the same Unit twice and an illegal referent are both refused whole")

@@ -26,7 +26,7 @@
       "description": "ADR-0010 §1: typed Start of Turn progress — which step of the current turn completed — so the next phase is reached by its procedure, never by editing phase.",
       "properties": {
         "turn_id": {"type": "string", "minLength": 1},
-        "first_turn": {"type": "object", "additionalProperties": false, "required": ["extra_channel", "skip_draw", "source"], "properties": {"extra_channel": {"type": "boolean"}, "skip_draw": {"type": "boolean"}, "source": {"type": "string"}}, "description": "The First Turn Process read before turns_taken incremented (Core 483.7)."},
+        "first_turn": {"type": "object", "additionalProperties": false, "required": ["extra_channel", "skip_draw", "source"], "properties": {"extra_channel": {"type": "boolean"}, "skip_draw": {"type": "boolean"}, "source": {"type": "string"}}, "description": "The First Turn Process read before turns_taken incremented (Core 485.7)."},
         "awaken_complete": {"type": "boolean"},
         "beginning_entered": {"type": "boolean"},
         "scoring_complete": {"type": "boolean"},
@@ -44,14 +44,14 @@
         "active": {"type": "boolean"},
         "kind": {"type": ["string", "null"], "enum": ["combat", "non_combat", null]},
         "focus": {"type": ["string", "null"]},
-        "battlefield": {"type": ["string", "null"], "description": "ADR-0008 §2: the Battlefield the Showdown is at; required to match a staged Combat to it (323.14, 464.1)."},
+        "battlefield": {"type": ["string", "null"], "description": "ADR-0008 §2: the Battlefield the Showdown is at; required to match a staged Combat to it (323.13, 466.1)."},
         "focus_passes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "description": "Players who passed Focus in sequence since the last play (347.2.a); every player passing closes the Showdown (348)."},
         "closing": {"type": "boolean", "description": "ADR-0009 §4: every player passed Focus in a Non-Combat Showdown; control resolution is the next required procedure (348.2)."}
       }
     },
     "staged_showdowns": {
       "type": "array",
-      "description": "ADR-0009 §3: the Non-Combat Showdowns staged by the last Cleanup (316.8.b, 323.8); the Turn Player chooses which opens (323.12).",
+      "description": "ADR-0009 §3: the Non-Combat Showdowns staged by the last Cleanup (316.8.b, 323.7); the Turn Player chooses which opens (323.11).",
       "items": {"type": "object", "additionalProperties": false, "required": ["battlefield", "battlefield_identity", "contested_by"], "properties": {"battlefield": {"type": "string", "minLength": 1}, "battlefield_identity": {"type": "string", "pattern": "^.+@[0-9]+$"}, "contested_by": {"type": "string", "minLength": 1}}}
     },
     "combat": {
@@ -78,13 +78,13 @@
         },
         "opened_with": {"enum": ["new_showdown", "existing_showdown"]},
         "battlefield_triggered": {"type": "array", "uniqueItems": true, "items": {"enum": ["attacker", "defender"]}, "description": "ADR-0008 §4: which of the Battlefield's own Attack/Defend triggers fired this Combat."},
-        "assignments": {"type": ["object", "null"], "description": "ADR-0008 §8–9: the attacker's and defender's Combat Damage assignment receipts (riftbound-combat-assignment-receipt.v1) once assigned; null when the damage step was skipped (465.1)."},
+        "assignments": {"type": ["object", "null"], "description": "ADR-0008 §8–9: the attacker's and defender's Combat Damage assignment receipts (riftbound-combat-assignment-receipt.v1) once assigned; null when the damage step was skipped (467.1)."},
         "damage_step_skipped": {"type": "boolean"},
-        "assignment_snapshot": {"type": "object", "additionalProperties": false, "required": ["effect_state_hash", "receipts_hash"], "properties": {"effect_state_hash": {"type": "string"}, "receipts_hash": {"type": "string"}}, "description": "The effect state and receipts the Deal step must see unchanged (465.2.c.1.a)."},
-        "restaged_from": {"type": "string", "minLength": 1, "description": "466.3.d.1: the closed Combat this staged Combat follows."},
-        "damage_dealt": {"type": "object", "description": "ADR-0008 §10: the applied amounts Dealt per side from the receipts (465.2.d)."},
-        "cleanup": {"type": "object", "description": "ADR-0008 §10: what the Combat Cleanup did (killed with attribution, healed, recalled; 466.1, 428.5.c.2)."},
-        "result": {"type": "object", "description": "ADR-0008 §10: the Combat result per 466.3 (win / no_result, winner, loser, reason, units_remaining, restage_required)."},
+        "assignment_snapshot": {"type": "object", "additionalProperties": false, "required": ["effect_state_hash", "receipts_hash"], "properties": {"effect_state_hash": {"type": "string"}, "receipts_hash": {"type": "string"}}, "description": "The effect state and receipts the Deal step must see unchanged (467.2.c.1.a)."},
+        "restaged_from": {"type": "string", "minLength": 1, "description": "468.3.d.1: the closed Combat this staged Combat follows."},
+        "damage_dealt": {"type": "object", "description": "ADR-0008 §10: the applied amounts Dealt per side from the receipts (467.2.d)."},
+        "cleanup": {"type": "object", "description": "ADR-0008 §10: what the Combat Cleanup did (killed with attribution, healed, recalled; 468.1, 429.5.c.2)."},
+        "result": {"type": "object", "description": "ADR-0008 §10: the Combat result per 468.3 (win / no_result, winner, loser, reason, units_remaining, restage_required)."},
         "control": {"type": "object", "description": "ADR-0009 §2: what resolve_battlefield_control did (step, controller_after, scoring)."},
         "sync_count": {"type": "integer", "minimum": 0}
       }

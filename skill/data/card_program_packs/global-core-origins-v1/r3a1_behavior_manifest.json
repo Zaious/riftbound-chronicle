@@ -1,6 +1,6 @@
 {
   "schema_version": "card-behavior-manifest.v1",
-  "manifest_id": "manifest:ea2d35c451f26518b95679ac",
+  "manifest_id": "manifest:e6dfeebbf5abb85a0f156a31",
   "pack_id": "global-core-origins-v1",
   "status": "draft",
   "ruleset": {
@@ -66,7 +66,7 @@
             "annie - fiery#24035ea0:negative",
             "annie - fiery#24035ea0:source_absent"
           ],
-          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: Your spells and abilities deal 1 Bonus Damage. | rules: Core 713, Core 714, Core 715.1, Core 417.6.b.2.a"
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: Your spells and abilities deal 1 Bonus Damage. | rules: Core 713, Core 714, Core 715.1, Core 418.6.b.2.a"
         }
       ]
     },
@@ -98,7 +98,7 @@
             "annie - stubborn#5086e61a:negative",
             "annie - stubborn#5086e61a:target_invalidated"
           ],
-          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, return a spell from your trash to your hand. | rules: Core 419.4.a, Core 355.5.b, Core 355.10.a, Core 124"
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, return a spell from your trash to your hand. | rules: Core 420.4.a, Core 355.5.b, Core 355.10.a, Core 124"
         }
       ]
     },
@@ -141,7 +141,7 @@
             "cannon barrage#3c6691c9:positive",
             "cannon barrage#3c6691c9:negative"
           ],
-          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. text: Deal 2 to all enemy units in combat. | rules: Core 740.2.c, Core 355.10.d, Core 355.5.a, Core 417.1.b"
+          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. text: Deal 2 to all enemy units in combat. | rules: Core 740.2.c, Core 355.10.d, Core 355.5.a, Core 418.1.b"
         }
       ]
     },
@@ -168,7 +168,7 @@
             "confront#08866b32:negative",
             "confront#08866b32:add_window_unconfirmed"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Action] | rules: Core 338, Core 429.3, Core 806"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Action] | rules: Core 338, Core 430.3, Core 806"
         },
         {
           "clause_id": "confront#5ee34de4",
@@ -203,7 +203,7 @@
             "confront#e8c50cd4:positive",
             "confront#e8c50cd4:negative"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Draw 1. | rules: Core 413"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Draw 1. | rules: Core 414"
         }
       ]
     },
@@ -228,7 +228,7 @@
             "target_choice"
           ],
           "test_ids": [],
-          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: Deal 3 to a unit at battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 417.1.b, errata: Disintegrate OGN-005"
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: Deal 3 to a unit at battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 418.1.b, errata: Disintegrate OGN-005"
         },
         {
           "clause_id": "disintegrate#033ec095",
@@ -243,7 +243,7 @@
             "linked_instruction"
           ],
           "test_ids": [],
-          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: If this kills it, do this: draw 1. | rules: Core 428.5.c, Core 387.2, Core 388.1, Core 359.3.e.14.b, errata: Disintegrate OGN-005"
+          "notes": "C-18 derived: bundled snapshot still carries pre-errata wording; program written against errata text awaits reverification. text: If this kills it, do this: draw 1. | rules: Core 429.5.c, Core 388.2, Core 389.1, Core 359.3.e.14.b, errata: Disintegrate OGN-005"
         }
       ]
     },
@@ -290,7 +290,7 @@
             "en garde#6dd9b599:missing_information",
             "en garde#6dd9b599:target_invalidated"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Give a friendly unit +1 :rb_might: this turn, then an additional +1 :rb_might: this turn if it is the only unit you control there. | rules: Core 135.2.b.5.a, Core 355.5, Core 317.2.c, Core 477"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Give a friendly unit +1 :rb_might: this turn, then an additional +1 :rb_might: this turn if it is the only unit you control there. | rules: Core 135.2.b.5.a, Core 355.5, Core 317.2.c, Core 479"
         }
       ]
     },
@@ -321,7 +321,7 @@
             "firestorm#95a3c682:target_invalidated",
             "firestorm#95a3c682:empty_battlefield"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Deal 3 to all enemy units at a battlefield. | rules: Core 355.10.b, Core 355.10.d, Core 355.5.a, Core 417.1.b"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Deal 3 to all enemy units at a battlefield. | rules: Core 355.10.b, Core 355.10.d, Core 355.5.a, Core 418.1.b"
         }
       ]
     },
@@ -368,7 +368,7 @@
             "flash#7a92a690:target_invalidated",
             "flash#7a92a690:zero_chosen"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Move up to 2 friendly units to base. | rules: Core 355.13, Core 355.4, Core 355.4.a, Core 446.3.c, Core 449.1"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Move up to 2 friendly units to base. | rules: Core 355.13, Core 355.4, Core 355.4.a, Core 448.3.c, Core 451.1"
         }
       ]
     },
@@ -417,7 +417,7 @@
             "fortified position#9b46c0cf:negative",
             "fortified position#9b46c0cf:missing_information"
           ],
-          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: It gains [Shield 2] this combat. | rules: Core 814.2, Core 466.7.c, Core 814.1.c"
+          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: It gains [Shield 2] this combat. | rules: Core 814.2, Core 468.7.c, Core 814.1.c"
         }
       ]
     },
@@ -462,7 +462,7 @@
             "gentlemen's duel#2ed49f33:missing_information",
             "gentlemen's duel#2ed49f33:target_invalidated"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Give a friendly unit +3 :rb_might: this turn. | rules: Core 135.2.e.3, Core 317.2.c, Core 355.5, Core 355.9.b, Core 477"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Give a friendly unit +3 :rb_might: this turn. | rules: Core 135.2.e.3, Core 317.2.c, Core 355.5, Core 355.9.b, Core 479"
         },
         {
           "clause_id": "gentlemen's duel#fd48e5d0",
@@ -503,7 +503,7 @@
             "gentlemen's duel#26a3859b:prevented_one_way",
             "gentlemen's duel#26a3859b:missing_information"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: They deal damage equal to their Mights to each other. | rules: Core 417.1.d, Core 417.6.b.3, Core 417.6.b.4, Core 143.2.b, Core 359.3.e.5"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: They deal damage equal to their Mights to each other. | rules: Core 418.1.d, Core 418.6.b.3, Core 418.6.b.4, Core 143.2.c, Core 359.3.e.5"
         }
       ]
     },
@@ -548,7 +548,7 @@
             "gust#e661650e:missing_information",
             "gust#e661650e:target_invalidated"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand. | rules: Core 355.5, Core 355.9, Core 359.3.e.4, Core 124, Core 124.1, Core 446.2"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Return a unit at a battlefield with 3 :rb_might: or less to its owner's hand. | rules: Core 355.5, Core 355.9, Core 359.3.e.4, Core 124, Core 124.1, Core 448.2"
         }
       ]
     },
@@ -616,7 +616,7 @@
             "incinerate#08866b32:negative",
             "incinerate#08866b32:add_window_unconfirmed"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Action] | rules: Core 338, Core 429.3, Core 806"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: [Action] | rules: Core 338, Core 430.3, Core 806"
         },
         {
           "clause_id": "incinerate#df9db2ea",
@@ -635,7 +635,7 @@
             "incinerate#df9db2ea:missing_information",
             "incinerate#df9db2ea:target_invalidated"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Deal 2 to a unit at a battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 417.1.b"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Deal 2 to a unit at a battlefield. | rules: Core 355.5, Core 355.9.b, Core 359.3.e.5, Core 418.1.b"
         }
       ]
     },
@@ -671,7 +671,7 @@
             "maddened marauder#7a66c5e8:both_requirements_backline",
             "maddened marauder#7a66c5e8:missing_information"
           ],
-          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: [Tank] | rules: Core 815.1.b, Core 815.1.c, Core 815.1.c.1, Core 815.1.c.2, Core 465.2.c.6, Core 465.2.c.8"
+          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: [Tank] | rules: Core 815.1.b, Core 815.1.c, Core 815.1.c.1, Core 815.1.c.2, Core 467.2.c.6, Core 467.2.c.8"
         },
         {
           "clause_id": "maddened marauder#8815ca64",
@@ -690,7 +690,7 @@
             "maddened marauder#8815ca64:positive",
             "maddened marauder#8815ca64:negative"
           ],
-          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, move a unit from a battlefield to its base. | rules: Core 419.4.a, Core 355.5.b, Core 449.1, Core 355.4.a"
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, move a unit from a battlefield to its base. | rules: Core 420.4.a, Core 355.5.b, Core 451.1, Core 355.4.a"
         }
       ]
     },
@@ -836,7 +836,7 @@
             "meditation#6ce549b5:negative",
             "meditation#6ce549b5:missing_information"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: As an additional cost to play this, you may exhaust a friendly unit. | rules: Core 355.1.a, Core 356.2.b.1, Core 357.2, Core 414.4, Core 356.4.f.1"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: As an additional cost to play this, you may exhaust a friendly unit. | rules: Core 355.1.a, Core 356.2.b.1, Core 357.2, Core 415.4, Core 356.4.f.1"
         },
         {
           "clause_id": "meditation#8be0efa4",
@@ -854,7 +854,7 @@
             "meditation#8be0efa4:negative",
             "meditation#8be0efa4:missing_information"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: If you do, draw 2. | rules: Core 356.4.f.1, Core 413"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: If you do, draw 2. | rules: Core 356.4.f.1, Core 414"
         },
         {
           "clause_id": "meditation#083ddaf7",
@@ -872,7 +872,7 @@
             "meditation#083ddaf7:negative",
             "meditation#083ddaf7:missing_information"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Otherwise, draw 1. | rules: Core 356.2.b.1, Core 413"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Otherwise, draw 1. | rules: Core 356.2.b.1, Core 414"
         }
       ]
     },
@@ -901,7 +901,7 @@
             "mobilize#3e791d2d:negative",
             "mobilize#3e791d2d:empty"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Channel 1 rune exhausted. | rules: Core 430.1, Core 430.2, Core 430.3, Core 124"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: Channel 1 rune exhausted. | rules: Core 431.1, Core 431.2, Core 431.3, Core 124"
         },
         {
           "clause_id": "mobilize#27e88ae5",
@@ -919,7 +919,7 @@
             "mobilize#27e88ae5:positive",
             "mobilize#27e88ae5:negative"
           ],
-          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: If you can't, draw 1. | rules: Core 430.3, Core 430.5, Core 055, Core 413"
+          "notes": "C-18 derived: every fixture passed, mirrored bindings agree. text: If you can't, draw 1. | rules: Core 431.3, Core 431.5, Core 055, Core 414"
         }
       ]
     },
@@ -992,7 +992,7 @@
             "mountain drake#a95a0531:contributes_might",
             "mountain drake#a95a0531:negative"
           ],
-          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: (no rules text) | rules: Core 464.2.c.3, Core 465.2.a, Core 143.2"
+          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: (no rules text) | rules: Core 466.2.c.3, Core 467.2.a, Core 143.2"
         }
       ]
     },
@@ -1020,7 +1020,7 @@
             "play_and_move_triggers"
           ],
           "test_ids": [],
-          "notes": "C-18 derived: no program is activated for this clause. text: [Vision] | rules: Core 817, Core 436.1, Core 128.3, Core 128.4"
+          "notes": "C-18 derived: no program is activated for this clause. text: [Vision] | rules: Core 817, Core 437.1, Core 128.3, Core 128.4"
         }
       ]
     },
@@ -1047,7 +1047,7 @@
             "playful phantom#a95a0531:contributes_might",
             "playful phantom#a95a0531:negative"
           ],
-          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: (no rules text) | rules: Core 464.2.c.3, Core 465.2.a, Core 143.2"
+          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: (no rules text) | rules: Core 466.2.c.3, Core 467.2.a, Core 143.2"
         }
       ]
     },
@@ -1104,7 +1104,7 @@
             "play_and_move_triggers"
           ],
           "test_ids": [],
-          "notes": "C-18 derived: no program is activated for this clause. text: [Vision] | rules: Core 817, Core 436.1, Core 128.3, Core 128.4"
+          "notes": "C-18 derived: no program is activated for this clause. text: [Vision] | rules: Core 817, Core 437.1, Core 128.3, Core 128.4"
         },
         {
           "clause_id": "sai scout#0ede37d4",
@@ -1214,7 +1214,7 @@
             "stormclaw ursine#7a66c5e8:both_requirements_backline",
             "stormclaw ursine#7a66c5e8:missing_information"
           ],
-          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: [Tank] | rules: Core 815.1.b, Core 815.1.c, Core 815.1.c.1, Core 815.1.c.2, Core 465.2.c.6, Core 465.2.c.8"
+          "notes": "C-32 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: [Tank] | rules: Core 815.1.b, Core 815.1.c, Core 815.1.c.1, Core 815.1.c.2, Core 467.2.c.6, Core 467.2.c.8"
         },
         {
           "clause_id": "stormclaw ursine#2b579376",
@@ -1233,7 +1233,7 @@
             "stormclaw ursine#2b579376:positive",
             "stormclaw ursine#2b579376:negative"
           ],
-          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, channel 1 rune exhausted. | rules: Core 419.4.a, Core 430.1, Core 430.2, Core 430.3"
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, channel 1 rune exhausted. | rules: Core 420.4.a, Core 431.1, Core 431.2, Core 431.3"
         }
       ]
     },
@@ -1264,7 +1264,7 @@
             "tibbers#ca766089:positive",
             "tibbers#ca766089:negative"
           ],
-          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, deal 3 to all units at battlefields. | rules: Core 419.4.a, Core 355.10.b, Core 417.1.b"
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When you play me, deal 3 to all units at battlefields. | rules: Core 420.4.a, Core 355.10.b, Core 418.1.b"
         }
       ]
     },
@@ -1297,7 +1297,7 @@
             "traveling merchant#92d985e1:negative",
             "traveling merchant#92d985e1:forced"
           ],
-          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When I move, discard 1, then draw 1. | rules: Core 383.1, Core 383.2.c, Core 422.1, Core 422.1.a, Core 422.4, Core 446.2, Core 456.1"
+          "notes": "C-25 derived: every fixture passed, mirrored bindings agree. passive state, probed by fixtures. text: When I move, discard 1, then draw 1. | rules: Core 383.1, Core 383.2.c, Core 423.1, Core 423.1.a, Core 423.4, Core 448.2, Core 458.1"
         }
       ]
     },

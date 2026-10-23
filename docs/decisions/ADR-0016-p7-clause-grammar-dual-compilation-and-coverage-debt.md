@@ -4,7 +4,7 @@
 - Scope: the P7 milestone — `clause-grammar.v1` as a public versioned
   contract, `compile_card` with canonical dual-compilation agreement, and the
   coverage debt ledger.
-- Rules baseline: English Core Rules 2026-07-16; every production carries its
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3); every production carries its
   own locators.
 - Not decided here: which cards enter the corpus, which is a packet decision.
 

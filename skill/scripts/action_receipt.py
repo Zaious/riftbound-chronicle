@@ -71,7 +71,7 @@ HIDDEN_ZONES = {"hand": "opponent", "main_deck": "anyone", "rune_deck": "anyone"
 
 
 def shown_to(state: dict[str, Any], object_id: str, actor: str) -> bool:
-    """A card the player was shown (Core 424: a reveal to all, or a look or reveal to them)."""
+    """A card the player was shown (Core 425: a reveal to all, or a look or reveal to them)."""
     return any(m.get("object_id") == object_id and (m.get("visible_to") == "all" or actor in (m.get("visible_to") or []))
                for m in state.get("reveals") or [])
 

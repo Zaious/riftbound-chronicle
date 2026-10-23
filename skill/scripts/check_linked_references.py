@@ -9,7 +9,7 @@ Three typed references, each naming the earlier instruction by effect_id:
   amount_ref {kind: linked_object_current_might}  "It deals damage equal to its Might ..." (Last
   + source_ref {effect_id}                         Breath) - the object's Might as THIS instruction
                                                    executes (359.3.f.2), and the object is the Deal's
-                                                   source, not the spell (417.6.b.3)
+                                                   source, not the spell (418.6.b.3)
   amount_ref {kind: linked_card_printed_energy}   "Deal its Energy cost as damage ..." (Get Excited!)
                                                    - the discarded card's PRINTED Energy cost (206)
 
@@ -30,7 +30,7 @@ Must hold (each on a real apply_program run):
   Last Breath    the readied unit deals its current Might (a +2 given before resolution counts)
                  to the enemy unit, as the source (source_object, responsible player p1); an
                  already-ready unit still deals (the ready executed, it changed nothing); the
-                 ready mistargeted: no damage; a unit with 0 Might: no damage (417.1.e)
+                 ready mistargeted: no damage; a unit with 0 Might: no damage (418.1.e)
   Get Excited!   the discarded card's printed Energy (5) is dealt, not the other card's (3); a
                  0-cost card deals nothing; an empty hand ignores the discard and the damage;
                  a card with no observed printed cost is refused by name, never guessed
@@ -309,7 +309,7 @@ def main() -> int:
     got = last_breath(weak, "u1")
     if not got.get("committed") or got["next_state"]["objects"]["u2"]["damage"] != 0 \
             or event(got, "dmg").get("outcome") != "no_op":
-        errors.append("Last Breath: a 0 Might unit deals nothing (417.1.e)")
+        errors.append("Last Breath: a 0 Might unit deals nothing (418.1.e)")
 
     # --- Get Excited! ------------------------------------------------------------------------
     got = get_excited(start, "h5")
@@ -332,7 +332,7 @@ def main() -> int:
     empty["players"]["p1"]["zones"]["hand"] = []
     got = get_excited(empty, None)
     if not got.get("committed") or event(got, "dmg").get("outcome") != "skipped_linked_dependency":
-        errors.append(f"Get Excited!: an empty hand ignores the discard and the damage (422.4, 359.3.e.14.a): "
+        errors.append(f"Get Excited!: an empty hand ignores the discard and the damage (423.4, 359.3.e.14.a): "
                       f"{[e.get('outcome') for e in got.get('trace') or []]}")
     # bound by identity (GPT 2026-09-27, group 乙): the read names the identity it read ...
     got = get_excited(copy.deepcopy(start), "h5")

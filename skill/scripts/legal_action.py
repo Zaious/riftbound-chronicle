@@ -603,7 +603,7 @@ def standard_move_declaration(effect_state: dict[str, Any], actor: str, units: l
 
 def standard_move_destinations(effect_state: dict[str, Any], actor: str) -> list[dict[str, Any]]:
     """Every destination a Standard Move names: the actor's own Base ({kind: base} - always the mover's own), or a
-    Battlefield (Core 420.3; 144.4)."""
+    Battlefield (Core 421.3; 144.4)."""
     return [{"kind": "base"}] + [{"kind": "battlefield", "battlefield": bf}
                                                    for bf in sorted(effect_state.get("battlefields") or {})]
 
@@ -646,7 +646,7 @@ def _enumerate_standard_move(observation, timing_state, effect_state, actor):
                                "object_ids": list(group), "destination": destination, "checks": ["timing", "procedure"],
                                "declaration": declaration},
                     "required_facts": [f"board:{u}" for u in group],
-                    "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 420.3"],
+                    "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 421.3"],
                 })
     return _enumerated("standard_move", [c["candidate_id"] for c in candidates],
                        list(verdict.get("rule_locators", [])), excluded), candidates
@@ -676,7 +676,7 @@ def _hide_cost_options(effect_state: dict[str, Any], actor: str) -> list[tuple[d
 
 def _enumerate_hide(observation, timing_state, effect_state, actor):
     """2026-10-15 package 13 (C2): every card with Hidden in the actor's hand or Champion Zone, at every Battlefield,
-    for every cost it may be taken for - each declaration checked by the Hide procedure itself (Core 421.2, 811.1)."""
+    for every cost it may be taken for - each declaration checked by the Hide procedure itself (Core 422.2, 811.1)."""
     import hidden
     candidates, excluded = [], []
     zones = effect_state["players"][actor]["zones"]
@@ -701,7 +701,7 @@ def _enumerate_hide(observation, timing_state, effect_state, actor):
                                    "card": card, "battlefield": battlefield_id, "checks": ["timing", "procedure"],
                                    "declaration": declaration},
                         "required_facts": [f"{source}_card:{card}", f"battlefield:{battlefield_id}"],
-                        "rule_locators": ["Core 421.2", "Core 811.1", "Core 811.1.b"],
+                        "rule_locators": ["Core 422.2", "Core 811.1", "Core 811.1.b"],
                     })
                 if refusals and not any(c["action"]["card"] == card and c["action"]["battlefield"] == battlefield_id
                                         for c in candidates):
@@ -731,7 +731,7 @@ def _enumerate_full(family, timing_state, effect_state, actor, catalogue):
     import play_space
     got = play_space.enumerate_family(family, timing_state, effect_state, actor, catalogue)
     if got["status"] != "enumerated":
-        return _abstain(family, "unproved:" + got["reason"], [got["reason"]], ["Core 410.1"]), []
+        return _abstain(family, "unproved:" + got["reason"], [got["reason"]], ["Core 411.1"]), []
     import action_space
     candidates = []
     for action in got["actions"]:
@@ -739,9 +739,9 @@ def _enumerate_full(family, timing_state, effect_state, actor, catalogue):
         candidates.append({"candidate_id": f"{family}:{key.split(':', 1)[-1][:24]}", "family": family,
                            "action": {**action, "actor": actor, "checks": ["timing", "cost", "targets"]},
                            "required_facts": [f"catalogue:{catalogue.get('catalogue_hash')}"],
-                           "rule_locators": ["Core 410.1", "Core 419.2" if family == "play_card" else "Core 377.3"]})
+                           "rule_locators": ["Core 411.1", "Core 420.2" if family == "play_card" else "Core 377.3"]})
     excluded = [{"object_id": card, "reason_code": ",".join(reasons)} for card, reasons in sorted(got["excluded"].items())]
-    return _enumerated(family, [c["candidate_id"] for c in candidates], ["Core 410.1"], excluded), candidates
+    return _enumerated(family, [c["candidate_id"] for c in candidates], ["Core 411.1"], excluded), candidates
 
 
 ENUMERATORS = {

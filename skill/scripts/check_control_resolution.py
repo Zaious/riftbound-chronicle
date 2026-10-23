@@ -10,8 +10,8 @@ Must hold:
     the Battlefield gains nothing; no Units left makes it Uncontrolled;
   - Conquer gains one point and records the Battlefield in the turn's
     ledger; the same Battlefield scored again this turn changes control
-    without a point or a trigger (470);
-  - the Final Point (471.1.b): at Victory Score − 1 a Conquer gains the point
+    without a point or a trigger (472);
+  - the Final Point (473.1.b): at Victory Score − 1 a Conquer gains the point
     only when every Battlefield was scored this turn, otherwise the player
     draws instead and the Score trigger still fires; an empty Main Deck
     refuses the whole transaction as unsupported burn_out and nothing
@@ -73,7 +73,7 @@ def main() -> int:
     t, e = decided_combat()
     snap_t, snap_e = copy.deepcopy(t), copy.deepcopy(e)
     if close_combat(t, e).get("reason_code") != "control_resolution_pending":
-        errors.append("the Combat closed before control was resolved (466.5 before 466.7)")
+        errors.append("the Combat closed before control was resolved (468.5 before 468.7)")
     resolved = resolve_battlefield_control(t, e)
     if not resolved.get("committed"):
         errors.append(f"control resolution did not commit: {resolved.get('reason_code')} {resolved.get('reason') or resolved.get('errors')}")
@@ -112,13 +112,13 @@ def main() -> int:
     e["objects"]["u1"]["conquer_triggers"] = [trigger("u1-conquer", "p1", "u1")]
     again = resolve_battlefield_control(t, e)
     if not again.get("committed") or again["next_effect_state"]["battlefields"]["bf1"]["controller"] != "p1" or again["next_effect_state"]["players"]["p1"].get("points", 0) != 0 or again["next_timing_state"]["chain"]["items"] or again["trace"]["scoring"].get("reason") != "already_scored_this_turn":
-        errors.append(f"a Battlefield already scored this turn scored or triggered again (470, 471.2.c): {again.get('trace', {}).get('scoring')}")
+        errors.append(f"a Battlefield already scored this turn scored or triggered again (472, 473.2.c): {again.get('trace', {}).get('scoring')}")
     # --- no Units left: Uncontrolled ---------------------------------------------------------------------------
     t, e = decided_combat(defender_might=5)
     e["battlefields"]["bf1"]["controller"] = "p2"
     empty = resolve_battlefield_control(t, e)
     if not empty.get("committed") or empty["trace"]["control_step"] != "uncontrolled" or empty["next_effect_state"]["battlefields"]["bf1"]["controller"] is not None:
-        errors.append(f"an emptied Battlefield did not become Uncontrolled (466.5.b): {empty.get('reason_code')} {empty.get('trace', {}).get('control_step')}")
+        errors.append(f"an emptied Battlefield did not become Uncontrolled (468.5.b): {empty.get('reason_code')} {empty.get('trace', {}).get('control_step')}")
 
     # --- Score triggers --------------------------------------------------------------------------------------
     def arm(s):
@@ -138,7 +138,7 @@ def main() -> int:
         if bf_item["controller"] != "p1" or bf_item["source_object"] != "bf1":
             errors.append("the Battlefield's own Conquer trigger does not belong to its new controller")
         if close_combat(armed["next_timing_state"], armed["next_effect_state"]).get("reason_code") != "combat_chain_unfinished":
-            errors.append("the Combat closed with Score triggers pending (466.6)")
+            errors.append("the Combat closed with Score triggers pending (468.6)")
     if validate_state(e):
         errors.append(f"score triggers rejected by the validator: {validate_state(e)}")
     colliding = copy.deepcopy(e); colliding["objects"]["g1"]["conquer_triggers"][0]["controller_order"] = 0
@@ -146,7 +146,7 @@ def main() -> int:
     if collision.get("committed") or collision.get("reason_code") != "trigger_order_required" or collision.get("decision_ids") != ["trigger_order:score:bf1:turn-0:conquer:p1"]:
         errors.append(f"two Score triggers of one controller with the same order were not left to that controller's choice (383.3.d): {collision.get('reason_code')} {collision.get('decision_ids')}")
 
-    # --- the Final Point (471.1.b) ---------------------------------------------------------------------------
+    # --- the Final Point (473.1.b) ---------------------------------------------------------------------------
     def two_battlefields(s):
         s["battlefields"]["bf2"] = {"controller": None, "objects": []}
         s["objects"]["u1"]["conquer_triggers"] = [trigger("u1-conquer", "p1", "u1")]

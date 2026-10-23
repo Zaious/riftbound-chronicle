@@ -130,7 +130,7 @@ def main() -> int:
     if rows.get("morbid return#f3c76e58:opponent_trash", {}).get("outcome") != "illegal":
         errors.append("p1 returning a unit from p2's trash was not illegal")
     if rows.get("incinerate#08866b32:add_window_unconfirmed", {}).get("outcome") != "decision_required":
-        errors.append("a sufficient pool without a confirmed Add window did not stop for confirmation (429.3)")
+        errors.append("a sufficient pool without a confirmed Add window did not stop for confirmation (430.3)")
     # a claim never outranks its evidence
     probe = copy.deepcopy(programs)
     target = next(cl for c in probe["cards"] for cl in c["clauses"] if cl["claim"] == "full" and cl.get("fixtures"))
@@ -239,7 +239,7 @@ def main() -> int:
     for cid in ("master yi - honed#ba87989e", "stalwart poro#8b9eb35a", "zephyr sage#8b9eb35a", "wielder of water#d2dd9c3e", "cannon barrage#3c6691c9", "fortified position#d0ee5f77", "fortified position#9b46c0cf", "gentlemen's duel#fd48e5d0"):
         if manifest_rows.get(cid, {}).get("status") != "full":
             errors.append(f"{cid} derived {manifest_rows.get(cid, {}).get('status')}; its procedure gates pass, so the fixtures must carry it to full")
-    # Codex Round D: the Combat Damage assignment is a bounded slice of 465.2.c
+    # Codex Round D: the Combat Damage assignment is a bounded slice of 467.2.c
     # (Prevent-only preview, no damage-exemption sources) and the mutual Deal
     # batch is bounded (Prevent-only, no shared descriptor): those clauses stay
     # partial naming the gap, whatever their fixtures pass.

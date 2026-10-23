@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/randomization-receipt.schema.json",
   "title": "Chronicle Randomization Receipt v1",
-  "description": "ADR-0010 §2: the record of an external randomization the engine consumes — today the order in which a Burn Out recycles the Trash into the Main Deck (Core 431.2.b). Never a player's choice and never the engine's: it names the operation it serves, the complete permutation, and who produced it how.",
+  "description": "ADR-0010 §2: the record of an external randomization the engine consumes — today the order in which a Burn Out recycles the Trash into the Main Deck (Core 432.2.b). Never a player's choice and never the engine's: it names the operation it serves, the complete permutation, and who produced it how.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "receipt_id", "operation", "operation_id", "player", "permutation", "provenance"],

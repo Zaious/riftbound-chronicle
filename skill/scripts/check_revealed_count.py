@@ -76,7 +76,7 @@ def board(deck):
 
 
 def run(state, prog):
-    """apply_program, answering the random order of a simultaneous recycle (Core 416.5) with a receipt that keeps the
+    """apply_program, answering the random order of a simultaneous recycle (Core 417.5) with a receipt that keeps the
     revealed order (ADR-0010 section 2)."""
     receipts = []
     for _ in range(3):

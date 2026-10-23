@@ -8,7 +8,7 @@ phase and typed `turn_progress` the previous one left, every phase
 transition makes a Cleanup outstanding (319.2), and during 315 no
 discretionary action is legal. `begin_turn` is the turn transition (317.3):
 the first turn keeps the selected first player, later turns advance in Turn
-Order; the First Turn Process comes from the Mode of Play (483.7) — the
+Order; the First Turn Process comes from the Mode of Play (485.7) — the
 sanctioned catalogue or explicit facts — never from a guess. The Scoring
 Step itself is G2's `run_scoring_step`.
 """
@@ -33,21 +33,21 @@ from rules_core import CLEANUP_TASK, START_OF_TURN_PHASES, apply_terminal_event,
 import engine_decisions as _ed  # noqa: E402
 import watchers  # noqa: E402
 
-# Core 484–489: the sanctioned Modes of Play this slice can read. `match`
-# carries Best-of / Game Win semantics (486.6) and `magma_chamber` teams
-# (489.8.d); both are unsupported as a whole rather than half-read.
+# Core 486–491: the sanctioned Modes of Play this slice can read. `match`
+# carries Best-of / Game Win semantics (488.6) and `magma_chamber` teams
+# (491.8.d); both are unsupported as a whole rather than half-read.
 MODE_CATALOGUE = {
-    "duel": {"players": 2, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["second"], "skip_draw": []}, "rule_locators": ["Core 485.2", "Core 485.3", "Core 485.7"]},
-    "skirmish": {"players": 3, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["last"], "skip_draw": ["first"]}, "rule_locators": ["Core 487.2", "Core 487.3", "Core 487.7"]},
-    # C-59 (ADR-0015 §3): War's First Turn Process (Core 487.7), in our words -
+    "duel": {"players": 2, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["second"], "skip_draw": []}, "rule_locators": ["Core 487.2", "Core 487.3", "Core 487.7"]},
+    "skirmish": {"players": 3, "victory_score": 8, "teams": False, "first_turn": {"extra_channel": ["last"], "skip_draw": ["first"]}, "rule_locators": ["Core 489.2", "Core 489.3", "Core 489.7"]},
+    # C-59 (ADR-0015 §3): War's First Turn Process (Core 489.7), in our words -
     # the first player skips the draw of their first Draw Phase, and the last
     # player channels one Rune more in their first Channel Phase.
     "war": {"players": 4, "victory_score": 8, "teams": False,
             "first_turn": {"extra_channel": ["last"], "skip_draw": ["first"]},
-            "rule_locators": ["Core 488.2", "Core 488.3"]},
+            "rule_locators": ["Core 490.2", "Core 490.3"]},
 }
-UNSUPPORTED_MODES = {"match": ("match_mode", "the Match mode carries Best-of and Game Win semantics (486.6) this slice does not model; it is not read for its Victory Score alone", ["Core 486.6", "Core 486.6.a"]),
-                     "magma_chamber": ("team_scoring", "Magma Chamber is a team mode (489.6.a, 489.8.d); teams are not modelled", ["Core 489.6.a", "Core 489.8.d"])}
+UNSUPPORTED_MODES = {"match": ("match_mode", "the Match mode carries Best-of and Game Win semantics (488.6) this slice does not model; it is not read for its Victory Score alone", ["Core 488.6", "Core 488.6.a"]),
+                     "magma_chamber": ("team_scoring", "Magma Chamber is a team mode (491.6.a, 491.8.d); teams are not modelled", ["Core 491.6.a", "Core 491.8.d"])}
 READYABLE_KINDS = {"unit", "gear", "rune"}
 PHASE_TRIGGER_FIELDS = {"beginning": ("beginning_phase_triggers", "your_beginning_phase", ["Core 315.2.a", "Core 315.2.a.1", "Core 383.1"]),
                         "main": ("main_phase_triggers", "your_main_phase", ["Core 316.2", "Core 316.4", "Core 383.1"])}
@@ -93,7 +93,7 @@ def _phase_refusal(base: dict[str, Any], timing_state: dict[str, Any], wanted: s
 # ------------------------------------------------------------- Mode of Play --
 
 def first_turn_process(timing_state: dict[str, Any], effect_state: dict[str, Any], player: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-    """The First Turn Process for `player` (483.7): (facts, problem). Facts are
+    """The First Turn Process for `player` (485.7): (facts, problem). Facts are
     {extra_channel: bool, skip_draw: bool, source}; a problem is an
     unsupported result's (code, reason, locators)."""
     mode = effect_state.get("mode") if isinstance(effect_state.get("mode"), dict) else {}
@@ -111,7 +111,7 @@ def first_turn_process(timing_state: dict[str, Any], effect_state: dict[str, Any
         if problems:
             return None, {"code": "invalid_mode", "reason": "; ".join(problems), "locators": entry["rule_locators"], "invalid": True}
         if entry["first_turn"] is None and "first_turn" not in mode:
-            return None, {"code": "first_turn_process_unknown", "reason": f"the First Turn Process of mode {mode_id} is not in the catalogue; supply mode.first_turn explicitly (483.7)", "locators": entry["rule_locators"] + ["Core 483.7"]}
+            return None, {"code": "first_turn_process_unknown", "reason": f"the First Turn Process of mode {mode_id} is not in the catalogue; supply mode.first_turn explicitly (485.7)", "locators": entry["rule_locators"] + ["Core 485.7"]}
         if "first_turn" not in mode:
             seats = {"first": order[0], "second": order[1] if len(order) > 1 else None, "last": order[-1]}
             extra = [seats[s] for s in entry["first_turn"]["extra_channel"]]
@@ -119,8 +119,8 @@ def first_turn_process(timing_state: dict[str, Any], effect_state: dict[str, Any
             return {"extra_channel": player in extra, "skip_draw": player in skip, "source": f"mode:{mode_id}", "rule_locators": entry["rule_locators"]}, None
     explicit = mode.get("first_turn")
     if isinstance(explicit, dict):
-        return {"extra_channel": player in explicit.get("extra_channel", []), "skip_draw": player in explicit.get("skip_draw", []), "source": "mode.first_turn", "rule_locators": ["Core 483.7"]}, None
-    return None, {"code": "first_turn_process_unknown", "reason": f"{player} starts their first turn and neither mode.id nor mode.first_turn says how the First Turn Process applies (483.7); the engine does not guess", "locators": ["Core 483.7"]}
+        return {"extra_channel": player in explicit.get("extra_channel", []), "skip_draw": player in explicit.get("skip_draw", []), "source": "mode.first_turn", "rule_locators": ["Core 485.7"]}, None
+    return None, {"code": "first_turn_process_unknown", "reason": f"{player} starts their first turn and neither mode.id nor mode.first_turn says how the First Turn Process applies (485.7); the engine does not guess", "locators": ["Core 485.7"]}
 
 
 # ----------------------------------------------------------- turn transition --
@@ -136,7 +136,7 @@ def mulligan_decision_id(player: str) -> str:
 def perform_mulligan(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
     """2026-10-18 package 15 (C2): Core 117 - the next player in mulligans_pending chooses up to two cards of their hand
     (117.1: a choice private to them, card_selection mulligan:<player>), draws as many (117.2), then recycles the cards
-    set aside (117.3) - two at once go to the bottom of the Main Deck in a random order (416.5: a randomization receipt).
+    set aside (117.3) - two at once go to the bottom of the Main Deck in a random order (417.5: a randomization receipt).
     The cards chosen stay in the hand while the draw is made (it reads only the deck's top) and are recycled from there:
     the same cards end in the same places as setting them aside first."""
     import effect_ir as IR
@@ -167,7 +167,7 @@ def perform_mulligan(timing_state: dict[str, Any], effect_state: dict[str, Any],
         except IR.ExternalInputRequired as exc:
             return {**base, "valid": True, "committed": False, "reason_code": exc.reason_code, "reason": str(exc),
                     "decision_ids": list(exc.decision_ids), "decision_controller": exc.controller, **IR.chance_fields(exc),
-                    "rule_locators": ["Core 117.3", "Core 416.5"]}
+                    "rule_locators": ["Core 117.3", "Core 417.5"]}
         trace.update({"drawn": drawn.get("drawn") if isinstance(drawn, dict) else None, "recycle": recycled})
     next_timing = copy.deepcopy(timing_state)
     next_timing["mulligans_pending"] = queue[1:]
@@ -217,11 +217,11 @@ def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engin
         if queued and taken.get(player, 0) == 0:
             # an Additional Turn before its owner's first turn: whether the First Turn Process applies is not read
             return _unsupported(base, "additional_turn_before_first_turn", "an Additional Turn for a player who has not "
-                                "taken a turn yet: whether it is their first turn (483.7) is not modelled", ["Core 735", "Core 483.7"],
+                                "taken a turn yet: whether it is their first turn (485.7) is not modelled", ["Core 735", "Core 485.7"],
                                 player=player)
     else:
         return _refuse(base, "phase_order", f"a turn begins from setup or from an expired Ending Phase, not from {phase!r}", ["Core 315", "Core 317.3"])
-    facts, problem = (first_turn_process(timing_state, effect_state, player) if taken.get(player, 0) == 0 else ({"extra_channel": False, "skip_draw": False, "source": "not_first_turn", "rule_locators": ["Core 483.7"]}, None))
+    facts, problem = (first_turn_process(timing_state, effect_state, player) if taken.get(player, 0) == 0 else ({"extra_channel": False, "skip_draw": False, "source": "not_first_turn", "rule_locators": ["Core 485.7"]}, None))
     if problem is not None:
         if problem.get("invalid"):
             return _invalid(base, [problem["reason"]])
@@ -252,15 +252,15 @@ def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engin
             pl["scored_this_turn"] = {next_turn_id: pl["scored_this_turn"].get(next_turn_id, [])}
     trace = {"path": path, "turn_player": player, "turn_id": next_turn_id, "turns_taken": taken, "first_turn": next_timing["turn_progress"]["first_turn"], "first_turn_locators": facts["rule_locators"],
              "cleanup_outstanding": True}
-    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 115", "Core 315", "Core 317.3", "Core 319.2", "Core 483.7"])
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 115", "Core 315", "Core 317.3", "Core 319.2", "Core 485.7"])
 
 
 # ------------------------------------------------------------ Start of Turn --
 
 def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Core 315.1, 415.3.a: the Turn Player readies, at once, every Board object
+    """Core 315.1, 416.3.a: the Turn Player readies, at once, every Board object
     they control that can be readied; a known or unknown ready blocker whose
-    rule this slice lacks (Stun, 423) is unsupported. Writes awaken_complete."""
+    rule this slice lacks (Stun, 424) is unsupported. Writes awaken_complete."""
     base = _base("run_awaken_step", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
@@ -283,13 +283,13 @@ def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], 
         else:
             already.append(object_id)
     if blocked:
-        return _unsupported(base, "ready_blocker_unknown", f"{blocked} carry a ready blocker (Stun, 423) whose complete rule this slice does not model; the Awaken step is not guessed around it", ["Core 315.1", "Core 415.1.b", "Core 423"], blocked=blocked)
+        return _unsupported(base, "ready_blocker_unknown", f"{blocked} carry a ready blocker (Stun, 424) whose complete rule this slice does not model; the Awaken step is not guessed around it", ["Core 315.1", "Core 416.1.b", "Core 424"], blocked=blocked)
     next_timing = copy.deepcopy(timing_state)
     next_timing["turn_progress"] = {**_progress(timing_state), "awaken_complete": True}
     trace = {"player": player, "readied": readied, "already_ready": already, "simultaneous": True}
-    # 2026-10-08 (package 10, Pirate's Haven): the Turn Player performs these Readies (Core 315.1.b, 415.3.a), so they
+    # 2026-10-08 (package 10, Pirate's Haven): the Turn Player performs these Readies (Core 315.1.b, 416.3.a), so they
     # wake watchers like any other Ready - "When you ready a friendly unit" - one batch, the readies being simultaneous.
-    # An object already Ready was not readied (415.1.b) and wakes nothing. A board with no watcher is unchanged
+    # An object already Ready was not readied (416.1.b) and wakes nothing. A board with no watcher is unchanged
     import game_events
     snap = game_events.snapshot(next_effect)
     events = [game_events.awaken_ready_event(
@@ -317,7 +317,7 @@ def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], 
                                ["Core 315.1.b", "Core 383.1"])
             next_timing = scheduled["next_state"]
             trace["watch_triggers"] = [t["trigger_id"] for t in woken]
-    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 315.1", "Core 315.1.b", "Core 415.1.b", "Core 415.1.c", "Core 415.3.a"])
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 315.1", "Core 315.1.b", "Core 416.1.b", "Core 416.1.c", "Core 416.3.a"])
 
 
 def _phase_triggers(effect_state: dict[str, Any], player: str, phase: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -401,10 +401,10 @@ def enter_beginning_phase(timing_state: dict[str, Any], effect_state: dict[str, 
 
 
 def run_channel_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Core 315.3, 430: after the Scoring Step and its Cleanups, enter the
+    """Core 315.3, 431: after the Scoring Step and its Cleanups, enter the
     Channel Phase and Channel two Runes (one more on a first turn the Mode of
-    Play says so, 485.7 / 487.7), as many as the Rune Deck has (430.3), ready
-    (430.2.a). Writes channel_complete; the transition makes a Cleanup."""
+    Play says so, 487.7 / 489.7), as many as the Rune Deck has (431.3), ready
+    (431.2.a). Writes channel_complete; the transition makes a Cleanup."""
     base = _base("run_channel_step", timing_state, effect_state)
     if problem := _validate_both(base, timing_state, effect_state, engine_decisions):
         return problem
@@ -429,13 +429,13 @@ def run_channel_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
     next_timing["outstanding_tasks"] = [CLEANUP_TASK]
     trace = {"player": player, "requested": count, "first_turn_extra": extra, "channeled": taken, "identities_after": identities, "entry_state": "ready",
              "completion": "full" if len(taken) == count else ("partial" if taken else "none"), "cleanup_outstanding": True}
-    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 315.3", "Core 315.3.b", "Core 315.3.b.1", "Core 430.2.a", "Core 430.3", "Core 430.4.a", "Core 124", "Core 319.2"])
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 315.3", "Core 315.3.b", "Core 315.3.b.1", "Core 431.2.a", "Core 431.3", "Core 431.4.a", "Core 124", "Core 319.2"])
 
 
 def run_draw_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
     """Core 315.4: enter the Draw Phase and draw one through the Burn Out-aware
-    Draw (315.4.b.1–315.4.b.2, 431) — skipped on a first turn the Mode of
-    Play says so (487.7). An immediate Burn Out victory writes the terminal in
+    Draw (315.4.b.1–315.4.b.2, 432) — skipped on a first turn the Mode of
+    Play says so (489.7). An immediate Burn Out victory writes the terminal in
     this commit and stops; otherwise draw_complete is written and the
     transition makes a Cleanup."""
     base = _base("run_draw_step", timing_state, effect_state)
@@ -453,11 +453,11 @@ def run_draw_step(timing_state: dict[str, Any], effect_state: dict[str, Any], en
             next_effect, event = perform_draw(next_effect, player, 1, decisions=engine_decisions, operation_prefix=f"burn_out:{player}:{turn_id}:draw_step")
         except (ExternalInputRequired, PlayerSelectionRequired) as exc:
             from effect_ir import chance_fields
-            return {**base, "valid": True, "committed": False, "reason_code": exc.reason_code, "reason": str(exc), "decision_ids": exc.decision_ids, "decision_controller": exc.controller, **chance_fields(exc), "rule_locators": ["Core 315.4.b.1", "Core 431.2"]}
+            return {**base, "valid": True, "committed": False, "reason_code": exc.reason_code, "reason": str(exc), "decision_ids": exc.decision_ids, "decision_controller": exc.controller, **chance_fields(exc), "rule_locators": ["Core 315.4.b.1", "Core 432.2"]}
         except IllegalDecision as exc:
-            return _refuse(base, "decision_controller_mismatch", str(exc), ["Core 431.2.c"])
+            return _refuse(base, "decision_controller_mismatch", str(exc), ["Core 432.2.c"])
         except NotImplementedError as exc:
-            return _unsupported(base, "burn_out_unsupported", str(exc), ["Core 431"])
+            return _unsupported(base, "burn_out_unsupported", str(exc), ["Core 432"])
         except ValueError as exc:
             return _invalid(base, [str(exc)])
     next_timing = copy.deepcopy(timing_state)
@@ -466,11 +466,11 @@ def run_draw_step(timing_state: dict[str, Any], effect_state: dict[str, Any], en
     if terminal is not None:
         final_timing = apply_terminal_event(next_timing, next_effect, terminal)
         trace = {"player": player, "skipped_first_turn_draw": False, "draw": event, "terminal": terminal, "skipped_after_terminal": {"draw_complete": True, "main_phase": True}}
-        return _commit(base, final_timing, next_effect, trace=trace, locators=["Core 315.4", "Core 315.4.b.1", "Core 431.3.c.1", "Core 196"])
+        return _commit(base, final_timing, next_effect, trace=trace, locators=["Core 315.4", "Core 315.4.b.1", "Core 432.3.c.1", "Core 196"])
     next_timing["turn_progress"] = {**_progress(timing_state), "draw_complete": True}
     next_timing["outstanding_tasks"] = [CLEANUP_TASK]
     trace = {"player": player, "skipped_first_turn_draw": skip, "draw": event, "cleanup_outstanding": True}
-    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 315.4", "Core 315.4.b", "Core 413.2.a", "Core 319.2"] + (["Core 487.7"] if skip else []) + (["Core 315.4.b.1", "Core 315.4.b.2", "Core 431"] if event and event.get("burn_outs") else []))
+    return _commit(base, next_timing, next_effect, trace=trace, locators=["Core 315.4", "Core 315.4.b", "Core 414.2.a", "Core 319.2"] + (["Core 489.7"] if skip else []) + (["Core 315.4.b.1", "Core 315.4.b.2", "Core 432"] if event and event.get("burn_outs") else []))
 
 
 def enter_main_phase(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -511,8 +511,8 @@ CLEANUP_ITERATION_BOUND = 8
 
 
 def _unattached_at_battlefields(effect_state: dict[str, Any]) -> list[str]:
-    """Core 323.7 applies to non-Unit Gear and Runes at Battlefields; this
-    slice has no attachment model, so any such object there is 323.7's case."""
+    """Core 323.6 applies to non-Unit Gear and Runes at Battlefields; this
+    slice has no attachment model, so any such object there is 323.6's case."""
     found = []
     for object_id in sorted(effect_state["objects"]):
         obj = effect_state["objects"][object_id]
@@ -526,7 +526,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     """ADR-0010 §5 / Core 323: one Cleanup as one atomic run. Steps 1–10a in
     order on a working state — 1 terminal, 2 designations, 3a/3b lethal
     (death triggers go Pending on the chain and nothing resolves, 320), 4
-    control loss, 5 (323.7 Recall and Hidden removal, C-58), 6
+    control loss, 5 (323.6 Recall and Hidden removal, C-58), 6
     Showdown staging, 7 Combat staging, 8 Contested maintenance, 9 Showdown
     opening, 10 Combat opening — then, when the run changed anything, the
     322 follow-up Cleanups on the same working state until one changes
@@ -598,7 +598,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         elif facts.get("reason") == "mode_unknown" and not any(int(p.get("points", 0)) for p in working_e["players"].values()):
             record["steps"].append({"step": 1, "outcome": "no_points_without_mode"})
         else:
-            return _unsupported(base, facts.get("reason", "mode_unknown"), "Cleanup step 1 needs the Mode of Play to judge the victory condition (323.1, 456.3)", ["Core 323.1", "Core 194.3"], cleanup_step="1")
+            return _unsupported(base, facts.get("reason", "mode_unknown"), "Cleanup step 1 needs the Mode of Play to judge the victory condition (323.1, 458.3)", ["Core 323.1", "Core 194.3"], cleanup_step="1")
         # 2 — Core 323.2
         combat = working_t.get("combat")
         if combat is not None and combat["status"] in COMBAT_IN_PROGRESS:
@@ -607,7 +607,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
                 return failure
             working_t, working_e = synced["next_timing_state"], synced["next_effect_state"]
             record["steps"].append({"step": 2, "outcome": "synchronized", "triggers": synced["trace"].get("scheduled_triggers", [])})
-        # 3a / 3b — Core 323.3–323.5
+        # 3a / 3b — Core 323.3–323.4
         lethal = perform_lethal_cleanup(working_e, replacement_event_order=order_map, replacement_choices=choice_map,
                                         later_iterations=_ed.later_iteration_maps(engine_decisions))
         if lethal.get("committed") is not True:
@@ -617,14 +617,14 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
                         "cleanup_iteration": lethal.get("cleanup_iteration", 0),
                         "replacement_ids": lethal.get("batch_result", {}).get("replacement_ids", []), "event_ids": lethal.get("batch_result", {}).get("event_ids", []), "decision_controller": lethal.get("batch_result", {}).get("decision_controller")}
             if lethal.get("unsupported"):
-                return _unsupported(base, "lethal_cleanup_unsupported", f"step 3: {lethal.get('reason')}", ["Core 323.4", "Core 323.5"], cleanup_step="3")
+                return _unsupported(base, "lethal_cleanup_unsupported", f"step 3: {lethal.get('reason')}", ["Core 383.2.c.3", "Core 323.4"], cleanup_step="3")
             return _invalid(base, [f"step 3: {lethal.get('reason') or '; '.join(lethal.get('errors', []))}"])
         working_e = lethal["next_state"]
         death_triggers = [dict(t) for t in lethal.get("pending_triggers", [])]
         for trigger in death_triggers:
             trigger["batch_sequence"] = index * 100 + int(trigger.get("batch_sequence", 0))
         # 2026-09-28: a death in this Cleanup - any phase's, the Beginning's and the Ending's too - is
-        # a death (Core 428.1.a.2, 323.5) and wakes watchers as a resolution's Cleanup does, as the
+        # a death (Core 429.1.a.2, 323.4) and wakes watchers as a resolution's Cleanup does, as the
         # batch after the death triggers. This step scheduled death triggers only.
         watch_triggers: list[dict[str, Any]] = []
         if lethal.get("events"):
@@ -633,7 +633,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
                     working_e, list(lethal["events"]), turn_id=working_e.get("turn_id", DEFAULT_TURN_ID),
                     batch_label=f"cleanup:{_public_id(timing_state, effect_state)}:{index}")
             except watchers.WatchUnsupported as exc:
-                return _unsupported(base, exc.reason_code, f"step 3: {exc}", ["Core 323.4", "Core 428.1.a.2"], cleanup_step="3")
+                return _unsupported(base, exc.reason_code, f"step 3: {exc}", ["Core 383.2.c.3", "Core 429.1.a.2"], cleanup_step="3")
             watch_batch = max((t["batch_sequence"] for t in death_triggers), default=index * 100 - 1) + 1
             for trigger in watch_triggers:
                 trigger["batch_sequence"] = watch_batch
@@ -643,17 +643,17 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         if death_triggers or watch_triggers:
             scheduled = schedule_triggered_items(working_t, death_triggers + watch_triggers)
             if scheduled.get("applied") is not True:
-                return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "death triggers could not be scheduled", ["Core 323.4"], cleanup_step="3a")
+                return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "death triggers could not be scheduled", ["Core 383.2.c.3"], cleanup_step="3a")
             working_t = scheduled["next_state"]
         record["steps"].append({"step": 3, "outcome": "killed" if lethal.get("killed_objects") else "nothing_lethal", "killed": lethal.get("killed_objects", []), "pending_triggers": [t["trigger_id"] for t in death_triggers],
                                 **({"watch_triggers": [t["trigger_id"] for t in watch_triggers]} if watch_triggers else {})})
-        # 4 — Core 323.6
+        # 4 — Core 323.5
         board4 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e, index, "4"), steps=("control_loss",), within_cleanup=True)
         if failure := sub(board4, "4"):
             return failure
         working_e = board4["next_effect_state"]
         record["steps"].append({"step": 4, "outcome": "applied" if board4["trace"]["steps"] else "no_change", "changes": board4["trace"]["steps"]})
-        # 5 — Core 323.7, on the same working state (ADR-0015 §2)
+        # 5 — Core 323.6, on the same working state (ADR-0015 §2)
         board5 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e, index, "5"), steps=("recall_remove",), within_cleanup=True)
         if failure := sub(board5, "5"):
             return failure
@@ -663,16 +663,16 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
                                 "recalled": [item["object_id"] for item in five["recalled"]],
                                 "removed_hidden": [item["object_id"] for item in five["removed_hidden"]],
                                 "still_hidden": five["still_hidden"], "transitions": five["transitions"]})
-        # 6 — Core 323.8
+        # 6 — Core 323.7
         staged6 = stage_showdown(working_t, working_e, bound_to(working_t, working_e, index, "6"), within_cleanup=True)
         if failure := sub(staged6, "6"):
             return failure
         working_t = staged6["next_timing_state"]
         record["steps"].append({"step": 6, "outcome": staged6["trace"]["outcome"], "staged": staged6["trace"]["staged"]})
-        # 7 / 7a — Core 323.9–323.10
+        # 7 / 7a — Core 323.8–323.9
         combat = working_t.get("combat")
         if combat is not None and combat["status"] in COMBAT_IN_PROGRESS:
-            record["steps"].append({"step": 7, "outcome": "combat_in_progress", "combat_id": combat["combat_id"]})  # 460: no other Combat while one lasts
+            record["steps"].append({"step": 7, "outcome": "combat_in_progress", "combat_id": combat["combat_id"]})  # 462: no other Combat while one lasts
         elif working_t.get("phase") == "main":
             staged7 = stage_combat(working_t, working_e, bound_to(working_t, working_e, index, "7"), within_cleanup=True)
             if failure := sub(staged7, "7"):
@@ -681,13 +681,13 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
             record["steps"].append({"step": 7, "outcome": staged7["trace"]["outcome"], "combat_id": staged7["trace"].get("combat_id")})
         else:
             record["steps"].append({"step": 7, "outcome": "not_main_phase"})
-        # 8 / 8a — Core 323.11
+        # 8 / 8a — Core 323.10
         board8 = run_board_cleanup(working_t, working_e, bound_to(working_t, working_e, index, "8"), steps=("contested",), within_cleanup=True)
         if failure := sub(board8, "8"):
             return failure
         working_e = board8["next_effect_state"]
         record["steps"].append({"step": 8, "outcome": "applied" if board8["trace"]["steps"] else "no_change", "changes": board8["trace"]["steps"]})
-        # 9 — Core 323.12
+        # 9 — Core 323.11
         if working_t.get("staged_showdowns") and not working_t["showdown"]["active"] and (working_t.get("combat") is None or working_t["combat"]["status"] in {"staged", "closed"}):
             opened9 = open_showdown(working_t, working_e, bound_to(working_t, working_e, index, "9"), within_cleanup=True)
             if opened9.get("committed"):
@@ -699,7 +699,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
                 return failure
         else:
             record["steps"].append({"step": 9, "outcome": "nothing_staged"})
-        # 10 / 10a — Core 323.13–323.14
+        # 10 / 10a — Core 323.12–323.13
         combat = working_t.get("combat")
         if combat is not None and combat["status"] == "staged":
             opened10 = open_combat(working_t, working_e, bound_to(working_t, working_e, index, "10"), within_cleanup=True)
@@ -720,7 +720,7 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         return _unsupported(base, "cleanup_iterations_exceeded", f"{CLEANUP_ITERATION_BOUND} follow-up Cleanups (322) did not reach a stable state", ["Core 322"])
     trace = {"task_consumed": consumed, "iterations": iterations, "terminal_written": terminal_written, "pending_items_kept": [i["id"] for i in working_t["chain"]["items"]],
              "decision_rebinding": rebinding, "victory_check": victory_check(working_e), "atomic": True}
-    return _commit(base, working_t, working_e, trace=trace, locators=["Core 318", "Core 319", "Core 320", "Core 322", "Core 322.1", "Core 323", "Core 323.1", "Core 323.2", "Core 323.4", "Core 323.5", "Core 323.6", "Core 323.8", "Core 323.9", "Core 323.11", "Core 323.12", "Core 323.13", "Core 323.14"])
+    return _commit(base, working_t, working_e, trace=trace, locators=["Core 318", "Core 319", "Core 320", "Core 322", "Core 322.1", "Core 323", "Core 323.1", "Core 323.2", "Core 383.2.c.3", "Core 323.4", "Core 323.5", "Core 323.7", "Core 323.8", "Core 323.10", "Core 323.11", "Core 323.12", "Core 323.13"])
 
 
 STEPS = {"begin_turn": begin_turn, "awaken": run_awaken_step, "enter_beginning": enter_beginning_phase, "channel": run_channel_step, "draw": run_draw_step, "enter_main": enter_main_phase, "run_cleanup": run_cleanup}

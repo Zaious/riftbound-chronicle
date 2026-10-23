@@ -94,7 +94,7 @@ def main() -> int:
         ("recycle", program("recycle", {"op": "recycle_one", "object_id": "c3"}), lambda s: s["players"]["p1"]["zones"]["main_deck"][-1] == "c3"),
         ("move", program("move", {"op": "move_board_object", "object_id": "u1", "destination": {"kind": "battlefield", "battlefield": "bf1"}}), lambda s: s["battlefields"]["bf1"]["objects"] == ["u1"]),
         ("might", program("might", {"op": "modify_might", "object_id": "u1", "amount": 2, "duration": "this_turn", "source": "fixture"}), lambda s: [e["value"]["amount"] for e in effects_for(s, "u1", "might_arithmetic")] == [2]),
-        # Core 477 + 370.1.a: a card's own floor is part of the change, and a
+        # Core 479 + 370.1.a: a card's own floor is part of the change, and a
         # change floored to nothing leaves no continuous effect to read.
         # u1 is a 3 Might Unit, so a floor of 3 leaves nothing to do at all.
         ("might-floored-away",
@@ -102,7 +102,7 @@ def main() -> int:
                                  "duration": "this_turn", "source": "fixture"}),
          lambda s: effects_for(s, "u1", "might_arithmetic") == [] and effective_might(s, "u1") == 3),
         # A floor of 1 still lets it fall two. The entry keeps what the card
-        # SAID (-9) beside what it contributes (-2); Core 477.3.b snapshots the
+        # SAID (-9) beside what it contributes (-2); Core 479.4.b snapshots the
         # second, and check_might_limit_snapshot.py holds it there.
         ("might-floor-partly-bites",
          program("might-floor", {"op": "modify_might", "object_id": "u1", "amount": -9, "minimum": 1,

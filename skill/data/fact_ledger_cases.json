@@ -1,6 +1,6 @@
 {
   "schema_version": "fact-ledger-cases.v1",
-  "ruleset_baseline": "2026-07-16",
+  "ruleset_baseline": "2026-10-09",
   "note": "Answers labelled with the tier they may go out at. The engine references are placeholders the gate replaces with the check_id of an engine check it builds by running the real kernel, so no case can pass against a stub. The locator index below stands in for the rules index; the service passes the real one. Cases marked use_retriever are run against a retriever rather than a bare locator set, so their official-text sources carry a binding and can fail for reasons absence cannot express.",
   "locator_index": [
     "Core 310.1.a",
@@ -8,7 +8,7 @@
     "Core 312.2.a",
     "Core 316",
     "Core 339.1",
-    "Core 423.1.b",
+    "Core 424.1.b",
     "Core 359.3.e.6",
     "Core 355.2.a"
   ],
@@ -203,7 +203,7 @@
           "mechanical": true,
           "sources": [
             "card_text:synthetic-unit-a",
-            "official_text:Core 423.1.b"
+            "official_text:Core 424.1.b"
           ]
         }
       ],
@@ -382,7 +382,7 @@
           "text": "The step resolves before priority opens.",
           "mechanical": true,
           "sources": [
-            "official_text:Core 341.2"
+            "official_text:Core 341"
           ]
         }
       ],
@@ -404,7 +404,7 @@
           "text": "The unit is destroyed before damage is assigned.",
           "mechanical": true,
           "sources": [
-            "official_text:Core 205.1"
+            "official_text:Core 205"
           ]
         }
       ],
@@ -423,7 +423,7 @@
       "status": "retrieved",
       "record": {
         "document_id": "core-rules",
-        "document_version": "2026-07-16",
+        "document_version": "2026-10-09",
         "locator": "Core 312",
         "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
       }
@@ -432,16 +432,16 @@
       "status": "retrieved",
       "record": {
         "document_id": "core-rules",
-        "document_version": "2026-07-16",
+        "document_version": "2026-10-09",
         "locator": "Core 339.1",
         "text_hash": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"
       }
     },
-    "Core 341.2": {
+    "Core 341": {
       "status": "conflict",
       "record": null
     },
-    "Core 205.1": {
+    "Core 205": {
       "status": "superseded",
       "record": null
     }

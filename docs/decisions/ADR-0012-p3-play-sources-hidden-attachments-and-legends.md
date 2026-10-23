@@ -6,14 +6,14 @@
   and playing from Hidden, attachments with Top-Most and Equip, the Legend and
   Champion zones as engine objects, the manually promoted token catalogue, and
   a typed copy request that fails closed.
-- Rules baseline: English Core Rules 2026-07-16, especially 103.2, 107.3,
-  107.4, 108.2–108.3, 124, 128–129, 136, 159, 349, 354–359, 377, 421,
-  434–435, 469.1, 811, 818–819, 822, 825.
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3), especially 103.3, 107.3,
+  107.4, 108.2–108.3, 124, 128–129, 136, 159, 349, 354–359, 377, 422,
+  435–436, 471.1, 811, 818–819, 822, 825.
 - Not decided here: the characteristics and layers of a copy (P4); the
   Weaponmaster discount and other conditional Equip costs (P4/P5);
   Empower / XP / Level (P4); the Cleanup steps that remove Hidden cards when
-  control changes (323.14, 469.1) and 323.7 generally; the facedown reveal at
-  game end (421.4); deck construction itself.
+  control changes (323.13, 471.1) and 323.6 generally; the facedown reveal at
+  game end (422.4); deck construction itself.
 
 ## Context
 
@@ -96,28 +96,28 @@ impossible, which the compiled clause states as
 Battlefield is `illegal: hidden_target_outside_battlefield`; the engine
 refuses the choice actually made and does not pre-enumerate whether any legal
 choice exists, which stays `unsupported: hidden_legality_enumeration`.
-Removing hidden cards when control of the Battlefield changes (323.14,
-469.1) and the reveal at game end (421.4) stay `unsupported`.
+Removing hidden cards when control of the Battlefield changes (323.13,
+471.1) and the reveal at game end (422.4) stay `unsupported`.
 
 ### 4. Attachments: Top-Most, attach, detach and Equip (DP-66)
 
 An object may carry `attached_to`; the object it names is the **Top-Most**
-card (434.1.b). The engine derives `attachments` rather than storing both
-directions. Attaching links two board cards (434.1): the attached card's
-location becomes the Top-Most card's (434.4, not a Move), its printed rules
+card (435.1.b). The engine derives `attachments` rather than storing both
+directions. Attaching links two board cards (435.1): the attached card's
+location becomes the Top-Most card's (435.4, not a Move), its printed rules
 text goes inactive and its Effect Text and Might Bonus apply to the Top-Most
 card (136.2.c, 159.2); nothing else about either card changes — an exhausted
-Equipment stays exhausted (434.5.a). Attaching to a new Top-Most card
-detaches it from the old one (434.2.a); attaching to its current Top-Most
-card does nothing (434.2.b).
+Equipment stays exhausted (435.5). Attaching to a new Top-Most card
+detaches it from the old one (435.2.a); attaching to its current Top-Most
+card does nothing (435.2).
 
-Detaching (435) is the reverse, and **its destination is derived, never
+Detaching (436) is the reverse, and **its destination is derived, never
 assumed**: a detached card's location is the Top-Most card's location
-(435.4); a detached Gear that would then sit at a Battlefield is Recalled by
-the next Cleanup (435.4.a) — the engine records the pending Recall rather
+(436.4); a detached Gear that would then sit at a Battlefield is Recalled by
+the next Cleanup (436.4.a) — the engine records the pending Recall rather
 than moving it early; and when the card detached because the Top-Most card
 left the board for a non-board zone, it detaches to the last board location
-that card occupied (435.4.b). `move_board_object`, `kill`, `banish`,
+that card occupied (436.4.b). `move_board_object`, `kill`, `banish`,
 `return_to_hand`, `recycle` and `recycle_one` all route a host's departure
 through this one derivation.
 
@@ -178,8 +178,8 @@ the trace so the P4 slice can bind to it.
 ## Coverage boundary
 
 Declared unsupported: copy characteristics and layers, Weaponmaster and
-conditional Equip costs, Hidden removal on control change (323.14, 469.1),
-323.7, the facedown reveal at game end (421.4), Legend abilities that need
+conditional Equip costs, Hidden removal on control change (323.13, 471.1),
+323.6, the facedown reveal at game end (422.4), Legend abilities that need
 P4 conditions, tokens outside the catalogue, deck construction. `complete_game`
 and `complete_legality` stay false.
 

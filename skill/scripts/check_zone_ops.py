@@ -59,7 +59,7 @@ def main() -> int:
         obj = back["next_state"]["objects"]["u1"]
         if object_identity(back["next_state"], "u1") != "u1@1" or obj["damage"] != 0 or effects_for(back["next_state"], "u1", active_only=True) or obj["exhausted"]:
             errors.append(f"returned object kept something of the old object: {obj}")
-        if e.get("not_a_move") is not True or e.get("pending_triggers") or "Core 446.2" not in e.get("rule_locators", []):
+        if e.get("not_a_move") is not True or e.get("pending_triggers") or "Core 448.2" not in e.get("rule_locators", []):
             errors.append(f"return_to_hand recorded as a move or with triggers: {e}")
         if validate_state(back["next_state"]):
             errors.append(f"state after return invalid: {validate_state(back['next_state'])}")
@@ -115,7 +115,7 @@ def main() -> int:
         obj = recalled["next_state"]["objects"]["u1"]
         if object_identity(recalled["next_state"], "u1") != "u1@0" or obj["damage"] != 1 or len(effects_for(recalled["next_state"], "u1", active_only=True)) != 1 or not obj["exhausted"]:
             errors.append(f"recall changed identity or dropped state: {obj}")
-        if e.get("not_a_move") is not True or e.get("pending_triggers") or e.get("completion") != "full" or "Core 456.1" not in e.get("rule_locators", []):
+        if e.get("not_a_move") is not True or e.get("pending_triggers") or e.get("completion") != "full" or "Core 458.1" not in e.get("rule_locators", []):
             errors.append(f"recall recorded as a move or incomplete: {e}")
     # controlled by the opponent: goes to the controller's base, not the owner's
     stolen = copy.deepcopy(unsettled_bf2); stolen["objects"]["u1"]["controller"] = "p2"; settle_contested(stolen)
@@ -152,7 +152,7 @@ def main() -> int:
             errors.append(f"state after channel invalid: {validate_state(nxt)}")
     ready = apply_program(state, program("ch2", {"op": "channel_rune", "player": "p1", "count": 1}))
     if not ready.get("committed") or ready["next_state"]["objects"]["r1"]["exhausted"] or ev(ready).get("completion") != "full":
-        errors.append("channel without entry_state did not enter ready with full completion (430.2.a)")
+        errors.append("channel without entry_state did not enter ready with full completion (431.2.a)")
     empty = apply_program(state, program("ch3", {"op": "channel_rune", "player": "p2", "count": 1}))
     e = ev(empty)
     if not empty.get("committed") or e.get("outcome") != "no_op" or e.get("completion") != "none" or e.get("applied_count") != 0:

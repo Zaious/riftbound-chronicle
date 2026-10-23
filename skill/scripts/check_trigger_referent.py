@@ -26,8 +26,8 @@ resolve_with_program):
       trigger's, or run without its chain item); an op with no adoption of the reference (kill);
       the reference beside a target; a registered template that brings its own trigger_event;
       a malformed trigger_event on a descriptor or a chain item;
-  designation watchers (combat.open_combat, combat.sync_designations; Core 464.2.c.3, 383.4.e.2.b,
-  383.4.f.2.b, 740.2.a, 464.2.e.1)
+  designation watchers (combat.open_combat, combat.sync_designations; Core 466.2.c.3, 383.4.e.2.b,
+  383.4.f.2.b, 740.2.a, 466.2.d.1)
     - p2's Unit attacks bf1, which p1 controls: a Legend's "When an enemy unit attacks a battlefield
       you control" in p1's Legend Zone triggers once, in the Defender's group, its referent the
       attacking Unit, which ends -1 Might this turn but not below 1; the same Legend banished, p1
@@ -37,8 +37,8 @@ resolve_with_program):
       in the Attacker's group, +1 on that Unit; two p1 Units attacking together: nothing; p1's lone
       Unit defends: triggers, +1 on it; two p1 defenders: nothing; an enemy attacking alone: nothing;
     - a Unit of the attacking player that arrives mid-combat gains its designation in the
-      resolution's Cleanup (464.2.c.3.a) and wakes the watch then, once;
-  the Battlefield's own watch (watchers.BATTLEFIELD_WATCH_FIELDS; Core 446.1, 190.6.a, 190.6.b)
+      resolution's Cleanup (466.2.c.3.a) and wakes the watch then, once;
+  the Battlefield's own watch (watchers.BATTLEFIELD_WATCH_FIELDS; Core 448.1, 190.6.a, 190.6.b)
     - p1's Unit Standard Moves from bf1 (p1's) to its Base: bf1's trigger is scheduled, source bf1,
       controller p1, referent that Unit (+1 Might this turn on resolution); an effect's Move from
       bf1 triggers it too; a Move TO bf1, a Move from another Battlefield, a Recall: nothing;
@@ -270,7 +270,7 @@ def main() -> int:
                 after = done["next_effect_state"]
                 if might(after, "e1") != max(1, before["e1"] - 1) or might(after, "a1") != before["a1"]:
                     errors.append(f"enemy attacks: Might {before} -> e1 {might(after, 'e1')}, a1 {might(after, 'a1')}")
-            # the floor: a 1-Might attacker stays at 1 (Core 477.3.b)
+            # the floor: a 1-Might attacker stays at 1 (Core 479.4.b)
             weak = ahri_board()
             weak["objects"]["e1"]["base_might"] = 1
             opened_w, why_w = into_combat(weak, "e1", actor="p2")
@@ -341,7 +341,7 @@ def main() -> int:
         errors.append(f"alone: an enemy attacking alone triggered p1's watch ({why})")
 
     # a late arrival: a second p2 unit moved in by p2's own effect mid-combat gains the Attacker
-    # designation in the resolution's Cleanup (464.2.c.3.a) and wakes the enemy-attacks watch then
+    # designation in the resolution's Cleanup (466.2.c.3.a) and wakes the enemy-attacks watch then
     late = ahri_board()
     unit(late, "e2", "p2", might=5)
     opened, why = into_combat(late, "e1", actor="p2")
@@ -425,7 +425,7 @@ def main() -> int:
     recalled = resolve_with_program(fixture(priority="p2", items=[item("rc", "p1", "spell", "default", "finalized")],
                                             passes=["p1", "p2"]), "rc", bar(), recall)
     if not recalled.get("committed") or items(recalled["next_timing_state"], "on-move-from@"):
-        errors.append(f"moves from here: a Recall (not a Move, Core 446.1) triggered it ({recalled.get('reason')})")
+        errors.append(f"moves from here: a Recall (not a Move, Core 448.1) triggered it ({recalled.get('reason')})")
     # uncontrolled: the Turn Player controls it (190.6.b) - here p2's turn, p1's reaction moves a1
     loose = bar(controller=None)
     t2 = fixture(priority="p2", items=[item("fx2", "p1", "spell", "reaction", "finalized")], passes=["p1", "p2"])

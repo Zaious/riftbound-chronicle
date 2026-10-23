@@ -49,9 +49,9 @@ KINDS = ("target_selection", "replacement_order", "replacement_choice", "optiona
          # 2026-09-27 package 5, Core 355.14.e: how a split deal's damage is divided, at resolution
          "damage_division",
          # 2026-09-27 package 6: a named option a player chooses as the instruction resolves ("Each
-         # other player chooses Cards or Runes."), by that player - not a mode of the card (402.2)
+         # other player chooses Cards or Runes."), by that player - not a mode of the card (403.2)
          "option_selection",
-         # 2026-10-16 package 14: how many buffs to spend from each Unit when one has several (Core 426.1.b.2, 702.2.b)
+         # 2026-10-16 package 14: how many buffs to spend from each Unit when one has several (Core 427.1.b.2, 702.2.b)
          "buff_spend")
 LEGACY_CLEANUP_VERSION = "riftbound-cleanup-decisions.v1"
 
@@ -130,7 +130,7 @@ def validate_engine_decisions(value: Any) -> list[str]:
         elif kind == "damage_assignment":
             # ADR-0008 §8: the complete raw assignment — every opposing Unit
             # identity to a non-negative amount — plus, when a Unit's requirements
-            # are mutually exclusive, which one applies (465.2.c.8).
+            # are mutually exclusive, which one applies (467.2.c.8).
             amounts = val.get("amounts") if isinstance(val, dict) and "amounts" in val else val
             choices = val.get("requirement_choices", {}) if isinstance(val, dict) and "amounts" in val else {}
             if not isinstance(amounts, dict) or not amounts or any(not isinstance(k, str) or not k or isinstance(n, bool) or not isinstance(n, int) or n < 0 for k, n in amounts.items()):
@@ -163,7 +163,7 @@ def validate_engine_decisions(value: Any) -> list[str]:
             if not isinstance(identities, dict) or set(identities) != set(val if isinstance(val, dict) else []):
                 errors.append(f"{label}.selection_identities must bind every Unit spent from exactly once")
             if item["stage"] != "resolution":
-                errors.append(f"{label}: buff_spend is chosen as the instruction resolves (Core 355.17, 704.1)")
+                errors.append(f"{label}: buff_spend is chosen as the instruction resolves (Core 355.18, 704.1)")
         elif "selection_identities" in item:
             errors.append(f"{label}.selection_identities is only valid for target_selection, card_selection, card_ordering, damage_assignment, damage_division or buff_spend")
         # selection-binding.v1: a decision that ESTABLISHES a selection later
@@ -205,12 +205,12 @@ def validate_engine_decisions(value: Any) -> list[str]:
         if kind == "mode_selection" and (not isinstance(val, str) or not val):
             errors.append(f"{label}.value must be the stable option id of the chosen mode (not an index)")
         if kind == "mode_selection" and item["stage"] not in ("play_declaration", "trigger_finalization"):
-            errors.append(f"{label}: mode_selection is chosen while playing or at trigger finalization (Core 402.2)")
-        # 2026-09-27: or while paying a triggered ability's base cost as it is finalized (Core 404.1,
+            errors.append(f"{label}: mode_selection is chosen while playing or at trigger finalization (Core 403.2)")
+        # 2026-09-27: or while paying a triggered ability's base cost as it is finalized (Core 405.1,
         # 383.3.b.1) - which unit spends its buff (trigger_cost.py)
         if kind == "card_selection" and item["stage"] not in ("resolution", "play_declaration", "trigger_finalization"):
             errors.append(f"{label}: card_selection is decided at resolution, or while paying a cost at play (Core 357.2) "
-                          f"or at trigger finalization (Core 404.1)")
+                          f"or at trigger finalization (Core 405.1)")
         if kind in ("replacement_order", "replacement_choice", "trigger_order") and item["stage"] != "resolution":
             errors.append(f"{label}: {kind} is a resolution-stage decision")
         if kind == "player_selection" and (not isinstance(val, str) or not val):
@@ -347,7 +347,7 @@ EXCLUDABLE_KINDS = ("unit", "gear", "spell", "rune", "legend")
 CHOICE_VISIBILITY = ("public", "private_to_chooser")
 CHOICE_BY = ("controller", "opponent", "each_player")
 # package 5 (2026-09-27): `all` - every card an earlier instruction of the same program marked
-# and still marked ("recycle the rest", Core 416.4, 424.4.a): no choice is made, so it is
+# and still marked ("recycle the rest", Core 417.4, 425.4.a): no choice is made, so it is
 # forced; only an unordered set drawn from `revealed` may say it
 COUNT_FORMS = ("exactly", "up_to", "any_number", "one", "all")
 PRIVATE_SOURCES = {"hand", "main_deck_top", "revealed"}

@@ -18,7 +18,7 @@ python ${CLAUDE_SKILL_DIR}/scripts/bootstrap_rules.py `
 
 The default bootstrap installs exactly the two controlling English documents:
 
-- `riftbound-core-rules-2026-07-16.pdf`
+- `riftbound-core-rules-2026-10-09.pdf`
 - `riftbound-tournament-rules-2026-07-16.pdf`
 
 It writes `rules.lock.json` with the download timestamp, local paths, byte

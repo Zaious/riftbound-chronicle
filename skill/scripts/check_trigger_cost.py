@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """A triggered ability's base cost is paid as it is finalized, or the ability never reaches the Chain.
 
-Core 204.3.a / 383.3.b / 403.1.b.1: "[do X] to [do Y]" that opens a triggered ability's effect -
+Core 204.1.c / 383.3.b / 404.1.b.1: "[do X] to [do Y]" that opens a triggered ability's effect -
 or follows the "you may" that opens it - makes [do X] the ability's base cost. 383.3.b.1 /
-740.4.a.2: it is paid to finalize the ability. 404.2 / 404.2.a: a player may decline to pay it,
+740.4.a.2: it is paid to finalize the ability. 405.2 / 405.2.a: a player may decline to pay it,
 and then the ability leaves the Chain and never becomes a Finalized Chain Item (not a counter);
 203.3: a cost that cannot be paid is not paid. The program carries the cost as its first
 instruction (`trigger_base_cost`); resolution_bridge.finalize_trigger pays it with the play
@@ -14,7 +14,7 @@ Held here, every trigger scheduled by the engine itself (a play, a kill, the cha
   spend a buff    "When you play me, you may spend a buff to buff me and ready me." (Wildclaw
                   Shaman's shape): paid -> the buff is gone from the unit that paid and the card
                   is buffed and ready; declined at the "you may" (383.3.a.2), or the cost declined
-                  (404.2) -> removed, nothing paid, nothing happens; no buff anywhere -> removed
+                  (405.2) -> removed, nothing paid, nothing happens; no buff anywhere -> removed
                   (203.3); two candidates -> the payer's choice is required, and it is honoured;
                   an enemy's buff, a choice by the opponent, or a stale identity -> refused
   exhaust me      a Legend in its Legend Zone (Volibear, Relentless Storm's shape) and a gear on
@@ -32,7 +32,7 @@ Held here, every trigger scheduled by the engine itself (a play, a kill, the cha
                   example): the card killed, its Deathknell scheduled; paid -> the card is at the
                   bottom of its owner's Main Deck and exactly its controller's Runes are ready
                   (not the opponent's, not a unit); the recycle wakes "When you recycle one or more
-                  cards to your Main Deck" (416.2.a), scheduled after the finalized ability; the
+                  cards to your Main Deck" (417.2.a), scheduled after the finalized ability; the
                   card no longer in the trash -> removed
   resolution      the receipt is what resolution reads: a finalized item stripped of it, or
                   carrying another cost's hash, is refused; apply_program alone refuses the
@@ -152,7 +152,7 @@ def check_spend_buff() -> None:
         return fail("spend a buff", f"the play did not schedule the trigger: {pending}")
     if not state["objects"]["ws"].get("exhausted"):
         fail("spend a buff", "the unit did not enter exhausted, so 'ready me' would prove nothing")
-    # the "you may" is asked first (383.3.a), then whether to pay (404)
+    # the "you may" is asked first (383.3.a), then whether to pay (405)
     ask = finalize_trigger(timing, state, WS_REGISTRY, None)
     if ask.get("committed") or ask.get("reason") != "trigger_finalize_choice_required":
         fail("spend a buff / no choices", f"expected the 'you may' first, got {ask.get('reason')}")
@@ -187,7 +187,7 @@ def check_spend_buff() -> None:
         fail("spend a buff / declined may", f"{declined.get('reason')} {declined.get('transition')}")
     if hash_value(declined.get("next_effect_state") or state) != hash_value(state):
         fail("spend a buff / declined may", "declining the trigger changed the board")
-    # performed, the cost declined: removed, never finalized (404.2), nothing paid
+    # performed, the cost declined: removed, never finalized (405.2), nothing paid
     unpaid = finalize_trigger(timing, state, WS_REGISTRY, None, perform_optional_trigger=True, pay_trigger_cost=False)
     if not removed(unpaid, "trigger_cost_declined") or not state["objects"]["u1"].get("buffed") \
             or hash_value(unpaid["next_effect_state"]) != hash_value(state):
@@ -467,14 +467,14 @@ def check_recycle_me() -> None:
         fail("recycle me / resolved", "a Rune of its controller is still exhausted")
     if not objects["rz"]["exhausted"] or not objects["u1"]["exhausted"]:
         fail("recycle me / resolved", "the opponent's Rune or a unit was readied: 'your runes' is its controller's Runes only")
-    # the card is no longer in the trash when its ability is finalized: removed (416.3, 203.3)
+    # the card is no longer in the trash when its ability is finalized: removed (417.3, 203.3)
     gone = copy.deepcopy(state)
     gone["players"]["p1"]["zones"]["trash"].remove("ek")
     gone["players"]["p1"]["zones"]["banishment"].append("ek")
     cannot = finalize_trigger(timing, gone, EK_REGISTRY, None, pay_trigger_cost=True)
     if not removed(cannot, "trigger_cost_unpayable"):
         fail("recycle me / not in the trash", f"{cannot.get('reason')} {cannot.get('transition')}")
-    # the recycle as a cost wakes "When you recycle one or more cards to your Main Deck" (416.2.a)
+    # the recycle as a cost wakes "When you recycle one or more cards to your Main Deck" (417.2.a)
     timing_k, state_k = ek_killed(ek_board(karma=True))
     woke = finalize_trigger(timing_k, state_k, EK_REGISTRY, None, pay_trigger_cost=True)
     items = [(i["id"].split("@")[0], i["status"]) for i in (woke.get("next_timing_state") or {}).get("chain", {}).get("items", [])]
@@ -526,8 +526,8 @@ def main() -> int:
         return 1
     print("OK: a triggered ability's base cost is paid as it is finalized, with the play transaction's cost machinery "
           "(spend a buff, exhaust me from the Legend Zone or the board, Energy, Power, recycle me from the trash); "
-          "declined or unpayable, the ability leaves the Chain unfinalized and nothing is paid (Core 203.3, 204.3.a, "
-          "383.3.b, 383.3.b.1, 404.2); resolution reads the receipt and pays nothing again; the recycle wakes its watcher.")
+          "declined or unpayable, the ability leaves the Chain unfinalized and nothing is paid (Core 203.3, 204.1.c, "
+          "383.3.b, 383.3.b.1, 405.2); resolution reads the receipt and pays nothing again; the recycle wakes its watcher.")
     return 0
 
 

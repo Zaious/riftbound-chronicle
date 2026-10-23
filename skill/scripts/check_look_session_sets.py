@@ -3,18 +3,18 @@
 Regression gate for the look-at session's own sets (package 5, 2026-09-27): a later
 instruction of the same program acting on what an earlier look left.
 
-  choice.count {all: true}  - "recycle the rest" (Core 416.4, 424.4.a): every card the
+  choice.count {all: true}  - "recycle the rest" (Core 417.4, 425.4.a): every card the
       session still marks, with no choice made; only an unordered set from `revealed`
       may say it (a single, a board, a hand or an ordered choice with `all` is refused).
   Look, take one, recycle the rest (look_at_top 3, put_in_hand 1, recycle all):
       - the taken card is in the hand; the other two are at the bottom of the deck, in
-        the randomization receipt's order (416.5), the rest of the deck unchanged above them; the
+        the randomization receipt's order (417.5), the rest of the deck unchanged above them; the
         recycle asks for no card_selection (and the card in hand is never a candidate);
       - a deck of two looks at two, takes one and recycles the other; a deck of one takes
-        it and recycles nothing, without Burn Out (431.1.c, 431.1.c.1);
+        it and recycles nothing, without Burn Out (432.1.c, 432.1.c.1);
       - counterexample: the same body with {exactly: 1} leaves a looked card on top.
   Look at two, recycle up to both, put the others back (look_at_top 2, recycle up_to 2,
-  put_back top) - the Predict composition (436.1.a):
+  put_back top) - the Predict composition (437.1.a):
       - recycling none, one or both leaves the deck exactly as the engine's own predict 2
         with the same choices;
       - recycling three is refused (at most two).
@@ -56,7 +56,7 @@ def envelope(state, *entries, receipts=()):
 
 
 def receipt(operation_id, permutation):
-    """Core 416.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
+    """Core 417.5: the random bottom order of a simultaneous recycle, from outside (ADR-0010 §2)."""
     return {"schema_version": "randomization-receipt.v1", "receipt_id": f"rnd-{operation_id}", "operation": "recycle_simultaneous",
             "operation_id": operation_id, "player": "p1", "permutation": list(permutation),
             "provenance": {"provider": "chronicle-harness", "method": "fisher-yates", "seed": "7"}}
@@ -106,7 +106,7 @@ def main() -> int:
         errors.append(f"the take-one-recycle-rest body is not valid: {validate_program(prog)} {validate_state(state)}")
     asked = apply_program(state, prog, decisions=envelope(state, pick("pick", ["d2"], state)))
     if asked.get("committed") or asked.get("reason_code") != "randomization_receipt_required" or asked.get("decision_ids") != ["rest-order"]:
-        errors.append(f"recycling the rest waited for something other than its random bottom order (416.5): {asked.get('reason_code')} "
+        errors.append(f"recycling the rest waited for something other than its random bottom order (417.5): {asked.get('reason_code')} "
                       f"{asked.get('decision_ids')}")
     done = apply_program(state, prog, decisions=envelope(state, pick("pick", ["d2"], state),
                                                          receipts=[receipt("rest-order", ["d3", "d1"])]))
@@ -142,7 +142,7 @@ def main() -> int:
         board = deck_of(4)
         mine = [pick("recycle-pick", chosen, board)] + ([pick("put-back-order", order, board, "card_ordering")] if len(order) > 1 else [])
         theirs = [pick("rc", chosen, board)] + ([pick("pb", order, board, "card_ordering")] if len(order) > 1 else [])
-        # 416.5: two or more recycled at once go in a random order - a receipt, not a player's ordering
+        # 417.5: two or more recycled at once go in a random order - a receipt, not a player's ordering
         mine_r = [receipt("recycle-order", chosen)] if len(chosen) > 1 else []
         theirs_r = [receipt("ro", chosen)] if len(chosen) > 1 else []
         got = apply_program(board, body, decisions=envelope(board, *mine, receipts=mine_r))

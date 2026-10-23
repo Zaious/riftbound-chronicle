@@ -2,7 +2,7 @@
 """An opponent's Move to a Battlefield the source is not at (package 9, Volibear - Imposing).
 
 "When an opponent moves to a battlefield other than mine, draw 1. (Bases are not battlefield.)" GPT 2026-10-06
-(PACKAGE9_INVENTORY section 7, ruling 14): the Move's responsibility (Core 411.1, 411.4) - a Standard Move the
+(PACKAGE9_INVENTORY section 7, ruling 14): the Move's responsibility (Core 412.1, 412.4) - a Standard Move the
 opponent makes, or one an effect the opponent controls makes; the source in its Base names no "mine" and is a named
 blocker, never guessed.
 
@@ -16,7 +16,7 @@ destination_not_source_battlefield, grouping one_per_action (one trigger per Mov
   V5 effect move   p2's spell moving p2's unit to bf2: one trigger
   V6 base          Volibear in p1's Base, p2 moves to bf2: refused by name (source_not_at_battlefield)
   V7 two Moves     two independent Standard Moves of p2's: each triggers once
-  V8 our effect    p1's own spell moving p2's unit to bf2: none (the Move is p1's, Core 411.4)
+  V8 our effect    p1's own spell moving p2's unit to bf2: none (the Move is p1's, Core 412.4)
   V9 one spell     p2's one resolution with two Move instructions (e1, then e2, to bf2): two actions, two triggers
   G  grammar       the clause grammar lowers the sentence to exactly that descriptor; near misses stay unparsed
 
@@ -113,7 +113,7 @@ def main() -> int:
                   controller="p2")
     if count(two) != 2:
         fail("V9 two instructions", count(two))
-    # V8: p1's own effect moving p2's unit is not "an opponent moves" (Core 411.4)
+    # V8: p1's own effect moving p2's unit is not "an opponent moves" (Core 412.4)
     got = count(effect_move(board(), "e1", TO_BF2, controller="p1"))
     if got != 0:
         fail("V8 our effect", got)

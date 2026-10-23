@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Regression gate for Might and cost read off the board (Core 477.3; 356.4, 356.6).
+"""Regression gate for Might and cost read off the board (Core 479.4; 356.4, 356.6).
 
 Draven - Showboat, "My Might is increased by your points.":
-  - a passive arithmetic increase (477.3.a) by its controller's points, computed each
-    time Might is read - a passive source is not snapshotted (477.3.b);
+  - a passive arithmetic increase (479.4.a) by its controller's points, computed each
+    time Might is read - a passive source is not snapshotted (479.4.b);
   - 0 points adds nothing; more points later add more, also after the state has been
     moved to the canonical effect list by a program; the opponent's points do not count;
   - "per" is refused on an effect that is not passive.
@@ -93,7 +93,7 @@ def main() -> int:
         before = effective_might(later, "u1")
         later["players"]["p1"]["points"] = 4
         if before != printed + 1 or effective_might(later, "u1") != printed + 4:
-            errors.append(f"the increase was snapshotted, not read off the board (477.3.b): {before} then {effective_might(later, 'u1')}")
+            errors.append(f"the increase was snapshotted, not read off the board (479.4.b): {before} then {effective_might(later, 'u1')}")
     if moved.get("committed"):
         forged = copy.deepcopy(moved["next_state"])
         # 2026-10-15 package 13 (C2): the printed one is read live (printed_aura_effects); the forgery stores it as an
@@ -102,7 +102,7 @@ def main() -> int:
         effect["passive"] = False
         forged["continuous_effects"].append(effect)
         if not validate_state(forged):
-            errors.append("a non-passive effect reading points was accepted; only a passive ability is read fresh (477.3.b)")
+            errors.append("a non-passive effect reading points was accepted; only a passive ability is read fresh (479.4.b)")
 
     # --- Rhasa -----------------------------------------------------------------------------------
     paid = play(rhasa(trash=4, energy=6))
@@ -128,7 +128,7 @@ def main() -> int:
     if errors:
         print("FAILED: dynamic Might / cost checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: Draven's Might is its printed Might plus its controller's points, read fresh each time (477.3.b), the "
+    print("OK: Draven's Might is its printed Might plus its controller's points, read fresh each time (479.4.b), the "
           "opponent's points excluded; Rhasa's Energy cost falls by 1 per card in its controller's trash through the real "
           "play transaction, never below 0 (356.6); a private zone, a non-passive reader and a flat reduction are caught.")
     return 0

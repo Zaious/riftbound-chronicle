@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """An effect-driven play goes through the normal play transaction, from the Chain it was put on.
 
-Core 419.3 / 419.3.a / 419.3.b: an effect may have a card played as it resolves - a Limited Action
+Core 420.3 / 420.3.a / 420.3.b: an effect may have a card played as it resolves - a Limited Action
 whose steps are the normal ones except as the effect notes. GPT 2026-09-25 (The Harrowing,
 Soulgorger): the play goes through the normal play transaction and the Chain, never straight onto the
 board; the trash is a public zone, so the card is a target bound when the effect is played or
@@ -14,7 +14,7 @@ The engine's shape: the `limited_play` instruction takes the play's step 1 - the
 for the Chain as a Pending item, a new object (Core 354, 124) - and the rest waits until the effect has
 finished resolving (354.3): the resolution bridge puts the item on the timing Chain ahead of anything
 the resolution triggered, and resolution_bridge.finalize_limited_play takes steps 2 to 5 through
-play_card with the effect's permission and cost change (356.1.b), no timing permission asked (419.3.a).
+play_card with the effect's permission and cost change (356.1.b), no timing permission asked (420.3.a).
 A Unit resolves as soon as it is Finalized (337.2): complete_limited_play.
 
 Held here:
@@ -23,7 +23,7 @@ Held here:
                       hand, its target a unit in its controller's trash bound at play; resolved, the
                       unit is on the Chain, Pending, and NOT on the board; completed, the unit is in
                       its Base exhausted (359.2.c), a new object, its Power cost paid and no Energy,
-                      and its own "When you play me" is on the Chain (419.4.a)
+                      and its own "When you play me" is on the Chain (420.4.a)
   W2 a trigger        "When you play me, you may play a unit from your trash, ignoring its Energy
                       cost." declined at the "you may" (383.3.a.2): removed, no target asked, the
                       trash unchanged; performed: the target bound at finalization, resolved, completed
@@ -61,7 +61,7 @@ Held here:
                       of the card's own Domain (a card with two Domains, or none recorded, cannot pay it); the card
                       is chosen from the hand as the ability resolves - private, not a target (Core 355.10.a) - and
                       only a card with [Hidden]; choosing none is allowed (128.6), and with none in hand nothing is
-                      asked (419.3.c); a unit enters the source's Battlefield though its player does not control it
+                      asked (420.3.c); a unit enters the source's Battlefield though its player does not control it
                       (355.2.b), and no other location is taken; a gear enters its Base; a cancelled play puts the
                       card back in the hand at its place
   H2 no 'here'        GPT 2026-10-12 (PACKAGE11 ruling 2, replacing PACKAGE8 ruling 3's named refusal): the source
@@ -211,7 +211,7 @@ def check_real_chain() -> None:
         fail("W1 resolved", f"the next procedure is {next_procedure(t1).get('procedure')}, not finalizing the play")
     bypass = finalize_oldest_pending(t1)
     if bypass.get("applied") or bypass.get("reason_code") != "limited_play_steps_required":
-        fail("W1 resolved", f"the play was marked Finalized without its steps (Core 419.3.b): {bypass.get('reason_code')}")
+        fail("W1 resolved", f"the play was marked Finalized without its steps (Core 420.3.b): {bypass.get('reason_code')}")
     identity_on_chain = object_identity(e1, "tu")
     if identity_on_chain == object_identity(state, "tu"):
         fail("W1 resolved", "the card kept its identity leaving the trash (Core 124)")
@@ -233,9 +233,9 @@ def check_real_chain() -> None:
     if (e2.get("chain_items") or {}):
         fail("W1 completed", f"the Chain still holds {sorted(e2['chain_items'])}")
     if [(i["id"], i["status"]) for i in t2["chain"]["items"]] != [("tu-on-play", "pending")]:
-        fail("W1 completed", f"the unit's own play trigger is not on the Chain (419.4.a): {t2['chain']['items']}")
+        fail("W1 completed", f"the unit's own play trigger is not on the Chain (420.4.a): {t2['chain']['items']}")
     if "tu" not in (e2["players"]["p1"].get("cards_finalized_this_turn") or {}).get(e2.get("turn_id", "turn-0"), []):
-        fail("W1 completed", "the card played is not recorded as Finalized this turn (419.4.b)")
+        fail("W1 completed", "the card played is not recorded as Finalized this turn (420.4.b)")
     # the program run names the step it took: the card's move is a "play_started" with its zone change
     alone = apply_program(state_after_play_of(state), HARROWING, decisions=target_decision(state_after_play_of(state), "t", "tu"))
     kinds = [(ev["kind"], ev.get("object")) for ev in alone.get("events") or []]
@@ -691,7 +691,7 @@ def check_hand_choice() -> None:
         return fail("H unit", f"the unit is not at bf1: {completed.get('reason')} {completed.get('message')}")
     if e2["players"]["p1"]["resources"] != {"energy": 0, "power": {"mind": 0}} or "hid-unit" in e2["players"]["p1"]["zones"]["hand"]:
         fail("H unit", f"the play paid something or left the card in hand: {e2['players']['p1']['resources']}")
-    # choosing none (128.6), and nothing to choose (419.3.c)
+    # choosing none (128.6), and nothing to choose (420.3.c)
     declined = ava_resolved(state, [])["done"]
     if [s.get("outcome") for s in declined["trace"]["effect"]] != ["paid_at_finalization", "no_op"] or pending_play(declined["next_timing_state"]):
         fail("H none chosen", f"{[s.get('outcome') for s in declined['trace']['effect']]}")
@@ -779,7 +779,7 @@ def main() -> int:
             # a board the engine should have produced and did not (the play never queued, say)
             fail(check.__name__, f"{type(exc).__name__}: {exc}")
     if errors:
-        print("FAILED: effect-driven play (Core 419.3)")
+        print("FAILED: effect-driven play (Core 420.3)")
         for problem in errors:
             print("  - " + problem)
         return 1

@@ -21,7 +21,7 @@ number of buffs from a unit that has two; a Combat whose defenders are a Unit th
   D6 closure     every request code the engine's modules can make is answered (ANSWERED, PLAY_REQUESTS) or named as not
                  a procedure point's decision (NOT_DECISIONS); every decision kind (engine_decisions.KINDS) is one this
                  module answers
-  D8 chance      an ability whose cost recycles two cards of the trash to the Main Deck (Core 416.5): enumerated, once
+  D8 chance      an ability whose cost recycles two cards of the trash to the Main Deck (Core 417.5): enumerated, once
                  per pair, carrying no receipt (whether it is legal does not depend on the order); applied without one,
                  the procedure asks chance for it; with the receipt chance gives, it commits
   D9 sequences   (found playing set one) a Cleanup's lethal batch where one controller has two Replacement Effects, one
@@ -35,9 +35,9 @@ number of buffs from a unit that has two; a Combat whose defenders are a Unit th
   D10 chance     (GPT PACKAGE14 ruling 4) recycling five of six cards of the trash to the Main Deck: 120 orders, past
                  CHANCE_CAP. The player's choice before it is enumerated (the representative order's way shows it legal);
                  the point's complete ways are unproved by name - the random successors are not all there
-  D7 465.2.c.10  (GPT PACKAGE14 ruling 1) the attacker's 5 damage among a Unit that cannot be dealt damage and a 2-Might
+  D7 467.2.c.10  (GPT PACKAGE14 ruling 1) the attacker's 5 damage among a Unit that cannot be dealt damage and a 2-Might
                  Unit: all six splits - the exempt Unit may take damage before the other has its lethal (GPT's own
-                 counterexample: all 5 on it). With two 2-Might Units beside it, 465.2.c.3 and c.4 still hold between
+                 counterexample: all 5 on it). With two 2-Might Units beside it, 467.2.c.3 and c.4 still hold between
                  them: both partial, or one above its lethal while the other lacks it, is refused; all on the exempt
                  Unit is not. A Unit whose prevention is used up after one Deal (Counter Strike's shape) is still
                  refused by name
@@ -224,9 +224,9 @@ def d1_d2(cat) -> list:
         fail("D1 options", f"base cost: {p.get('request')} {values(p)} {p.get('reason')}")
     declined = GL.run_procedure(t, e, cat, settings={"pay_trigger_cost": False})
     if not declined["committed"] or any(i.get("effect_program_id") == "Toll#toll" for i in declined["next_timing_state"]["chain"]["items"]):
-        fail("D1 options", "a declined base cost did not take the trigger off the Chain (Core 404.2)")
+        fail("D1 options", "a declined base cost did not take the trigger off the Chain (Core 405.2)")
     points.append(("Toll", t, e))
-    t, e = ending_point(cat, "TollShot")     # its target bound before its cost is paid or declined (Core 402, 404)
+    t, e = ending_point(cat, "TollShot")     # its target bound before its cost is paid or declined (Core 403, 405)
     points.append(("TollShot", t, e))
     t, e = resolving_point(cat, "Pick", [("h1", "Grunt", "p1", "hand"), ("dk", "Grunt", "p1", "main_deck")])
     if t is not None:
@@ -377,7 +377,7 @@ def d7_exempt() -> None:
     p = DS.decision_point(t, e, cat)
     got = sorted((v.get("d2"), v.get("k")) for v in values(p)) if p["status"] == "enumerated" else p.get("reason")
     if (p.get("request") or {}).get("kind") != "damage_assignment" or got != [(n, 5 - n) for n in range(6)]:
-        fail("D7 465.2.c.10", f"the attacker's options among an exempt and a 2-Might Unit: {got}")
+        fail("D7 467.2.c.10", f"the attacker's options among an exempt and a 2-Might Unit: {got}")
     t3, e3 = closed_combat([("k", {"might": 3}), ("d2", {"might": 2}), ("d3", {"might": 2})], attacker_might=5)
     e3["replacement_effects"].append(dict(exempt))
     q = DS.decision_point(t3, e3, cat)
@@ -385,13 +385,13 @@ def d7_exempt() -> None:
     for split, want in (((0, 0, 5), True), ((1, 0, 4), True), ((2, 2, 1), True), ((2, 3, 0), True),
                         ((1, 1, 3), False), ((3, 0, 2), False), ((3, 1, 1), False)):
         if (split in legal) != want:
-            fail("D7 465.2.c.10", f"with two ordinary Units, {split} (d2, d3, exempt) is {'refused' if want else 'admitted'}: "
+            fail("D7 467.2.c.10", f"with two ordinary Units, {split} (d2, d3, exempt) is {'refused' if want else 'admitted'}: "
                                   f"{q['status']} {q.get('reason')}")
     used_up = _copy.deepcopy(e)
     used_up["replacement_effects"][-1]["uses_remaining"] = 1
     r = DS.decision_point(t, used_up, cat)
     if r["status"] != "unproved" or "assignment_lethal_not_reachable" not in r.get("reason", ""):
-        fail("D7 465.2.c.10", f"a once-only prevention was not refused by name: {r['status']} {r.get('reason')}")
+        fail("D7 467.2.c.10", f"a once-only prevention was not refused by name: {r['status']} {r.get('reason')}")
 
 
 def d8_chance(cat) -> None:
@@ -462,7 +462,7 @@ def d9_sequences() -> None:
 def d12_mulligan(cat) -> None:
     """Package 15: Setup's Mulligan (Core 117) - p1 with four cards in hand may set aside none, one or two (1 + 4 + 6
     answers, a choice private to p1: p2's receipt lists none); two set aside go to the Main Deck's bottom in a random
-    order (416.5: chance's two orders), so the ways are 5 + 6 x 2; three are refused (117.1); the first turn waits for
+    order (417.5: chance's two orders), so the ways are 5 + 6 x 2; three are refused (117.1); the first turn waits for
     every Mulligan (118), and begins once both are made."""
     import turn_cycle as TCY
     hand = [(f"h{i}", "Grunt", "p1", "hand") for i in range(4)] + [(f"k{i}", "Grunt", "p2", "hand") for i in range(4)]
@@ -990,7 +990,7 @@ def main() -> int:
           f"cost, a private discard after a draw, a recycle and the chance after it, a buff spend from a unit with two; "
           f"every point's ways are exactly D(s); a domain that loses a target is caught by D(s), a contract missing a slot "
           f"stops by name; no domain, a repeated request and a cap are unproved by name; every request code is answered or "
-          f"named; 465.2.c.10's exempt Unit takes damage at any point while c.3/c.4 hold among the others; chance inside an action is asked when it is applied; a controller's own replacement sequences are answered (D1-D10) {counts}")
+          f"named; 467.2.c.10's exempt Unit takes damage at any point while c.3/c.4 hold among the others; chance inside an action is asked when it is applied; a controller's own replacement sequences are answered (D1-D10) {counts}")
     return 0
 
 

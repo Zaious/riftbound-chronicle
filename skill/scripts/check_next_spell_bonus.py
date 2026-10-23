@@ -5,7 +5,7 @@
 increased by 1.)" GPT 2026-10-06 (PACKAGE9_INVENTORY section 7, ruling 15): the first spell its controller plays
 after this, this turn; each of that spell's own Deals gets +1.
 
-The engine's shape: grant_turn_effect next_spell_bonus_damage {value N} - a next-card turn effect (Core 390.4, 391).
+The engine's shape: grant_turn_effect next_spell_bonus_damage {value N} - a next-card turn effect (Core 391.4, 392).
 The play of the controller's next spell spends it and binds a Bonus Damage (713-715) to that spell: bonus scope
 source_card {object, identity} - a Deal whose program's source is that object, with that identity, gets +N.
 
@@ -14,7 +14,7 @@ source_card {object, identity} - a Deal whose program's source is that object, w
   B3 not others   a Deal of another source (a gear's ability) while the bonus is bound deals its printed 2
   B4 opponent     the opponent's spell played first does not spend it; the controller's next one still has it
   B5 this turn    unspent, the turn's Expiration Step ends it
-  B7 unit source  the next spell's Deal with a Unit named as its source (417.6.b.3) gets no Bonus Damage
+  B7 unit source  the next spell's Deal with a Unit named as its source (418.6.b.3) gets no Bonus Damage
   B6 split        the bound spell's split Deal is refused by name (715.3 with 355.14.c not modelled); another
                   source's split gets nothing from it
   S  shapes       a value of 0 refused; the state validator refuses a non-integer value
@@ -124,7 +124,7 @@ def main() -> int:
                                                            "source_object": "u1"})
         if not other.get("committed") or other["next_state"]["objects"]["big"]["damage"] != 6 + 2:
             fail("B3 not others", f"{other.get('reason')} {other.get('next_state', {}).get('objects', {}).get('big')}")
-    # B7: a Deal the spell names a Unit as the source of gets nothing (GPT 2026-10-06 ruling 15; Core 417.6.b.3)
+    # B7: a Deal the spell names a Unit as the source of gets nothing (GPT 2026-10-06 ruling 15; Core 418.6.b.3)
     named = spell_program("bolt1", "p1")
     named["effects"][0].update({"source_object": "u1", "source_kind": "unit"})
     keep = spell_program

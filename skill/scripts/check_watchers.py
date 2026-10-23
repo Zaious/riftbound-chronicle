@@ -8,8 +8,8 @@ Must hold:
     dying fires when its neighbour dies, and the scope really filters —
     `self` sees only its own events, `controller` only its controller's,
     `location` only what happens where it is; a death in a Cleanup (lethal
-    damage, Core 428) wakes it through the resolution bridge as a Kill does,
-    and so does a death in the Combat Cleanup (Combat Damage, 466.1 - p2's
+    damage, Core 429) wakes it through the resolution bridge as a Kill does,
+    and so does a death in the Combat Cleanup (Combat Damage, 468.1 - p2's
     "first time a friendly unit dies each turn" wakes, p1's does not, and a
     later Cleanup death that turn is not the first) and in a Beginning- or
     Ending-Phase Cleanup (turn_cycle.run_cleanup) (2026-09-28);
@@ -84,8 +84,8 @@ FIRST_FRIENDLY_DEATH = {"kinds": ["died"], "scope": "any", "occurrence": "first_
 
 
 def cleanup_death_cases(errors: list[str]) -> None:
-    """A death in ANY Cleanup wakes the watchers (Core 428.1.a.2, 323.5) - the Combat Cleanup's
-    (Combat Damage, 466.1) and a turn's Cleanup in the Beginning or the Ending Phase, not only a
+    """A death in ANY Cleanup wakes the watchers (Core 429.1.a.2, 323.4) - the Combat Cleanup's
+    (Combat Damage, 468.1) and a turn's Cleanup in the Beginning or the Ending Phase, not only a
     resolution's or a Standard Move's (2026-09-28: those two scheduled death triggers only)."""
     from check_combat_damage_assignment import add_unit, closed_combat
     from combat import assign_combat_damage, combat_cleanup, deal_combat_damage
@@ -178,7 +178,7 @@ def main() -> int:
     if [entry["trigger_id"] for entry in w.schedule_watchers(enemy_any["next_state"], enemy_any["events"], turn_id=TURN)] != ["u1-any"]:
         errors.append("negative mutation failed: widening the scope to `any` did not change what matched, so the scope filter is vacuous")
 
-    # a death in a Cleanup is a death (Core 428): the lethal-damage kill batch's events reach the
+    # a death in a Cleanup is a death (Core 429): the lethal-damage kill batch's events reach the
     # watchers - a spell dealing 9 to u2 wakes the `any` watcher through the resolution bridge, as a
     # Kill does. perform_lethal_cleanup dropped those events, so it never woke (2026-09-28)
     from check_rules_core import item

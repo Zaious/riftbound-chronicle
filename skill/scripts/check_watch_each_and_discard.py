@@ -7,13 +7,13 @@ paths, each with the watch the clause grammar itself lowers from the golden sent
     stuns two enemy units asks p1 to order two triggers (Core 383.3.d) and, ordered, schedules two;
     the same resolution under "When you stun one or more enemy units" schedules one; p1 stunning a
     friendly unit, p2 stunning p2's own unit (enemy to p1, but not stunned by p1), and p1 stunning
-    an enemy that is already stunned (Core 423.1.a.1: it cannot be stunned again) schedule none;
+    an enemy that is already stunned (Core 424.1.a.1: it cannot be stunned again) schedule none;
   - "When you discard one or more cards" is about the player whose card is discarded (the
     event's player, scope `player`), not about whose effect it is: p1 discarding two cards in one
     instruction schedules one; p2's effect making p1 discard schedules one; p1's effect making p2
     discard schedules none; p2 discarding schedules none; p1 with an empty hand discards nothing
-    (Core 422.4) and schedules none; the watcher's card in a hand schedules none;
-  - a discard paid as a COST is a discard (Core 422.2.a, 422.3): a card played by p1 with a
+    (Core 423.4) and schedules none; the watcher's card in a hand schedules none;
+  - a discard paid as a COST is a discard (Core 423.2.a, 423.3): a card played by p1 with a
     discard in its cost schedules one, and so does an ability p1 activates with one (no `played`
     event: the discard alone wakes it, and the ability stays the item under the trigger); a play
     or an activation with no discard in its cost schedules none; two cost components give events
@@ -21,7 +21,7 @@ paths, each with the watch the clause grammar itself lowers from the golden sent
   - two of p1's watchers woken by one cost discard ask p1 to order them (Core 383.3.d) instead
     of refusing the play; ordered, both are scheduled;
   - a recycle and a kill paid as costs wake their watchers; a unit killed as a cost puts its own
-    death trigger on the Chain as its own earlier batch (Core 428.1.a.1.b), under what the death
+    death trigger on the Chain as its own earlier batch (Core 429.1.a.1.b), under what the death
     woke, whoever controls the watcher; two kill costs are two death batches in payment order, no
     order asked; a kill cost a replacement changed is refused by name (Core 357.2.a: it is paid,
     but its events are not modelled), never called unpayable; a cost whose events do not cover
@@ -99,7 +99,7 @@ def main() -> int:
     else:
         again = first
     for label, result in (("p1 stunning a friendly unit", friendly), ("p2 stunning its own unit", theirs),
-                          ("p1 stunning an enemy already stunned (Core 423.1.a.1)", again)):
+                          ("p1 stunning an enemy already stunned (Core 424.1.a.1)", again)):
         if not result.get("committed") or scheduled_from(result):
             errors.append(f"{label} scheduled 'When you stun an enemy unit' (or failed: {result.get('reason')})")
 
@@ -122,7 +122,7 @@ def main() -> int:
         if not result.get("committed") or len(scheduled_from(result)) != wanted:
             errors.append(f"{label}: scheduled {len(scheduled_from(result))}, wanted {wanted} ({result.get('reason')})")
 
-    # a discard paid as a COST (Core 422.2.a, 422.3): p1 plays a spell whose additional cost is 'discard 1'
+    # a discard paid as a COST (Core 423.2.a, 423.3): p1 plays a spell whose additional cost is 'discard 1'
     from check_costs_and_activation import ability_declaration, declaration, envelope, hand_state
     from game_events import validate_events
     from play_transaction import play_card
@@ -217,7 +217,7 @@ def main() -> int:
             errors.append(f"an order naming other triggers was not invalid_input: {wrong.get('reason_code')} "
                           f"{validate_play_result(wrong)}")
 
-    # a RECYCLE paid as a cost wakes "When you recycle one or more cards to your Main Deck" (Core 416.2.a)
+    # a RECYCLE paid as a cost wakes "When you recycle one or more cards to your Main Deck" (Core 417.2.a)
     recycle_watch = watch_of("When you recycle one or more cards to your Main Deck, draw 1.")
     rec_state = watcher(hand_state("c1"), recycle_watch)          # p1's trash holds c3 alone: the choice is forced
     rec_cost = {"base": {"energy": 1, "power": {}}, "additional": [{"cost_id": "r", "mandatory": True,
@@ -227,8 +227,8 @@ def main() -> int:
         errors.append(f"a recycle paid as a cost scheduled {len(scheduled_from(recycled))}, wanted 1 "
                       f"({recycled.get('reason_code')} {recycled.get('reason')})")
 
-    # a KILL paid as a cost (Core 428.1.a.1): "the first time a friendly unit dies each turn" sees it, and the
-    # killed unit's own death trigger goes on the Chain too (428.1.a.1.b) - above the ability, under nothing new
+    # a KILL paid as a cost (Core 429.1.a.1): "the first time a friendly unit dies each turn" sees it, and the
+    # killed unit's own death trigger goes on the Chain too (429.1.a.1.b) - above the ability, under nothing new
     from check_combat_staging import trigger as death_trigger
     first_death = watch_of("The first time a friendly unit dies each turn, draw 1.")
     kill_cost = {"base": {"energy": 0, "power": {}}, "additional": [{"cost_id": "self", "mandatory": True,
@@ -261,7 +261,7 @@ def main() -> int:
     def chain_ids(result):
         return [str(i.get("id")) for i in (result.get("next_timing_state") or {}).get("chain", {}).get("items", [])]
 
-    # the dying unit's own death trigger is its OWN earlier batch (Core 428.1.a.1.b), as on the
+    # the dying unit's own death trigger is its OWN earlier batch (Core 429.1.a.1.b), as on the
     # resolution path: with p1's "first friendly death" watcher too, no order is asked, and the
     # death trigger is under the watcher's
     both_state = watcher(copy.deepcopy(knell_state), first_death)

@@ -15,7 +15,7 @@ Must hold:
     without a location is invalid_input; a spell with one is invalid_input;
   - entering a Battlefield the controller does not control records
     contested / contested_by and nothing else (190.3.a.1);
-  - "When you play me" fires only on play completion (419.4.a): a play
+  - "When you play me" fires only on play completion (420.4.a): a play
     trigger becomes a Pending item in batch play:<item> after the entry, as
     trigger_kind triggered; two same-controller play triggers ask for a
     trigger_order decision; a unit merely placed on the board by a state
@@ -163,7 +163,7 @@ def main() -> int:
     if play_card(open_timing, theirs, declaration({"kind": "battlefield", "battlefield": "bf1"})).get("reason_code") != "entry_location_illegal":
         errors.append("an opponent-controlled battlefield was accepted")
 
-    # --- play triggers fire on play completion only (419.4.a) ------------------------------
+    # --- play triggers fire on play completion only (420.4.a) ------------------------------
     with_trigger = unit_in_hand(triggers=[trigger("c1-on-play")])
     tplay = play_card(open_timing, with_trigger, declaration({"kind": "base"}))
     tres = resolve_with_program(resolution_timing(), "unit-1", tplay["next_effect_state"], None) if tplay.get("committed") else {}

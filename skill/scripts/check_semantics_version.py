@@ -2,20 +2,21 @@
 """Gate: the Core whose behaviour the engine executes is one explicit, checked field (package 12, 2026-10-14).
 
 `ruleset.core` names the Core Rules the engine EXECUTES - 2026-10-09, in effect 2026-10-16. The rule locators it cites
-are still numbered by the 2026-07-16 document until C3; that numbering is its own field (RULE_NUMBERING,
-engine_check.rule_numbering, the capability manifest's rule_numbering) and never stands in for the executed Core.
+are numbered by the 2026-10-09 document too since C3 (package 16, 2026-10-22; until then by 2026-07-16); that numbering
+is still its own field (RULE_NUMBERING, engine_check.rule_numbering, the capability manifest's rule_numbering) and never
+stands in for the executed Core.
 
   V1 constants    effect_ir and rules_core agree: executed Core 2026-10-09, in effect 2026-10-16, locators numbered
-                  2026-07-16; the capability manifest states both, apart
+                  2026-10-09; the capability manifest states both, apart
   V2 M1 new       "Move a friendly unit and ready it" with the Move forbidden, labelled 2026-10-09: the Move is negated
                   and the unit is readied (Core 2026-10-09 359.3.e.6, 359.3.e.14.a/b)
   V3 M1 old       the same state and program labelled 2026-07-16: refused - an older label never runs the newer
                   behaviour, and nothing is applied
   V4 M5 new       a spell taken by Mystic Reversal, its same mode chosen again, labelled 2026-10-09: accepted (753)
   V5 M5 old       the same resolution with the effect state, timing state and programs labelled 2026-07-16: refused
-  V6 the check    an engine check carries ruleset.core 2026-10-09 and rule_numbering 2026-07-16; one labelled with
-                  another Core, or without its numbering field, or with the numbering folded into the executed Core,
-                  does not validate
+  V6 the check    an engine check carries ruleset.core 2026-10-09 and rule_numbering 2026-10-09; one labelled with
+                  another Core, or without its numbering field, or with its locators numbered by 2026-07-16, does not
+                  validate
   V7 consumers    a consultation reading Core 2026-07-16 refuses the check (engine_version_mismatch) and one reading
                   2026-10-09 takes it; a legal-action observation whose context names 2026-07-16 does not validate.
                   The consultation command's own hold - an engine verdict against rules text of another Core, or with
@@ -98,7 +99,7 @@ def main() -> int:
         fail("V1 constants", f"executed Core {effect_ir.CORE_RULESET} / {rules_core.CORE_RULESET}")
     if (effect_ir.CORE_EFFECTIVE, rules_core.CORE_EFFECTIVE) != ("2026-10-16", "2026-10-16"):
         fail("V1 constants", f"in effect {effect_ir.CORE_EFFECTIVE} / {rules_core.CORE_EFFECTIVE}")
-    if (effect_ir.RULE_NUMBERING, rules_core.RULE_NUMBERING) != (OLD, OLD):
+    if (effect_ir.RULE_NUMBERING, rules_core.RULE_NUMBERING) != ("2026-10-09", "2026-10-09"):
         fail("V1 constants", f"numbering {effect_ir.RULE_NUMBERING} / {rules_core.RULE_NUMBERING}")
     manifest = capability_manifest.build_manifest()
     if manifest["ruleset"]["core"] != effect_ir.CORE_RULESET or manifest["rule_numbering"] != RULE_NUMBERING_FIELD:
@@ -127,12 +128,12 @@ def main() -> int:
     # V6
     check = build_engine_check("effect", new, input_hashes={"effect_state": hash_value(state)})
     if validate_engine_check(check) or check["ruleset"]["core"] != effect_ir.CORE_RULESET \
-            or check["rule_numbering"] != {"core": OLD, "applies_to": "rule_locators"}:
+            or check["rule_numbering"] != {"core": "2026-10-09", "applies_to": "rule_locators"}:
         fail("V6 the check", f"{validate_engine_check(check)} {check.get('ruleset')} {check.get('rule_numbering')}")
     for label, broken in (("another Core", {**check, "ruleset": {**check["ruleset"], "core": OLD}}),
                           ("no numbering", {k: v for k, v in check.items() if k != "rule_numbering"}),
-                          ("numbering folded in", {**check, "rule_numbering": {"core": effect_ir.CORE_RULESET,
-                                                                               "applies_to": "rule_locators"}})):
+                          ("its locators numbered by 2026-07-16", {**check, "rule_numbering": {"core": OLD,
+                                                                                               "applies_to": "rule_locators"}})):
         if not validate_engine_check(broken):
             fail("V6 the check", f"a check with {label} validated")
 

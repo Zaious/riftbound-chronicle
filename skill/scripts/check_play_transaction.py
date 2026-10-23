@@ -10,7 +10,7 @@ Must hold:
     carrying effect_program_id, receipt valid and paid; inputs untouched;
     deterministic; the result passes validate_play_result;
   - an unpayable supported cost is `illegal` only once the Add window is
-    confirmed closed (Core 429.3); before that it is `decision_required`;
+    confirmed closed (Core 430.3); before that it is `decision_required`;
     both next hashes equal the inputs;
   - a timing refusal after payment rolls the payment back (Core 358.5);
   - card not in hand → illegal; malformed declaration → invalid_input;
@@ -81,7 +81,7 @@ CLOSED = {"add_window_closed": True, "confirmed_by": "human"}
 
 
 def declaration(**overrides):
-    # Every non-zero cost needs the human-confirmed Add window (Core 429.3);
+    # Every non-zero cost needs the human-confirmed Add window (Core 430.3);
     # pass payment_context=None to test the unconfirmed path.
     value = {
         "schema_version": DECLARATION_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -126,7 +126,7 @@ def main() -> int:
             errors.append(f"pool not debited correctly: {p1['resources']}")
         chain_entry = (nxt.get("chain_items") or {}).get("spell-1")
         placed = {k: v for k, v in (chain_entry or {}).items() if k not in ("cost_receipt", "played_event")}
-        # Core 419.4.a: the play's event rides on the item until the card resolves
+        # Core 420.4.a: the play's event rides on the item until the card resolves
         if ((chain_entry or {}).get("played_event") or {}).get("kind") != "played" \
                 or (chain_entry or {}).get("played_event", {}).get("object") != "c1":
             errors.append(f"the chain item does not carry its play's event for resolution: {(chain_entry or {}).get('played_event')}")
@@ -159,14 +159,14 @@ def main() -> int:
     if unbound.get("valid") is not False or "does not bind" not in unbound.get("reason", ""):
         errors.append("a program supplied without a matching effect_program_id was accepted")
 
-    # --- Add window (429.3): short pool → decision_required, then illegal ------------------
+    # --- Add window (430.3): short pool → decision_required, then illegal ------------------
     poor = effect_state(energy=1)
     ask = play_card(timing, poor, declaration(payment_context=None))
     if ask.get("committed") or ask.get("reason_code") != "add_window_confirmation_required" or ask.get("decision_controller") != "p1" or ask.get("decision_ids") != ["add_window:play-1"]:
         errors.append(f"short pool without add-window confirmation was not decision_required: {ask.get('reason_code')}")
     rich_unconfirmed = play_card(timing, state, declaration(payment_context=None))
     if rich_unconfirmed.get("committed") or rich_unconfirmed.get("reason_code") != "add_window_confirmation_required":
-        errors.append("a sufficient pool was paid without the Add window being confirmed closed (429.3)")
+        errors.append("a sufficient pool was paid without the Add window being confirmed closed (430.3)")
     free = play_card(timing, state, declaration(cost={"base": {"energy": 0, "power": {}}}, payment_context=None))
     if not free.get("committed"):
         errors.append(f"a zero-cost play should need no Add window: {free.get('reason_code')}")
@@ -460,7 +460,7 @@ def main() -> int:
     if errors:
         print("FAILED: play transaction checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: the play transaction commits or restores the pre-play state whole (Core 358.5); costs are typed in Core 356/357 order with total discounts on the aggregate Energy and per-discount minimums; payment events are unique with exact allocations; an optional cost is paid by decision even at zero (356.4.f.1) and a replaced payment is paid (357.2.a); a short pool waits for the Add window (429.3) before it is illegal; every play-time target is checked (355.9); the played card sits on the shared chain and a resolved spell goes chain → trash before Cleanup; cost_paid / cost_not_paid read the validated receipt; it wraps as engine-check kind play and runs off-cwd.")
+    print("OK: the play transaction commits or restores the pre-play state whole (Core 358.5); costs are typed in Core 356/357 order with total discounts on the aggregate Energy and per-discount minimums; payment events are unique with exact allocations; an optional cost is paid by decision even at zero (356.4.f.1) and a replaced payment is paid (357.2.a); a short pool waits for the Add window (430.3) before it is illegal; every play-time target is checked (355.9); the played card sits on the shared chain and a resolved spell goes chain → trash before Cleanup; cost_paid / cost_not_paid read the validated receipt; it wraps as engine-check kind play and runs off-cwd.")
     return 0
 
 

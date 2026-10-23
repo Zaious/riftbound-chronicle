@@ -3,7 +3,7 @@
 Gate (package 9, Qiyana - Victorious): "When I conquer, draw 1 or channel 1 rune exhausted."
 
 GPT 2026-10-06 ruling 6: not Core 355.3's bulleted modes - the controller chooses one of the two as the ability
-resolves; with an empty Rune Deck the channel may still be chosen and channels zero (Core 430.3), never turned into the
+resolves; with an empty Rune Deck the channel may still be chosen and channels zero (Core 431.3), never turned into the
 draw for them. The program: choose_option {by controller, options [draw, channel], record} and two instructions each
 carrying only_if_chose {record, option} - the one chosen runs, the other is skipped (skipped_option_not_chosen).
 

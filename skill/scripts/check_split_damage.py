@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Regression gate for split damage: "Deal 5 damage split among any number of enemy units here."
-(Volibear - Furious's attack trigger; Core 355.14, 355.14.a-h, 359.3.f.2, 417).
+(Volibear - Furious's attack trigger; Core 355.14, 355.14.a-h, 359.3.f.2, 418).
 
 The engine grammar's own IR - one target decision (min 0, capped by the amount: 355.14.c), each
 Target an enemy Unit at the source's current Battlefield, and a division decided at resolution

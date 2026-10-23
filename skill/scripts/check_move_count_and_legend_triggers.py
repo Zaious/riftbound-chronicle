@@ -14,13 +14,13 @@ resolve_battlefield_control after a decided Combat, begin_ending_step):
     `nth` only beside that occurrence;
   - "The third time I move in a turn" (a self watch on `moved`, nth 3): three Standard Moves
     schedule one trigger, on the third, in the watch batch after the Move's own; the fourth
-    schedules nothing; Moves an effect makes count with Standard Moves (Core 420.2, 446.1), and
-    a Standard Move that is the third schedules it; a Recall is not a Move (446.1) and does not
+    schedules nothing; Moves an effect makes count with Standard Moves (Core 421.2, 448.1), and
+    a Standard Move that is the third schedules it; a Recall is not a Move (448.1) and does not
     count; another friendly unit's Moves, and the opponent's unit's, do not count; a new turn
     starts a new count; a unit that left the board and came back is a new object (Core 124) and
     counts from zero;
   - a Standard Move's own Cleanup wakes watchers too: a unit already carrying lethal damage dies
-    in it (323.5), and a "when a unit dies" watcher is scheduled in the Move's watch batch
+    in it (323.4), and a "when a unit dies" watcher is scheduled in the Move's watch batch
     (review 5 R2-6 - perform_lethal_cleanup dropped the deaths' events before);
   - "The first time I move each turn": the first Move schedules it, the second does not - even
     when the first trigger was declined at finalization (the count is of Moves, not of
@@ -34,7 +34,7 @@ resolve_battlefield_control after a decided Combat, begin_ending_step):
   - a Legend in p1's Legend Zone with a controller-scoped conquer trigger ("When you conquer",
     Core 383.4.c.2.b): p1's Conquer schedules it with the Score's batch; the same Legend
     banished, the opponent's Conquer, a unit_here descriptor on the Legend, and a control change
-    that is not a Score (470) schedule nothing; a board gear's controller-scoped trigger still
+    that is not a Score (472) schedule nothing; a board gear's controller-scoped trigger still
     fires; a Legend's controller-scoped hold trigger fires on p1's Hold (383.4.d.2.b);
   - a Legend in the turn player's Legend Zone with an end-of-turn trigger is scheduled by
     begin_ending_step (Core 317.1); on the opponent's turn, or banished, it is not;
@@ -195,12 +195,12 @@ def main() -> int:
     if len(items) != 1 or items[0].get("batch_id") != "watch:standard-move:p1" or items[0].get("status") != "pending" \
             or items[0].get("source_identity") != "y1@0" or items[0].get("trigger_kind") != "triggered":
         errors.append(f"the third Standard Move's trigger is not one pending item in the Move's watch batch: {items}")
-    if "Core 420.2.b" not in (third.get("rule_locators") or []):
-        errors.append("a Standard Move that woke a watcher did not cite Core 420.2.b")
+    if "Core 421.2.b" not in (third.get("rule_locators") or []):
+        errors.append("a Standard Move that woke a watcher did not cite Core 421.2.b")
 
     # --- a Standard Move's Cleanup wakes watchers too (review 5 R2-6) ---------------------------------
     # p2's z1 already carries lethal damage; y1's Standard Move ends with a Cleanup that kills it
-    # (323.5), and w1's "when a unit dies" watcher wakes on that death - in the watch batch
+    # (323.4), and w1's "when a unit dies" watcher wakes on that death - in the watch batch
     doomed = mover_board()
     doomed["objects"]["z1"] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2, "might_modifiers": [],
                                "damage": 2, "exhausted": False}
@@ -226,7 +226,7 @@ def main() -> int:
     counts, _ = moves(mover_board(), [("standard", TO_BF1), ("effect", TO_BF2), ("effect", TO_BASE)], errors)
     if counts != [0, 0, 1]:
         errors.append(f"a Standard Move then two effect Moves scheduled {counts}, wanted [0, 0, 1] (the resolution path)")
-    # a Recall is not a Move (Core 446.1): Move, Move, Recall schedules nothing; the next Move does
+    # a Recall is not a Move (Core 448.1): Move, Move, Recall schedules nothing; the next Move does
     counts, _ = moves(mover_board(), [("standard", TO_BF1), ("ready", None), ("standard", TO_BF2), ("recall", None),
                                       ("ready", None), ("standard", TO_BF1)], errors)
     if counts != [0, 0, 0, 1]:
@@ -390,7 +390,7 @@ def main() -> int:
     if got is None or any(g[0] == "lg-trigger" for g in got):
         errors.append(f"p1's Conquer scheduled p2's Legend's 'When you conquer': {got} ({(done or {}).get('reason')})")
 
-    # a control change that is not a Score (bf1 already scored this turn, Core 470): nothing
+    # a control change that is not a Score (bf1 already scored this turn, Core 472): nothing
     def scored_already(e):
         with_legend("conquer_triggers", "controller")(e)
         e["players"]["p1"]["scored_this_turn"] = {e.get("turn_id", "turn-0"): ["bf1"]}

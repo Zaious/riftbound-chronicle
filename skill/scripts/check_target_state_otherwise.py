@@ -51,7 +51,7 @@ def board(stunned: bool):
     state["objects"]["e1"] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 3, "might_modifiers": [],
                               "damage": 0, "exhausted": False}
     state["players"]["p2"]["zones"]["base"].append("e1")
-    if stunned:   # stunned for real (its expiry recorded, Core 423.2)
+    if stunned:   # stunned for real (its expiry recorded, Core 424.2)
         done = apply_program(state, {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                                      "program_id": "pre-stun", "controller": "p1",
                                      "effects": [{"op": "stun", "effect_id": "s0", "object_id": "e1"}]})

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Doubling a unit's Might is a snapshot (package 10, Last Stand; GPT 2026-10-08 ruling 11).
 
-The card doubles one friendly unit's Might for the turn and makes that unit Temporary. The ruling (Core 477.3.c): the
+The card doubles one friendly unit's Might for the turn and makes that unit Temporary. The ruling (Core 479.4.c): the
 target's effective Might is read as the instruction executes and given to it as a FIXED this-turn modifier of +X -
 not a running x2: a later change to its Might is not doubled again. A Might of 0 or less adds nothing (no event, Core
 370.1.a). "It" is the same unit; [Temporary] is granted to it.

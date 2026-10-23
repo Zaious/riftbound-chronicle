@@ -8,14 +8,14 @@ Must hold:
     identity or replacement pool makes the Deal refuse the stale receipt as
     invalid_input, never a partial Deal;
   - when an attacker and a defender die together, each kill event names only
-    the opposing side's Units as its sources (428.5.c.2) — in the underlying
+    the opposing side's Units as its sources (429.5.c.2) — in the underlying
     Cleanup trace, not only in a summary;
   - Cleanup step 2 precedes 3a/3b: a Shield Unit that arrived at the Combat
     Battlefield during the Showdown becomes a Defender before lethal damage
     is judged and survives; the resolution bridge does the same and reports
     the hash of the state it returns;
   - a Battlefield occupied by a teammate's Units is an invalid Standard Move
-    destination (447.2.b); a decision envelope made for one Move declaration
+    destination (449.2.b); a decision envelope made for one Move declaration
     is refused for another (the declaration is part of the input hash);
   - a mutual Deal whose two events share one replacement descriptor is
     unsupported, not resolved one Deal after the other;
@@ -94,7 +94,7 @@ def main() -> int:
         else:
             ec = c["next_effect_state"]
             if "d2" not in ec["battlefields"]["bf1"]["objects"] or ec["objects"]["d2"].get("combat_designation", {}).get("role") != "defender" or "d2" in c["trace"]["killed"]:
-                errors.append("a Shield Unit designated at Cleanup step 2 was judged lethal before its Shield applied (323.2 before 323.4/323.5)")
+                errors.append("a Shield Unit designated at Cleanup step 2 was judged lethal before its Shield applied (323.2 before 383.2.c.3/323.5)")
             gained = [g["object_id"] for g in c["trace"]["designations"]["gained"]]
             if gained != ["d2"]:
                 errors.append(f"step 2 did not designate the late Unit: {gained}")
@@ -114,7 +114,7 @@ def main() -> int:
     else:
         nxt = resolved["next_effect_state"]
         if "u3" not in nxt["battlefields"]["bf1"]["objects"] or nxt["objects"]["u3"].get("combat_designation", {}).get("role") != "defender":
-            errors.append("the bridge's Cleanup judged the arriving Shield Unit lethal before designating it (323.2 before 323.4/323.5)")
+            errors.append("the bridge's Cleanup judged the arriving Shield Unit lethal before designating it (323.2 before 383.2.c.3/323.5)")
         if resolved["next_effect_state_hash"] != hash_value(nxt):
             errors.append("the bridge reported a hash that is not the hash of the state it returned")
         if not resolved["trace"].get("combat_designations", {}).get("gained"):
@@ -129,7 +129,7 @@ def main() -> int:
     timing3 = fixture(); timing3["players"] = ["p1", "p2", "p3"]; timing3["turn_order"] = ["p1", "p2", "p3"]
     mate = standard_move(timing3, state, declare(["u1"], {"kind": "battlefield", "battlefield": "bf1"}))
     if mate.get("committed") or mate.get("reason_code") != "destination_has_teammate_units":
-        errors.append(f"a Battlefield occupied by a teammate's Unit was a valid destination (447.2.b): {mate.get('reason_code')}")
+        errors.append(f"a Battlefield occupied by a teammate's Unit was a valid destination (449.2.b): {mate.get('reason_code')}")
     plain = base_state()
     d1 = declare(["u1"], {"kind": "battlefield", "battlefield": "bf1"})
     d2 = declare(["u1"], {"kind": "battlefield", "battlefield": "bf1"}, confirm=False)

@@ -4,9 +4,9 @@ Regression gate: watchers wired into real play (2026-09-24).
 
 watchers.py could always decide whether an event falls inside a watch, but nothing in play
 asked it. Now a card's play records its "played" event on its chain item, and the watchers
-that listen for plays wake when the card RESOLVES (Core 419.4.a, GPT 2026-09-27 - they trigger
+that listen for plays wake when the card RESOLVES (Core 420.4.a, GPT 2026-09-27 - they trigger
 when the act of playing has been completed by the card's resolution; a countered card's play
-triggers nothing, 419.4.a.1); every resolution wakes them on the events it produced, after its
+triggers nothing, 420.4.a.1); every resolution wakes them on the events it produced, after its
 Cleanup (watchers.schedule_live). Every played case below checks that nothing was scheduled at
 Finalize, then resolves the card.
 
@@ -20,7 +20,7 @@ Must hold, each through play_card / resolve_with_program:
   - "When you stun one or more enemy units": a resolution of p1's that stuns two enemy units
     schedules ONE trigger; stunning a friendly unit, or p2 stunning p1's enemies, none;
   - "When a buffed friendly unit dies": a buffed friendly unit killed - scheduled; an
-    unbuffed one, or a buffed enemy, none (the buff is read as the unit was, Core 417);
+    unbuffed one, or a buffed enemy, none (the buff is read as the unit was, Core 418);
   - "The first time a friendly unit dies each turn": the first death of the turn schedules,
     the second does not; a new turn schedules again;
   - "When you recycle one or more cards to your Main Deck": two recycled, one trigger;
@@ -114,7 +114,7 @@ def main() -> int:
     # --- played ------------------------------------------------------------------------------
     at_play, got = play_resolved(playable(watcher(base_state(), spell_watch)))
     if scheduled_from(at_play):
-        errors.append("the spell watcher was scheduled at Finalize, before the spell resolved (Core 419.4.a)")
+        errors.append("the spell watcher was scheduled at Finalize, before the spell resolved (Core 420.4.a)")
     items = scheduled_from(got or {})
     if not (got or {}).get("committed") or len(items) != 1:
         errors.append(f"p1's spell resolving did not schedule the watcher: {(got or at_play).get('reason')} {items}")
@@ -215,7 +215,7 @@ def main() -> int:
         for e in errors:
             print("  - " + e)
         return 1
-    print("OK: a play wakes 'When you play ...' watchers when the card resolves (never at Finalize, Core 419.4.a), and only for the right card, player, turn and "
+    print("OK: a play wakes 'When you play ...' watchers when the card resolves (never at Finalize, Core 420.4.a), and only for the right card, player, turn and "
           "zone; a resolution wakes stun / death / recycle watchers on what it did - one or more is one trigger, the "
           "first death of a turn is the only one, a death reads the buff the unit had - and every trigger carries its "
           "source identity and program hash.")

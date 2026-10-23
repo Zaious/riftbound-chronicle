@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Regression gate: "you score 1 point" gains a Point and Scores no Battlefield.
 
-Core 471.1 has a Score do two things: the player Gains up to one Point, and
-Score abilities trigger at the Battlefield that Scored (471.2). The three cards
+Core 473.1 has a Score do two things: the player Gains up to one Point, and
+Score abilities trigger at the Battlefield that Scored (473.2). The three cards
 that say "you score 1 point" name no Battlefield -
 
     Ahri - Alluring          "When I hold, you score 1 point."
@@ -13,17 +13,17 @@ that say "you score 1 point" name no Battlefield -
 - and in the first and third the Battlefield has already been Scored by the Hold
 or the Conquer that triggered the ability. The point the card gives is an
 ADDITIONAL one. So the op is the Gain alone, and it is named gain_point rather
-than score so that nobody reads it as running 471.2.
+than score so that nobody reads it as running 473.2.
 
-471.1.a.1 settles the other half: those restrictions bind only the points a
+473.1.a.1 settles the other half: those restrictions bind only the points a
 Conquer gives, so the Final Point conditions
-of 471.1.b do not reach it, and 470's once-per-Battlefield limit has no
+of 473.1.b do not reach it, and 472's once-per-Battlefield limit has no
 Battlefield to count.
 
 What must hold:
   - the point lands on the named player and nobody else;
   - the trace says the source is not Conquer and no Battlefield was Scored,
-    because those two facts are what keep 470, 471.1.b and 471.2 out;
+    because those two facts are what keep 472, 473.1.b and 473.2 out;
   - naming a battlefield is refused - that would read as a Score;
   - a zero or negative amount is refused;
   - the op emits its own event kind, so it is never event_kind_unknown.
@@ -74,12 +74,12 @@ def main() -> int:
         row = result["trace"][0]
         if row.get("source_is_conquer") is not False:
             failures.append("the trace does not record that the source is not Conquer; that is "
-                            "the fact 471.1.a.1 turns on")
+                            "the fact 473.1.a.1 turns on")
         if row.get("scored_a_battlefield") is not False:
             failures.append("the trace does not record that no Battlefield was Scored; that is "
-                            "what keeps 470 and 471.2 out")
-        if "Core 471.1.a.1" not in (row.get("rule_locators") or []):
-            failures.append(f"the trace cites {row.get('rule_locators')}, without 471.1.a.1")
+                            "what keeps 472 and 473.2 out")
+        if "Core 473.1.a.1" not in (row.get("rule_locators") or []):
+            failures.append(f"the trace cites {row.get('rule_locators')}, without 473.1.a.1")
 
     # points accumulate rather than replace
     twice = gain(gain(copy.deepcopy(base_state()))["next_state"], amount=2)
@@ -90,7 +90,7 @@ def main() -> int:
     named = gain(copy.deepcopy(base_state()), battlefield="bf1")
     if named.get("valid") is not False:
         failures.append("naming a battlefield was accepted; that would read as a Battlefield "
-                        "being Scored, which runs 471.2")
+                        "being Scored, which runs 473.2")
     for amount in (0, -1):
         bad = gain(copy.deepcopy(base_state()), amount=amount)
         if bad.get("valid") is not False:
@@ -105,7 +105,7 @@ def main() -> int:
     if "point_gained" not in game_events.EVENT_KINDS:
         failures.append("point_gained is not in the event catalogue")
 
-    print("gain_point (Core 471.1, 471.1.a.1, 471.2, 470)")
+    print("gain_point (Core 473.1, 473.1.a.1, 473.2, 472)")
     print("  the Gain half of a Score, with no Battlefield: the trace records both facts")
     print("  a named battlefield, a zero amount and a negative amount are all refused")
     print("  NOT covered: whether the new total ends the game (Core 196, the victory procedure)")

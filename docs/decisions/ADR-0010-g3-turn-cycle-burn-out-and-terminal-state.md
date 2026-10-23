@@ -4,14 +4,14 @@
 - Scope: the G3 milestone — the Start of Turn state machine, Burn Out on
   Draw, the terminal state and its guard, a whole-Cleanup orchestration, the
   turn transition, and the reward projection consumers read.
-- Rules baseline: English Core Rules 2026-07-16, especially 115, 194, 196,
-  303.2.a, 315–317, 319–324, 413, 415, 430, 431, 472, 481–489.
-- Not decided here: team modes and Match / Best-of formats (486.6, 489);
-  Burn Out from instructions other than Draw (431.1.b); Predict / look /
-  reveal exceptions (431.1.c, 436.4.a); "gain points" and "lose points" card
-  effects (194.1.c, 194.4); ready blockers (Stun and others, 423); 323.7
-  Gear / Rune Recall and Hidden; facedown reveal at game end (421.4); Setup
-  itself (485.5 and the like); concession and judge rulings beyond recording
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3), especially 115, 194, 196,
+  303.2.a, 315–317, 319–324, 414, 416, 431, 432, 474, 483–491.
+- Not decided here: team modes and Match / Best-of formats (488.6, 491);
+  Burn Out from instructions other than Draw (432.1.b); Predict / look /
+  reveal exceptions (432.1.c, 437.4.a); "gain points" and "lose points" card
+  effects (194.1.c, 194.4); ready blockers (Stun and others, 424); 323.6
+  Gear / Rune Recall and Hidden; facedown reveal at game end (422.4); Setup
+  itself (487.5 and the like); concession and judge rulings beyond recording
   them; policy evaluation (R5-B).
 
 ## Context
@@ -41,7 +41,7 @@ of Turn step and no discretionary action is legal. The procedures live in
 
 ### 2. Burn Out is a replacement on Draw; the Trash order is an external randomization receipt (DP-49)
 
-The effect IR's `draw` becomes Burn Out-aware (413.4, 431.2): draw as many as
+The effect IR's `draw` becomes Burn Out-aware (414.4, 432.2): draw as many as
 possible; Recycle the Trash into the Main Deck in the order given by a
 `randomization-receipt.v1` bound to the input hash and an operation id and
 carrying the complete permutation and its provider / method provenance — the
@@ -53,9 +53,9 @@ remaining cards are drawn. A missing receipt or beneficiary is
 is not the Trash exactly is `invalid_input`. Every receipt and beneficiary the
 whole Draw needs must be present before anything commits.
 
-With an empty Trash (431.3) each further attempt Burns Out again for one
+With an empty Trash (432.3) each further attempt Burns Out again for one
 point until an opponent reaches the Victory Score with a strict lead and wins
-at once (431.3.c.1). The loop bound is derived from the scores — the points
+at once (432.3.c.1). The loop bound is derived from the scores — the points
 needed to lift every opponent past the current top score plus one — and
 exceeding it without an immediate winner is `invalid_input`.
 
@@ -71,7 +71,7 @@ entry is bridged. Burn Out from a non-Draw instruction is
 The timing state carries an optional `terminal: {status: "ended", reason,
 winner, final_points, turn_id, derived, rule_locators}`. Two reasons are
 derived and only the engine writes them: `victory_score` (323.1, 194.2) and
-`burn_out_victory` (431.3.c). Two are declared by the caller with
+`burn_out_victory` (432.3.c). Two are declared by the caller with
 `derived: false` through `declare_terminal`: `concession` and `external`
 (winner may be null). `check_terminal` is Cleanup step 1: a strict leader at
 or above the Victory Score ends the game; a tie at the threshold continues
@@ -93,7 +93,7 @@ remaining Cleanup steps are not executed and are recorded as
 ### 5. A Cleanup is one atomic run that never pauses on the chain (DP-52)
 
 `run_cleanup` performs the steps of 323 in order — 1 `check_terminal`, 2
-designation sync, 3a/3b lethal Cleanup, 4 control loss, 5 (323.7, refused as
+designation sync, 3a/3b lethal Cleanup, 4 control loss, 5 (323.6, refused as
 `unsupported: gear_rune_recall_cleanup` whenever it would apply), 6 Showdown
 staging, 7/7a Combat staging, 8/8a Contested maintenance, 9 Showdown
 opening, 10/10a Combat opening — on one working state. Chain items are
@@ -116,14 +116,14 @@ Step record and increments `turns_taken` for the player starting the turn;
 first-turn rules read the count before the increment. `mode.id` from the
 sanctioned catalogue (`duel`, `skirmish`, `war`) or an explicit
 `mode.first_turn: {extra_channel, skip_draw}` supplies the First Turn Process
-(483.7, 485.7, 487.7); both absent on a player's first turn is `unsupported:
-first_turn_process_unknown`. `match` carries 486.6 Game Win semantics and is
+(485.7, 487.7, 489.7); both absent on a player's first turn is `unsupported:
+first_turn_process_unknown`. `match` carries 488.6 Game Win semantics and is
 unsupported as a whole; `magma_chamber` and any team stay `team_scoring`.
 
 ### 7. Awaken readies what can be readied (DP-54)
 
 `run_awaken_step` readies, at once, every Board object the Turn Player
-controls that can be readied (315.1, 415.3.a). A known or unknown ready
+controls that can be readied (315.1, 416.3.a). A known or unknown ready
 blocker — `stunned` included — whose complete rule this slice lacks is
 `unsupported: ready_blocker_unknown`. It writes
 `turn_progress.awaken_complete`; entering the Beginning Phase is a separate
@@ -144,7 +144,7 @@ global watchers are not claimed.
 
 `run_channel_step` requires the Beginning triggers, the Scoring task and the
 related Cleanups done, enters `channel`, Channels two Runes (plus the
-first-turn extra; fewer if the Rune Deck is short, 430.3) and writes
+first-turn extra; fewer if the Rune Deck is short, 431.3) and writes
 `channel_complete`. `run_draw_step` requires `channel_complete`, enters
 `draw`, draws one (skipped for a first-turn `skip_draw` player) through the
 Burn Out-aware Draw, writes `draw_complete`, and on an immediate Burn Out
@@ -168,7 +168,7 @@ Everything is additive on the v1 schemas: timing `phase` values `setup`,
 `declare_terminal`, `begin_turn`, `run_awaken_step`,
 `enter_beginning_phase`, `run_channel_step`, `run_draw_step`,
 `enter_main_phase`, `run_cleanup`. `burn_out` leaves a scope only once every
-Draw entry of that scope is bridged to the terminal state; 323.7, ready
+Draw entry of that scope is bridged to the terminal state; 323.6, ready
 blockers, non-Draw Burn Out and team / Match keep `complete_game: false`.
 
 ## Implementation order
@@ -187,10 +187,10 @@ blockers, non-Draw Burn Out and team / Match keep `complete_game: false`.
 
 Declared unsupported: team scoring and Match / Best-of, Burn Out outside
 Draw, Predict / look / reveal exceptions, gain / lose points effects, ready
-blockers, 323.7, facedown reveal at game end, Setup, concession and judge
+blockers, 323.6, facedown reveal at game end, Setup, concession and judge
 rulings as rules (only recorded), policy evaluation. The G3 milestone stays a
 bounded slice; the Burn Out and Cleanup checklist items stay open with the
-Draw-path and 323.7 notes.
+Draw-path and 323.6 notes.
 
 ## Rejected alternatives
 

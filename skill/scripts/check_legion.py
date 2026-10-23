@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Regression gate for Legion (Core 812; 727.1; 419.4.b).
+"""Regression gate for Legion (Core 812; 727.1; 420.4.b).
 
     812.1.b.1  Legion grants [Text] to this card when its controller has already played
                some other card this turn
     812.1.c    active as long as a card different from the one with Legion has been
                Finalized by you this turn
     812.2      one card satisfies every Legion that player controls
-    419.4.b    non-triggered checks of cards played read whether they were Finalized -
+    420.4.b    non-triggered checks of cards played read whether they were Finalized -
                a countered card still counts
     812.3      Legion is a characteristic
 
@@ -83,7 +83,7 @@ def after_spell(state):
     played = PT.play_card(fixture(), state, spell())
     assert played.get("committed"), played.get("reason")
     after = copy.deepcopy(played["next_effect_state"])
-    # the spell is taken off the chain as if it had been countered: it was Finalized (419.4.b)
+    # the spell is taken off the chain as if it had been countered: it was Finalized (420.4.b)
     after["chain_items"].pop("spell-0")
     if not after["chain_items"]:
         del after["chain_items"]
@@ -102,7 +102,7 @@ def main() -> int:
     if validate_state(countered):
         errors.append(f"the state after a Finalized, countered spell is invalid: {validate_state(countered)}")
     if IR.cards_finalized_this_turn(countered, "p1") != ["c1"]:
-        errors.append("a countered card no longer counts as Finalized (419.4.b)")
+        errors.append("a countered card no longer counts as Finalized (420.4.b)")
 
     import check_legend_activation as LA
     legend = LA.legend_board()
@@ -227,7 +227,7 @@ def main() -> int:
     if errors:
         print("FAILED: Legion checks" + chr(10) + "  - " + (chr(10) + "  - ").join(errors))
         return 1
-    print("OK: play_card records each Finalized card per player and turn, a countered one included (419.4.b); Legion "
+    print("OK: play_card records each Finalized card per player and turn, a countered one included (420.4.b); Legion "
           "is active only after another card of its controller this turn (812.1.c); the lowered cost reduction and "
           "play trigger apply only then; a Legion condition off a play trigger is refused; an empty ledger is caught.")
     return 0

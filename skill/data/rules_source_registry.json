@@ -1,6 +1,6 @@
 {
   "schema_version": "riftbound-rules-source-registry.v2",
-  "last_checked": "2026-08-26",
+  "last_checked": "2026-10-22",
   "live_entrypoint": "rules-hub",
   "controlling_locale": "en-US",
   "sources": [
@@ -22,7 +22,7 @@
       "controlling_language": true
     },
     {
-      "source_id": "core-rules-2026-07-16",
+      "source_id": "core-rules-2026-10-09",
       "title": "Riftbound Core Rules",
       "authority": "official",
       "kind": "core_rules",
@@ -32,6 +32,23 @@
       "status": "active",
       "superseded_by": null,
       "scope": "game mechanics, timing, resolution, cards, and abilities",
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/5c7946f7c3b8c6e0faff85ab6dadc6d2e721ea94.pdf",
+      "version": "2026-10-09",
+      "effective_date": "2026-10-16",
+      "resolve_at_query_time": true,
+      "controlling_language": true
+    },
+    {
+      "source_id": "core-rules-2026-07-16",
+      "title": "Riftbound Core Rules",
+      "authority": "official",
+      "kind": "core_rules",
+      "document_class": "core_rules",
+      "locale": "en-US",
+      "region": "global",
+      "status": "superseded",
+      "superseded_by": "core-rules-2026-10-09",
+      "scope": "superseded Core Rules (in effect 2026-07-24 to 2026-10-15); retained for provenance",
       "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/e9ac8e3d33e0f78cef296f5945aba7bc1313b086.pdf",
       "version": "2026-07-16",
       "effective_date": "2026-07-24",

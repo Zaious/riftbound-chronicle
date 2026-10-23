@@ -3,10 +3,10 @@
 
     "Choose an opponent. They reveal their hand. Choose a card from it, and they discard that card."
 
-"It" is what the second clause revealed (Core 424.2.b), named by that reveal's effect_id (reveal_ref); "they" is the
+"It" is what the second clause revealed (Core 425.2.b), named by that reveal's effect_id (reveal_ref); "they" is the
 player whose hand it revealed - the opponent the first clause chose - read off that reveal, never named again. The
 caster - the program's controller - chooses the card, among the reveal's own marks in that player's hand (so nothing
-still private is choosable, 128.4), and that player discards it (422.1): it goes to its owner's trash. The three-player board
+still private is choosable, 128.4), and that player discards it (423.1): it goes to its owner's trash. The three-player board
 of check_player_ref_and_reveal.py (Sabotage), so "they" has something to get wrong.
 
   D1 resolves      p1 chooses p2's revealed spell: it is in p2's trash, the rest of p2's hand and p3's hand untouched

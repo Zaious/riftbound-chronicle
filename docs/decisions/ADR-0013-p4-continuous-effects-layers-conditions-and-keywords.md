@@ -7,13 +7,13 @@
   modification P2 consumes, the evaluated `counterable` flag P2's Counter
   consumes, the Effect Text of attached cards, and copy over the traits the
   engine models.
-- Rules baseline: English Core Rules 2026-07-16, especially 124, 135–136,
-  159, 364–365, 441–442, 476–480, 700–730, 800–828.
+- Rules baseline: English Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3), especially 124, 135–136,
+  159, 364–365, 442–443, 478–482, 700–730, 800–828.
 - Not decided here: the semantic event catalogue, cross-object watchers,
   delayed triggers, per-turn counters and the general replacement grammar
   (P5, ADR-0014); Hunt beyond a partial hook, which waits for P5's Conquer /
   Hold events (DP-72); multi-player and per-player choices, revealed-knowledge
-  persistence and the 323.7 Cleanup edges (P6).
+  persistence and the 323.6 Cleanup edges (P6).
 
 ## Context
 
@@ -24,7 +24,7 @@ functions read them (`current_might`, `effective_might`, `has_keyword`,
 `shield_total`, `combat_might_contributions`, `bonus_damage`, the Expiration
 Step, the entry-state procedure and the state validator), each with its own
 notion of when a source is active and in what order values apply. None of them
-implements Core 476–480: there is no layer, no timestamp, no dependency, and
+implements Core 478–482: there is no layer, no timestamp, no dependency, and
 no fixpoint. Card text that needs them is the largest remaining family in the
 Taiwan T-list decks.
 
@@ -50,15 +50,15 @@ entry is:
   applying and its removal is recorded with a reason.
 - `affects` is one object (with the identity bound at creation) or a criteria
   set evaluated now — the aura case.
-- `layer` is `trait`, `ability` or `arithmetic` (477.1–477.3). Arithmetic
+- `layer` is `trait`, `ability` or `arithmetic` (479.2–479.4). Arithmetic
   carries `sublayer` `increase` or `decrease`, derived from the sign, because
-  increases apply before decreases (477.3.a).
+  increases apply before decreases (479.4.a).
 - `timestamp` is a monotonic integer assigned when the effect begins applying.
-  It is a relative comparison only and no rules text may read it (480.1.c).
+  It is a relative comparison only and no rules text may read it (482.1.c).
 - `duration` is `permanent`, `this_turn` (with `turn_id`), `this_combat`
   (with `combat_id`), `while_source_active` or `until_detached`.
 - `snapshot` records the limited value of a non-passive arithmetic effect at
-  application time (477.3.b); a passive ability never snapshots.
+  application time (479.4.b); a passive ability never snapshots.
 
 Legacy fields are translated **once, at the input boundary**, by
 `migrate_legacy_effects`. The runtime reads `continuous_effects` and nothing
@@ -69,15 +69,15 @@ double count.
 ### 2. The layer engine applies each effect once, repeatedly, to a fixpoint (DP-73)
 
 `characteristics(state, object_id)` computes an object's current traits by
-Core 476–480: the three layers in order, each applicable effect applied as
-soon as it can be and **only once across every pass** (476.2), then the whole
-sequence repeated until a pass changes nothing (476.1). Removal is separate
-from application and also happens once (476.3).
+Core 478–482: the three layers in order, each applicable effect applied as
+soon as it can be and **only once across every pass** (478.3), then the whole
+sequence repeated until a pass changes nothing (478.2). Removal is separate
+from application and also happens once (478.4).
 
-Within a layer the engine derives dependencies (478): effect A depends on B
+Within a layer the engine derives dependencies (480): effect A depends on B
 when applying B changes what A applies; the depended-on effect goes first and
-the dependent immediately after (479). Mutual alteration establishes no
-dependency (478.1) and falls back to timestamp order (480), as does every
+the dependent immediately after (481). Mutual alteration establishes no
+dependency (480.1) and falls back to timestamp order (482), as does every
 independent pair. A cycle the engine cannot order, or a dependency it cannot
 derive, is `unsupported: layer_dependency_unresolved` — the engine never picks
 an order it cannot justify. The fixpoint is bounded by the number of effects;
@@ -114,7 +114,7 @@ the token catalogue (ADR-0012 §6).
 
 `empowered: bool` on an object, `xp: int` on a player. `empower` sets the
 state and fails closed when the object is already Empowered — no second
-application and no second event (441). `[Empowered]` is a condition leaf.
+application and no second event (442). `[Empowered]` is a condition leaf.
 `spend_xp` becomes a real payment kind, `[Level N]` an ability-layer effect
 gated by `xp_at_least`. The `become_empowered` event and the end-of-turn
 disempower are P5's to emit and schedule; P4 records the state change and
@@ -130,10 +130,10 @@ events.
 - **`counterable`**: a `permission` continuous effect writes the evaluated
   flag onto the chain entry, which is exactly what P2's Counter already reads.
 - **Effect Text of attachments**: an `ability_append` effect in the ability
-  layer (477.2) gives the Top-Most card the attached card's typed triggers
+  layer (479.3) gives the Top-Most card the attached card's typed triggers
   while it stays attached; detaching removes it with provenance.
 - **Copy**: a trait-layer effect over the copyable traits the engine models
-  (477.1). A clause whose copy needs a trait the model does not carry — name,
+  (479.2). A clause whose copy needs a trait the model does not carry — name,
   tags, printed cost, domain — is `unsupported: copy_unmodelled_traits`
   rather than a partial copy.
 
@@ -157,6 +157,6 @@ its hook, and everything the G-2 ruling assigned to P5 and P6.
 ## Rejected alternatives
 
 - Keeping the six legacy families and reading both representations.
-- A fixed application order instead of the 476–480 fixpoint.
+- A fixed application order instead of the 478–482 fixpoint.
 - Inferring keyword support from card text.
 - A partial copy that silently drops the traits the model lacks.

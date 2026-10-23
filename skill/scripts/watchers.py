@@ -23,7 +23,7 @@ prose:
     see is refused rather than answered.
 
 A multiplier ("this ability triggers an additional time") is not a
-characteristic, so it is not a Core 476–480 layer: it lives in its own state
+characteristic, so it is not a Core 478–482 layer: it lives in its own state
 list and multiplies scheduling. It never applies to the copies it produced,
 and a request beyond the declared depth is refused by name.
 """
@@ -36,13 +36,13 @@ from typing import Any
 # not whose unit was stunned (2026-09-24; "controller" compares the affected object's side).
 # "player": the player the event happened to - "When YOU discard" is about whose hand the card
 # left (the event's `player`), not whose effect it was nor the card's controller field
-# (2026-09-26; Core 422.1: a player's hand into their trash)
+# (2026-09-26; Core 423.1: a player's hand into their trash)
 # "responsible" (2026-09-27): the player responsible for the event's game action - "When YOU kill ..." is
-# a kill you are responsible for (Core 411.4): a Kill instruction's controller (428.5.b), the player whose
-# damage a Cleanup kill is attributed to (428.5.c.1, 428.5.c.2); a kill nobody is responsible for (411.2)
+# a kill you are responsible for (Core 412.4): a Kill instruction's controller (429.5.b), the player whose
+# damage a Cleanup kill is attributed to (429.5.c.1, 429.5.c.2); a kill nobody is responsible for (412.2)
 # matches no one. Only a `died` event carries it (game_events: responsible_player)
 # "opponent_actor" (2026-10-06, package 9, Volibear - Imposing): "When an OPPONENT moves ..." - the event's actor is a
-# player other than the watcher's controller (Core 411.1, 411.4: the player who performs the Move is responsible for it)
+# player other than the watcher's controller (Core 412.1, 412.4: the player who performs the Move is responsible for it)
 WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "responsible", "opponent_actor"}
 # 2026-09-24: typed facts of the EVENT a watch may require, each named, none guessed.
 #   object_kind              the object the event is about is a spell / unit / gear
@@ -51,7 +51,7 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "res
 #   on_opponents_turn        the event happened on a turn that is not the controller's
 #   from_hidden              a card played from a facedown zone (Core 811)
 #   object_was_buffed        the object had a buff when the event happened (a death reads the
-#                            object as it was, Core 417 - not the card in the trash)
+#                            object as it was, Core 418 - not the card in the trash)
 #   destination_zone         the zone it went to (a recycle to the Main Deck)
 #   destination_kind         the kind of Location it went to (a move to a Battlefield)
 #   printed_energy_at_least  the object's PRINTED Energy cost is at least N - "a spell that costs
@@ -59,17 +59,17 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "res
 #                            purpose uses its printed (or copied) cost, never what was paid
 #   card_played_ordinal      (2026-09-27, package 6) the card played is the Nth card its player has
 #                            played this turn - "When you play your second card in a turn"; counted
-#                            when each play completes as the card resolves (Core 419.4.a; a countered
-#                            card was not played, 419.4.a.1 - GPT 2026-09-27), every play of the turn,
+#                            when each play completes as the card resolves (Core 420.4.a; a countered
+#                            card was not played, 420.4.a.1 - GPT 2026-09-27), every play of the turn,
 #                            the ones before the watching card was on the board included
 #   killed_by_your_spell     (2026-09-27, package 6) a death the watcher's controller is responsible for,
-#                            attributed to a spell (Core 428.5: a spell's own Kill instruction, a
+#                            attributed to a spell (Core 429.5: a spell's own Kill instruction, a
 #                            Cleanup death of a unit it dealt damage to, or an ability originating from
 #                            a spell - resolution_bridge.kill_attributed stamps it) - "When you kill a
 #                            unit with a spell"
 #   object_not_tagged        (2026-09-27, package 6) the object did not have this tag when the event
 #                            happened - "another non-Recruit unit"; tags are categories (Core 133.8)
-#                            read off the object as it was (a death, Core 428.1), a token's by the rule
+#                            read off the object as it was (a death, Core 429.1), a token's by the rule
 #                            that makes it (Core 187.1); an object whose tags were never observed is
 #                            refused by name, never guessed
 #   at_battlefield_you_control  (2026-09-28) a designation event at a Battlefield the watcher's
@@ -87,7 +87,7 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "res
 #                            Finalized (game_events.played_event); an object that is no Unit is not
 #                            Mighty; one no zone holds is refused by name, never guessed
 #   object_was_stunned       (2026-09-27) the object was stunned when the event happened (a death reads
-#                            the object as it was, as object_was_buffed does; Core 423)
+#                            the object as it was, as object_was_buffed does; Core 424)
 WATCH_FILTERS = {
     "object_kind": {"spell", "unit", "gear"},
     "object_controller_relation": {"friendly", "enemy"},
@@ -112,7 +112,7 @@ WATCH_FILTERS = {
 # 2026-09-27 (package 6): where a triggered ability works when that is not the board. Core 385.1-385.2:
 # an ability of a card outside the board says where it works, and works there and nowhere else - a
 # descriptor naming `functions_from` listens only while its source is in that zone of its OWNER (a
-# trash is its owner's, Core 108.2.a, 428.2, and so is the ability, 191.4.a.1). It is read on the state after the event, so a card that
+# trash is its owner's, Core 108.2.a, 429.2, and so is the ability, 191.5.a.1). It is read on the state after the event, so a card that
 # enters that zone as the condition is met triggers (Core 383.2.c.1: Immortal Phoenix killed by the very
 # spell whose kill it watches) and one that leaves it at the same time does not (383.2.c.2). A
 # descriptor without it works where every other ability works: the board, or a Legend's Legend Zone.
@@ -127,7 +127,7 @@ BATTLEFIELD_WATCH_FIELDS = {"move_from_triggers": {"kinds": ["moved"], "object_k
 # simultaneous events however many match ("When you stun one or more enemy units").
 # "one_per_action" (2026-10-06, package 9, GPT 2026-10-07 on Volibear - Imposing): one per game ACTION among the
 # matching events (a Standard Move's move_action, else their action_id) - one Standard Move of several units is one;
-# two Move instructions resolved in one batch are two (Core 144.3, 411.4)
+# two Move instructions resolved in one batch are two (Core 144.3, 412.4)
 WATCH_GROUPINGS = {"each", "one_or_more", "one_per_action"}
 # "first_each_turn": only the first matching event of the turn triggers it ("The first time a
 # friendly unit dies each turn") - counted whether or not the trigger was performed, unlike
@@ -228,7 +228,7 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
 def functions_from_errors(descriptor: dict[str, Any], obj: Any, path: str) -> list[str]:
     """`functions_from` (Core 385.2): a non-empty list of the owner's zones the ability works from, and
     nothing else; the ability of a source outside the board is controlled by the source's owner (Core
-    191.4.a.1), so the descriptor's controller must be the card's owner."""
+    191.5.a.1), so the descriptor's controller must be the card's owner."""
     if "functions_from" not in descriptor:
         return []
     zones = descriptor["functions_from"]
@@ -237,7 +237,7 @@ def functions_from_errors(descriptor: dict[str, Any], obj: Any, path: str) -> li
         return [f"{path}.functions_from must be a non-empty list of {sorted(FUNCTIONS_FROM_ZONES)} (Core 385.2)"]
     if not isinstance(obj, dict) or descriptor.get("controller") != obj.get("owner"):
         return [f"{path}.controller must be the card's owner: an ability of a card outside the board is its "
-                f"owner's (Core 191.4.a.1)"]
+                f"owner's (Core 191.5.a.1)"]
     return []
 
 
@@ -400,7 +400,7 @@ def watch_matches(state: dict[str, Any], watch: dict[str, Any], event: dict[str,
     elif scope == "responsible":
         if "responsible_player" not in event:
             raise WatchUnsupported(f"event {event.get('event_id')!r} ({event.get('kind')}) records no responsible player; "
-                                   f"'you' is not guessed (Core 411.4)", "responsibility_not_recorded")
+                                   f"'you' is not guessed (Core 412.4)", "responsibility_not_recorded")
         if event["responsible_player"] is None or event["responsible_player"] != controller:
             return False
     elif scope == "location":
@@ -448,10 +448,10 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
             if event.get("was_buffed") is not True:
                 return False
         elif key == "object_was_stunned":
-            # 2026-09-27: read off the object as it was when the event happened, like the buff (Core 423)
+            # 2026-09-27: read off the object as it was when the event happened, like the buff (Core 424)
             if "was_stunned" not in event:
                 raise WatchUnsupported(f"event {event.get('event_id')!r} ({event.get('kind')}) records no stun; "
-                                       f"it is not guessed (Core 423)", "stun_not_recorded")
+                                       f"it is not guessed (Core 424)", "stun_not_recorded")
             if event["was_stunned"] is not True:
                 return False
         elif key == "destination_zone":
@@ -478,7 +478,7 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
             if printed < wanted:
                 return False
         elif key == "card_played_ordinal":
-            # the ordinal the play transaction stamped on its own `played` event (Core 419.4.b)
+            # the ordinal the play transaction stamped on its own `played` event (Core 420.4.b)
             if event.get("kind") != "played" or event.get("play_ordinal") != wanted:
                 return False
         elif key == "killed_by_your_spell":
@@ -519,7 +519,7 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
 
 def event_object_tags(state: dict[str, Any], event: dict[str, Any]) -> list[str] | None:
     """The tags of the object the event is about, as it was when the event happened: a death carries
-    them (game_events: read off the object before it left the board, Core 428.1 - a token has ceased
+    them (game_events: read off the object before it left the board, Core 429.1 - a token has ceased
     to exist by now, Core 186.1); any other event reads the object now. None when never observed."""
     if "object_tags" in event:
         return event["object_tags"]

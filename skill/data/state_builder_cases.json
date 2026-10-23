@@ -1,6 +1,6 @@
 {
   "schema_version": "state-builder-cases.v1",
-  "ruleset_baseline": "2026-07-16",
+  "ruleset_baseline": "2026-10-09",
   "note": "Every case is labelled with whether the minimum state should build. A case that should not build names the field that stopped it, so a future change that quietly starts guessing fails here. The questions are synthetic; no card text belongs in this file.",
   "cases": [
     {

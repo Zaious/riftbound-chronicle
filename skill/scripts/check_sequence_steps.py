@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Gate: two instructions joined by "and" are two steps in the card's order, and a step
-that does nothing does not stop the other (Core 422.4 reads "then" the same way; neither
+that does nothing does not stop the other (Core 423.4 reads "then" the same way; neither
 carries a backward reference, so neither is a Core 359.3.e.14 linked instruction).
 
 Must hold, for "Channel 2 runes exhausted and draw 1." and "Draw 1 and channel 1 rune

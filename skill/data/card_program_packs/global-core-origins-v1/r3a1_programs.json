@@ -111,7 +111,7 @@
                 ],
                 "rule_locators": [
                   "Core 355.13",
-                  "Core 421"
+                  "Core 422"
                 ]
               },
               "why": "'up to 2': the controller chooses at most two runes and those ready; the third stays exhausted. Stale card: the Legend source is a stand-in gear and no status derives from this run.",
@@ -182,7 +182,7 @@
                 ],
                 "rule_locators": [
                   "Core 355.13",
-                  "Core 421"
+                  "Core 422"
                 ]
               },
               "why": "'ready up to 2 runes' names no controller (GPT 2026-10-02, the same wording on Targon's Peak), so an opponent's rune is a legal choice beside one's own; the unchosen one stays exhausted. Stale card: the Legend source is a stand-in gear and no status derives from this run.",
@@ -211,7 +211,7 @@
             "Core 713",
             "Core 714",
             "Core 715.1",
-            "Core 417.6.b.2.a"
+            "Core 418.6.b.2.a"
           ],
           "execution": {
             "kind": "effect",
@@ -387,7 +387,7 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 419.4.a",
+            "Core 420.4.a",
             "Core 355.5.b",
             "Core 355.10.a",
             "Core 124"
@@ -491,12 +491,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 419.4.a",
+                  "Core 420.4.a",
                   "Core 359.2.c",
-                  "Core 446.2"
+                  "Core 448.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "420.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (448.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -790,7 +790,7 @@
             "Core 740.2.c",
             "Core 355.10.d",
             "Core 355.5.a",
-            "Core 417.1.b"
+            "Core 418.1.b"
           ],
           "execution": {
             "kind": "resolution",
@@ -902,7 +902,7 @@
                 "rule_locators": [
                   "Core 740.2.c",
                   "Core 355.10.d",
-                  "Core 417.1.b"
+                  "Core 418.1.b"
                 ]
               },
               "why": "740.2.c: a Unit is in combat when it occupies the Combat Battlefield and has a designation; the designated enemy Unit takes 2, an enemy Unit that arrived after the opening (no designation until Cleanup) and one at its Base do not; none is a target (355.10.d).",
@@ -974,7 +974,7 @@
           "unsupported_mechanics": [],
           "rule_locators": [
             "Core 338",
-            "Core 429.3",
+            "Core 430.3",
             "Core 806"
           ],
           "execution": {
@@ -1081,11 +1081,11 @@
                 "outcome": "decision_required",
                 "reason_code": "add_window_confirmation_required",
                 "rule_locators": [
-                  "Core 429.3",
+                  "Core 430.3",
                   "Core 357.1.a"
                 ]
               },
-              "why": "429.3: the controller may use Add reactions while paying; even with the Energy in hand the engine will not assume they decline, so the play waits for a human to confirm the Add window closed."
+              "why": "430.3: the controller may use Add reactions while paying; even with the Energy in hand the engine will not assume they decline, so the play waits for a human to confirm the Add window closed."
             }
           ]
         },
@@ -1355,7 +1355,7 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 413"
+            "Core 414"
           ],
           "execution": {
             "kind": "resolution",
@@ -1403,10 +1403,10 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 413"
+                  "Core 414"
                 ]
               },
-              "why": "413: the controller draws the top card of their Main Deck.",
+              "why": "414: the controller draws the top card of their Main Deck.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -1426,12 +1426,12 @@
               "expected": {
                 "outcome": "unsupported",
                 "rule_locators": [
-                  "Core 413.4",
-                  "Core 431.3",
-                  "Core 431.3.c"
+                  "Core 414.4",
+                  "Core 432.3",
+                  "Core 432.3.c"
                 ]
               },
-              "why": "drawing from an empty Main Deck Burns Out (413.4, 431); with an empty Trash the Burn Out repeats (431.3) and the repeated one needs the Mode of Play's Victory Score to judge the immediate win (431.3.c), which this state does not carry, so the engine declines the whole resolution instead of guessing.",
+              "why": "drawing from an empty Main Deck Burns Out (414.4, 432); with an empty Trash the Burn Out repeats (432.3) and the repeated one needs the Mode of Play's Victory Score to judge the immediate win (432.3.c), which this state does not carry, so the engine declines the whole resolution instead of guessing.",
               "bindings": {
                 "controller": "p2",
                 "opponent": "p1",
@@ -1462,7 +1462,7 @@
             "Core 355.5",
             "Core 355.9.b",
             "Core 359.3.e.5",
-            "Core 417.1.b",
+            "Core 418.1.b",
             "errata: Disintegrate OGN-005"
           ],
           "execution": {
@@ -1515,10 +1515,10 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 417.1.b"
+                  "Core 418.1.b"
                 ]
               },
-              "why": "417.1.b marks 3 damage; 3 < 4 Might so Cleanup does not kill (322).",
+              "why": "418.1.b marks 3 damage; 3 < 4 Might so Cleanup does not kill (322).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -1588,9 +1588,9 @@
           "claim": "stale",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 428.5.c",
-            "Core 387.2",
-            "Core 388.1",
+            "Core 429.5.c",
+            "Core 388.2",
+            "Core 389.1",
             "Core 359.3.e.14.b",
             "errata: Disintegrate OGN-005"
           ],
@@ -1662,11 +1662,11 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 428.5.c",
-                  "Core 388.1"
+                  "Core 429.5.c",
+                  "Core 389.1"
                 ]
               },
-              "why": "1 + 3 = 4 damage on a 4-Might unit: Cleanup kills it (322), the kill is attributed to the spell that dealt the damage immediately before (428.5.c), and the reflexive trigger goes on the chain as a Pending item (388.1).",
+              "why": "1 + 3 = 4 damage on a 4-Might unit: Cleanup kills it (322), the kill is attributed to the spell that dealt the damage immediately before (429.5.c), and the reflexive trigger goes on the chain as a Pending item (389.1).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -1696,10 +1696,10 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 387.2"
+                  "Core 388.2"
                 ]
               },
-              "why": "3 damage on a 4-Might unit does not kill; the condition of the reflexive trigger is not met (387.2), so nothing goes on the chain.",
+              "why": "3 damage on a 4-Might unit does not kill; the condition of the reflexive trigger is not met (388.2), so nothing goes on the chain.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -1751,7 +1751,7 @@
                 ],
                 "rule_locators": [
                   "Core 359.3.e.14.b",
-                  "Core 428.5.c"
+                  "Core 429.5.c"
                 ]
               },
               "why": "the death is replaced by a prevention effect: the kill never happens, so 'If this kills it' directly references a game action that was not performed (359.3.e.14.b) and no trigger is built.",
@@ -1868,7 +1868,7 @@
             "Core 135.2.b.5.a",
             "Core 355.5",
             "Core 317.2.c",
-            "Core 477"
+            "Core 479"
           ],
           "execution": {
             "kind": "resolution",
@@ -1963,7 +1963,7 @@
                 ],
                 "rule_locators": [
                   "Core 135.2.b.5.a",
-                  "Core 477"
+                  "Core 479"
                 ]
               },
               "why": "135.2.b.5.a: the second instruction's condition is read when it is performed; the chosen unit is the only unit its controller controls at its Base, so both +1s apply, each stamped with the turn that ends them.",
@@ -2182,7 +2182,7 @@
             "Core 355.10.b",
             "Core 355.10.d",
             "Core 355.5.a",
-            "Core 417.1.b"
+            "Core 418.1.b"
           ],
           "execution": {
             "kind": "resolution",
@@ -2268,7 +2268,7 @@
                 "rule_locators": [
                   "Core 355.10.b",
                   "Core 355.10.d",
-                  "Core 417.1.b"
+                  "Core 418.1.b"
                 ]
               },
               "why": "355.10.b: the battlefield is the target; the enemy units there are found by criteria at resolution and are not targets (355.10.d). The friendly unit at the same battlefield is untouched.",
@@ -2528,8 +2528,8 @@
             "Core 355.13",
             "Core 355.4",
             "Core 355.4.a",
-            "Core 446.3.c",
-            "Core 449.1"
+            "Core 448.3.c",
+            "Core 451.1"
           ],
           "execution": {
             "kind": "resolution",
@@ -2598,10 +2598,10 @@
                 ],
                 "trace_target_outcome": "applied_full",
                 "rule_locators": [
-                  "Core 449.1"
+                  "Core 451.1"
                 ]
               },
-              "why": "449.1: a Move relocates the unit to the chosen valid Location; 'to base' is each unit's own controller's Base (355.4.a), so the destination is bound per object, not to the caster; one friendly unit chosen out of 'up to 2' is a complete instruction (355.13).",
+              "why": "451.1: a Move relocates the unit to the chosen valid Location; 'to base' is each unit's own controller's Base (355.4.a), so the destination is bound per object, not to the caster; one friendly unit chosen out of 'up to 2' is a complete instruction (355.13).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -2850,7 +2850,7 @@
                 "rule_locators": [
                   "Core 190.6.a",
                   "Core 383.4.f",
-                  "Core 464.2.e.1"
+                  "Core 466.2.d.1"
                 ]
               },
               "why": "190.6.a / 190.6.d: 'you' is the Battlefield's controller; when that player gains the Defender designation the trigger goes on the Combat Chain, controlled by them.",
@@ -2999,7 +2999,7 @@
           "unsupported_mechanics": [],
           "rule_locators": [
             "Core 814.2",
-            "Core 466.7.c",
+            "Core 468.7.c",
             "Core 814.1.c"
           ],
           "execution": {
@@ -3123,11 +3123,11 @@
                 ],
                 "rule_locators": [
                   "Core 814.2",
-                  "Core 466.7.c",
+                  "Core 468.7.c",
                   "Core 124"
                 ]
               },
-              "why": "the chosen Unit — any Unit, the text says nothing about 'here' — gains a granted Shield 2 bound to its identity and to this Combat; it expires with the Combat (466.7.c).",
+              "why": "the chosen Unit — any Unit, the text says nothing about 'here' — gains a granted Shield 2 bound to its identity and to this Combat; it expires with the Combat (468.7.c).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -3220,7 +3220,7 @@
               "expected": {
                 "outcome": "unsupported",
                 "rule_locators": [
-                  "Core 466.7.c"
+                  "Core 468.7.c"
                 ]
               },
               "why": "'this combat' outside a Combat: there is no Combat for the grant to belong to; the engine declines rather than invent one.",
@@ -3379,7 +3379,7 @@
             "Core 317.2.c",
             "Core 355.5",
             "Core 355.9.b",
-            "Core 477"
+            "Core 479"
           ],
           "execution": {
             "kind": "resolution",
@@ -3439,10 +3439,10 @@
                 ],
                 "rule_locators": [
                   "Core 135.2.e.3",
-                  "Core 477"
+                  "Core 479"
                 ]
               },
-              "why": "a typed +3 Might modifier for this turn is appended (135.2.e.3, 477); its expiry at end of turn is the mechanic still unsupported.",
+              "why": "a typed +3 Might modifier for this turn is appended (135.2.e.3, 479); its expiry at end of turn is the mechanic still unsupported.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -3765,10 +3765,10 @@
             "simultaneous_replacement_modes"
           ],
           "rule_locators": [
-            "Core 417.1.d",
-            "Core 417.6.b.3",
-            "Core 417.6.b.4",
-            "Core 143.2.b",
+            "Core 418.1.d",
+            "Core 418.6.b.3",
+            "Core 418.6.b.4",
+            "Core 143.2.c",
             "Core 359.3.e.5"
           ],
           "execution": {
@@ -3885,12 +3885,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 417.1.d",
-                  "Core 417.6.b.3",
-                  "Core 143.2.b"
+                  "Core 418.1.d",
+                  "Core 418.6.b.3",
+                  "Core 143.2.c"
                 ]
               },
-              "why": "after the +3 the friendly Unit reads 6 and the enemy 4; both Mights are read before either Deal, then the two Deals happen at once with the Units as sources (417.6.b.3), not as Combat Damage.",
+              "why": "after the +3 the friendly Unit reads 6 and the enemy 4; both Mights are read before either Deal, then the two Deals happen at once with the Units as sources (418.6.b.3), not as Combat Damage.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -4001,8 +4001,8 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 437.1",
-                  "Core 417.1.d"
+                  "Core 438.1",
+                  "Core 418.1.d"
                 ]
               },
               "why": "a Prevent on the enemy Unit replaces the Deal to it only; the other Deal is untouched.",
@@ -4150,7 +4150,7 @@
             "Core 359.3.e.4",
             "Core 124",
             "Core 124.1",
-            "Core 446.2"
+            "Core 448.2"
           ],
           "execution": {
             "kind": "resolution",
@@ -4230,10 +4230,10 @@
                 "rule_locators": [
                   "Core 124",
                   "Core 124.1",
-                  "Core 446.2"
+                  "Core 448.2"
                 ]
               },
-              "why": "u1 (3 Might) at a battlefield meets the restriction; returning it to hand is a zone change, not a Move (446.2): it becomes a new object (124) with its damage gone (124.1).",
+              "why": "u1 (3 Might) at a battlefield meets the restriction; returning it to hand is a zone change, not a Move (448.2): it becomes a new object (124) with its damage gone (124.1).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -4521,7 +4521,7 @@
           "unsupported_mechanics": [],
           "rule_locators": [
             "Core 338",
-            "Core 429.3",
+            "Core 430.3",
             "Core 806"
           ],
           "execution": {
@@ -4628,11 +4628,11 @@
                 "outcome": "decision_required",
                 "reason_code": "add_window_confirmation_required",
                 "rule_locators": [
-                  "Core 429.3",
+                  "Core 430.3",
                   "Core 357.1.a"
                 ]
               },
-              "why": "429.3: the controller may use Add reactions while paying; even with the Energy in hand the engine will not assume they decline, so the play waits for a human to confirm the Add window closed."
+              "why": "430.3: the controller may use Add reactions while paying; even with the Energy in hand the engine will not assume they decline, so the play waits for a human to confirm the Add window closed."
             }
           ]
         },
@@ -4645,7 +4645,7 @@
             "Core 355.5",
             "Core 355.9.b",
             "Core 359.3.e.5",
-            "Core 417.1.b"
+            "Core 418.1.b"
           ],
           "execution": {
             "kind": "resolution",
@@ -4711,10 +4711,10 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 417.1.b"
+                  "Core 418.1.b"
                 ]
               },
-              "why": "417.1.b: dealing damage marks it on the unit; u2 is a unit at a battlefield so 355.9.b holds at resolution.",
+              "why": "418.1.b: dealing damage marks it on the unit; u2 is a unit at a battlefield so 355.9.b holds at resolution.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -4854,8 +4854,8 @@
             "Core 815.1.c",
             "Core 815.1.c.1",
             "Core 815.1.c.2",
-            "Core 465.2.c.6",
-            "Core 465.2.c.8"
+            "Core 467.2.c.6",
+            "Core 467.2.c.8"
           ],
           "execution": {
             "kind": "combat_step",
@@ -4946,10 +4946,10 @@
                 ],
                 "rule_locators": [
                   "Core 815.1.b",
-                  "Core 465.2.c.6"
+                  "Core 467.2.c.6"
                 ]
               },
-              "why": "815.1.b / 465.2.c.6: the attacker's 7 damage goes to the Tank in full first, then the plain Unit, then the Backline Unit; the defender's own assignment has one opposing Unit and proceeds by itself.",
+              "why": "815.1.b / 467.2.c.6: the attacker's 7 damage goes to the Tank in full first, then the plain Unit, then the Backline Unit; the defender's own assignment has one opposing Unit and proceeds by itself.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -5023,7 +5023,7 @@
                 "reason_code": "damage_assignment_illegal",
                 "rule_locators": [
                   "Core 815.1.c.2",
-                  "Core 465.2.c.3"
+                  "Core 467.2.c.3"
                 ]
               },
               "why": "815.1.c.2: Units without Tank are invalid assignments until every Tank has lethal damage assigned; lethal to the plain Unit while the Tank is short is refused.",
@@ -5099,10 +5099,10 @@
                 "outcome": "illegal",
                 "reason_code": "damage_assignment_illegal",
                 "rule_locators": [
-                  "Core 465.2.c.6"
+                  "Core 467.2.c.6"
                 ]
               },
-              "why": "465.2.c.6: Tank first, then the Unit with no requirement, then Backline last; Backline before the plain Unit is refused even with the Tank satisfied.",
+              "why": "467.2.c.6: Tank first, then the Unit with no requirement, then Backline last; Backline before the plain Unit is refused even with the Tank satisfied.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -5182,10 +5182,10 @@
                 "outcome": "supported",
                 "rule_locators": [
                   "Core 815.1.c.2",
-                  "Core 465.2.c.7"
+                  "Core 467.2.c.7"
                 ]
               },
-              "why": "815.1.c.2 / 465.2.c.7: with two Tanks damage may go to either first, but both need lethal before the Backline Unit.",
+              "why": "815.1.c.2 / 467.2.c.7: with two Tanks damage may go to either first, but both need lethal before the Backline Unit.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -5355,10 +5355,10 @@
                 "outcome": "illegal",
                 "reason_code": "damage_assignment_illegal",
                 "rule_locators": [
-                  "Core 465.2.c.8"
+                  "Core 467.2.c.8"
                 ]
               },
-              "why": "465.2.c.8: a Unit that has Tank and Backline cannot satisfy both; the assigning player must choose which applies, and an assignment that names no choice is refused.",
+              "why": "467.2.c.8: a Unit that has Tank and Backline cannot satisfy both; the assigning player must choose which applies, and an assignment that names no choice is refused.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -5449,7 +5449,7 @@
               "expected": {
                 "outcome": "supported",
                 "rule_locators": [
-                  "Core 465.2.c.8"
+                  "Core 467.2.c.8"
                 ]
               },
               "why": "choosing Tank: the Unit is assigned first.",
@@ -5543,7 +5543,7 @@
               "expected": {
                 "outcome": "supported",
                 "rule_locators": [
-                  "Core 465.2.c.8"
+                  "Core 467.2.c.8"
                 ]
               },
               "why": "choosing Backline: the plain Unit first, then the two Backline Units in either order.",
@@ -5617,10 +5617,10 @@
                 "outcome": "decision_required",
                 "reason_code": "damage_assignment_required",
                 "rule_locators": [
-                  "Core 465.2.c"
+                  "Core 467.2.c"
                 ]
               },
-              "why": "465.2.c: the attacker assigns; with two plain Units behind the Tank and 5 damage, the leftover 2 may go to either, so the engine stops and names the assigning player.",
+              "why": "467.2.c: the attacker assigns; with two plain Units behind the Tank and 5 damage, the leftover 2 may go to either, so the engine stops and names the assigning player.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -5637,9 +5637,9 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 419.4.a",
+            "Core 420.4.a",
             "Core 355.5.b",
-            "Core 449.1",
+            "Core 451.1",
             "Core 355.4.a"
           ],
           "execution": {
@@ -5744,12 +5744,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 419.4.a",
+                  "Core 420.4.a",
                   "Core 359.2.c",
-                  "Core 446.2"
+                  "Core 448.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "420.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (448.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -5842,11 +5842,11 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 449.1",
+                  "Core 451.1",
                   "Core 355.4.a"
                 ]
               },
-              "why": "449.1: the chosen unit (any unit at a battlefield, enemy included) moves; 'its base' is its own controller's Base (355.4.a), not the caster's.",
+              "why": "451.1: the chosen unit (any unit at a battlefield, enemy included) moves; 'its base' is its own controller's Base (355.4.a), not the caster's.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -6821,7 +6821,7 @@
             "Core 355.1.a",
             "Core 356.2.b.1",
             "Core 357.2",
-            "Core 414.4",
+            "Core 415.4",
             "Core 356.4.f.1"
           ],
           "execution": {
@@ -6995,12 +6995,12 @@
                 "reason_code": "cost_unpayable",
                 "assert_rolled_back": true,
                 "rule_locators": [
-                  "Core 414.4",
+                  "Core 415.4",
                   "Core 203.3",
                   "Core 358.5"
                 ]
               },
-              "why": "414.4: a friendly unit that is already exhausted cannot be exhausted a second time to pay the additional cost; the cost cannot be paid (203.3) and the whole play is undone (358.5).",
+              "why": "415.4: a friendly unit that is already exhausted cannot be exhausted a second time to pay the additional cost; the cost cannot be paid (203.3) and the whole play is undone (358.5).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -7051,7 +7051,7 @@
           "unsupported_mechanics": [],
           "rule_locators": [
             "Core 356.4.f.1",
-            "Core 413"
+            "Core 414"
           ],
           "execution": {
             "kind": "effect",
@@ -7089,10 +7089,10 @@
                 ],
                 "rule_locators": [
                   "Core 356.4.f.1",
-                  "Core 413"
+                  "Core 414"
                 ]
               },
-              "why": "'If you do' tests the optional-cost receipt (356.4.f.1): the cost was chosen, so two cards are drawn (413).",
+              "why": "'If you do' tests the optional-cost receipt (356.4.f.1): the cost was chosen, so two cards are drawn (414).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -7154,7 +7154,7 @@
           "unsupported_mechanics": [],
           "rule_locators": [
             "Core 356.2.b.1",
-            "Core 413"
+            "Core 414"
           ],
           "execution": {
             "kind": "effect",
@@ -7192,7 +7192,7 @@
                 ],
                 "rule_locators": [
                   "Core 356.2.b.1",
-                  "Core 413"
+                  "Core 414"
                 ]
               },
               "why": "the optional cost was not paid, so 'Otherwise' fires and one card is drawn.",
@@ -7256,9 +7256,9 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 430.1",
-            "Core 430.2",
-            "Core 430.3",
+            "Core 431.1",
+            "Core 431.2",
+            "Core 431.3",
             "Core 124"
           ],
           "execution": {
@@ -7309,12 +7309,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 430.1",
-                  "Core 430.2",
+                  "Core 431.1",
+                  "Core 431.2",
                   "Core 124"
                 ]
               },
-              "why": "430.1: the top rune of the Rune Deck is put on the board; 430.2: in the stated exhausted state; entering from a non-board zone it is a new object (124).",
+              "why": "431.1: the top rune of the Rune Deck is put on the board; 431.2: in the stated exhausted state; entering from a non-board zone it is a new object (124).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -7340,10 +7340,10 @@
               "expected": {
                 "outcome": "invalid_input",
                 "rule_locators": [
-                  "Core 430.2"
+                  "Core 431.2"
                 ]
               },
-              "why": "430.2: a rune is channeled readied or exhausted; any other entry state is malformed input, not a game state.",
+              "why": "431.2: a rune is channeled readied or exhausted; any other entry state is malformed input, not a game state.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -7361,10 +7361,10 @@
                   "no_op"
                 ],
                 "rule_locators": [
-                  "Core 430.3"
+                  "Core 431.3"
                 ]
               },
-              "why": "bound to p2, whose Rune Deck is empty: channel as many as possible — none (430.3); the instruction completes with nothing done.",
+              "why": "bound to p2, whose Rune Deck is empty: channel as many as possible — none (431.3); the instruction completes with nothing done.",
               "bindings": {
                 "controller": "p2",
                 "opponent": "p1",
@@ -7385,10 +7385,10 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 430.3",
-            "Core 430.5",
+            "Core 431.3",
+            "Core 431.5",
             "Core 055",
-            "Core 413"
+            "Core 414"
           ],
           "execution": {
             "kind": "effect",
@@ -7433,12 +7433,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 430.3",
-                  "Core 430.5",
-                  "Core 413"
+                  "Core 431.3",
+                  "Core 431.5",
+                  "Core 414"
                 ]
               },
-              "why": "bound to p2, whose Rune Deck is empty: the channel reaches 0 of 1 (430.3), so 'If you can't' holds (430.5's own example) and one card is drawn (413).",
+              "why": "bound to p2, whose Rune Deck is empty: the channel reaches 0 of 1 (431.3), so 'If you can't' holds (431.5's own example) and one card is drawn (414).",
               "bindings": {
                 "controller": "p2",
                 "opponent": "p1",
@@ -7463,7 +7463,7 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 430.5"
+                  "Core 431.5"
                 ]
               },
               "why": "bound to p1, who channels the full 1 rune, so 'If you can't' does not hold and nothing is drawn.",
@@ -7853,8 +7853,8 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 464.2.c.3",
-            "Core 465.2.a",
+            "Core 466.2.c.3",
+            "Core 467.2.a",
             "Core 143.2"
           ],
           "execution": {
@@ -7900,11 +7900,11 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 464.2.c.3",
+                  "Core 466.2.c.3",
                   "Core 143.2"
                 ]
               },
-              "why": "a Unit with no rules text has only its intrinsic Combat behaviour: present at the Contested Battlefield when Combat opens, it gains its controller's designation (464.2.c.3) and fights with its printed Might.",
+              "why": "a Unit with no rules text has only its intrinsic Combat behaviour: present at the Contested Battlefield when Combat opens, it gains its controller's designation (466.2.c.3) and fights with its printed Might.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -7949,11 +7949,11 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 465.2.a",
-                  "Core 465.2.c"
+                  "Core 467.2.a",
+                  "Core 467.2.c"
                 ]
               },
-              "why": "465.2.a: its Might is the attacker's Combat Damage; with one opposing Unit the sole legal assignment proceeds.",
+              "why": "467.2.a: its Might is the attacker's Combat Damage; with one opposing Unit the sole legal assignment proceeds.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -7995,7 +7995,7 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 464.2.c.3",
+                  "Core 466.2.c.3",
                   "Core 740.2.c"
                 ]
               },
@@ -8020,7 +8020,7 @@
     {
       "card": "Mystic Poro",
       "card_key": "mystic poro",
-      "text_status_note": "Vision (817) is a Predict (436): looking at a Secret card and choosing whether to recycle it. The look yields own-private knowledge and the recycle is a resolution-stage choice (DP-07); neither the information boundary nor the private-fact adapter is modelled this round, so the clause stays unsupported with the reason named. No program is written; no card-level or deck-level support follows from the other R3-A1 cards.",
+      "text_status_note": "Vision (817) is a Predict (437): looking at a Secret card and choosing whether to recycle it. The look yields own-private knowledge and the recycle is a resolution-stage choice (DP-07); neither the information boundary nor the private-fact adapter is modelled this round, so the clause stays unsupported with the reason named. No program is written; no card-level or deck-level support follows from the other R3-A1 cards.",
       "clauses": [
         {
           "clause_id": "mystic poro#f4a07c4d",
@@ -8033,7 +8033,7 @@
           ],
           "rule_locators": [
             "Core 817",
-            "Core 436.1",
+            "Core 437.1",
             "Core 128.3",
             "Core 128.4"
           ],
@@ -8051,8 +8051,8 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 464.2.c.3",
-            "Core 465.2.a",
+            "Core 466.2.c.3",
+            "Core 467.2.a",
             "Core 143.2"
           ],
           "execution": {
@@ -8098,11 +8098,11 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 464.2.c.3",
+                  "Core 466.2.c.3",
                   "Core 143.2"
                 ]
               },
-              "why": "a Unit with no rules text has only its intrinsic Combat behaviour: present at the Contested Battlefield when Combat opens, it gains its controller's designation (464.2.c.3) and fights with its printed Might.",
+              "why": "a Unit with no rules text has only its intrinsic Combat behaviour: present at the Contested Battlefield when Combat opens, it gains its controller's designation (466.2.c.3) and fights with its printed Might.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -8147,11 +8147,11 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 465.2.a",
-                  "Core 465.2.c"
+                  "Core 467.2.a",
+                  "Core 467.2.c"
                 ]
               },
-              "why": "465.2.a: its Might is the attacker's Combat Damage; with one opposing Unit the sole legal assignment proceeds.",
+              "why": "467.2.a: its Might is the attacker's Combat Damage; with one opposing Unit the sole legal assignment proceeds.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -8193,7 +8193,7 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 464.2.c.3",
+                  "Core 466.2.c.3",
                   "Core 740.2.c"
                 ]
               },
@@ -8494,7 +8494,7 @@
     {
       "card": "Sai Scout",
       "card_key": "sai scout",
-      "text_status_note": "Vision (817) is a Predict (436): looking at a Secret card and choosing whether to recycle it. The look yields own-private knowledge and the recycle is a resolution-stage choice (DP-07); neither the information boundary nor the private-fact adapter is modelled this round, so the clause stays unsupported with the reason named. No program is written; no card-level or deck-level support follows from the other R3-A1 cards.",
+      "text_status_note": "Vision (817) is a Predict (437): looking at a Secret card and choosing whether to recycle it. The look yields own-private knowledge and the recycle is a resolution-stage choice (DP-07); neither the information boundary nor the private-fact adapter is modelled this round, so the clause stays unsupported with the reason named. No program is written; no card-level or deck-level support follows from the other R3-A1 cards.",
       "clauses": [
         {
           "clause_id": "sai scout#f4a07c4d",
@@ -8507,7 +8507,7 @@
           ],
           "rule_locators": [
             "Core 817",
-            "Core 436.1",
+            "Core 437.1",
             "Core 128.3",
             "Core 128.4"
           ],
@@ -9216,8 +9216,8 @@
             "Core 815.1.c",
             "Core 815.1.c.1",
             "Core 815.1.c.2",
-            "Core 465.2.c.6",
-            "Core 465.2.c.8"
+            "Core 467.2.c.6",
+            "Core 467.2.c.8"
           ],
           "execution": {
             "kind": "combat_step",
@@ -9308,10 +9308,10 @@
                 ],
                 "rule_locators": [
                   "Core 815.1.b",
-                  "Core 465.2.c.6"
+                  "Core 467.2.c.6"
                 ]
               },
-              "why": "815.1.b / 465.2.c.6: the attacker's 7 damage goes to the Tank in full first, then the plain Unit, then the Backline Unit; the defender's own assignment has one opposing Unit and proceeds by itself.",
+              "why": "815.1.b / 467.2.c.6: the attacker's 7 damage goes to the Tank in full first, then the plain Unit, then the Backline Unit; the defender's own assignment has one opposing Unit and proceeds by itself.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -9385,7 +9385,7 @@
                 "reason_code": "damage_assignment_illegal",
                 "rule_locators": [
                   "Core 815.1.c.2",
-                  "Core 465.2.c.3"
+                  "Core 467.2.c.3"
                 ]
               },
               "why": "815.1.c.2: Units without Tank are invalid assignments until every Tank has lethal damage assigned; lethal to the plain Unit while the Tank is short is refused.",
@@ -9461,10 +9461,10 @@
                 "outcome": "illegal",
                 "reason_code": "damage_assignment_illegal",
                 "rule_locators": [
-                  "Core 465.2.c.6"
+                  "Core 467.2.c.6"
                 ]
               },
-              "why": "465.2.c.6: Tank first, then the Unit with no requirement, then Backline last; Backline before the plain Unit is refused even with the Tank satisfied.",
+              "why": "467.2.c.6: Tank first, then the Unit with no requirement, then Backline last; Backline before the plain Unit is refused even with the Tank satisfied.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -9544,10 +9544,10 @@
                 "outcome": "supported",
                 "rule_locators": [
                   "Core 815.1.c.2",
-                  "Core 465.2.c.7"
+                  "Core 467.2.c.7"
                 ]
               },
-              "why": "815.1.c.2 / 465.2.c.7: with two Tanks damage may go to either first, but both need lethal before the Backline Unit.",
+              "why": "815.1.c.2 / 467.2.c.7: with two Tanks damage may go to either first, but both need lethal before the Backline Unit.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -9717,10 +9717,10 @@
                 "outcome": "illegal",
                 "reason_code": "damage_assignment_illegal",
                 "rule_locators": [
-                  "Core 465.2.c.8"
+                  "Core 467.2.c.8"
                 ]
               },
-              "why": "465.2.c.8: a Unit that has Tank and Backline cannot satisfy both; the assigning player must choose which applies, and an assignment that names no choice is refused.",
+              "why": "467.2.c.8: a Unit that has Tank and Backline cannot satisfy both; the assigning player must choose which applies, and an assignment that names no choice is refused.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -9811,7 +9811,7 @@
               "expected": {
                 "outcome": "supported",
                 "rule_locators": [
-                  "Core 465.2.c.8"
+                  "Core 467.2.c.8"
                 ]
               },
               "why": "choosing Tank: the Unit is assigned first.",
@@ -9905,7 +9905,7 @@
               "expected": {
                 "outcome": "supported",
                 "rule_locators": [
-                  "Core 465.2.c.8"
+                  "Core 467.2.c.8"
                 ]
               },
               "why": "choosing Backline: the plain Unit first, then the two Backline Units in either order.",
@@ -9979,10 +9979,10 @@
                 "outcome": "decision_required",
                 "reason_code": "damage_assignment_required",
                 "rule_locators": [
-                  "Core 465.2.c"
+                  "Core 467.2.c"
                 ]
               },
-              "why": "465.2.c: the attacker assigns; with two plain Units behind the Tank and 5 damage, the leftover 2 may go to either, so the engine stops and names the assigning player.",
+              "why": "467.2.c: the attacker assigns; with two plain Units behind the Tank and 5 damage, the leftover 2 may go to either, so the engine stops and names the assigning player.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -9999,10 +9999,10 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 419.4.a",
-            "Core 430.1",
-            "Core 430.2",
-            "Core 430.3"
+            "Core 420.4.a",
+            "Core 431.1",
+            "Core 431.2",
+            "Core 431.3"
           ],
           "execution": {
             "kind": "effect",
@@ -10099,12 +10099,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 419.4.a",
+                  "Core 420.4.a",
                   "Core 359.2.c",
-                  "Core 446.2"
+                  "Core 448.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "420.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (448.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10196,12 +10196,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 430.1",
-                  "Core 430.2",
+                  "Core 431.1",
+                  "Core 431.2",
                   "Core 124"
                 ]
               },
-              "why": "430.1/430.2: the top rune of the controller's Rune Deck enters the board exhausted, as stated.",
+              "why": "431.1/430.2: the top rune of the controller's Rune Deck enters the board exhausted, as stated.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10220,10 +10220,10 @@
                   "no_op"
                 ],
                 "rule_locators": [
-                  "Core 430.3"
+                  "Core 431.3"
                 ]
               },
-              "why": "430.3: with an empty Rune Deck nothing is channeled; the trigger resolves with nothing to do.",
+              "why": "431.3: with an empty Rune Deck nothing is channeled; the trigger resolves with nothing to do.",
               "bindings": {
                 "controller": "p2",
                 "opponent": "p1",
@@ -10251,9 +10251,9 @@
           "claim": "full",
           "unsupported_mechanics": [],
           "rule_locators": [
-            "Core 419.4.a",
+            "Core 420.4.a",
             "Core 355.10.b",
-            "Core 417.1.b"
+            "Core 418.1.b"
           ],
           "execution": {
             "kind": "effect",
@@ -10354,12 +10354,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 419.4.a",
+                  "Core 420.4.a",
                   "Core 359.2.c",
-                  "Core 446.2"
+                  "Core 448.2"
                 ]
               },
-              "why": "419.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (446.2), so the trigger is the play, not a move.",
+              "why": "420.4.a: the ability triggers once the card has finished resolving, which is when playing it is complete; 359.2.c: the unit enters at the location chosen, exhausted; entering is not a Move (448.2), so the trigger is the play, not a move.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10465,7 +10465,7 @@
                 ],
                 "rule_locators": [
                   "Core 355.10.b",
-                  "Core 417.1.b"
+                  "Core 418.1.b"
                 ]
               },
               "why": "355.10.b: 'all units at battlefields' targets nothing; every unit at any battlefield, friendly or enemy, is dealt 3.",
@@ -10538,11 +10538,11 @@
           "rule_locators": [
             "Core 383.1",
             "Core 383.2.c",
-            "Core 422.1",
-            "Core 422.1.a",
-            "Core 422.4",
-            "Core 446.2",
-            "Core 456.1"
+            "Core 423.1",
+            "Core 423.1.a",
+            "Core 423.4",
+            "Core 448.2",
+            "Core 458.1"
           ],
           "execution": {
             "kind": "effect",
@@ -10667,11 +10667,11 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 456.1",
-                  "Core 446.2"
+                  "Core 458.1",
+                  "Core 448.2"
                 ]
               },
-              "why": "456.1: recalling is not moving; the trigger stays quiet.",
+              "why": "458.1: recalling is not moving; the trigger stays quiet.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10730,12 +10730,12 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 422.1",
-                  "Core 422.1.a",
-                  "Core 413"
+                  "Core 423.1",
+                  "Core 423.1.a",
+                  "Core 414"
                 ]
               },
-              "why": "422.1.a: the discarding player chooses which card, using private information; that card goes hand → trash, then the draw follows.",
+              "why": "423.1.a: the discarding player chooses which card, using private information; that card goes hand → trash, then the draw follows.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10762,11 +10762,11 @@
                 "outcome": "decision_required",
                 "reason_code": "card_selection_required",
                 "rule_locators": [
-                  "Core 422.1.a",
+                  "Core 423.1.a",
                   "Core 355.10.a"
                 ]
               },
-              "why": "422.1.a: with two cards in hand the choice is the player's private selection (355.10.a: not a target); the engine stops without listing the hand.",
+              "why": "423.1.a: with two cards in hand the choice is the player's private selection (355.10.a: not a target); the engine stops without listing the hand.",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10792,10 +10792,10 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 422.4"
+                  "Core 423.4"
                 ]
               },
-              "why": "an empty hand discards nothing (422.4: as many as possible), and 'then' is order, not a condition: the draw happens regardless (422.4's own example; corrected 2026-09-25, GPT).",
+              "why": "an empty hand discards nothing (423.4: as many as possible), and 'then' is order, not a condition: the draw happens regardless (423.4's own example; corrected 2026-09-25, GPT).",
               "bindings": {
                 "controller": "p1",
                 "opponent": "p2",
@@ -10829,8 +10829,8 @@
                   }
                 ],
                 "rule_locators": [
-                  "Core 422.1",
-                  "Core 422.4"
+                  "Core 423.1",
+                  "Core 423.4"
                 ]
               },
               "why": "one card in hand: the whole hand must go, no choice remains, and the draw follows.",

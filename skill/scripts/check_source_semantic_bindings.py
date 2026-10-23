@@ -30,6 +30,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import withheld_output  # noqa: E402
 import sqlite3
 import sys
 import tempfile
@@ -44,6 +45,8 @@ FIXTURE = SKILL_DIR / "data" / "source_semantic_bindings_fixture.json"
 ANCHORS = SKILL_DIR / "data" / "rules_locator_anchors.json"
 RUNS = SKILL_DIR / "data" / "judge_corpus_runs.json"
 LOCAL_INDEX = rules_index.DEFAULT_RULES_DIR / rules_index.DEFAULT_INDEX_NAME
+# C3 (package 16): the index built from the Core 2026-10-09 PDF beside the maintainer's (scripts/c3_local_index.py)
+LOCAL_INDEX_1009 = SKILL_DIR / ".local" / "rules-2026-10-09" / rules_index.DEFAULT_INDEX_NAME
 
 
 def _digest(path: Path) -> str:
@@ -56,7 +59,7 @@ def main() -> int:
     if problems := ssb.validate_registry(fixture):
         failures.append(f"the fixture registry does not validate: {problems[:5]}")
         for failure in failures:
-            print(f"FAIL: {failure}")
+            print(f"FAIL: {withheld_output.shown(failure)}")
         return 1
     if fixture["status"] != "fixture":
         failures.append("the public registry is a fixture and must say so")
@@ -230,6 +233,9 @@ def main() -> int:
         anchor_hash = {f"Core {a['locator']}": a["text_sha256"] for a in anchors["anchors"]}
         anchored = 0
         for entry in bindings:
+            # the anchors are one document's (their source_id); a binding to another version's text is not theirs
+            if anchors.get("source_id") != f"core-rules-{entry['document_version']}":
+                continue
             expected = anchor_hash.get(entry["locator"])
             if expected is None:
                 continue
@@ -238,9 +244,10 @@ def main() -> int:
                 failures.append(f"{entry['locator']} is approved under {entry['text_hash'][:23]}…, but the "
                                 f"page anchor digests it as {expected[:23]}…")
         audit = "skipped (no local rules index)"
-        if LOCAL_INDEX.exists():
-            connection = sqlite3.connect(LOCAL_INDEX)
-            checked, wrong = 0, []
+        checked, wrong = 0, []
+        # the maintainer's index, and the one C3 built beside it from the 10-09 PDF (skill/.local/rules-2026-10-09)
+        for index_path in [p for p in (LOCAL_INDEX, LOCAL_INDEX_1009) if p.exists()]:
+            connection = sqlite3.connect(index_path)
             try:
                 for entry in bindings:
                     row = connection.execute(
@@ -260,12 +267,12 @@ def main() -> int:
                         wrong.append((entry["locator"], partial))
             finally:
                 connection.close()
-            for locator, partial in sorted(set(wrong)):
-                failures.append(
-                    f"{locator}: approved on a leading part of the indexed text, which continues past "
-                    f"where the reviewed text stops; the reading needs re-review against the whole rule"
-                    if partial else f"{locator}: the approved hash is not the digest of the indexed text")
-            audit = f"checked {checked} against the local index"
+            audit = f"checked {checked} against the local index(es)"
+        for locator, partial in sorted(set(wrong)):
+            failures.append(
+                f"{locator}: approved on a leading part of the indexed text, which continues past "
+                f"where the reviewed text stops; the reading needs re-review against the whole rule"
+                if partial else f"{locator}: the approved hash is not the digest of the indexed text")
         reviewers = sorted({b["reviewed_by"] for b in bindings})
         authority = (f"closed: {len(merged)} reviewed bindings in {len(approved_paths)} file(s); corpus rule "
                      f"claims bound {rule_claims}; page-anchored {anchored}; reviewers {reviewers}; "
@@ -280,7 +287,7 @@ def main() -> int:
 
     if failures:
         for failure in failures:
-            print(f"FAIL: {failure}")
+            print(f"FAIL: {withheld_output.shown(failure)}")
         print(f"\n{len(failures)} failure(s) across source-semantic-bindings.v1")
         return 1
 

@@ -3,9 +3,9 @@
   "status": "fixture",
   "bindings": [
     {
-      "binding_id": "ssb-d935669d53985e02d7a89ad3",
+      "binding_id": "ssb-de0daf700239d03c765193d9",
       "document_id": "core-rules",
-      "document_version": "2026-07-16",
+      "document_version": "2026-10-09",
       "locator": "Core 312",
       "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
       "template": "rule_role_holder",
@@ -22,9 +22,9 @@
       "reviewed_at": "2026-09-09"
     },
     {
-      "binding_id": "ssb-04635fe5fe3e6dc021648e81",
+      "binding_id": "ssb-25806668ee9c4c19c6f5d80c",
       "document_id": "core-rules",
-      "document_version": "2026-07-16",
+      "document_version": "2026-10-09",
       "locator": "Core 312",
       "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
       "template": "rule_event_consequence",
@@ -40,9 +40,9 @@
       "reviewed_at": "2026-09-09"
     },
     {
-      "binding_id": "ssb-214c425bf89d97ad5c902034",
+      "binding_id": "ssb-cab80c0a2a5216e4f438bf80",
       "document_id": "core-rules",
-      "document_version": "2026-07-16",
+      "document_version": "2026-10-09",
       "locator": "Core 312",
       "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
       "template": "rule_quantity",
@@ -59,9 +59,9 @@
       "reviewed_at": "2026-09-09"
     },
     {
-      "binding_id": "ssb-18c43e22cda1705b1cccce28",
+      "binding_id": "ssb-82b1c08e4e16748dd7904f31",
       "document_id": "core-rules",
-      "document_version": "2026-07-16",
+      "document_version": "2026-10-09",
       "locator": "Core 312",
       "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
       "template": "rule_point_source",
@@ -76,9 +76,9 @@
       "reviewed_at": "2026-09-09"
     },
     {
-      "binding_id": "ssb-614333f415fcf94e5b6a343b",
+      "binding_id": "ssb-c53034a4d4e401bd1d8ce468",
       "document_id": "core-rules",
-      "document_version": "2026-07-16",
+      "document_version": "2026-10-09",
       "locator": "Core 312",
       "text_hash": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a",
       "template": "rule_point_source",

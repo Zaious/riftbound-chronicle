@@ -11,17 +11,17 @@
   "documents": [
     {
       "document_id": "core-rules",
-      "source_id": "core-rules-2026-07-16",
+      "source_id": "core-rules-2026-10-09",
       "install_group": "core-en",
-      "relative_path": "riftbound-core-rules-2026-07-16.pdf",
+      "relative_path": "riftbound-core-rules-2026-10-09.pdf",
       "title": "Riftbound Core Rules",
-      "version": "2026-07-16",
+      "version": "2026-10-09",
       "locale": "en-US",
       "region": "global",
       "document_class": "core_rules",
       "status": "active",
       "superseded_by": null,
-      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/e9ac8e3d33e0f78cef296f5945aba7bc1313b086.pdf",
+      "url": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news_live/5c7946f7c3b8c6e0faff85ab6dadc6d2e721ea94.pdf",
       "source_page": "https://playriftbound.com/en-us/rules-hub/",
       "required": true
     },

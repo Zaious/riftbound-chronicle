@@ -3,7 +3,7 @@
 
 The card's static makes each Deathknell trigger of its controller trigger once more (Core 383.3: a copy of the trigger the
 game generated). Death triggers are added to the Chain as Pending Items before the dying cards move to the trash (Core
-808.1.d.2; Cleanup 323.4 before 323.5), so a static on the board as simultaneous deaths are noted counts even when its
+808.1.d.2; Cleanup 383.2.c.3 before 323.4), so a static on the board as simultaneous deaths are noted counts even when its
 card dies in the same action (deaths from one game action are simultaneous, 370.1.a.2). Replacement Effects are applied
 first: a card whose death was replaced and that stays on the board counts; one a replacement took off the board does
 not. The result never depends on the order the engine applies the deaths in (effect_ir.group_pending_triggers).

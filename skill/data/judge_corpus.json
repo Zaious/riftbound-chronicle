@@ -572,7 +572,7 @@
       "question": "My attacking unit is in the Backline. Does it contribute Combat Damage this step?",
       "expected_tier": "A",
       "locators": [
-        "Core 423.1.b"
+        "Core 424.1.b"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -590,7 +590,7 @@
           }
         ],
         "required_source_locators": [
-          "Core 423.1.b"
+          "Core 424.1.b"
         ],
         "forbidden_claim_classes": []
       },
@@ -603,7 +603,7 @@
       "question": "I control the Battlefield and my opponent has no units there. Do I score at the scoring step?",
       "expected_tier": "A",
       "locators": [
-        "Core 323.6"
+        "Core 323.5"
       ],
       "abstention_contract": null,
       "consultation_entry": "control_step",
@@ -621,7 +621,7 @@
           }
         ],
         "required_source_locators": [
-          "Core 323.6"
+          "Core 323.5"
         ],
         "forbidden_claim_classes": []
       },
@@ -634,7 +634,7 @@
       "question": "My deck is empty and I am about to draw. What happens, and when does the game end?",
       "expected_tier": "A",
       "locators": [
-        "Core 431.2",
+        "Core 432.2",
         "Core 194.1.d"
       ],
       "abstention_contract": null,
@@ -651,7 +651,7 @@
           }
         ],
         "required_source_locators": [
-          "Core 431.2",
+          "Core 432.2",
           "Core 194.1.d"
         ],
         "forbidden_claim_classes": []
@@ -1171,7 +1171,7 @@
       "expected_tier": "A",
       "locators": [
         "Core 315.2.b.2",
-        "Core 469.2"
+        "Core 471.2"
       ],
       "abstention_contract": null,
       "consultation_entry": "control_step",
@@ -1188,7 +1188,7 @@
         ],
         "required_source_locators": [
           "Core 315.2.b.2",
-          "Core 469.2"
+          "Core 471.2"
         ],
         "forbidden_claim_classes": []
       },
@@ -1196,7 +1196,7 @@
       "zh_hant": {
         "question": "我的開始階段，我控制一個對手沒有單位的戰場。計分步驟會完成並讓我 Hold 它嗎？"
       },
-      "notes": "315.2.b.2 makes Holding every controlled Battlefield the scoring step's task; 469.2 defines Hold as control maintained through the Beginning Phase. Run again 2026-09-09 over a scored_board (duel, Victory Score 8, p1 at 7, p2 at 3): the control kernel now rules where it previously declined with mode_unknown."
+      "notes": "315.2.b.2 makes Holding every controlled Battlefield the scoring step's task; 471.2 defines Hold as control maintained through the Beginning Phase. Run again 2026-09-09 over a scored_board (duel, Victory Score 8, p1 at 7, p2 at 3): the control kernel now rules where it previously declined with mode_unknown."
     },
     {
       "question_id": "JC-CS-002",
@@ -1205,7 +1205,7 @@
       "question": "Can the victory facts be determined from this position at cleanup?",
       "expected_tier": "A",
       "locators": [
-        "Core 472"
+        "Core 474"
       ],
       "abstention_contract": null,
       "consultation_entry": "control_step",
@@ -1221,13 +1221,13 @@
           }
         ],
         "required_source_locators": [
-          "Core 472"
+          "Core 474"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "472: at a cleanup a player with points at or above the Victory Score and more than any opponent wins. The control step that reads those facts is the claim. Run again 2026-09-09 over a scored_board (duel, Victory Score 8, p1 at 7, p2 at 3): the control kernel now rules where it previously declined with mode_unknown."
+      "notes": "474: at a cleanup a player with points at or above the Victory Score and more than any opponent wins. The control step that reads those facts is the claim. Run again 2026-09-09 over a scored_board (duel, Victory Score 8, p1 at 7, p2 at 3): the control kernel now rules where it previously declined with mode_unknown."
     },
     {
       "question_id": "JC-CS-003",
@@ -1236,7 +1236,7 @@
       "question": "I Held a Battlefield this turn and then Conquered it again. Do I score it twice?",
       "expected_tier": "B",
       "locators": [
-        "Core 470"
+        "Core 472"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1247,7 +1247,7 @@
           {
             "template": "rule_quantity",
             "slots": {
-              "locator": "Core 470",
+              "locator": "Core 472",
               "quantity": "scores_per_battlefield_per_turn_per_player",
               "relation": "at_most",
               "value": 1
@@ -1255,7 +1255,7 @@
           }
         ],
         "required_source_locators": [
-          "Core 470"
+          "Core 472"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1263,7 +1263,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "470: a player may only Score, from either method, once per Battlefield per turn. The answer surface has no template for it; declared as debt."
+      "notes": "472: a player may only Score, from either method, once per Battlefield per turn. The answer surface has no template for it; declared as debt."
     },
     {
       "question_id": "JC-CS-004",
@@ -1272,8 +1272,8 @@
       "question": "I am one point short of the Victory Score and I Conquer a Battlefield. Do I gain the Final Point?",
       "expected_tier": "B",
       "locators": [
-        "Core 471.1.b",
-        "Core 471.1.b.1"
+        "Core 473.1.b",
+        "Core 473.1.b.1"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1284,7 +1284,7 @@
           {
             "template": "rule_step_order",
             "slots": {
-              "locator": "Core 471.1.b.1",
+              "locator": "Core 473.1.b.1",
               "first": "scoring_every_battlefield_this_turn",
               "relation": "is_required_before",
               "second": "gaining_the_final_point_by_conquer"
@@ -1293,15 +1293,15 @@
           {
             "template": "rule_event_consequence",
             "slots": {
-              "locator": "Core 471.1.b.1",
+              "locator": "Core 473.1.b.1",
               "event": "the_final_point_by_conquer_is_withheld",
               "consequence": "the_player_draws_a_card_instead"
             }
           }
         ],
         "required_source_locators": [
-          "Core 471.1.b",
-          "Core 471.1.b.1"
+          "Core 473.1.b",
+          "Core 473.1.b.1"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1309,7 +1309,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "471.1.b.1: the Final Point through Conquer only if every Battlefield was scored this turn; otherwise the player draws a card instead. Declared as debt."
+      "notes": "473.1.b.1: the Final Point through Conquer only if every Battlefield was scored this turn; otherwise the player draws a card instead. Declared as debt."
     },
     {
       "question_id": "JC-CS-005",
@@ -1318,7 +1318,7 @@
       "question": "A spell gives me a point while I am one short of the Victory Score. Is that gain held back the way a Conquer is?",
       "expected_tier": "B",
       "locators": [
-        "Core 471.1.a.1"
+        "Core 473.1.a.1"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1329,14 +1329,14 @@
           {
             "template": "rule_event_consequence",
             "slots": {
-              "locator": "Core 471.1.a.1",
+              "locator": "Core 473.1.a.1",
               "event": "a_point_is_gained_from_a_source_other_than_conquer",
               "consequence": "the_final_point_restriction_does_not_apply"
             }
           }
         ],
         "required_source_locators": [
-          "Core 471.1.a.1"
+          "Core 473.1.a.1"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1344,7 +1344,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "471.1.a.1: points gained from sources that are not Conquer are not beholden to the Final Point restrictions. Declared as debt."
+      "notes": "473.1.a.1: points gained from sources that are not Conquer are not beholden to the Final Point restrictions. Declared as debt."
     },
     {
       "question_id": "JC-CS-006",
@@ -1353,8 +1353,8 @@
       "question": "Which abilities trigger when I Hold a Battlefield, and can they trigger again the same turn?",
       "expected_tier": "B",
       "locators": [
-        "Core 471.2.b",
-        "Core 471.2.c"
+        "Core 473.2.b",
+        "Core 473.2.c"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1365,7 +1365,7 @@
           {
             "template": "rule_quantity",
             "slots": {
-              "locator": "Core 471.2.c",
+              "locator": "Core 473.2.c",
               "quantity": "hold_ability_triggers_per_battlefield_per_turn_per_player",
               "relation": "at_most",
               "value": 1
@@ -1374,15 +1374,15 @@
           {
             "template": "rule_event_consequence",
             "slots": {
-              "locator": "Core 471.2.b",
+              "locator": "Core 473.2.b",
               "event": "a_battlefield_is_scored_by_hold",
               "consequence": "its_hold_abilities_trigger"
             }
           }
         ],
         "required_source_locators": [
-          "Core 471.2.b",
-          "Core 471.2.c"
+          "Core 473.2.b",
+          "Core 473.2.c"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1390,7 +1390,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "471.2.b: Hold abilities trigger at a Battlefield that was Held; 471.2.c: only when the Battlefield is Scored, so at most once per turn per player. Declared as debt."
+      "notes": "473.2.b: Hold abilities trigger at a Battlefield that was Held; 473.2.c: only when the Battlefield is Scored, so at most once per turn per player. Declared as debt."
     },
     {
       "question_id": "JC-CS-007",
@@ -1493,7 +1493,7 @@
       "question": "An effect tells me to draw two with one card left in my deck. What happens?",
       "expected_tier": "A",
       "locators": [
-        "Core 431.1.a"
+        "Core 432.1.a"
       ],
       "abstention_contract": null,
       "consultation_entry": "effect",
@@ -1507,13 +1507,13 @@
           }
         ],
         "required_source_locators": [
-          "Core 431.1.a"
+          "Core 432.1.a"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "431.1.a: draw as many as possible, Burn Out, then draw the remaining amount. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement."
+      "notes": "432.1.a: draw as many as possible, Burn Out, then draw the remaining amount. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement."
     },
     {
       "question_id": "JC-TSE-003",
@@ -1522,7 +1522,7 @@
       "question": "I Burn Out twice in one turn. Does my opponent gain a point each time?",
       "expected_tier": "A",
       "locators": [
-        "Core 431.2.c"
+        "Core 432.2.c"
       ],
       "abstention_contract": null,
       "consultation_entry": "effect",
@@ -1536,13 +1536,13 @@
           }
         ],
         "required_source_locators": [
-          "Core 431.2.c"
+          "Core 432.2.c"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "431.2.c: to Burn Out, the player chooses an opponent to gain 1 point. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement."
+      "notes": "432.2.c: to Burn Out, the player chooses an opponent to gain 1 point. Measured 2026-09-09 with a Mode of Play stated (duel, Victory Score 8, both at 0): the effect kernel commits and reports burn_out_victory — an empty deck with an empty trash Burns Out repeatedly, each time handing the opponent a point, until the opponent reaches the Victory Score. Before S-01c the same question abstained with mode_unknown; the contract moved from C to A on that measurement."
     },
     {
       "question_id": "JC-TSE-004",
@@ -1727,7 +1727,7 @@
       "question": "It is my main phase, the chain is empty and I hold priority. What may I do right now?",
       "expected_tier": "A",
       "locators": [
-        "Core 410.1.a"
+        "Core 411.1.a"
       ],
       "abstention_contract": null,
       "consultation_entry": "legal_action",
@@ -1743,13 +1743,13 @@
           }
         ],
         "required_source_locators": [
-          "Core 410.1.a"
+          "Core 411.1.a"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "410.1.a: a Discretionary Action may be performed at any time during a player's turn in a Neutral Open State. Bounded enumeration; the answer must say so."
+      "notes": "411.1.a: a Discretionary Action may be performed at any time during a player's turn in a Neutral Open State. Bounded enumeration; the answer must say so."
     },
     {
       "question_id": "JC-AA-002",
@@ -1758,7 +1758,7 @@
       "question": "It is my opponent's turn and nothing is on the chain. Do I have any discretionary action?",
       "expected_tier": "A",
       "locators": [
-        "Core 409"
+        "Core 410"
       ],
       "abstention_contract": null,
       "consultation_entry": "legal_action",
@@ -1774,13 +1774,13 @@
           }
         ],
         "required_source_locators": [
-          "Core 409"
+          "Core 410"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "409: a player may only perform actions on their turn unless otherwise specified. Expected: the enumeration for p1 on p2's turn finds a legal action only if one is timed for it; the engine's verdict is the answer."
+      "notes": "410: a player may only perform actions on their turn unless otherwise specified. Expected: the enumeration for p1 on p2's turn finds a legal action only if one is timed for it; the engine's verdict is the answer."
     },
     {
       "question_id": "JC-AA-003",
@@ -1790,7 +1790,7 @@
       "expected_tier": "B",
       "locators": [
         "Core 316.5.a",
-        "Core 410.1.b"
+        "Core 411.1.b"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1810,7 +1810,7 @@
           {
             "template": "rule_quantity",
             "slots": {
-              "locator": "Core 410.1.b",
+              "locator": "Core 411.1.b",
               "quantity": "discretionary_actions_a_player_may_take_in_a_turn",
               "relation": "unbounded",
               "value": null
@@ -1819,7 +1819,7 @@
         ],
         "required_source_locators": [
           "Core 316.5.a",
-          "Core 410.1.b"
+          "Core 411.1.b"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1827,7 +1827,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "316.5.a and 410.1.b: any number, as long as conditions are met and costs paid. Declared as debt."
+      "notes": "316.5.a and 411.1.b: any number, as long as conditions are met and costs paid. Declared as debt."
     },
     {
       "question_id": "JC-AA-004",
@@ -1836,7 +1836,7 @@
       "question": "May I take a discretionary action that would leave the game in a forbidden state?",
       "expected_tier": "B",
       "locators": [
-        "Core 410.1.b.3"
+        "Core 411.1.b.3"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1847,7 +1847,7 @@
           {
             "template": "rule_action_permission",
             "slots": {
-              "locator": "Core 410.1.b.3",
+              "locator": "Core 411.1.b.3",
               "actor": "any_player",
               "modality": "may_not",
               "action": "take_a_discretionary_action",
@@ -1856,7 +1856,7 @@
           }
         ],
         "required_source_locators": [
-          "Core 410.1.b.3"
+          "Core 411.1.b.3"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1864,7 +1864,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "410.1.b.3, with its own example of a Standard Move onto a Battlefield occupied by two other players' units. Declared as debt."
+      "notes": "411.1.b.3, with its own example of a Standard Move onto a Battlefield occupied by two other players' units. Declared as debt."
     },
     {
       "question_id": "JC-AA-005",
@@ -1873,8 +1873,8 @@
       "question": "Can I choose to draw a card whenever I want?",
       "expected_tier": "B",
       "locators": [
-        "Core 410.2.a",
-        "Core 410.2.b"
+        "Core 411.2.a",
+        "Core 411.2.b"
       ],
       "abstention_contract": null,
       "consultation_entry": "timing",
@@ -1885,7 +1885,7 @@
           {
             "template": "rule_action_permission",
             "slots": {
-              "locator": "Core 410.2.a",
+              "locator": "Core 411.2.a",
               "actor": "any_player",
               "modality": "may_not",
               "action": "take_a_limited_action",
@@ -1895,7 +1895,7 @@
           {
             "template": "rule_action_permission",
             "slots": {
-              "locator": "Core 410.2.b",
+              "locator": "Core 411.2.b",
               "actor": "any_player",
               "modality": "may",
               "action": "take_a_limited_action",
@@ -1904,8 +1904,8 @@
           }
         ],
         "required_source_locators": [
-          "Core 410.2.a",
-          "Core 410.2.b"
+          "Core 411.2.a",
+          "Core 411.2.b"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -1913,7 +1913,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "410.2.a-b: a Limited Action is caused by a spell, ability or the turn's progression and cannot be taken at will; drawing is the rule's own example. Declared as debt rather than reusing the 312.1.b.1 template, whose text is a different sentence."
+      "notes": "411.2.a-b: a Limited Action is caused by a spell, ability or the turn's progression and cannot be taken at will; drawing is the rule's own example. Declared as debt rather than reusing the 312.1.b.1 template, whose text is a different sentence."
     },
     {
       "question_id": "JC-AA-006",
@@ -2344,7 +2344,7 @@
       "question": "The defender has a unit with Tank and a unit without; my attacker's Might equals the Tank unit's lethal damage exactly. Where does my damage go?",
       "expected_tier": "A",
       "locators": [
-        "Core 465.2.c.6",
+        "Core 467.2.c.6",
         "Core 815.1.b"
       ],
       "abstention_contract": null,
@@ -2361,14 +2361,14 @@
           }
         ],
         "required_source_locators": [
-          "Core 465.2.c.6",
+          "Core 467.2.c.6",
           "Core 815.1.b"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "465.2.c.6 with 815.1.b: lethal damage goes to the Tank unit first, and with nothing left over the assignment is forced, so the step completes without a choice."
+      "notes": "467.2.c.6 with 815.1.b: lethal damage goes to the Tank unit first, and with nothing left over the assignment is forced, so the step completes without a choice."
     },
     {
       "question_id": "JC-CB-002",
@@ -2377,8 +2377,8 @@
       "question": "The defending unit is Stunned when the Combat Showdown closes. Does it contribute Combat Damage?",
       "expected_tier": "A",
       "locators": [
-        "Core 423.1.b",
-        "Core 465.2.b"
+        "Core 424.1.b",
+        "Core 467.2.b"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -2394,14 +2394,14 @@
           }
         ],
         "required_source_locators": [
-          "Core 423.1.b",
-          "Core 465.2.b"
+          "Core 424.1.b",
+          "Core 467.2.b"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "423.1.b: a Stunned unit contributes nothing to Combat Damage. Before S-01d the minimum state could not state a Stun and the builder refused the draft by name; with S-01d the Stun and the turn effect that owns it are stated together (stunned_combat_board), and the assign step runs: measured 2026-09-09, supported, with 423.1.b among the rule locators the engine read."
+      "notes": "424.1.b: a Stunned unit contributes nothing to Combat Damage. Before S-01d the minimum state could not state a Stun and the builder refused the draft by name; with S-01d the Stun and the turn effect that owns it are stated together (stunned_combat_board), and the assign step runs: measured 2026-09-09, supported, with 424.1.b among the rule locators the engine read."
     },
     {
       "question_id": "JC-CB-003",
@@ -2410,7 +2410,7 @@
       "question": "My attacker is at the Battlefield but every defending unit has already left it. Is Combat Damage assigned?",
       "expected_tier": "A",
       "locators": [
-        "Core 465.1"
+        "Core 467.1"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -2426,13 +2426,13 @@
           }
         ],
         "required_source_locators": [
-          "Core 465.1"
+          "Core 467.1"
         ],
         "forbidden_claim_classes": []
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "465.1: the damage tasks arise only if both Attacking and Defending units remain. With no defender the step is skipped, and the kernel commits that as its verdict."
+      "notes": "467.1: the damage tasks arise only if both Attacking and Defending units remain. With no defender the step is skipped, and the kernel commits that as its verdict."
     },
     {
       "question_id": "JC-CB-004",
@@ -2441,8 +2441,8 @@
       "question": "Three of us have units at one Battlefield. Can a three-way Combat happen?",
       "expected_tier": "B",
       "locators": [
-        "Core 462",
-        "Core 462.3"
+        "Core 464",
+        "Core 464.3"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -2453,7 +2453,7 @@
           {
             "template": "rule_quantity",
             "slots": {
-              "locator": "Core 462",
+              "locator": "Core 464",
               "quantity": "players_whose_units_are_in_one_combat",
               "relation": "exactly",
               "value": 2
@@ -2462,15 +2462,15 @@
           {
             "template": "rule_event_consequence",
             "slots": {
-              "locator": "Core 462.3",
+              "locator": "Core 464.3",
               "event": "a_choice_would_put_more_than_two_players_in_one_combat",
               "consequence": "the_choice_is_invalid"
             }
           }
         ],
         "required_source_locators": [
-          "Core 462",
-          "Core 462.3"
+          "Core 464",
+          "Core 464.3"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -2478,7 +2478,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "462: Combat only between units controlled by exactly two players; 462.3: choices that would produce a Combat among more are invalid. Declared as debt."
+      "notes": "464: Combat only between units controlled by exactly two players; 464.3: choices that would produce a Combat among more are invalid. Declared as debt."
     },
     {
       "question_id": "JC-CB-005",
@@ -2487,8 +2487,8 @@
       "question": "When Combat opens, which player is the Attacker?",
       "expected_tier": "B",
       "locators": [
-        "Core 464.2.c.1",
-        "Core 464.2.c.2"
+        "Core 466.2.c.1",
+        "Core 466.2.c.2"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -2499,7 +2499,7 @@
           {
             "template": "rule_role_holder",
             "slots": {
-              "locator": "Core 464.2.c.1",
+              "locator": "Core 466.2.c.1",
               "occasion": "when_combat_opens",
               "role": "attacker",
               "holder": "applied_contested"
@@ -2508,7 +2508,7 @@
           {
             "template": "rule_role_holder",
             "slots": {
-              "locator": "Core 464.2.c.2",
+              "locator": "Core 466.2.c.2",
               "occasion": "when_combat_opens",
               "role": "defender",
               "holder": "did_not_apply_contested"
@@ -2516,8 +2516,8 @@
           }
         ],
         "required_source_locators": [
-          "Core 464.2.c.1",
-          "Core 464.2.c.2"
+          "Core 466.2.c.1",
+          "Core 466.2.c.2"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -2525,7 +2525,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "464.2.c.1: the Attacker is the player whose units applied Contested; 464.2.c.2: the Defender is the other. Declared as debt."
+      "notes": "466.2.c.1: the Attacker is the player whose units applied Contested; 466.2.c.2: the Defender is the other. Declared as debt."
     },
     {
       "question_id": "JC-CB-006",
@@ -2534,7 +2534,8 @@
       "question": "Does the Attacker gain Focus when Combat opens?",
       "expected_tier": "B",
       "locators": [
-        "Core 464.2.d"
+        "Core 466.2.c.1.a",
+        "Core 466.2.c.1.b"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -2545,15 +2546,25 @@
           {
             "template": "rule_role_holder",
             "slots": {
-              "locator": "Core 464.2.d",
-              "occasion": "when_combat_opens",
+              "locator": "Core 466.2.c.1.a",
+              "occasion": "when_a_showdown_opens_as_part_of_combat",
               "role": "focus",
               "holder": "the_attacker"
+            }
+          },
+          {
+            "template": "rule_role_holder",
+            "slots": {
+              "locator": "Core 466.2.c.1.b",
+              "occasion": "when_combat_opens_during_a_showdown",
+              "role": "focus",
+              "holder": "the_player_who_held_focus"
             }
           }
         ],
         "required_source_locators": [
-          "Core 464.2.d"
+          "Core 466.2.c.1.a",
+          "Core 466.2.c.1.b"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -2561,7 +2572,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "464.2.d: the Attacker gains Focus. A different rule from Core 345 (Focus as a Showdown begins), so the existing Showdown template is not reused. Declared as debt."
+      "notes": "466.2.c.1.a: when Combat opens with a Showdown of its own, the Attacker gains Focus as that Showdown begins; 466.2.c.1.b: when Combat opens during an ongoing Showdown, Focus stays with the player who held it (Core 2026-10-09; the 07-16 text, 464.2.d, gave the Attacker Focus either way - restated in C3). A different rule from Core 345 (Focus as a Showdown begins), so the existing Showdown template is not reused. Declared as debt."
     },
     {
       "question_id": "JC-CB-007",
@@ -2570,8 +2581,8 @@
       "question": "I assigned damage to a unit. Has that damage been dealt yet?",
       "expected_tier": "B",
       "locators": [
-        "Core 465.2.c.1",
-        "Core 465.2.c.1.a"
+        "Core 467.2.c.1",
+        "Core 467.2.c.1.a"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -2582,7 +2593,7 @@
           {
             "template": "rule_step_order",
             "slots": {
-              "locator": "Core 465.2.c.1",
+              "locator": "Core 467.2.c.1",
               "first": "assigning_combat_damage",
               "relation": "is_distinct_from",
               "second": "dealing_combat_damage"
@@ -2591,7 +2602,7 @@
           {
             "template": "rule_step_order",
             "slots": {
-              "locator": "Core 465.2.c.1.a",
+              "locator": "Core 467.2.c.1.a",
               "first": "assigning_all_combat_damage",
               "relation": "is_required_before",
               "second": "dealing_combat_damage_simultaneously"
@@ -2599,8 +2610,8 @@
           }
         ],
         "required_source_locators": [
-          "Core 465.2.c.1",
-          "Core 465.2.c.1.a"
+          "Core 467.2.c.1",
+          "Core 467.2.c.1.a"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -2608,7 +2619,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "465.2.c.1: assigning is not dealing; 465.2.c.1.a: once all damage is assigned it is dealt simultaneously. Declared as debt."
+      "notes": "467.2.c.1: assigning is not dealing; 467.2.c.1.a: once all damage is assigned it is dealt simultaneously. Declared as debt."
     },
     {
       "question_id": "JC-CB-008",
@@ -2617,8 +2628,8 @@
       "question": "I have 5 damage to assign among four 3-Might units. May I spread it 2-1-1-1?",
       "expected_tier": "B",
       "locators": [
-        "Core 465.2.c.3",
-        "Core 465.2.c.4"
+        "Core 467.2.c.3",
+        "Core 467.2.c.4"
       ],
       "abstention_contract": null,
       "consultation_entry": "combat_step",
@@ -2629,7 +2640,7 @@
           {
             "template": "rule_step_order",
             "slots": {
-              "locator": "Core 465.2.c.3",
+              "locator": "Core 467.2.c.3",
               "first": "assigning_lethal_damage_in_full_to_one_unit",
               "relation": "is_required_before",
               "second": "assigning_damage_to_another_unit"
@@ -2638,7 +2649,7 @@
           {
             "template": "rule_step_order",
             "slots": {
-              "locator": "Core 465.2.c.4",
+              "locator": "Core 467.2.c.4",
               "first": "exhausting_the_units_that_can_still_be_assigned_damage",
               "relation": "is_required_before",
               "second": "assigning_a_unit_more_than_its_minimum_lethal_damage"
@@ -2646,8 +2657,8 @@
           }
         ],
         "required_source_locators": [
-          "Core 465.2.c.3",
-          "Core 465.2.c.4"
+          "Core 467.2.c.3",
+          "Core 467.2.c.4"
         ],
         "forbidden_claim_classes": [
           "position_conclusion"
@@ -2655,7 +2666,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "465.2.c.3 with its own example: lethal in full to one unit before any to another; 465.2.c.4: no more than the minimum lethal while units remain. Declared as debt."
+      "notes": "467.2.c.3 with its own example: lethal in full to one unit before any to another; 467.2.c.4: no more than the minimum lethal while units remain. Declared as debt."
     },
     {
       "question_id": "JC-CB-009",
@@ -2675,7 +2686,7 @@
       },
       "correction_record": null,
       "zh_hant": null,
-      "notes": "465.2.c.4: once both defenders have lethal assigned, the remaining point may go to either — that is the assigning player's choice. The engine returns decision_required rather than a verdict, and the service must not choose for the player, so no position conclusion binds and the run abstains by name."
+      "notes": "467.2.c.4: once both defenders have lethal assigned, the remaining point may go to either — that is the assigning player's choice. The engine returns decision_required rather than a verdict, and the service must not choose for the player, so no position conclusion binds and the run abstains by name."
     }
   ]
 }

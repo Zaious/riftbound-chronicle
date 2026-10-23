@@ -21,7 +21,7 @@ each edge of it:
       * an id the state does not hold is an invalid program, not a buff;
       * no decision at all stops with target_decision_required;
   - the literal path is untouched: `object_id` alone still commits, and a
-    second Buff on the same Unit is still the 426.1.b no_op;
+    second Buff on the same Unit is still the 427.1.b no_op;
   - no new semantics: `affected` and `targets` on empower/disempower are
     refused at validation;
   - the grammar and the validator agree again: buff_selector's program for
@@ -110,7 +110,7 @@ def main() -> int:
         errors.append("the literal object_id buff no longer commits")
     twice = apply_program(literal["next_state"], program({"op": "buff", "effect_id": "bf", "object_id": "u1"}))
     if ev(twice).get("outcome") != "no_op" or ev(twice).get("was_buffed") is not False:
-        errors.append(f"a second Buff counter was placed (426.1.b): {ev(twice)}")
+        errors.append(f"a second Buff counter was placed (427.1.b): {ev(twice)}")
 
     # --- no new semantics: one object only --------------------------------------------------------
     for op_name in ("buff", "empower", "disempower"):
@@ -142,7 +142,7 @@ def main() -> int:
             print(f"  - {e}")
         return 1
     print("buff / empower / disempower accept a typed decision_ref target; wrong decisions are refused each in its own way; "
-          "the literal path and the 426.1.b no_op are unchanged; empower/disempower stay one-object; buff over a set validates "
+          "the literal path and the 427.1.b no_op are unchanged; empower/disempower stay one-object; buff over a set validates "
           "(package 6); buff_selector's program validates")
     return 0
 

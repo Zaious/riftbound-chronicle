@@ -39,8 +39,8 @@ procedures. A location or chain binding that does not exist is
 ### 2. "When you play me" triggers on play completion (DP-13)
 
 `play_triggers` on an object fire when the act of playing completes by the
-card's resolution (419.4.a), never merely on an enter-board event; a card
-whose resolution is prevented does not trigger (419.4.a.1 — counters stay
+card's resolution (420.4.a), never merely on an enter-board event; a card
+whose resolution is prevented does not trigger (420.4.a.1 — counters stay
 `unsupported: counter`). Triggers from one play-completion event share one
 batch; same-controller collisions reuse the `trigger_order` decision; targets
 and choices are made at trigger finalization (355.5.b); scheduling respects
@@ -79,7 +79,7 @@ identity before resolution leaves the spell resolving with that instruction
 Order: confirm the Deal action happens and its base damage is non-zero
 (715.4); collect every active Bonus; sum once (714); add once to a single
 target or separately to each affected target (715.1–715.2); replacement,
-Prevent and `reduce_damage` see the total including Bonus (437.1.a.1). A
+Prevent and `reduce_damage` see the total including Bonus (438.1.a.1). A
 Battlefield source such as Void Gate is not pruned by the "source must be on
 the board" rule. An inactive source simply does not apply; an unknown scope
 is `unsupported`.
@@ -135,7 +135,7 @@ referent. Not holding is `skipped_linked_dependency / completion: none`, not
 Only a successful `move_board_object` raises Move triggers; Recall, return to
 hand, and board entry do not. `discard {player, count}` moves hand → owner's
 trash with a new identity, is not a target, and discards as many as possible
-when short (422.4). The choice is a new decision kind `card_selection`
+when short (423.4). The choice is a new decision kind `card_selection`
 (stage resolution, controller = the discarding player, value = hand object
 ids with their selection identities), confined to that player's own-private
 observation and decision artifacts. When the whole hand must go and only one

@@ -3,7 +3,7 @@
 randomization-receipt.v1 — the record of an external randomization (ADR-0010 §2).
 
 Randomizing is never a player's choice and never the engine's: when a Burn
-Out recycles the Trash into the Main Deck (Core 431.2.b) the new order comes
+Out recycles the Trash into the Main Deck (Core 432.2.b) the new order comes
 from outside, and this receipt is how it arrives — bound to the operation it
 serves, carrying the complete permutation and the provenance of the provider
 and method that produced it. Standalone on purpose: engine_decisions reads
@@ -15,8 +15,8 @@ from __future__ import annotations
 from typing import Any
 
 RANDOMIZATION_RECEIPT_VERSION = "randomization-receipt.v1"
-# recycle_trash: a Burn Out (431.2.b); recycle_simultaneous: two or more cards recycled to one Main
-# Deck at once (416.5)
+# recycle_trash: a Burn Out (432.2.b); recycle_simultaneous: two or more cards recycled to one Main
+# Deck at once (417.5)
 OPERATIONS = {"recycle_trash", "recycle_simultaneous"}
 _TOP = {"schema_version", "receipt_id", "operation", "operation_id", "player", "permutation", "provenance"}
 _PROVENANCE = {"provider", "method"}

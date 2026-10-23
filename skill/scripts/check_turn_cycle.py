@@ -214,7 +214,7 @@ def main() -> int:
             scored2 = run_scoring_step(t9, entered2["next_effect_state"]) if t9 else {}
             channeled2 = run_channel_step(scored2["next_timing_state"], scored2["next_effect_state"]) if scored2.get("committed") else {}
             if not channeled2.get("committed") or channeled2["trace"].get("channeled") != ["r4", "r5", "r6"] or channeled2["trace"].get("first_turn_extra") != 1:
-                errors.append(f"the second player's first Channel Phase did not channel three (485.7): {second.get('reason_code')} {entered2.get('reason_code')} {scored2.get('reason_code')} {channeled2.get('reason_code')} {channeled2.get('trace')}")
+                errors.append(f"the second player's first Channel Phase did not channel three (487.7): {second.get('reason_code')} {entered2.get('reason_code')} {scored2.get('reason_code')} {channeled2.get('reason_code')} {channeled2.get('trace')}")
 
     # --- skirmish first-turn draw skip and the Burn Out terminal in the Draw step ---------------------------------------------
     t3p = setup_timing(("p1", "p2", "p3"))
@@ -223,7 +223,7 @@ def main() -> int:
     first3 = begin_turn(t3p, e3p)
     ft = first3.get("next_timing_state", {}).get("turn_progress", {}).get("first_turn")
     if not first3.get("committed") or ft != {"extra_channel": False, "skip_draw": True, "source": "mode:skirmish"}:
-        errors.append(f"skirmish's first player did not get skip_draw (487.7): {first3.get('reason_code')} {ft}")
+        errors.append(f"skirmish's first player did not get skip_draw (489.7): {first3.get('reason_code')} {ft}")
     else:
         chain = handled(first3["next_timing_state"])
         a = run_awaken_step(chain, first3["next_effect_state"]); b = enter_beginning_phase(a["next_timing_state"], a["next_effect_state"])

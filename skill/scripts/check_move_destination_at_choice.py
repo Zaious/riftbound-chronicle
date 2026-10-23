@@ -15,8 +15,8 @@ Regression gate (GPT 2026-09-29, blockers 1 and 2 of the package-5 review).
        not executed (skipped_illegal_destination, 359.3.e.9) - never re-chosen - and the rest resolves;
      - a triggered ability's Move: finalized with no destination, refused; with one, it is in
        finalized_targets; a different one at resolution is refused (destination_changed_after_finalization).
-2. Core 402.4: a triggered ability performed without enough legal options for a required choice leaves the
-   Chain, never Finalized and not countered (402.4.a); with options, its controller must choose (402.4.b):
+2. Core 403.4: a triggered ability performed without enough legal options for a required choice leaves the
+   Chain, never Finalized and not countered (403.4.a); with options, its controller must choose (403.4.b):
      - Hallowed Tomb's return, performed with no Chosen Champion in the trash: removed (no_legal_choices);
        declined: removed as before; with one in the trash: target_selection_required;
      - a mandatory "Deal 2 to an enemy unit in its base" with no enemy unit anywhere: removed.
@@ -200,7 +200,7 @@ def main() -> int:
         if swap.get("committed") or swap.get("reason") != "destination_changed_after_finalization":
             errors.append(f"a triggered Move's destination changed at resolution was not refused: {swap.get('reason')}")
 
-    # --- 2. Core 402.4: not enough options, the Pending ability leaves the Chain ------------------------
+    # --- 2. Core 403.4: not enough options, the Pending ability leaves the Chain ------------------------
     tomb = trig_program([{"op": "return_to_champion_zone", "effect_id": "rt",
                           "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "kind": "unit", "location": "trash",
                                      "zone_owner_relation": "own", "chosen_champion": True}}], "c1-tomb")
@@ -212,7 +212,7 @@ def main() -> int:
     left = [i for i in (empty.get("next_timing_state") or {}).get("chain", {}).get("items", []) if i.get("timing") == "triggered"]
     if not empty.get("committed") or not empty.get("removed") or (empty.get("transition") or {}).get("type") != "no_legal_choices" \
             or (empty.get("transition") or {}).get("countered") is not False or left:
-        errors.append(f"performed with no Chosen Champion in the trash, the trigger did not leave the Chain (402.4): "
+        errors.append(f"performed with no Chosen Champion in the trash, the trigger did not leave the Chain (403.4): "
                       f"{empty.get('committed')} {empty.get('reason')} {empty.get('transition')} {len(left)} left")
     declined = finalize_trigger(t_timing, t_effect, reg, None, perform_optional_trigger=False)
     if not declined.get("committed"):
@@ -223,7 +223,7 @@ def main() -> int:
     with_one["players"]["p1"]["zones"]["trash"].append("j1")
     must = finalize_trigger(t_timing, with_one, reg, None, perform_optional_trigger=True)
     if must.get("committed") or must.get("reason") != "target_selection_required":
-        errors.append(f"with a Chosen Champion in the trash its controller was not asked to choose (402.4.b): {must.get('reason')}")
+        errors.append(f"with a Chosen Champion in the trash its controller was not asked to choose (403.4.b): {must.get('reason')}")
     hit = trig_program([{"op": "deal_damage", "effect_id": "dmg", "amount": 2,
                          "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit",
                                     "controller_relation": "enemy", "location": "base"}}], "c1-hit")
@@ -237,20 +237,20 @@ def main() -> int:
         h_effect["players"]["p2"]["zones"]["trash"].append(obj)
     gone = finalize_trigger(h_timing, h_effect, {hit["program_id"]: hit}, None)
     if not gone.get("committed") or (gone.get("transition") or {}).get("type") != "no_legal_choices":
-        errors.append(f"a mandatory trigger with no legal target did not leave the Chain (402.4): {gone.get('reason')}")
+        errors.append(f"a mandatory trigger with no legal target did not leave the Chain (403.4): {gone.get('reason')}")
     return report(errors)
 
 
 def report(errors: list[str]) -> int:
     if errors:
-        print("FAILED: Move destinations at the choice step; Core 402.4")
+        print("FAILED: Move destinations at the choice step; Core 403.4")
         for e in errors:
             print("  - " + e)
         return 1
     print("OK: a Move's destination is chosen as the card is played or the ability finalized (355.4), recorded with "
           "its targets, refused if missing, early-staged or illegal, never changed at resolution (355.15), and a Move "
           "whose destination a response made illegal is not executed while the rest resolves; a performed trigger "
-          "with no legal option leaves the Chain uncountered (402.4, 402.4.a), and with one its controller must choose")
+          "with no legal option leaves the Chain uncountered (403.4, 403.4.a), and with one its controller must choose")
     return 0
 
 

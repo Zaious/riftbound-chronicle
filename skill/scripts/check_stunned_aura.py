@@ -4,14 +4,14 @@ Regression gate: a printed decrease over Stunned enemy units, with its own floor
 
 "Stunned enemy units here have -8 [M], to a minimum of 1 [M]." is a passive ability of a unit on
 the board (Core 365.1): an Arithmetic-layer decrease over the enemy Units at its source's
-Battlefield that are Stunned right now (423.1.a - Stunned is a binary state), limited to its floor.
+Battlefield that are Stunned right now (424.1.a - Stunned is a binary state), limited to its floor.
 Its source is a passive ability, so the limit is applied fresh each time the Might is computed,
-never snapshotted (477.3.b, its second example). The engine grammar lowers the sentence to a
+never snapshotted (479.4.b, its second example). The engine grammar lowers the sentence to a
 `static_auras` entry with `minimum` and the criterion `stunned` (effect_ir.printed_aura_effects).
 
 Must hold (Units stunned by the engine's own stun instruction, so each board is a valid state):
   - a Stunned enemy Unit of 10 at the source's Battlefield is at 2; one of 3 is held at 1; one
-    of 1 stays at 1 (the floor moves nothing, 477.3.c is not needed);
+    of 1 stays at 1 (the floor moves nothing, 479.4.c is not needed);
   - an unstunned enemy Unit there, a Stunned enemy Unit at another Battlefield, a Stunned
     friendly Unit there, and the source itself are untouched;
   - the source moved to its Base: nothing at the Battlefield is decreased ("here");
@@ -120,7 +120,7 @@ def main() -> int:
             errors.append(f"the {label} board is invalid: {found[:2]}")
             continue
         if (got := mights(state)) != want:
-            errors.append(f"{label}: Might {got}, expected {want} (Core 365.1, 423.1.a, 477.3.b)")
+            errors.append(f"{label}: Might {got}, expected {want} (Core 365.1, 424.1.a, 479.4.b)")
     for label, bad in (("a floor on an increase", {**AURA, "amount": 2}),
                        ("a negative floor", {**AURA, "minimum": -1}),
                        ("a floor that is not an integer", {**AURA, "minimum": "1"}),
@@ -156,7 +156,7 @@ def main() -> int:
             print("  - " + e)
         return 1
     print("OK: 'Stunned enemy units here have -8 [M], to a minimum of 1 [M].' decreases exactly the Stunned enemy Units "
-          "at its source's Battlefield, to the floor recomputed each time (477.3.b); not unstunned, friendly, elsewhere, "
+          "at its source's Battlefield, to the floor recomputed each time (479.4.b); not unstunned, friendly, elsewhere, "
           "or once the source left or the stun expired; invalid floors are refused; two engine mutations are caught.")
     return 0
 

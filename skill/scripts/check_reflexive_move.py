@@ -2,13 +2,13 @@
 """A reflexive trigger after a Move, its target chosen as it is finalized (package 11, Dragon's Rage: "Move an enemy unit.
 Then do this: Choose another enemy unit at its destination. They deal damage equal to their Mights to each other.").
 
-"Then do this:" is a Reflexive Trigger with no condition (Core 387.1, 387.2): once the Move is done it is added to the
-Chain as its own Pending item (388.1) - not a choice inside the spell's resolution (GPT 2026-10-12, PACKAGE11 ruling 4).
+"Then do this:" is a Reflexive Trigger with no condition (Core 388.1, 388.2): once the Move is done it is added to the
+Chain as its own Pending item (389.1) - not a choice inside the spell's resolution (GPT 2026-10-12, PACKAGE11 ruling 4).
 The spell's conditional trigger {kind: unconditional, effect_id: <the Move>} is always held; the descriptor carries what
 the Move did - the moved unit as trigger_event (the identity it had once moved) and where it went as noted_location - and
 the program reads them: the unit as {object_ref: trigger_event_object} in one slot of the pair, the destination as
 {location_ref: trigger_event_destination}, "another" as exclude_trigger_event_object. The second unit is chosen as the
-trigger is finalized (Core 402, 355.5), Deflect paid then (809.1.c, 404.1), and the trigger has its own window before it
+trigger is finalized (Core 403, 355.5), Deflect paid then (809.1.c, 405.1), and the trigger has its own window before it
 resolves.
 
   R1 exchange      e1 moved bf1 -> bf2; the trigger carries e1 and bf2; finalized choosing e2 there, it resolves: each
@@ -17,12 +17,12 @@ resolves.
                    the destination are each refused as targets
   R3 window        finalized, then e1 is killed before the trigger resolves: the pair is ignored (the referent is gone),
                    e2 is dealt nothing
-  R4 nobody there  no other enemy unit at the destination: at finalization the trigger leaves the Chain (Core 402.4),
+  R4 nobody there  no other enemy unit at the destination: at finalization the trigger leaves the Chain (Core 403.4),
                    never finalized, nothing dealt
-  R5 not moved     the Move is ignored (bf1 forbids moving to a Base): the trigger is still added (387.2) with nothing bound, and leaves
-                   at finalization (402.4)
+  R5 not moved     the Move is ignored (bf1 forbids moving to a Base): the trigger is still added (388.2) with nothing bound, and leaves
+                   at finalization (403.4)
   R6 Deflect       choosing an enemy unit with Deflect costs the trigger's controller 1 Power of any domain: asked for,
-                   declined -> the trigger leaves (404.2); paid -> the receipt carries the Deflect component and the
+                   declined -> the trigger leaves (405.2); paid -> the receipt carries the Deflect component and the
                    pair resolves; a trigger choosing no Deflect unit is asked for nothing
   R7 base          e1 moved from bf1 to its controller's Base: every enemy unit in that Base is a legal choice, one at bf1
                    is not; it resolves
@@ -251,9 +251,9 @@ def report() -> int:
         for e in errors:
             print(f"  - {e}")
         return 1
-    print("OK: 'Then do this:' after a Move is its own Chain item, always added (387.2), carrying the moved unit and its "
+    print("OK: 'Then do this:' after a Move is its own Chain item, always added (388.2), carrying the moved unit and its "
           "destination; its second unit is chosen at finalization - not the moved one, not elsewhere, not friendly - Deflect "
-          "paid then or declined; nobody there or nothing moved: it leaves (402.4); the moved unit gone before it resolves: "
+          "paid then or declined; nobody there or nothing moved: it leaves (403.4); the moved unit gone before it resolves: "
           "ignored; a Base destination reads that Base (R1-R8)")
     return 0
 

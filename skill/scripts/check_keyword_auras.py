@@ -4,7 +4,7 @@ Regression gate: printed keyword auras (2026-09-27).
 
 "Units here have [Ganking].", "Other friendly units here have [Assault].", "Other friendly units
 here have [Shield]." and "Other friendly units have [Vision]." are passive abilities of a card on
-the board (Core 365.1) that grant a keyword in the Ability layer (477.2, 477.2.b). The card
+the board (Core 365.1) that grant a keyword in the Ability layer (479.3, 479.3.b). The card
 carries them as `static_auras` entries with a keyword
 instead of a Might amount, read live (effect_ir.printed_aura_effects); every consumer reads the
 keyword off the computed characteristics.

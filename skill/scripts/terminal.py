@@ -49,7 +49,7 @@ def check_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any], e
         return problem
     facts = victory_check(effect_state)
     if not facts.get("available"):
-        return _unsupported(base, facts["reason"], "the victory condition needs the Mode of Play and no teams (456.3, 469.1.a)", ["Core 194.3", "Core 472"])
+        return _unsupported(base, facts["reason"], "the victory condition needs the Mode of Play and no teams (458.3, 471.1.a)", ["Core 194.3", "Core 474"])
     next_timing = copy.deepcopy(timing_state)
     if facts["strict_leader"] is not None:
         next_timing["terminal"] = terminal_record(effect_state, "victory_score", facts["strict_leader"], derived=True, extra={"immediate": False, "source": "cleanup_step_1"})
@@ -60,7 +60,7 @@ def check_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any], e
         outcome = "below_threshold"
     trace = {"outcome": outcome, "victory_check": facts, "winner": facts["strict_leader"], "frozen_chain_items": [i["id"] for i in timing_state["chain"]["items"]] if outcome == "ended" else [],
              "frozen_outstanding_tasks": list(timing_state["outstanding_tasks"]) if outcome == "ended" else []}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 194.2", "Core 194.2.a", "Core 194.2.b", "Core 196", "Core 323.1", "Core 472"])
+    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 194.2", "Core 194.2.a", "Core 194.2.b", "Core 196", "Core 323.1", "Core 474"])
 
 
 def declare_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, declaration: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -192,8 +192,8 @@ def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_d
     del next_effect["players"][player]
     # A Battlefield the removed player had Contested: they control no Units there any
     # more (their cards left the game), so Contested comes off as Cleanup would take it
-    # off (Core 190.3.b.1, 323.11), and a remaining non-controller re-applies it
-    # (323.11.a). It is done here because the applier no longer exists to be named;
+    # off (Core 190.3.b.1, 323.10), and a remaining non-controller re-applies it
+    # (323.10.a). It is done here because the applier no longer exists to be named;
     # anything the engine cannot decide stops as unsupported.
     contest_changes = []
     for battlefield_id in sorted(next_effect["battlefields"]):
@@ -207,12 +207,12 @@ def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_d
         others = sorted(p for p in units_at(next_effect, battlefield_id) if p != battlefield.get("controller"))
         if len(others) > 1:
             return _unsupported(base, "contested_reapplication_ambiguous",
-                                f"after {player}'s removal Units of {others} are at {battlefield_id}; 323.11.a names one "
-                                "applier and the engine does not choose", ["Core 323.11.a"])
+                                f"after {player}'s removal Units of {others} are at {battlefield_id}; 323.10.a names one "
+                                "applier and the engine does not choose", ["Core 323.10.a"])
         battlefield["contested"], battlefield["contested_by"] = bool(others), (others[0] if others else None)
         contest_changes.append({"battlefield": battlefield_id, "removed_applier": player,
                                 "reapplied_by": others[0] if others else None,
-                                "rule_locators": ["Core 190.3.b.1", "Core 323.11", "Core 323.11.a"]})
+                                "rule_locators": ["Core 190.3.b.1", "Core 323.10", "Core 323.10.a"]})
     for entry in next_effect.get("continuous_effects", []) or []:
         pass  # a source that left the game is pruned on read (ADR-0013 §1)
     next_effect["continuous_effects"] = [e for e in next_effect.get("continuous_effects", []) or []

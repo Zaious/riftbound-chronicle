@@ -182,6 +182,43 @@ class OverCap(Exception):
     pass
 
 
+# 2026-10-25 package 17 (found by the R5-P corpus, seed 108: two units leaving Back-Alley Bar together): a Standard Move
+# that puts two or more abilities of one controller on the Chain in one batch asks that player their order (Core 383.3.d);
+# every order of up to ORDER_CAP is tried, past it the Move is unproved by name
+ORDER_CAP = 24
+
+
+def _move_envelope(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any],
+                   decisions: list[dict[str, Any]]):
+    import game_loop
+    return game_loop.standard_move_envelope(timing_state, effect_state, declaration, decisions)
+
+
+def move_decision_lists(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any]
+                        ) -> list[list[dict[str, Any]]]:
+    """D(s)'s decision lists for one Standard Move declaration: none, or - where the procedure asks a trigger order - every
+    order of the abilities it names, as that trigger_order decision, and so again for each later batch it asks about.
+    Each list is a candidate; V (accepts) decides."""
+    import combat
+    import math
+    from itertools import permutations
+    out, frontier = [], [[]]
+    while frontier:
+        decisions = frontier.pop()
+        got = combat.standard_move(timing_state, effect_state, declaration,
+                                   _move_envelope(timing_state, effect_state, declaration, decisions))
+        if got.get("reason_code") != "trigger_order_required":
+            out.append(decisions)
+            continue
+        ids = list(got.get("trigger_ids") or [])
+        if math.factorial(len(ids)) > ORDER_CAP:
+            raise OverCap(f"unproved: a Standard Move asks the order of {len(ids)} abilities, more than {ORDER_CAP} orders")
+        frontier += [decisions + [{"decision_id": got["decision_ids"][0], "stage": "resolution", "kind": "trigger_order",
+                                   "controller": got["decision_controller"], "value": list(order)}]
+                     for order in permutations(ids)]
+    return sorted(out, key=lambda d: [x["value"] for x in d])
+
+
 def _subsets(items: list[str]):
     from itertools import combinations
     if (1 << len(items)) - 1 > BROAD_CAP:
@@ -725,19 +762,24 @@ def broad_actions(family: str, timing_state: dict[str, Any], effect_state: dict[
         destinations = [{"kind": "base"}] + [{"kind": "battlefield", "battlefield": bf}
                                               for bf in sorted(effect_state.get("battlefields") or {})]
 
-        def move(group, d):
+        def move(group, d, decisions=()):
             return {"kind": family, "declaration": {
                 "schema_version": combat.STANDARD_MOVE_DECLARATION_VERSION, "actor": actor, "units": list(group),
                 "unit_identities": {u: effect_ir.object_identity(effect_state, u) or f"{u}@0" for u in group},
-                "destination": dict(d), "cost_confirmation": {"exhaust_confirmed": True}}}
+                "destination": dict(d), "cost_confirmation": {"exhaust_confirmed": True}},
+                **({"decisions": list(decisions)} if decisions else {})}
+
+        def with_orders(group, d):
+            # package 17: every trigger order the Move asks (move_decision_lists) is its own candidate
+            return [move(group, d, decisions) for decisions in move_decision_lists(timing_state, effect_state, move(group, d)["declaration"])]
         out = []
         for d in destinations:
             alone, refused = [], []
             for u in units:
-                got = combat.standard_move(timing_state, effect_state, move([u], d)["declaration"])
-                if got.get("committed") is True:
+                if any(accepts(family, timing_state, effect_state, m) for m in with_orders([u], d)):
                     alone.append(u)
                     continue
+                got = combat.standard_move(timing_state, effect_state, move([u], d)["declaration"])
                 refused.append(u)
                 # package 15 (GPT PACKAGE15 ruling 2): a unit is out of the sets only for a refusal that is its own (the
                 # procedure checks each moved unit by these, reading no other: any set holding it is refused too) or the
@@ -748,7 +790,7 @@ def broad_actions(family: str, timing_state: dict[str, Any], effect_state: dict[
                         and "timing_verdict" not in got:
                     raise OverCap(f"unproved: {u} moved alone to {d} ends {got.get('valid')}/{code}, neither its own "
                                   f"refusal nor the Move's")
-            out += [move(group, d) for group in _subsets(alone)]
+            out += [m for group in _subsets(alone) for m in with_orders(group, d)]
             out += [move([u], d) for u in refused] + [move(alone + [u], d) for u in refused if alone]
         return out
     if family == "hide":
@@ -784,7 +826,8 @@ def accepts(family: str, timing_state: dict[str, Any], effect_state: dict[str, A
     import combat
     import rules_core
     if family == "standard_move":
-        got = combat.standard_move(timing_state, effect_state, action["declaration"])
+        got = combat.standard_move(timing_state, effect_state, action["declaration"],
+                                   _move_envelope(timing_state, effect_state, action["declaration"], action.get("decisions") or []))
         if got.get("replacement_decision_required"):
             # package 15 (GPT PACKAGE15 round 3): the Move's Cleanup asks a Replacement Effect decision, which this action
             # space does not enumerate for a Standard Move - unproved by name, never read as a Move refused

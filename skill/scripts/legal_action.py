@@ -608,6 +608,32 @@ def standard_move_destinations(effect_state: dict[str, Any], actor: str) -> list
                                                    for bf in sorted(effect_state.get("battlefields") or {})]
 
 
+MOVE_ORDER_CAP = 24
+
+
+def _move_orders(timing_state, effect_state, declaration) -> list[list[dict[str, Any]]]:
+    """The decision lists a Standard Move commits with: none needed, or (package 17) one per order of the abilities it puts
+    on the Chain together for one controller (Core 383.3.d), for each batch it asks about. Empty: it commits with none."""
+    import combat
+    import math
+    import game_loop
+    from itertools import permutations
+    ways, todo = [], [[]]
+    while todo:
+        decisions = todo.pop(0)
+        got = combat.standard_move(timing_state, effect_state, declaration,
+                                   game_loop.standard_move_envelope(timing_state, effect_state, declaration, decisions))
+        if got.get("committed") is True:
+            ways.append(decisions)
+        elif got.get("reason_code") == "trigger_order_required":
+            ids = list(got.get("trigger_ids") or [])
+            if math.factorial(len(ids)) > MOVE_ORDER_CAP:
+                return []
+            todo += [decisions + [{"decision_id": got["decision_ids"][0], "stage": "resolution", "kind": "trigger_order",
+                                   "controller": got["decision_controller"], "value": list(order)}] for order in permutations(ids)]
+    return ways
+
+
 def _enumerate_standard_move(observation, timing_state, effect_state, actor):
     """2026-10-15 package 13 (C2): one Standard Move moves one or more units to one destination. Each of the actor's
     board units is tried alone against each destination by the Standard Move procedure itself; the units that may go
@@ -627,10 +653,11 @@ def _enumerate_standard_move(observation, timing_state, effect_state, actor):
         label = destination.get("battlefield") or f"base:{actor}"
         movable = []
         for unit in units:
-            alone = combat.standard_move(timing_state, effect_state, standard_move_declaration(effect_state, actor, [unit], destination))
-            if alone.get("committed") is True:
+            ways = _move_orders(timing_state, effect_state, standard_move_declaration(effect_state, actor, [unit], destination))
+            if ways:
                 movable.append(unit)
             else:
+                alone = combat.standard_move(timing_state, effect_state, standard_move_declaration(effect_state, actor, [unit], destination))
                 excluded.append({"object_id": unit, "destination": destination,
                                  "reason_code": alone.get("reason_code") or "standard_move_refused"})
         if 2 ** len(movable) - 1 > ACTION_CAP:
@@ -639,15 +666,21 @@ def _enumerate_standard_move(observation, timing_state, effect_state, actor):
         for size in range(1, len(movable) + 1):
             for group in combinations(movable, size):
                 declaration = standard_move_declaration(effect_state, actor, list(group), destination)
-                candidates.append({
-                    "candidate_id": f"move:{'+'.join(group)}:{label}",
-                    "family": "standard_move",
-                    "action": {"kind": "standard_move", "actor": actor, "timing": "default", "object_kind": "unit",
-                               "object_ids": list(group), "destination": destination, "checks": ["timing", "procedure"],
-                               "declaration": declaration},
-                    "required_facts": [f"board:{u}" for u in group],
-                    "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 421.3"],
-                })
+                # package 17: a Move that asks its trigger order (Core 383.3.d) is one action for each order it commits with
+                for n, decisions in enumerate(_move_orders(timing_state, effect_state, declaration)):
+                    candidates.append({
+                        "candidate_id": f"move:{'+'.join(group)}:{label}" + (f":order{n}" if decisions else ""),
+                        "family": "standard_move",
+                        "action": {"kind": "standard_move", "actor": actor, "timing": "default", "object_kind": "unit",
+                                   "object_ids": list(group), "destination": destination, "checks": ["timing", "procedure"],
+                                   "declaration": declaration, **({"decisions": decisions} if decisions else {})},
+                        "required_facts": [f"board:{u}" for u in group],
+                        "rule_locators": list(verdict.get("rule_locators", [])) + ["Core 421.3"]
+                                         + (["Core 383.3.d"] if decisions else []),
+                    })
+                if len(candidates) > ACTION_CAP:
+                    return _abstain("standard_move", "action_space_over_cap",
+                                    [f"more than {ACTION_CAP} Standard Moves with their trigger orders"]), []
     return _enumerated("standard_move", [c["candidate_id"] for c in candidates],
                        list(verdict.get("rule_locators", [])), excluded), candidates
 

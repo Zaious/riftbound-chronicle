@@ -156,6 +156,25 @@ def _renamed(value: Any, names: dict[str, str]) -> Any:
     return value
 
 
+def shown_by_request(request: dict[str, Any] | None) -> set:
+    """The cards a decider sees as they decide: the request's options and private options, and every card the
+    procedure revealed before asking (Core 425: a reveal is to all players - its trace entry names them). Package 17
+    (found by the R5-P corpus, seed 109: Sabotage reveals the opponent's hand, then asks for a non-unit card of it - the
+    units revealed beside the options were left masked, and the masks, read as spells, passed the filter)."""
+    request = request or {}
+    payload = request.get("payload") or {}
+    shown = {o.get("object_id") for o in list((payload.get("choice") or {}).get("options") or [])
+             + [o for options in (request.get("private_options") or {}).values() for o in options]}
+    for entry in payload.get("trace") or []:
+        if entry.get("op") in REVEAL_TRACE_OPS:
+            shown |= {o.get("object_id") for o in entry.get("revealed") or []}
+    return shown - {None}
+
+
+# the trace entries of a reveal to all players (effect_ir's reveal and reveal_until: _mark_reveals(..., "all"))
+REVEAL_TRACE_OPS = ("reveal", "reveal_until")
+
+
 def option_key(point: dict[str, Any], option: dict[str, Any]) -> str:
     """One option of a procedure point, canonically: what it answers, not its system ids."""
     import decision_space as DS
@@ -173,9 +192,7 @@ def _procedure_receipt(timing_state: dict[str, Any], effect_state: dict[str, Any
     shown: set = set()
     if true["status"] == "enumerated" and true.get("decider") == actor and true.get("request") is not None:
         step = DS._run(timing_state, effect_state, catalogue, made)
-        request = step.get("request") or {}
-        shown = {o.get("object_id") for o in list(((request.get("payload") or {}).get("choice") or {}).get("options") or [])
-                 + [o for options in (request.get("private_options") or {}).values() for o in options]}
+        shown = shown_by_request(step.get("request"))
     # package 15 (found by the corpus: Baited Hook looks at five cards and then picks among them): the decider's view at
     # the point's start, with the cards the request shows the decider unmasked - they are what the decider sees when
     # deciding; every other unseen card stays masked

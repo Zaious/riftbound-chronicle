@@ -102,6 +102,19 @@ def envelope(effect_state: dict[str, Any], decisions: list[dict[str, Any]] | tup
             **({"randomization_receipts": receipts} if receipts else {})}
 
 
+def standard_move_envelope(timing: dict[str, Any], effect: dict[str, Any], declaration: dict[str, Any],
+                           decisions: list[dict[str, Any]] | tuple = ()) -> dict[str, Any] | None:
+    """engine-decisions.v1 for a Standard Move: bound to its three inputs - the two states and the declaration
+    (combat.standard_move: an envelope made for another Move cannot be replayed on this one). Package 17: a Standard Move
+    first carried a decision here (a trigger order, Core 383.3.d); the two-state envelope never matched it."""
+    decisions = list(decisions)
+    if not decisions:
+        return None
+    return {"schema_version": DECISIONS_VERSION,
+            "input_hash": hash_value({"timing_state": timing, "effect_state": effect, "declaration": declaration}),
+            "decisions": decisions}
+
+
 def _reads_receipt(program: dict[str, Any]) -> bool:
     return any("cost_offer_id" in (e.get("predicate") or {}) for e in program.get("effects") or [] if isinstance(e, dict))
 
@@ -307,7 +320,8 @@ def run_action(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[s
             effect_program=action_program(catalogue, effect, declaration)))
     if kind == "standard_move":
         return _done("action", kind, timing, effect, CB.standard_move(timing, effect, action["declaration"],
-                                                                      envelope(effect, action.get("decisions") or [], timing_state=timing)))
+                                                                      standard_move_envelope(timing, effect, action["declaration"],
+                                                                                             action.get("decisions") or [])))
     if kind == "hide":
         import hidden
         return _done("action", kind, timing, effect, hidden.hide_card(timing, effect, action["declaration"]))

@@ -1133,8 +1133,14 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
     ways: dict[str, dict[str, Any]] = {}
     # an identity is the engine's name for an object as it is when chosen (Core 124): the state's, or - for an object
     # the resolution itself moved before the choice (a new object) - the one the procedure's request gives it; only the
-    # identity is taken from a request, never its options
+    # identity is taken from a request, never its options.
+    # 2026-10-25 package 17 (found by the R5-P corpus, seed 115: Mystic Poro's Vision with a seen-banish): an identity a
+    # request gives is the identity for the choices THAT request asks, and no other - the same card is a new object in
+    # another branch (banished as seen, it is <id>@1 when the seen-play asks about it; not banished, it is still <id>@0
+    # when Vision's recycle asks), so one map for the whole contract bound the recycle to the banished card's identity
+    # and lost the way that keeps it
     identities = {o: _identity(effect, o) for o in effect.get("objects") or {}}
+    asked_identities: dict[str, dict[str, str]] = {}
 
     def learn(request):
         payload = request["payload"]
@@ -1142,7 +1148,11 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
             [o for options in (request.get("private_options") or {}).values() for o in options]
         for o in listing:
             if o.get("identity"):
-                identities[o["object_id"]] = o["identity"]
+                for decision_id in request.get("decision_ids") or []:
+                    asked_identities.setdefault(decision_id, {})[o["object_id"]] = o["identity"]
+
+    def identity_of(slot_id, o):
+        return (asked_identities.get(slot_id) or {}).get(o) or identities.get(o) or f"{o}@0"
 
     def run(answer):
         calls[0] += 1
@@ -1216,7 +1226,7 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
     def entry_of(slot_id, kind, stage, controller, value):
         entry = {"decision_id": slot_id, "stage": stage, "kind": kind, "controller": controller, "value": value}
         if kind in {"target_selection", "card_selection", "card_ordering", "buff_spend", "damage_division"}:
-            entry["selection_identities"] = {o: identities.get(o) or f"{o}@0" for o in value}
+            entry["selection_identities"] = {o: identity_of(slot_id, o) for o in value}
         return entry
 
     def settled(answer, fills=None, screening=None):
@@ -1392,7 +1402,7 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
                     continue
                 entry = {"decision_id": slot_id, "stage": stage, "kind": kind, "controller": controller, "value": value}
                 if kind in {"target_selection", "card_selection", "card_ordering", "buff_spend", "damage_division"}:
-                    entry["selection_identities"] = {o: identities.get(o) or f"{o}@0" for o in value}
+                    entry["selection_identities"] = {o: identity_of(slot_id, o) for o in value}
                 answer["decisions"].append(entry)
             chase(answer)
     except (OverCap, Unproved) as exc:

@@ -1,7 +1,7 @@
 # Riot Compliance Boundary
 
 Status: engineering interpretation, not legal advice
-Last checked: 2026-08-24
+Last checked: 2026-10-29
 
 ## Official sources
 
@@ -20,9 +20,9 @@ Riot's current documentation says player-serving products must be registered, ap
 | Strategic Player 2 choice | May supply options | Proposes and explains | Included |
 | Legal-action authority | Confirms | Marks proposal unverified | Included |
 | Rules explanation | Asks and evaluates | Cites and explains | Included |
-| Effect/combat/scoring resolution | Performs and confirms | Does not calculate or enforce | Excluded |
-| Automated legal-action enumeration | — | Would own legality | Excluded |
-| Full automated simulator/self-play | — | Would own state and rules | P2-S, planned only |
+| Effect/combat/scoring resolution | Performs and confirms | Explains and checks; never runs a user's game | Not in the apps |
+| Legality of a proposed action | Confirms | Checks and explains; a P2-A proposal stays unverified until the human confirms it | Human-confirmed |
+| Full automated simulator/self-play | — | Would own state and rules | P2-S: not in this repository, not offered publicly |
 
 ## Preparation, not play — and the game enforces it
 
@@ -73,14 +73,20 @@ These still require current product registration and approved data/asset decisio
 
 P2-A may be considered simulation or replication of gameplay even though it does not enforce rules. Riot's policy contains a case-by-case approval path for such tools. Therefore P2-A is a prototype for application review, not evidence that approval has already been granted.
 
+### The apps contain no automated rule enforcement
+
+Nobody plays Riftbound in the apps, and the software never runs a user's game.
+The engine in this repository is a bounded rules library the apps use to check
+an answer's mechanical claims.
+
 ### Not implemented
 
-- automated rules enforcement;
+- automated rules enforcement in any app;
 - standalone Riftbound-only digital gameplay;
 - matchmaking, ranks, or ladders;
 - monetization of simulated/replicated gameplay;
 - retained or published metagame-defining rates;
-- P2-S.
+- P2-S (not part of this repository).
 
 ## Data and asset boundary
 
@@ -99,4 +105,5 @@ This document and the application description must be rechecked when:
 - Riot changes the Riftbound policy or Digital Tools documentation;
 - P2-A gains a new tracking or decision capability;
 - an app begins using Riot API assets;
-- RSO, monetization, public hosting, or P2-S is considered.
+- RSO, monetization, public hosting, or P2-S is considered;
+- an app would let a user play a game with the engine.

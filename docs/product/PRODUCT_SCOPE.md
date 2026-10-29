@@ -2,6 +2,7 @@
 
 Status: development baseline
 Date: 2026-08-24
+Revised: 2026-10-29 (the non-goals and the P2-S status)
 
 Riftbound Chronicle is a portable knowledge and decision-support project with four distinct systems. Three are active modes in the Skill router:
 
@@ -102,14 +103,17 @@ physical operations, incomplete card-effect legality, and resulting state.
 
 These non-goals are what the prior audits' "no rules engine" guidance was protecting; see [ADR-0001](../decisions/ADR-0001-sovereign-rules-layer.md) for why a bounded rules kernel is compatible with keeping them.
 
-- No complete automated Riftbound card-effect or gameplay engine.
-- No software-controlled shuffle, draw, phase progression, effect resolution, damage assignment, scoring, or win determination.
-- No claim that a bounded timing-permission result is an authoritative or
-  complete legal-action set for unsupported card behavior.
+- No automated rule enforcement in the apps: no client or interface in which a
+  person plays Riftbound, and no automated player.
+- The engine is a bounded rules library the apps use to check an answer's
+  mechanical claims. It covers the cards whose programs are compiled; this
+  repository carries the 34-card seed corpus.
+- No claim that a bounded result is authoritative or complete outside the scope
+  it was certified for, or for unsupported card behavior.
 - No matchmaking, rank, ladder, or tournament bracket.
 - No retained or published card/deck play rates, win rates, or matchup percentages.
 - No claim that `rule-consult` is an official Riot or tournament judge.
-- No implementation of P2-S.
+- P2-S is not part of this repository.
 
 ## P2-S status
 
@@ -118,10 +122,9 @@ P2-S means a future automated simulator or reinforcement-learning environment th
 Its status is:
 
 ```text
-planned: true
-implemented: false
+in_this_repository: false
 included_in_public_runtime: false
-activation_gate: written Riot approval plus a separate implementation decision
+public_offering_gate: written Riot approval plus a separate product decision
 ```
 
 ## Release layers
@@ -131,7 +134,7 @@ activation_gate: written Riot approval plus a separate implementation decision
 | Portable skill | Three-mode router, knowledge, schemas, validation | Public repository |
 | P2-A prototype | Human-confirmed session ledger and decision protocol | Prototype for review and application |
 | Player-facing app | UI/API around the approved flow | Requires current Riot registration/approval decisions |
-| P2-S | Automated state/rules/self-play | Not implemented without a new authorization decision |
+| P2-S | Automated state/rules/self-play | Not in this repository; not offered publicly without written Riot approval |
 
 ## Development order
 

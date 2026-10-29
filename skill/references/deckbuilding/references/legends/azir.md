@@ -1,6 +1,6 @@
 ### Azir - Emperor of the Sands (Calm+Order)
 
-> Tier 2-confirmed NOT CONFIRMED 2026-08-18 (`references/verification-log.md`) — not a real split. Across tracked competitive Azir decks, Sovereign is a CORE include at ~77% presence; Ascendant appears in roughly 1% of Azir decks, and even that sliver is mostly her being splashed as a flex piece into *other* Legends' decks entirely, not an alternate Azir archetype. Real coverage describes the actual (Sovereign) deck as "control and value," a patient equipment-and-tokens shell — not the catalog's framed combo-vs-control fork.
+> Tier 2-confirmed NOT CONFIRMED 2026-08-18 (`references/verification-log.md`) — not a real split. Across tracked competitive Azir decks, Sovereign is a CORE include; Ascendant appears in very few Azir decks, and even that sliver is mostly her being splashed as a flex piece into *other* Legends' decks entirely, not an alternate Azir archetype. Real coverage describes the actual (Sovereign) deck as "control and value," a patient equipment-and-tokens shell — not the catalog's framed combo-vs-control fork.
 
 Legend ability: `Your Sand Soldiers have Weaponmaster. 1 Energy, Exhaust: Play a 2 Might Sand Soldier unit token to your base. Use only if you've played an Equipment this turn.`
 Azir - Ascendant (Calm): `A Calm rune: Action — Choose a unit you control. Move me to its location and it to my original location. If it's equipped, you may attach one of its Equipment to me. Use only once per turn.`

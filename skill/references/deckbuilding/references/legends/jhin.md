@@ -1,6 +1,6 @@
 ### Jhin - Virtuoso (Fury+Mind)
 
-> Tier 2-confirmed NOT CONFIRMED 2026-08-18 (`references/verification-log.md`) — not a real split. Meticulous Killer is CORE in real decks (~84% presence, and *above*-average performance where it appears); Murderous Artist appears in roughly 11% of Jhin decks and *underperforms* when it does. Murderous Artist is a genuinely well-played card overall, but real data shows it's mostly splashed into other Fury-aggro Legends (Akali, Draven, Vi, Lucian) — it's a good card, just not really Jhin's own rival archetype.
+> Tier 2-confirmed NOT CONFIRMED 2026-08-18 (`references/verification-log.md`) — not a real split. Meticulous Killer is CORE in real decks and performs above average; Murderous Artist appears in a small minority of Jhin decks and *underperforms* when it does. Murderous Artist is a genuinely well-played card overall, but real data shows it's mostly splashed into other Fury-aggro Legends (Akali, Draven, Vi, Lucian) — it's a good card, just not really Jhin's own rival archetype.
 
 Legend ability: `When you play a spell, if you spent 4+ Energy, you may banish it. Then, if there are four spells banished with me, put each in its trash, channel 4 runes, and draw 1.` Champions: **Jhin - Murderous Artist** (Fury) — `Deflect. Ganking. When I move, add 1 Energy and a rainbow rune.` **Jhin - Meticulous Killer** (Mind) — `Vision. If you've spent 4+ Energy to play a spell this turn, you may play me for a Mind rune.`
 

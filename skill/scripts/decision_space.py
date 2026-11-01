@@ -355,10 +355,22 @@ def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, A
             if template is None:
                 raise Unproved(f"target {ref!r}: no selector of the program names it")
             selector = {k: v for k, v in template.items() if not k.startswith("_")}
-            options = PT.legal_target_options(effect, decider, program, selector)
+            if selector.get("chain_item") is True:
+                # set 2 (Not So Fast): a Chain item's options read the Chain this request was asked on
+                import effect_ir as _IR
+                token = _IR.CHAIN_VIEW.set(_IR.chain_view_of(timing, effect))
+                try:
+                    options = PT.legal_target_options(effect, decider, program, selector)
+                finally:
+                    _IR.CHAIN_VIEW.reset(token)
+            else:
+                options = PT.legal_target_options(effect, decider, program, selector)
             sets = _sets(options, *template["_count"]) if "_count" in template else [[o] for o in sorted(options)]
             per_id.append([{"decision_id": ref, "stage": stage_of(label, "target_selection"), "kind": "target_selection",
-                            "controller": decider, "value": s, "selection_identities": {o: _identity(effect, o) for o in s}}
+                            "controller": decider, "value": s,
+                            "selection_identities": {o: (__import__("effect_ir").chain_item_identity(o)
+                                                         if selector.get("chain_item") is True else _identity(effect, o))
+                                                     for o in s}}
                            for s in sets])
         return "target_selection", decider, [_answer(list(c)) for c in itertools.product(*per_id)]
     if code == "move_destination_required":

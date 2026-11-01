@@ -330,6 +330,60 @@ jobs:
         run: python3 skill/scripts/check_delayed_this_turn.py
       - name: Printed tags, and a play trigger conditioned on controlling a tag (133.8, 383.2.a.1)
         run: python3 skill/scripts/check_object_tags.py
+      - name: Set 2 - entry conditions on another Dragon, other units in base, cards in hand; a friendly keyword aura (364.3.a, 369.3, 365.1)
+        run: python3 skill/scripts/check_set2_entries.py
+      - name: Set 2 - a play trigger on N or more gear; a draw per other battlefield your side controls (383.2.a.1, 190.2.b)
+        run: python3 skill/scripts/check_set2_counts.py
+      - name: Set 2 - trigger costs of any-Domain Power and of killing the source; an attacking-unit target; a Legend target (383.3.b.1, 429.1.a.1)
+        run: python3 skill/scripts/check_set2_costs.py
+      - name: Set 2 - tokens enter ready; Might with another friendly unit here; a same-battlefield swap; a unit or gear from your trash (369.3, 364.3.a, 355.11)
+        run: python3 skill/scripts/check_set2_s4.py
+      - name: Set 2 - when I move from a battlefield; when you buff me; when a friendly unit dies (383.1)
+        run: python3 skill/scripts/check_set2_triggers.py
+      - name: Set 2 - a Deathknell's 'if I died alone' / 'if I was [Mighty]', read as its abilities are noted (383.2.a.1, 808.1.d.2)
+        run: python3 skill/scripts/check_set2_deathknell.py
+      - name: Set 2 - 'equal to my [Assault]'; a killed unit's Might as it died; a linked amount on a this-turn give (807.2, 359.3.e.12)
+        run: python3 skill/scripts/check_set2_amounts.py
+      - name: Set 2 - 'another' across a card's own choices is a different object (355.9.b)
+        run: python3 skill/scripts/check_set2_distinct.py
+      - name: Set 2 - the top N cards of a Main Deck put into the trash, a short deck Burning Out (432.1.b)
+        run: python3 skill/scripts/check_set2_trash_top.py
+      - name: Set 2 - a card of the hand put on the top or bottom of the Main Deck, chosen privately (355.10.a, 124)
+        run: python3 skill/scripts/check_set2_hand_to_deck.py
+      - name: Set 2 - 'for each enemy unit there' on a give, counted as it executes (359.3.f.2)
+        run: python3 skill/scripts/check_set2_per_there.py
+      - name: Set 2 - 'that much' is the excess an excess-damage conquer trigger noted, bound only by the engine (383.2.a.1)
+        run: python3 skill/scripts/check_set2_excess.py
+      - name: Set 2 - 'my keywords' granted this turn, the source's as it executes (479.3, 359.3.f.2)
+        run: python3 skill/scripts/check_set2_keywords_of.py
+      - name: Set 2 - any number of your token units moved to the source's Battlefield (359.3.f.2)
+        run: python3 skill/scripts/check_set2_tokens_here.py
+      - name: Set 2 - the next damage to a chosen unit this turn prevented, once; then a draw (370, 205, 124)
+        run: python3 skill/scripts/check_set2_prevent_next.py
+      - name: Set 2 - 'when a friendly unit is played this turn, buff it' - a repeating play-waiting delayed trigger (383.1, 427)
+        run: python3 skill/scripts/check_set2_rally.py
+      - name: Set 2 - 'if it's attacking, deal 4 to it instead' - one Deal, the larger while the target attacks (359.3.d)
+        run: python3 skill/scripts/check_set2_instead.py
+      - name: Set 2 - 'if it's a gear, draw it. Otherwise, recycle it' - the revealed card's kind (425.2, 359.3.e.14)
+        run: python3 skill/scripts/check_set2_revealed_kind.py
+      - name: Set 2 - a revealed card picked, banished and played; the rest drawn or recycled (420.3, 428)
+        run: python3 skill/scripts/check_set2_reveal_banish_play.py
+      - name: Set 2 - 'you may play it here' - the source's Battlefield one more location the unit may enter (355.2.b)
+        run: python3 skill/scripts/check_set2_play_here_option.py
+      - name: Set 2 - 'when you play me or when I hold' - one ability, a Play Effect and a Hold Effect (383.4.a, 383.4.d)
+        run: python3 skill/scripts/check_set2_play_or_hold.py
+      - name: Set 2 - a looked-at card of a kind revealed to every player and drawn; the rest recycled (425, 414)
+        run: python3 skill/scripts/check_set2_reveal_draw_looked.py
+      - name: Set 2 - Assault equal to the enemy units here; Might and a keyword on the Power spent this turn (807.2, 357.1)
+        run: python3 skill/scripts/check_set2_counted_keywords_and_power_spent.py
+      - name: Set 2 - friendly units played from anywhere but a hand have [Accelerate] (805.1.b, 805.2.a)
+        run: python3 skill/scripts/check_set2_played_unit_grant.py
+      - name: Set 2 - another friendly unit here with less Might saved from death; a look before a reveal from a deck (374, 425)
+        run: python3 skill/scripts/check_set2_death_and_reveal_preludes.py
+      - name: Set 2 - counter an enemy spell or ability that chose a friendly unit or gear - a Chain item as the target (426.1, 355.7)
+        run: python3 skill/scripts/check_set2_counter_chain_item.py
+      - name: Set 2 - a public choice among revealed cards, 'ready your legend' chosen as it resolves, one return over units and gear (425.1, 355.10.g)
+        run: python3 skill/scripts/check_set2_a1_review.py
       - name: Recruit unit tokens played here, and the Legion ability over them (187.1, 359.3.f.2, 812.1.b.1)
         run: python3 skill/scripts/check_recruit_tokens_here.py
 
@@ -1061,3 +1115,30 @@ jobs:
           python3 "$REPO/skill/scripts/check_refresh_sources.py"
           python3 "$REPO/skill/scripts/check_match_analyst_fixtures.py"
           python3 "$REPO/skill/scripts/check_riftatlas_bridge.py"
+          python3 "$REPO/skill/scripts/check_set2_entries.py"
+          python3 "$REPO/skill/scripts/check_set2_counts.py"
+          python3 "$REPO/skill/scripts/check_set2_costs.py"
+          python3 "$REPO/skill/scripts/check_set2_s4.py"
+          python3 "$REPO/skill/scripts/check_set2_triggers.py"
+          python3 "$REPO/skill/scripts/check_set2_deathknell.py"
+          python3 "$REPO/skill/scripts/check_set2_amounts.py"
+          python3 "$REPO/skill/scripts/check_set2_distinct.py"
+          python3 "$REPO/skill/scripts/check_set2_trash_top.py"
+          python3 "$REPO/skill/scripts/check_set2_hand_to_deck.py"
+          python3 "$REPO/skill/scripts/check_set2_per_there.py"
+          python3 "$REPO/skill/scripts/check_set2_excess.py"
+          python3 "$REPO/skill/scripts/check_set2_keywords_of.py"
+          python3 "$REPO/skill/scripts/check_set2_tokens_here.py"
+          python3 "$REPO/skill/scripts/check_set2_prevent_next.py"
+          python3 "$REPO/skill/scripts/check_set2_rally.py"
+          python3 "$REPO/skill/scripts/check_set2_instead.py"
+          python3 "$REPO/skill/scripts/check_set2_revealed_kind.py"
+          python3 "$REPO/skill/scripts/check_set2_reveal_banish_play.py"
+          python3 "$REPO/skill/scripts/check_set2_play_here_option.py"
+          python3 "$REPO/skill/scripts/check_set2_play_or_hold.py"
+          python3 "$REPO/skill/scripts/check_set2_reveal_draw_looked.py"
+          python3 "$REPO/skill/scripts/check_set2_counted_keywords_and_power_spent.py"
+          python3 "$REPO/skill/scripts/check_set2_played_unit_grant.py"
+          python3 "$REPO/skill/scripts/check_set2_death_and_reveal_preludes.py"
+          python3 "$REPO/skill/scripts/check_set2_counter_chain_item.py"
+          python3 "$REPO/skill/scripts/check_set2_a1_review.py"

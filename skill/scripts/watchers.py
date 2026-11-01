@@ -108,6 +108,8 @@ WATCH_FILTERS = {
     # 2026-10-06 (package 9, Volibear - Imposing): "to a battlefield other than mine" - the Battlefield the event's object
     # went to is not the one the watcher's source is at now; a source at no Battlefield has no "mine" (refused by name)
     "destination_not_source_battlefield": {True},
+    # set 2 (2026-10-29, Simian Ancestor: "When you buff me"): the event's actor is the watcher's controller
+    "actor_is_controller": {True},
 }
 # 2026-09-27 (package 6): where a triggered ability works when that is not the board. Core 385.1-385.2:
 # an ability of a card outside the board says where it works, and works there and nowhere else - a
@@ -460,6 +462,9 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                 return False
         elif key == "destination_kind":
             if (event.get("location_after") or {}).get("kind") != wanted:
+                return False
+        elif key == "actor_is_controller":
+            if event.get("actor") is None or event.get("actor") != controller:
                 return False
         elif key == "destination_not_source_battlefield":
             mine = _location_of(state, source_object) or {}

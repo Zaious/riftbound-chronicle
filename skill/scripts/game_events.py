@@ -56,6 +56,10 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "discarded": {"about": "object", "rules": ["Core 423"]},
     "recycled": {"about": "object", "rules": ["Core 417"]},
     "drawn": {"about": "object", "rules": ["Core 414", "Core 432"]},
+    # set 2 (2026-10-29, Minefield): a card put from the top of its owner's Main Deck into the trash (Core 432.1.b)
+    "put_into_trash": {"about": "object", "rules": ["Core 432.1.b"]},
+    # set 2 (2026-10-29, Altar of Memories): a card put from its player's hand on the top or bottom of their Main Deck
+    "put_on_deck": {"about": "object", "rules": ["Core 124"]},
     "returned_to_hand": {"about": "object", "rules": ["Core 124", "Core 124.1"]},
     "returned_to_champion_zone": {"about": "object", "rules": ["Core 108.3.c.1", "Core 124"]},
     "recalled": {"about": "object", "rules": ["Core 456", "Core 457"]},
@@ -152,6 +156,10 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
 # `event_kind_unknown`: the engine refuses rather than inventing a kind.
 OP_PRIMARY: dict[str, str] = {
     "draw": "drawn",
+    "trash_top": "put_into_trash",
+    "hand_to_deck": "put_on_deck",
+    "grant_keywords_of": "keyword_granted",
+    "draw_rest": "drawn",
     "draw_it": "drawn",
     "recycle_one": "recycled",
     "recycle": "recycled",
@@ -674,6 +682,8 @@ class EventLog:
             "resource_added": ("resource", "amount", "domain"),
             "xp_gained": ("amount",),
             "drawn": ("player",),
+            "put_into_trash": ("player",),
+            "put_on_deck": ("player", "position"),
             # the player whose hand the card left (Core 423.1) - what watch scope "player" reads
             "discarded": ("player",),
             "attached": ("to",),

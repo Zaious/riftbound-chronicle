@@ -339,7 +339,10 @@ SELECTION_KINDS = ("single", "unordered_set", "ordered_permutation")
 # mapped, rather than letting it be disguised as a board choice.
 CHOICE_SOURCES = ("hand", "trash", "main_deck_top", "revealed", "board", "battlefields", "players",
                   # 2026-10-12 (package 11, Forge of the Future): every player's trash - public (Core 128.4)
-                  "trashes")
+                  "trashes",
+                  # set 2 (2026-11-01, GPT's A1 review, Hall of Legends: "ready your legend"): the legends the chooser
+                  # controls - not a target; with more than one, one is chosen as the ability resolves (Core 355.10.g)
+                  "legend_zone")
 # Sabotage: "a non-unit card". Stated as an exclusion from a closed list rather
 # than as a negation, so a card kind nobody has thought about is *included* by
 # default and never silently filtered out.
@@ -395,7 +398,10 @@ def validate_choice_spec(spec: Any) -> list[str]:
         errors.append("choice.by must be controller, opponent, each_player or a player id")
     if spec.get("visibility", "public") not in CHOICE_VISIBILITY:
         errors.append(f"choice.visibility must be one of {CHOICE_VISIBILITY}")
-    if spec["from"] in PRIVATE_SOURCES and spec.get("visibility") == "public":
+    # set 2 (2026-11-01, GPT's A1 review, Void Rush): a choice among cards a reveal showed to every player is public
+    # (Core 425.1); `revealed` may say so, and the candidates are then held to it as they are read
+    # (effect_ir.choice_candidates refuses a public choice over a card shown to fewer than all - a look's)
+    if spec["from"] in PRIVATE_SOURCES - {"revealed"} and spec.get("visibility") == "public":
         errors.append(f"choice.from {spec['from']} is private information (Core 128.4); visibility cannot be public")
     if not isinstance(spec.get("identity_binding", True), bool):
         errors.append("choice.identity_binding must be boolean")
@@ -482,7 +488,7 @@ def choice_decision_kind(spec: dict[str, Any]) -> str:
     # A Battlefield is a target on the board with a bindable identity
     # (ADR-0007 §4), so choosing one is a target_selection like any other board
     # choice; what differs is the candidate universe, not the decision kind.
-    if spec["from"] in {"board", "battlefields"}:
+    if spec["from"] in {"board", "battlefields", "legend_zone"}:
         return "target_selection"
     return "card_selection"
 

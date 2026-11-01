@@ -451,6 +451,9 @@ def validate_state(state: dict[str, Any]) -> list[str]:
                 errors.append(f"{label}.trigger_event must be {{event_id, kind, object, identity}} strings")
             if "noted_location" in item and noted_location_errors(item["noted_location"]):
                 errors.append(f"{label}.{noted_location_errors(item['noted_location'])[0]}")
+            if "noted_excess" in item and not (isinstance(item["noted_excess"], int) and not isinstance(item["noted_excess"], bool)
+                                               and item["noted_excess"] >= 0):
+                errors.append(f"{label}.noted_excess must be a non-negative integer")
             if "facedown_battlefield" in item and not (isinstance(item["facedown_battlefield"], str) and item["facedown_battlefield"]):
                 errors.append(f"{label}.facedown_battlefield must be a battlefield id")
             # GPT 2026-09-29 (Core 355.4): a Move destination chosen at finalization is recorded with the targets
@@ -1188,6 +1191,10 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             descriptor_errors.append(f"descriptor {index}.trigger_event must be {{event_id, kind, object, identity}} strings")
         if "noted_location" in descriptor and noted_location_errors(descriptor["noted_location"]):
             descriptor_errors.append(f"descriptor {index}.{noted_location_errors(descriptor['noted_location'])[0]}")
+        if "noted_excess" in descriptor and not (isinstance(descriptor["noted_excess"], int)
+                                                  and not isinstance(descriptor["noted_excess"], bool)
+                                                  and descriptor["noted_excess"] >= 0):
+            descriptor_errors.append(f"descriptor {index}.noted_excess must be a non-negative integer")
         batch_sequence = descriptor.get("batch_sequence", 0)
         batch_id = descriptor.get("batch_id", f"batch-{batch_sequence}")
         if not isinstance(batch_sequence, int) or batch_sequence < 0 or not isinstance(batch_id, str) or not batch_id:
@@ -1250,6 +1257,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             **({"trigger_event": dict(descriptor["trigger_event"])} if descriptor.get("trigger_event") else {}),
             # 2026-10-12 (package 11): a death trigger's source location as it was noted (Core 808.1.d.3)
             **({"noted_location": dict(descriptor["noted_location"])} if descriptor.get("noted_location") else {}),
+            # set 2 (2026-10-29, Sivir - Ambitious): the excess its conquer trigger's condition read (battlefield_control)
+            **({"noted_excess": descriptor["noted_excess"]} if "noted_excess" in descriptor else {}),
             # package 12: the on-play trigger of a permanent that came from facedown chooses at this battlefield (811.1.d.3)
             **({"facedown_battlefield": descriptor["facedown_battlefield"]} if descriptor.get("facedown_battlefield") else {}),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),

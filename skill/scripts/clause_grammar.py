@@ -285,6 +285,21 @@ def _lower_next_death_heal_exhaust_recall(params):
                                "instead": ["heal_all_damage", "exhaust", "recall"]}}}
 
 
+def _lower_next_damage_prevented_then_draw(params):
+    # set 2 (2026-10-29, Counter Strike: "Choose a unit. The next time that unit would be dealt damage this turn, prevent
+    # it. Draw 1."): the public choice is the grant's target, chosen at play (Core 355.5); a one-use prevention of the
+    # next Deal to it this turn, any source's (Core 370, 205; effect_ir grant_replacement prevent_event deal_damage),
+    # bound to that identity (124); then its controller draws N
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit"}
+    return {"program_effects": [{"op": "grant_replacement", "effect_id": "grant", "target": target,
+                                 "controller": "$controller", "granted_by": "$chain_item",
+                                 "replacement": {"mode": "prevent_event", "event_op": "deal_damage"}},
+                                {"op": "draw", "effect_id": "dr", "player": "$controller", "count": int(params["count"])}],
+            "ast": {"node": "instruction", "op": "grant_replacement",
+                    "params": {"selector": "unit", "event_op": "deal_damage", "mode": "prevent", "duration": "this_turn",
+                               "uses": 1, "then": {"op": "draw", "count": int(params["count"])}}}}
+
+
 def _lower_raise_might_to_match(params):
     # package 9 (Convergent Mutation): the pair of slots - "it" (the public choice, chosen at play) and "another
     # friendly unit" (a second, different target, play_transaction's distinct slots); effect_ir raise_might_to_match
@@ -320,6 +335,39 @@ def _lower_decree(params):
                 "effects": [{"op": "kill", "effect_id": "k", "object_id": {"object_ref": "trigger_event_object"}}]}],
             "ast": {"node": "instruction", "op": "create_delayed_trigger",
                     "params": {"waits_for": "a unit takes damage", "until": "end_of_turn", "repeats": True, "then": "kill it"}}}
+
+
+def _lower_deal_more_if_attacking(params):
+    # set 2 (2026-10-29, Sudden Storm: "Deal 2 to a unit at a battlefield. If it's attacking, deal 4 to it instead."): one
+    # unit at a Battlefield chosen at play (Core 355.5); as the spell resolves, attacking (the Attacker designation) it is
+    # dealt the larger amount, otherwise the smaller - one Deal either way (the "instead" replaces the first, Core 359.3.d;
+    # the Solari Chief shape: target_state_holds, then predicate_not_met)
+    target = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "location": "battlefield"}
+    return {"program_effects": [
+                {"op": "deal_damage", "effect_id": "instead", "amount": int(params["more"]), "target": dict(target),
+                 "predicate": {"kind": "target_state_holds", "condition": {"kind": "is_attacking"}}},
+                {"op": "deal_damage", "effect_id": "dmg", "amount": int(params["amount"]), "target": dict(target),
+                 "predicate": {"kind": "predicate_not_met", "effect_id": "instead"}}],
+            "ast": {"node": "instruction", "op": "deal_damage",
+                    "params": {"amount": int(params["amount"]), "selector": "unit at a battlefield",
+                               "instead_if": "attacking", "instead_amount": int(params["more"])}}}
+
+
+def _lower_rally(params):
+    # set 2 (2026-10-29, Rally the Troops: "When a friendly unit is played this turn, buff it. Draw 1."): a delayed trigger
+    # that waits, for the rest of this turn, for a unit its controller plays - every time (Core 383.1, 420.4.a: the play
+    # completed) - and buffs that unit (Core 427; effect_ir create_delayed_trigger: event wait, repeats, until
+    # end_of_turn); then the spell's controller draws N
+    return {"program_effects": [{"op": "create_delayed_trigger", "effect_id": "dt", "delayed": {
+                "delayed_id": "rally", "controller": "$controller", "source_object": "$source_object",
+                "waits_for": {"kind": "event", "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit"}},
+                "until": "end_of_turn", "repeats": True, "effect_program_id": "rally-effects",
+                "optional_at_finalize": False, "controller_order": 0},
+                "effects": [{"op": "buff", "effect_id": "bf", "object_id": {"object_ref": "trigger_event_object"}}]},
+                                {"op": "draw", "effect_id": "dr", "player": "$controller", "count": int(params["count"])}],
+            "ast": {"node": "instruction", "op": "create_delayed_trigger",
+                    "params": {"waits_for": "a friendly unit is played", "until": "end_of_turn", "repeats": True,
+                               "then": "buff it", "after": {"op": "draw", "count": int(params["count"])}}}}
 
 
 def _lower_guillotine(params):
@@ -817,6 +865,10 @@ def _lower_empty(params):
 # trigger condition, the inner clause is the effect. Only the keywords the
 # engine implements as a trigger get a program; the rest are known_unsupported.
 KEYWORDED_TRIGGERS = {"deathknell": ("death_triggers", "deathknell")}
+# set 2 (2026-10-29, Lonely Poro, Unsung Hero): the conditional statement opening a Deathknell effect is part of its trigger
+# condition (Core 383.2.a.1), read off the dying permanent as its abilities are noted (effect_ir.DEATH_TRIGGER_CONDITIONS).
+# A closed table: no other "If ..." becomes a death trigger's condition
+DEATHKNELL_CONDITIONS = {"if i died alone": {"kind": "died_alone"}, "if i was [mighty]": {"kind": "was_mighty"}}
 # Core 727.1 / 812.1.b.1: a Dependent Keyword is a condition on the ability after it.
 # Legion's condition is a condition.v1 leaf; the ability it gates must be one of the
 # two forms the engine reads that condition on. Anything else is known_unsupported.
@@ -1264,6 +1316,14 @@ def _lower_battlefield_aura(params):
 # way is a keyword_grant in the Ability layer, read by whatever uses the keyword off the computed
 # characteristics (effect_ir.STATIC_AURA_KEYWORDS).
 AURA_OTHER_FRIENDLY = {"kind": "unit", "controller_relation": "friendly", "exclude_source": True}
+# set 2 (2026-10-29): "Friendly units have [Deflect]." - no "other", so the source is not excluded
+AURA_FRIENDLY = {"kind": "unit", "controller_relation": "friendly"}
+COUNT_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+
+
+def _count_word(text: str) -> int:
+    """A count the card spells out ("two or more") or prints as a numeral."""
+    return COUNT_WORDS[text] if text in COUNT_WORDS else int(text)
 
 
 def _lower_keyword_aura(on, criteria):
@@ -1374,6 +1434,68 @@ LOWERINGS = {
     "stunned_enemy_units_here_have_might_to_a_minimum": _lower_stunned_enemy_aura_here,
     # 2026-09-27 package 6 (Magma Wurm)
     "other_friendly_units_enter_ready": _lower_other_friendly_units_enter_ready,
+    # set 2 (2026-10-29, Renata Glasc - Industrialist)
+    "your_tokens_enter_ready": lambda params: {
+        "object_fields": {"granted_entry_states": [{"replacement_id": "tokens-enter-ready", "value": "ready",
+                                                    "criteria": {"kind": "unit", "controller_relation": "friendly",
+                                                                 "token": True}}]},
+        "ast": {"node": "passive", "kind": "granted_entry_state",
+                "params": {"value": "ready", "criteria": {"kind": "unit", "controller_relation": "friendly", "token": True}}}},
+    # set 2 (2026-10-29, Void Hatchling)
+    "if_you_would_reveal_cards_from_a_deck_look_at_the_top_card_first_you_may_recycle_it_then_reveal_those_cards":
+        lambda params: {
+            "object_fields": {"reveal_preludes": [{"prelude_id": "look-top-may-recycle", "kind": "look_at_top_may_recycle"}]},
+            "ast": {"node": "passive", "kind": "reveal_prelude", "params": {"look": "top card", "may": "recycle it"}}},
+    # set 2 (2026-10-29, Soraka - Wanderer): Core 374's own example - another friendly Unit at the card's location with
+    # less Might than the card, its death replaced
+    "if_another_unit_you_control_here_would_die_if_it_has_less_might_than_me_instead_heal_exhaust_and_recall_it":
+        lambda params: {
+            "state_lists": {"replacement_effects": [{
+                "replacement_id": "$clause_id", "controller": "$controller", "source_object": "$source_object",
+                "mode": "replace_with", "event_op": "kill", "optional": False, "uses_remaining": None,
+                "target_controller_relation": "friendly",
+                "condition": {"kind": "and", "of": [{"kind": "object_kind", "value": "unit"},
+                                                    {"kind": "same_location_as", "as": "$source_object"},
+                                                    {"kind": "might_less_than", "than": "$source_object"}]},
+                "replacement_effects": [
+                    {"op": "heal_all_damage", "effect_id": "heal", "object_id": "$affected",
+                     "subject_identity": "$affected_identity"},
+                    {"op": "exhaust", "effect_id": "ex", "object_id": "$affected", "subject_identity": "$affected_identity"},
+                    {"op": "recall", "effect_id": "rc", "object_id": "$affected", "subject_identity": "$affected_identity"}]}]},
+            "ast": {"node": "passive", "kind": "replacement",
+                    "params": {"event_op": "kill", "mode": "replace_with", "optional": False,
+                               "condition": ["another friendly unit here", "less Might than me"],
+                               "instead": ["heal", "exhaust", "recall"]}}},
+    # set 2 (2026-10-29, Rek'Sai - Breacher)
+    "friendly_units_played_from_anywhere_other_than_a_players_hand_have_keyword": lambda params: {
+        "object_fields": {"played_unit_keyword_grants": [{
+            "grant_id": f"played-not-from-hand-{params['keyword']}", "keyword": params["keyword"],
+            "criteria": {"kind": "unit", "controller_relation": "friendly", "source_not": "hand"}}]},
+        "ast": {"node": "passive", "kind": "played_unit_keyword_grant",
+                "params": {"keyword": params["keyword"], "source_not": "hand"}}},
+    # set 2 (2026-10-29, Ancient Warmonger)
+    "i_have_assault_equal_to_the_number_of_enemy_units_here": lambda params: {
+        "object_fields": {"dynamic_keywords": [{"modifier_id": "own-text-assault", "keyword": "assault",
+                                                "per": {"kind": "enemy_units_at_source_battlefield"}}]},
+        "ast": {"node": "dynamic_keywords", "keyword": "assault", "per": "enemy_units_at_source_battlefield"}},
+    # set 2 (2026-10-29, Sivir - Mercenary): one condition, the card's own Might and keyword
+    "if_youve_spent_at_least_power_this_turn_i_have_might_and_keyword": lambda params: {
+        "object_fields": {
+            "conditional_might": [{"modifier_id": "clause", "amount": int(params["amount"]),
+                                   "condition": {"kind": "power_spent_this_turn_at_least",
+                                                 "count": params["power"].count("[a]")}}],
+            "conditional_keywords": [{"modifier_id": f"own-text-{params['keyword']}", "keyword": params["keyword"],
+                                      "condition": {"kind": "power_spent_this_turn_at_least",
+                                                    "count": params["power"].count("[a]")}}]},
+        "ast": {"node": "conditional_might_and_keywords", "amount": int(params["amount"]), "keywords": [params["keyword"]],
+                "condition": {"kind": "power_spent_this_turn_at_least", "count": params["power"].count("[a]")}}},
+    # set 2 (2026-10-29, Trusty Ramhound)
+    "while_you_have_another_unit_here_i_have_might": lambda params: {
+        "passive": {"object_fields": {"conditional_might": [{
+            "modifier_id": "clause", "amount": int(params["amount"]),
+            "condition": {"kind": "controls_units", "count": 1, "location": "here", "other": True}}]}},
+        "ast": {"node": "conditional_might", "amount": int(params["amount"]),
+                "condition": {"kind": "controls_units", "count": 1, "location": "here", "other": True}}},
     # 2026-09-27 package 6 (Vanguard Captain)
     "play_n_might_recruit_unit_tokens_here": _lower_recruit_tokens_here,
     # 2026-09-27: keyword auras, conditional keywords and Might, Might per count
@@ -1399,6 +1521,16 @@ LOWERINGS = {
         lambda params: {"kind": "score_within_of_victory", "count": int(params["within"])}),
     "if_an_opponent_controls_a_battlefield_i_enter_ready": _lower_conditional_enter_ready(
         lambda params: {"kind": "controls_a_battlefield", "controller_relation": "enemy"}),
+    # set 2 (2026-10-29): three more conditions on the card's own entry, read as it enters (364.3.a, 369.3)
+    "i_enter_ready_if_you_control_another_tag": _lower_conditional_enter_ready(
+        lambda params: {"kind": "controls_units", "count": 1, "tag": PRINTED_TAGS[params["tag"]], "other": True}),
+    "i_enter_ready_if_you_have_n_or_more_other_units_in_your_base": _lower_conditional_enter_ready(
+        lambda params: {"kind": "controls_units", "count": _count_word(params["count"]), "location": "base", "other": True}),
+    "if_you_have_n_or_fewer_cards_in_your_hand_i_enter_ready": _lower_conditional_enter_ready(
+        lambda params: {"kind": "not", "of": {"kind": "zone_count_at_least", "zone": "hand",
+                                              "count": _count_word(params["count"]) + 1}}),
+    # set 2 (2026-10-29): a keyword aura over every friendly Unit, the source too when it is one
+    "friendly_units_have_keyword": _lower_keyword_aura("object", AURA_FRIENDLY),
     "spells_and_abilities_deal_n_bonus_damage_to_units_here": _lower_battlefield_bonus_damage,
     "you_may_hide_an_additional_card_here": _lower_additional_facedown_card,
     "choose_an_opponent": _lower_choose_an_opponent,
@@ -1454,6 +1586,10 @@ LOWERINGS = {
         _lower_raise_might_to_match,
     "choose_an_enemy_unit_deal_n_to_it_unless_its_controller_has_you_draw_n": _lower_choose_enemy_deal_unless_draw,
     "when_any_unit_takes_damage_this_turn_kill_it": _lower_decree,
+    # set 2 (2026-10-29, Rally the Troops)
+    "when_a_friendly_unit_is_played_this_turn_buff_it_draw_n": _lower_rally,
+    # set 2 (2026-10-29, Sudden Storm)
+    "deal_n_to_a_unit_at_a_battlefield_if_its_attacking_deal_m_to_it_instead": _lower_deal_more_if_attacking,
     # 2026-10-08 package 10 (Dr. Mundo - Expert): N cards of the controller's own trash, chosen by them, recycled (as many
     # as there are when fewer, Core 417.4); several at once go to the bottom in a random order (417.5)
     "recycle_n_from_your_trash": lambda params: {
@@ -1572,6 +1708,9 @@ LOWERINGS = {
     "choose_a_unit_kill_it_the_next_time_it_takes_damage_this_turn_legion_kill_it_now_instead": _lower_guillotine,
     "choose_a_friendly_unit_the_next_time_it_would_die_this_turn_heal_exhaust_and_recall_it_instead":
         _lower_next_death_heal_exhaust_recall,
+    # set 2 (2026-10-29, Counter Strike)
+    "choose_a_unit_the_next_time_that_unit_would_be_dealt_damage_this_turn_prevent_it_draw_n":
+        _lower_next_damage_prevented_then_draw,
     "if_i_have_moved_twice_this_turn_i_dont_take_damage": _lower_no_damage_after_two_moves,
     "draw_n_for_each_of_your_mighty_units": _lower_draw_per_mighty_unit,
     "discard_n": _lower_discard,
@@ -1664,7 +1803,7 @@ LOWERINGS = {
 
 # 2026-09-27 package 6: the tags a trigger condition may name, normalized -> as printed (Core 763.1).
 # A closed table: a word that is not a tag ("if you control a unit") never becomes one.
-PRINTED_TAGS = {"poro": "Poro"}
+PRINTED_TAGS = {"poro": "Poro", "dragon": "Dragon"}
 
 # Productions that wrap another clause: "When you play me, <inner>."
 TRIGGER_WRAPPERS = {
@@ -1673,6 +1812,9 @@ TRIGGER_WRAPPERS = {
     # completes (resolution_bridge.complete_permanent_play); the tag as printed (Core 133.8.a, 763.1)
     "when_you_play_me_if_you_control_a_tag": ("play_triggers", "on-play", lambda params: {
         "condition": {"kind": "controls_units", "count": 1, "tag": PRINTED_TAGS[params["tag"]]}}),
+    # set 2 (2026-10-29, Dropboarder): the Gear its controller controls, counted as the play completes and as it resolves
+    "when_you_play_me_if_you_control_n_or_more_gear": ("play_triggers", "on-play", lambda params: {
+        "condition": {"kind": "controls_units", "count": _count_word(params["count"]), "of_kind": "gear"}}),
     # 2026-10-08 package 10 (Clockwork Keeper): the play's own optional cost paid, read as the play completes
     "when_you_play_me_if_you_paid_the_additional_cost": ("play_triggers", "on-play",
                                                           {"condition": {"kind": "paid_additional_cost"}}),
@@ -1687,6 +1829,8 @@ TRIGGER_WRAPPERS = {
     # 2026-10-12 package 11 (Treasure Trove): however the card leaves the board (effect_ir.leave_board_triggers)
     "when_this_leaves_the_board": ("leave_board_triggers", "on-leave-board", None),
     "when_i_move_to_a_battlefield": ("move_triggers", "on-move-to-battlefield", {"condition": {"kind": "moved_to_battlefield"}}),
+    # set 2 (2026-10-29, Harpoon Squad): a completed Move whose origin is a Battlefield (to a Base or another Battlefield)
+    "when_i_move_from_a_battlefield": ("move_triggers", "on-move-from-battlefield", {"condition": {"kind": "moved_from_battlefield"}}),
     "at_the_end_of_your_turn": ("end_of_turn_triggers", "eot", None),
     # 2026-10-08 (package 10, Sona - Harmonious): the conditional statement right after the trigger condition is part of
     # it (Core 383.2.a.1) - read as the Ending Step schedules it (resolution_bridge.begin_ending_step: at_battlefield)
@@ -1720,6 +1864,9 @@ TRIGGER_WRAPPERS = {
     # 420.4.a) and a Conquer Effect (383.4.c.2.a). The conquer field's default scope is the
     # Unit's own (unit_here, battlefield_control._score_triggers), so no extra is shared.
     "when_im_played_and_when_i_conquer": (("play_triggers", "conquer_triggers"), "on-play-and-conquer", None),
+    # set 2 (2026-10-29, Ornn - Blacksmith): a Play Effect and a Hold Effect, one ability - the hold field's default scope
+    # is the Unit's own (unit_here, 383.4.d.2.a), so again no extra is shared
+    "when_you_play_me_or_when_i_hold": (("play_triggers", "hold_triggers"), "on-play-or-hold", None),
     # 2026-09-24: watched triggers - a typed watch over the semantic events (watchers.py),
     # woken by the play transaction's "played" and by every resolution's events. The player
     # "you" is the event's actor; each fact the text names is a named filter, nothing else.
@@ -1781,6 +1928,13 @@ TRIGGER_WRAPPERS = {
     # control; a unit that already has a buff is not buffed (no event); each buffed unit its own trigger, the unit its "it"
     "when_you_buff_a_friendly_unit": ("event_triggers", "on-buff-friendly-unit", {"watch": {
         "kinds": ["buffed"], "scope": "actor", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
+        "grouping": "each"}}),
+    # set 2 (2026-10-29, Simian Ancestor): a Buff its controller performs on the card itself (Core 702)
+    "when_you_buff_me": ("event_triggers", "on-buff-me", {"watch": {
+        "kinds": ["buffed"], "scope": "self", "filter": {"actor_is_controller": True}}}),
+    # set 2 (2026-10-29, Altar of Memories): the death of any Unit its controller controlled, each its own trigger
+    "when_a_friendly_unit_dies": ("event_triggers", "on-friendly-death", {"watch": {
+        "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},
         "grouping": "each"}}),
     "the_first_time_a_friendly_unit_dies_each_turn": ("event_triggers", "on-first-friendly-death", {"watch": {
         "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "friendly"},

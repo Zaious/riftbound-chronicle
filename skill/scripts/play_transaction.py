@@ -765,7 +765,8 @@ def _legend_exhausts_itself(state: dict[str, Any], declaration: dict[str, Any], 
             and find_location(state, object_id) == ("player", actor, "legend_zone"))
 
 
-def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple[dict[str, Any] | None, str | None]:
+def accelerate_offer(effect_state: dict[str, Any], card_id: str | None, *, actor: str | None = None,
+                     source_kind: str | None = None) -> tuple[dict[str, Any] | None, str | None]:
     """The optional additional cost a card's Accelerate offers, or why not.
 
     Returns (cost entry, reason). Both are None when the card simply does not
@@ -776,10 +777,14 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
 
     805.2.a keeps this to the play: nothing here reads a card on the board.
     """
-    from effect_ir import has_keyword
+    from effect_ir import has_keyword, played_unit_granted_keywords
 
     obj = (effect_state.get("objects") or {}).get(card_id) if card_id else None
-    if not isinstance(obj, dict) or not has_keyword(effect_state, card_id, "accelerate"):
+    # set 2 (Rek'Sai - Breacher): or a permanent of the actor's side grants it to the Units they play from a zone other
+    # than a hand, while this one is played (effect_ir.played_unit_granted_keywords)
+    granted = [g for g in played_unit_granted_keywords(effect_state, card_id, actor, source_kind)
+               if g["keyword"] == "accelerate"] if isinstance(obj, dict) else []
+    if not isinstance(obj, dict) or not (has_keyword(effect_state, card_id, "accelerate") or granted):
         return None, None
     if obj.get("kind") != "unit":
         return None, "accelerate_is_a_unit_ability"          # 805.1.a
@@ -797,6 +802,8 @@ def accelerate_offer(effect_state: dict[str, Any], card_id: str | None) -> tuple
         "energy": ACCELERATE_ENERGY,
         "source": {"kind": "keyword", "keyword": "accelerate", "object": card_id},
         "rule_locators": ["Core 805.1.b", "Core 805.4", "Core 805.2.a"],
+        **({"granted_by": sorted({g["granted_by"] for g in granted})}
+           if granted and not has_keyword(effect_state, card_id, "accelerate") else {}),
     }, None
 
 
@@ -1491,6 +1498,9 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
     for comp in skeleton["components"]:
         if comp["kind"] in {"energy", "power", "power_any"} and chosen(comp):
             comp["paid"] = True
+    # set 2 (2026-10-29, Sivir - Mercenary): the Power paid, of any Domain, on the payer's per-turn ledger
+    from effect_ir import record_power_spent
+    record_power_spent(working, actor, sum(e["amount"] for e in events if e.get("kind") == "pay_power"))
 
     play_stage = {"allow_play_stage": True}
     for comp in skeleton["components"]:
@@ -1808,6 +1818,14 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                                     f"target selection {ref!r} chose {len(entry['value'])} Targets for {cap} "
                                     f"damage to split (Core 355.14.c, 715.3)",
                                     rule_locators=["Core 355.14.b", "Core 355.14.c", "Core 715.3"])
+            for other_ref in template.get("distinct_from") or []:
+                # set 2 (2026-10-29): "another" - none of the objects chosen for the named decisions (Core 355.9.b)
+                other = ed.target_selection(decisions, other_ref)
+                shared = sorted(set(entry["value"] or []) & set((other or {}).get("value") or []))
+                if shared:
+                    raise PlayError("choices", "target_not_distinct",
+                                    f"effects[{index}] target selection {ref!r} chose {shared}, already chosen for "
+                                    f"{other_ref!r}; 'another' is a different one (Core 355.9.b)", rule_locators=["Core 355.9.b"])
             for object_id in entry["value"]:
                 current_identity = entity_identity(effect_state, object_id)
                 if object_id in identities and current_identity is not None and identities[object_id] != current_identity:
@@ -1910,6 +1928,10 @@ def legal_target_options(effect_state: dict[str, Any], actor: str, program: dict
     applies to a supplied choice - Core 403.4 asks only whether there are enough of them. A selector the
     test cannot read counts as an option, so an ability is never removed on a doubt."""
     pool = list(effect_state.get("battlefields") or {}) if template.get("kind") == "battlefield" else list(effect_state["objects"])
+    if template.get("chain_item") is True:
+        # set 2 (Not So Fast): the items of the Chain the procedure holds (effect_ir.CHAIN_VIEW)
+        from effect_ir import CHAIN_VIEW
+        pool = [i["item_id"] for i in CHAIN_VIEW.get() or []]
     options = []
     for object_id in pool:
         try:
@@ -2059,6 +2081,12 @@ def _check_target_bounds(effect: dict[str, Any], index: int, decisions: dict[str
             raise PlayError("choices", "target_slots_not_distinct",
                             f"effects[{index}] names {slots[0]!r} in both unit slots; the pair's two targets are "
                             f"different objects (GPT 2026-09-25)", rule_locators=["Core 355.8"])
+        if effect.get("group") and None not in slots:
+            # set 2 (Switcheroo): the pair meets its group requirement as it is chosen (Core 355.11.a)
+            ok, why = target_group_holds(effect_state, list(slots), effect["group"], actor)
+            if not ok:
+                raise PlayError("choices", "target_group_requirement_failed", f"effects[{index}] unit slots: {why}",
+                                rule_locators=["Core 355.11", "Core 355.11.a"])
 
 
 def _same_team(state: dict[str, Any], left: str | None, right: str | None) -> bool:
@@ -2195,6 +2223,23 @@ def limited_play_unobtainable(state: dict[str, Any], actor: str, object_id: str,
 
 def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any], *,
               engine_decisions: dict[str, Any] | None = None, effect_program: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The play transaction (Core 354-358). set 2 (Not So Fast): run with the Chain as the timing state has it in
+    effect_ir.CHAIN_VIEW, for a target that is a Chain item."""
+    from effect_ir import CHAIN_VIEW, chain_view_of
+    try:
+        view = chain_view_of(timing_state, effect_state) if isinstance(timing_state, dict) and isinstance(effect_state, dict) else None
+    except Exception:  # noqa: BLE001 - a malformed state is reported by the transaction's own validation
+        view = None
+    token = CHAIN_VIEW.set(view)
+    try:
+        return _play_card(timing_state, effect_state, declaration, engine_decisions=engine_decisions,
+                          effect_program=effect_program)
+    finally:
+        CHAIN_VIEW.reset(token)
+
+
+def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declaration: dict[str, Any], *,
+               engine_decisions: dict[str, Any] | None = None, effect_program: dict[str, Any] | None = None) -> dict[str, Any]:
     base = {
         "schema_version": RESULT_VERSION,
         "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
@@ -2383,7 +2428,7 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
                                 rule_locators=["Core 822.1", "Core 822.3"])
             # 2026-09-28 (package 6): the Battlefield an effect-driven play's effect names for the unit
             # ("play it here") is a location that effect permits (Core 355.2.b)
-            if limited and (limited_record or {}).get("entry_location") == location:
+            if limited and location in ((limited_record or {}).get("entry_location"), (limited_record or {}).get("entry_permitted")):
                 paths = {**paths, "granted_by_the_effect": True}
             # 2026-10-13 package 11 (Mageseeker Warden, GPT ruling 17): no Battlefield is a valid location for a Unit an
             # opponent of a restricting permanent plays (355.2) - whatever permission would otherwise reach it
@@ -2407,7 +2452,9 @@ def play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         # offers. It joins the declared costs *before* the intent loop, so it
         # goes through the same explicit-choice rule as any other optional
         # cost - a full pool never pays it by itself (356.2.b.1).
-        accelerate_entry, accelerate_reason = accelerate_offer(effect_state, declaration.get("card"))
+        accelerate_entry, accelerate_reason = accelerate_offer(
+            effect_state, declaration.get("card"), actor=declaration.get("actor"),
+            source_kind=(declaration.get("source") or {}).get("kind", "hand"))
         self_offers, self_offer_abstentions = card_self_cost_offers(effect_state, declaration.get("card"))
         declared_additional = list(declaration["cost"].get("additional", []) or [])
         if accelerate_entry is not None:

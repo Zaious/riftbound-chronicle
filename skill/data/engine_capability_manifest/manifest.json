@@ -1,22 +1,22 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:54dede6f19b8ef2f5b33d109",
-  "capability_set_id": "sha256:54dede6f19b8ef2f5b33d1098e62c0dda02dd7d6c3e47f25a82f8d7d8db11c77",
+  "manifest_id": "capability-manifest:f225a42cf3d15063e0208a42",
+  "capability_set_id": "sha256:f225a42cf3d15063e0208a42735cd4343abf40d58af15d2f1b81db9bb7fa3c61",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:b90d3c0348a0e7060787aa58501dcd36420f1ff4bba6de5b0e42282e2ddc3670",
+    "value": "sha256:07dbc00e1f04a220784b3477d372fd7f330d7623cb57d7e2d9c93de3ca9fdfab",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:034a2f4495b15da48f65dbbf65f18fb0e129dcbcf480bf56e0ea7b952526765c"
+        "sha256": "sha256:b5e6e8d8ca7741044b83d2b0efb7bbd7b84ab45dac45b0f7067e07fd3bfe9a3a"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:d61012cbbc1e02d8e9ee83789ef1600213d2ea43d67a598c588384245a0a4a8b"
+        "sha256": "sha256:1bd484d74a6a5a040db2ebc510cab24cd9b1dca5d187e370d827b72718d7d597"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:052808ca2c9a97c9754da786caabfaadf6c35f3aef4fea03ec428efea954b9a7"
+        "sha256": "sha256:8b774769e7c6f31c1e15b3bbcec4274c60ff05418e14ea9743708fc89528a234"
       },
       {
         "path": "engine_check.py",
@@ -28,7 +28,7 @@
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:6d16335cd68ba718a29768959cf5c9bf146e2c3361c145b1deaa0e1afb9bdf0b"
+        "sha256": "sha256:69f7f44341c042f1719e1593ed71f5ccbfef059a138a0502813d973c46538bc7"
       },
       {
         "path": "terminal.py",
@@ -583,6 +583,13 @@
       ]
     },
     {
+      "id": "draw_rest",
+      "rule_locators": [
+        "Core 414",
+        "Core 124"
+      ]
+    },
+    {
       "id": "each_player",
       "rule_locators": [
         "Core 303.2",
@@ -661,6 +668,13 @@
       ]
     },
     {
+      "id": "grant_keywords_of",
+      "rule_locators": [
+        "Core 479.3",
+        "Core 359.3.f.2"
+      ]
+    },
+    {
       "id": "grant_replacement",
       "rule_locators": [
         "Core 370",
@@ -674,6 +688,13 @@
       "rule_locators": [
         "Core 369.3",
         "Core 317.2.c"
+      ]
+    },
+    {
+      "id": "hand_to_deck",
+      "rule_locators": [
+        "Core 355.10.a",
+        "Core 124"
       ]
     },
     {
@@ -933,6 +954,13 @@
         "Core 736",
         "Core 737",
         "Core 738"
+      ]
+    },
+    {
+      "id": "trash_top",
+      "rule_locators": [
+        "Core 432.1.b",
+        "Core 124"
       ]
     },
     {
@@ -1801,6 +1829,7 @@
     "Core 359.3.e.4",
     "Core 359.3.e.5",
     "Core 359.3.e.6",
+    "Core 359.3.f.2",
     "Core 359.3.f.3",
     "Core 359.3.f.4",
     "Core 364.3",
@@ -1969,6 +1998,7 @@
     "Core 473.2.b",
     "Core 473.2–473.2.c",
     "Core 474",
+    "Core 479.3",
     "Core 479.4.a",
     "Core 479.4.b",
     "Core 479.4.e.1.a",

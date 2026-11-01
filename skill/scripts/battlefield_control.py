@@ -154,7 +154,9 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
                 excess = assigned_excess(combat, player, battlefield_id)
                 if excess is None or excess < descriptor["condition"]["at_least"]:
                     continue
-                descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
+                # set 2 (2026-10-29, Sivir - Ambitious: "... you may deal that much to an enemy unit."): the excess the
+                # condition read rides with the trigger - what "that much" names (effect_ir amount_ref noted_excess)
+                descriptor = {**{k: v for k, v in descriptor.items() if k != "condition"}, "noted_excess": excess}
             elif descriptor.get("condition") is not None:
                 # 2026-10-08 package 10 (Core 383.2.a.1, Garen - Might of Demacia (Starter)): a player-level score
                 # trigger's conditional statement is part of its Trigger Condition, read now - the score just processed -

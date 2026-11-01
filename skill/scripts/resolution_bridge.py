@@ -116,6 +116,14 @@ def bind_trigger_event(program: dict[str, Any], chain_item: dict[str, Any]) -> t
                       "received_noted_location": program.get("noted_location"), "expected_noted_location": noted}
     if noted is not None:
         program = {**program, "noted_location": dict(noted)}
+    # set 2 (2026-10-29, Sivir - Ambitious): a conquer trigger's noted excess, the same way - the engine's only
+    excess = chain_item.get("noted_excess")
+    if program.get("noted_excess") is not None and program.get("noted_excess") != excess:
+        return None, {"reason": "effect_program_noted_excess_mismatch",
+                      "why": "only the engine binds the excess a conquer trigger's condition read; a program may not bring its own",
+                      "received_noted_excess": program.get("noted_excess"), "expected_noted_excess": excess}
+    if excess is not None:
+        program = {**program, "noted_excess": excess}
     if recorded is None:
         return program, None
     return {**program, "trigger_event": dict(recorded)}, None
@@ -533,6 +541,30 @@ def _facedown_restricted(program: dict[str, Any], item: dict[str, Any], effect_s
 
 
 def resolve_with_program(
+    timing_state: dict[str, Any],
+    item_id: str,
+    effect_state: dict[str, Any],
+    program: dict[str, Any] | None,
+    cleanup_decisions: dict[str, Any] | None = None,
+    engine_decisions: dict[str, Any] | None = None,
+    *,
+    chain_programs: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """set 2 (Not So Fast): the resolution run with the Chain as the timing state has it in effect_ir.CHAIN_VIEW."""
+    from effect_ir import CHAIN_VIEW, chain_view_of
+    try:
+        view = chain_view_of(timing_state, effect_state)
+    except Exception:  # noqa: BLE001 - a malformed state is reported by the bridge's own checks
+        view = None
+    token = CHAIN_VIEW.set(view)
+    try:
+        return _resolve_with_program(timing_state, item_id, effect_state, program, cleanup_decisions, engine_decisions,
+                                     chain_programs=chain_programs)
+    finally:
+        CHAIN_VIEW.reset(token)
+
+
+def _resolve_with_program(
     timing_state: dict[str, Any],
     item_id: str,
     effect_state: dict[str, Any],
@@ -1175,6 +1207,13 @@ def finalize_limited_play(
         from play_transaction import battlefield_entry_paths
         candidates = [{"kind": "base"}] + [{"kind": "battlefield", "battlefield": b} for b in sorted(effect_state["battlefields"])
                                            if any(battlefield_entry_paths(effect_state, card, controller, b).values())]
+        # set 2 (Rek'Sai - Swarm Queen): the Battlefield the effect permits ("you may play it here", 355.2.b) is one more
+        # location - unless a restriction leaves the unit no Battlefield at all (Mageseeker Warden, 355.2)
+        permitted = record.get("entry_permitted")
+        if permitted is not None and permitted not in candidates and permitted["battlefield"] in effect_state["battlefields"]:
+            from effect_ir import battlefield_restriction
+            if battlefield_restriction(effect_state, "opponent_units_to_base_only", controller) is None:
+                candidates.append(dict(permitted))
         return {**base, "valid": True, "committed": False, "stage": "choices", "item_id": item["id"],
                 "reason": "entry_location_required", "decision_controller": controller,
                 "location_candidates": candidates, "rule_locators": ["Core 355.2", "Core 355.2.a"]}

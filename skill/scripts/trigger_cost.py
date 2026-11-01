@@ -195,6 +195,15 @@ def pay_base_cost(effect_state: dict[str, Any], item: dict[str, Any], program: d
             # ability is finalized (Core 383.3.b.1) - the play transaction's own discard payment (Core 423.1, 423.3)
             additional.append({"cost_id": "trigger:discard", "mandatory": True,
                                "payment": {"kind": "discard", "amount": part["amount"]}})
+        elif kind == "power_any":
+            # set 2 (2026-10-29, Power Nexus): N Power of any Domain - the any-domain payment Deflect costs use
+            additional.append({"cost_id": "trigger:power-any", "mandatory": True,
+                               "payment": {"kind": "power_any", "amount": part["amount"]}})
+        elif kind == "kill_this":
+            # set 2 (2026-10-29, Overzealous Fan): the ability's own source killed as the cost (Core 429.1.a.1)
+            source = _source_is_me(working, item, where="board")
+            additional.append({"cost_id": "trigger:kill-self", "mandatory": True,
+                               "payment": {"kind": "kill_this", "object_id": source}})
         else:   # validate_program admits nothing else; a hand-built program is refused by name
             raise TriggerCostError("invalid", "unsupported_trigger_cost", f"payment kind {kind!r} is not modelled")
     skeleton = PT.determine_total_cost({"base": base, "additional": additional}, {}, actor=actor)

@@ -90,7 +90,7 @@ contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
 - [ ] `[CLAUDE-READY; due 2026-10-23]` Re-run Tier 2 verification after the
   Radiance release, review all 53 Global Vendetta rows currently forecast to
   become stale, and update each row's evidence date or abstention status.
-  (Status 2026-11-04: overdue. `check_tier2_freshness.py` is unchanged since 2026-08-18, and the Vendetta environment is still `scheduled_freeze` past its freeze date.)
+  (Status 2026-11-04: overdue. `check_tier2_freshness.py` is unchanged since 2026-08-18, and the Vendetta environment is still `scheduled_freeze` past its freeze date. Owner's ruling 2026-11-04: scheduled after set 2 is finished; the freeze needs the ban list in force on 2026-10-22.)
 
 ## 2. R1 — Timing, permissions, and Chain structure
 
@@ -551,7 +551,7 @@ migrations are `[CODEX-CONTEXT]`.
   coverage.
 - [ ] Implement a capability manifest that identifies exact supported
   operations, procedures, clauses, exclusions, and implementation identity.
-  (Unchecked 2026-11-04: the manifest still lists `gear_rune_recall_cleanup`, `non_conquer_point_sources`, `activate_named_triggers` and `damage_exemption_sources` as unsupported, though all four are implemented. It needs a refresh before this can be checked again.)
+  (Unchecked 2026-11-04: the manifest still lists `gear_rune_recall_cleanup`, `non_conquer_point_sources`, `activate_named_triggers` and `damage_exemption_sources` as unsupported, though all four are implemented. It needs a refresh before this can be checked again. The manifest is derived, so the fix is in `engine_check.py`'s declared unsupported scope; owner's ruling 2026-11-04: the first engine change after set 2, sooner if a consumer is refused one of the four.)
 
 ## 4. R3 — Bounded card-program packs
 
@@ -576,7 +576,7 @@ collect/normalize card clauses and implement assigned cards.
 - [ ] Define the first `taiwan-origins-v1` release/legality/localization overlay.
   (Status 2026-11-04: the overlay is still `planned` in `global-core-origins-v1/selection.json`; release and legality exist instead as `taiwan-set1-banned` and a frozen snapshot; no localization.)
 - [ ] Freeze applicable card text, errata, ruleset, global pack, and overlay.
-  (Status 2026-11-04: the snapshot `taiwan-set1-banlist-2026-07-24` pins errata and text hashes but still says `ruleset_core_version: 2026-07-16`, while the engine is on Core 2026-10-09.)
+  (Status 2026-11-04: the snapshot `taiwan-set1-banlist-2026-07-24` pins errata and text hashes but still says `ruleset_core_version: 2026-07-16`, while the engine is on Core 2026-10-09. The snapshot is frozen and records the rules in force when it was taken; owner's ruling 2026-11-04: a new Taiwan snapshot (sets 1 and 2, Core 2026-10-09) is taken when set 2 enters the Taiwan environment.)
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
   current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.

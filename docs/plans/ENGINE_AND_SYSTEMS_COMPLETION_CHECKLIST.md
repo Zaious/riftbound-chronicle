@@ -817,9 +817,10 @@ Codex contract. Branch `match-analyst/v1`; development preview, not routed.)
 - [ ] Obtain expert review of the first bounded replay corpus.
 - [x] Add runner, evaluation suite, and bilingual demo.
   (`match_analyst_runner.py` trace / analyze / demo; `check_match_analyst.py`;
-  `prototype/match-analyst/`. The demo commits only the four synthetic fixture
-  logs; a game replayed from a private record stays in a gitignored
-  `local-data.js`.)
+  `prototype/match-analyst/`. The demo carries the four synthetic fixture logs
+  and one full set-1 R5-P research game, published by the owner's decision of
+  2026-11-04: card names and what happened only, never the card catalogue,
+  the policies, or the seeds.)
 - [ ] Re-check the applicable Riot product boundary.
 - [ ] Route Match Analyst only after every activation gate passes.
 

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/match-review.schema.json",
+  "title": "Chronicle Match Review v1",
+  "description": "The Review projection of one match-analysis.v1: one item per decision point, graded only on events at or before it. strategic_misplay needs a strategy evaluator, and this version has none.",
+  "type": "object",
+  "required": ["schema_version", "review_id", "analysis", "generated_by", "perspective", "reviewed_players", "strategy_evaluator", "items", "counts", "notes"],
+  "$defs": {
+    "ref": {"type": "object", "required": ["analysis_id", "timeline_hash", "confirmed_digest"]},
+    "bilingual": {"type": "object", "required": ["zh", "en"], "properties": {"zh": {"type": "string"}, "en": {"type": "string"}}},
+    "classification": {"enum": ["rules_execution_error", "missed_response_window", "strategic_misplay", "reasonable_alternative", "outcome_bias", "insufficient_information", "unsupported_engine_behavior"]}
+  },
+  "properties": {
+    "schema_version": {"const": "match-review.v1"},
+    "review_id": {"type": "string", "pattern": "^match-review:[0-9a-f]{24}$"},
+    "analysis": {"$ref": "#/$defs/ref"},
+    "generated_by": {"type": "object"},
+    "perspective": {"enum": ["player1", "player2", "public_observer", "omniscient_replay"]},
+    "reviewed_players": {"type": "array", "items": {"type": "string"}},
+    "strategy_evaluator": {"type": "string"},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision_id", "at_event", "actor", "decision_time_perspective", "information", "selected_action", "alternatives", "classification", "confidence", "rules_reasoning", "strategy_reasoning", "improvement", "feedback_target"],
+        "properties": {
+          "information": {"type": "object", "required": ["cutoff_event", "evidence_events", "hindsight_excluded"]},
+          "classification": {"$ref": "#/$defs/classification"},
+          "confidence": {"enum": ["low", "medium", "high"]},
+          "rules_reasoning": {"$ref": "#/$defs/bilingual"},
+          "strategy_reasoning": {"$ref": "#/$defs/bilingual"},
+          "improvement": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/bilingual"}]},
+          "feedback_target": {"enum": [null, "rules_core", "player2_policy", "deck_coach", "rules_corpus"]},
+          "engine_check": {"type": ["string", "null"]},
+          "hindsight_guard": {"type": "object", "required": ["later_events", "classification_if_used"], "properties": {"classification_if_used": {"const": "outcome_bias"}}}
+        }
+      }
+    },
+    "counts": {"type": "object"},
+    "notes": {"$ref": "#/$defs/bilingual"}
+  }
+}

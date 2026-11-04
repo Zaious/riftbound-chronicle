@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/match-analysis.schema.json",
+  "title": "Chronicle Match Analysis v1",
+  "description": "The shared record Review and Commentary are both projected from: one normalized timeline with source-event ids, the perspective's information boundary, the engine binding, the observed/inferred/unknown/hindsight-only ledger, contradictions, decision points and turning points. Produced by skill/scripts/match_analyst.py.",
+  "type": "object",
+  "required": ["schema_version", "analysis_id", "generated_by", "source", "ruleset", "perspective", "players", "information_boundary", "timeline", "timeline_hash", "source_map", "reconstruction", "engine_checks", "ledger", "contradictions", "decision_points", "turning_points", "coverage", "assumptions", "uncertainty", "confirmed_digest", "projections"],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "eventId": {"type": "string", "pattern": "^ev-[0-9]{4,}$"},
+    "perspective": {"enum": ["player1", "player2", "public_observer", "omniscient_replay"]},
+    "event": {
+      "type": "object",
+      "required": ["event_id", "seq", "source_event_ids", "kind", "actor", "data", "visibility", "certainty", "salience"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/eventId"},
+        "seq": {"type": "integer", "minimum": 1},
+        "source_event_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "kind": {"type": "string", "minLength": 1},
+        "actor": {"type": ["string", "null"]},
+        "data": {"type": "object"},
+        "visibility": {"type": "string", "pattern": "^(public|revealed_later|private:[a-z0-9,]+)$"},
+        "certainty": {"enum": ["confirmed", "inferred", "unknown", "hindsight_only"]},
+        "salience": {"enum": ["low", "normal", "high"]},
+        "turn": {"type": ["integer", "null"]},
+        "phase": {"type": ["string", "null"]},
+        "state_label": {"type": ["string", "null"]},
+        "priority": {"type": ["string", "null"]},
+        "focus": {"type": ["string", "null"]},
+        "chain": {"type": ["array", "null"]},
+        "gap": {"type": "string"},
+        "shadow_of": {"$ref": "#/$defs/eventId"},
+        "contested_by": {"type": "array", "items": {"type": "string"}},
+        "engine": {"type": "object"}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "match-analysis.v1"},
+    "analysis_id": {"type": "string", "pattern": "^match-analysis:[0-9a-f]{24}$"},
+    "generated_by": {"type": "object", "required": ["name", "version"]},
+    "source": {"type": "object", "required": ["kind", "format", "completeness", "provenance", "input_hash"], "properties": {"kind": {"enum": ["match_log", "engine_trace"]}}},
+    "ruleset": {"type": "object"},
+    "perspective": {"$ref": "#/$defs/perspective"},
+    "players": {"type": "object"},
+    "information_boundary": {
+      "type": "object",
+      "required": ["perspective", "withheld", "rules"],
+      "properties": {
+        "perspective": {"$ref": "#/$defs/perspective"},
+        "withheld": {"type": "array", "items": {"type": "object", "required": ["event_id", "source_event_ids", "reason"]}},
+        "rules": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "timeline": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "timeline_hash": {"$ref": "#/$defs/sha256"},
+    "source_map": {"type": "object", "additionalProperties": {"type": "array", "items": {"$ref": "#/$defs/eventId"}}},
+    "reconstruction": {"type": "object", "required": ["mode", "status"], "properties": {"mode": {"enum": ["engine_replay", "timing_checks"]}}},
+    "engine_checks": {"type": "array", "items": {"type": "object", "required": ["event_id", "schema_version", "check_id", "outcome"], "properties": {"schema_version": {"const": "engine-check.v1"}}}},
+    "ledger": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fact_id", "event_id", "label", "statement"],
+        "properties": {"label": {"enum": ["observed", "inferred", "unknown", "hindsight_only"]}, "relative_to": {"type": "array", "items": {"type": "string"}}}
+      }
+    },
+    "contradictions": {"type": "array", "items": {"type": "object", "required": ["contradiction_id", "events", "field"], "properties": {"field": {"enum": ["object_liveness", "priority", "focus"]}}}},
+    "decision_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision_id", "at_event", "seq", "actor", "question", "recorded_choice", "alternatives"],
+        "properties": {
+          "alternatives": {"type": "object", "required": ["source", "complete_action_set", "items"], "properties": {"source": {"enum": ["engine_enumeration", "record"]}, "complete_action_set": {"const": false}}}
+        }
+      }
+    },
+    "turning_points": {"type": "array", "items": {"type": "object", "required": ["turning_point_id", "at_event", "kind", "swing", "summary", "summary_zh"]}},
+    "coverage": {"type": "object", "required": ["complete_game", "complete_legality", "strategy_evaluator"], "properties": {"complete_game": {"const": false}, "complete_legality": {"const": false}}},
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "uncertainty": {"type": "array"},
+    "end": {"type": ["object", "null"]},
+    "confirmed_digest": {"$ref": "#/$defs/sha256"},
+    "projections": {"type": "object", "properties": {"review": {"type": "string"}, "commentary": {"type": "string"}}}
+  }
+}

@@ -2,8 +2,8 @@
 """
 Validate the Match Analyst example logs and uncertainty fixtures.
 
-Match Analyst is specified and not implemented. There is no runner to test, so
-what this checks is the corpus a future implementation will be held to -- and,
+Match Analyst is a development preview, not routed; check_match_analyst.py runs
+it. What this checks is the corpus the implementation is held to -- and,
 just as importantly, that the corpus still contains the cases that make it
 worth having.
 
@@ -281,7 +281,7 @@ def main() -> int:
 
     print(f"[info] Match Analyst corpus: {len(fixtures)} fixtures covering {sorted(kinds)}; "
           "card names, rules vocabulary, and perspective redaction verified against the bundled data. "
-          "The system remains unrouted and unimplemented.")
+          "The system remains unrouted.")
     if errors:
         print("\n[errors]")
         for error in errors:

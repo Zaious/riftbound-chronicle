@@ -860,11 +860,14 @@ jobs:
       - name: Source-registry refresh tooling path guard and offline diff
         run: python3 skill/scripts/check_refresh_sources.py
 
-      # Match Analyst is specified, not implemented. This validates the corpus a
-      # future implementation is held to, and fails if the mode gets routed
+      # Match Analyst is implemented as a development preview and not routed. This
+      # validates the corpus it is held to, and fails if the mode gets routed
       # without the activation gate in its product spec.
       - name: Match Analyst example logs and uncertainty fixtures
         run: python3 skill/scripts/check_match_analyst_fixtures.py
+
+      - name: Match Analyst analysis, review and commentary over the fixture logs
+        run: python3 skill/scripts/check_match_analyst.py
 
       - name: Rift Atlas bridge contract (offline, no upstream fetch)
         run: python3 skill/scripts/check_riftatlas_bridge.py
@@ -1114,6 +1117,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_rules_bootstrap.py"
           python3 "$REPO/skill/scripts/check_refresh_sources.py"
           python3 "$REPO/skill/scripts/check_match_analyst_fixtures.py"
+          python3 "$REPO/skill/scripts/check_match_analyst.py"
           python3 "$REPO/skill/scripts/check_riftatlas_bridge.py"
           python3 "$REPO/skill/scripts/check_set2_entries.py"
           python3 "$REPO/skill/scripts/check_set2_counts.py"

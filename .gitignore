@@ -12,3 +12,6 @@ skill/.local/
 # Partnership drafts, outreach notes, and unaccepted localization samples stay
 # local until the other maintainer explicitly agrees to publish them.
 docs/private/
+
+# Match Analyst: a demo game replayed from a private record stays local
+prototype/match-analyst/local-data.js

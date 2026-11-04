@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zaious/riftbound-chronicle/skill/schemas/match-commentary.schema.json",
+  "title": "Chronicle Match Commentary v1",
+  "description": "The Commentary projection of one match-analysis.v1: ordered bilingual narration segments, each linked to timeline event ids and carrying one certainty label. It narrates no contested event as confirmed, guesses no motive, and calls no play a mistake.",
+  "type": "object",
+  "required": ["schema_version", "commentary_id", "analysis", "generated_by", "perspective", "audience", "tone", "length", "levels", "segments", "recap", "notes"],
+  "$defs": {
+    "text": {"type": "object", "required": ["zh-Hant", "en"], "properties": {"zh-Hant": {"type": "string", "minLength": 1}, "en": {"type": "string", "minLength": 1}}}
+  },
+  "properties": {
+    "schema_version": {"const": "match-commentary.v1"},
+    "commentary_id": {"type": "string", "pattern": "^match-commentary:[0-9a-f]{24}$"},
+    "analysis": {"type": "object", "required": ["analysis_id", "timeline_hash", "confirmed_digest"]},
+    "generated_by": {"type": "object"},
+    "perspective": {"enum": ["player1", "player2", "public_observer", "omniscient_replay"]},
+    "audience": {"enum": ["player", "spectator", "reader"]},
+    "tone": {"const": "neutral"},
+    "length": {"enum": ["short", "standard", "full"]},
+    "levels": {"type": "array", "items": {"enum": ["event", "sequence", "turning_point", "match_summary"]}},
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["segment_id", "level", "event_ids", "label", "text"],
+        "properties": {
+          "segment_id": {"type": "string", "pattern": "^s[0-9]{3,}$"},
+          "level": {"enum": ["event", "sequence", "turning_point", "match_summary"]},
+          "event_ids": {"type": "array", "items": {"type": "string", "pattern": "^ev-[0-9]{4,}$"}},
+          "label": {"enum": ["confirmed", "inferred", "unknown", "hindsight_only"]},
+          "text": {"$ref": "#/$defs/text"},
+          "rules": {"type": ["object", "null"]},
+          "turning_point_id": {"type": "string"},
+          "contradiction_id": {"type": "string"}
+        }
+      }
+    },
+    "recap": {"$ref": "#/$defs/text"},
+    "notes": {"type": "object"}
+  }
+}

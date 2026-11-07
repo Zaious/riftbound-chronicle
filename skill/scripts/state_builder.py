@@ -36,7 +36,7 @@ so we downgrade to B.
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import json
 import sys
 from pathlib import Path
@@ -505,7 +505,7 @@ def _shell(question: str, question_kind: str, draft: Any, family: str | None) ->
         "question": question,
         "question_kind": question_kind,
         "state_family": family,
-        "input_draft": copy.deepcopy(draft),
+        "input_draft": state_copy.deepcopy(draft),
         "buildable": False,
         "supplied": [],
         "assumptions": [],
@@ -867,13 +867,13 @@ def build_state_assumption(*, question: str, question_kind: str, draft: Any) -> 
     assumptions: list[dict[str, Any]] = []
     for slot in sorted(profile["required"] | profile["optional"]):
         if slot in draft:
-            values[slot] = copy.deepcopy(draft[slot])
+            values[slot] = state_copy.deepcopy(draft[slot])
             supplied.append({"slot": slot, "origin": "stated"})
             continue
         if slot in PLAYER_KEYED_DEFAULTS:
             value = PLAYER_KEYED_DEFAULTS[slot](players)
         else:
-            value = copy.deepcopy(SLOTS[slot]["default"])
+            value = state_copy.deepcopy(SLOTS[slot]["default"])
             if value is None and slot in UNDEFAULTABLE:
                 # A slot with no default is one the contract says is never
                 # assumed. Reaching here means a kind listed it as optional,
@@ -930,12 +930,12 @@ def apply_correction(artifact: dict[str, Any], corrections: dict[str, Any], *,
         raise StateBuilderError(f"cannot correct an invalid artifact: {problems}")
     if not isinstance(corrections, dict):
         raise StateBuilderError("corrections must be an object")
-    draft = copy.deepcopy(artifact["input_draft"])
+    draft = state_copy.deepcopy(artifact["input_draft"])
     if not isinstance(draft, dict):
         draft = {}
     for slot in drop:
         draft.pop(slot, None)
-    draft.update(copy.deepcopy(corrections))
+    draft.update(state_copy.deepcopy(corrections))
     return build_state_assumption(question=artifact["question"],
                                   question_kind=artifact["question_kind"],
                                   draft=draft)

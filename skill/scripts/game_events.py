@@ -76,11 +76,19 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     "exhausted": {"about": "object", "rules": ["Core 415"]},
     "might_modified": {"about": "object", "rules": ["Core 478", "Core 481"]},
     "keyword_granted": {"about": "object", "rules": ["Core 479.3"]},
+    # set 2 package A2 (Relentless Pursuit): a triggered ability given to an object (grant_trigger)
+    "ability_granted": {"about": "object", "rules": ["Core 479.3"]},
     "empowered": {"about": "object", "rules": ["Core 442"]},
     "disempowered": {"about": "object", "rules": ["Core 443"]},
     "buffed": {"about": "object", "rules": ["Core 427"]},
     # 2026-09-27 package 6: a buff spent by an instruction (702.2.b) - one event per Unit it left
     "buff_spent": {"about": "object", "rules": ["Core 702.2.b"]},
+    # set 2 package A2 (Jae Medarda, Spirit Wheel, Irelia - Blade Dancer): an object a spell or ability chose as a target
+    # as it was finalized (Core 383.4.b, 355.10) - emitted by the play transaction and trigger finalization, not by an op
+    "targeted": {"about": "object", "rules": ["Core 383.4.b", "Core 383.4.b.3", "Core 355.10"]},
+    # set 2 package A2 (Fiora - Worthy, Fiora - Grand Duelist): a Unit on the board whose Might went from less than 5 to
+    # 5 or more (Core 709, 710). Emitted by the watch scheduler (watchers.mighty_transitions), not by an op
+    "became_mighty": {"about": "object", "rules": ["Core 709", "Core 710"]},
     "attached": {"about": "object", "rules": ["Core 435", "Core 436"]},
     "detached": {"about": "object", "rules": ["Core 436.4"]},
     "copied": {"about": "object", "rules": ["Core 479.2"]},
@@ -105,11 +113,17 @@ EVENT_KINDS: dict[str, dict[str, Any]] = {
     # 2026-09-24: a card played - Finalized by its play (Core 420.4.a). Emitted by the play
     # transaction, not by an effect program, so no op names it (PLAY_EVENT_KINDS).
     "played": {"about": "object", "rules": ["Core 420.4.a"]},
+    # set 2 package A2 (Prize of Progress): an activated ability used - played (Core 377.2) - its object the ability's
+    # source; emitted when the ability resolves, as a card's play is (420.4.a by analogy)
+    "ability_used": {"about": "object", "rules": ["Core 377", "Core 377.2"]},
     # 2026-09-28: a Unit gains the Attacker / Defender designation for the first time in a combat
     # (Core 466.2.c.3, 466.2.c.3.a; 383.4.e, 383.4.f). Emitted by combat.open_combat and
     # combat.sync_designations, not by an op (COMBAT_EVENT_KINDS); what "When an enemy unit
     # attacks ..." and "When a friendly unit attacks or defends alone" watch.
     "attacked": {"about": "object", "rules": ["Core 466.2.c.3", "Core 383.4.e", "Core 383.4.e.2.a"]},
+    # set 2 package A2: a Unit at the Battlefield of a combat its controller won, as the result is determined - the
+    # player won (Core 468.3.a) and the Unit inherits the result (468.3.c)
+    "won_combat": {"about": "object", "rules": ["Core 468.3", "Core 468.3.a", "Core 468.3.c"]},
     "defended": {"about": "object", "rules": ["Core 466.2.c.3", "Core 383.4.f", "Core 383.4.f.2.a"]},
     # 2026-09-28 (package 6): an effect-driven play's step 1 - the card moved to the Chain as a
     # Pending item while the effect resolves (Core 354, 420.3). Not "played": the play is complete
@@ -198,6 +212,7 @@ OP_PRIMARY: dict[str, str] = {
     "grant_replacement": "replacement_granted",
     "create_turn_replacement": "replacement_created",
     "grant_keyword": "keyword_granted",
+    "grant_trigger": "ability_granted",
     "stun": "stunned",
     "choose_player": "player_chosen",
     "establish_selection": "selection_established",
@@ -211,6 +226,8 @@ OP_PRIMARY: dict[str, str] = {
     "counter": "countered",
     "burn": "burned",
     "attach": "attached",
+    # ADR-0017 §5: Weaponmaster's attach is an attach (Core 821.1.c); its Equip ability is not activated (821.1.c.6)
+    "weaponmaster_attach": "attached",
     "detach": "detached",
     "copy_object": "copied",
     "empower": "empowered",
@@ -236,16 +253,42 @@ OP_PRIMARY: dict[str, str] = {
 # transaction (Core 811.1), not an instruction of a resolving effect.
 NON_PROGRAM_OPS = {"hide_card"}
 # Events no op emits at all: the play transaction's own (2026-09-24).
-PLAY_EVENT_KINDS = {"played"}
+PLAY_EVENT_KINDS = {"played", "ability_used"}
 # 2026-09-28: the combat procedures' own - a designation gained (combat.open_combat /
 # sync_designations), never an instruction's
-COMBAT_EVENT_KINDS = {"attacked", "defended"}
+COMBAT_EVENT_KINDS = {"attacked", "defended", "won_combat"}
+# set 2 package A2 (Fiora): an event the watch scheduler derives from the board as each batch is scheduled
+# (watchers.mighty_transitions, Core 709) - no op and no procedure emits it; check_became_mighty holds that it is derived
+SCHEDULER_EVENT_KINDS = {"became_mighty"}
+# set 2 package A2: targets chosen at Finalize (play_transaction.play_card, resolution_bridge.finalize_trigger);
+# check_targeted_watch holds that both emit it
+TARGETING_EVENT_KINDS = {"targeted"}
+
+
+def targeted_events(state: dict[str, Any], chosen: list[str], *, actor: str, chooser_kind: str, source: str | None,
+                    action_id: str) -> list[dict[str, Any]]:
+    """One `targeted` event per object a spell or ability chose as it was finalized (Core 383.4.b.2: Targeting Effects
+    trigger after the spell or ability targets). An object chosen in two slots of the one item is one object targeted -
+    one event. `chosen_by` names what chose it: the item's kind (a spell, an ability)."""
+    snap = snapshot(state)
+    events = []
+    for n, object_id in enumerate(dict.fromkeys(chosen), 1):
+        rec = snap.get(object_id) or {}
+        events.append({"schema_version": EVENT_VERSION, "event_id": f"{action_id}#{n}", "action_id": action_id,
+                       "kind": "targeted", "source": {"object": source, "kind": "object" if source else "rule"},
+                       "actor": actor, "controller": rec.get("controller"), "object": object_id,
+                       "player": rec.get("owner"), "identity_before": rec.get("identity"),
+                       "identity_after": rec.get("identity"), "location_before": rec.get("location"),
+                       "location_after": rec.get("location"), "causal_parent": None,
+                       "visibility": {"fact": "public", "identity": "public"},
+                       "rule_locators": list(EVENT_KINDS["targeted"]["rules"]), "chosen_by": chooser_kind})
+    return events
 DESIGNATION_EVENT_KINDS = {"attacker": "attacked", "defender": "defended"}
 
 
 def designation_event(*, combat_id: str, role: str, unit: str, identity: str, controller: str,
                       battlefield: str, battlefield_controller: str | None, alone: bool,
-                      turn_player: str | None = None) -> dict[str, Any]:
+                      turn_player: str | None = None, one_on_one: bool = False) -> dict[str, Any]:
     """The event of one Unit gaining a combat designation (Core 466.2.c.3) - once per object
     identity per combat, as its own Attack / Defend triggers are (383.4.e.2.a, 383.4.f.2.a).
     It carries what a watch's other requirements read at that moment (383.4.e.2.b, 383.4.f.2.b):
@@ -262,7 +305,22 @@ def designation_event(*, combat_id: str, role: str, unit: str, identity: str, co
             "visibility": {"fact": "public", "identity": "public"},
             "rule_locators": list(EVENT_KINDS[kind]["rules"]) + ["Core 740.2.a"],
             "object_kind": "unit", "battlefield": battlefield, "battlefield_controller": battlefield_controller,
-            "alone": bool(alone), "role": role, "turn_player": turn_player}
+            "alone": bool(alone), "role": role, "turn_player": turn_player,
+            # set 2 package A2 (Fiora - Peerless): it and the one enemy Unit there both alone (Core 740.2.b)
+            "one_on_one": bool(one_on_one)}
+
+
+def won_combat_event(*, combat_id: str, unit: str, identity: str, controller: str, battlefield: str,
+                     turn_player: str | None = None) -> dict[str, Any]:
+    """Set 2 package A2: one Unit of the winner's at the combat's Battlefield as the result is determined (Core 468.3.a,
+    468.3.c) - its controller won, and so did it. The Unit stays where it is. Public."""
+    where = {"kind": "battlefield", "battlefield": battlefield}
+    return {"schema_version": EVENT_VERSION, "event_id": f"{combat_id}#won_combat:{unit}", "action_id": f"{combat_id}:result",
+            "kind": "won_combat", "source": {"object": None, "kind": "rule"}, "actor": controller, "controller": controller,
+            "object": unit, "player": controller, "identity_before": identity, "identity_after": identity,
+            "location_before": dict(where), "location_after": dict(where), "causal_parent": None,
+            "visibility": {"fact": "public", "identity": "public"}, "rule_locators": list(EVENT_KINDS["won_combat"]["rules"]),
+            "object_kind": "unit", "battlefield": battlefield, "turn_player": turn_player}
 
 
 def awaken_ready_event(*, turn_id: str, obj: str, identity: str, controller: str, object_kind: str,
@@ -279,6 +337,19 @@ def awaken_ready_event(*, turn_id: str, obj: str, identity: str, controller: str
             "visibility": {"fact": "public", "identity": "public"},
             "rule_locators": list(EVENT_KINDS["readied"]["rules"]) + ["Core 315.1.b", "Core 416.3.a"],
             "object_kind": object_kind, "turn_player": turn_player}
+
+
+def ability_used_event(*, play_id: str, source: str, actor: str, object_kind: str | None, identity: str | None,
+                       turn_player: str | None) -> dict[str, Any]:
+    """set 2 package A2 (Prize of Progress): an activated ability its controller used (Core 377.2), about the
+    permanent whose ability it is - `object_kind` the source's kind ("an activated ability of a gear"). Public."""
+    return {"schema_version": EVENT_VERSION, "event_id": f"play:{play_id}#ability_used", "action_id": f"play:{play_id}",
+            "kind": "ability_used", "source": {"object": source, "kind": "object"}, "actor": actor, "controller": actor,
+            "object": source, "player": actor, "identity_before": identity, "identity_after": identity,
+            "location_before": None, "location_after": None, "causal_parent": None,
+            "visibility": {"fact": "public", "identity": "public"},
+            "rule_locators": list(EVENT_KINDS["ability_used"]["rules"]), "object_kind": object_kind,
+            "turn_player": turn_player}
 
 
 def played_event(*, play_id: str, card: str, actor: str, object_kind: str, identity_before: str | None,
@@ -307,6 +378,8 @@ _COST_ZONE_EVENTS = {
     "pay_discard": ("discarded", "discard", "hand", "trash", ["Core 423.2.a", "Core 423.3"]),
     # Core 417.2.a: the same for Recycle; 417.3: Recycle as a cost; 417.1.c: to the owner's deck
     "pay_recycle_trash": ("recycled", "recycle", "trash", "main_deck", ["Core 417.1.c", "Core 417.2.a", "Core 417.3"]),
+    # set 2 package A2 (Rumble - Hotheaded): a unit recycled from the board as a trigger's base cost
+    "pay_recycle_unit": ("recycled", "recycle", "board", "main_deck", ["Core 417.1.c", "Core 417.2.a", "Core 417.3"]),
 }
 
 
@@ -679,6 +752,7 @@ class EventLog:
             "healed": ("amount",),
             "might_modified": ("amount", "duration"),
             "keyword_granted": ("keyword", "value", "duration"),
+            "ability_granted": ("granted",),
             "resource_added": ("resource", "amount", "domain"),
             "xp_gained": ("amount",),
             "drawn": ("player",),

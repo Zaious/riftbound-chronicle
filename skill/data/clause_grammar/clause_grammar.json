@@ -215,6 +215,13 @@
             "implemented": false
           }
         },
+        "quick_draw": {
+          "pattern": "\\[quick\\-draw(?: (?P<quick_draw_value>\\d+))?\\]",
+          "value": {
+            "keyword": "quick_draw",
+            "implemented": true
+          }
+        },
         "repeat": {
           "pattern": "\\[repeat(?: (?P<repeat_value>\\d+))?\\]",
           "value": {
@@ -254,6 +261,13 @@
           "pattern": "\\[vision(?: (?P<vision_value>\\d+))?\\]",
           "value": {
             "keyword": "vision",
+            "implemented": true
+          }
+        },
+        "weaponmaster": {
+          "pattern": "\\[weaponmaster(?: (?P<weaponmaster_value>\\d+))?\\]",
+          "value": {
+            "keyword": "weaponmaster",
             "implemented": true
           }
         }
@@ -874,12 +888,14 @@
           "hunt",
           "legion",
           "level",
+          "quick_draw",
           "repeat",
           "shield",
           "tank",
           "temporary",
           "unique",
-          "vision"
+          "vision",
+          "weaponmaster"
         ]
       },
       "normalization": "clause-grammar.v1/normalize",
@@ -907,12 +923,14 @@
         "[Hunt][>] Draw 1.",
         "[Legion][>] When you play me, draw 1.",
         "[Level][>] Draw 1.",
+        "[Quick-Draw][>] Draw 1.",
         "[Repeat][>] Draw 1.",
         "[Shield][>] Draw 1.",
         "[Tank][>] Draw 1.",
         "[Temporary][>] Draw 1.",
         "[Unique][>] Draw 1.",
-        "[Vision][>] Draw 1."
+        "[Vision][>] Draw 1.",
+        "[Weaponmaster][>] Draw 1."
       ],
       "negative": [
         "[Nonesuch][>] Draw 1.",
@@ -939,12 +957,14 @@
           "hunt",
           "legion",
           "level",
+          "quick_draw",
           "repeat",
           "shield",
           "tank",
           "temporary",
           "unique",
-          "vision"
+          "vision",
+          "weaponmaster"
         ]
       },
       "normalization": "clause-grammar.v1/normalize",
@@ -972,12 +992,14 @@
         "[Hunt]",
         "[Legion]",
         "[Level]",
+        "[Quick-Draw]",
         "[Repeat]",
         "[Shield]",
         "[Tank]",
         "[Temporary]",
         "[Unique]",
-        "[Vision]"
+        "[Vision]",
+        "[Weaponmaster]"
       ],
       "negative": [
         "[Nonesuch]",
@@ -1645,6 +1667,117 @@
       ]
     },
     {
+      "production_id": "you_and_each_opponent_may_play_a_gold_gear_token_exhausted_for_each_opponent_who_did_you_play_one",
+      "form": "You and each opponent may play a Gold gear token exhausted. For each opponent who did, you play a Gold gear token exhausted.",
+      "template": "you and each opponent may play a gold gear token exhausted\\. for each opponent who did, you play a gold gear token exhausted",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.10.e",
+        "Core 355.12",
+        "Core 184",
+        "Core 350.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "each_player",
+        "play_token"
+      ],
+      "boundary": "Each player, its controller first and then in turn order, decides as it resolves whether to play a Gold gear token exhausted (each their own choice); then its controller plays one more Gold gear token exhausted for each opponent who played one. Each Gold is the catalogued token with its printed ability.",
+      "golden": [
+        "You and each opponent may play a Gold gear token exhausted. For each opponent who did, you play a Gold gear token exhausted."
+      ],
+      "negative": [
+        "each opponent may play a gold gear token exhausted. for each opponent who did, you play a gold gear token exhausted",
+        "you and each opponent may play a gold gear token exhausted",
+        "you and each opponent may play a gold gear token. for each opponent who did, draw 1"
+      ]
+    },
+    {
+      "production_id": "choose_an_equipped_friendly_unit_it_deals_damage_equal_to_its_might_to_an_enemy_unit_then_detach",
+      "form": "Choose an equipped friendly unit. It deals damage equal to its Might to an enemy unit. Then detach an Equipment from it.",
+      "template": "choose an equipped friendly unit\\. it deals damage equal to its might to an enemy unit\\. then detach an equipment from it",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 418.6.b.3",
+        "Core 436.1",
+        "Core 436.1.a",
+        "Core 359.3.e.6"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "detach",
+        "mutual_damage_current_might",
+        "typed_selectors"
+      ],
+      "boundary": "Two target slots chosen at play - a friendly Unit with an Equipment attached, and an enemy Unit anywhere on the board; the first deals damage equal to its current Might to the second (the Unit is the source); then one Equipment attached to the first is detached, its controller picking when there are several. Two-way damage, an enemy unit at a battlefield, or no detach is a different production.",
+      "golden": [
+        "Choose an equipped friendly unit. It deals damage equal to its Might to an enemy unit. Then detach an Equipment from it."
+      ],
+      "negative": [
+        "choose a friendly unit. it deals damage equal to its might to an enemy unit. then detach an equipment from it",
+        "choose an equipped friendly unit. it deals damage equal to its might to an enemy unit",
+        "choose an equipped friendly unit and an enemy unit. they deal damage equal to their mights to each other"
+      ]
+    },
+    {
+      "production_id": "choose_a_unit_and_an_equipment_with_the_same_controller_attach_or_detach_draw_n",
+      "form": "Choose a unit and an Equipment with the same controller. Attach that Equipment to that unit or detach that Equipment from that unit. Draw 1.",
+      "template": "choose a unit and an equipment with the same controller\\. attach that equipment to that unit or detach that equipment from that unit\\. draw (?P<count>\\d+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 355.9",
+        "Core 435.1",
+        "Core 436.1",
+        "Core 436.1.a"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "attach",
+        "detach",
+        "typed_selectors"
+      ],
+      "boundary": "Two target slots chosen at play - a Unit on the board, and an Equipment on the board controlled by that Unit's controller; as it resolves its controller chooses to attach the Equipment to the Unit or to detach it from the Unit (nothing when it is not attached to that Unit); then they draw N. Units of different controllers, or a choice made at play, is a different production.",
+      "golden": [
+        "Choose a unit and an Equipment with the same controller. Attach that Equipment to that unit or detach that Equipment from that unit. Draw 1."
+      ],
+      "negative": [
+        "choose a unit and an equipment. attach that equipment to that unit or detach that equipment from that unit. draw 1",
+        "choose a unit and an equipment with the same controller. attach that equipment to that unit. draw 1",
+        "choose a unit and a gear with the same controller. attach that gear to that unit or detach that gear from that unit. draw 1"
+      ]
+    },
+    {
+      "production_id": "choose_a_friendly_unit_anywhere_and_an_enemy_unit_at_a_battlefield_they_deal_damage_to_each_other",
+      "form": "Choose a friendly unit anywhere and an enemy unit at a battlefield. They deal damage equal to their Mights to each other.",
+      "template": "choose a friendly unit anywhere and an enemy unit at a battlefield\\. they deal damage equal to their mights to each other",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 355.7",
+        "Core 418.6.b"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "mutual_damage_current_might",
+        "typed_selectors"
+      ],
+      "boundary": "Two target slots chosen at play, a friendly Unit at any Location and an enemy Unit at a Battlefield; each deals damage equal to its own Might to the other. Two friendly units, an enemy unit anywhere, or a one-way Deal is a different production.",
+      "golden": [
+        "Choose a friendly unit anywhere and an enemy unit at a battlefield. They deal damage equal to their Mights to each other."
+      ],
+      "negative": [
+        "choose a friendly unit and an enemy unit. they deal damage equal to their mights to each other",
+        "choose a friendly unit anywhere and an enemy unit anywhere. they deal damage equal to their mights to each other",
+        "choose a friendly unit anywhere and an enemy unit at a battlefield. it deals damage equal to its might to the other"
+      ]
+    },
+    {
       "production_id": "choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit",
       "form": "Choose a friendly unit. This turn, increase its Might to the Might of another friendly unit.",
       "template": "choose a friendly unit\\. this turn, increase its might to the might of another friendly unit",
@@ -1699,6 +1832,30 @@
         "banish a friendly unit, then play it to your base, ignoring its cost",
         "banish an enemy unit, then its owner plays it to their base, ignoring its cost",
         "banish a friendly unit, then its owner plays it, ignoring its energy cost"
+      ]
+    },
+    {
+      "production_id": "i_dont_deal_combat_damage",
+      "form": "I don't deal combat damage.",
+      "template": "i don't deal combat damage",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 467.2.a",
+        "Core 467.2.b"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "keyword_catalog"
+      ],
+      "boundary": "As its side's combat damage is summed, this unit contributes nothing (a Stunned unit's way, 424.1.b); it is still an attacker or defender, can be assigned damage and is dealt it. 'I don't take combat damage' or another unit's statement are different productions.",
+      "golden": [
+        "I don't deal combat damage."
+      ],
+      "negative": [
+        "i don't take combat damage",
+        "friendly units don't deal combat damage",
+        "i don't deal damage"
       ]
     },
     {
@@ -1828,6 +1985,141 @@
       ]
     },
     {
+      "production_id": "move_a_friendly_unit_attach_up_to_one_equipment_grant_conquer_move_to_base",
+      "form": "Move a friendly unit. You may attach up to one Equipment with the same controller to it. This turn, that unit has \"When I conquer, you may move me to my base.\"",
+      "template": "move a friendly unit\\. you may attach up to one equipment with the same controller to it\\. this turn, that unit has \"when i conquer, you may move me to my base\\.\"",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 355.13",
+        "Core 421",
+        "Core 435",
+        "Core 355.12",
+        "Core 479.3",
+        "Core 383.3.a"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "attach",
+        "grant_trigger",
+        "move_board_object"
+      ],
+      "boundary": "One friendly unit, and none or one Equipment its controller controls, chosen as the spell is played; the unit moves where its controller chooses; then its controller may attach the Equipment to it; then, this turn, it has the triggered ability 'When I conquer, you may move me to my base.' (its own, the 'you may' decided as that ability is finalized).",
+      "golden": [
+        "Move a friendly unit. You may attach up to one Equipment with the same controller to it. This turn, that unit has \"When I conquer, you may move me to my base.\""
+      ],
+      "negative": [
+        "move a friendly unit. you may attach up to one equipment with the same controller to it",
+        "move an enemy unit. you may attach up to one equipment with the same controller to it. this turn, that unit has \"when i conquer, you may move me to my base.\"",
+        "move a friendly unit. this turn, that unit has \"when i conquer, you may move me to my base.\""
+      ]
+    },
+    {
+      "production_id": "choose_a_unit_you_control_swap_with_me_attach_one_of_its_equipment_to_me",
+      "form": "Choose a unit you control. Move me to its location and it to my original location. If it's equipped, you may attach one of its Equipment to me.",
+      "template": "choose a unit you control\\. move me to its location and it to my original location\\. if it's equipped, you may attach one of its equipment to me",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 421",
+        "Core 355.12",
+        "Core 355.10",
+        "Core 435",
+        "Core 436.1.a"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "attach",
+        "move_board_object",
+        "typed_selectors"
+      ],
+      "boundary": "One unit its controller controls is chosen as it is played; the source moves to that unit's location and that unit to the source's original one (the Tideturner pair, check_swap_locations); then its controller may attach one Equipment attached to that unit to the source, picked as it resolves when there are several - none attached, nothing happens.",
+      "golden": [
+        "Choose a unit you control. Move me to its location and it to my original location. If it's equipped, you may attach one of its Equipment to me."
+      ],
+      "negative": [
+        "choose a unit you control. move me to its location and it to my original location",
+        "choose an enemy unit. move me to its location and it to my original location. if it's equipped, you may attach one of its equipment to me",
+        "choose a unit you control. move me to its location and it to my original location. attach one of its equipment to me"
+      ]
+    },
+    {
+      "production_id": "play_all_units_banished_with_this_ignoring_their_costs",
+      "form": "Play all units banished with this, ignoring their costs.",
+      "template": "play all units banished with this, ignoring their costs",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 396",
+        "Core 398",
+        "Core 420.3",
+        "Core 356.1.b.1"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "limited_play"
+      ],
+      "boundary": "Each unit card the source's linked ability banished, still in its owner's Banishment as that object, is played by this ability's controller ignoring its cost - one effect-driven play each. A unit banished by anything else is not.",
+      "golden": [
+        "Play all units banished with this, ignoring their costs."
+      ],
+      "negative": [
+        "play all units banished this turn, ignoring their costs",
+        "play a unit banished with this, ignoring its cost",
+        "play all units banished with this"
+      ]
+    },
+    {
+      "production_id": "play_a_n_might_sand_soldier_unit_token_to_your_base",
+      "form": "Play a 2 :rb_might: Sand Soldier unit token to your base.",
+      "template": "play an? (?P<might>\\d+) \\[m\\] sand soldier unit token to your base",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 185.2.a",
+        "Core 184.2"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "play_token"
+      ],
+      "boundary": "One Sand Soldier unit token of the printed Might, its controller's, in its controller's Base. Another token, 'here' or no place are different productions.",
+      "golden": [
+        "Play a 2 :rb_might: Sand Soldier unit token to your base."
+      ],
+      "negative": [
+        "play a 2 [m] sand soldier unit token here",
+        "play a 3 [m] mech unit token to your base",
+        "play a 2 [m] sand soldier unit token to a battlefield"
+      ]
+    },
+    {
+      "production_id": "move_me_to_your_base",
+      "form": "Move me to your base.",
+      "template": "move me to your base",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 421",
+        "Core 355.4.a"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "move_board_object"
+      ],
+      "boundary": "The source itself moves to its controller's Base; nothing is chosen. Another unit, 'its base', or a Battlefield destination are different productions.",
+      "golden": [
+        "Move me to your base."
+      ],
+      "negative": [
+        "move a friendly unit to your base",
+        "move me to a battlefield",
+        "move me"
+      ]
+    },
+    {
       "production_id": "move_a_friendly_unit_at_a_battlefield_to_its_base",
       "form": "Move a friendly unit at a battlefield to its base.",
       "template": "move a friendly unit at (?:a )?battlefield to its base",
@@ -1852,6 +2144,59 @@
         "move a friendly unit to its base",
         "move an enemy unit at a battlefield to its base",
         "move a friendly unit to or from its base"
+      ]
+    },
+    {
+      "production_id": "while_you_control_this_battlefield_friendly_legends_have_exhaust_attach_an_equipment",
+      "form": "While you control this battlefield, friendly legends have &quot;:rb_exhaust:: Attach an Equipment you control to a unit you control.&quot;",
+      "template": "while you control this battlefield, friendly legends have (?:&quot;|\")?:rb_exhaust:: attach an equipment you control to a unit you control\\.?(?:&quot;|\")?",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 190.6",
+        "Core 377",
+        "Core 435"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "attach",
+        "typed_selectors"
+      ],
+      "boundary": "The Battlefield's own text: while its controller controls it, each Legend of theirs has an [Exhaust] ability that attaches an Equipment they control to a Unit they control, both chosen as it is activated. An opponent's Legends, Units, or another ability are different clauses.",
+      "golden": [
+        "While you control this battlefield, friendly legends have &quot;:rb_exhaust:: Attach an Equipment you control to a unit you control.&quot;"
+      ],
+      "negative": [
+        "while you control this battlefield, friendly units have &quot;:rb_exhaust:: attach an equipment you control to a unit you control.&quot;",
+        "friendly legends have &quot;:rb_exhaust:: attach an equipment you control to a unit you control.&quot;",
+        "while you control this battlefield, enemy legends have &quot;:rb_exhaust:: attach an equipment you control to a unit you control.&quot;"
+      ]
+    },
+    {
+      "production_id": "attach_a_detached_or_attached_equipment_you_control_to_a_unit_you_control",
+      "form": "Attach a detached Equipment you control to a unit you control.",
+      "template": "attach an? (?P<state>detached|attached) equipment you control to a unit you control",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 435",
+        "Core 435.2.a",
+        "Core 355.5"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "attach",
+        "typed_selectors"
+      ],
+      "boundary": "One Equipment its controller controls - attached to nothing now, or attached to a unit now - and one Unit its controller controls, both chosen; the Equipment is attached to that Unit (from any other it was attached to). An enemy Equipment, any Gear, or a unit chosen by another player is a different production.",
+      "golden": [
+        "Attach a detached Equipment you control to a unit you control.",
+        "Attach an attached Equipment you control to a unit you control."
+      ],
+      "negative": [
+        "attach an equipment you control to a unit you control",
+        "attach a detached equipment to a unit you control",
+        "attach a detached gear you control to a unit you control"
       ]
     },
     {
@@ -2437,6 +2782,32 @@
       ]
     },
     {
+      "production_id": "give_the_next_spell_you_play_this_turn_repeat_equal_to_its_cost",
+      "form": "Give the next spell you play this turn [Repeat] equal to its cost.",
+      "template": "give the next spell you play this turn \\[repeat\\] equal to its cost",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 391.4",
+        "Core 392",
+        "Core 820.1",
+        "Core 206"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "grant_turn_effect"
+      ],
+      "boundary": "The next spell its controller plays this turn offers a [Repeat] whose cost is the spell's printed cost, chosen as it is played; spent by that play whether or not it is paid. Another card kind, or a fixed Repeat cost, is a different clause.",
+      "golden": [
+        "Give the next spell you play this turn [Repeat] equal to its cost."
+      ],
+      "negative": [
+        "give the next unit you play this turn [repeat] equal to its cost",
+        "give the next spell you play this turn [repeat]",
+        "give the next spell you play [repeat] equal to its cost"
+      ]
+    },
+    {
       "production_id": "the_next_spell_you_play_this_turn_costs_n_less",
       "form": "The next spell you play this turn costs :rb_energy_5: less.",
       "template": "the next spell you play this turn costs \\[e(?P<amount>\\d+)\\] less",
@@ -2540,6 +2911,103 @@
       ]
     },
     {
+      "production_id": "attached_this_turn_more_might",
+      "form": "If this was attached to me this turn, I have an additional +2 :rb_might:.",
+      "template": "if this was attached to me this turn, i have an additional \\+(?P<amount>\\d+) \\[m\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 435.1.c",
+        "Core 479.4",
+        "Core 364.3.a"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "An Effect Text's conditional Might: while the Equipment it belongs to is attached to its Top-Most card by an attach made this turn. Another duration or another condition is a different clause.",
+      "golden": [
+        "If this was attached to me this turn, I have an additional +2 :rb_might:."
+      ],
+      "negative": [
+        "i have an additional +2 :rb_might:",
+        "if this was attached to me, i have +2 :rb_might:",
+        "if you attached an equipment this turn, i have an additional +2 :rb_might:"
+      ]
+    },
+    {
+      "production_id": "my_hold_effects_are_also_conquer_effects_and_vice_versa",
+      "form": "My hold effects are also conquer effects, and vice versa.",
+      "template": "my hold effects are also conquer effects, and vice versa",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 435.1.c",
+        "Core 383.4.c",
+        "Core 383.4.d"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "An Effect Text: while it is its Top-Most card's, that card's own abilities that trigger when it holds also trigger when it conquers, and the other way round. One direction only, or another player's, is a different clause.",
+      "golden": [
+        "My hold effects are also conquer effects, and vice versa."
+      ],
+      "negative": [
+        "my hold effects are also conquer effects",
+        "your hold effects are also conquer effects, and vice versa",
+        "my conquer effects are also hold effects"
+      ]
+    },
+    {
+      "production_id": "i_am_a_tag",
+      "form": "I am a Mech.",
+      "template": "i am an? (?P<tag>mech|dragon|poro|yordle|sand soldier|recruit|bird|cat|dog|spirit)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 133.8"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "A tag the card's own text gives it, beside whatever tags it is printed with - as an Effect Text, its Top-Most card's.",
+      "golden": [
+        "I am a Mech."
+      ],
+      "negative": [
+        "i am mighty",
+        "your units are mechs",
+        "i am a unit"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_not_from_hand",
+      "form": "I cost :rb_energy_2: less to play from anywhere other than your hand.",
+      "template": "i cost \\[e(?P<amount>\\d+)\\] less to play from anywhere other than your hand",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 350.1"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text and a fixed Energy amount, applied only when the card is played from somewhere other than its player's hand (a facedown zone, a trash, a deck); played from the hand it costs what it costs.",
+      "golden": [
+        "I cost :rb_energy_2: less to play from anywhere other than your hand."
+      ],
+      "negative": [
+        "i cost :rb_energy_2: less to play from your hand",
+        "i cost :rb_energy_2: less to play from your trash",
+        "i cost :rb_rune_rainbow: less to play from anywhere other than your hand"
+      ]
+    },
+    {
       "production_id": "self_cost_reduction_fixed",
       "form": "I cost :rb_energy_2: less.",
       "template": "i cost \\[e(?P<amount>\\d+)\\] less",
@@ -2560,6 +3028,235 @@
         "i cost :rb_rune_rainbow: less",
         "i cost [e] less",
         "units cost :rb_energy_2: less"
+      ]
+    },
+    {
+      "production_id": "as_im_revealed_from_your_deck_add_energy",
+      "form": "As I'm revealed from your deck, [Add] :rb_energy_2:.",
+      "template": "as i'm revealed from your deck, \\[add\\] \\[e(?P<amount>\\d+)\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 425",
+        "Core 430",
+        "Core 364.3"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "As a reveal instruction reveals this card from its owner's Main Deck, its owner adds the Energy to their Rune Pool. Looked at privately, or revealed from another zone, it adds nothing. Power, or another player's pool, is a different clause.",
+      "golden": [
+        "As I'm revealed from your deck, [Add] :rb_energy_2:."
+      ],
+      "negative": [
+        "as i'm revealed from your hand, [add] :rb_energy_2:",
+        "when you reveal me, draw 1",
+        "as i'm revealed from your deck, [add] :rb_rune_rainbow:"
+      ]
+    },
+    {
+      "production_id": "while_you_control_this_battlefield_the_first_friendly_non_token_gear_played_each_turn_costs_n_less",
+      "form": "While you control this battlefield, the first friendly non-token gear played each turn costs :rb_energy_1: less.",
+      "template": "while you control this battlefield, the first friendly non-token gear played each turn costs \\[e(?P<amount>\\d+)\\] less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4.b",
+        "Core 420",
+        "Core 190.6"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "While its controller controls this Battlefield, the first non-token Gear card that player plays each turn costs the amount of Energy less. A token, a later Gear, or a Power discount is a different clause.",
+      "golden": [
+        "While you control this battlefield, the first friendly non-token gear played each turn costs :rb_energy_1: less."
+      ],
+      "negative": [
+        "while you control this battlefield, friendly gear costs :rb_energy_1: less",
+        "the first friendly non-token gear played each turn costs :rb_energy_1: less",
+        "while you control this battlefield, the first friendly unit played each turn costs :rb_energy_1: less"
+      ]
+    },
+    {
+      "production_id": "optional_additional_costs_you_pay_cost_energy_or_any_power_less",
+      "form": "Optional additional costs you pay cost :rb_energy_1: or :rb_rune_rainbow: less.",
+      "template": "optional additional costs you pay cost \\[e1\\] or \\[a\\] less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4.c",
+        "Core 356.4.c.2",
+        "Core 356.4.f",
+        "Core 356.2.b"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "Each optional additional cost its controller chooses to pay, on a card that player plays while this is on the board, costs one Energy or one Power less - the payer chooses which, on that cost's own Energy or Power, never both and never below 0. A mandatory cost, or every cost, is a different clause.",
+      "golden": [
+        "Optional additional costs you pay cost :rb_energy_1: or :rb_rune_rainbow: less."
+      ],
+      "negative": [
+        "optional additional costs you pay cost :rb_energy_1: less",
+        "additional costs you pay cost :rb_energy_1: or :rb_rune_rainbow: less",
+        "optional additional costs you pay cost :rb_energy_2: or :rb_rune_rainbow: less"
+      ]
+    },
+    {
+      "production_id": "your_spells_that_choose_me_cost_energy_or_any_power_less",
+      "form": "Your spells that choose me cost :rb_energy_1: or :rb_rune_rainbow: less.",
+      "template": "your spells that choose me cost \\[e1\\] or \\[a\\] less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4.c",
+        "Core 356.4.c.2",
+        "Core 355.5"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "Each spell its controller plays that chooses this card costs one Energy or one Power less - the payer chooses which component of the spell's cost, never both and never below 0. A spell that does not choose it, or a unit, is not reduced.",
+      "golden": [
+        "Your spells that choose me cost :rb_energy_1: or :rb_rune_rainbow: less."
+      ],
+      "negative": [
+        "your spells cost :rb_energy_1: or :rb_rune_rainbow: less",
+        "your spells that choose me cost :rb_energy_1: less",
+        "your units that choose me cost :rb_energy_1: or :rb_rune_rainbow: less"
+      ]
+    },
+    {
+      "production_id": "while_im_in_combat_friendly_spells_cost_less_enemy_spells_cost_more",
+      "form": "While I'm in combat, friendly spells cost :rb_energy_1::rb_rune_rainbow: less to a minimum of :rb_energy_1:, and enemy spells cost :rb_energy_1::rb_rune_rainbow: more.",
+      "template": "while i'm in combat, friendly spells cost \\[e(?P<less>\\d+)\\]\\[a\\] less to a minimum of \\[e(?P<minimum>\\d+)\\], and enemy spells cost \\[e(?P<more>\\d+)\\]\\[a\\] more",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.3",
+        "Core 356.4",
+        "Core 356.4.c",
+        "Core 356.4.e",
+        "Core 364.3.a"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "While the Unit is in a Combat (designated an attacker or a defender), each spell its controller plays costs the Energy less, never below the minimum by this discount, and one Power of any Domain less (the payer chooses the Domain when the spell's cost has Power of more than one); each spell an opponent plays costs the Energy and one Power of any Domain more. Out of combat, nothing.",
+      "golden": [
+        "While I'm in combat, friendly spells cost :rb_energy_1::rb_rune_rainbow: less to a minimum of :rb_energy_1:, and enemy spells cost :rb_energy_1::rb_rune_rainbow: more."
+      ],
+      "negative": [
+        "while i'm at a battlefield, friendly spells cost :rb_energy_1::rb_rune_rainbow: less to a minimum of :rb_energy_1:, and enemy spells cost :rb_energy_1::rb_rune_rainbow: more",
+        "while i'm in combat, friendly spells cost :rb_energy_1: less",
+        "while i'm in combat, friendly units cost :rb_energy_1::rb_rune_rainbow: less to a minimum of :rb_energy_1:, and enemy units cost :rb_energy_1::rb_rune_rainbow: more"
+      ]
+    },
+    {
+      "production_id": "while_your_score_is_within_n_your_gold_add_an_additional_energy",
+      "form": "While your score is within 3 points of the Victory Score, your Gold [ADD] an additional :rb_energy_1:.",
+      "template": "while your score is within (?P<within>\\d+) points of the victory score, your gold \\[add\\] an additional \\[e(?P<amount>\\d+)\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 364.3.a",
+        "Core 430",
+        "Core 187"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "While its controller's score is within N points of the Victory Score (read as each Add resolves), each Add ability of a Gold token that player controls adds the Energy more, beside what it prints. An opponent's score, another token's Add, or a Power bonus is a different clause.",
+      "golden": [
+        "While your score is within 3 points of the Victory Score, your Gold [ADD] an additional :rb_energy_1:."
+      ],
+      "negative": [
+        "while an opponent's score is within 3 points of the victory score, your gold [add] an additional :rb_energy_1:",
+        "while your score is within 3 points of the victory score, your mechs [add] an additional :rb_energy_1:",
+        "your gold [add] an additional :rb_energy_1:"
+      ]
+    },
+    {
+      "production_id": "while_you_control_this_battlefield_friendly_repeat_costs_cost_n_less",
+      "form": "While you control this battlefield, friendly [Repeat] costs cost :rb_energy_1: less.",
+      "template": "while you control this battlefield, friendly \\[repeat\\] costs cost \\[e(?P<amount>\\d+)\\] less",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4.c",
+        "Core 356.4.c.2",
+        "Core 820.1",
+        "Core 190.6"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "While its controller controls this Battlefield, each [Repeat] cost of a card that player plays has its Energy reduced by the amount, not below 0 (a discount on that one component). A Power discount, or every cost, is a different clause.",
+      "golden": [
+        "While you control this battlefield, friendly [Repeat] costs cost :rb_energy_1: less."
+      ],
+      "negative": [
+        "friendly [repeat] costs cost :rb_energy_1: less",
+        "while you control this battlefield, spells cost :rb_energy_1: less",
+        "while you control this battlefield, friendly [repeat] costs cost :rb_rune_rainbow: less"
+      ]
+    },
+    {
+      "production_id": "while_im_at_a_battlefield_opponents_cant_gain_points",
+      "form": "While I'm at a battlefield, opponents can't gain points.",
+      "template": "while i'm at a battlefield, opponents can't gain points",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 054.1",
+        "Core 473.1",
+        "Core 364.3.a"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "While the card is at a Battlefield, its controller's opponents gain no point - from a Score (the battlefield is still scored and its Score abilities trigger), an instruction, or a Burn Out. Another player, another condition, or scoring prevented altogether is a different clause.",
+      "golden": [
+        "While I'm at a battlefield, opponents can't gain points."
+      ],
+      "negative": [
+        "opponents can't gain points",
+        "while i'm at a battlefield, you can't gain points",
+        "while i'm at a battlefield, opponents can't score"
+      ]
+    },
+    {
+      "production_id": "i_have_n_might_for_each_friendly_gear",
+      "form": "I have +1 :rb_might: for each friendly gear.",
+      "template": "i have \\+(?P<amount>\\d+) \\[m\\] for each friendly gear",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 479.4",
+        "Core 479.4.b",
+        "Core 364.3"
+      ],
+      "ast_node": "dynamic_might",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "A passive increase of the card's own Might by the amount for each Gear its controller controls on the board, computed fresh each time (479.4.b). Units, enemy Gear, or Gear off the board are a different clause.",
+      "golden": [
+        "I have +1 :rb_might: for each friendly gear."
+      ],
+      "negative": [
+        "i have +1 :rb_might: for each friendly unit",
+        "i have +1 :rb_might: for each enemy gear",
+        "i have +1 :rb_might:"
       ]
     },
     {
@@ -2608,6 +3305,82 @@
       "negative": [
         "i cost :rb_energy_1: less for each card in your hand",
         "i cost :rb_energy_1: less for each unit you control"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_per_card_played",
+      "form": "I cost :rb_energy_1: less for each card you've played this turn, to a minimum of :rb_energy_1:.",
+      "template": "i cost \\[e(?P<amount>\\d+)\\] less for each card you've played this turn, to a minimum of \\[e(?P<minimum>\\d+)\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.4.e",
+        "Core 420.4.b"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text: a fixed Energy amount per card its player has played this turn, the card being played not among them, never below the printed minimum. Another player's cards, spells only, or no minimum is a different clause.",
+      "golden": [
+        "I cost :rb_energy_1: less for each card you've played this turn, to a minimum of :rb_energy_1:."
+      ],
+      "negative": [
+        "i cost :rb_energy_1: less for each card your opponents have played this turn, to a minimum of :rb_energy_1:",
+        "i cost :rb_energy_1: less for each spell you've played this turn, to a minimum of :rb_energy_1:",
+        "i cost :rb_energy_1: less for each card you've played this turn"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_per_mighty_unit",
+      "form": "I cost :rb_energy_2: less for each of your [Mighty] units.",
+      "template": "i cost \\[e(?P<amount>\\d+)\\] less for each of your \\[mighty\\] units",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.6",
+        "Core 708"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text: a fixed Energy amount per Mighty Unit (5+ Might) its player controls on the board, read as the cost is determined; 356.6 keeps it at 0 or above. An opponent's Units or a Power reduction is a different clause.",
+      "golden": [
+        "I cost :rb_energy_2: less for each of your [Mighty] units."
+      ],
+      "negative": [
+        "i cost :rb_energy_2: less for each of your opponents' [mighty] units",
+        "i cost :rb_rune_body: less for each of your [mighty] units",
+        "i cost :rb_energy_2: less for each of your units"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_per_hold_point",
+      "form": "I cost :rb_energy_2::rb_rune_calm: less for each point you scored from holding this turn.",
+      "template": "i cost \\[e(?P<amount>\\d+)\\]\\[rune:(?P<domain>[a-z]+)\\] less for each point you scored from holding this turn",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.6",
+        "Core 471.2",
+        "Core 473.1"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text: a fixed Energy amount and one Power of the printed Domain per point its player gained by Holding this turn, read as the cost is determined; 356.6 keeps each at 0 or above. Points from Conquering, an opponent's points, or another count are different clauses.",
+      "golden": [
+        "I cost :rb_energy_2::rb_rune_calm: less for each point you scored from holding this turn."
+      ],
+      "negative": [
+        "i cost :rb_energy_2::rb_rune_calm: less for each point you scored from conquering this turn",
+        "i cost :rb_energy_2::rb_rune_calm: less for each point your opponents scored from holding this turn",
+        "i cost :rb_energy_2: less for each point you scored this turn"
       ]
     },
     {
@@ -2662,6 +3435,30 @@
         "if an enemy unit has died this turn, this costs :rb_rune_rainbow: less",
         "if an enemy unit died last turn, this costs :rb_energy_2: less",
         "if an enemy unit has been banished this turn, this costs :rb_energy_2: less"
+      ]
+    },
+    {
+      "production_id": "self_cost_reduction_control_tag",
+      "form": "This costs :rb_energy_2: less if you control a Mech.",
+      "template": "this costs \\[e(?P<amount>\\d+)\\] less if you control an? (?P<tag>poro|dragon|mech)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.4",
+        "Core 356.4.b"
+      ],
+      "ast_node": "self_cost_reduction",
+      "required_capability": [
+        "evaluated_cost_modifications"
+      ],
+      "boundary": "The card's own text, a fixed Energy amount, gated by its player controlling a Unit of the named tag on the board as the cost is determined. A count of more than one, a tag on a Gear, or a Power reduction is a different clause.",
+      "golden": [
+        "This costs :rb_energy_2: less if you control a Mech."
+      ],
+      "negative": [
+        "this costs :rb_rune_rainbow: less if you control a mech",
+        "this costs :rb_energy_2: less if you control two mechs",
+        "this costs :rb_energy_2: less if an opponent controls a mech"
       ]
     },
     {
@@ -2859,6 +3656,112 @@
       ]
     },
     {
+      "production_id": "if_i_would_die_kill_this_equipment_instead_heal_exhaust_recall_me",
+      "form": "If I would die, kill Guardian Angel instead. Heal me, exhaust me, and recall me.",
+      "template": "if i would die, kill (?P<name>[a-z' ]+) instead\\. heal me, exhaust me, and recall me",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 370.1.b",
+        "Core 435.1.c",
+        "Core 429",
+        "Core 416"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "bounded_replacement"
+      ],
+      "boundary": "An Effect Text: the Top-Most card's death is replaced - the Equipment the text belongs to is killed instead, and the card is healed, exhausted and recalled. The card the name points at is the Equipment itself; a death of another unit, or a different instead, is a different clause.",
+      "golden": [
+        "If I would die, kill Guardian Angel instead. Heal me, exhaust me, and recall me."
+      ],
+      "negative": [
+        "if a friendly unit would die, kill this instead. heal me, exhaust me, and recall me",
+        "if i would die, kill guardian angel instead",
+        "if i would die, heal me, exhaust me, and recall me instead"
+      ]
+    },
+    {
+      "production_id": "each_equipment_attached_to_me_gives_double_its_base_might_bonus",
+      "form": "Each Equipment attached to me gives double its base Might bonus.",
+      "template": "each equipment attached to me gives double its base might bonus",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 159.1",
+        "Core 435.1",
+        "Core 479.4"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects",
+        "layer_engine"
+      ],
+      "boundary": "The card's own text: each Equipment attached to it adds twice its printed Might Bonus instead of once, while the card's text is active. Another multiplier, another card's Equipment, or gear that is not Equipment is a different clause.",
+      "golden": [
+        "Each Equipment attached to me gives double its base Might bonus."
+      ],
+      "negative": [
+        "each equipment attached to me gives its base might bonus",
+        "each equipment you control gives double its base might bonus",
+        "each gear attached to me gives double its base might bonus"
+      ]
+    },
+    {
+      "production_id": "your_equipment_everywhere_have_quick_draw",
+      "form": "Your Equipment everywhere have [Quick-Draw].",
+      "template": "your equipment everywhere have \\[quick-draw\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 479.3",
+        "Core 819.1.b",
+        "Core 819.1.d"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects",
+        "layer_engine"
+      ],
+      "boundary": "A printed keyword aura over every Equipment its controller controls or owns, in any zone (a card in the hand included), while the source is on the board: each has Quick-Draw - Reaction timing, and the attach as it is played. Another keyword, enemy Equipment, or only the board is a different clause.",
+      "golden": [
+        "Your Equipment everywhere have [Quick-Draw]."
+      ],
+      "negative": [
+        "your equipment have [quick-draw]",
+        "your gear everywhere have [quick-draw]",
+        "your equipment everywhere have [assault]"
+      ]
+    },
+    {
+      "production_id": "your_units_here_have_keyword",
+      "form": "Your units here have [Ganking].",
+      "template": "your units here have \\[(?P<keyword>ganking|assault|shield|vision|deflect|tank)\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 478",
+        "Core 479.3",
+        "Core 479.3.b"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects",
+        "layer_engine"
+      ],
+      "boundary": "A printed keyword aura over every friendly Unit at the Battlefield where the source is - the source included - while the source is on the board. A Might amount, other units only, or a whole-board aura is a different clause.",
+      "golden": [
+        "Your units here have [Ganking]."
+      ],
+      "negative": [
+        "other friendly units here have [ganking]",
+        "your units have [ganking]",
+        "your units here have +1 :rb_might:"
+      ]
+    },
+    {
       "production_id": "other_friendly_units_here_have_keyword",
       "form": "Other friendly units here have [Assault].",
       "template": "other friendly units here have \\[(?P<keyword>assault|shield)\\]",
@@ -2915,6 +3818,242 @@
         "friendly buffed units have [deflect]",
         "friendly units have [deflect] if they didn't already",
         "other friendly buffed units have [deflect] if they didn't already"
+      ]
+    },
+    {
+      "production_id": "your_named_units_have_keywords",
+      "form": "Your Sand Soldiers have [Weaponmaster].",
+      "template": "your (?P<name>sand soldier)s have (?P<keywords>\\[[a-z]+\\](?:(?:,? and |, )\\[[a-z]+\\])*)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 478",
+        "Core 479.3",
+        "Core 479.3.b",
+        "Core 185.2.a"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects",
+        "layer_engine"
+      ],
+      "boundary": "A printed keyword aura, while the source is active, over every friendly Unit of that name (the Sand Soldier token). Another name, a tag, enemy units or 'here' is a different clause.",
+      "golden": [
+        "Your Sand Soldiers have [Weaponmaster]."
+      ],
+      "negative": [
+        "your mechs have [weaponmaster]",
+        "enemy sand soldiers have [weaponmaster]",
+        "your sand soldiers here have [shield]"
+      ]
+    },
+    {
+      "production_id": "your_tag_units_have_keywords",
+      "form": "Your Mechs have [Shield].",
+      "template": "your (?P<tag>mech)s (?:each )?have (?P<keywords>\\[[a-z]+\\](?:(?:,? and |, )\\[[a-z]+\\])*)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 478",
+        "Core 479.3",
+        "Core 479.3.b",
+        "Core 133.8"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects",
+        "layer_engine"
+      ],
+      "boundary": "A printed keyword aura, while the source is on the board, over every friendly Unit carrying the tag - the source itself when it does. Another tag, enemy units, 'other' or 'here' is a different clause.",
+      "golden": [
+        "Your Mechs have [Shield].",
+        "Your Mechs have [Deflect] and [Ganking].",
+        "Your Mechs each have [Assault]."
+      ],
+      "negative": [
+        "your poros have [shield]",
+        "enemy mechs have [shield]",
+        "your other mechs have [shield]",
+        "your mechs here have [shield]"
+      ]
+    },
+    {
+      "production_id": "your_tag_units_have_might",
+      "form": "Your Mechs have +1 :rb_might:.",
+      "template": "your (?P<tag>mech)s have \\+(?P<amount>\\d+) \\[m\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 365.1",
+        "Core 478",
+        "Core 479.4",
+        "Core 481",
+        "Core 133.8"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects"
+      ],
+      "boundary": "A printed aura: +N Might to every friendly Unit carrying the tag while the source is on the board, the source itself when it does. Another tag, a decrease or 'here' is a different clause.",
+      "golden": [
+        "Your Mechs have +1 :rb_might:."
+      ],
+      "negative": [
+        "your poros have +1 :rb_might:",
+        "your mechs have -1 :rb_might:",
+        "your mechs here have +1 :rb_might:"
+      ]
+    },
+    {
+      "production_id": "players_cant_score_here_until_their_nth_turn",
+      "form": "Players can't score here until their third turn.",
+      "template": "players can't score here until their (?P<nth>second|third|fourth) turn",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 471",
+        "Core 472",
+        "Core 190.6"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "standard_move"
+      ],
+      "boundary": "A Battlefield's printed restriction on Scoring there: a player whose Nth turn has not begun gets no point and no Score trigger from conquering or holding it; control is established as usual.",
+      "golden": [
+        "Players can't score here until their third turn."
+      ],
+      "negative": [
+        "players can't score here",
+        "you can't score here until your third turn",
+        "players can't score until their third turn"
+      ]
+    },
+    {
+      "production_id": "play_me_only_to_a_battlefield_you_conquered_this_turn",
+      "form": "Play me only to a battlefield you conquered this turn.",
+      "template": "play me only to a battlefield you conquered this turn",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.2",
+        "Core 471.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "standard_move"
+      ],
+      "boundary": "The card's own entry restriction: it may be played only to a Battlefield its player conquered this turn - not its Base, not another Battlefield, whatever permission would otherwise reach one.",
+      "golden": [
+        "Play me only to a battlefield you conquered this turn."
+      ],
+      "negative": [
+        "play me only to a battlefield you control",
+        "play me to a battlefield you conquered this turn",
+        "play me only to a battlefield you held this turn"
+      ]
+    },
+    {
+      "production_id": "units_cant_be_played_here",
+      "form": "Units can't be played here.",
+      "template": "units can't be played here",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.2",
+        "Core 190.6"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "standard_move"
+      ],
+      "boundary": "A Battlefield's printed restriction: no Unit, either player's, may be played to it, whatever permission would otherwise reach it. A Move there, or a Gear, is not restricted by it.",
+      "golden": [
+        "Units can't be played here."
+      ],
+      "negative": [
+        "units can't move here",
+        "spells can't be played here",
+        "enemy units can't be played here"
+      ]
+    },
+    {
+      "production_id": "your_equipment_each_give_assault",
+      "form": "Your Equipment each give [Assault].",
+      "template": "your equipment each give \\[assault\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 807.1",
+        "Core 807.2",
+        "Core 435",
+        "Core 365.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "continuous_effects",
+        "layer_engine"
+      ],
+      "boundary": "A printed aura: while the source is on the board, every Equipment its controller controls that is attached gives the unit it is attached to one Assault - two Equipment, Assault 2 (807.2). Another keyword, or 'your units', is a different clause.",
+      "golden": [
+        "Your Equipment each give [Assault]."
+      ],
+      "negative": [
+        "your equipment each give [shield]",
+        "your units each have [assault]",
+        "your equipment have [assault]"
+      ]
+    },
+    {
+      "production_id": "units_cant_move_to_base",
+      "form": "Units can't move to base.",
+      "template": "units can't move to base",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 144.4",
+        "Core 359.3.e.6",
+        "Core 365.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "standard_move"
+      ],
+      "boundary": "A printed restriction of a permanent: while it is on the board, no Unit, either player's, may move to a Base - a Standard Move to one is not an action, a Move instruction to one is ignored. 'From here' (a Battlefield's own restriction) is a different clause.",
+      "golden": [
+        "Units can't move to base."
+      ],
+      "negative": [
+        "units can't move from here to base",
+        "units can't move to a battlefield",
+        "enemy units can't move to base"
+      ]
+    },
+    {
+      "production_id": "i_cant_be_chosen_by_enemy_spells_and_abilities",
+      "form": "I can't be chosen by enemy spells and abilities.",
+      "template": "i can't be chosen by enemy spells and abilities",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.5",
+        "Core 355.9",
+        "Core 365.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "typed_selectors"
+      ],
+      "boundary": "A printed restriction of the card's own: a choice made for an opponent's spell or ability cannot name it, while its own controller's may. Every spell, or 'abilities' alone, is a different clause.",
+      "golden": [
+        "I can't be chosen by enemy spells and abilities."
+      ],
+      "negative": [
+        "i can't be chosen by spells and abilities",
+        "i can't be chosen by enemy spells",
+        "friendly units can't be chosen by enemy spells and abilities"
       ]
     },
     {
@@ -3397,7 +4536,7 @@
     {
       "production_id": "i_enter_ready_if_you_control_another_tag",
       "form": "I enter ready if you control another Dragon.",
-      "template": "i enter ready if you control another (?P<tag>dragon)",
+      "template": "i enter ready if you control another (?P<tag>dragon|mech)",
       "slots": {},
       "normalization": "clause-grammar.v1/normalize",
       "rule_locators": [
@@ -3413,7 +4552,8 @@
       ],
       "boundary": "The card enters ready when, as it enters, its controller controls a Unit with the printed tag other than the card itself; otherwise exhausted (143.4). The tag is a closed table (PRINTED_TAGS); 'a' Dragon (the card counted) or an opponent's is a different clause.",
       "golden": [
-        "I enter ready if you control another Dragon."
+        "I enter ready if you control another Dragon.",
+        "I enter ready if you control another Mech."
       ],
       "negative": [
         "i enter ready if you control a dragon",
@@ -3476,6 +4616,31 @@
       ]
     },
     {
+      "production_id": "your_spells_and_abilities_deal_n_bonus_damage",
+      "form": "Your spells and abilities deal 3 Bonus Damage.",
+      "template": "your spells and abilities deal (?P<amount>\\d+) bonus damage",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 713",
+        "Core 714",
+        "Core 715.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "bonus_damage"
+      ],
+      "boundary": "A printed Bonus Damage of the controller's sources: each of their spells and abilities deals N more when it deals damage, while the source is on the board. 'To units here', an opponent's sources, or the next spell only is a different clause.",
+      "golden": [
+        "Your spells and abilities deal 3 Bonus Damage."
+      ],
+      "negative": [
+        "spells and abilities deal 1 bonus damage to units here",
+        "your spells deal 1 bonus damage",
+        "the next spell you play this turn deals 1 bonus damage"
+      ]
+    },
+    {
       "production_id": "spells_and_abilities_deal_n_bonus_damage_to_units_here",
       "form": "Spells and abilities deal 1 Bonus Damage to units here.",
       "template": "spells and abilities deal (?P<amount>\\d+) bonus damage to units here",
@@ -3531,6 +4696,53 @@
       ]
     },
     {
+      "production_id": "you_may_pay_energy_as_an_additional_cost_to_play_me",
+      "form": "You may pay :rb_energy_1: as an additional cost to play me.",
+      "template": "you may pay \\[e(?P<energy>\\d+)\\] as an additional cost to play me",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.2.b",
+        "Core 356.2.b.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "self_costs"
+      ],
+      "boundary": "The card offers an amount of Energy as an optional additional cost for its own play; paying it is the controller's choice as the card is played (355.1.a).",
+      "golden": [
+        "You may pay :rb_energy_1: as an additional cost to play me."
+      ],
+      "negative": [
+        "pay :rb_energy_1: as an additional cost to play me",
+        "you may pay :rb_energy_1: as an additional cost to play another unit",
+        "you may pay :rb_energy_1::rb_rune_fury: as an additional cost to play me"
+      ]
+    },
+    {
+      "production_id": "you_may_pay_energy_and_a_rune_as_an_additional_cost_to_play_me",
+      "form": "You may pay :rb_energy_1::rb_rune_fury: as an additional cost to play me.",
+      "template": "you may pay \\[e(?P<energy>\\d+)\\]\\[rune:(?P<domain>[a-z]+)\\] as an additional cost to play me",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.2.b",
+        "Core 356.2.b.1"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "self_costs"
+      ],
+      "boundary": "The card offers an amount of Energy and one Power of the printed Domain together as one optional additional cost for its own play; paying it is the controller's choice as the card is played (355.1.a).",
+      "golden": [
+        "You may pay :rb_energy_1::rb_rune_fury: as an additional cost to play me."
+      ],
+      "negative": [
+        "you may pay :rb_energy_1: as an additional cost to play me",
+        "you may pay :rb_energy_1::rb_rune_fury: as an additional cost to play another unit"
+      ]
+    },
+    {
       "production_id": "you_may_pay_a_rune_as_an_additional_cost_to_play_me",
       "form": "You may pay [rune:calm] as an additional cost to play me.",
       "template": "you may pay \\[rune:(?P<domain>[a-z]+)\\] as an additional cost to play me",
@@ -3578,6 +4790,88 @@
         "you may pay [a] as additional cost to play me",
         "you may pay [c] as additional cost to play another unit",
         "pay [c] as additional cost to play me"
+      ]
+    },
+    {
+      "production_id": "you_may_kill_a_friendly_gear_as_an_additional_cost_to_play_me",
+      "form": "You may kill a friendly gear as an additional cost to play me.",
+      "template": "you may (?P<cost>kill a friendly gear) as an additional cost to play me",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.2.b",
+        "Core 356.2.b.1",
+        "Core 357.2",
+        "Core 429.1.a.1",
+        "Core 355.10.c"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "kill",
+        "self_costs"
+      ],
+      "boundary": "An OPTIONAL additional cost the card prints for its own play: one friendly Gear on the board, chosen by the payer as the card is played, killed as the cost is paid (not a target, 355.10.c). Declined, nothing is killed.",
+      "golden": [
+        "You may kill a friendly gear as an additional cost to play me."
+      ],
+      "negative": [
+        "you may kill a friendly unit as an additional cost to play me",
+        "you may kill a gear as an additional cost to play me",
+        "as an additional cost to play me, kill a friendly gear"
+      ]
+    },
+    {
+      "production_id": "you_may_exhaust_your_legend_as_an_additional_cost_to_play_me",
+      "form": "You may exhaust your legend as an additional cost to play me.",
+      "template": "you may (?P<cost>exhaust your legend) as an additional cost to play me",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.2.b",
+        "Core 356.2.b.1",
+        "Core 357.2",
+        "Core 107.4.d",
+        "Core 174.8"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "self_costs"
+      ],
+      "boundary": "An OPTIONAL additional cost the card prints for its own play: its player's Legend, in their Legend Zone, exhausted as the cost is paid; an exhausted Legend cannot pay it (Core 203.3). Declined, nothing is exhausted.",
+      "golden": [
+        "You may exhaust your legend as an additional cost to play me."
+      ],
+      "negative": [
+        "you may exhaust a friendly unit as an additional cost to play me",
+        "exhaust your legend as an additional cost to play me",
+        "you may exhaust your legend as an additional cost to play this"
+      ]
+    },
+    {
+      "production_id": "as_an_additional_cost_to_play_me_return_a_friendly_gear",
+      "form": "As an additional cost to play me, return a friendly gear to its owner's hand.",
+      "template": "as an additional cost to play me, (?P<cost>return a friendly gear to its owner's hand)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 356.2.a",
+        "Core 356.2.a.1",
+        "Core 356.7",
+        "Core 357.2",
+        "Core 448.2"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "self_costs"
+      ],
+      "boundary": "A MANDATORY additional cost the card prints for its own play: one friendly Gear on the board, chosen by the payer as the card is played, returned to its owner's hand as the cost is paid. No friendly Gear, no play (203.3).",
+      "golden": [
+        "As an additional cost to play me, return a friendly gear to its owner's hand."
+      ],
+      "negative": [
+        "as an additional cost to play me, return a friendly unit to its owner's hand",
+        "as an additional cost to play me, kill a friendly gear",
+        "return a friendly gear to its owner's hand"
       ]
     },
     {
@@ -3997,6 +5291,32 @@
       ]
     },
     {
+      "production_id": "counter_a_spell_unless_its_controller_pays_energy",
+      "form": "Counter a spell unless its controller pays [E2].",
+      "template": "counter a spell unless its controller pays \\[e(?P<energy>\\d+)\\]",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 426.1",
+        "Core 355.7",
+        "Core 355.10.e"
+      ],
+      "ast_node": "instruction",
+      "required_capability": [
+        "counter",
+        "typed_selectors"
+      ],
+      "boundary": "Counter one chosen spell on the Chain, unless that spell's controller pays the Energy as the Counter resolves; paid, nothing is countered. A payment by the caster, a Power cost, or a different 'instead' is a different production.",
+      "golden": [
+        "Counter a spell unless its controller pays [E2]."
+      ],
+      "negative": [
+        "counter a spell unless you pay [e2]",
+        "counter a unit unless its controller pays [e2]",
+        "counter a spell unless its controller has you draw 2"
+      ]
+    },
+    {
       "production_id": "counter_a_spell",
       "form": "Counter a spell.",
       "template": "counter a spell",
@@ -4174,6 +5494,31 @@
         "you may play me to an occupied enemy battlefield",
         "friendly units may be played to open battlefields",
         "you may play a unit to an open battlefield"
+      ]
+    },
+    {
+      "production_id": "i_can_be_played_to_a_battlefield_youre_attacking",
+      "form": "I can be played to a battlefield you're attacking.",
+      "template": "i can be played to a battlefield you're attacking",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 355.2.a",
+        "Core 355.2.b",
+        "Core 466.2.c"
+      ],
+      "ast_node": "passive",
+      "required_capability": [
+        "open_battlefield_permission"
+      ],
+      "boundary": "A printed permission that widens where this card may enter: a Battlefield where one of its player's Units is designated Attacker now. It does not widen timing (the card's own [Reaction] does). Defending, or a battlefield merely occupied, is a different clause.",
+      "golden": [
+        "I can be played to a battlefield you're attacking."
+      ],
+      "negative": [
+        "i can be played to a battlefield you're defending",
+        "you may play me to an open battlefield",
+        "units can be played to a battlefield you're attacking"
       ]
     },
     {
@@ -4628,6 +5973,31 @@
       ]
     },
     {
+      "production_id": "when_you_play_this_from_face_down",
+      "form": "When you play this from face down, draw 1.",
+      "template": "when you play this from face down, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 420.4.a",
+        "Core 811.1.c.3"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "play_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play this from face down, draw 1."
+      ],
+      "negative": [
+        "when you play this, draw 1",
+        "when you play a card from face down, draw 1",
+        "when you hide this, draw 1"
+      ]
+    },
+    {
       "production_id": "when_you_play_this",
       "form": "When you play this, draw 1.",
       "template": "when you play this, (?P<inner>.+)",
@@ -4747,6 +6117,32 @@
       ]
     },
     {
+      "production_id": "when_you_conquer_here_with_n_or_more_mighty_units",
+      "form": "When you conquer here with one or more [Mighty] units, draw 1.",
+      "template": "when you conquer here with (?P<count>one|two|three|\\d+) or more \\[mighty\\] units, (?P<optional>you may )?(?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 471.1",
+        "Core 190.6.a",
+        "Core 383.2.a.1",
+        "Core 708"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you conquer here with one or more [Mighty] units, draw 1."
+      ],
+      "negative": [
+        "when you conquer here, draw 1",
+        "when you hold here with one or more [mighty] units, draw 1",
+        "when you conquer here with one or more units, draw 1"
+      ]
+    },
+    {
       "production_id": "when_you_hold_here_if_you_have_n_units_here",
       "form": "When you hold here, if you have 7+ units here, you win the game.",
       "template": "when you hold here, if you have (?P<count>\\d+)\\+ units here, (?P<inner>.+)",
@@ -4853,6 +6249,33 @@
       ]
     },
     {
+      "production_id": "when_i_conquer_or_hold",
+      "form": "When I conquer or hold, draw 1.",
+      "template": "when i conquer or hold, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 471.1",
+        "Core 471.2",
+        "Core 383.4.c",
+        "Core 383.4.d"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "hold_scoring",
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I conquer or hold, draw 1."
+      ],
+      "negative": [
+        "when i conquer, draw 1",
+        "when you conquer or hold, draw 1",
+        "when i conquer or defend, draw 1"
+      ]
+    },
+    {
       "production_id": "when_i_hold",
       "form": "When I hold, draw 1.",
       "template": "when i hold, (?P<inner>.+)",
@@ -4875,6 +6298,30 @@
         "when you hold here, draw 1",
         "when i conquer, draw 1",
         "when i move, draw 1"
+      ]
+    },
+    {
+      "production_id": "the_first_time_i_conquer_each_turn",
+      "form": "The first time I conquer each turn, draw 1.",
+      "template": "the first time i conquer each turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 471.1",
+        "Core 383.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "The first time I conquer each turn, draw 1."
+      ],
+      "negative": [
+        "when i conquer, draw 1",
+        "the first time i hold each turn, draw 1",
+        "the first time you conquer each turn, draw 1"
       ]
     },
     {
@@ -5313,6 +6760,382 @@
       ]
     },
     {
+      "production_id": "when_you_play_a_spell_on_an_opponents_turn",
+      "form": "When you play a spell on an opponent's turn, draw 1.",
+      "template": "when you play a spell on an opponent's turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 420.4.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a spell on an opponent's turn, draw 1."
+      ],
+      "negative": [
+        "when you play a card on an opponent's turn, draw 1",
+        "when you play a spell, draw 1",
+        "when an opponent plays a spell, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_play_a_card_with_power_cost_n_or_more",
+      "form": "When you play a card with Power cost :rb_rune_rainbow::rb_rune_rainbow: or more, draw 1.",
+      "template": "when you play a card with power cost (?P<cost>(?:\\[a\\])+) or more, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 420.4.a",
+        "Core 206"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you play a card with Power cost :rb_rune_rainbow::rb_rune_rainbow: or more, draw 1."
+      ],
+      "negative": [
+        "when you play a card with power cost :rb_rune_rainbow::rb_rune_rainbow: or less, draw 1",
+        "when you play a card with energy cost :rb_energy_2: or more, draw 1",
+        "when you play a spell, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_win_a_combat",
+      "form": "When you win a combat, draw 1.",
+      "template": "when you win a combat, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 468.3",
+        "Core 468.3.a"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you win a combat, draw 1."
+      ],
+      "negative": [
+        "when you lose a combat, draw 1",
+        "when an opponent wins a combat, draw 1",
+        "when i win a combat, draw 1"
+      ]
+    },
+    {
+      "production_id": "the_first_time_i_win_a_combat_each_turn",
+      "form": "The first time I win a combat each turn, draw 1.",
+      "template": "the first time i win a combat each turn, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 468.3",
+        "Core 468.3.c"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "The first time I win a combat each turn, draw 1."
+      ],
+      "negative": [
+        "when i win a combat, draw 1",
+        "the first time you win a combat each turn, draw 1",
+        "the first time i lose a combat each turn, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_i_die_in_combat",
+      "form": "When I die in combat, draw 1.",
+      "template": "when i die in combat, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.2.a.1",
+        "Core 429",
+        "Core 466"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "self_death_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I die in combat, draw 1."
+      ],
+      "negative": [
+        "when i die, draw 1",
+        "when a unit dies in combat, draw 1",
+        "when i win a combat, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_i_win_a_combat",
+      "form": "When I win a combat, draw 1.",
+      "template": "when i win a combat, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 468.3",
+        "Core 468.3.c"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I win a combat, draw 1."
+      ],
+      "negative": [
+        "when you win a combat, draw 1",
+        "when i lose a combat, draw 1",
+        "the first time i win a combat each turn, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_attach_an_equipment_to_me",
+      "form": "When you attach an Equipment to me, draw 1.",
+      "template": "when you attach an equipment to me, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 435",
+        "Core 436",
+        "Core 133.8"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you attach an Equipment to me, draw 1."
+      ],
+      "negative": [
+        "when you attach an equipment, draw 1",
+        "when an equipment is attached to me, draw 1",
+        "when you attach an equipment to a unit, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_spend_a_buff",
+      "form": "When you spend a buff, draw 1.",
+      "template": "when you spend a buff, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 702.2.b"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you spend a buff, draw 1."
+      ],
+      "negative": [
+        "when you buff a unit, draw 1",
+        "when an opponent spends a buff, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_recycle_a_rune",
+      "form": "When you recycle a rune, draw 1.",
+      "template": "when you recycle a rune, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 417"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you recycle a rune, draw 1."
+      ],
+      "negative": [
+        "when you recycle a card, draw 1",
+        "when you channel a rune, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_a_unit_you_control_becomes_mighty",
+      "form": "When a unit you control becomes [Mighty], draw 1.",
+      "template": "when (?:a unit you control|one of your units) becomes \\[mighty\\], (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 708",
+        "Core 709",
+        "Core 710"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When a unit you control becomes [Mighty], draw 1.",
+        "When one of your units becomes [Mighty], draw 1."
+      ],
+      "negative": [
+        "when a unit becomes [mighty], draw 1",
+        "when an enemy unit becomes [mighty], draw 1",
+        "when a unit you control is [mighty], draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_choose_me_with_a_spell",
+      "form": "When you choose me with a spell, draw 1.",
+      "template": "when you choose me with a spell, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.4.b",
+        "Core 383.4.b.3",
+        "Core 355.10"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you choose me with a spell, draw 1."
+      ],
+      "negative": [
+        "when you choose me, draw 1",
+        "when an opponent chooses me with a spell, draw 1",
+        "when you choose me with an ability, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_choose_or_ready_me",
+      "form": "When you choose or ready me, draw 1.",
+      "template": "when you choose or ready me, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.4.b",
+        "Core 355.10",
+        "Core 416"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you choose or ready me, draw 1."
+      ],
+      "negative": [
+        "when you choose me, draw 1",
+        "when an opponent chooses or readies me, draw 1",
+        "when you choose or ready a friendly unit, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_choose_a_friendly_unit",
+      "form": "When you choose a friendly unit, draw 1.",
+      "template": "when you choose a friendly unit, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.4.b",
+        "Core 383.4.b.3",
+        "Core 355.10"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you choose a friendly unit, draw 1."
+      ],
+      "negative": [
+        "when you choose an enemy unit, draw 1",
+        "when you choose a unit, draw 1",
+        "when an opponent chooses a friendly unit, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_use_an_activated_ability_of_a_gear",
+      "form": "When you use an activated ability of a gear, draw 1.",
+      "template": "when you use an activated ability of a gear, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 377",
+        "Core 377.2"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you use an activated ability of a gear, draw 1."
+      ],
+      "negative": [
+        "when you use an activated ability of a unit, draw 1",
+        "when you play a gear, draw 1",
+        "when an opponent uses an activated ability of a gear, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_one_or_more_enemy_units_die",
+      "form": "When one or more enemy units die, draw 1.",
+      "template": "when one or more enemy units die, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 429",
+        "Core 429.1"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When one or more enemy units die, draw 1."
+      ],
+      "negative": [
+        "when an enemy unit dies, draw 1",
+        "when one or more friendly units die, draw 1"
+      ]
+    },
+    {
       "production_id": "when_you_play_a_card_from_hidden",
       "form": "When you play a card from [Hidden], draw 1.",
       "template": "when you play a card from \\[hidden\\], (?P<inner>.+)",
@@ -5721,6 +7544,33 @@
       ]
     },
     {
+      "production_id": "when_i_conquer_a_battlefield_that_was_uncontrolled",
+      "form": "When I conquer a battlefield that was uncontrolled, draw 1.",
+      "template": "when i conquer a battlefield that was uncontrolled, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 471.1",
+        "Core 383.4.c",
+        "Core 383.4.c.2.a",
+        "Core 383.2.a.1",
+        "Core 190.2.b"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "score_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I conquer a battlefield that was uncontrolled, draw 1."
+      ],
+      "negative": [
+        "when i conquer, draw 1",
+        "when i conquer a battlefield that was controlled, draw 1",
+        "when you conquer a battlefield that was uncontrolled, draw 1"
+      ]
+    },
+    {
       "production_id": "when_you_conquer",
       "form": "When you conquer, draw 1.",
       "template": "when you conquer, (?P<inner>.+)",
@@ -5744,6 +7594,32 @@
         "when i conquer, draw 1",
         "when you hold, draw 1",
         "when an opponent conquers, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_or_an_ally_hold",
+      "form": "When you or an ally hold, draw 1.",
+      "template": "when you or an ally hold, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 471.2",
+        "Core 383.4.d",
+        "Core 383.4.d.2.b"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "hold_scoring"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you or an ally hold, draw 1."
+      ],
+      "negative": [
+        "when you hold here, draw 1",
+        "when i hold, draw 1",
+        "when you or an ally conquer, draw 1",
+        "when an opponent holds, draw 1"
       ]
     },
     {
@@ -5886,6 +7762,57 @@
         "when a friendly unit attacks a battlefield you control, draw 1",
         "when an enemy unit defends a battlefield you control, draw 1",
         "when you attack a battlefield, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_you_defend_at_a_battlefield",
+      "form": "When you defend at a battlefield, draw 1.",
+      "template": "when you defend at a battlefield, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.4.f",
+        "Core 466.2.c.3"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When you defend at a battlefield, draw 1."
+      ],
+      "negative": [
+        "when you attack at a battlefield, draw 1",
+        "when an opponent defends at a battlefield, draw 1",
+        "when you defend here, draw 1"
+      ]
+    },
+    {
+      "production_id": "when_i_attack_or_defend_one_on_one",
+      "form": "When I attack or defend one on one, draw 1.",
+      "template": "when i attack or defend one on one, (?P<inner>.+)",
+      "slots": {},
+      "normalization": "clause-grammar.v1/normalize",
+      "rule_locators": [
+        "Core 383.1",
+        "Core 383.4.e",
+        "Core 383.4.f",
+        "Core 740.2.b"
+      ],
+      "ast_node": "triggered",
+      "required_capability": [
+        "watched_triggers"
+      ],
+      "boundary": "Wraps one instruction this grammar already has; an unparsed instruction makes the whole clause unparsed.",
+      "golden": [
+        "When I attack or defend one on one, draw 1."
+      ],
+      "negative": [
+        "when i attack or defend alone, draw 1",
+        "when a friendly unit attacks or defends one on one, draw 1",
+        "when i attack one on one, draw 1"
       ]
     },
     {

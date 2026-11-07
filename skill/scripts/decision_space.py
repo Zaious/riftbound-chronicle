@@ -32,7 +32,7 @@ receipts' and the replay's to cover, package 15).
 """
 from __future__ import annotations
 
-import copy
+import state_copy
 import itertools
 from typing import Any
 
@@ -57,6 +57,9 @@ ANSWERED = {
                                    "procedure: a Battlefield id; a Move or a token's place at resolution: a location)",
     "optional_choice_required": "optional_choice: taken or not",
     "option_selection_required": "option_selection: the options the request carries (the instruction's own)",
+    # set 2 package A2 (GPT A2 ruling 8, Core 445.2.c)
+    "payment_window_required": "optional_choice closing the payer's window, alone or with setting payment_adds: each set "
+                               "of the fewest Energy [Add] Reactions of the payer's (one per source) that make the payment",
     "mode_selection_required": "mode_selection: the mode options the request carries (Core 403.2)",
     "player_selection_required": "player_selection: every player (the procedure refuses one it may not name)",
     "card_selection_required": "card_selection: the options the choice offers - public in its summary; private to its "
@@ -77,6 +80,7 @@ ANSWERED = {
     "trigger_finalize_choice_required": "setting perform_optional_trigger: performed or not (Core 383.3.a)",
     "trigger_cost_choice_required": "setting pay_trigger_cost: paid or not (Core 404.1.b.1, 405.2)",
     "entry_location_required": "setting entry_location: the location candidates it carries (Core 355.2)",
+    "power_split_required": "setting power_split: each split of a dual-Domain card's Power it carries (Core 135.2.e.6.c)",
     "randomization_receipt_required": "chance: every permutation of the cards it orders (Core 417.5, 432.2.b)",
     "cost_selection_required": "card_selection: one of the Units it carries spends its buff for the trigger's base cost "
                                "(Core 702.2.b, 405.1)",
@@ -84,7 +88,8 @@ ANSWERED = {
 # a limited play's own requests at its finalization are a play's (Core 420.3.b) - answered as play_space answers them
 PLAY_REQUESTS = dict(PS.DECIDED)
 SETTING_REQUESTS = {"trigger_finalize_choice_required": "perform_optional_trigger",
-                    "trigger_cost_choice_required": "pay_trigger_cost", "entry_location_required": "entry_location"}
+                    "trigger_cost_choice_required": "pay_trigger_cost", "entry_location_required": "entry_location",
+                    "power_split_required": "power_split"}
 # the request codes the engine's modules can make that are not a decision of a procedure point, each with why
 NOT_DECISIONS = {
     "priority_required": "a timing refusal of an action (rules_core.validate_timing): no procedure asks it",
@@ -267,6 +272,60 @@ def _plus(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
             "receipts": a["receipts"] + b["receipts"]}
 
 
+# the [Add] activations one payment window may try (game_loop.payment_adds calls); past it the window is unproved
+WINDOW_CALL_CAP = CALL_CAP
+
+
+def _window_adds(effect: dict[str, Any], catalogue: dict[str, Any], payer: str) -> list[dict[str, Any]]:
+    """Every [Add] activation with the Reaction keyword the payer could declare now - every such ability of every source
+    of theirs (two on one source are two), with every object a cost could name (play_space.ability_skeletons) - in a fixed
+    order. Whether it can be paid is the play's to say."""
+    adds = [d for d, _p in PS.ability_skeletons(effect, catalogue, payer)
+            if d["chain_item"].get("ability_kind") == "add" and d["chain_item"].get("timing") == "reaction"]
+    return sorted(adds, key=lambda d: (d["activation"]["source_object"], d["activation"]["ability_id"],
+                                       IR.hash_value(d)))
+
+
+def window_sequences(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any],
+                     payer: str) -> list[list[dict[str, Any]]]:
+    """GPT's A2 review (blocker 3, Core 445.2.c): every state a payment window can reach, each as one sequence of the
+    payer's [Add] Reactions (game_loop.payment_adds runs them in order from `effect`) - the empty one first. Breadth first
+    over the activations each state admits, in _window_adds' order; a state reached again by another order is the same
+    answer (the first sequence found names it). Each [Add] is really played, finalized and resolved: what it adds (more
+    than 1, Energy or Power, any Domain), what its cost spends, and whether it can be paid at all are the engine's - a
+    shortfall is never read as a number of sources. Unproved, by name, when an [Add] asks for a choice of its own (a
+    Domain, a target), raises a triggered ability in the window, or the activations tried pass WINDOW_CALL_CAP."""
+    sequences = [[]]
+    seen = {IR.hash_value(effect)}
+    level = [([], effect)]
+    calls = 0
+    while level:
+        following = []
+        for sequence, state in level:
+            for declaration in _window_adds(state, catalogue, payer):
+                calls += 1
+                if calls > WINDOW_CALL_CAP:
+                    raise Unproved(f"payment window: more than {WINDOW_CALL_CAP} [Add] activations tried")
+                got = GL.payment_adds(timing, state, catalogue, [declaration])
+                if not got.get("committed"):
+                    code = got.get("reason_code")
+                    if got.get("unsupported") or got.get("decision_ids") or code in PT.DECISION_REASONS \
+                            or str(code or "").endswith("_required"):
+                        raise Unproved(f"payment window: the [Add] {declaration['activation']['ability_id']!r} of "
+                                       f"{declaration['activation']['source_object']!r}: {code} - not enumerated here")
+                    continue        # not activatable now (exhausted, its cost unpayable): no state reached
+                after = got["next_effect_state"]
+                key = IR.hash_value(after)
+                if key in seen:
+                    continue
+                seen.add(key)
+                found = sequence + [state_copy.deepcopy(declaration)]
+                sequences.append(found)
+                following.append((found, after))
+        level = following
+    return sequences
+
+
 def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any],
             label: str) -> tuple[str, str | None, list[dict[str, Any]]]:
     """(kind, decider, every answer) for one request; Unproved when it has no domain here."""
@@ -298,12 +357,20 @@ def answers(request: dict[str, Any], timing: dict[str, Any], effect: dict[str, A
         per_id = PS.domain({**payload, "reason_code": code, "decision_ids": ids}, effect, {"card": card}, program, decider)
         return PLAY_REQUESTS[code], decider, [_answer([{**e, "stage": "play_declaration"} for e in combo])
                                               for combo in itertools.product(*per_id)]
+    if code == "payment_window_required":
+        # GPT A2 ruling 8 (Core 445.2.c): told to pay, the payer may activate any of their [Add] abilities with the
+        # Reaction keyword before the window closes - any number, any of them, whatever they add, not only enough to
+        # cover what is due (GPT's A2 review, blocker 3). Every state the window can reach, each closed there
+        close = {"decision_id": ids[0], "stage": "resolution", "kind": "optional_choice", "controller": decider, "value": True}
+        return "payment_window", decider, [_answer([close], settings={"payment_adds": seq} if seq else None)
+                                           for seq in window_sequences(timing, effect, catalogue, decider)]
     if code in SETTING_REQUESTS:
         setting = SETTING_REQUESTS[code]
-        values = payload.get("location_candidates") if setting == "entry_location" else [True, False]
+        values = (payload.get("location_candidates") if setting == "entry_location"
+                  else payload.get("power_split_candidates") if setting == "power_split" else [True, False])
         if not values:
             raise Unproved(f"{code} carries no candidates")
-        return setting, decider, [_answer(settings={setting: copy.deepcopy(v)}) for v in values]
+        return setting, decider, [_answer(settings={setting: state_copy.deepcopy(v)}) for v in values]
     if code == "randomization_receipt_required":
         chance = payload.get("chance")
         if not isinstance(chance, dict):
@@ -690,7 +757,7 @@ PROGRAM_SLOT_FIELDS = {
     "player.decision_ref": "player_selection",
     "modal.decision_ref": "mode_selection - the modal options",
     "unless.decision_ref": "optional_choice",
-    "pay_ref": "optional_choice (Core 204.3.a: whether to pay at all)",
+    "pay_ref": "optional_choice (Core 204.3.a: whether to pay at all; pay_any_amount)",
     "an instruction's choice (decision_ref, or its default choice:<from>:<chooser>)": "the choice's kind (engine_decisions."
                                                                                        "choice_decision_kind)",
     "spend_buffs decision_ref (or spend_buffs:<player>)": "buff_spend, or card_selection where no Unit has two buffs",
@@ -893,6 +960,10 @@ def program_slots(program: dict[str, Any] | None, effect: dict[str, Any], label:
         target = effect_.get("target")
         if isinstance(target, dict) and target.get("decision_ref"):
             slot(target["decision_ref"], "target_selection", SetSpace(objects, 1, 1))
+        # set 2 package A2 (Jax - Grandmaster At Arms): an attach's chosen card
+        attached = effect_.get("object_target")
+        if isinstance(attached, dict) and attached.get("decision_ref"):
+            slot(attached["decision_ref"], "target_selection", SetSpace(objects, 1, 1))
         for unit in effect_.get("units") or []:
             if isinstance(unit, dict) and unit.get("decision_ref"):
                 slot(unit["decision_ref"], "target_selection", SetSpace(objects, 1, 1))
@@ -1186,13 +1257,13 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
         if step["committed"]:
             kept = answer
             for key in list(kept["settings"]):
-                trial = copy.deepcopy(kept)
+                trial = state_copy.deepcopy(kept)
                 trial["settings"].pop(key)
                 again = run(trial)
                 if again["committed"] and same(again, step):
                     kept = trial
             for index in range(len(kept["decisions"]) - 1, -1, -1):
-                trial = copy.deepcopy(kept)
+                trial = state_copy.deepcopy(kept)
                 trial["decisions"].pop(index)
                 again = run(trial)
                 if again["committed"] and same(again, step):
@@ -1207,12 +1278,12 @@ def contract_ways(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
             # reach this same node (one it reaches without is not read before the chance)
             kept = answer
             for key in list(kept["settings"]):
-                trial = copy.deepcopy(kept)
+                trial = state_copy.deepcopy(kept)
                 trial["settings"].pop(key)
                 if large_chance(run(trial)) == node:
                     kept = trial
             for index in range(len(kept["decisions"]) - 1, -1, -1):
-                trial = copy.deepcopy(kept)
+                trial = state_copy.deepcopy(kept)
                 trial["decisions"].pop(index)
                 if large_chance(run(trial)) == node:
                     kept = trial

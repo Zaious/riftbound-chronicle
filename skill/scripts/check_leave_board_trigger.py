@@ -14,6 +14,10 @@ the action that moved it (effect_ir.leave_board_triggers).
   L5 its own ability "Kill this" from its own program (the source itself): Pending
   L6 resolved        the trigger's program with its source gone: p1 draws 1 and channels 1 rune exhausted
   L7 with a death    a unit with a death trigger and a leave trigger, killed: both Pending, each once
+  L8 recycled        recycled from the board (recycle_one, recycle): it leaves the board - Pending (set 2 A2, GPT review)
+  L9 not a death     the L7 unit recycled: only its leave trigger - a recycle is no death, no Deathknell
+  L10 one batch      one recycle of two permanents, each with a leave trigger: both Pending in one batch, each
+                     controller ordering its own (Core 383.3.d)
   V  shape/grammar   the field on the board only as a trigger list; "When this leaves the board, ..." lowers to it;
                      "Kill this." lowers to killing the ability's own source
 
@@ -100,6 +104,29 @@ def main() -> int:
     got = apply_program(both, program([{"op": "kill", "effect_id": "k", "object_id": "u1"}]))
     if sorted(pending(got) if isinstance(pending(got), list) else []) != ["u1-dies", "u1-leaves"]:
         fail("L7 with a death", pending(got))
+    # set 2 package A2 (GPT A2 review, blocker 2): recycled from the board, it leaves the board - as an instruction (here)
+    # or as a cost (check_rumble_hotheaded.py R9); it does not die
+    for label, effect in (("L8 recycled (recycle_one)", {"op": "recycle_one", "effect_id": "rc", "object_id": "tr",
+                                                         "player": "p1"}),
+                          ("L8 recycled (recycle)", {"op": "recycle", "effect_id": "rc", "objects": ["tr"], "player": "p1"})):
+        got = apply_program(s, program([effect]))
+        if pending(got) != ["tr-leave"] or find_location(got["next_state"], "tr") != ("player", "p1", "main_deck"):
+            fail(label, pending(got))
+    recycled = apply_program(both, program([{"op": "recycle_one", "effect_id": "rc", "object_id": "u1", "player": "p1"}]))
+    if pending(recycled) != ["u1-leaves"]:
+        fail("L9 recycled, not dead", f"a recycled unit with a death trigger and a leave trigger: {pending(recycled)} "
+                                      f"(only the leave trigger - a recycle is no death)")
+    pair = copy.deepcopy(s)
+    pair["objects"]["e1"] = {"owner": "p2", "controller": "p2", "kind": "unit", "base_might": 2, "might_modifiers": [],
+                             "damage": 0, "exhausted": False,
+                             "leave_board_triggers": [{**LEAVE, "trigger_id": "e1-leaves", "controller": "p2",
+                                                       "source_object": "e1", "effect_program_id": "e1-leaves-fx"}]}
+    pair["players"]["p2"]["zones"]["base"].append("e1")
+    got = apply_program(pair, program([{"op": "recycle", "effect_id": "rc", "objects": ["tr", "e1"], "player": "p1"}]))
+    batch = {(t.get("batch_id"), t.get("batch_sequence")) for t in got.get("pending_triggers") or []}
+    if sorted(pending(got) if isinstance(pending(got), list) else []) != ["e1-leaves", "tr-leave"] or len(batch) != 1:
+        fail("L10 one recycle, two leaving", f"{pending(got)} batches {sorted(map(str, batch))} (one action, one batch: "
+                                             f"each controller orders its own, Core 383.3.d)")
     bad = copy.deepcopy(s)
     bad["objects"]["tr"]["leave_board_triggers"] = [{"trigger_id": "x"}]
     if not validate_state(bad):
@@ -120,8 +147,9 @@ def main() -> int:
             print(f"  - {e}")
         return 1
     print("OK: 'When this leaves the board' is Pending once however the card leaves - killed (by its own ability too), "
-          "returned to a hand, banished - and not when it stays on the board; its draw and channel resolve with the card "
-          "gone; beside a death trigger both are Pending (L1-L7, V)")
+          "returned to a hand, banished, recycled - and not when it stays on the board; its draw and channel resolve with "
+          "the card gone; beside a death trigger both are Pending; recycled, it leaves without dying, one recycle one "
+          "batch (L1-L10, V)")
     return 0
 
 

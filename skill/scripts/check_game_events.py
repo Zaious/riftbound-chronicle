@@ -124,7 +124,7 @@ def main() -> int:
     # (2026-09-28: and the combat procedures' designation events - check_trigger_referent.py holds
     # that open_combat really emits them)
     unreachable = sorted(set(ge.EVENT_KINDS) - set(ge.OP_PRIMARY.values()) - ge.STRUCTURAL_KINDS - ge.PLAY_EVENT_KINDS
-                         - ge.COMBAT_EVENT_KINDS)
+                         - ge.COMBAT_EVENT_KINDS - ge.SCHEDULER_EVENT_KINDS - ge.TARGETING_EVENT_KINDS)
     if unreachable:
         errors.append(f"catalogue kinds no operation can emit and not declared structural: {unreachable}")
     for kind, entry in ge.EVENT_KINDS.items():

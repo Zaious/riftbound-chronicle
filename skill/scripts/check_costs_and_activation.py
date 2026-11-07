@@ -25,6 +25,10 @@ Must hold:
     stays where the cost left it (kill_this → the trash);
   - kill_this and recall_self pay with the ability's own source (204.2) and
     are named in the receipt;
+  - an ability with a use condition (Renata Glasc - Mastermind, ability_conditions
+    at_a_battlefield) is checked when it is activated (377.2.b): refused with
+    its source in its Base; activated at a Battlefield, then its source
+    recalled before it resolves, it is not cancelled and resolves (draws 1);
   - a paid [Repeat] adds one execution with its own suffixed choices
     (820.1.d, 820.2.a); declining leaves one; a mandatory Repeat is invalid;
     the Repeat is the outer program's: "deal 1 to each of up to two units" with
@@ -207,7 +211,10 @@ def main() -> int:
         errors.append(f"activating an ability of a controlled board unit failed: {activated.get('reason_code')} {activated.get('reason')}")
     else:
         entry = activated["next_effect_state"]["chain_items"]["ability-1"]
-        placed = {k: v for k, v in entry.items() if k != "cost_receipt"}
+        # set 2 package A2: the use recorded at Finalize, woken when the ability resolves (check_ability_used_watch)
+        placed = {k: v for k, v in entry.items() if k not in ("cost_receipt", "used_event")}
+        if (entry.get("used_event") or {}).get("kind") != "ability_used" or entry["used_event"].get("object") != "u1":
+            errors.append(f"the ability's chain item does not record its use: {entry.get('used_event')}")
         if placed != {"source_object": "u1", "ability_id": "u1:a1", "controller": "p1"} or activated["next_effect_state"]["players"]["p1"]["zones"]["hand"] != ["c1"]:
             errors.append(f"the ability chain entry is wrong or the hand changed: {placed}")
         # DP-93: an activated ability's chain item carries its own receipt too,
@@ -268,6 +275,40 @@ def main() -> int:
     recalled = play_card(timing, at_bf, ability_declaration(cost=recall_cost))
     if not recalled.get("committed") or "u1" not in recalled["next_effect_state"]["players"]["p1"]["zones"]["base"] or not event(recalled, "pay_recall_self"):
         errors.append(f"recall_self did not recall the source: {recalled.get('reason_code')} {recalled.get('reason')}")
+    # set 2 package A2 (Renata Glasc - Mastermind, "Use my abilities only while I'm at a battlefield."), rules reviewer
+    # ruling: each cost line is its own activated ability, and the use condition is checked for activation legality
+    # (Core 377.2.b) - the engine's ability_conditions {ability_id: at_a_battlefield}. Activated legally at a
+    # Battlefield, the ability is a Chain item of its own: its source leaving the Battlefield before it resolves does
+    # not cancel it, it resolves normally. In its Base the same activation is refused before anything is paid.
+    gated = copy.deepcopy(at_bf)
+    gated["objects"]["u1"]["ability_conditions"] = {"u1:a1": {"kind": "at_a_battlefield"}}
+    gated_draw = program("u1:a1", {"op": "draw", "effect_id": "d", "player": "p1", "count": 1})
+    gated_draw["source_object"] = "u1"
+    gated_home = copy.deepcopy(plain)
+    gated_home["objects"]["u1"]["ability_conditions"] = {"u1:a1": {"kind": "at_a_battlefield"}}
+    home_refused = play_card(timing, gated_home, ability_declaration(effect_program_id="u1:a1"), effect_program=gated_draw)
+    if home_refused.get("committed") or home_refused.get("reason_code") != "activation_condition_not_met":
+        errors.append(f"Renata in her Base: the at_a_battlefield ability was not refused (377.2.b): "
+                      f"{home_refused.get('reason_code')} {home_refused.get('reason')}")
+    gated_live = play_card(timing, gated, ability_declaration(effect_program_id="u1:a1"), effect_program=gated_draw)
+    if not gated_live.get("committed"):
+        errors.append(f"Renata at bf1: the at_a_battlefield ability was not activated: "
+                      f"{gated_live.get('reason_code')} {gated_live.get('reason')}")
+    else:
+        left = apply_program(gated_live["next_effect_state"], program("rc", {"op": "recall", "effect_id": "rc", "object_id": "u1"}))
+        if not left.get("committed") or "u1" not in left["next_state"]["players"]["p1"]["zones"]["base"]:
+            errors.append(f"Renata: the recall before resolution did not happen: {left.get('reason') or left.get('errors')}")
+        else:
+            hand_was = len(left["next_state"]["players"]["p1"]["zones"]["hand"])
+            fin = finalize_oldest_pending(gated_live["next_timing_state"])["next_state"]
+            fin["chain"]["consecutive_passes"] = ["p1", "p2"]
+            gated_done = resolve_with_program(fin, "ability-1", left["next_state"], gated_draw)
+            after = gated_done.get("next_effect_state") or {}
+            if not gated_done.get("committed") or len(after["players"]["p1"]["zones"]["hand"]) != hand_was + 1 \
+                    or after.get("chain_items"):
+                errors.append(f"Renata recalled while her at_a_battlefield ability was on the Chain: the ability should "
+                              f"still resolve and draw 1 (377.2.b checks activation only): {gated_done.get('stage')} "
+                              f"{gated_done.get('reason_code')} {gated_done.get('reason')}")
 
     # --- [Repeat] ------------------------------------------------------------------------------------
     deck = hand_state("c1", energy=4)
@@ -293,6 +334,26 @@ def main() -> int:
         errors.append(f"a paid Repeat was not recorded on the chain: {played_twice.get('reason_code')} {played_twice.get('reason')}")
     elif not resolved_twice.get("committed") or [e["effect_id"] for e in resolved_twice["trace"]["effect"]] != ["d", "d#1"] or len(resolved_twice["next_effect_state"]["players"]["p1"]["zones"]["hand"]) != 2:
         errors.append(f"a paid Repeat did not execute the instructions twice: {resolved_twice.get('reason')} {[e.get('effect_id') for e in (resolved_twice.get('trace') or {}).get('effect', [])]}")
+    # set 2 package A2: the card's own printed [Repeat] (an optional_additional_costs offer marked repeat), offered by
+    # the engine as a catalogued card's play declares only its base - paid, the instructions run twice; declined, once
+    printed = copy.deepcopy(deck)
+    printed["objects"]["c1"]["optional_additional_costs"] = [
+        {"cost_offer_id": "repeat", "payment": {"kind": "energy", "amount": 2}, "repeat": True}]
+    if validate_state(printed):
+        errors.append(f"a printed [Repeat] offer is not a valid object field: {validate_state(printed)}")
+    for paid, want in ((True, ["d", "d#1"]), (False, ["d"])):
+        decl = declaration(cost={"base": {"energy": 1, "power": {}}}, effect_program_id="sp")
+        got = play_card(timing, printed, decl, engine_decisions=envelope(printed, intent("self_offer:repeat", paid)),
+                        effect_program=spell_program)
+        if not got.get("committed"):
+            errors.append(f"a card with a printed [Repeat] was not played (paid={paid}): {got.get('reason_code')} {got.get('reason')}")
+            continue
+        fin = finalize_oldest_pending(got["next_timing_state"])["next_state"]
+        fin["chain"]["consecutive_passes"] = ["p1", "p2"]
+        done = resolve_with_program(fin, "spell-1", got["next_effect_state"], spell_program)
+        ran = [e["effect_id"] for e in (done.get("trace") or {}).get("effect", [])]
+        if ran != want:
+            errors.append(f"a printed [Repeat] {'paid' if paid else 'declined'} ran {ran}, not {want} (Core 820.1.d)")
     played_once, resolved_once = run_repeat(False)
     if not played_once.get("committed") or "repeat" in played_once["next_effect_state"]["chain_items"]["spell-1"]:
         errors.append("declining the Repeat still recorded an extra execution")
@@ -453,7 +514,7 @@ def main() -> int:
         for error in errors:
             print(f"  - {error}")
         return 1
-    print("cost catalogue / activation checks passed")
+    print("cost catalogue / activation checks passed (a use condition is checked at activation only: the source leaving the battlefield does not cancel it)")
     return 0
 
 

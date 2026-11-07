@@ -31,7 +31,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import datetime
 import hashlib
 import json
@@ -178,7 +178,7 @@ def amend(catalog: dict[str, Any], amendment: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"token_id {amendment['token_id']!r} is not in the catalogue; promote it first")
     if entry.get("tags") == amendment["tags"]:
         raise ValueError(f"token {amendment['token_id']!r} already carries {amendment['tags']}; nothing to amend")
-    amended = {**copy.deepcopy(entry), "tags": list(amendment["tags"])}
+    amended = {**state_copy.deepcopy(entry), "tags": list(amendment["tags"])}
     amended["amendments"] = amended.get("amendments", []) + [{"fields": ["tags"], "review": dict(amendment["review"])}]
     updated = {**catalog, "entries": [amended if e is entry else e for e in catalog["entries"]]}
     problems = validate_catalog(updated)
@@ -204,7 +204,7 @@ def carry_tags(effects: Any, catalog: dict[str, Any] | None = None) -> Any:
     """The program with every play_token naming a catalogued token that has `tags` carrying them (a copy).
     The compile step calls this, so the engine reads the tags off the instruction, not off this file."""
     catalog = catalog if catalog is not None else _committed_catalog()
-    out = copy.deepcopy(effects)
+    out = state_copy.deepcopy(effects)
 
     def walk(node: Any) -> None:
         if isinstance(node, dict):

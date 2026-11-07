@@ -26,7 +26,7 @@ SETTINGS) and calls again. Which choices are legal is decision_space's question;
 """
 from __future__ import annotations
 
-import copy
+import state_copy
 import json
 from typing import Any
 
@@ -48,7 +48,11 @@ PAYMENT_CONTEXT = {"add_window_closed": True, "confirmed_by": "game_loop"}
 # the choices a procedure takes as arguments rather than as engine decisions, and the procedure that asks each
 SETTINGS = {"perform_optional_trigger": "resolution_bridge.finalize_trigger (Core 383.3.a)",
             "pay_trigger_cost": "resolution_bridge.finalize_trigger (Core 404.1.b.1, 405)",
-            "entry_location": "resolution_bridge.finalize_limited_play (Core 355.2)"}
+            "entry_location": "resolution_bridge.finalize_limited_play (Core 355.2)",
+            # set 2 package A2 (Core 135.2.e.6.c): a dual-Domain card's Power split, on an effect-driven play
+            "power_split": "resolution_bridge.complete_limited_play (Core 135.2.e.6.c)",
+            # set 2 package A2 (GPT A2 ruling 8, Core 445.2.c): the payer's [Add] activations in an "unless" payment window
+            "payment_adds": "game_loop.payment_adds before resolution_bridge.resolve_with_program (Core 445.2.c)"}
 # rules_core.next_procedure's procedures and what runs each (DISCRETIONARY: a player acts - run_action)
 DISCRETIONARY = {"execute_or_pass_priority", "showdown_focus_window", "neutral_turn_window"}
 PROCEDURES = {
@@ -68,7 +72,7 @@ PROCEDURES = {
 COMBAT_STEPS = {"showdown_closed": ("assign", lambda t, e, d: CB.assign_combat_damage(t, e, d)),
                 "damage_assigned": ("deal", lambda t, e, d: CB.deal_combat_damage(t, e)),
                 "damage_dealt": ("cleanup", lambda t, e, d: CB.combat_cleanup(t, e, d)),
-                "cleanup_done": ("result", lambda t, e, d: CB.determine_combat_result(t, e)),
+                "cleanup_done": ("result", lambda t, e, d: CB.determine_combat_result(t, e, d)),
                 "result_determined": ("control", lambda t, e, d: BC.resolve_battlefield_control(t, e, d)),
                 "control_resolved": ("close", lambda t, e, d: CB.close_combat(t, e))}
 TURN_STEPS = (("awaken_complete", "awaken", TC.run_awaken_step), ("beginning_entered", "beginning", TC.enter_beginning_phase),
@@ -86,7 +90,9 @@ CLEANUP_CLAUSES = {"319.1": "the game went from an Open to a Closed state or bac
                    "319.8": "a Move was completed (an object on the Board changed Location)"}
 REQUEST_SUFFIX = "_required"
 # the triggered abilities whose program is the engine's (a keyword that is the whole ability), by program id prefix
-ENGINE_PROGRAMS = {IR.TEMPORARY_PROGRAM_PREFIX: IR.temporary_program, IR.VISION_PROGRAM_PREFIX: IR.vision_program}
+ENGINE_PROGRAMS = {IR.TEMPORARY_PROGRAM_PREFIX: IR.temporary_program, IR.VISION_PROGRAM_PREFIX: IR.vision_program,
+                   IR.QUICK_DRAW_PROGRAM_PREFIX: IR.quick_draw_program,
+                   IR.WEAPONMASTER_PROGRAM_PREFIX: IR.weaponmaster_program}
 
 
 def envelope(effect_state: dict[str, Any], decisions: list[dict[str, Any]] | tuple = (),
@@ -165,7 +171,7 @@ def item_program(catalogue: dict[str, Any], effect_state: dict[str, Any], item: 
         receipt = ((effect_state.get("chain_items") or {}).get(item["id"]) or {}).get("cost_receipt")
         if receipt is not None and _reads_receipt(program):
             # Core 356.4.f.1: a body that reads what was paid for it reads the play's own receipt, kept on its chain entry
-            program["cost_receipt"] = copy.deepcopy(receipt)
+            program["cost_receipt"] = state_copy.deepcopy(receipt)
         return program
     ref = _card_ref(effect_state, source)
     instruction = _delayed((catalogue["cards"].get(ref) or {}).get("programs") or {}, program_id) if ref else None
@@ -173,7 +179,7 @@ def item_program(catalogue: dict[str, Any], effect_state: dict[str, Any], item: 
         return None
     return {"schema_version": IR.PROGRAM_VERSION, "ruleset": {"core": IR.CORE_RULESET, "faq_as_of": IR.FAQ_AS_OF},
             "program_id": program_id, "controller": controller, "source_object": source,
-            "effects": CE.bind(copy.deepcopy(instruction["effects"]), bindings)}
+            "effects": CE.bind(state_copy.deepcopy(instruction["effects"]), bindings)}
 
 
 def _step(kind: str, label: str, timing: dict[str, Any], effect: dict[str, Any], result: dict[str, Any] | None,
@@ -184,7 +190,7 @@ def _step(kind: str, label: str, timing: dict[str, Any], effect: dict[str, Any],
     if committed:
         clauses = [] if label == "task:cleanup" else cleanup_clauses(timing, effect, next_timing, next_effect)
         if clauses and RC.CLEANUP_TASK not in next_timing["outstanding_tasks"] and not RC.is_terminal(next_timing):
-            next_timing = copy.deepcopy(next_timing)
+            next_timing = state_copy.deepcopy(next_timing)
             # ahead of the Scoring Step, which follows the Beginning Step's effects and their Cleanups (Core 315.2)
             tasks = list(next_timing["outstanding_tasks"])
             at = tasks.index(BC.SCORING_TASK) if BC.SCORING_TASK in tasks else len(tasks)
@@ -254,7 +260,8 @@ def run_procedure(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
         program = item_program(catalogue, effect, item)
         if item.get("limited_play"):
             return _done("procedure", "finalize:limited_play", timing, effect, RB.complete_limited_play(
-                timing, effect, env, entry_location=settings.get("entry_location"), payment_context=PAYMENT_CONTEXT,
+                timing, effect, env, entry_location=settings.get("entry_location"), power_split=settings.get("power_split"),
+                payment_context=PAYMENT_CONTEXT,
                 effect_program=program))
         if item.get("timing") == "triggered":
             registry = {program["program_id"]: program} if program else {}
@@ -269,6 +276,13 @@ def run_procedure(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
         return _done("procedure", f"finalize_and_resolve:{item.get('object_kind')}", timing, effect, resolved)
     if name == "resolve_newest_finalized":
         item = timing["chain"]["items"][-1]
+        if settings.get("payment_adds"):
+            # GPT A2 ruling 8 (Core 445.2.c): the payer's [Add]s in the payment window, then the same resolution
+            added = payment_adds(timing, effect, catalogue, settings["payment_adds"])
+            if not added.get("committed"):
+                return _step("procedure", f"resolve:{item.get('object_kind')}", timing, effect, added, False)
+            effect = added["next_effect_state"]
+            env = envelope(effect, decisions, receipts)
         return _done("procedure", f"resolve:{item.get('object_kind')}", timing, effect,
                      RB.resolve_with_program(timing, item["id"], effect, item_program(catalogue, effect, item), None, env))
     if name == "begin_turn_pending":
@@ -293,6 +307,46 @@ def run_procedure(timing: dict[str, Any], effect: dict[str, Any], catalogue: dic
             return _done("procedure", "turn:expiration", timing, effect, RB.run_expiration_step(timing, effect))
         return _done("procedure", "turn:next", timing, effect, TC.begin_turn(timing, effect, both))
     return _done("procedure", f"unknown:{name}", timing, effect, None)
+
+
+def payment_adds(timing: dict[str, Any], effect: dict[str, Any], catalogue: dict[str, Any],
+                 declarations: list[dict[str, Any]]) -> dict[str, Any]:
+    """GPT A2 ruling 8 (Core 445.2.c, 430.3): a payer told to pay may first use their own [Add] Reactions, which are
+    finalized and resolved at once, outside the usual timing. Each declaration is one such activation of the payer's (the chain item an [Add] ability with Reaction timing), played
+    through the play transaction with the payer given priority on a copy of the timing state (the restriction 445.2.c
+    lifts), finalized and resolved at once (Core 337.2); the timing state itself is not changed - the [Add] has left the
+    Chain. {committed, next_effect_state} or the first refusal."""
+    for declaration in declarations:
+        item = (declaration or {}).get("chain_item") or {}
+        if item.get("object_kind") != "ability" or item.get("ability_kind") != "add" or item.get("timing") != "reaction":
+            return {"committed": False, "valid": False, "reason_code": "not_an_add_reaction",
+                    "reason": f"{item.get('id')!r} is not an [Add] ability with the Reaction keyword (Core 445.2.c)"}
+        scratch = state_copy.deepcopy(timing)
+        scratch["priority"] = declaration["actor"]
+        scratch["chain"]["consecutive_passes"] = []
+        program = action_program(catalogue, effect, declaration)
+        played = PT.play_card(scratch, effect, declaration, engine_decisions=envelope(effect), effect_program=program)
+        if not played.get("committed"):
+            return {**played, "committed": False}
+        finalized = RC.finalize_oldest_pending(played["next_timing_state"])
+        if finalized.get("applied") is not True:
+            return {"committed": False, "reason_code": finalized.get("reason_code"), "reason": "the [Add] did not finalize"}
+        resolved = RB.resolve_with_program(finalized["next_state"], item["id"], played["next_effect_state"], program, None,
+                                           envelope(played["next_effect_state"]))
+        if not resolved.get("committed"):
+            return {**resolved, "committed": False}
+        # GPT's A2 review (blocker 3): an [Add] whose play or resolution raised a triggered ability (its cost killed or
+        # recycled its source, a watch on activations, ...) would leave that trigger nowhere - this window keeps no Chain
+        # of its own. Refused by name, never dropped silently; decision_space reads it as unproved
+        before = {i["id"] for i in timing["chain"]["items"]}
+        raised = [i["id"] for i in (resolved.get("next_timing_state") or {}).get("chain", {}).get("items") or []
+                  if i["id"] not in before and i["id"] != item["id"]]
+        if raised:
+            return {"committed": False, "valid": True, "unsupported": True, "reason_code": "payment_window_add_triggered",
+                    "reason": f"the [Add] {item.get('id')!r} raised {raised} inside the payment window; triggers raised "
+                              f"there are not placed by this engine (Core 445.2.c)"}
+        effect = resolved["next_effect_state"]
+    return {"committed": True, "next_effect_state": effect}
 
 
 def action_program(catalogue: dict[str, Any], effect: dict[str, Any], declaration: dict[str, Any]) -> dict[str, Any] | None:

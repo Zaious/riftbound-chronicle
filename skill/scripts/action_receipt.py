@@ -33,7 +33,7 @@ is not, why, by name. It fails closed: anything it cannot show makes `complete` 
 """
 from __future__ import annotations
 
-import copy
+import state_copy
 from typing import Any
 
 import action_space as AS
@@ -133,7 +133,7 @@ def actor_view(effect_state: dict[str, Any], actor: str, *, names_out: dict[str,
     for bf, entry in sorted((effect_state.get("battlefields") or {}).items()):
         unseen = [c.get("object_id") for c in ((entry.get("facedown") or {}).get("cards") or []) if c.get("object_id") in hidden]
         names.update({o: f"hidden:facedown:{bf}:{k}" for k, o in enumerate(unseen)})
-    view = copy.deepcopy(effect_state)
+    view = state_copy.deepcopy(effect_state)
     for object_id, dimension in hidden.items():
         view["objects"][object_id] = CE.mask(view["objects"][object_id], rune=dimension == PRIVATE_DIMENSIONS[3])
     if names_out is not None:

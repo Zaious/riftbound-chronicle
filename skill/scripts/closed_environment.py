@@ -26,7 +26,7 @@ A symbol is one of SYMBOLS; a 1v1 game binds each to one value.
 """
 from __future__ import annotations
 
-import copy
+import state_copy
 from typing import Any
 
 from effect_ir import (APPENDABLE_TRIGGER_FIELDS, CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, RULE_NUMBERING, hash_value,
@@ -65,13 +65,32 @@ LEGACY_LISTS = ("damage_modifiers", "might_auras")
 # A token the pool's cards make (Core 185): the fields its play_token instruction gives the object it creates
 # (effect_ir play_token) - what it is, apart from where and whose
 TOKEN_FIELDS = ("kind", "base_might", "keywords", "tags")
+# set 2 (the Gold gear token): a token card may print activated abilities, with the programs they run
+TOKEN_OPTIONAL_FIELDS = ("activated_abilities", "programs")
+
+
+def token_abilities(obj: dict[str, Any], object_id: str) -> dict[str, Any] | None:
+    """A token object's activated abilities as its catalogue record writes them: ids and programs un-namespaced, the
+    token's own id back to "$token" (effect_ir play_token wrote them the other way); None when it has none."""
+    rows = obj.get("activated_abilities")
+    if not rows:
+        return None
+    prefix, program_prefix = f"{object_id}:", f"{obj.get('token_id')}#"
+    return {key[len(prefix):] if key.startswith(prefix) else key:
+            {**_bind_some(state_copy.deepcopy(row), {object_id: "$token"}),
+             "effect_program_id": row["effect_program_id"][len(program_prefix):]
+             if row["effect_program_id"].startswith(program_prefix) else row["effect_program_id"]}
+            for key, row in rows.items()}
 
 
 def token_record(effect: dict[str, Any]) -> dict[str, Any]:
     """The token a play_token instruction makes, as a catalogue records it."""
     keywords = (effect.get("event_modifiers") or {}).get("result_keywords", []) if effect.get("token_kind") == "unit" else []
-    return {"kind": effect.get("token_kind"), "base_might": effect.get("base_might"), "keywords": list(keywords),
-            "tags": list(effect.get("tags") or [])}
+    record = {"kind": effect.get("token_kind"), "base_might": effect.get("base_might"), "keywords": list(keywords),
+              "tags": list(effect.get("tags") or [])}
+    if effect.get("activated_abilities"):
+        record["activated_abilities"] = state_copy.deepcopy(effect["activated_abilities"])
+    return record
 
 
 def _token_ops(value: Any, out: list) -> list:
@@ -124,8 +143,14 @@ def validate_catalogue(catalogue: Any) -> list[str]:
         errors.append("catalogue carries exactly schema_version, environment, cards, catalogue_hash, and tokens")
         return errors
     tokens = catalogue.get("tokens") or {}
-    if not isinstance(tokens, dict) or any(not isinstance(t, dict) or set(t) != set(TOKEN_FIELDS) for t in tokens.values()):
-        errors.append(f"tokens maps token ids to {{{', '.join(TOKEN_FIELDS)}}}")
+    if not isinstance(tokens, dict) or any(not isinstance(t, dict) or not set(TOKEN_FIELDS) <= set(t)
+                                           or set(t) - set(TOKEN_FIELDS) - set(TOKEN_OPTIONAL_FIELDS)
+                                           or (("activated_abilities" in t) != ("programs" in t))
+                                           or any(not isinstance(r, dict) or r.get("effect_program_id") not in (t.get("programs") or {})
+                                                  for r in (t.get("activated_abilities") or {}).values())
+                                           for t in tokens.values()):
+        errors.append(f"tokens maps token ids to {{{', '.join(TOKEN_FIELDS)}}} and, together, activated_abilities whose "
+                      f"programs are among its programs")
         tokens = {}
     if catalogue["schema_version"] != CATALOGUE_VERSION:
         errors.append(f"schema_version must be {CATALOGUE_VERSION}")
@@ -181,6 +206,20 @@ def validate_catalogue(catalogue: Any) -> list[str]:
                 if not isinstance(descriptor.get("trigger_id"), str) or descriptor["trigger_id"] in trigger_ids:
                     errors.append(f"{where}.trigger_id is missing or repeats another of the card's")
                 trigger_ids.add(descriptor.get("trigger_id"))
+        # ADR-0017 §1: an Effect Text's triggers are the card's too - symbolic, unhashed, each running one of its programs
+        text = static.get("effect_text")
+        for field, rows_ in ((text.get("triggers") or {}).items() if isinstance(text, dict) else []):
+            for index, descriptor in enumerate(rows_ or []):
+                where = f"{label}.object.effect_text.triggers.{field}[{index}]"
+                if not isinstance(descriptor, dict) or any(descriptor.get(k) != v for k, v in TRIGGER_SYMBOLIC.items()) \
+                        or "effect_program_hash" in descriptor or not isinstance(descriptor.get("optional_at_finalize"), bool):
+                    errors.append(f"{where} must carry {TRIGGER_SYMBOLIC}, optional_at_finalize, and no program hash")
+                    continue
+                if descriptor.get("effect_program_id") not in programs:
+                    errors.append(f"{where} runs {descriptor.get('effect_program_id')!r}, which is not one of its programs")
+                if not isinstance(descriptor.get("trigger_id"), str) or descriptor["trigger_id"] in trigger_ids:
+                    errors.append(f"{where}.trigger_id is missing or repeats another of the card's")
+                trigger_ids.add(descriptor.get("trigger_id"))
         for index, template in enumerate(static.get("printed_replacements") or []):
             # a materialized entry is compared whole with what the engine materializes: a use count would drift
             if not isinstance(template, dict) or template.get("uses_remaining") is not None or "uses_per_turn" in template:
@@ -193,7 +232,8 @@ def validate_catalogue(catalogue: Any) -> list[str]:
                 errors += [f"{label}.activated_abilities[{ability_id!r}] {e}"
                            for e in validate_condition(condition, f"activation_conditions[{index}]")]
         for effect in _token_ops(programs, []):
-            if effect.get("token_id") not in tokens or tokens[effect["token_id"]] != token_record(effect):
+            if effect.get("token_id") not in tokens or {k: v for k, v in tokens[effect["token_id"]].items()
+                                                         if k != "programs"} != token_record(effect):
                 errors.append(f"{label} makes token {effect.get('token_id')!r} as {token_record(effect)}, which the "
                               f"catalogue's tokens do not record so")
         if static.get("kind") == "spell" and "play" not in programs and not record.get("incomplete"):
@@ -220,7 +260,7 @@ def place(catalogue: dict[str, Any], ref: str, *, owner: str, object_id: str, co
     if record["object"].get("kind") == "battlefield":
         raise ValueError(f"{ref!r} is a Battlefield, not an object")
     controller = owner if controller is None else controller
-    obj = copy.deepcopy(record["object"])
+    obj = state_copy.deepcopy(record["object"])
     obj.update({"owner": owner, "controller": controller, "might_modifiers": [], "damage": 0, "exhausted": False,
                 "card_ref": ref})
     for field in TRIGGER_FIELDS:
@@ -228,12 +268,22 @@ def place(catalogue: dict[str, Any], ref: str, *, owner: str, object_id: str, co
             obj[field] = [{**descriptor, "trigger_id": ability_id(object_id, descriptor["trigger_id"]), "controller": controller,
                            "source_object": object_id, "effect_program_id": program_id(ref, descriptor["effect_program_id"])}
                           for descriptor in obj[field]]
+    text = obj.get("effect_text")
+    if isinstance(text, dict) and isinstance(text.get("triggers"), dict):
+        # ADR-0017 §1: an Equipment's Effect Text triggers - ids namespaced by this object (two copies stay apart),
+        # programs by the card; their source and controller are the Top-Most card's, written when it attaches
+        # (effect_ir.append_effect_text), and $source_object binds to that source when one resolves (game_loop.item_program)
+        text["triggers"] = {field: [{**descriptor, "trigger_id": ability_id(object_id, descriptor["trigger_id"]),
+                                     "controller": controller, "source_object": object_id,
+                                     "effect_program_id": program_id(ref, descriptor["effect_program_id"])}
+                                    for descriptor in rows_]
+                            for field, rows_ in text["triggers"].items()}
     obj.setdefault("base_might", 0)
     rows = record.get("activated_abilities") or {}
     if rows:
         # a row's own object (its [Exhaust], its own Buff) is this object; nothing else in a row is bound here
         own = {"$source_object": object_id, "$card": object_id}
-        obj["activated_abilities"] = {ability_id(object_id, local): {**_bind_some(copy.deepcopy(row), own),
+        obj["activated_abilities"] = {ability_id(object_id, local): {**_bind_some(state_copy.deepcopy(row), own),
                                                                      "effect_program_id": program_id(ref, row["effect_program_id"])}
                                       for local, row in sorted(rows.items())}
     # an ability's own Dependent condition (a Legion gate) is keyed by its id, so it follows the id's namespace
@@ -257,7 +307,7 @@ def place_battlefield(catalogue: dict[str, Any], ref: str, battlefield_id: str) 
     record = catalogue["cards"][ref]
     if record["object"].get("kind") != "battlefield":
         raise ValueError(f"{ref!r} is not a Battlefield")
-    entry = {k: _bind_some(copy.deepcopy(v), {"$source_object": battlefield_id})
+    entry = {k: _bind_some(state_copy.deepcopy(v), {"$source_object": battlefield_id})
              for k, v in record["object"].items() if k != "kind"}
     for field in TRIGGER_FIELDS:
         if entry.get(field):
@@ -289,7 +339,8 @@ def instantiate_program(catalogue: dict[str, Any], ref: str, key: str, bindings:
     missing = sorted(set(SYMBOLS) - set(bindings))
     if missing:
         raise ValueError(f"unbound symbols {missing}")
-    template = catalogue["cards"][ref]["programs"][key]
+    # a card's program, or a token card's (set 2: the Gold gear token's ability)
+    template = (catalogue["cards"].get(ref) or (catalogue.get("tokens") or {}).get(ref))["programs"][key]
     program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
                "program_id": program_id(ref, key), "controller": bindings["$controller"],
                "source_object": bindings["$source_object"], "effects": bind(template.get("effects") or [], bindings)}
@@ -327,7 +378,8 @@ def environment_problems(state: dict[str, Any], catalogue: dict[str, Any]) -> li
             record = tokens.get(obj.get("token_id"))
             if record is None:
                 problems.append(f"{object_id} is a token the catalogue's cards do not make ({obj.get('token_id')!r})")
-            elif {k: obj.get(k, [] if k in ("keywords", "tags") else None) for k in TOKEN_FIELDS} != record:
+            elif {k: obj.get(k, [] if k in ("keywords", "tags") else None) for k in TOKEN_FIELDS} \
+                    != {k: record[k] for k in TOKEN_FIELDS} or token_abilities(obj, object_id) != record.get("activated_abilities"):
                 problems.append(f"{object_id} is token {obj['token_id']!r} with fields other than its record's")
             continue
         ref = obj.get("card_ref")
@@ -365,7 +417,7 @@ def environment_problems(state: dict[str, Any], catalogue: dict[str, Any]) -> li
         if state.get(name):
             problems.append(f"the state's {name} hold entries no environment card adds (its statics are on its objects)")
     own = [r for r in state.get("replacement_effects") or [] if "source_object" in r]
-    rest = copy.deepcopy({k: v for k, v in state.items() if k != "replacement_effects"})
+    rest = state_copy.deepcopy({k: v for k, v in state.items() if k != "replacement_effects"})
     rest["replacement_effects"] = [r for r in state.get("replacement_effects") or [] if "source_object" not in r]
     materialize_printed_replacements(rest)
     want = [r for r in rest["replacement_effects"] if "source_object" in r]

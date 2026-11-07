@@ -97,7 +97,12 @@ def main() -> int:
         errors.append("attaching a card to itself was accepted")
     nested = copy.deepcopy(attached["next_state"])
     nested["objects"]["c1"] = dict(nested["objects"]["c2"])
-    stacked = apply_program(nested, program("nest", {"op": "attach", "effect_id": "a", "object_id": "u2", "to": "g1"}))
+    # 2026-11-03 (ADR-0017): the card that would nest is a Gear - a Unit is never attached at all (Core 435.1.h.1),
+    # which check_equip E6 covers
+    nested["objects"]["g2"] = {**nested["objects"]["g1"], "exhausted": False}
+    nested["objects"]["g2"].pop("attached_to", None)
+    nested["players"]["p1"]["zones"]["base"].append("g2")
+    stacked = apply_program(nested, program("nest", {"op": "attach", "effect_id": "a", "object_id": "g2", "to": "g1"}))
     if stacked.get("unsupported") is not True or "nested_attachments" not in str(stacked.get("reason")):
         errors.append(f"a nested attachment was not refused as unsupported: {stacked.get('reason_code')} {stacked.get('reason')}")
 

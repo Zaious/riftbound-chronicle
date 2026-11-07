@@ -11,7 +11,7 @@ conformance failures, never rule overrides.
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import hashlib
 import json
 import sys
@@ -187,7 +187,7 @@ def apply_terminal_event(timing_state: dict[str, Any], effect_state: dict[str, A
         raise ValueError("terminal_event must carry a derived reason and a winning player")
     if is_terminal(timing_state):
         raise ValueError("the game already ended")
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["terminal"] = terminal_record(effect_state, event["reason"], event["winner"], derived=True,
                                               extra={"immediate": bool(event.get("immediate")), "source": event.get("source")})
     return next_timing
@@ -203,7 +203,7 @@ def _game_over(state: dict[str, Any]) -> dict[str, Any]:
     terminal = state["terminal"]
     return _result(state, valid=True, applied=False, legal=False, reason_code="game_over",
                    explanation=f"the game ended ({terminal['reason']}); no procedure runs on a frozen snapshot",
-                   terminal=copy.deepcopy(terminal), rule_locators=["Core 196"])
+                   terminal=state_copy.deepcopy(terminal), rule_locators=["Core 196"])
 
 
 def _next_player(state: dict[str, Any], player: str) -> str:
@@ -244,6 +244,16 @@ def noted_location_errors(value: Any) -> list[str]:
 def trigger_event_errors(value: Any) -> list[str]:
     """2026-09-28: a triggered item's `trigger_event` - the event that met its condition, the
     object it is about and that object's identity then - is exactly four non-empty strings."""
+    if isinstance(value, dict) and value.get("kind") == "played_group":
+        # set 2 package A2 (Arise!): the tokens a repeated play made - {event_id, kind, objects, identities}, the objects
+        # distinct ids (none is an empty group) and each identity the one it entered with
+        objects, identities = value.get("objects"), value.get("identities")
+        if set(value) != {"event_id", "kind", "objects", "identities"} or not isinstance(value.get("event_id"), str) \
+                or not value["event_id"] or not isinstance(objects, list) or len(set(objects)) != len(objects) \
+                or any(not isinstance(o, str) or not o for o in objects) or not isinstance(identities, dict) \
+                or set(identities) != set(objects) or any(not isinstance(v, str) or not v for v in identities.values()):
+            return ["trigger_event played_group must be {event_id, kind, objects, identities}"]
+        return []
     if not isinstance(value, dict) or set(value) != set(TRIGGER_EVENT_FIELDS) \
             or any(not isinstance(value[k], str) or not value[k] for k in TRIGGER_EVENT_FIELDS):
         return ["trigger_event must be {event_id, kind, object, identity}, each a non-empty string"]
@@ -457,7 +467,10 @@ def validate_state(state: dict[str, Any]) -> list[str]:
             if "facedown_battlefield" in item and not (isinstance(item["facedown_battlefield"], str) and item["facedown_battlefield"]):
                 errors.append(f"{label}.facedown_battlefield must be a battlefield id")
             # GPT 2026-09-29 (Core 355.4): a Move destination chosen at finalization is recorded with the targets
-            if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") in ("target_selection", "location_selection") for e in item["finalized_targets"])):
+            if "finalized_targets" in item and not (isinstance(item["finalized_targets"], list) and all(isinstance(e, dict) and e.get("stage") == "trigger_finalization" and e.get("kind") in ("target_selection", "location_selection",
+                                                                     # set 2 package A2 (Aphelios - Exalted): a triggered
+                                                                     # ability's mode, chosen as it is finalized (403.2)
+                                                                     "mode_selection") for e in item["finalized_targets"])):
                 errors.append(f"{label}.finalized_targets must be trigger_finalization target selections and Move destinations")
             if "finalized_targets" in item and item.get("status") != "finalized":
                 errors.append(f"{label}.finalized_targets on an item that is not finalized")
@@ -573,7 +586,7 @@ def next_procedure(state: dict[str, Any]) -> dict[str, Any]:
             valid=True,
             procedure="turn_start_step_pending" if state.get("phase") != "setup" else "begin_turn_pending",
             subject=state.get("phase"),
-            turn_progress=copy.deepcopy(progress),
+            turn_progress=state_copy.deepcopy(progress),
             discretionary_actions_allowed=False,
             rule_locators=["Core 315", "Core 316.1", "Core 316.5.a"],
         )
@@ -853,7 +866,7 @@ def finalize_oldest_pending(state: dict[str, Any], *, perform_optional_trigger: 
             subject=original_item["id"],
         )
     if optional_trigger and perform_optional_trigger is False:
-        new_state = copy.deepcopy(state)
+        new_state = state_copy.deepcopy(state)
         origin = new_state["chain"].get("initiated_by")
         new_state["chain"]["items"] = [item for item in new_state["chain"]["items"] if item["id"] != original_item["id"]]
         new_state["chain"]["consecutive_passes"] = []
@@ -871,7 +884,7 @@ def finalize_oldest_pending(state: dict[str, Any], *, perform_optional_trigger: 
             next_procedure=next_procedure(new_state),
             rule_locators=["Core 383.3.a–383.3.a.3"],
         )
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     item = next(item for item in new_state["chain"]["items"] if item["status"] == "pending")
     item["status"] = "finalized"
     immediate = item["object_kind"] in {"unit", "gear"} or item.get("ability_kind") == "add"
@@ -909,10 +922,10 @@ def add_pending_item(state: dict[str, Any], proposal: dict[str, Any]) -> dict[st
     verdict = validate_timing(state, action)
     if verdict.get("legal") is not True:
         return _result(state, valid=True, applied=False, reason_code=verdict.get("reason_code"), legality=verdict)
-    candidate = copy.deepcopy(item)
+    candidate = state_copy.deepcopy(item)
     candidate["controller"] = proposal.get("actor")
     candidate["status"] = "pending"
-    probe = copy.deepcopy(state)
+    probe = state_copy.deepcopy(state)
     probe["chain"]["items"].append(candidate)
     if state["chain"]["items"] == []:
         origin = proposal.get("initiated_by") or ("activated_ability" if proposal.get("kind") == "activate_ability" else "played_card")
@@ -947,9 +960,9 @@ def add_limited_play_items(state: dict[str, Any], plays: list[dict[str, Any]]) -
     if is_terminal(state):
         return _game_over(state)
     if not plays:
-        return _result(state, valid=True, applied=True, next_state=copy.deepcopy(state), next_state_hash=state_hash(state),
+        return _result(state, valid=True, applied=True, next_state=state_copy.deepcopy(state), next_state_hash=state_hash(state),
                        transition={"type": "no_limited_plays"})
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     was_empty = not new_state["chain"]["items"]
     for play in plays:
         if not isinstance(play, dict) or set(play) != {"chain_item_id", "card", "controller", "object_kind"}:
@@ -992,7 +1005,7 @@ def remove_chain_item(state: dict[str, Any], item_id: str, *, reason: str = "cou
     if not any(item["id"] == item_id for item in items):
         return _result(state, valid=True, applied=False, reason_code="chain_item_not_found")
     origin = state["chain"].get("initiated_by")
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     new_state["chain"]["items"] = [item for item in new_state["chain"]["items"] if item["id"] != item_id]
     new_state["chain"]["consecutive_passes"] = []
     if not new_state["chain"]["items"]:
@@ -1017,7 +1030,7 @@ def pass_priority(state: dict[str, Any], actor: str) -> dict[str, Any]:
     verdict = validate_timing(state, {"actor": actor, "kind": "pass_priority", "timing": "default"})
     if verdict.get("legal") is not True:
         return _result(state, valid=verdict.get("valid", True), applied=False, reason_code=verdict.get("reason_code"), legality=verdict)
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     passes = new_state["chain"]["consecutive_passes"]
     if actor in passes:
         return _result(state, valid=True, applied=False, reason_code="non_consecutive_duplicate_pass")
@@ -1055,7 +1068,7 @@ def pass_focus(state: dict[str, Any], actor: str) -> dict[str, Any]:
     verdict = validate_timing(state, {"actor": actor, "kind": "pass_focus", "timing": "default"})
     if verdict.get("legal") is not True:
         return _result(state, valid=verdict.get("valid", True), applied=False, reason_code=verdict.get("reason_code"), legality=verdict)
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     passes = list(new_state["showdown"].get("focus_passes", []))
     if actor in passes:
         return _result(state, valid=True, applied=False, reason_code="focus_already_passed_in_sequence")
@@ -1126,7 +1139,7 @@ def complete_resolution(state: dict[str, Any], item_id: str, *, effect_execution
         if earlier_pending:
             return _result(state, valid=True, applied=False, reason_code="older_pending_item_must_finalize_first")
     origin = state["chain"].get("initiated_by")
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     new_state["chain"]["items"] = [item for item in new_state["chain"]["items"] if item["id"] != item_id]
     new_state["chain"]["consecutive_passes"] = []
     if not new_state["chain"]["items"]:
@@ -1160,7 +1173,7 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
     if is_terminal(state):
         return _game_over(state)
     if not descriptors:
-        return _result(state, valid=True, applied=True, next_state=copy.deepcopy(state), next_state_hash=state_hash(state), transition={"type": "no_triggers"})
+        return _result(state, valid=True, applied=True, next_state=state_copy.deepcopy(state), next_state_hash=state_hash(state), transition={"type": "no_triggers"})
     seen: set[str] = set()
     batches: dict[tuple[int, str], dict[str, list[dict[str, Any]]]] = {}
     descriptor_errors = []
@@ -1231,7 +1244,7 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             "controller_blocks": [controller for controller in rotated if controller in groups],
         })
 
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     was_empty = not new_state["chain"]["items"]
     for descriptor in ordered:
         new_state["chain"]["items"].append({
@@ -1259,6 +1272,8 @@ def schedule_triggered_items(state: dict[str, Any], descriptors: list[dict[str, 
             **({"noted_location": dict(descriptor["noted_location"])} if descriptor.get("noted_location") else {}),
             # set 2 (2026-10-29, Sivir - Ambitious): the excess its conquer trigger's condition read (battlefield_control)
             **({"noted_excess": descriptor["noted_excess"]} if "noted_excess" in descriptor else {}),
+            # set 2 package A2 (The Zero Drive, Core 396): a granted ability linked with its granting card's own
+            **({"granted_by": descriptor["granted_by"]} if descriptor.get("granted_by") else {}),
             # package 12: the on-play trigger of a permanent that came from facedown chooses at this battlefield (811.1.d.3)
             **({"facedown_battlefield": descriptor["facedown_battlefield"]} if descriptor.get("facedown_battlefield") else {}),
             "optional_at_finalize": descriptor.get("optional_at_finalize", False),

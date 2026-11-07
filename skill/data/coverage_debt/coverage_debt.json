@@ -12,16 +12,15 @@
   "quota": null,
   "note": "No repayment quota: a packet reports what the debt gained, lost or reclassified. deck_slots counts copies in the deck lists this repo carries; a card no list plays scores zero.",
   "counts": {
-    "clauses_parsed": 38,
-    "clauses_in_debt": 18,
+    "clauses_parsed": 39,
+    "clauses_in_debt": 17,
     "promotion": {
-      "grammar_reproduced": 34,
-      "hand_written": 14,
-      "in_debt_but_claimed": 14
+      "grammar_reproduced": 35,
+      "hand_written": 13,
+      "in_debt_but_claimed": 13
     },
     "by_rule_family": {
       "attacking_defending_alone": 1,
-      "bonus_damage": 1,
       "combat_state": 3,
       "conditional_effects": 3,
       "conditional_might": 1,
@@ -44,7 +43,7 @@
     },
     "by_risk": {
       "always_in_play": 3,
-      "main_deck": 15,
+      "main_deck": 14,
       "unknown": 0
     }
   },
@@ -226,25 +225,6 @@
       "reason_code": "clause_unparsed"
     },
     {
-      "clause_id": "annie - fiery#24035ea0",
-      "card_key": "annie - fiery",
-      "card": "Annie - Fiery",
-      "text": "Your spells and abilities deal 1 Bonus Damage.",
-      "pack": "global-core-origins-v1",
-      "deck_slots": 0,
-      "deck_count": 1,
-      "decks": [
-        "proving-grounds-annie"
-      ],
-      "risk": "main_deck",
-      "rule_family": [
-        "bonus_damage"
-      ],
-      "missing_capability": "R3-A2-play-conditions-continuous",
-      "claim_in_pack": "full",
-      "reason_code": "clause_unparsed"
-    },
-    {
       "clause_id": "annie - stubborn#5086e61a",
       "card_key": "annie - stubborn",
       "card": "Annie - Stubborn",
@@ -414,7 +394,9 @@
     "normalization_baseline": "split_clauses:af6d79ecdf43bc4b",
     "reclassified": [],
     "added": [],
-    "repaid": [],
+    "repaid": [
+      "annie - fiery#24035ea0"
+    ],
     "normalization_reclassification": []
   }
 }

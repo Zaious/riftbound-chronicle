@@ -99,7 +99,7 @@ def main() -> int:
     supported, note = keyword_supported(catalog, "shield")
     if not supported or "shield_total" not in note:
         errors.append(f"an implemented keyword did not name its production: {note}")
-    supported, note = keyword_supported(catalog, "weaponmaster")
+    supported, note = keyword_supported(catalog, "overwhelm")  # 2026-11-03: Weaponmaster is catalogued now (ADR-0017)
     if supported or "not in the keyword catalogue" not in note:
         errors.append(f"an uncatalogued keyword was not refused by name: {note}")
 

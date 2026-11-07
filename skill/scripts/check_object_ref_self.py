@@ -52,8 +52,12 @@ ADOPTED_OPS = {"ready", "buff", "modify_might", "banish", "return_to_hand",
                # 2026-10-08 package 10 (Noxian Guillotine, Imperial Decree): "kill it", check_delayed_event_watch
                "kill",
                # 2026-10-12 package 11 (Tideturner: "Move me to its location ..."): check_swap_locations S1, S4
-               "move_board_object"}
-EXTRA = {"ready": {}, "buff": {}, "banish": {}, "return_to_hand": {},
+               "move_board_object",
+               # set 2 package A2 (Edge of Night: "attach it to a unit you control"): the source attached to the
+               # instruction's target; its own fixture is check_attach_self_from_facedown (a Gear attached to u1). Here the
+               # source u1 is a Unit, so the attach does nothing (Core 435.1.h.1) - the reference is still resolved
+               "attach"}
+EXTRA = {"ready": {}, "buff": {}, "banish": {}, "return_to_hand": {}, "attach": {"to": "u2"},
          "modify_might": {"amount": 3, "duration": "this_turn", "source": "u1"},
          # package 11: the source moved from its Base to bf1
          "move_board_object": {"destination": {"kind": "battlefield", "battlefield": "bf1"}}}

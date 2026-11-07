@@ -329,6 +329,32 @@
       }
     },
     {
+      "keyword_id": "quick_draw",
+      "name": "Quick-Draw",
+      "locators": [
+        "Core 819.1.b",
+        "Core 819.1.d",
+        "Core 819.2"
+      ],
+      "production": {
+        "module": "effect_ir",
+        "symbol": "quick_draw_triggers",
+        "layer": "ability",
+        "note": "819.1.d makes Quick-Draw short for Reaction and a play trigger attaching the card to one of its controller's units: as the card completes its play and enters the Board, the play completion schedules one trigger whose program is the engine's attach with a chosen friendly unit as its Target; several instances trigger once (819.2). Its Reaction is the card's printed play timing, which the state validator requires (819.1.b)"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the Equipment entering the Board by being played",
+        "duration": "one trigger at play completion"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-11-03",
+        "source": "Core Rules 2026-10-09 819; the production was verified against the live engine (check_quick_draw.py)"
+      },
+      "fixture": "check_quick_draw.py"
+    },
+    {
       "keyword_id": "repeat",
       "name": "Repeat",
       "locators": [
@@ -479,6 +505,35 @@
         "source": "Core Rules 2026-07-16 (locators renumbered to 2026-10-09 in C3) 817 and 437; the production was verified against the live engine (check_vision.py)"
       },
       "fixture": "check_vision.py"
+    },
+    {
+      "keyword_id": "weaponmaster",
+      "name": "Weaponmaster",
+      "locators": [
+        "Core 821.1.b",
+        "Core 821.1.c",
+        "Core 821.1.c.2",
+        "Core 821.1.c.3",
+        "Core 821.1.c.5",
+        "Core 821.1.c.7"
+      ],
+      "production": {
+        "module": "effect_ir",
+        "symbol": "weaponmaster_triggers",
+        "layer": "ability",
+        "note": "821.1.c: as a unit with Weaponmaster completes its play, one optional trigger per instance; finalized, its controller picks one of their Equipment (attached or not) and pays its Equip cost less one any-domain Power (the ability's base cost, trigger_cost.equip_cost_of); resolved, the Equipment attaches to the unit, leaving its old Top-Most card. No Equip cost, or the cost not paid: the ability leaves the chain and the Equipment stays (821.1.c.4-c.5)"
+      },
+      "active_zone": "board",
+      "boundary": {
+        "identity": "the unit entering the Board by being played, and the Equipment chosen",
+        "duration": "one trigger per instance at play completion"
+      },
+      "review": {
+        "reviewer": "claude",
+        "date": "2026-11-03",
+        "source": "Core Rules 2026-10-09 821; the production was verified against the live engine (check_weaponmaster.py)"
+      },
+      "fixture": "check_weaponmaster.py"
     }
   ]
 }

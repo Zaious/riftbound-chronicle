@@ -38,7 +38,7 @@ never in a per-player zone.
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import json
 import sys
 from pathlib import Path
@@ -66,7 +66,11 @@ RESULT_VERSION = "riftbound-play-result.v1"
 # (356.7, 357.2). Anything else is `unsupported` by name.
 SUPPORTED_NON_STANDARD = {"exhaust": "exhaust", "kill": "kill", "kill_this": "kill", "recall_self": "recall",
                           # 2026-10-16 package 14: a Basic Rune's "Recycle this" (Core 164.2.b) - to its Rune Deck (161.2.b)
-                          "recycle_self": "recycle"}
+                          "recycle_self": "recycle",
+                          # set 2 package A2 (Legion Quartermaster): a friendly object returned to its owner's hand
+                          "return_to_hand": "return_to_hand",
+                          # set 2 package A2 (The Zero Drive: "Banish this"): the ability's own source banished (Core 428)
+                          "banish_self": "banish"}
 # ADR-0011 §4: costs paid by the chain item's own source (an ability's own cost, 204.1.b); the object
 # is the activation's source_object unless the declaration names one.
 SELF_COSTS = {"kill_this", "recall_self", "banish_self", "recycle_self"}
@@ -91,6 +95,11 @@ PLAY_DECLARATION_FIELDS = frozenset({"schema_version", "ruleset", "play_id", "ac
 # "ignoring its Power cost" (356.1.b.2), which an effect-driven play needs.
 COST_OVERRIDE_KINDS = {"ignore_base_cost", "for_cost", "ignore_energy", "ignore_power"}
 OVERRIDE_MODIFICATION = {"ignore_base_cost": "ignore_all", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power"}
+# set 2 package A2 (Jayce - Man of Progress): a cost_override whose source names a turn effect of its player's that lets
+# the play ignore a cost - checked against that turn effect and spent by the play (granted_override_turn_effect)
+TURN_EFFECT_OVERRIDE_PREFIX = "turn_effect:"
+OVERRIDE_TURN_EFFECTS = {"gear_play_ignoring_energy": {"card_kind": "gear", "source_kind": "hand",
+                                                       "override_kind": "ignore_energy"}}
 # 2026-09-28 (package 6): an effect-driven play's cost basis (effect_ir.LIMITED_PLAY_COST_BASES) as the
 # cost_override its play transaction declares
 LIMITED_PLAY_OVERRIDE = {"ignore_all": "ignore_base_cost", "ignore_energy": "ignore_energy", "ignore_power": "ignore_power",
@@ -139,6 +148,12 @@ DECISION_REASONS = {"optional_cost_intent_required", "target_selection_required"
                     # Core 356.4.c.1 / 356.4.d.1 / 356.4.e (GPT 2026-09-27): discounts whose order changes the
                     # cost wait for the player's discount_order
                     "discount_order_required",
+                    # set 2 package A2 (GPT A2 ruling 16): a "[1] or [A] less" discount with two or more components it
+                    # could reduce waits for the payer's choice (cost.discount_choices)
+                    "discount_choice_required",
+                    # set 2 package A2 (Core 135.2.e.6.c): the Domain split of a dual-Domain card's printed Power in a
+                    # granted [Repeat] (cost.offer_power_splits)
+                    "power_split_required",
                     # Core 417.5: a cost that recycles two or more cards to one Main Deck waits for the
                     # external randomization receipt of their order (ADR-0010 §2); decision_controller
                     # names that deck's owner, whose receipt it is - no player chooses the order
@@ -160,6 +175,47 @@ class PlayError(ValueError):
 
 
 # ----------------------------------------------------------------- validation --
+
+def printed_base_options(printed: dict[str, Any]) -> list[dict[str, Any]]:
+    """Set 2 package A2 (Core 135.2.e.6.c, found reading the cards: every dual-Domain card's Power runes are split-colour):
+    the concrete base costs a play may declare for this printed cost - its Energy, its own Power of a Domain, and each
+    way to pay its power_of_domains Power with the card's Domains (each rune either Domain). One option when it has
+    none."""
+    fixed = {"energy": printed["energy"], "power": {d: a for d, a in (printed.get("power") or {}).items()}}
+    own = printed.get("power_of_domains")
+    if not own:
+        return [fixed]
+    out = []
+    for split in power_splits(own["domains"], own["amount"]):
+        power = dict(fixed["power"])
+        for domain, amount in split.items():
+            power[domain] = power.get(domain, 0) + amount
+        out.append({"energy": fixed["energy"], "power": power})
+    return out
+
+
+def power_splits(domains: list[str], amount: int) -> list[dict[str, int]]:
+    """Every way to pay `amount` Power with these Domains, each rune one of them: {domain: n} with n >= 1 only."""
+    out: list[dict[str, int]] = []
+
+    def walk(index: int, left: int, current: dict[str, int]) -> None:
+        if index == len(domains) - 1:
+            out.append({**current, **({domains[index]: left} if left else {})})
+            return
+        for take in range(left + 1):
+            walk(index + 1, left - take, {**current, **({domains[index]: take} if take else {})})
+
+    walk(0, amount, {})
+    return out
+
+
+def matches_printed_base(printed: Any, base: Any) -> bool:
+    """Whether a declared base cost is one the printed cost allows (printed_base_options)."""
+    if not isinstance(printed, dict) or not isinstance(base, dict):
+        return False
+    norm = lambda b: {"energy": b.get("energy"), "power": {d: a for d, a in (b.get("power") or {}).items() if a}}
+    return norm(base) in [norm(o) for o in printed_base_options(printed)]
+
 
 def _is_resource_cost(value: Any) -> bool:
     return (isinstance(value, dict) and set(value) == {"energy", "power"} and isinstance(value["energy"], int) and value["energy"] >= 0
@@ -206,13 +262,18 @@ def validate_declaration(value: Any) -> list[str]:
         # ADR-0011 §4 / Core 377, 403: an activated ability is declared with its
         # source and ability id; `card` names the source (nothing leaves the hand).
         # package 11 (Heimerdinger - Inventor): a copied ability also names what it copies (copied_from)
-        if not isinstance(activation, dict) or set(activation) - {"source_object", "ability_id", "copied_from"} \
+        # set 2 package A2 (Forge of the Fluft): an ability a Battlefield grants names the grant (granted_by)
+        if not isinstance(activation, dict) or set(activation) - {"source_object", "ability_id", "copied_from", "granted_by"} \
                 or not {"source_object", "ability_id"} <= set(activation) \
                 or any(not isinstance(activation[k], str) or not activation[k] for k in ("source_object", "ability_id")) \
                 or ("copied_from" in activation and (not isinstance(activation["copied_from"], dict)
-                                                    or set(activation["copied_from"]) != {"source_object", "ability_id"})):
+                                                    or set(activation["copied_from"]) != {"source_object", "ability_id"})) \
+                or ("granted_by" in activation and (not isinstance(activation["granted_by"], dict)
+                                                   or set(activation["granted_by"]) != {"battlefield", "grant_id"}
+                                                   or "copied_from" in activation)):
             errors.append("an ability declaration needs activation {source_object, ability_id} (and copied_from "
-                          "{source_object, ability_id} for a copied ability)")
+                          "{source_object, ability_id} for a copied ability, or granted_by {battlefield, grant_id} for "
+                          "one a Battlefield grants)")
         elif value.get("card") != activation["source_object"]:
             errors.append("an ability declaration's card must be its activation.source_object")
     elif activation is not None:
@@ -254,7 +315,13 @@ def validate_declaration(value: Any) -> list[str]:
     cost = value.get("cost")
     if not isinstance(cost, dict) or "base" not in cost or set(cost) - {"base", "base_modifications", "additional", "increases", "discounts", "total_modifications",
                                                                    # 356.4.c.1 / 356.4.d.1: the player's order of the discounts
-                                                                   "discount_order"}:
+                                                                   "discount_order",
+                                                                   # set 2 package A2 (GPT A2 ruling 16): which component each
+                                                                   # "[1] or [A] less" discount reduces
+                                                                   "discount_choices",
+                                                                   # set 2 package A2 (Core 135.2.e.6.c): the Domain split of a
+                                                                   # granted [Repeat] costing a dual-Domain card's printed Power
+                                                                   "offer_power_splits"}:
         return errors + ["cost must carry base and only the typed modification lists"]
     if not _is_resource_cost(cost["base"]):
         errors.append("cost.base must be {energy, power{domain: n}} with non-negative integers")
@@ -285,7 +352,7 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append(f"cost.additional[{i}].payment needs domain and amount for power")
         if pay["kind"] == "power_any" and (not isinstance(pay.get("amount"), int) or pay["amount"] < 0):
             errors.append(f"cost.additional[{i}].payment.amount is required for power_any")
-        if pay["kind"] in {"exhaust", "kill"} and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
+        if pay["kind"] in {"exhaust", "kill", "return_to_hand"} and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
             errors.append(f"cost.additional[{i}].payment.object_id is required for {pay['kind']}")
         # 2026-10-15 package 13 (C2): the kinds a kill cost names ("Kill a friendly unit or gear")
         if "object_kinds" in pay and (pay["kind"] != "kill" or not isinstance(pay["object_kinds"], list) or not pay["object_kinds"]
@@ -300,12 +367,17 @@ def validate_declaration(value: Any) -> list[str]:
             errors.append(f"cost.additional[{i}].payment spend_xp needs a positive amount (Core 730.2)")
         if pay["kind"] == "spend_buff" and (not isinstance(pay.get("object_id"), str) or not pay.get("object_id")):
             errors.append(f"cost.additional[{i}].payment spend_buff names the Unit whose Buff is spent (Core 702.2.b)")
-        if pay["kind"] in CHOICE_COSTS and (not isinstance(pay.get("amount"), int) or isinstance(pay.get("amount"), bool) or pay["amount"] < 1 or set(pay) - {"kind", "amount", "decision_ref", "order_ref"}
-                                            or any(not isinstance(pay.get(k), str) or not pay.get(k) for k in ("decision_ref", "order_ref") if k in pay)):
-            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs a positive amount (and optional decision_ref / order_ref)")
+        if pay["kind"] in CHOICE_COSTS and (not isinstance(pay.get("amount"), int) or isinstance(pay.get("amount"), bool) or pay["amount"] < 1
+                                            or set(pay) - {"kind", "amount", "decision_ref", "order_ref", "card_kind"}
+                                            or any(not isinstance(pay.get(k), str) or not pay.get(k) for k in ("decision_ref", "order_ref") if k in pay)
+                                            # set 2 package A2 (Assembly Rig: "Recycle a unit from your trash"): one card kind
+                                            or ("card_kind" in pay and (pay["kind"] != "recycle_trash"
+                                                                        or pay["card_kind"] not in {"unit", "gear", "spell"}))):
+            errors.append(f"cost.additional[{i}].payment {pay['kind']} needs a positive amount (and optional decision_ref / order_ref; "
+                          f"a recycle_trash may name a card_kind among unit, gear, spell)")
     for i, inc in enumerate(cost.get("increases", []) or []):
         errors.extend(f"cost.increases[{i}] {e}" for e in _provenance_errors(inc))
-        if not isinstance(inc, dict) or not {"id", "component", "amount"} <= set(inc) or set(inc) - {"id", "component", "amount", "source", "provenance", "condition", "per_each"} or not isinstance(inc["amount"], int) or inc["amount"] < 1 or not (inc["component"] == "energy" or str(inc["component"]).startswith("power:")):
+        if not isinstance(inc, dict) or not {"id", "component", "amount"} <= set(inc) or set(inc) - {"id", "component", "amount", "source", "provenance", "condition", "per_each"} or not isinstance(inc["amount"], int) or inc["amount"] < 1 or not (inc["component"] in ("energy", "power_any") or str(inc["component"]).startswith("power:")):
             errors.append(f"cost.increases[{i}] is invalid")
     ids: set[str] = set()
     for i, disc in enumerate(cost.get("discounts", []) or []):
@@ -446,7 +518,7 @@ def _discount_order_problem(cost: dict[str, Any], intents: dict[str, bool], acto
         others = [d for d in discounts if d not in members]
         totals = set()
         for perm in itertools.permutations(members):
-            trial = {**copy.deepcopy(cost), "discounts": copy.deepcopy(list(perm) + others)}
+            trial = {**state_copy.deepcopy(cost), "discounts": state_copy.deepcopy(list(perm) + others)}
             got = determine_total_cost(trial, intents, actor=actor)["total"]
             totals.add(json.dumps(got, sort_keys=True))
         if len(totals) > 1:
@@ -465,18 +537,18 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
     component discounts in declared order, total discounts on the aggregate
     Energy (base plus every chosen additional Energy cost), total
     modifications, floor at zero. Returns the receipt skeleton before payment."""
-    base = copy.deepcopy(cost["base"])
-    current = copy.deepcopy(base)
+    base = state_copy.deepcopy(cost["base"])
+    current = state_copy.deepcopy(base)
     for mod in cost.get("base_modifications", []) or []:
         if mod["kind"] == "for_cost":
-            current = copy.deepcopy(mod["cost"])
+            current = state_copy.deepcopy(mod["cost"])
         elif mod["kind"] == "ignore_energy":
             current["energy"] = 0
         elif mod["kind"] == "ignore_power":
             current["power"] = {}
         elif mod["kind"] == "ignore_all":
             current = {"energy": 0, "power": {}}
-    after_base = copy.deepcopy(current)
+    after_base = state_copy.deepcopy(current)
 
     def component(cost_id, kind, mandatory, intent, requested, locators, **extra):
         return {"cost_id": cost_id, "kind": kind, "mandatory": mandatory, "intent": intent, "requested": requested,
@@ -507,6 +579,16 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
 
     # 356.3 increases.
     for inc in cost.get("increases", []) or []:
+        if inc["component"] == "power_any":
+            # set 2 package A2 (Vex - Cheerless: "[A] more"): Power of any Domain more - a mandatory any-Domain component
+            # of its own (the shape Deflect's cost has, Core 809.1.c), paid as any other
+            comp = component(f"increase:{inc['id']}", "power_any", True, None, 0, ["Core 356.3", "Core 357.1"])
+            components.append(comp)
+            by_id[comp["cost_id"]] = comp
+            comp["final"] += inc["amount"]
+            comp["increases"].append({"increase_id": inc["id"], "amount": inc["amount"], "source": inc.get("source"),
+                                      "rule_locators": ["Core 356.3"]})
+            continue
         target = "base:energy" if inc["component"] == "energy" else f"base:{inc['component']}"
         comp = by_id.get(target)
         if comp is None and inc["component"].startswith("power:"):
@@ -534,6 +616,9 @@ def determine_total_cost(cost: dict[str, Any], intents: dict[str, bool], *, acto
                        and ((res == "energy" and c["kind"] == "energy") or (res.startswith("power:") and c["kind"] == "power" and c.get("domain") == res.split(":", 1)[1]))]
         elif disc["applies_to"] == "energy":
             targets = [by_id["base:energy"]]
+        elif disc["applies_to"].startswith("component:"):
+            # set 2 package A2 (GPT A2 ruling 16): the one component the payer chose for a "[1] or [A] less" discount
+            targets = [c for c in components if c["cost_id"] == disc["applies_to"].split(":", 1)[1]]
         else:
             targets = [c for c in components if c["cost_id"] == f"base:{disc['applies_to']}"]
         if disc.get("spans_optional_additional") and disc["applies_to"].startswith("power:"):
@@ -679,6 +764,44 @@ def copied_ability_problem(effect_state: dict[str, Any], card: str, actor: str, 
     return None
 
 
+# set 2 package A2 (GPT A2 ruling 23): ability conditions that restrict USING an ability (Core 377.2.b) - "Use my abilities
+# only while I'm at a battlefield", "Use only if ..." - as opposed to a Legion-dependent ability (727.1, 812.1.b.1)
+USE_RESTRICTION_CONDITIONS = {"at_a_battlefield", "enemy_choices_this_turn_at_least",
+                              # set 2 package A2 (Azir - Ascendant: "Use only once per turn.")
+                              "ability_uses_this_turn_below",
+                              # set 2 package A2 (Azir - Emperor of the Sands: "Use only if you've played an Equipment
+                              # this turn.")
+                              "finalized_this_turn_with_tag"}
+
+
+def granted_ability_problem(effect_state: dict[str, Any], card: str, actor: str, granted: Any,
+                            declaration: dict[str, Any], effect_program: dict[str, Any] | None) -> tuple[str, str] | None:
+    """set 2 package A2 (Forge of the Fluft): why `card` may not activate the ability a Battlefield grants it, or None. The
+    Battlefield names the grant; it is the actor's now (Core 190.6: "while you control this battlefield"); the source is
+    a Legend of the actor's in their Legend Zone; the cost is the grant's - [Exhaust] of that Legend - and the program
+    runs exactly the grant's instructions."""
+    if not isinstance(granted, dict) or set(granted) != {"battlefield", "grant_id"}:
+        return "granted_ability_not_had", "granted_by names {battlefield, grant_id}"
+    battlefield = (effect_state.get("battlefields") or {}).get(granted["battlefield"]) or {}
+    grant = next((g for g in battlefield.get("legend_ability_grants") or [] if g.get("grant_id") == granted["grant_id"]), None)
+    if grant is None:
+        return "granted_ability_not_had", f"{granted['battlefield']!r} grants no ability {granted['grant_id']!r}"
+    if battlefield.get("controller") != actor:
+        return "granted_ability_not_had", f"{actor} does not control {granted['battlefield']!r}, so its Legends lack the ability"
+    source = (effect_state.get("objects") or {}).get(card) or {}
+    if source.get("kind") != "legend" or source.get("controller") != actor \
+            or find_location(effect_state, card) != ("player", actor, "legend_zone"):
+        return "granted_ability_not_had", f"{card!r} is not a Legend of {actor}'s in their Legend Zone"
+    cost = declaration.get("cost") or {}
+    exhausts = [a["payment"].get("object_id") for a in cost.get("additional") or []
+                if isinstance(a, dict) and (a.get("payment") or {}).get("kind") == "exhaust"]
+    if cost.get("base") != {"energy": 0, "power": {}} or exhausts != [card] or len(cost.get("additional") or []) != 1:
+        return "granted_ability_cost_mismatch", f"the granted ability costs [Exhaust] of {card!r}, and only that"
+    if effect_program is None or list(effect_program.get("effects") or []) != list(grant["effects"]):
+        return "granted_ability_program_mismatch", "the activation runs exactly the granted ability's instructions"
+    return None
+
+
 EXHAUST_SELF_COST_ID = "exhaust-self"
 
 
@@ -695,8 +818,9 @@ def _catalogued_costs_match(declared: list[dict[str, Any]], wanted: list[dict[st
         if entry is None or set(entry) - {"cost_id", "mandatory", "payment"} or entry.get("mandatory") != row["mandatory"]:
             return False
         paid, printed = entry.get("payment") or {}, row["payment"]
-        if "object_id" in printed or printed.get("kind") in CHOICE_COSTS:
-            # a Discard or a Recycle is paid by the payer's card selection at play (CHOICE_COSTS), not by a named object
+        if "object_id" in printed or printed.get("kind") in CHOICE_COSTS or printed.get("kind") in {"energy", "power", "power_any"}:
+            # a Discard or a Recycle is paid by the payer's card selection at play (CHOICE_COSTS), not by a named object;
+            # a resource payment (an Equip's any-domain Power, ADR-0017 §3) names none either
             if paid != printed:
                 return False
         elif {k: v for k, v in paid.items() if k != "object_id"} != printed or not isinstance(paid.get("object_id"), str):
@@ -716,7 +840,7 @@ def catalogued_declaration_problem(effect_state: dict[str, Any], declaration: di
     if (declaration.get("chain_item") or {}).get("object_kind") == "ability":
         activation = declaration.get("activation") or {}
         source = objects.get(activation.get("source_object")) or {}
-        if "card_ref" not in source or activation.get("copied_from") is not None:
+        if "card_ref" not in source or activation.get("copied_from") is not None or activation.get("granted_by") is not None:
             return None
         row = (source.get("activated_abilities") or {}).get(activation.get("ability_id"))
         if row is None:
@@ -726,7 +850,7 @@ def catalogued_declaration_problem(effect_state: dict[str, Any], declaration: di
                              if row["cost"].get("exhaust") else []) + list(row["cost"].get("additional") or [])
         base = {"energy": row["cost"].get("energy", 0), "power": dict(row["cost"].get("power") or {})}
         # package 15: the player's order of the discounts that apply (Core 356.4.c.1) is a choice of the play, not a cost
-        if set(cost) - {"base", "additional", "discount_order"} or cost.get("base") != base \
+        if set(cost) - {"base", "additional", "discount_order", "discount_choices", "offer_power_splits"} or cost.get("base") != base \
                 or not _catalogued_costs_match(list(cost.get("additional") or []), wanted_additional):
             return f"the ability costs {base} with {wanted_additional}, not {cost}"
         item = declaration.get("chain_item") or {}
@@ -745,7 +869,9 @@ def catalogued_declaration_problem(effect_state: dict[str, Any], declaration: di
         return f"{declaration.get('card')!r} ({card['card_ref']}) carries no printed cost"
     # package 15: found by C2's corpus probe - Find Your Center with Eager Apprentice in play waited for an order of its two
     # Energy discounts (Core 356.4.c.1) and this refused every declared order, so the card could not be played at all
-    if {k: v for k, v in cost.items() if k != "discount_order"} != {"base": card["printed_cost"]}:
+    # set 2 package A2 (Core 135.2.e.6.c): the base is the printed cost with a dual-Domain card's Power split as declared
+    if set(cost) - {"base", "discount_order", "discount_choices", "offer_power_splits"} \
+            or not matches_printed_base(card["printed_cost"], cost.get("base")):
         return f"{declaration.get('card')!r} ({card['card_ref']}) costs {card['printed_cost']} as printed, not {cost}"
     return None
 
@@ -868,6 +994,8 @@ def card_self_cost_offers(effect_state: dict[str, Any], card_id: str | None) -> 
             "offered_by": card_id,
             "source": {"kind": "printed_offer", "cost_offer_id": offer_id, "object": card_id},
             "rule_locators": ["Core 356.2.b", "Core 356.2.b.1", "Core 820.1"],
+            # set 2 package A2: a printed [Repeat] cost - paid, the card's instructions run once more (Core 820.1.d)
+            **({"repeat": True} if offer.get("repeat") is True else {}),
         })
     return entries, abstentions
 
@@ -891,13 +1019,13 @@ def card_printed_costs(effect_state: dict[str, Any], card_id: str | None) -> lis
         return []
     links: dict[str, list[dict[str, Any]]] = {}
     for link in obj.get("offer_linked_cost_modifications", []) or []:
-        links.setdefault(link["cost_offer_id"], []).append(copy.deepcopy(link))
+        links.setdefault(link["cost_offer_id"], []).append(state_copy.deepcopy(link))
     out = []
     for offer in obj.get("printed_additional_costs", []) or []:
         mandatory = bool(offer["mandatory"])
         out.append({"cost_id": f"{PRINTED_COST_PREFIX if mandatory else CARD_SELF_OFFER_PREFIX}:{offer['cost_offer_id']}",
                     "cost_offer_id": offer["cost_offer_id"], "offered_by": card_id, "mandatory": mandatory,
-                    "payment": copy.deepcopy(offer["payment"]), "linked": links.get(offer["cost_offer_id"], []),
+                    "payment": state_copy.deepcopy(offer["payment"]), "linked": links.get(offer["cost_offer_id"], []),
                     "rule_locators": list(PRINTED_COST_RULES[mandatory])})
     return out
 
@@ -913,8 +1041,14 @@ def printed_cost_candidates(effect_state: dict[str, Any], payment: dict[str, Any
     if payment["kind"] == "discard":
         return [c for c in effect_state["players"][actor]["zones"]["hand"] if c != card_id]
     found = []
+    # set 2 package A2 (Legion Quartermaster): a cost naming another kind ("return a friendly gear") - a Unit otherwise
+    wanted = payment.get("object_kind", "unit")
     for object_id, obj in sorted(objects.items()):
-        if obj.get("kind") != "unit" or zone_class(find_location(effect_state, object_id)) != "board":
+        where = find_location(effect_state, object_id)
+        # set 2 package A2 (Bard - Mercurial: "exhaust your legend"): a Legend is in its Legend Zone, never on the board
+        # (Core 107.4.d) - the payer's own there
+        in_own_legend_zone = wanted == "legend" and where == ("player", actor, "legend_zone")
+        if obj.get("kind") != wanted or (zone_class(where) != "board" and not in_own_legend_zone):
             continue
         if payment["kind"] == "spend_buff":
             if obj.get("controller") == actor and obj.get("buffed"):
@@ -1064,7 +1198,7 @@ def printed_offer_totals(effect_state: dict[str, Any], card_id: str, actor: str,
         count = len(candidates) if entry["payment"].get("any_number") else entry["payment"].get("amount", 1)
         if not candidates or len(candidates) < entry["payment"].get("amount", 1):
             continue
-        variant = copy.deepcopy(cost)
+        variant = state_copy.deepcopy(cost)
         for link in entry["linked"]:
             if link["kind"] == "ignore_base_cost":
                 variant["base_modifications"] = list(variant.get("base_modifications", []) or []) + [{"kind": "ignore_all"}]
@@ -1123,6 +1257,16 @@ def battlefield_entry_paths(effect_state: dict[str, Any], card: str, actor: str,
     if (objects.get(card) or {}).get("kind") == "unit" \
             and battlefield_restriction(effect_state, "opponent_units_to_base_only", actor) is not None:
         return {"controlled": False, "open_battlefield": False, "ambush": False, "occupied_enemy_battlefield": False}
+    # set 2 package A2 (Perched Grimwyrm): a card played only to a Battlefield its player conquered this turn - that one
+    # path, and no other
+    if (objects.get(card) or {}).get("play_only_to_conquered_this_turn"):
+        conquered = ((effect_state.get("players") or {}).get(actor, {}).get("conquered_this_turn") or {}).get(
+            effect_state.get("turn_id", "turn-0")) or []
+        return {"controlled": False, "open_battlefield": False, "ambush": False, "occupied_enemy_battlefield": False,
+                "conquered_this_turn": battlefield_id in conquered}
+    # set 2 package A2 (Rockfall Path): a Battlefield whose own text says no Unit is played there - no path reaches it
+    if (objects.get(card) or {}).get("kind") == "unit" and battlefield.get("units_cannot_be_played_here"):
+        return {"controlled": False, "open_battlefield": False, "ambush": False, "occupied_enemy_battlefield": False}
     return {
         "controlled": controller == actor,
         "open_battlefield": ("open_battlefield" in permissions
@@ -1132,6 +1276,10 @@ def battlefield_entry_paths(effect_state: dict[str, Any], card: str, actor: str,
                                        and controller is not None
                                        and not same_side_fn(effect_state, actor, controller)
                                        and bool(present)),
+        # set 2 package A2 (Rengar - Pouncing): one of the actor's Units is an Attacker there now
+        "attacking_battlefield": ("attacking_battlefield" in permissions
+                                  and any(((objects.get(o) or {}).get("combat_designation") or {}).get("role") == "attacker"
+                                          for o in friendly_units)),
     }
 
 
@@ -1143,7 +1291,8 @@ def battlefield_entry_permitted(effect_state: dict[str, Any], card: str, actor: 
 SELF_REDUCTION_CAPABILITY = "self_card_conditional_fixed_energy_reduction.v1"
 
 
-def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> list[dict[str, Any]]:
+def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None, *,
+                         source_kind: str = "hand") -> list[dict[str, Any]]:
     """The fixed Energy reductions a card's own text declares (Round H).
 
     Narrow on purpose: only the card being played, only a fixed Energy amount,
@@ -1158,19 +1307,27 @@ def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> l
         return []
     reductions = []
     for modification in obj.get("printed_cost_modifications", []) or []:
-        if modification.get("kind") != "energy_reduction":
+        if modification.get("kind") not in ("energy_reduction", "power_reduction"):
+            continue
+        # set 2 package A2 (Void Drone, Drag Under): "to play from anywhere other than your hand" - the play's source
+        # (`source_kind`: the declaration's source, the hand when it names none) decides whether it reduces at all
+        if modification.get("origin") == "not_hand" and source_kind == "hand":
             continue
         entry = {
             "id": f"self:{modification['modification_id']}",
-            "applies_to": "energy",
+            # set 2 package A2 (Needlessly Large Yordle): a printed Power reduction comes off that Domain's Power
+            "applies_to": f"power:{modification['domain']}" if modification["kind"] == "power_reduction" else "energy",
             "amount": modification["amount"],
             "source": {"kind": "self_card_text", "object": card_id, "capability": SELF_REDUCTION_CAPABILITY},
             "self_card": True,
         }
         if "per_each" in modification:
-            entry["per_each"] = copy.deepcopy(modification["per_each"])
+            entry["per_each"] = state_copy.deepcopy(modification["per_each"])
+        if "minimum" in modification:
+            # set 2 package A2: "to a minimum of [1]" - this reduction stops there (Core 356.4.e)
+            entry["minimum"] = modification["minimum"]
         if "condition" in modification:
-            entry["condition"] = copy.deepcopy(modification["condition"])
+            entry["condition"] = state_copy.deepcopy(modification["condition"])
             if entry["condition"].get("kind") == "another_card_finalized_this_turn":
                 # Legion (812.1.c): "another" card is one other than this card
                 entry["condition"].setdefault("object", card_id)
@@ -1178,7 +1335,165 @@ def self_cost_reductions(effect_state: dict[str, Any], card_id: str | None) -> l
     return reductions
 
 
-def granted_cost_discounts(effect_state: dict[str, Any], card_id: str | None, actor: str) -> list[dict[str, Any]]:
+EITHER_DISCOUNT = "energy_or_power"
+
+
+def _component_option(comp: dict[str, Any]) -> str | None:
+    """The option a cost component is for a "[1] or [A] less" discount: energy, power:<Domain> or power_any."""
+    if comp["kind"] == "energy":
+        return "energy"
+    if comp["kind"] == "power" and comp.get("domain"):
+        return f"power:{comp['domain']}"
+    if comp["kind"] == "power_any":
+        return "power_any"
+    return None
+
+
+def either_discount_options(cost: dict[str, Any], intents: dict[str, bool], actor: str) -> dict[str, dict[str, str]]:
+    """Set 2 package A2 (GPT A2 ruling 16; Core 356.4.c, 356.4.c.2): for each "[1] or [A] less" discount, keyed by its
+    choice key, {option: the component it reduces}. An option is a component the cost actually has (chosen, more than 0
+    after increases): Energy, or the Power of a Domain it names, or its any-Domain Power. A card-wide one (scope card)
+    reads the whole cost; an optional-additional one (scope optional_additional) is one choice per optional additional
+    cost the payer chose (its Energy part and its Power part are that cost's two options)."""
+    plain = {**state_copy.deepcopy(cost), "discounts": [d for d in cost.get("discounts", []) or []
+                                                        if d.get("applies_to") != EITHER_DISCOUNT]}
+    plain.pop("discount_order", None)
+    plain.pop("discount_choices", None)
+    components = determine_total_cost(plain, intents, actor=actor)["components"]
+
+    def live(comp):
+        chosen = comp["mandatory"] or comp["intent"] is True
+        amount = comp["requested"] if isinstance(comp["requested"], int) else 0
+        return chosen and amount + sum(i["amount"] for i in comp["increases"]) > 0
+
+    out: dict[str, dict[str, str]] = {}
+    for disc in cost.get("discounts", []) or []:
+        if disc.get("applies_to") != EITHER_DISCOUNT:
+            continue
+        if disc.get("scope") == "optional_additional":
+            roots: dict[str, dict[str, str]] = {}
+            for comp in components:
+                option = _component_option(comp)
+                if comp["mandatory"] or option is None or not live(comp):
+                    continue
+                root = comp["cost_id"][:-len(":energy")] if comp["cost_id"].endswith(":energy") else comp["cost_id"]
+                roots.setdefault(root, {}).setdefault(option, comp["cost_id"])
+            for root, options in roots.items():
+                out[f"{disc['id']}@{root}"] = options
+        else:
+            options: dict[str, str] = {}
+            for comp in components:
+                option = _component_option(comp)
+                # set 2 package A2 (Vex - Cheerless: "[A] less"): only the cost's Power - of any Domain - is an option
+                if option is not None and live(comp) and not (disc.get("only") == "power" and option == "energy"):
+                    options.setdefault(option, comp["cost_id"])
+            out[disc["id"]] = options
+    return out
+
+
+def resolve_either_discounts(cost: dict[str, Any], intents: dict[str, bool], actor: str) -> list[dict[str, Any]]:
+    """Each "[1] or [A] less" discount made concrete: one component discount per choice key, on the component of the
+    option the payer declared in cost.discount_choices - one option only, never both (GPT A2 ruling 16). A key with one
+    option takes it; with none, nothing is reduced; with two or more and none declared, the play waits for the choice.
+    Returns the records of what was chosen; the cost's discounts are rewritten in place."""
+    either = [d for d in cost.get("discounts", []) or [] if d.get("applies_to") == EITHER_DISCOUNT]
+    if not either:
+        return []
+    options = either_discount_options(cost, intents, actor)
+    declared = cost.get("discount_choices") or {}
+    if not isinstance(declared, dict) or set(declared) - set(options):
+        raise PlayError("cost_determination", "invalid_input",
+                        f"discount_choices {declared!r} must name only the choices that apply: {sorted(options)}",
+                        invalid=True, errors=[f"discount_choices keys must be among {sorted(options)}"])
+    waiting = {key: sorted(opts) for key, opts in options.items() if len(opts) > 1 and key not in declared}
+    if waiting:
+        raise PlayError("cost_determination", "discount_choice_required",
+                        f"{actor} chooses which component each '[1] or [A] less' discount reduces: {waiting} (GPT A2 "
+                        f"ruling 16, Core 356.4.c) - declare cost.discount_choices",
+                        decision_ids=sorted(f"discount_choice:{key}" for key in waiting), decision_controller=actor,
+                        discount_choice_options=waiting, rule_locators=["Core 356.4.c", "Core 356.4.c.2"])
+    concrete, records = [], []
+    by_key = {}
+    for disc in either:
+        keys = [k for k in options if k == disc["id"] or k.startswith(disc["id"] + "@")]
+        for key in sorted(keys):
+            opts = options[key]
+            if not opts:
+                continue
+            choice = declared.get(key, next(iter(opts)) if len(opts) == 1 else None)
+            if choice not in opts:
+                raise PlayError("cost_determination", "invalid_input",
+                                f"discount_choices[{key!r}] is {choice!r}; the options are {sorted(opts)}",
+                                invalid=True, errors=[f"discount_choices[{key!r}] must be one of {sorted(opts)}"])
+            by_key[key] = choice
+            concrete.append({"id": key, "applies_to": f"component:{opts[choice]}", "amount": disc["amount"],
+                             **({"source": disc["source"]} if disc.get("source") else {})})
+            records.append({"choice_key": key, "chosen": choice, "component": opts[choice], "options": sorted(opts),
+                            "declared": key in declared})
+    cost["discounts"] = [d for d in cost.get("discounts", []) or [] if d.get("applies_to") != EITHER_DISCOUNT] + concrete
+    return records
+
+
+def _source_where_granted(source: dict[str, Any], where: Any, entry: dict[str, Any]) -> bool:
+    """Whether a granted cost modification's source is where its text says: "While I'm at a battlefield" (Core 364.3.a)
+    at a Battlefield; set 2 package A2 (Vex - Cheerless) "While I'm in combat" designated in a Combat (Core 466.2.c.3);
+    anywhere on the board when it says neither."""
+    if entry.get("source_at") == "battlefield":
+        return where[0] == "battlefield"
+    if entry.get("source_at") == "combat":
+        return bool((source.get("combat_designation") or {}).get("role"))
+    return True
+
+
+def granted_cost_increases(effect_state: dict[str, Any], card_id: str | None, actor: str) -> list[dict[str, Any]]:
+    """Set 2 package A2 (Vex - Cheerless: "enemy spells cost [1][A] more"): the cost increases a permanent on the board
+    grants the cards its controller's OPPONENTS play (Core 356.3), each in cost.increases' shape - Energy, or Power of
+    any Domain (power_any) - in the sources' board order."""
+    objects = effect_state.get("objects") or {}
+    if not card_id or card_id not in objects:
+        return []
+    out = []
+    for source_id, source in sorted(objects.items()):
+        if not source.get("granted_cost_increases") or source_id == card_id:
+            continue
+        where = find_location(effect_state, source_id)
+        if zone_class(where) != "board" or not source.get("controller") or source.get("controller") == actor:
+            continue
+        for entry in source["granted_cost_increases"]:
+            if objects[card_id].get("kind") != entry["card_kind"] or not _source_where_granted(source, where, entry):
+                continue
+            out.append({"id": f"granted:{source_id}:{entry['increase_id']}", "component": entry["applies_to"],
+                        "amount": entry["amount"]})
+    return out
+
+
+def override_turn_effects(effect_state: dict[str, Any], actor: str, card_id: str | None,
+                           source_kind: str) -> list[dict[str, Any]]:
+    """Set 2 package A2 (Jayce - Man of Progress): the turn effects of the actor's, this turn, that let THIS play of
+    `card_id` ignore a cost - a Gear card played from the hand whose printed Energy is within the limit
+    (gear_play_ignoring_energy) - each with the cost_override the play declares to use it."""
+    import effect_ir as _ir
+    obj = (effect_state.get("objects") or {}).get(card_id) if card_id else None
+    if not isinstance(obj, dict):
+        return []
+    turn_id = effect_state.get("turn_id", _ir.DEFAULT_TURN_ID)
+    out = []
+    for effect in effect_state.get("turn_effects", []) or []:
+        rule = OVERRIDE_TURN_EFFECTS.get(effect.get("kind"))
+        if rule is None or effect.get("controller") != actor or effect.get("turn_id") != turn_id:
+            continue
+        printed = obj.get("printed_cost") if isinstance(obj.get("printed_cost"), dict) else None
+        if obj.get("kind") != rule["card_kind"] or source_kind != rule["source_kind"] or printed is None \
+                or int(printed.get("energy") or 0) > int(effect.get("value") or 0):
+            continue
+        out.append({"turn_effect": state_copy.deepcopy(effect),
+                    "cost_override": {"kind": rule["override_kind"],
+                                      "source": f"{TURN_EFFECT_OVERRIDE_PREFIX}{effect['effect_id']}"}})
+    return out
+
+
+def granted_cost_discounts(effect_state: dict[str, Any], card_id: str | None, actor: str,
+                           chosen: list[str] | None = None) -> list[dict[str, Any]]:
     """2026-09-27 package 6: the discounts permanents on the board grant the card being played -
     "Your Dragons' Energy costs are reduced by [2], to a minimum of [1]" (Core 356.4.a: a discount
     may come from any other card). A source grants it while it is on the board and controlled by
@@ -1201,14 +1516,103 @@ def granted_cost_discounts(effect_state: dict[str, Any], card_id: str | None, ac
             if ("card_tag" in entry and entry["card_tag"] not in tags) or \
                     ("card_kind" in entry and objects[card_id].get("kind") != entry["card_kind"]):
                 continue
+            # set 2 package A2 (Irelia - Graceful: "Your spells that choose me"): only a play that chooses the source
+            if entry.get("chooses_source") and source_id not in (chosen or []):
+                continue
             # 2026-09-27 package 6: "While I'm at a battlefield, ..." (Core 364.3.a) - read now, at 356.4
-            if entry.get("source_at") == "battlefield" and where[0] != "battlefield":
+            if not _source_where_granted(source, where, entry):
                 continue
             out.append({"id": f"granted:{source_id}:{entry['discount_id']}", "applies_to": entry["applies_to"],
                         "amount": entry["amount"], **({"minimum": entry["minimum"]} if "minimum" in entry else {}),
+                        **({"scope": entry["scope"]} if "scope" in entry else {}),
+                        **({"only": entry["only"]} if "only" in entry else {}),
                         "source": {"kind": "granted_by_permanent", "object": source_id,
-                                   **{k: entry[k] for k in ("card_tag", "card_kind", "source_at") if k in entry}}})
+                                   **{k: entry[k] for k in ("card_tag", "card_kind", "source_at", "chooses_source")
+                                      if k in entry}}})
+    # set 2 package A2 (Ornn's Forge): a Battlefield the actor controls discounts the first non-token Gear card the actor
+    # plays this turn - no other non-token Gear card in their cards finalized this turn (the card itself not yet in it)
+    card = objects[card_id]
+    # GPT A2 ruling 17: not a trigger, so "played" reads the cards Finalized this turn (Core 420.4.b) - a Gear countered
+    # earlier this turn has spent "the first"; 420.4.a's resolution-time reading is the triggers'
+    if card.get("kind") == "gear" and not card.get("is_token"):
+        from effect_ir import cards_finalized_this_turn
+        earlier = [c for c in cards_finalized_this_turn(effect_state, actor) if c != card_id
+                   and (objects.get(c) or {}).get("kind") == "gear" and not (objects.get(c) or {}).get("is_token")]
+        for battlefield_id, battlefield in sorted((effect_state.get("battlefields") or {}).items()):
+            amount = battlefield.get("first_gear_cost_reduction")
+            if amount and battlefield.get("controller") == actor and not earlier:
+                out.append({"id": f"granted:{battlefield_id}:first_gear", "applies_to": "energy", "amount": amount,
+                            "source": {"kind": "granted_by_battlefield", "battlefield": battlefield_id, "card_kind": "gear"}})
     return out
+
+
+def discounted_repeat_offer(effect_state: dict[str, Any], entry: dict[str, Any], actor: str) -> dict[str, Any]:
+    """Set 2 package A2 (Marai Spire): a [Repeat] offer with its Energy reduced by the repeat_cost_reduction of every
+    Battlefield the actor controls - on its Energy part, or on an Energy payment - never below 0 (Core 356.4.c.2). Any
+    other offer, or none such Battlefield, comes back unchanged."""
+    if not entry.get("repeat"):
+        return entry
+    total = sum(int(bf.get("repeat_cost_reduction") or 0) for bf in (effect_state.get("battlefields") or {}).values()
+                if bf.get("controller") == actor)
+    if not total:
+        return entry
+    entry = {**entry, "payment": dict(entry["payment"])}
+    left = total
+    if entry.get("energy"):
+        cut = min(left, int(entry["energy"]))
+        entry["energy"], left = int(entry["energy"]) - cut, left - cut
+    if left and entry["payment"].get("kind") == "energy":
+        cut = min(left, int(entry["payment"].get("amount") or 0))
+        entry["payment"]["amount"] = int(entry["payment"]["amount"]) - cut
+    entry["rule_locators"] = list(entry.get("rule_locators") or []) + ["Core 356.4.c", "Core 356.4.c.2"]
+    entry["discounted_by"] = sorted(b for b, bf in (effect_state.get("battlefields") or {}).items()
+                                    if bf.get("controller") == actor and bf.get("repeat_cost_reduction"))
+    return entry
+
+
+def granted_repeat_offers(effect_state: dict[str, Any], card_id: str | None, actor: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Set 2 package A2 (Temporal Portal): one [Repeat] offer per next_spell_repeat turn effect of the actor's this turn,
+    its cost the card's printed cost - Energy and at most one Domain's Power (a cost in two Domains is not one payment
+    the offer shape carries: abstained, named). (entries, abstentions) in card_self_cost_offers' shape."""
+    obj = (effect_state.get("objects") or {}).get(card_id) if card_id else None
+    effects = [e for e in next_card_turn_effects(effect_state, actor, "spell") if e.get("kind") == "next_spell_repeat"]
+    if not isinstance(obj, dict) or not effects:
+        return [], []
+    printed = obj.get("printed_cost")
+    entries, abstentions = [], []
+    for effect in effects:
+        offer_id = f"granted_repeat:{effect['effect_id']}"
+        power = {d: a for d, a in ((printed or {}).get("power") or {}).items() if a}
+        if isinstance(printed, dict) and printed.get("power_of_domains") and not power:
+            # set 2 package A2 (Core 135.2.e.6.c, GPT A2 ruling 14): a dual-Domain spell's Power, each rune either
+            # Domain - the Repeat is that Power split as its player declares (cost.offer_power_splits), asked once the
+            # Repeat is chosen (power_split_pending, settled after the intents)
+            own = printed["power_of_domains"]
+            entries.append({"cost_id": f"{CARD_SELF_OFFER_PREFIX}:{offer_id}", "mandatory": False,
+                            "payment": {"kind": "power", "domain": own["domains"][0], "amount": own["amount"]},
+                            "energy": int(printed.get("energy") or 0), "cost_offer_id": offer_id, "offered_by": card_id,
+                            "source": {"kind": "granted_repeat", "turn_effect": effect["effect_id"], "object": card_id},
+                            "rule_locators": ["Core 356.2.b", "Core 820.1", "Core 206", "Core 135.2.e.6.c"],
+                            "repeat": True, "power_split_pending": power_splits(own["domains"], own["amount"])})
+            continue
+        if not isinstance(printed, dict) or len(power) > 1:
+            abstentions.append({"cost_offer_id": offer_id, "reason": "granted_repeat_cost_not_one_payment"
+                                if isinstance(printed, dict) else "granted_repeat_printed_cost_not_observed"})
+            continue
+        energy = int(printed.get("energy") or 0)
+        if power:
+            domain, amount = next(iter(power.items()))
+            payment, extra_energy = {"kind": "power", "domain": domain, "amount": int(amount)}, energy
+        else:
+            payment, extra_energy = {"kind": "energy", "amount": energy}, 0
+        if payment.get("amount", 0) < 1:
+            abstentions.append({"cost_offer_id": offer_id, "reason": "granted_repeat_cost_zero"})
+            continue
+        entries.append({"cost_id": f"{CARD_SELF_OFFER_PREFIX}:{offer_id}", "mandatory": False, "payment": payment,
+                        "energy": extra_energy, "cost_offer_id": offer_id, "offered_by": card_id,
+                        "source": {"kind": "granted_repeat", "turn_effect": effect["effect_id"], "object": card_id},
+                        "rule_locators": ["Core 356.2.b", "Core 820.1", "Core 206"], "repeat": True})
+    return entries, abstentions
 
 
 def next_card_turn_effects(effect_state: dict[str, Any], actor: str, object_kind: str) -> list[dict[str, Any]]:
@@ -1219,7 +1623,7 @@ def next_card_turn_effects(effect_state: dict[str, Any], actor: str, object_kind
     A unit token an effect plays reads and spends them in play_token (Core 350.2, GPT 2026-09-27)."""
     import effect_ir as _ir
     turn_id = effect_state.get("turn_id", _ir.DEFAULT_TURN_ID)
-    return [copy.deepcopy(e) for e in effect_state.get("turn_effects", []) or []
+    return [state_copy.deepcopy(e) for e in effect_state.get("turn_effects", []) or []
             if _ir.NEXT_CARD_TURN_EFFECT_KINDS.get(e.get("kind")) == object_kind
             and e.get("controller") == actor and e.get("turn_id") == turn_id]
 
@@ -1436,7 +1840,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
         else:
             raise PlayError("payment", "resource_allocation_required", f"{actor} must say where Universal Power pays "
                             f"{total} ({len(options)} legal ways)", decision_ids=[decision_id], decision_controller=actor,
-                            allocation_options=copy.deepcopy(options),
+                            allocation_options=state_copy.deepcopy(options),
                             rule_locators=["Core 135.2.e.5.b", "Core 163.2.b", "Core 357.1"])
 
     if total["energy"]:
@@ -1478,7 +1882,7 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             allocation = options[0]
         else:
             raise PlayError("payment", "resource_allocation_required", f"{actor} must allocate {any_amount} any-domain Power across {sorted(d for d, n in remaining.items() if n)}",
-                            decision_ids=[decision_id], decision_controller=actor, allocation_options=copy.deepcopy(options),
+                            decision_ids=[decision_id], decision_controller=actor, allocation_options=state_copy.deepcopy(options),
                             rule_locators=["Core 809.1.c.1", "Core 357.1"])
         for domain, amount in sorted(allocation.items()):
             before = resources["power"][domain]; resources["power"][domain] -= amount
@@ -1516,6 +1920,9 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
             # Core 354: the card being played moved to the Chain before costs
             # were chosen, so it can never pay its own cost from that zone.
             pool = [c for c in working["players"][actor]["zones"][zone] if c != declaration["card"]]
+            if comp["requested"].get("card_kind"):
+                # set 2 package A2 (Assembly Rig): only cards of that kind can pay it (Core 417.3)
+                pool = [c for c in pool if (working["objects"].get(c) or {}).get("kind") == comp["requested"]["card_kind"]]
             if len(pool) < amount:
                 raise PlayError("payment", "cost_unpayable", f"cost {comp['cost_id']!r} needs {amount} card(s) in {actor}'s {zone}; there are {len(pool)} (the action must be completable to pay it)",
                                 rule_locators=(["Core 423.3"] if zone == "hand" else ["Core 417.3"]) + ["Core 354"])
@@ -1631,6 +2038,12 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                                 rule_locators=["Core 164.2.b", "Core 203.3"])
         selector = {"object_id": object_id, "chosen_zone_class": "board", "controller_relation": "friendly",
                     "bound_identity": object_identity(working, object_id) or f"{object_id}@0"}
+        if op == "exhaust" and find_location(working, object_id) == ("player", actor, "legend_zone") \
+                and str(comp.get("cost_id", "")).startswith((f"{CARD_SELF_OFFER_PREFIX}:", f"{PRINTED_COST_PREFIX}:")):
+            # set 2 package A2 (Bard - Mercurial: "exhaust your legend"): the payer's Legend, where it is (Core 107.4.d) -
+            # only for a cost the card itself prints (its candidates are the payer's Legend, printed_cost_candidates); an
+            # exhaust the declaration merely names is paid on the board, so a Legend cannot pay it
+            selector["include_legend_zone"] = True
         # 2026-10-15 package 13 (C2): a kill cost that names its kinds is paid only with a friendly object of one of them
         requested = comp.get("requested") if isinstance(comp.get("requested"), dict) else {}
         kinds = list(requested.get("object_kinds") or [])
@@ -1644,6 +2057,8 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                    # the card played / the ability's source: what the cost's own events name as their source
                    "source_object": declaration["card"],
                    "effects": [{"op": "recycle", "effect_id": comp["cost_id"], "player": actor, "objects": [object_id]} if op == "recycle" else
+                               # set 2 package A2 (The Zero Drive): a banish names its one object, the source itself
+                               {"op": "banish", "effect_id": comp["cost_id"], "object_id": object_id} if op == "banish" else
                                {"op": op, "effect_id": comp["cost_id"], "object_id": object_id, "target": selector}]}
         # No envelope here: it is keyed to the pre-play hash and the pool is
         # already debited. A replacement that needs a choice mid-payment is a
@@ -1679,12 +2094,12 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
                             f"{result.get('event_coverage')}", unsupported=True, rule_locators=["Core 357.2"])
         working.clear(); working.update(result["next_state"])
         if semantic is not None:
-            semantic["events"].extend(copy.deepcopy(result.get("events") or []))
+            semantic["events"].extend(state_copy.deepcopy(result.get("events") or []))
             if result.get("pending_triggers"):
                 # each kill paid as a cost is its own batch, in the order the costs were paid
-                semantic["death_batches"].append(copy.deepcopy(result["pending_triggers"]))
+                semantic["death_batches"].append(state_copy.deepcopy(result["pending_triggers"]))
         events.append({"event_id": event_id, "kind": f"pay_{comp['kind']}", "cost_id": comp["cost_id"], "object_id": object_id, "outcome": outcome,
-                       "trace": copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + ([("Core 204.1.b" if declaration["chain_item"].get("object_kind") == "ability" else "Core 204.2")]
+                       "trace": state_copy.deepcopy(result["trace"]), "rule_locators": ["Core 357.2"] + (["Core 357.2.a"] if outcome != "applied" else []) + ([("Core 204.1.b" if declaration["chain_item"].get("object_kind") == "ability" else "Core 204.2")]
                                                          if comp["kind"] in SELF_COSTS else [])})
         comp["payment_refs"].append({"event_id": event_id})
         comp["paid"] = True
@@ -1768,6 +2183,13 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                 candidates.append((sel, None))
             if "decision_ref" in effect["targets"]:
                 candidates.append((dict(effect["targets"].get("restrictions", {}), chosen_zone_class=effect["targets"].get("restrictions", {}).get("chosen_zone_class", "board")), effect["targets"]["decision_ref"]))
+        up_to_one_refs: set[str] = set()
+        if isinstance(effect.get("object_target"), dict):
+            # set 2 package A2 (Jax - Grandmaster At Arms): an attach's chosen card is a target as well (355.5)
+            candidates.append((effect["object_target"], effect["object_target"].get("decision_ref")))
+            if isinstance(effect["object_target"].get("decision_ref"), str):
+                # set 2 package A2 (Relentless Pursuit): "up to one" - none or one (Core 355.13)
+                (up_to_one_refs if effect.get("up_to_one") else single_refs).add(effect["object_target"]["decision_ref"])
         if isinstance(effect.get("units"), list):
             # ADR-0008 s7: a composite instruction's Units are chosen at play like any target (355.5)
             for sel in effect["units"]:
@@ -1798,6 +2220,10 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
             if entry["controller"] != actor:
                 raise PlayError("choices", "decision_controller_mismatch", f"target selection {ref!r} was made by {entry['controller']!r}, not the card's controller", rule_locators=["Core 355.5"])
             identities = entry.get("selection_identities") or {}
+            if ref in up_to_one_refs and (not isinstance(entry["value"], list) or len(entry["value"]) > 1):
+                raise PlayError("choices", "target_count_out_of_range",
+                                f"effects[{index}] target selection {ref!r} chose {len(entry['value'] or [])} object(s); "
+                                f"up to one is none or one (Core 355.13)", rule_locators=["Core 355.13"])
             if ref in single_refs and (not isinstance(entry["value"], list) or len(entry["value"]) != 1):
                 raise PlayError("choices", "target_count_out_of_range",
                                 f"effects[{index}] target selection {ref!r} chose {len(entry['value'] or [])} object(s); "
@@ -1818,6 +2244,17 @@ def _check_play_targets(effect_state: dict[str, Any], actor: str, program: dict[
                                     f"target selection {ref!r} chose {len(entry['value'])} Targets for {cap} "
                                     f"damage to split (Core 355.14.c, 715.3)",
                                     rule_locators=["Core 355.14.b", "Core 355.14.c", "Core 715.3"])
+            if template.get("same_controller_as"):
+                # set 2 package A2 (Angle Shot): "with the same controller" - controlled by whoever controls the object
+                # chosen for the named decision (Core 355.9)
+                other = ed.target_selection(decisions, template["same_controller_as"])
+                wanted = {(effect_state["objects"].get(o) or {}).get("controller") for o in (other or {}).get("value") or []}
+                strays = [o for o in entry["value"] or [] if (effect_state["objects"].get(o) or {}).get("controller") not in wanted]
+                if strays:
+                    raise PlayError("choices", "target_controller_differs",
+                                    f"effects[{index}] target selection {ref!r} chose {strays}, not controlled by the "
+                                    f"controller of {template['same_controller_as']!r}'s choice (Core 355.9)",
+                                    rule_locators=["Core 355.9"])
             for other_ref in template.get("distinct_from") or []:
                 # set 2 (2026-10-29): "another" - none of the objects chosen for the named decisions (Core 355.9.b)
                 other = ed.target_selection(decisions, other_ref)
@@ -2006,7 +2443,8 @@ def _played_target_record(effects: list[dict[str, Any]], decisions: dict[str, An
     one entry per decision a `target`, `targets` or `units` slot defers to."""
     refs: list[str] = []
     for effect in effects:
-        for field in ("target", "targets"):
+        # set 2 package A2 (Jax - Grandmaster At Arms): an attach's chosen card (object_target) is recorded too
+        for field in ("target", "targets", "object_target"):
             selector = effect.get(field)
             if isinstance(selector, dict) and isinstance(selector.get("decision_ref"), str):
                 refs.append(selector["decision_ref"])
@@ -2017,13 +2455,13 @@ def _played_target_record(effects: list[dict[str, Any]], decisions: dict[str, An
     for ref in dict.fromkeys(refs):
         entry = ed.target_selection(decisions, ref)
         if entry is not None:
-            recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
+            recorded.append({k: state_copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value", "selection_identities") if k in entry})
     # GPT 2026-09-29 (Core 355.4, 355.15): a Move's destination is recorded with the targets, so resolution
     # runs with the destination chosen at play and a different one supplied later is refused
     for ref in dict.fromkeys(destination_refs(effects)):
         entry = next((e for e in ed.entries(decisions, kind="location_selection") if e["decision_id"] == ref), None)
         if entry is not None:
-            recorded.append({k: copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value") if k in entry})
+            recorded.append({k: state_copy.deepcopy(entry[k]) for k in ("decision_id", "stage", "kind", "controller", "value") if k in entry})
     return recorded
 
 
@@ -2158,8 +2596,9 @@ def _limited_play_checks(timing_state: dict[str, Any], effect_state: dict[str, A
     if [c for c in declaration["cost"].get("additional") or [] if c.get("cost_id") == "limited:for_power_any"] \
             != limited_play_additional(record):
         problems.append(f"cost.additional does not carry exactly the effect's {limited_play_additional(record)} (Core 356.1.a)")
-    if declaration["cost"].get("base") != printed:
-        problems.append(f"cost.base {declaration['cost'].get('base')} is not the card's printed cost {printed} (Core 206)")
+    if not matches_printed_base(printed, declaration["cost"].get("base")):
+        problems.append(f"cost.base {declaration['cost'].get('base')} is not the card's printed cost {printed} (Core 206, "
+                        f"135.2.e.6.c)")
     if declaration["chain_item"].get("timing") != "default":
         problems.append("an effect-driven play declares default timing; the effect's instruction is its permission (Core 420.3.a)")
     if record.get("entry_location") is not None and declaration.get("entry_location") != record["entry_location"]:
@@ -2187,9 +2626,24 @@ def limited_play_unobtainable(state: dict[str, Any], actor: str, object_id: str,
     printed = obj.get("printed_cost")
     if not isinstance(printed, dict):
         return "printed_cost_not_observed"
+    if printed.get("power_of_domains"):
+        # set 2 package A2 (Core 135.2.e.6.c): certain to fail only when every way of paying its Power is
+        whys = []
+        for option in printed_base_options(printed):
+            trial = state_copy.deepcopy(state)
+            trial["objects"][object_id]["printed_cost"] = option
+            why = limited_play_unobtainable(trial, actor, object_id, cost_basis)
+            if why is None:
+                return None
+            whys.append(why)
+        return whys[0]
     kind = cost_basis.get("kind")
     energy = 0 if kind in {"ignore_energy", "ignore_all"} else printed["energy"]
-    if kind == "discount_energy":
+    if kind == "discount_energy" and "amount_ref" in cost_basis:
+        # set 2 package A2 (Rumble - Hotheaded): the discount is read off the base cost paid AFTER the target is chosen
+        # (Core 383.3.b: choices, then costs) - its Energy is not held against the card here; the play itself pays it
+        energy = 0
+    elif kind == "discount_energy":
         energy = max(0, energy - cost_basis["amount"])      # Core 356.4.b, 356.6
     power = {} if kind in {"ignore_power", "ignore_all"} else {d: n for d, n in printed["power"].items() if n}
     if not energy and not power:
@@ -2278,6 +2732,7 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
 
     trace: list[dict[str, Any]] = []
     locators: list[str] = []
+    chosen_objects: list[str] = []   # set in the choices step; read again for the Targeting Effects at Finalize
     try:
         actor, card = declaration["actor"], declaration["card"]
         item_id = declaration["chain_item"]["id"]
@@ -2324,12 +2779,30 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
                 problem = copied_ability_problem(effect_state, card, actor, copied, declaration)
                 if problem is not None:
                     raise PlayError("choices", problem[0], problem[1], rule_locators=["Core 377", "Core 191.5"])
+            granted = (declaration.get("activation") or {}).get("granted_by")
+            if granted is not None:
+                problem = granted_ability_problem(effect_state, card, actor, granted, declaration, effect_program)
+                if problem is not None:
+                    raise PlayError("choices", problem[0], problem[1], rule_locators=["Core 377", "Core 190.6"])
+            if source.get("attached_to") is not None and (declaration.get("activation") or {}).get("copied_from") is None:
+                raise PlayError("choices", "rules_text_inactive",
+                                f"{card!r} is attached to {source['attached_to']!r}: its printed rules text is Inactive and "
+                                f"its abilities cannot be activated (Core 435.1.e, 721.2; ADR-0017 §2)",
+                                rule_locators=["Core 435.1.e", "Core 721.2"])
             gate = (source.get("ability_conditions") or {}).get((declaration.get("activation") or {}).get("ability_id"))
             if gate is not None:
                 try:
                     exists = evaluate_condition(effect_state, gate, controller=actor, object_id=card)
                 except ConditionUnsupported as exc:
                     raise PlayError("choices", "activation_condition_unsupported", str(exc), unsupported=True, rule_locators=["Core 727.1"])
+                if not exists and gate.get("kind") in USE_RESTRICTION_CONDITIONS:
+                    # GPT A2 ruling 23 (Renata Glasc - Mastermind: "Use my abilities only while I'm at a battlefield"): a
+                    # restriction on activating the ability, checked as it is activated (Core 377.2.b) - not a Dependent
+                    # ability; leaving afterwards does not undo an ability already activated
+                    raise PlayError("choices", "activation_condition_not_met",
+                                    f"{card!r}'s ability {declaration['activation']['ability_id']!r} may be activated only "
+                                    f"while {gate['kind']} holds, and it does not (Core 377.2.b)",
+                                    rule_locators=["Core 377.2.b"])
                 if not exists:
                     raise PlayError("choices", "activation_condition_not_met",
                                     f"{card!r}'s ability {declaration['activation']['ability_id']!r} is a Dependent ability whose condition "
@@ -2401,6 +2874,20 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         # Battlefield (170.11.c). A missing Battlefield is malformed input; an
         # existing one the rules refuse is illegal (ADR-0007 §1, §3).
         location = declaration.get("entry_location")
+        if (effect_state["objects"].get(card) or {}).get("play_only_to_conquered_this_turn") \
+                and (location or {}).get("kind") != "battlefield":
+            # set 2 package A2 (Perched Grimwyrm): "You can't play me anywhere else" - its Base included (Core 355.2)
+            raise PlayError("choices", "entry_location_conquered_only",
+                            f"{card!r} may be played only to a battlefield {actor} conquered this turn, not {location!r}",
+                            rule_locators=["Core 355.2"])
+        if limited and (limited_record or {}).get("entry_restricted") == "battlefield_you_control" \
+                and (effect_state["objects"].get(card) or {}).get("kind") == "unit" \
+                and ((location or {}).get("kind") != "battlefield"
+                     or (effect_state["battlefields"].get(location.get("battlefield")) or {}).get("controller") != actor):
+            # set 2 package A2 (Here to Help): the effect plays the unit "to a battlefield you control" (Core 355.2.b)
+            raise PlayError("choices", "entry_location_restricted_by_effect",
+                            f"the effect plays {card!r} to a battlefield {actor} controls; {location!r} is not one",
+                            rule_locators=["Core 355.2.b"])
         ambush_record = None
         if source_kind == "facedown" and declaration["chain_item"]["object_kind"] in {"unit", "gear"}:
             # Core 811.4: a hidden permanent is played to that Battlefield —
@@ -2440,6 +2927,12 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
                                 f"{actor} can only play units to their Base while {blocked!r} is at a Battlefield; "
                                 f"{location['battlefield']!r} is not a valid location (355.2)",
                                 rule_locators=["Core 355.2", "Core 358.5"])
+            if (effect_state["objects"].get(card) or {}).get("kind") == "unit" and battlefield.get("units_cannot_be_played_here"):
+                # set 2 package A2 (Rockfall Path): no permission - an effect's own "play it here" included - reaches a
+                # Battlefield that says Units can't be played there (Core 355.2; a can't outweighs a can)
+                raise PlayError("choices", "entry_location_units_not_here",
+                                f"{location['battlefield']!r} says Units can't be played there (355.2)",
+                                rule_locators=["Core 355.2", "Core 190.6"])
             if not any(paths.values()):
                 raise PlayError("choices", "entry_location_illegal",
                                 f"{card!r} may enter its controller's Base or a Battlefield {actor} controls (355.2.a); {location['battlefield']!r} is "
@@ -2456,6 +2949,13 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
             effect_state, declaration.get("card"), actor=declaration.get("actor"),
             source_kind=(declaration.get("source") or {}).get("kind", "hand"))
         self_offers, self_offer_abstentions = card_self_cost_offers(effect_state, declaration.get("card"))
+        if not is_ability and declaration["chain_item"]["object_kind"] == "spell":
+            # set 2 package A2 (Temporal Portal): a [Repeat] granted to this, the next spell its controller plays this
+            # turn, costing what the spell prints (Core 820.1, 206); offered like a printed one (356.2.b.1)
+            granted, abstained = granted_repeat_offers(effect_state, declaration.get("card"), actor)
+            self_offers, self_offer_abstentions = self_offers + granted, self_offer_abstentions + abstained
+        # set 2 package A2 (Marai Spire): a Battlefield the actor controls discounts each [Repeat] offer's Energy
+        self_offers = [discounted_repeat_offer(effect_state, entry, actor) for entry in self_offers]
         declared_additional = list(declaration["cost"].get("additional", []) or [])
         if accelerate_entry is not None:
             declared_additional = declared_additional + [
@@ -2487,13 +2987,37 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
             intents[add["cost_id"]] = bool(entry["value"])
         if missing:
             raise PlayError("choices", "optional_cost_intent_required", f"optional cost intent not declared for {missing}", decision_ids=missing, decision_controller=actor, rule_locators=["Core 355.1.a", "Core 356.2.b.1"])
+        # set 2 package A2 (Core 135.2.e.6.c): a chosen [Repeat] costing a dual-Domain card's Power waits for its split
+        declared_splits = declaration["cost"].get("offer_power_splits") or {}
+        waiting_splits = {}
+        for entry in self_offers:
+            options = entry.get("power_split_pending")
+            if not options:
+                continue
+            chosen_split = declared_splits.get(entry["cost_offer_id"])
+            if chosen_split is not None and chosen_split not in options:
+                raise PlayError("choices", "invalid_input", f"offer_power_splits[{entry['cost_offer_id']!r}] is "
+                                f"{chosen_split}; the splits are {options}", invalid=True,
+                                errors=[f"offer_power_splits[{entry['cost_offer_id']!r}] must be one of {options}"])
+            if chosen_split is None and len(options) == 1:
+                chosen_split = options[0]
+            if chosen_split is None and intents.get(entry["cost_id"]):
+                waiting_splits[entry["cost_offer_id"]] = options
+            entry["power_split"] = chosen_split or options[0]
+        if waiting_splits:
+            raise PlayError("choices", "power_split_required",
+                            f"{actor} declares how the Power of {sorted(waiting_splits)} is paid - each rune either of the "
+                            f"card's Domains (Core 135.2.e.6.c) - in cost.offer_power_splits",
+                            decision_ids=sorted(f"power_split:{k}" for k in waiting_splits), decision_controller=actor,
+                            power_split_options=waiting_splits, rule_locators=["Core 135.2.e.6.c", "Core 820.1"])
         chosen_objects: list[str] = []
         mode = None
         hidden_battlefield = declaration["source"]["battlefield"] if source_kind == "facedown" else None
         hidden_targeting = declaration.get("hidden_targeting", "restricted")
         # ADR-0011 §4 / Core 820: each paid Repeat is one more execution with its
         # own choices, made now like the first (820.2).
-        repeat_paid = [add["cost_id"] for add in declaration["cost"].get("additional", []) or [] if add.get("repeat") and intents.get(add["cost_id"])]
+        # (set 2 package A2: the card's own printed [Repeat] offers count too, not only a declared Repeat cost)
+        repeat_paid = [add["cost_id"] for add in declared_additional if add.get("repeat") and intents.get(add["cost_id"])]
         repeat_record = None
         played_targets: list[dict[str, Any]] = []
         if effect_program is not None:
@@ -2536,20 +3060,45 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         # cost is determined; it lands on the declared cost as mandatory
         # any-domain Power.
         deflect = deflect_costs(effect_state, actor, chosen_objects)
-        cost = copy.deepcopy(declaration["cost"])
+        cost = state_copy.deepcopy(declaration["cost"])
         override = declaration.get("cost_override")
+        override_spent = None
+        if override is not None and str(override.get("source") or "").startswith(TURN_EFFECT_OVERRIDE_PREFIX):
+            # set 2 package A2 (Jayce - Man of Progress): an override a turn effect grants is checked against it - the
+            # actor's, this turn's, for this card from this source - and the play spends it
+            granted_by = [g for g in override_turn_effects(effect_state, actor, declaration.get("card"), source_kind)
+                          if g["cost_override"] == override]
+            if not granted_by:
+                raise PlayError("cost_determination", "cost_override_not_granted",
+                                f"no turn effect of {actor}'s this turn lets this play declare {override} (Core 356.1.b.2)",
+                                invalid=True, rule_locators=["Core 356.1.b.2"])
+            override_spent = granted_by[0]["turn_effect"]["effect_id"]
         if override is not None:
             # ADR-0012 §1: an override replaces the base cost before 356 runs
             # (811: "ignoring its base cost"); the receipt shows it as a base
             # modification, so the arithmetic stays one implementation.
-            modification = ({"kind": "for_cost", "cost": copy.deepcopy(override["cost"]), "source": override["source"]}
+            modification = ({"kind": "for_cost", "cost": state_copy.deepcopy(override["cost"]), "source": override["source"]}
                             if override["kind"] == "for_cost"
                             else {"kind": OVERRIDE_MODIFICATION[override["kind"]], "source": override["source"]})
             cost["base_modifications"] = [modification] + list(cost.get("base_modifications", []) or [])
         if deflect:
             cost["additional"] = list(cost.get("additional", []) or []) + deflect
         for entry in self_offers:
-            component = {k: v for k, v in entry.items() if k not in {"energy", "rule_locators"}}
+            component = {k: v for k, v in entry.items() if k not in {"energy", "rule_locators", "power_split_pending"}}
+            if entry.get("power_split_pending"):
+                # set 2 package A2 (Core 135.2.e.6.c): the Repeat's Power as its player split it - one Domain's part on
+                # the offer itself, each other Domain's its own linked component, paid with the offer's one intent
+                split = entry.get("power_split") or {}
+                parts = sorted(split.items())
+                if parts:
+                    component["payment"] = {"kind": "power", "domain": parts[0][0], "amount": parts[0][1]}
+                for domain, amount in parts[1:]:
+                    cost["additional"] = list(cost.get("additional", []) or []) + [
+                        {"cost_id": f"{entry['cost_id']}:power:{domain}", "mandatory": False,
+                         "payment": {"kind": "power", "domain": domain, "amount": amount},
+                         "cost_offer_id": entry["cost_offer_id"], "offered_by": entry["offered_by"],
+                         **({"repeat": True} if entry.get("repeat") else {})}]
+                    intents[f"{entry['cost_id']}:power:{domain}"] = intents.get(entry["cost_id"], False)
             cost["additional"] = list(cost.get("additional", []) or []) + (
                 [{"cost_id": f"{entry['cost_id']}:energy", "mandatory": False,
                   "payment": {"kind": "energy", "amount": entry["energy"]},
@@ -2608,13 +3157,18 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         # Round H: the card's own printed reductions join the declared ones and
         # go through the same evaluation, so the enumeration and the payment
         # path cannot disagree about what a card costs.
-        own = self_cost_reductions(effect_state, declaration.get("card"))
+        own = self_cost_reductions(effect_state, declaration.get("card"), source_kind=source_kind)
         if own:
             cost["discounts"] = list(cost.get("discounts", []) or []) + own
         # 2026-09-27 package 6: discounts another permanent grants this card (Core 356.4.a)
-        granted = [] if is_ability else granted_cost_discounts(effect_state, declaration.get("card"), actor)
+        granted = [] if is_ability else granted_cost_discounts(effect_state, declaration.get("card"), actor,
+                                                               chosen=chosen_objects)
         if granted:
             cost["discounts"] = list(cost.get("discounts", []) or []) + granted
+        # set 2 package A2 (Vex - Cheerless): increases an opponent's permanent grants this card (Core 356.3)
+        raised = [] if is_ability else granted_cost_increases(effect_state, declaration.get("card"), actor)
+        if raised:
+            cost["increases"] = list(cost.get("increases", []) or []) + raised
         # 2026-09-27: "the next spell you play this turn costs [N] less" - a discount on the
         # spell's cost as a whole (356.4.d; 356.4.f.1's own example lets such a discount reach
         # an optional additional cost), spent by this play (Core 392)
@@ -2650,15 +3204,19 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         if evaluated:
             trace.append({"stage": "cost_determination", "outcome": "applied", "evaluated_cost_modifications": evaluated,
                           "rule_locators": ["Core 356.3", "Core 356.4"]})
+        either_records = resolve_either_discounts(cost, intents, actor)
+        if either_records:
+            trace.append({"stage": "cost_determination", "outcome": "applied", "discount_choices": either_records,
+                          "rule_locators": ["Core 356.4.c", "Core 356.4.c.2"]})
         order_problem = _discount_order_problem(cost, intents, actor)
         if order_problem is not None:
             raise order_problem
         skeleton = determine_total_cost(cost, intents, actor=actor)
-        trace.append({"stage": "cost_determination", "outcome": "applied", "total": copy.deepcopy(skeleton["total"]), "rule_locators": RULES["cost"]})
+        trace.append({"stage": "cost_determination", "outcome": "applied", "total": state_copy.deepcopy(skeleton["total"]), "rule_locators": RULES["cost"]})
         locators += RULES["cost"]
 
         # --- 357: payment on a working copy.
-        working = copy.deepcopy(effect_state)
+        working = state_copy.deepcopy(effect_state)
         before_pay = hash_value(working)
         cost_semantic: dict[str, list[Any]] = {"events": [], "death_batches": []}
         pay_events = _pay(working, declaration, skeleton, engine_decisions, semantic=cost_semantic)
@@ -2670,9 +3228,13 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         # program to the timing item.
         if is_ability:
             entry = {"source_object": card, "ability_id": declaration["activation"]["ability_id"], "controller": actor}
+            if (effect_state["objects"].get(card) or {}).get("is_token") and card not in working["objects"]:
+                # a token that paid for its own ability by leaving the board has ceased to exist (Core 186.1); the
+                # ability resolves without it (403) - the entry says why its source is gone (the Gold gear token)
+                entry["source_token"] = True
         elif limited:
             # the card left its zone at step 1 (Core 354) and is already this chain entry
-            entry = copy.deepcopy(working["chain_items"][item_id])
+            entry = state_copy.deepcopy(working["chain_items"][item_id])
         elif source_kind == "facedown":
             zone = working["battlefields"][declaration["source"]["battlefield"]]["facedown"]
             zone["cards"] = [c for c in zone["cards"] if c["object_id"] != card]
@@ -2690,7 +3252,7 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
                 record_mode_chosen(working, (declaration.get("activation") or {}).get("source_object") or card, actor,
                                    mode["option_id"])
         if repeat_record is not None:
-            entry["repeat"] = copy.deepcopy(repeat_record)  # ADR-0011 §4: paid Repeats ride to resolution
+            entry["repeat"] = state_copy.deepcopy(repeat_record)  # ADR-0011 §4: paid Repeats ride to resolution
         if played_targets:
             # Core 355.5 / 355.15: the targets chosen now ride with the chain entry, so the
             # resolution that reads them is the one they were chosen for - re-checked there
@@ -2705,6 +3267,16 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         # (an effect-driven play's card became a new object when step 1 moved it, Core 124)
         identity_after = _bump_identity(working, card) if not (is_ability or limited) else object_identity(working, card)
         play_ordinal = None
+        if is_ability:
+            # set 2 package A2 (Azir - Ascendant: "Use only once per turn."): an ability gated by its uses this turn is
+            # counted as it is activated (Core 377.2.b) - in its controller's ledger, by this object's identity; no
+            # other ability writes it
+            ability_id = (declaration.get("activation") or {}).get("ability_id")
+            gate = ((effect_state["objects"].get(card) or {}).get("ability_conditions") or {}).get(ability_id) or {}
+            if gate.get("kind") == "ability_uses_this_turn_below":
+                ledger = working["players"][actor].setdefault("ability_uses_this_turn", {})
+                ledger.setdefault(working.get("turn_id", "turn-0"), []).append(
+                    f"{object_identity(effect_state, card)}:{ability_id}")
         if not is_ability:
             # Core 420.4.b / 812.1.c: this card is Finalized by this play; a
             # Legion reads that, even if the card is later countered.
@@ -2712,6 +3284,11 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
             # (which of this player's plays it is - "your second card in a turn" - is counted when the play
             # completes, as the card resolves: a countered card was not played (Core 420.4.a.1; GPT
             # 2026-09-27). resolution_bridge stamps it on the played event there.)
+        if override_spent is not None:
+            # set 2 package A2 (Jayce - Man of Progress): the permission this play used is spent
+            working["turn_effects"] = [e for e in working.get("turn_effects", []) or [] if e.get("effect_id") != override_spent]
+            if not working["turn_effects"]:
+                working.pop("turn_effects")
         if next_card:
             # 2026-09-27 (Core 392): the next-card effects this play is the "next" of are spent;
             # an entry state one becomes an entry replacement bound to THIS play (the same shape
@@ -2758,6 +3335,10 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
             declared = declaration["chain_item"]["timing"]
             printed = effect_state["objects"][card].get("play_timing", "default")
             granted = "reaction" if declaration.get("timing_source") in {"ambush", "hidden"} else None
+            from effect_ir import has_keyword as _has_keyword
+            if granted is None and _has_keyword(effect_state, card, "quick_draw"):
+                # set 2 package A2 (Jax - Unmatched): a Quick-Draw granted to the card is its Reaction too (Core 819.1.b)
+                granted = "reaction"
             widest = max((printed, granted or "default"), key=["default", "action", "reaction"].index)
             if ["default", "action", "reaction"].index(declared) > ["default", "action", "reaction"].index(widest):
                 raise PlayError("legality", "timing_not_printed",
@@ -2773,7 +3354,7 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
             # 2026-09-28 (package 6): the Pending item step 1 put on the Chain is this play's; a Limited
             # Action asks no timing permission (Core 420.3.a, 312.1.b.1) - _limited_play_checks has
             # already found it the oldest Pending item (337.1)
-            insertion = {"applied": True, "next_state": copy.deepcopy(timing_state)}
+            insertion = {"applied": True, "next_state": state_copy.deepcopy(timing_state)}
             for pending in insertion["next_state"]["chain"]["items"]:
                 if pending.get("id") == item_id:
                     pending["limited_play_steps"] = "taken"
@@ -2821,7 +3402,7 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
     # not complete until payment is.
     if item_id in (working.get("chain_items") or {}):
         working["chain_items"][item_id] = {**working["chain_items"][item_id],
-                                           "cost_receipt": copy.deepcopy(receipt),
+                                           "cost_receipt": state_copy.deepcopy(receipt),
                                            # Core 811.1.d.5 (GPT 2026-09-27): where a card played from Hidden was hidden
                                            **({"played_from_hidden": hidden_battlefield} if hidden_battlefield else {}),
                                            **({"hidden_targeting": hidden_targeting} if hidden_battlefield and hidden_targeting != "restricted" else {})}
@@ -2862,17 +3443,36 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
             object_kind=declaration["chain_item"]["object_kind"], identity_before=None,
             identity_after=identity_after, from_hidden=source_kind == "facedown",
             turn_player=timing_state.get("turn_player"), play_ordinal=play_ordinal)}
+    if is_ability and item_id in (working.get("chain_items") or {}):
+        # set 2 package A2 (Prize of Progress): the ability's use, woken when it resolves (Core 377.2; 420.4.a by analogy)
+        from effect_ir import object_identity as _identity
+        working["chain_items"][item_id] = {**working["chain_items"][item_id], "used_event": game_events.ability_used_event(
+            play_id=declaration["play_id"], source=card, actor=actor,
+            object_kind=(working["objects"].get(card) or {}).get("kind"), identity=_identity(working, card),
+            turn_player=timing_state.get("turn_player"))}
     played: list[dict[str, Any]] = []      # woken at resolution (420.4.a), never at Finalize
-    if cost_events or cost_triggers or played:
+    # set 2 package A2: each object this spell or ability chose as it was finalized (Core 383.4.b.2) - GPT A2 ruling 3(b):
+    # in the same batch as what its costs woke, ordered by their controller (383.3.d)
+    targeted = game_events.targeted_events(working, chosen_objects, actor=actor,
+                                           chooser_kind=declaration["chain_item"]["object_kind"], source=card,
+                                           action_id=f"play:{declaration['play_id']}:targets")
+    # set 2 package A2 (Ezreal - Prodigal Explorer): a spell or a Unit's ability choosing an enemy counts for this turn
+    from effect_ir import record_enemy_choices
+    record_enemy_choices(working, actor, chosen_objects, declaration["chain_item"]["object_kind"], card)
+    if cost_events or cost_triggers or played or targeted:
         import watchers
         from resolution_bridge import _settle_trigger_orders
         from rules_core import schedule_triggered_items
         woken_costs: list[dict[str, Any]] = []
         woken_played: list[dict[str, Any]] = []
+        woken_targets: list[dict[str, Any]] = []
         try:
             if cost_events:
                 woken_costs, working = watchers.schedule_live(working, cost_events, turn_id=working.get("turn_id", "turn-0"),
                                                               batch_label=f"play:{declaration['play_id']}:costs")
+            if targeted:
+                woken_targets, working = watchers.schedule_live(working, targeted, turn_id=working.get("turn_id", "turn-0"),
+                                                                batch_label=f"play:{declaration['play_id']}:targets")
             if played:
                 woken_played, working = watchers.schedule_live(working, played, turn_id=working.get("turn_id", "turn-0"),
                                                                batch_label=f"play:{declaration['play_id']}")
@@ -2883,7 +3483,7 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         # one batch per kill cost in the order the costs were paid, then what the costs woke,
         # then what the play itself woke
         batches = [(batch, f"cost-deaths-{k}") for k, batch in enumerate(death_batches)] \
-            + [(woken_costs, "costs"), (woken_played, None)]
+            + [(woken_costs + woken_targets, "costs" if woken_costs else "targets"), (woken_played, None)]
         sequence = 0
         for members, label in batches:
             if not members:
@@ -2892,7 +3492,7 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
             for trigger in members:
                 trigger.update({"batch_sequence": sequence, "batch_id": batch_id})
             sequence += 1
-        woken = cost_triggers + woken_costs + woken_played
+        woken = cost_triggers + woken_costs + woken_targets + woken_played
         if woken:
             # two or more of one player's triggers from one batch: that player orders them
             # (Core 383.3.d) - asked for, never a reason to refuse the play
@@ -2913,9 +3513,11 @@ def _play_card(timing_state: dict[str, Any], effect_state: dict[str, Any], decla
         cost_rules = [rule for kind, rule in (("pay_discard", "Core 423.2.a"), ("pay_recycle_trash", "Core 417.2.a"),
                                               ("pay_kill", "Core 429.1.a.1"), ("pay_kill_this", "Core 429.1.a.1"))
                       if kind in paid_kinds]
-        watch_trace = {"stage": "watchers", "outcome": "applied", "events": [e["event_id"] for e in cost_events + played],
+        watch_trace = {"stage": "watchers", "outcome": "applied",
+                       "events": [e["event_id"] for e in cost_events + targeted + played],
                        "scheduled": [t["trigger_id"] for t in woken],
                        "rule_locators": list(dict.fromkeys((["Core 420.4.a"] if played else []) + cost_rules
+                                                           + (["Core 383.4.b.2"] if targeted else [])
                                                            + (["Core 429.1.a.1.b"] if cost_triggers else []) + ["Core 383.1"]))}
     result = {
         **base, "valid": True, "committed": True, "unsupported": False, "rolled_back": False, "stage": "commit", "reason_code": "ok",

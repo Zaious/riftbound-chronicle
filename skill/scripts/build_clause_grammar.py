@@ -12,6 +12,7 @@ private overlay (Round H repo-boundary ruling).
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -36,11 +37,20 @@ def keyword_alternatives() -> dict:
     for entry in catalogue["entries"]:
         name = entry["name"]
         key = name.lower()
-        alternatives[key] = {
-            "pattern": rf"\[{key}(?: (?P<{key}_value>\d+))?\]",
-            "value": {"keyword": key, "implemented": bool(entry.get("production"))},
+        # the printed name is what the pattern reads; the catalogue id is the keyword the engine knows - the same for
+        # every keyword but Quick-Draw (2026-11-03, ADR-0017: "quick-draw" is not a group name, quick_draw is the id)
+        ident = entry["keyword_id"]
+        alternatives[ident] = {
+            "pattern": rf"\[{re.escape(key)}(?: (?P<{ident}_value>\d+))?\]",
+            "value": {"keyword": ident, "implemented": bool(entry.get("production"))},
         }
     return alternatives
+
+
+def printed_name(keyword_id: str) -> str:
+    """The keyword as a card prints it ("Quick-Draw" for quick_draw), from the catalogue."""
+    catalogue = json.loads(CATALOGUE.read_text(encoding="utf-8"))
+    return next(entry["name"] for entry in catalogue["entries"] if entry["keyword_id"] == keyword_id)
 
 
 def grantable_alternatives() -> dict:
@@ -348,7 +358,7 @@ PRODUCTIONS = [
         "required_capability": ["keyword_catalogue_v1"],
         "boundary": "The binder makes the keyword the ability's trigger condition. Only a keyword the engine implements as a trigger compiles; the rest are known_unsupported, and an ability the grammar cannot read makes the whole clause unparsed.",
         # a Dependent Keyword (727.1) gates an ability form, not an instruction
-        "golden": [f"[{name.title()}][>] " + ("When you play me, draw 1." if name == "legion" else "Draw 1.")
+        "golden": [f"[{printed_name(name)}][>] " + ("When you play me, draw 1." if name == "legion" else "Draw 1.")
                    for name in sorted(keyword_alternatives())],
         "negative": ["[Nonesuch][>] Draw 1.", "[Deathknell] Draw 1.", "[Deathknell][>] Summon a dragon."],
     },
@@ -362,7 +372,7 @@ PRODUCTIONS = [
         "ast_node": "keyword",
         "required_capability": ["keyword_catalogue_v1"],
         "boundary": "A bare printed keyword the catalogue names. One it does not name stays unparsed; one it names but the engine does not implement is known_unsupported, not parsed.",
-        "golden": [f"[{name.title()}]" for name in sorted(keyword_alternatives())],
+        "golden": [f"[{printed_name(name)}]" for name in sorted(keyword_alternatives())],
         "negative": ["[Nonesuch]", "gains [Shield 2] this combat", "[Shield] and [Tank]"],
     },
 ]
@@ -617,6 +627,67 @@ LITERAL = [
      ["choose an enemy unit. deal 6 to it unless you draw 2",
       "choose a friendly unit. deal 6 to it unless its controller has you draw 2",
       "deal 6 to it unless its controller has you draw 2"]),
+    # set 2 package A2 (Card Sharp): each player's own optional Gold token, then one more Gold for its controller per
+    # opponent who took one
+    ("you_and_each_opponent_may_play_a_gold_gear_token_exhausted_for_each_opponent_who_did_you_play_one",
+     r"you and each opponent may play a gold gear token exhausted\. for each opponent who did, you play a gold gear token "
+     r"exhausted",
+     ["Core 355.10.e", "Core 355.12", "Core 184", "Core 350.2"], "instruction", ["each_player", "play_token"],
+     "Each player, its controller first and then in turn order, decides as it resolves whether to play a Gold gear token "
+     "exhausted (each their own choice); then its controller plays one more Gold gear token exhausted for each opponent "
+     "who played one. Each Gold is the catalogued token with its printed ability.",
+     ["You and each opponent may play a Gold gear token exhausted. For each opponent who did, you play a Gold gear token "
+      "exhausted."],
+     ["each opponent may play a gold gear token exhausted. for each opponent who did, you play a gold gear token exhausted",
+      "you and each opponent may play a gold gear token exhausted",
+      "you and each opponent may play a gold gear token. for each opponent who did, draw 1"]),
+    # set 2 package A2 (Strike Down): an equipped friendly unit and an enemy unit chosen at play; the first deals damage
+    # equal to its Might to the second; then one Equipment is detached from the first
+    ("choose_an_equipped_friendly_unit_it_deals_damage_equal_to_its_might_to_an_enemy_unit_then_detach",
+     r"choose an equipped friendly unit\. it deals damage equal to its might to an enemy unit\. then detach an equipment "
+     r"from it",
+     ["Core 355.5", "Core 418.6.b.3", "Core 436.1", "Core 436.1.a", "Core 359.3.e.6"], "instruction",
+     ["mutual_damage_current_might", "targeting", "detach"],
+     "Two target slots chosen at play - a friendly Unit with an Equipment attached, and an enemy Unit anywhere on the "
+     "board; the first deals damage equal to its current Might to the second (the Unit is the source); then one Equipment "
+     "attached to the first is detached, its controller picking when there are several. Two-way damage, an enemy unit at a "
+     "battlefield, or no detach is a different production.",
+     ["Choose an equipped friendly unit. It deals damage equal to its Might to an enemy unit. Then detach an Equipment "
+      "from it."],
+     ["choose a friendly unit. it deals damage equal to its might to an enemy unit. then detach an equipment from it",
+      "choose an equipped friendly unit. it deals damage equal to its might to an enemy unit",
+      "choose an equipped friendly unit and an enemy unit. they deal damage equal to their mights to each other"]),
+    # set 2 package A2 (Angle Shot): a unit and an Equipment of the same controller chosen at play; attach it to the unit or
+    # detach it from the unit, chosen as it resolves; then draw
+    ("choose_a_unit_and_an_equipment_with_the_same_controller_attach_or_detach_draw_n",
+     r"choose a unit and an equipment with the same controller\. attach that equipment to that unit or detach that "
+     r"equipment from that unit\. draw (?P<count>\d+)",
+     ["Core 355.5", "Core 355.9", "Core 435.1", "Core 436.1", "Core 436.1.a"], "instruction",
+     ["targeting", "attach", "detach"],
+     "Two target slots chosen at play - a Unit on the board, and an Equipment on the board controlled by that Unit's "
+     "controller; as it resolves its controller chooses to attach the Equipment to the Unit or to detach it from the Unit "
+     "(nothing when it is not attached to that Unit); then they draw N. Units of different controllers, or a choice made "
+     "at play, is a different production.",
+     ["Choose a unit and an Equipment with the same controller. Attach that Equipment to that unit or detach that "
+      "Equipment from that unit. Draw 1."],
+     ["choose a unit and an equipment. attach that equipment to that unit or detach that equipment from that unit. draw 1",
+      "choose a unit and an equipment with the same controller. attach that equipment to that unit. draw 1",
+      "choose a unit and a gear with the same controller. attach that gear to that unit or detach that gear from that "
+      "unit. draw 1"]),
+    # set 2 package A2 (Marching Orders): Challenge's pair with its own two choices - a friendly unit anywhere on the board,
+    # an enemy unit at a Battlefield
+    ("choose_a_friendly_unit_anywhere_and_an_enemy_unit_at_a_battlefield_they_deal_damage_to_each_other",
+     r"choose a friendly unit anywhere and an enemy unit at a battlefield\. they deal damage equal to their mights to each "
+     r"other",
+     ["Core 355.5", "Core 355.7", "Core 418.6.b"], "instruction", ["mutual_damage_current_might", "targeting"],
+     "Two target slots chosen at play, a friendly Unit at any Location and an enemy Unit at a Battlefield; each deals "
+     "damage equal to its own Might to the other. Two friendly units, an enemy unit anywhere, or a one-way Deal is a "
+     "different production.",
+     ["Choose a friendly unit anywhere and an enemy unit at a battlefield. They deal damage equal to their Mights to each "
+      "other."],
+     ["choose a friendly unit and an enemy unit. they deal damage equal to their mights to each other",
+      "choose a friendly unit anywhere and an enemy unit anywhere. they deal damage equal to their mights to each other",
+      "choose a friendly unit anywhere and an enemy unit at a battlefield. it deals damage equal to its might to the other"]),
     # 2026-10-06 package 9 (Convergent Mutation, GPT ruling 7): two different friendly Units chosen at play; at
     # resolution the first's Might is raised, this turn, to the second's - an increase only, read once
     ("choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit",
@@ -643,6 +714,15 @@ LITERAL = [
      ["banish a friendly unit, then play it to your base, ignoring its cost",
       "banish an enemy unit, then its owner plays it to their base, ignoring its cost",
       "banish a friendly unit, then its owner plays it, ignoring its energy cost"]),
+    # set 2 package A2 (Ezreal - Dashing): the card's own statement - its Might is not part of its side's combat damage
+    # (Core 467.2.a); it is still a combatant and is dealt damage as any other
+    ("i_dont_deal_combat_damage", r"i don't deal combat damage",
+     ["Core 467.2.a", "Core 467.2.b"], "passive", ["keyword_catalogue_v1"],
+     "As its side's combat damage is summed, this unit contributes nothing (a Stunned unit's way, 424.1.b); it is still "
+     "an attacker or defender, can be assigned damage and is dealt it. 'I don't take combat damage' or another unit's "
+     "statement are different productions.",
+     ["I don't deal combat damage."],
+     ["i don't take combat damage", "friendly units don't deal combat damage", "i don't deal damage"]),
     # 2026-10-06 package 9 (Caitlyn - Patrolling, GPT ruling 4): the card's own statement of the Backline shape - an
     # attacker assigns it combat damage only after every other defender has lethal (Core 467.2.c.7)
     ("i_must_be_assigned_combat_damage_last", r"i must be assigned combat damage last",
@@ -686,6 +766,67 @@ LITERAL = [
      "The instruction's controller wins and the game ends at once. 'You lose the game' and 'an opponent wins the "
      "game' are different productions.",
      ["You win the game."], ["you lose the game", "you win", "an opponent wins the game"]),
+    # set 2 package A2 (Relentless Pursuit): a friendly unit moved, chosen at play with up to one Equipment of its
+    # controller's; the attach optional as it resolves; then the unit has a conquer trigger this turn
+    ("move_a_friendly_unit_attach_up_to_one_equipment_grant_conquer_move_to_base",
+     r'move a friendly unit\. you may attach up to one equipment with the same controller to it\. this turn, that unit has '
+     r'"when i conquer, you may move me to my base\."',
+     ["Core 355.5", "Core 355.13", "Core 421", "Core 435", "Core 355.12", "Core 479.3", "Core 383.3.a"], "instruction",
+     ["move_board_object", "attach", "grant_trigger"],
+     "One friendly unit, and none or one Equipment its controller controls, chosen as the spell is played; the unit moves "
+     "where its controller chooses; then its controller may attach the Equipment to it; then, this turn, it has the "
+     "triggered ability 'When I conquer, you may move me to my base.' (its own, the 'you may' decided as that ability is "
+     "finalized).",
+     ['Move a friendly unit. You may attach up to one Equipment with the same controller to it. This turn, that unit has '
+      '"When I conquer, you may move me to my base."'],
+     ["move a friendly unit. you may attach up to one equipment with the same controller to it",
+      'move an enemy unit. you may attach up to one equipment with the same controller to it. this turn, that unit has '
+      '"when i conquer, you may move me to my base."',
+      'move a friendly unit. this turn, that unit has "when i conquer, you may move me to my base."']),
+    # set 2 package A2 (Azir - Ascendant): a unit its controller controls chosen as the ability is played; the source and
+    # it swap locations (Tideturner's two Moves); then, if it carries Equipment, its controller may attach one of them to
+    # the source - decided and picked as it resolves
+    ("choose_a_unit_you_control_swap_with_me_attach_one_of_its_equipment_to_me",
+     r"choose a unit you control\. move me to its location and it to my original location\. if it's equipped, you may "
+     r"attach one of its equipment to me",
+     ["Core 355.5", "Core 421", "Core 355.12", "Core 355.10", "Core 435", "Core 436.1.a"], "instruction",
+     ["move_board_object", "attach", "targeting"],
+     "One unit its controller controls is chosen as it is played; the source moves to that unit's location and that unit "
+     "to the source's original one (the Tideturner pair, check_swap_locations); then its controller may attach one "
+     "Equipment attached to that unit to the source, picked as it resolves when there are several - none attached, nothing "
+     "happens.",
+     ["Choose a unit you control. Move me to its location and it to my original location. If it's equipped, you may "
+      "attach one of its Equipment to me."],
+     ["choose a unit you control. move me to its location and it to my original location",
+      "choose an enemy unit. move me to its location and it to my original location. if it's equipped, you may attach one "
+      "of its equipment to me",
+      "choose a unit you control. move me to its location and it to my original location. attach one of its equipment to "
+      "me"]),
+    # set 2 package A2 (The Zero Drive): the units its linked ability banished, each played ignoring its cost
+    ("play_all_units_banished_with_this_ignoring_their_costs", r"play all units banished with this, ignoring their costs",
+     ["Core 396", "Core 398", "Core 420.3", "Core 356.1.b.1"], "instruction", ["limited_play"],
+     "Each unit card the source's linked ability banished, still in its owner's Banishment as that object, is played by "
+     "this ability's controller ignoring its cost - one effect-driven play each. A unit banished by anything else is not.",
+     ["Play all units banished with this, ignoring their costs."],
+     ["play all units banished this turn, ignoring their costs", "play a unit banished with this, ignoring its cost",
+      "play all units banished with this"]),
+    # set 2 package A2 (Ezreal - Dashing): the source itself, to its controller's Base (Core 421, 355.4.a)
+    # set 2 package A2 (Azir - Emperor of the Sands): one Sand Soldier unit token of the printed Might, to its controller's
+    # Base (the eff_487 token, the eff_203 'to your base' place)
+    ("play_a_n_might_sand_soldier_unit_token_to_your_base",
+     r"play an? (?P<might>\d+) \[m\] sand soldier unit token to your base",
+     ["Core 185.2.a", "Core 184.2"], "instruction", ["play_token"],
+     "One Sand Soldier unit token of the printed Might, its controller's, in its controller's Base. Another token, 'here' "
+     "or no place are different productions.",
+     ["Play a 2 :rb_might: Sand Soldier unit token to your base."],
+     ["play a 2 [m] sand soldier unit token here", "play a 3 [m] mech unit token to your base",
+      "play a 2 [m] sand soldier unit token to a battlefield"]),
+    ("move_me_to_your_base", r"move me to your base",
+     ["Core 421", "Core 355.4.a"], "instruction", ["move_board_object"],
+     "The source itself moves to its controller's Base; nothing is chosen. Another unit, 'its base', or a Battlefield "
+     "destination are different productions.",
+     ["Move me to your base."],
+     ["move a friendly unit to your base", "move me to a battlefield", "move me"]),
     ("move_a_friendly_unit_at_a_battlefield_to_its_base", r"move a friendly unit at (?:a )?battlefield to its base",
      ["Core 421", "Core 355.4", "Core 355.4.a", "Core 355.9"], "instruction", ["move_board_object", "targeting"],
      "One chosen friendly Unit at a Battlefield moves to its own Base. A Unit in a Base, an enemy Unit, or "
@@ -693,6 +834,30 @@ LITERAL = [
      ["Move a friendly unit at a battlefield to its base."],
      ["move a friendly unit to its base", "move an enemy unit at a battlefield to its base",
       "move a friendly unit to or from its base"]),
+    # set 2 package A2 (Jax - Grandmaster At Arms): an Equipment its controller controls, detached or attached, chosen with a
+    # Unit its controller controls, and attached to it (Core 435, 355.5)
+    # set 2 package A2 (Forge of the Fluft): while its controller controls it, each of their Legends has the [Exhaust]
+    # ability (Core 190.6, 377)
+    ("while_you_control_this_battlefield_friendly_legends_have_exhaust_attach_an_equipment",
+     r'while you control this battlefield, friendly legends have (?:&quot;|")?:rb_exhaust:: attach an equipment you control to a unit you control\.?(?:&quot;|")?',
+     ["Core 190.6", "Core 377", "Core 435"], "passive", ["attach", "targeting"],
+     "The Battlefield's own text: while its controller controls it, each Legend of theirs has an [Exhaust] ability that "
+     "attaches an Equipment they control to a Unit they control, both chosen as it is activated. An opponent's Legends, "
+     "Units, or another ability are different clauses.",
+     ["While you control this battlefield, friendly legends have &quot;:rb_exhaust:: Attach an Equipment you control to a unit you control.&quot;"],
+     ["while you control this battlefield, friendly units have &quot;:rb_exhaust:: attach an equipment you control to a unit you control.&quot;",
+      "friendly legends have &quot;:rb_exhaust:: attach an equipment you control to a unit you control.&quot;",
+      "while you control this battlefield, enemy legends have &quot;:rb_exhaust:: attach an equipment you control to a unit you control.&quot;"]),
+    ("attach_a_detached_or_attached_equipment_you_control_to_a_unit_you_control",
+     r"attach an? (?P<state>detached|attached) equipment you control to a unit you control",
+     ["Core 435", "Core 435.2.a", "Core 355.5"], "instruction", ["attach", "targeting"],
+     "One Equipment its controller controls - attached to nothing now, or attached to a unit now - and one Unit its "
+     "controller controls, both chosen; the Equipment is attached to that Unit (from any other it was attached to). An "
+     "enemy Equipment, any Gear, or a unit chosen by another player is a different production.",
+     ["Attach a detached Equipment you control to a unit you control.",
+      "Attach an attached Equipment you control to a unit you control."],
+     ["attach an equipment you control to a unit you control", "attach a detached equipment to a unit you control",
+      "attach a detached gear you control to a unit you control"]),
     ("move_a_unit_from_a_battlefield_to_its_base", r"move a unit from (?:a )?battlefield to its base",
      ["Core 421", "Core 355.4", "Core 355.4.a", "Core 141.1.a.1", "Core 144.4.b", "Core 355.9.b", "Core 355.10.b"],
      "instruction", ["move_board_object", "targeting"],
@@ -870,6 +1035,17 @@ LITERAL = [
      ["units you play this turn enter exhausted", "i enter ready"]),
     # 2026-09-27: delayed passives for the NEXT card of a kind played this turn, spent by that play
     # (Core 391.4, 392): a discount on the next spell's cost (356.4), and the next unit's entry state
+    # set 2 package A2 (Temporal Portal): a [Repeat] for the next spell its controller plays this turn, its cost the spell's
+    # printed cost (Core 820.1, 206); spent by that play, paid or not
+    ("give_the_next_spell_you_play_this_turn_repeat_equal_to_its_cost",
+     r"give the next spell you play this turn \[repeat\] equal to its cost",
+     ["Core 391.4", "Core 392", "Core 820.1", "Core 206"], "instruction", ["grant_turn_effect"],
+     "The next spell its controller plays this turn offers a [Repeat] whose cost is the spell's printed cost, chosen as it "
+     "is played; spent by that play whether or not it is paid. Another card kind, or a fixed Repeat cost, is a different "
+     "clause.",
+     ["Give the next spell you play this turn [Repeat] equal to its cost."],
+     ["give the next unit you play this turn [repeat] equal to its cost", "give the next spell you play this turn [repeat]",
+      "give the next spell you play [repeat] equal to its cost"]),
     ("the_next_spell_you_play_this_turn_costs_n_less",
      r"the next spell you play this turn costs \[e(?P<amount>\d+)\] less",
      ["Core 391.4", "Core 392", "Core 356.4", "Core 356.6"], "instruction", ["grant_turn_effect"],
@@ -903,11 +1079,138 @@ LITERAL = [
      ["if an opponent's score is within 3 points of the victory score, this costs :rb_rune_rainbow: less",
       "this spell's energy cost is reduced by the highest might among units you control",
       "i cost :rb_energy_2: less"]),
+    # set 2 package A2 (Brutalizer [Effect Text]): more Might while the Equipment was attached to the card this turn
+    ("attached_this_turn_more_might",
+     r"if this was attached to me this turn, i have an additional \+(?P<amount>\d+) \[m\]",
+     ["Core 435.1.c", "Core 479.4", "Core 364.3.a"], "passive", ["continuous_effects"],
+     ("An Effect Text's conditional Might: while the Equipment it belongs to is attached to its Top-Most card by an "
+      "attach made this turn. Another duration or another condition is a different clause."),
+     ["If this was attached to me this turn, I have an additional +2 :rb_might:."],
+     ["i have an additional +2 :rb_might:", "if this was attached to me, i have +2 :rb_might:",
+      "if you attached an equipment this turn, i have an additional +2 :rb_might:"]),
+    # set 2 package A2 (Skyfall of Areion [Effect Text]): the Top-Most card's hold and conquer abilities interchangeable
+    ("my_hold_effects_are_also_conquer_effects_and_vice_versa",
+     r"my hold effects are also conquer effects, and vice versa",
+     ["Core 435.1.c", "Core 383.4.c", "Core 383.4.d"], "passive", ["continuous_effects"],
+     ("An Effect Text: while it is its Top-Most card's, that card's own abilities that trigger when it holds also trigger "
+      "when it conquers, and the other way round. One direction only, or another player's, is a different clause."),
+     ["My hold effects are also conquer effects, and vice versa."],
+     ["my hold effects are also conquer effects", "your hold effects are also conquer effects, and vice versa",
+      "my conquer effects are also hold effects"]),
+    # set 2 package A2 (Experimental Hexplate [Effect Text]): the card's own text gives it a tag (Core 133.8)
+    ("i_am_a_tag", r"i am an? (?P<tag>mech|dragon|poro|yordle|sand soldier|recruit|bird|cat|dog|spirit)",
+     ["Core 133.8"], "passive", ["continuous_effects"],
+     "A tag the card's own text gives it, beside whatever tags it is printed with - as an Effect Text, its Top-Most card's.",
+     ["I am a Mech."],
+     ["i am mighty", "your units are mechs", "i am a unit"]),
+    # set 2 package A2 (Void Drone, Drag Under): the same fixed reduction, only for a play whose source is not the hand
+    ("self_cost_reduction_not_from_hand", r"i cost \[e(?P<amount>\d+)\] less to play from anywhere other than your hand",
+     ["Core 356.4", "Core 350.1"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
+     "The card's own text and a fixed Energy amount, applied only when the card is played from somewhere other than its player's hand (a facedown zone, a trash, a deck); played from the hand it costs what it costs.",
+     ["I cost :rb_energy_2: less to play from anywhere other than your hand."],
+     ["i cost :rb_energy_2: less to play from your hand", "i cost :rb_energy_2: less to play from your trash",
+      "i cost :rb_rune_rainbow: less to play from anywhere other than your hand"]),
     ("self_cost_reduction_fixed", r"i cost \[e(?P<amount>\d+)\] less",
      ["Core 356.4"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
      "The card's own text and a fixed Energy amount. It is the ability a [Legion] gates (812.1.b.1); a variable amount, Power, or a value read off the board is a different clause.",
      ["I cost :rb_energy_2: less."],
      ["i cost :rb_rune_rainbow: less", "i cost [e] less", "units cost :rb_energy_2: less"]),
+    # set 2 package A2 (Undertitan): as the card is revealed from its owner's Main Deck, its owner adds Energy
+    ("as_im_revealed_from_your_deck_add_energy", r"as i'm revealed from your deck, \[add\] \[e(?P<amount>\d+)\]",
+     ["Core 425", "Core 430", "Core 364.3"], "passive", ["continuous_effects"],
+     "As a reveal instruction reveals this card from its owner's Main Deck, its owner adds the Energy to their Rune Pool. "
+     "Looked at privately, or revealed from another zone, it adds nothing. Power, or another player's pool, is a different "
+     "clause.",
+     ["As I'm revealed from your deck, [Add] :rb_energy_2:."],
+     ["as i'm revealed from your hand, [add] :rb_energy_2:", "when you reveal me, draw 1",
+      "as i'm revealed from your deck, [add] :rb_rune_rainbow:"]),
+    # set 2 package A2 (Ornn's Forge): a Battlefield's static - its controller's first non-token Gear each turn costs less
+    ("while_you_control_this_battlefield_the_first_friendly_non_token_gear_played_each_turn_costs_n_less",
+     r"while you control this battlefield, the first friendly non-token gear played each turn costs \[e(?P<amount>\d+)\] less",
+     ["Core 356.4.b", "Core 420", "Core 190.6"], "passive", ["evaluated_cost_modifications"],
+     "While its controller controls this Battlefield, the first non-token Gear card that player plays each turn costs the "
+     "amount of Energy less. A token, a later Gear, or a Power discount is a different clause.",
+     ["While you control this battlefield, the first friendly non-token gear played each turn costs :rb_energy_1: less."],
+     ["while you control this battlefield, friendly gear costs :rb_energy_1: less",
+      "the first friendly non-token gear played each turn costs :rb_energy_1: less",
+      "while you control this battlefield, the first friendly unit played each turn costs :rb_energy_1: less"]),
+    # set 2 package A2 (GPT A2 ruling 16): "[1] or [A] less" - one component, the payer's choice
+    ("optional_additional_costs_you_pay_cost_energy_or_any_power_less",
+     r"optional additional costs you pay cost \[e1\] or \[a\] less",
+     ["Core 356.4.c", "Core 356.4.c.2", "Core 356.4.f", "Core 356.2.b"], "passive", ["evaluated_cost_modifications"],
+     "Each optional additional cost its controller chooses to pay, on a card that player plays while this is on the board, "
+     "costs one Energy or one Power less - the payer chooses which, on that cost's own Energy or Power, never both and "
+     "never below 0. A mandatory cost, or every cost, is a different clause.",
+     ["Optional additional costs you pay cost :rb_energy_1: or :rb_rune_rainbow: less."],
+     ["optional additional costs you pay cost :rb_energy_1: less", "additional costs you pay cost :rb_energy_1: or "
+      ":rb_rune_rainbow: less", "optional additional costs you pay cost :rb_energy_2: or :rb_rune_rainbow: less"]),
+    ("your_spells_that_choose_me_cost_energy_or_any_power_less",
+     r"your spells that choose me cost \[e1\] or \[a\] less",
+     ["Core 356.4.c", "Core 356.4.c.2", "Core 355.5"], "passive", ["evaluated_cost_modifications"],
+     "Each spell its controller plays that chooses this card costs one Energy or one Power less - the payer chooses which "
+     "component of the spell's cost, never both and never below 0. A spell that does not choose it, or a unit, is not "
+     "reduced.",
+     ["Your spells that choose me cost :rb_energy_1: or :rb_rune_rainbow: less."],
+     ["your spells cost :rb_energy_1: or :rb_rune_rainbow: less", "your spells that choose me cost :rb_energy_1: less",
+      "your units that choose me cost :rb_energy_1: or :rb_rune_rainbow: less"]),
+    # set 2 package A2 (Vex - Cheerless): a Unit's passive while it is in a Combat - its controller's spells cost less,
+    # its opponents' spells more, each by one Energy and one Power of any Domain
+    ("while_im_in_combat_friendly_spells_cost_less_enemy_spells_cost_more",
+     r"while i'm in combat, friendly spells cost \[e(?P<less>\d+)\]\[a\] less to a minimum of \[e(?P<minimum>\d+)\], "
+     r"and enemy spells cost \[e(?P<more>\d+)\]\[a\] more",
+     ["Core 356.3", "Core 356.4", "Core 356.4.c", "Core 356.4.e", "Core 364.3.a"], "passive",
+     ["evaluated_cost_modifications"],
+     "While the Unit is in a Combat (designated an attacker or a defender), each spell its controller plays costs the "
+     "Energy less, never below the minimum by this discount, and one Power of any Domain less (the payer chooses the "
+     "Domain when the spell's cost has Power of more than one); each spell an opponent plays costs the Energy and one "
+     "Power of any Domain more. Out of combat, nothing.",
+     ["While I'm in combat, friendly spells cost :rb_energy_1::rb_rune_rainbow: less to a minimum of :rb_energy_1:, and "
+      "enemy spells cost :rb_energy_1::rb_rune_rainbow: more."],
+     ["while i'm at a battlefield, friendly spells cost :rb_energy_1::rb_rune_rainbow: less to a minimum of "
+      ":rb_energy_1:, and enemy spells cost :rb_energy_1::rb_rune_rainbow: more",
+      "while i'm in combat, friendly spells cost :rb_energy_1: less",
+      "while i'm in combat, friendly units cost :rb_energy_1::rb_rune_rainbow: less to a minimum of :rb_energy_1:, and "
+      "enemy units cost :rb_energy_1::rb_rune_rainbow: more"]),
+    # set 2 package A2 (Renata Glasc - Chem-Baroness): while its controller's score is within N of the Victory Score,
+    # each Add ability of a Gold token they control adds Energy more
+    ("while_your_score_is_within_n_your_gold_add_an_additional_energy",
+     r"while your score is within (?P<within>\d+) points of the victory score, your gold \[add\] an additional "
+     r"\[e(?P<amount>\d+)\]",
+     ["Core 364.3.a", "Core 430", "Core 187"], "passive", ["continuous_effects"],
+     "While its controller's score is within N points of the Victory Score (read as each Add resolves), each Add ability "
+     "of a Gold token that player controls adds the Energy more, beside what it prints. An opponent's score, another "
+     "token's Add, or a Power bonus is a different clause.",
+     ["While your score is within 3 points of the Victory Score, your Gold [ADD] an additional :rb_energy_1:."],
+     ["while an opponent's score is within 3 points of the victory score, your gold [add] an additional :rb_energy_1:",
+      "while your score is within 3 points of the victory score, your mechs [add] an additional :rb_energy_1:",
+      "your gold [add] an additional :rb_energy_1:"]),
+    # set 2 package A2 (Marai Spire): a Battlefield's static - its controller's [Repeat] costs cost less Energy
+    ("while_you_control_this_battlefield_friendly_repeat_costs_cost_n_less",
+     r"while you control this battlefield, friendly \[repeat\] costs cost \[e(?P<amount>\d+)\] less",
+     ["Core 356.4.c", "Core 356.4.c.2", "Core 820.1", "Core 190.6"], "passive", ["continuous_effects"],
+     "While its controller controls this Battlefield, each [Repeat] cost of a card that player plays has its Energy "
+     "reduced by the amount, not below 0 (a discount on that one component). A Power discount, or every cost, is a "
+     "different clause.",
+     ["While you control this battlefield, friendly [Repeat] costs cost :rb_energy_1: less."],
+     ["friendly [repeat] costs cost :rb_energy_1: less", "while you control this battlefield, spells cost :rb_energy_1: less",
+      "while you control this battlefield, friendly [repeat] costs cost :rb_rune_rainbow: less"]),
+    # set 2 package A2 (Tianna Crownguard): while the card is at a Battlefield, its controller's opponents gain no point
+    ("while_im_at_a_battlefield_opponents_cant_gain_points", r"while i'm at a battlefield, opponents can't gain points",
+     ["Core 054.1", "Core 473.1", "Core 364.3.a"], "passive", ["continuous_effects"],
+     "While the card is at a Battlefield, its controller's opponents gain no point - from a Score (the battlefield is still "
+     "scored and its Score abilities trigger), an instruction, or a Burn Out. Another player, another condition, or "
+     "scoring prevented altogether is a different clause.",
+     ["While I'm at a battlefield, opponents can't gain points."],
+     ["opponents can't gain points", "while i'm at a battlefield, you can't gain points",
+      "while i'm at a battlefield, opponents can't score"]),
+    # set 2 package A2 (Ornn - Forge God): the card's own Might, more for each Gear its controller controls on the board
+    ("i_have_n_might_for_each_friendly_gear", r"i have \+(?P<amount>\d+) \[m\] for each friendly gear",
+     ["Core 479.4", "Core 479.4.b", "Core 364.3"], "dynamic_might", ["continuous_effects"],
+     "A passive increase of the card's own Might by the amount for each Gear its controller controls on the board, "
+     "computed fresh each time (479.4.b). Units, enemy Gear, or Gear off the board are a different clause.",
+     ["I have +1 :rb_might: for each friendly gear."],
+     ["i have +1 :rb_might: for each friendly unit", "i have +1 :rb_might: for each enemy gear",
+      "i have +1 :rb_might:"]),
     ("my_might_is_increased_by_your_points", r"my might is increased by your points",
      ["Core 479.4", "Core 479.4.b", "Core 364.3"], "dynamic_might", ["continuous_effects"],
      "A passive increase of the card's own Might by its controller's points, computed fresh each time (479.4.b). Another quantity, or another object's Might, is a different clause.",
@@ -921,6 +1224,42 @@ LITERAL = [
     # 2026-09-27 package 5: a spell's own Energy reduction by a value read off the board as the
     # cost is determined - the highest Might among the Units its player controls (Core 356.4.e's
     # and 206's own example card). 1 per point, 0 with no Unit, never below 0 (356.6).
+    # set 2 package A2 (Battering Ram): the card's own fixed Energy amount per card its player has played this turn,
+    # stopping at the printed minimum (Core 356.4, 356.4.e, 420.4.b)
+    ("self_cost_reduction_per_card_played",
+     r"i cost \[e(?P<amount>\d+)\] less for each card you've played this turn, to a minimum of \[e(?P<minimum>\d+)\]",
+     ["Core 356.4", "Core 356.4.e", "Core 420.4.b"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text: a fixed Energy amount per card its player has played this turn, the card being played not "
+      "among them, never below the printed minimum. Another player's cards, spells only, or no minimum is a different "
+      "clause."),
+     ["I cost :rb_energy_1: less for each card you've played this turn, to a minimum of :rb_energy_1:."],
+     ["i cost :rb_energy_1: less for each card your opponents have played this turn, to a minimum of :rb_energy_1:",
+      "i cost :rb_energy_1: less for each spell you've played this turn, to a minimum of :rb_energy_1:",
+      "i cost :rb_energy_1: less for each card you've played this turn"]),
+    # set 2 package A2 (Jaull-Fish): the card's own fixed Energy amount per Mighty Unit its player controls on the board
+    # (Core 356.4, 708), the count of Kadregrin the Infernal's draw
+    ("self_cost_reduction_per_mighty_unit", r"i cost \[e(?P<amount>\d+)\] less for each of your \[mighty\] units",
+     ["Core 356.4", "Core 356.6", "Core 708"], "self_cost_reduction", ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text: a fixed Energy amount per Mighty Unit (5+ Might) its player controls on the board, read as "
+      "the cost is determined; 356.6 keeps it at 0 or above. An opponent's Units or a Power reduction is a different "
+      "clause."),
+     ["I cost :rb_energy_2: less for each of your [Mighty] units."],
+     ["i cost :rb_energy_2: less for each of your opponents' [mighty] units",
+      "i cost :rb_rune_body: less for each of your [mighty] units",
+      "i cost :rb_energy_2: less for each of your units"]),
+    # set 2 package A2 (Needlessly Large Yordle): the card's own Energy and one Power of a Domain per point its player
+    # scored from Holding this turn (Core 356.4, 471.2, 473.1)
+    ("self_cost_reduction_per_hold_point",
+     r"i cost \[e(?P<amount>\d+)\]\[rune:(?P<domain>[a-z]+)\] less for each point you scored from holding this turn",
+     ["Core 356.4", "Core 356.6", "Core 471.2", "Core 473.1"], "self_cost_reduction",
+     ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text: a fixed Energy amount and one Power of the printed Domain per point its player gained by "
+      "Holding this turn, read as the cost is determined; 356.6 keeps each at 0 or above. Points from Conquering, an "
+      "opponent's points, or another count are different clauses."),
+     ["I cost :rb_energy_2::rb_rune_calm: less for each point you scored from holding this turn."],
+     ["i cost :rb_energy_2::rb_rune_calm: less for each point you scored from conquering this turn",
+      "i cost :rb_energy_2::rb_rune_calm: less for each point your opponents scored from holding this turn",
+      "i cost :rb_energy_2: less for each point you scored this turn"]),
     ("self_cost_reduction_highest_might",
      r"this spell's energy cost is reduced by the highest might among units you control",
      ["Core 356.4", "Core 356.4.b", "Core 356.4.e", "Core 356.6", "Core 355.9.a.1", "Core 206"],
@@ -945,6 +1284,18 @@ LITERAL = [
      ["if an enemy unit has died this turn, this costs :rb_rune_rainbow: less",
       "if an enemy unit died last turn, this costs :rb_energy_2: less",
       "if an enemy unit has been banished this turn, this costs :rb_energy_2: less"]),
+    # set 2 package A2 (Production Surge): a card's own fixed Energy reduction gated by its player controlling a Unit of a
+    # printed tag on the board (Core 356.4, 356.4.b; controls_units with tag, read as the cost is determined)
+    ("self_cost_reduction_control_tag",
+     r"this costs \[e(?P<amount>\d+)\] less if you control an? (?P<tag>poro|dragon|mech)",
+     ["Core 356.4", "Core 356.4.b"], "self_cost_reduction",
+     ["self_card_conditional_fixed_energy_reduction.v1"],
+     ("The card's own text, a fixed Energy amount, gated by its player controlling a Unit of the named tag on the board "
+      "as the cost is determined. A count of more than one, a tag on a Gear, or a Power reduction is a different clause."),
+     ["This costs :rb_energy_2: less if you control a Mech."],
+     ["this costs :rb_rune_rainbow: less if you control a mech",
+      "this costs :rb_energy_2: less if you control two mechs",
+      "this costs :rb_energy_2: less if an opponent controls a mech"]),
     # 2026-09-24: a unit's printed static aura - a continuous Might effect over the other
     # friendly units at its own Battlefield, read live off the object while it is on the
     # board (effect_ir.printed_aura_effects; check_static_auras.py).
@@ -1020,6 +1371,44 @@ LITERAL = [
      ["Units here have [Ganking]."],
      ["units here have +1 :rb_might:", "friendly units here have [ganking]", "units have [ganking]",
       "units here have [ganking] this turn"]),
+    # set 2 package A2 (Guardian Angel [Effect Text]): two printed sentences, one Replacement Effect about the Top-Most card
+    ("if_i_would_die_kill_this_equipment_instead_heal_exhaust_recall_me",
+     r"if i would die, kill (?P<name>[a-z' ]+) instead\. heal me, exhaust me, and recall me",
+     ["Core 370.1.b", "Core 435.1.c", "Core 429", "Core 416"], "passive", ["replacement_effects"],
+     ("An Effect Text: the Top-Most card's death is replaced - the Equipment the text belongs to is killed instead, and "
+      "the card is healed, exhausted and recalled. The card the name points at is the Equipment itself; a death of "
+      "another unit, or a different instead, is a different clause."),
+     ["If I would die, kill Guardian Angel instead. Heal me, exhaust me, and recall me."],
+     ["if a friendly unit would die, kill this instead. heal me, exhaust me, and recall me",
+      "if i would die, kill guardian angel instead", "if i would die, heal me, exhaust me, and recall me instead"]),
+    # set 2 package A2 (Gearhead): the printed Might Bonus of each Equipment attached to the card counted twice
+    ("each_equipment_attached_to_me_gives_double_its_base_might_bonus",
+     r"each equipment attached to me gives double its base might bonus",
+     ["Core 159.1", "Core 435.1", "Core 479.4"], "passive", ["might_aura", "layer_engine"],
+     ("The card's own text: each Equipment attached to it adds twice its printed Might Bonus instead of once, while the "
+      "card's text is active. Another multiplier, another card's Equipment, or gear that is not Equipment is a different "
+      "clause."),
+     ["Each Equipment attached to me gives double its base Might bonus."],
+     ["each equipment attached to me gives its base might bonus", "each equipment you control gives double its base "
+      "might bonus", "each gear attached to me gives double its base might bonus"]),
+    # set 2 package A2 (Jax - Unmatched): Quick-Draw given to the controller's Equipment wherever each is
+    ("your_equipment_everywhere_have_quick_draw",
+     r"your equipment everywhere have \[quick-draw\]",
+     ["Core 365.1", "Core 479.3", "Core 819.1.b", "Core 819.1.d"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura over every Equipment its controller controls or owns, in any zone (a card in the hand "
+      "included), while the source is on the board: each has Quick-Draw - Reaction timing, and the attach as it is "
+      "played. Another keyword, enemy Equipment, or only the board is a different clause."),
+     ["Your Equipment everywhere have [Quick-Draw]."],
+     ["your equipment have [quick-draw]", "your gear everywhere have [quick-draw]",
+      "your equipment everywhere have [assault]"]),
+    # set 2 package A2 (Shurelya's Requiem [Effect Text]): the same aura with the source itself among the Units
+    ("your_units_here_have_keyword",
+     r"your units here have \[(?P<keyword>ganking|assault|shield|vision|deflect|tank)\]",
+     ["Core 365.1", "Core 478", "Core 479.3", "Core 479.3.b"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura over every friendly Unit at the Battlefield where the source is - the source included - "
+      "while the source is on the board. A Might amount, other units only, or a whole-board aura is a different clause."),
+     ["Your units here have [Ganking]."],
+     ["other friendly units here have [ganking]", "your units have [ganking]", "your units here have +1 :rb_might:"]),
     ("other_friendly_units_here_have_keyword",
      r"other friendly units here have \[(?P<keyword>assault|shield)\]",
      ["Core 365.1", "Core 478", "Core 479.3", "Core 479.3.b", "Core 807.2", "Core 814.2"], "passive", ["might_aura", "layer_engine"],
@@ -1042,6 +1431,78 @@ LITERAL = [
       "other friendly buffed units have [deflect] if they didn't already"]),
     # set 2 (2026-10-29): a keyword aura over every friendly Unit on the board - "other" not printed, so a source that
     # is a Unit is covered too (a Gear printing it covers the Units only)
+    # set 2 package A2 (Rumble - Mechanized Menace, Breakneck Mech, Forecaster, Rumble - Hotheaded): a keyword aura over
+    # every Unit of one tag its controller controls on the board, the source too when it carries the tag
+    # set 2 package A2 (Azir - Emperor of the Sands): the same keyword aura over the friendly Units of a NAME - the
+    # Sand Soldier token's (it carries no Sand Soldier tag; TOKEN_ENTRY_SAND_SOLDIER: Shurima)
+    ("your_named_units_have_keywords",
+     r"your (?P<name>sand soldier)s have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 365.1", "Core 478", "Core 479.3", "Core 479.3.b", "Core 185.2.a"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura, while the source is active, over every friendly Unit of that name (the Sand Soldier "
+      "token). Another name, a tag, enemy units or 'here' is a different clause."),
+     ["Your Sand Soldiers have [Weaponmaster]."],
+     ["your mechs have [weaponmaster]", "enemy sand soldiers have [weaponmaster]", "your sand soldiers here have [shield]"]),
+    ("your_tag_units_have_keywords",
+     r"your (?P<tag>mech)s (?:each )?have (?P<keywords>\[[a-z]+\](?:(?:,? and |, )\[[a-z]+\])*)",
+     ["Core 365.1", "Core 478", "Core 479.3", "Core 479.3.b", "Core 133.8"], "passive", ["might_aura", "layer_engine"],
+     ("A printed keyword aura, while the source is on the board, over every friendly Unit carrying the tag - the "
+      "source itself when it does. Another tag, enemy units, 'other' or 'here' is a different clause."),
+     ["Your Mechs have [Shield].", "Your Mechs have [Deflect] and [Ganking].", "Your Mechs each have [Assault]."],
+     ["your poros have [shield]", "enemy mechs have [shield]", "your other mechs have [shield]",
+      "your mechs here have [shield]"]),
+    # set 2 package A2 (Rumble - Scrapper: "... (including me)."): the same aura, a Might amount
+    ("your_tag_units_have_might", r"your (?P<tag>mech)s have \+(?P<amount>\d+) \[m\]",
+     ["Core 365.1", "Core 478", "Core 479.4", "Core 481", "Core 133.8"], "passive", ["might_aura"],
+     ("A printed aura: +N Might to every friendly Unit carrying the tag while the source is on the board, the source "
+      "itself when it does. Another tag, a decrease or 'here' is a different clause."),
+     ["Your Mechs have +1 :rb_might:."],
+     ["your poros have +1 :rb_might:", "your mechs have -1 :rb_might:", "your mechs here have +1 :rb_might:"]),
+    # set 2 package A2 (Forgotten Monument): no player scores here before beginning their Nth turn (Core 471, 472)
+    ("players_cant_score_here_until_their_nth_turn", r"players can't score here until their (?P<nth>second|third|fourth) turn",
+     ["Core 471", "Core 472", "Core 190.6"], "passive", ["move_restriction"],
+     ("A Battlefield's printed restriction on Scoring there: a player whose Nth turn has not begun gets no point and no "
+      "Score trigger from conquering or holding it; control is established as usual."),
+     ["Players can't score here until their third turn."],
+     ["players can't score here", "you can't score here until your third turn", "players can't score until their third turn"]),
+    # set 2 package A2 (Perched Grimwyrm): the card's only legal location, a Battlefield its player conquered this turn
+    ("play_me_only_to_a_battlefield_you_conquered_this_turn", r"play me only to a battlefield you conquered this turn",
+     ["Core 355.2", "Core 471.1"], "passive", ["move_restriction"],
+     ("The card's own entry restriction: it may be played only to a Battlefield its player conquered this turn - not its "
+      "Base, not another Battlefield, whatever permission would otherwise reach one."),
+     ["Play me only to a battlefield you conquered this turn."],
+     ["play me only to a battlefield you control", "play me to a battlefield you conquered this turn",
+      "play me only to a battlefield you held this turn"]),
+    # set 2 package A2 (Rockfall Path): a Battlefield's own restriction - no Unit is played there (Core 355.2)
+    ("units_cant_be_played_here", r"units can't be played here",
+     ["Core 355.2", "Core 190.6"], "passive", ["move_restriction"],
+     ("A Battlefield's printed restriction: no Unit, either player's, may be played to it, whatever permission would "
+      "otherwise reach it. A Move there, or a Gear, is not restricted by it."),
+     ["Units can't be played here."],
+     ["units can't move here", "spells can't be played here", "enemy units can't be played here"]),
+    # set 2 package A2 (Lucian - Purifier): each attached Equipment of the controller's gives its unit [Assault]
+    ("your_equipment_each_give_assault", r"your equipment each give \[assault\]",
+     ["Core 807.1", "Core 807.2", "Core 435", "Core 365.1"], "passive", ["might_aura", "layer_engine"],
+     ("A printed aura: while the source is on the board, every Equipment its controller controls that is attached "
+      "gives the unit it is attached to one Assault - two Equipment, Assault 2 (807.2). Another keyword, or 'your units', "
+      "is a different clause."),
+     ["Your Equipment each give [Assault]."],
+     ["your equipment each give [shield]", "your units each have [assault]", "your equipment have [assault]"]),
+    # set 2 package A2 (Minotaur Reckoner): while the card is on the board, no Unit moves to a Base (Core 144.4, 359.3.e.6)
+    ("units_cant_move_to_base", r"units can't move to base",
+     ["Core 144.4", "Core 359.3.e.6", "Core 365.1"], "passive", ["move_restriction"],
+     ("A printed restriction of a permanent: while it is on the board, no Unit, either player's, may move to a Base - a "
+      "Standard Move to one is not an action, a Move instruction to one is ignored. 'From here' (a Battlefield's own "
+      "restriction) is a different clause."),
+     ["Units can't move to base."],
+     ["units can't move from here to base", "units can't move to a battlefield", "enemy units can't move to base"]),
+    # set 2 package A2 (Ruin Runner): an opponent's spells and abilities may not choose the card (Core 355.5)
+    ("i_cant_be_chosen_by_enemy_spells_and_abilities", r"i can't be chosen by enemy spells and abilities",
+     ["Core 355.5", "Core 355.9", "Core 365.1"], "passive", ["targeting"],
+     ("A printed restriction of the card's own: a choice made for an opponent's spell or ability cannot name it, while "
+      "its own controller's may. Every spell, or 'abilities' alone, is a different clause."),
+     ["I can't be chosen by enemy spells and abilities."],
+     ["i can't be chosen by spells and abilities", "i can't be chosen by enemy spells",
+      "friendly units can't be chosen by enemy spells and abilities"]),
     ("friendly_units_have_keyword",
      r"friendly units have \[(?P<keyword>deflect)\]",
      ["Core 365.1", "Core 478", "Core 479.3", "Core 479.3.b"], "passive", ["might_aura", "layer_engine"],
@@ -1206,12 +1667,12 @@ LITERAL = [
       "i enter ready"]),
     # set 2 (2026-10-29): three more conditional entries, each an entry_replacements entry with a condition
     ("i_enter_ready_if_you_control_another_tag",
-     r"i enter ready if you control another (?P<tag>dragon)",
+     r"i enter ready if you control another (?P<tag>dragon|mech)",
      ["Core 364.3.a", "Core 369.3", "Core 143.4", "Core 133.8.a"], "passive", ["entry_replacements", "condition_v1"],
      ("The card enters ready when, as it enters, its controller controls a Unit with the printed tag other than the "
       "card itself; otherwise exhausted (143.4). The tag is a closed table (PRINTED_TAGS); 'a' Dragon (the card "
       "counted) or an opponent's is a different clause."),
-     ["I enter ready if you control another Dragon."],
+     ["I enter ready if you control another Dragon.", "I enter ready if you control another Mech."],
      ["i enter ready if you control a dragon", "i enter ready if an opponent controls another dragon",
       "i enter ready if you control another poro", "i enter ready"]),
     ("i_enter_ready_if_you_have_n_or_more_other_units_in_your_base",
@@ -1235,6 +1696,16 @@ LITERAL = [
     # 2026-09-27 (package 5): a Battlefield's printed Bonus Damage over the Units at it - every
     # Deal of a spell or ability, whoever controls it, to a Unit there (effect_ir.bonus_damage,
     # scope `location`); check_battlefield_passives.py
+    # set 2 package A2 (Rabadon's Deathcrown's Effect Text): the controller's own spells and abilities deal N more to
+    # whatever they damage (Core 713-715), read while the source is on the board
+    ("your_spells_and_abilities_deal_n_bonus_damage", r"your spells and abilities deal (?P<amount>\d+) bonus damage",
+     ["Core 713", "Core 714", "Core 715.1"], "passive", ["bonus_damage"],
+     ("A printed Bonus Damage of the controller's sources: each of their spells and abilities deals N more when it deals "
+      "damage, while the source is on the board. 'To units here', an opponent's sources, or the next spell only is a "
+      "different clause."),
+     ["Your spells and abilities deal 3 Bonus Damage."],
+     ["spells and abilities deal 1 bonus damage to units here", "your spells deal 1 bonus damage",
+      "the next spell you play this turn deals 1 bonus damage"]),
     ("spells_and_abilities_deal_n_bonus_damage_to_units_here",
      r"spells and abilities deal (?P<amount>\d+) bonus damage to units here",
      ["Core 713", "Core 714", "Core 715.1", "Core 715.2"], "passive", ["bonus_damage"],
@@ -1257,6 +1728,24 @@ LITERAL = [
      ["you may hide a card here", "you may hide an additional card", "you may hide two additional cards here",
       "you may play an additional card here"]),
     # 2026-10-08 package 10 (Clockwork Keeper): one Power of a printed Domain offered as an optional additional cost
+    # set 2 package A2 (Sea Monkey; Blast Corps Cadet): the same optional offer for the card's own play, of Energy, or of
+    # Energy and one Power of a printed Domain
+    ("you_may_pay_energy_as_an_additional_cost_to_play_me",
+     r"you may pay \[e(?P<energy>\d+)\] as an additional cost to play me",
+     ["Core 356.2.b", "Core 356.2.b.1"], "passive", ["card_self_optional_cost"],
+     ("The card offers an amount of Energy as an optional additional cost for its own play; paying it is the "
+      "controller's choice as the card is played (355.1.a)."),
+     ["You may pay :rb_energy_1: as an additional cost to play me."],
+     ["pay :rb_energy_1: as an additional cost to play me", "you may pay :rb_energy_1: as an additional cost to play another unit",
+      "you may pay :rb_energy_1::rb_rune_fury: as an additional cost to play me"]),
+    ("you_may_pay_energy_and_a_rune_as_an_additional_cost_to_play_me",
+     r"you may pay \[e(?P<energy>\d+)\]\[rune:(?P<domain>[a-z]+)\] as an additional cost to play me",
+     ["Core 356.2.b", "Core 356.2.b.1"], "passive", ["card_self_optional_cost"],
+     ("The card offers an amount of Energy and one Power of the printed Domain together as one optional additional cost "
+      "for its own play; paying it is the controller's choice as the card is played (355.1.a)."),
+     ["You may pay :rb_energy_1::rb_rune_fury: as an additional cost to play me."],
+     ["you may pay :rb_energy_1: as an additional cost to play me",
+      "you may pay :rb_energy_1::rb_rune_fury: as an additional cost to play another unit"]),
     ("you_may_pay_a_rune_as_an_additional_cost_to_play_me",
      r"you may pay \[rune:(?P<domain>[a-z]+)\] as an additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1"], "passive", ["card_self_optional_cost"],
@@ -1277,6 +1766,37 @@ LITERAL = [
       "pay [c] as additional cost to play me"]),
     # 2026-09-27 (package 6): a card's own printed non-resource additional costs (Core 356.2.a.1,
     # 356.2.b.1, 356.7); play_transaction.printed_cost_components pays them; check_printed_costs.py
+    # set 2 package A2 (Zaun Punk): an OPTIONAL printed cost paid by killing a friendly Gear
+    ("you_may_kill_a_friendly_gear_as_an_additional_cost_to_play_me",
+     r"you may (?P<cost>kill a friendly gear) as an additional cost to play me",
+     ["Core 356.2.b", "Core 356.2.b.1", "Core 357.2", "Core 429.1.a.1", "Core 355.10.c"], "passive",
+     ["card_self_optional_cost", "kill"],
+     ("An OPTIONAL additional cost the card prints for its own play: one friendly Gear on the board, chosen by the payer "
+      "as the card is played, killed as the cost is paid (not a target, 355.10.c). Declined, nothing is killed."),
+     ["You may kill a friendly gear as an additional cost to play me."],
+     ["you may kill a friendly unit as an additional cost to play me", "you may kill a gear as an additional cost to play me",
+      "as an additional cost to play me, kill a friendly gear"]),
+    # set 2 package A2 (Bard - Mercurial): an OPTIONAL printed cost paid by exhausting its player's Legend
+    ("you_may_exhaust_your_legend_as_an_additional_cost_to_play_me",
+     r"you may (?P<cost>exhaust your legend) as an additional cost to play me",
+     ["Core 356.2.b", "Core 356.2.b.1", "Core 357.2", "Core 107.4.d", "Core 174.8"], "passive",
+     ["card_self_optional_cost"],
+     ("An OPTIONAL additional cost the card prints for its own play: its player's Legend, in their Legend Zone, exhausted "
+      "as the cost is paid; an exhausted Legend cannot pay it (Core 203.3). Declined, nothing is exhausted."),
+     ["You may exhaust your legend as an additional cost to play me."],
+     ["you may exhaust a friendly unit as an additional cost to play me",
+      "exhaust your legend as an additional cost to play me",
+      "you may exhaust your legend as an additional cost to play this"]),
+    # set 2 package A2 (Legion Quartermaster): the same mandatory printed cost, paid by returning a friendly Gear
+    ("as_an_additional_cost_to_play_me_return_a_friendly_gear",
+     r"as an additional cost to play me, (?P<cost>return a friendly gear to its owner's hand)",
+     ["Core 356.2.a", "Core 356.2.a.1", "Core 356.7", "Core 357.2", "Core 448.2"], "passive",
+     ["card_self_optional_cost"],
+     ("A MANDATORY additional cost the card prints for its own play: one friendly Gear on the board, chosen by the payer "
+      "as the card is played, returned to its owner's hand as the cost is paid. No friendly Gear, no play (203.3)."),
+     ["As an additional cost to play me, return a friendly gear to its owner's hand."],
+     ["as an additional cost to play me, return a friendly unit to its owner's hand",
+      "as an additional cost to play me, kill a friendly gear", "return a friendly gear to its owner's hand"]),
     ("as_an_additional_cost_to_play_me_kill_a_friendly_unit",
      r"as an additional cost to play me, (?P<cost>kill a friendly unit)",
      ["Core 356.2.a", "Core 356.2.a.1", "Core 356.7", "Core 357.2", "Core 355.10.c"], "passive",
@@ -1443,6 +1963,17 @@ LITERAL = [
       "unit, or 'kill this instead' (a replacement) is a different production."),
      ["Kill this."],
      ["kill it", "kill a unit", "kill this instead"]),
+    # set 2 package A2 (Hard Bargain): the countered spell's controller may pay Energy, as the Counter resolves, and then
+    # nothing is countered
+    ("counter_a_spell_unless_its_controller_pays_energy",
+     r"counter a spell unless its controller pays \[e(?P<energy>\d+)\]",
+     ["Core 426.1", "Core 355.7", "Core 355.10.e"], "instruction", ["counter", "typed_selectors"],
+     ("Counter one chosen spell on the Chain, unless that spell's controller pays the Energy as the Counter resolves; "
+      "paid, nothing is countered. A payment by the caster, a Power cost, or a different 'instead' is a different "
+      "production."),
+     ["Counter a spell unless its controller pays [E2]."],
+     ["counter a spell unless you pay [e2]", "counter a unit unless its controller pays [e2]",
+      "counter a spell unless its controller has you draw 2"]),
     ("counter_a_spell",
      r"counter a spell",
      ["Core 426.1", "Core 355.7", "Core 355.5"], "instruction", ["counter", "typed_selectors"],
@@ -1511,6 +2042,16 @@ LITERAL = [
      ["you may play me to an occupied enemy battlefield",
       "friendly units may be played to open battlefields",
       "you may play a unit to an open battlefield"]),
+    # set 2 package A2 (Rengar - Pouncing): one more place the card may enter - a Battlefield its player is attacking
+    ("i_can_be_played_to_a_battlefield_youre_attacking",
+     r"i can be played to a battlefield you're attacking",
+     ["Core 355.2.a", "Core 355.2.b", "Core 466.2.c"], "passive", ["open_battlefield"],
+     ("A printed permission that widens where this card may enter: a Battlefield where one of its player's Units is "
+      "designated Attacker now. It does not widen timing (the card's own [Reaction] does). Defending, or a battlefield "
+      "merely occupied, is a different clause."),
+     ["I can be played to a battlefield you're attacking."],
+     ["i can be played to a battlefield you're defending", "you may play me to an open battlefield",
+      "units can be played to a battlefield you're attacking"]),
     # 2026-09-27 package 5: a permanent's printed grant to its side's unit plays (Miss Fortune -
     # Buccaneer), read while it is on the board (Core 355.2.b, 170.11.c)
     ("friendly_units_may_be_played_to_open_battlefields",
@@ -1645,6 +2186,11 @@ WRAPPERS = [
     ("when_you_play_me", r"when you play me, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a"], ["play_triggers"],
      ["When you play me, channel 1 rune exhausted.", "When you play me, draw 1."],
      ["when you play a unit, draw 1", "when i move, draw 1"]),
+    # set 2 package A2 (Edge of Night): the card's own play trigger, met only by a play from facedown (Core 811.1.c.3)
+    ("when_you_play_this_from_face_down", r"when you play this from face down, (?P<inner>.+)",
+     ["Core 383.1", "Core 420.4.a", "Core 811.1.c.3"], ["play_triggers"],
+     ["When you play this from face down, draw 1."],
+     ["when you play this, draw 1", "when you play a card from face down, draw 1", "when you hide this, draw 1"]),
     # 2026-10-08 package 10: a Gear's "When you play this" - the card's own play trigger, as "When you play me"
     ("when_you_play_this", r"when you play this, (?P<inner>.+)", ["Core 383.1", "Core 420.4.a"], ["play_triggers"],
      ["When you play this, draw 1."],
@@ -1667,6 +2213,13 @@ WRAPPERS = [
      ["when i move, draw 1", "when i move from my base, draw 1", "when a unit moves from a battlefield, draw 1"]),
     # 2026-10-06 package 9 (The Grand Plaza): the conditional statement right after "When you hold here" is part of
     # the Trigger Condition (Core 383.2.a.1) - on the Battlefield's hold descriptor, read as the Hold is processed
+    # set 2 package A2 (Sunken Temple): the Conquer here, met only with N or more of the controller's Mighty Units here
+    ("when_you_conquer_here_with_n_or_more_mighty_units",
+     r"when you conquer here with (?P<count>one|two|three|\d+) or more \[mighty\] units, (?P<optional>you may )?(?P<inner>.+)",
+     ["Core 471.1", "Core 190.6.a", "Core 383.2.a.1", "Core 708"], ["conquer_triggers"],
+     ["When you conquer here with one or more [Mighty] units, draw 1."],
+     ["when you conquer here, draw 1", "when you hold here with one or more [mighty] units, draw 1",
+      "when you conquer here with one or more units, draw 1"]),
     ("when_you_hold_here_if_you_have_n_units_here",
      r"when you hold here, if you have (?P<count>\d+)\+ units here, (?P<inner>.+)",
      ["Core 471.2", "Core 190.6.a", "Core 383.2.a.1"], ["hold_triggers"],
@@ -1694,8 +2247,19 @@ WRAPPERS = [
     # A Unit's own Hold Effect (Core 383.4.d): it goes on the Chain after the Unit is present
     # at a Battlefield its controller Holds and scores from (383.4.d.2.a) - the Scoring Step's
     # unit_here scope. Distinct from the Battlefield's own "When you hold here".
+    # set 2 package A2 (Last Rites [Effect Text]): ONE ability with two trigger conditions - the Unit's own conquer or
+    # its own hold; the same descriptor in both fields, so one scoring schedules it once
+    ("when_i_conquer_or_hold", r"when i conquer or hold, (?P<inner>.+)",
+     ["Core 471.1", "Core 471.2", "Core 383.4.c", "Core 383.4.d"], ["conquer_triggers", "hold_triggers"],
+     ["When I conquer or hold, draw 1."], ["when i conquer, draw 1", "when you conquer or hold, draw 1",
+                                          "when i conquer or defend, draw 1"]),
     ("when_i_hold", r"when i hold, (?P<inner>.+)", ["Core 471.2", "Core 383.4.d", "Core 383.4.d.2.a"], ["hold_triggers"],
      ["When I hold, draw 1."], ["when you hold here, draw 1", "when i conquer, draw 1", "when i move, draw 1"]),
+    # set 2 package A2 (Lucian - Merciless): the card's own conquer trigger, on its first conquer of the turn only
+    ("the_first_time_i_conquer_each_turn", r"the first time i conquer each turn, (?P<inner>.+)",
+     ["Core 471.1", "Core 383.1"], ["conquer_triggers"],
+     ["The first time I conquer each turn, draw 1."],
+     ["when i conquer, draw 1", "the first time i hold each turn, draw 1", "the first time you conquer each turn, draw 1"]),
     ("when_i_conquer", r"when i conquer, (?P<inner>.+)", ["Core 471.1", "Core 383.1"], ["conquer_triggers"],
      ["When I conquer, draw 1."], ["when you conquer, draw 1", "when i hold, draw 1", "when i move, draw 1"]),
     # A Unit's own Attack Trigger (Core 383.4.e): it goes on the Chain the first time this
@@ -1790,6 +2354,90 @@ WRAPPERS = [
     ("when_you_play_a_card_on_an_opponents_turn", r"when you play a card on an opponent's turn, (?P<inner>.+)",
      ["Core 383.1", "Core 420.4.a"], ["event_triggers"], ["When you play a card on an opponent's turn, draw 1."],
      ["when you play a card, draw 1", "when an opponent plays a card, draw 1"]),
+    # set 2 package A2 (Chemtech Cask)
+    ("when_you_play_a_spell_on_an_opponents_turn", r"when you play a spell on an opponent's turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 420.4.a"], ["event_triggers"], ["When you play a spell on an opponent's turn, draw 1."],
+     ["when you play a card on an opponent's turn, draw 1", "when you play a spell, draw 1",
+      "when an opponent plays a spell, draw 1"]),
+    # set 2 package A2 (Yordle Explorer): [A] is one Power of any Domain; the count of them is N
+    ("when_you_play_a_card_with_power_cost_n_or_more",
+     r"when you play a card with power cost (?P<cost>(?:\[a\])+) or more, (?P<inner>.+)",
+     ["Core 383.1", "Core 420.4.a", "Core 206"], ["event_triggers"],
+     ["When you play a card with Power cost :rb_rune_rainbow::rb_rune_rainbow: or more, draw 1."],
+     ["when you play a card with power cost :rb_rune_rainbow::rb_rune_rainbow: or less, draw 1",
+      "when you play a card with energy cost :rb_energy_2: or more, draw 1",
+      "when you play a spell, draw 1"]),
+    # set 2 package A2 (Draven - Glorious Executioner; Corrupt Enforcer): a won combat, the player's (Core 468.3.a) or
+    # the Unit's own (468.3.c)
+    ("when_you_win_a_combat", r"when you win a combat, (?P<inner>.+)", ["Core 383.1", "Core 468.3", "Core 468.3.a"],
+     ["event_triggers"], ["When you win a combat, draw 1."],
+     ["when you lose a combat, draw 1", "when an opponent wins a combat, draw 1", "when i win a combat, draw 1"]),
+    # set 2 package A2 (Draven - Audacious): the card's own won combat, the first of the turn only
+    ("the_first_time_i_win_a_combat_each_turn", r"the first time i win a combat each turn, (?P<inner>.+)",
+     ["Core 383.1", "Core 468.3", "Core 468.3.c"], ["event_triggers"],
+     ["The first time I win a combat each turn, draw 1."],
+     ["when i win a combat, draw 1", "the first time you win a combat each turn, draw 1",
+      "the first time i lose a combat each turn, draw 1"]),
+    # set 2 package A2 (Draven - Audacious): "When I die" (Core 808.2's own wording of a death trigger) met only when the
+    # card was an Attacker or a Defender as its death was noted
+    ("when_i_die_in_combat", r"when i die in combat, (?P<inner>.+)", ["Core 383.1", "Core 383.2.a.1", "Core 429", "Core 466"],
+     ["self_death_triggers"], ["When I die in combat, draw 1."],
+     ["when i die, draw 1", "when a unit dies in combat, draw 1", "when i win a combat, draw 1"]),
+    ("when_i_win_a_combat", r"when i win a combat, (?P<inner>.+)", ["Core 383.1", "Core 468.3", "Core 468.3.c"],
+     ["event_triggers"], ["When I win a combat, draw 1."],
+     ["when you win a combat, draw 1", "when i lose a combat, draw 1", "the first time i win a combat each turn, draw 1"]),
+    # set 2 package A2 (Aphelios - Exalted, Jax - Unrelenting): its controller attaches an Equipment to the source
+    # (Core 435, 436) - the attach's host is the card itself, the object attached is tagged Equipment
+    ("when_you_attach_an_equipment_to_me", r"when you attach an equipment to me, (?P<inner>.+)",
+     ["Core 383.1", "Core 435", "Core 436", "Core 133.8"], ["event_triggers"],
+     ["When you attach an Equipment to me, draw 1."],
+     ["when you attach an equipment, draw 1", "when an equipment is attached to me, draw 1",
+      "when you attach an equipment to a unit, draw 1"]),
+    # set 2 package A2 (Fae Dragon): each buff its controller spends (Core 702.2.b)
+    ("when_you_spend_a_buff", r"when you spend a buff, (?P<inner>.+)", ["Core 383.1", "Core 702.2.b"],
+     ["event_triggers"], ["When you spend a buff, draw 1."],
+     ["when you buff a unit, draw 1", "when an opponent spends a buff, draw 1"]),
+    # set 2 package A2 (Sivir - Battle Mistress): each rune its controller recycles (Core 417)
+    ("when_you_recycle_a_rune", r"when you recycle a rune, (?P<inner>.+)", ["Core 383.1", "Core 417"],
+     ["event_triggers"], ["When you recycle a rune, draw 1."],
+     ["when you recycle a card, draw 1", "when you channel a rune, draw 1"]),
+    # set 2 package A2 (Sivir - Battle Mistress): one or more Units of the other side dying together, once (Core 429)
+    # set 2 package A2 (Fiora - Worthy, Fiora - Grand Duelist): a Unit its controller controls becomes Mighty - its Might
+    # goes from less than 5 to 5 or more on the board (Core 709, 710)
+    ("when_a_unit_you_control_becomes_mighty",
+     r"when (?:a unit you control|one of your units) becomes \[mighty\], (?P<inner>.+)",
+     ["Core 383.1", "Core 708", "Core 709", "Core 710"], ["event_triggers"],
+     ["When a unit you control becomes [Mighty], draw 1.", "When one of your units becomes [Mighty], draw 1."],
+     ["when a unit becomes [mighty], draw 1", "when an enemy unit becomes [mighty], draw 1",
+      "when a unit you control is [mighty], draw 1"]),
+    # set 2 package A2: Targeting Effects (Core 383.4.b) - the card itself chosen by its controller's spell (Jae
+    # Medarda); a friendly unit chosen by its controller's spell or ability (Spirit Wheel, Irelia - Blade Dancer)
+    ("when_you_choose_me_with_a_spell", r"when you choose me with a spell, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.4.b", "Core 383.4.b.3", "Core 355.10"], ["event_triggers"],
+     ["When you choose me with a spell, draw 1."],
+     ["when you choose me, draw 1", "when an opponent chooses me with a spell, draw 1",
+      "when you choose me with an ability, draw 1"]),
+    # set 2 package A2 (Irelia - Fervent): the card itself chosen by its controller's spell or ability, or readied by its
+    # controller - each such event its own trigger
+    ("when_you_choose_or_ready_me", r"when you choose or ready me, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.4.b", "Core 355.10", "Core 416"], ["event_triggers"],
+     ["When you choose or ready me, draw 1."],
+     ["when you choose me, draw 1", "when an opponent chooses or readies me, draw 1",
+      "when you choose or ready a friendly unit, draw 1"]),
+    ("when_you_choose_a_friendly_unit", r"when you choose a friendly unit, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.4.b", "Core 383.4.b.3", "Core 355.10"], ["event_triggers"],
+     ["When you choose a friendly unit, draw 1."],
+     ["when you choose an enemy unit, draw 1", "when you choose a unit, draw 1",
+      "when an opponent chooses a friendly unit, draw 1"]),
+    # set 2 package A2 (Prize of Progress): its controller uses an activated ability of a Gear (Core 377.2)
+    ("when_you_use_an_activated_ability_of_a_gear", r"when you use an activated ability of a gear, (?P<inner>.+)",
+     ["Core 383.1", "Core 377", "Core 377.2"], ["event_triggers"],
+     ["When you use an activated ability of a gear, draw 1."],
+     ["when you use an activated ability of a unit, draw 1", "when you play a gear, draw 1",
+      "when an opponent uses an activated ability of a gear, draw 1"]),
+    ("when_one_or_more_enemy_units_die", r"when one or more enemy units die, (?P<inner>.+)",
+     ["Core 383.1", "Core 429", "Core 429.1"], ["event_triggers"], ["When one or more enemy units die, draw 1."],
+     ["when an enemy unit dies, draw 1", "when one or more friendly units die, draw 1"]),
     ("when_you_play_a_card_from_hidden", r"when you play a card from \[hidden\], (?P<inner>.+)",
      ["Core 383.1", "Core 420.4.a", "Core 811.1"], ["event_triggers"], ["When you play a card from [Hidden], draw 1."],
      ["when you play a card, draw 1", "when you hide a card, draw 1"]),
@@ -1871,10 +2519,25 @@ WRAPPERS = [
      ["When you conquer, if you have 4+ units at that battlefield, draw 2."],
      ["when you conquer, draw 2", "when you conquer here, if you have 4+ units here, draw 2",
       "when you conquer, if you have 4+ units, draw 2", "when you hold, if you have 4+ units at that battlefield, draw 2"]),
+    # set 2 package A2 (Yone - Blademaster): the unit's own conquer, of a Battlefield that had no controller before it
+    ("when_i_conquer_a_battlefield_that_was_uncontrolled",
+     r"when i conquer a battlefield that was uncontrolled, (?P<inner>.+)",
+     ["Core 471.1", "Core 383.4.c", "Core 383.4.c.2.a", "Core 383.2.a.1", "Core 190.2.b"],
+     ["conquer_triggers"], ["When I conquer a battlefield that was uncontrolled, draw 1."],
+     ["when i conquer, draw 1", "when i conquer a battlefield that was controlled, draw 1",
+      "when you conquer a battlefield that was uncontrolled, draw 1"]),
     ("when_you_conquer", r"when you conquer, (?P<inner>.+)", ["Core 471.1", "Core 383.4.c", "Core 383.4.c.2.b"],
      ["conquer_triggers"], ["When you conquer, draw 1."],
      ["when you conquer here, draw 1", "when i conquer, draw 1", "when you hold, draw 1",
       "when an opponent conquers, draw 1"]),
+    # set 2 package A2 (Renata Glasc - Chem-Baroness): a player-level Hold Effect (Core 383.4.d.2.b), scope controller as
+    # "When you conquer"; "or an ally" names a teammate, and the engine models no teams - in its two-player games the
+    # Holds are its controller's
+    ("when_you_or_an_ally_hold", r"when you or an ally hold, (?P<inner>.+)", ["Core 471.2", "Core 383.4.d",
+                                                                              "Core 383.4.d.2.b"],
+     ["hold_triggers"], ["When you or an ally hold, draw 1."],
+     ["when you hold here, draw 1", "when i hold, draw 1", "when you or an ally conquer, draw 1",
+      "when an opponent holds, draw 1"]),
     # 2026-09-27 (package 6): the Nth card a player plays in a turn - every play of the turn counts,
     # one per play Finalized (Core 420.4.b), the ones before the watching card was on the board too
     ("when_you_play_your_second_card_in_a_turn", r"when you play your second card in a turn, (?P<inner>.+)",
@@ -1917,6 +2580,19 @@ WRAPPERS = [
       "When an enemy unit attacks a battlefield you control, give it -2 :rb_might: this turn, to a minimum of 1 :rb_might:."],
      ["when an enemy unit attacks, draw 1", "when a friendly unit attacks a battlefield you control, draw 1",
       "when an enemy unit defends a battlefield you control, draw 1", "when you attack a battlefield, draw 1"]),
+    # set 2 package A2 (Loyal Pup): its controller defends at a Battlefield - its Units gain the Defender designation
+    # there, once per combat (Core 383.4.f, 466.2.c.3)
+    ("when_you_defend_at_a_battlefield", r"when you defend at a battlefield, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.4.f", "Core 466.2.c.3"], ["event_triggers"],
+     ["When you defend at a battlefield, draw 1."],
+     ["when you attack at a battlefield, draw 1", "when an opponent defends at a battlefield, draw 1",
+      "when you defend here, draw 1"]),
+    # set 2 package A2 (Fiora - Peerless): the card's own designation, it and the one enemy Unit there both alone
+    ("when_i_attack_or_defend_one_on_one", r"when i attack or defend one on one, (?P<inner>.+)",
+     ["Core 383.1", "Core 383.4.e", "Core 383.4.f", "Core 740.2.b"], ["event_triggers"],
+     ["When I attack or defend one on one, draw 1."],
+     ["when i attack or defend alone, draw 1", "when a friendly unit attacks or defends one on one, draw 1",
+      "when i attack one on one, draw 1"]),
     ("when_a_friendly_unit_attacks_or_defends_alone", r"when a friendly unit attacks or defends alone, (?P<inner>.+)",
      ["Core 383.4.e", "Core 383.4.f", "Core 383.4.e.2.b", "Core 383.4.f.2.b", "Core 740.2.a", "Core 359.3.f.3"],
      ["event_triggers", "combat_designations", "trigger_referent"],

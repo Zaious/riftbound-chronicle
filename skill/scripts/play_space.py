@@ -27,8 +27,9 @@ program plays with none.
 """
 from __future__ import annotations
 
-import copy
+import state_copy
 import itertools
+import json
 from typing import Any
 
 import action_space as AS
@@ -76,13 +77,24 @@ REQUESTS_LEFT = {
     # discounts the procedure names (_discount_orders; Core 356.4.c.1, 356.4.d.1, 356.4.e)
     "discount_order_required": "an order of the discounts that apply is declared in cost.discount_order: the play is "
                                "tried again with each order of the discounts the procedure names (discount_ids)",
+    # set 2 package A2 (GPT A2 ruling 16): which component each "[1] or [A] less" discount reduces
+    "discount_choice_required": "the component each '[1] or [A] less' discount reduces is declared in "
+                                "cost.discount_choices: the play is tried again with each combination of the options the "
+                                "procedure names (discount_choice_options)",
+    # set 2 package A2 (Core 135.2.e.6.c)
+    "power_split_required": "the Domain split of a granted [Repeat]'s dual-Domain Power is declared in "
+                            "cost.offer_power_splits: the play is tried again with each split the procedure names "
+                            "(power_split_options)",
 }
 # Chance inside an action (a cost that recycles two or more cards to a Main Deck, Core 417.5) is nature's, not a choice
 # of the action: whether the action is legal does not depend on the order, so discovery checks it under the cards'
 # own order; the action carries no receipt - whoever applies it supplies the one chance gives (game_loop.run_action)
 CHANCE_ORDER = "identity"
-# the procedure's calls one family may make for one state; past it the family's answer is unproved (ruling 3)
-CALL_CAP = 1 << 15
+# the procedure's calls one family may make for one state; past it the family's answer is unproved (ruling 3).
+# set 2 package A2: 1 << 16 (was 1 << 15) - a dual-Domain Power cost is declared once per split (Core 135.2.e.6.c), and
+# Icathian Rain's six unit targets on the closed environment's reference board, under its four splits of three Power,
+# take 43,694 calls (the next set-one play takes 50); still fail-closed past the cap, never a partial list
+CALL_CAP = 1 << 16
 PLAY_KINDS = ("unit", "gear", "spell")
 
 
@@ -101,7 +113,12 @@ def _program(catalogue: dict[str, Any] | None, state: dict[str, Any], object_id:
              item: str) -> dict[str, Any] | None:
     obj = state["objects"][object_id]
     ref = obj.get("card_ref")
-    if catalogue is None or ref is None or key not in ((catalogue["cards"].get(ref) or {}).get("programs") or {}):
+    if ref is None and obj.get("is_token") and obj.get("token_id") in ((catalogue or {}).get("tokens") or {}):
+        # set 2 (the Gold gear token): a token's ability runs its token card's program
+        ref = obj["token_id"]
+        if key not in (catalogue["tokens"][ref].get("programs") or {}):
+            return None
+    elif catalogue is None or ref is None or key not in ((catalogue["cards"].get(ref) or {}).get("programs") or {}):
         return None
     return CE.instantiate_program(catalogue, ref, key, {"$controller": actor, "$opponent": _opponent(state, actor),
                                                         "$chain_item": item, "$source_object": object_id, "$card": object_id})
@@ -143,7 +160,9 @@ def play_skeletons(state: dict[str, Any], catalogue: dict[str, Any] | None, acto
         item_id = f"item:{card}"
         program = _program(catalogue, state, card, "play", actor, item_id)
         item = {"id": item_id, "object_kind": kind, "timing": obj.get("play_timing", "default")}
-        base = _base(f"play:{card}", actor, card, item, {"base": copy.deepcopy(obj["printed_cost"])})
+        # set 2 package A2 (Core 135.2.e.6.c): a dual-Domain card's Power split as declared - one declaration per split
+        splits = PT.printed_base_options(obj["printed_cost"])
+        base = _base(f"play:{card}", actor, card, item, {"base": state_copy.deepcopy(splits[0])})
         if source["kind"] != "hand":
             base["source"] = source
         if program is not None:
@@ -151,8 +170,15 @@ def play_skeletons(state: dict[str, Any], catalogue: dict[str, Any] | None, acto
         timings = [timing_source] if timing_source else [None, "ambush"]
         targeting = [None, "restricted", "free_by_restriction"] if source["kind"] == "facedown" and kind == "spell" else [None]
         locations = entry_locations(state, actor) if kind in {"unit", "gear"} else [None]
-        for timing, hidden_targeting, location in itertools.product(timings, targeting, locations):
-            declaration = copy.deepcopy(base)
+        # set 2 package A2 (Jayce - Man of Progress): a turn effect that lets this play ignore a cost - the play with it
+        # and without it (using it spends it)
+        overrides = [None] + [g["cost_override"] for g in PT.override_turn_effects(state, actor, card, source["kind"])]
+        for timing, hidden_targeting, location, split, override in itertools.product(timings, targeting, locations, splits,
+                                                                                    overrides):
+            declaration = state_copy.deepcopy(base)
+            declaration["cost"]["base"] = state_copy.deepcopy(split)
+            if override is not None:
+                declaration["cost_override"] = state_copy.deepcopy(override)
             if timing:
                 declaration["timing_source"] = timing
             if hidden_targeting:
@@ -176,6 +202,8 @@ def ability_skeletons(state: dict[str, Any], catalogue: dict[str, Any] | None, a
         where = find_location(state, object_id)
         if not (zone_class(where) == "board" or (where is not None and where[0] == "player" and where[2] == "legend_zone")):
             continue
+        if obj.get("attached_to") is not None:
+            continue  # ADR-0017 §2 (Core 721.2): an attached card's printed abilities cannot be activated
         for ability_id, row in sorted(rows.items()):
             key = row["effect_program_id"].split("#", 1)[-1]
             item_id = f"item:{ability_id}"
@@ -186,14 +214,16 @@ def ability_skeletons(state: dict[str, Any], catalogue: dict[str, Any] | None, a
                             "payment": {"kind": "exhaust", "object_id": object_id}}] if row["cost"].get("exhaust") else [])
             open_ = []
             for entry in row["cost"].get("additional") or []:
-                entry = copy.deepcopy(entry)
-                if "object_id" not in entry["payment"] and entry["payment"].get("kind") not in PT.CHOICE_COSTS:
+                entry = state_copy.deepcopy(entry)
+                # a resource payment (an Equip's any-domain Power, ADR-0017 §3) names no object
+                if "object_id" not in entry["payment"] and entry["payment"].get("kind") not in PT.CHOICE_COSTS \
+                        and entry["payment"].get("kind") not in {"energy", "power", "power_any"}:
                     open_.append(len(additional))
                 additional.append(entry)
             base_cost = {"energy": row["cost"].get("energy", 0), "power": dict(row["cost"].get("power") or {})}
             for named in itertools.product(*([board] * len(open_))):
-                cost = {"base": copy.deepcopy(base_cost)}
-                paid = copy.deepcopy(additional)
+                cost = {"base": state_copy.deepcopy(base_cost)}
+                paid = state_copy.deepcopy(additional)
                 for index, object_named in zip(open_, named):
                     paid[index]["payment"]["object_id"] = object_named
                 if paid:
@@ -202,7 +232,7 @@ def ability_skeletons(state: dict[str, Any], catalogue: dict[str, Any] | None, a
                 declaration["activation"] = {"source_object": object_id, "ability_id": ability_id}
                 declaration["effect_program_id"] = row["effect_program_id"]
                 if row.get("activation_conditions"):
-                    declaration["activation_conditions"] = copy.deepcopy(row["activation_conditions"])
+                    declaration["activation_conditions"] = state_copy.deepcopy(row["activation_conditions"])
                 out.append((declaration, program))
     return out
 
@@ -381,6 +411,14 @@ def discover(timing_state: dict[str, Any], state: dict[str, Any], declaration: d
         elif reason == "discount_order_required" and orders is not None and got.get("discount_ids") \
                 and not (declaration.get("cost") or {}).get("discount_order"):
             orders.add(tuple(got["discount_ids"]))
+        elif reason == "power_split_required" and orders is not None and got.get("power_split_options") \
+                and not (declaration.get("cost") or {}).get("offer_power_splits"):
+            orders.add(("splits",) + tuple((k, tuple(json.dumps(s, sort_keys=True) for s in v))
+                                           for k, v in sorted(got["power_split_options"].items())))
+        elif reason == "discount_choice_required" and orders is not None and got.get("discount_choice_options") \
+                and not (declaration.get("cost") or {}).get("discount_choices"):
+            # set 2 package A2: the choices ride in `orders` too, tagged, so the caller tries each combination
+            orders.add(("choices",) + tuple((k, tuple(v)) for k, v in sorted(got["discount_choice_options"].items())))
         elif reason in PT.DECISION_REASONS or got.get("unsupported"):
             raise Unproved(f"{declaration['play_id']}: {reason} ({(got.get('reason') or '')[:120]})")
         else:
@@ -393,7 +431,23 @@ def _discount_orders(declaration: dict[str, Any], orders: set) -> list[dict[str,
     356.4.d.1, 356.4.e) - for each set of discounts a branch of it waited on, every order counted first."""
     import math
     out = []
-    for ids in sorted(orders):
+    for entry in sorted(orders, key=repr):
+        if entry and entry[0] == "splits":
+            keys = [k for k, _ in entry[1:]]
+            combos = list(itertools.product(*[opts for _, opts in entry[1:]]))
+            if len(combos) > CALL_CAP:
+                raise Unproved(f"{len(combos)} Power splits exceed {CALL_CAP}")
+            out += [{**declaration, "cost": {**declaration["cost"], "offer_power_splits": {
+                k: json.loads(s) for k, s in zip(keys, combo)}}} for combo in combos]
+        if entry and entry[0] == "choices":
+            # set 2 package A2 (GPT A2 ruling 16): each combination of the '[1] or [A] less' options, declared
+            keys = [k for k, _ in entry[1:]]
+            combos = list(itertools.product(*[opts for _, opts in entry[1:]]))
+            if len(combos) > CALL_CAP:
+                raise Unproved(f"{len(combos)} discount choices exceed {CALL_CAP}")
+            out += [{**declaration, "cost": {**declaration["cost"], "discount_choices": dict(zip(keys, combo))}}
+                    for combo in combos]
+    for ids in sorted(o for o in orders if not (o and o[0] in ("choices", "splits"))):
         if math.factorial(len(ids)) > CALL_CAP:
             raise Unproved(f"{math.factorial(len(ids))} orders of the discounts {list(ids)} exceed {CALL_CAP}")
         out += [{**declaration, "cost": {**declaration["cost"], "discount_order": list(order)}}

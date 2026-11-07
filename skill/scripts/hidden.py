@@ -23,7 +23,7 @@ cost mechanic this slice does not type.
 
 from __future__ import annotations
 
-import copy
+import state_copy
 import sys
 from pathlib import Path
 from typing import Any
@@ -190,7 +190,7 @@ def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
         if declaration["cost"].get("base") != wanted:
             return refuse("hide_cost_mismatch", f"a Hide {basis} costs {wanted}, not {declaration['cost'].get('base')}",
                           ["Core 811.1", "Core 356.1.a"])
-    working = copy.deepcopy(effect_state)
+    working = state_copy.deepcopy(effect_state)
     try:
         skeleton = determine_total_cost(declaration["cost"], {}, actor=actor)
         # 811.1: the Hide cost is paid like any other, but Hide is not a Play
@@ -235,7 +235,7 @@ def hide_card(timing_state: dict[str, Any], effect_state: dict[str, Any], declar
     return {
         **base, "valid": True, "committed": True, "unsupported": False, "rolled_back": False, "reason_code": "ok",
         "cost_receipt": receipt, "battlefield": battlefield_id,
-        "next_timing_state": copy.deepcopy(timing_state), "next_timing_state_hash": state_hash(timing_state),
+        "next_timing_state": state_copy.deepcopy(timing_state), "next_timing_state_hash": state_hash(timing_state),
         "next_effect_state": working, "next_effect_state_hash": hash_value(working),
         "trace": trace, "events": log.events, "event_coverage": log.problems or "complete",
         "rule_locators": RULES + ["Core 357.1"],

@@ -42,7 +42,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import hashlib
 import json
 import sys
@@ -131,7 +131,7 @@ def build_observation(
         component_states["timing_state"] = {
             "schema_version": timing_state.get("schema_version"),
             "hash": rules_core.state_hash(timing_state),
-            "state": copy.deepcopy(timing_state),
+            "state": state_copy.deepcopy(timing_state),
         }
     if effect_state is not None:
         # C-57: the board, hands and resources an enumeration reads. The
@@ -140,7 +140,7 @@ def build_observation(
         component_states["effect_state"] = {
             "schema_version": effect_state.get("schema_version"),
             "hash": effect_ir.hash_value(effect_state),
-            "state": copy.deepcopy(effect_state),
+            "state": state_copy.deepcopy(effect_state),
         }
     derived_completeness = {group: "absent" for group in COMPLETENESS_GROUPS}
     if timing_state is not None:
@@ -154,8 +154,8 @@ def build_observation(
     observation = {
         "schema_version": OBSERVATION_VERSION,
         "perspective": perspective,
-        "source": copy.deepcopy(source),
-        "context": copy.deepcopy(context),
+        "source": state_copy.deepcopy(source),
+        "context": state_copy.deepcopy(context),
         "component_states": component_states,
         "facts": fact_sets,
         "pending_decisions": list(pending_decisions or []),
@@ -256,7 +256,7 @@ def build_query(
         "candidate_source_mode": "user_supplied",
         "acting_player": acting_player,
         "requested_action_families": sorted(set(requested_action_families or ACTION_FAMILIES)),
-        "candidates": sorted((copy.deepcopy(c) for c in candidates), key=lambda c: c["candidate_id"]),
+        "candidates": sorted((state_copy.deepcopy(c) for c in candidates), key=lambda c: c["candidate_id"]),
     }
     query["query_hash"] = canonical_hash({k: v for k, v in query.items() if k != "query_hash"})
     return query
@@ -482,12 +482,14 @@ def _cost_total(cost: Any, *, effect_state: dict[str, Any] | None = None, card_i
     base = cost.get("base")
     if not isinstance(base, dict) or not isinstance(base.get("energy"), int) or not isinstance(base.get("power"), dict):
         return None, "printed_cost_not_observed"
-    cost = copy.deepcopy(cost)
+    cost = state_copy.deepcopy(cost)
     if effect_state is not None:
         own = play_transaction.self_cost_reductions(effect_state, card_id)
         kept = []
         for modification in own:
-            if "condition" not in modification:
+            # set 2 package A2: a per-each count is evaluated as the payment evaluates it (play_transaction's
+            # cost_determination) - kept unevaluated, a per-card reduction counted once, not per card
+            if "condition" not in modification and "per_each" not in modification:
                 kept.append({k: v for k, v in modification.items() if k != "self_card"})
                 continue
             try:
@@ -497,12 +499,16 @@ def _cost_total(cost: Any, *, effect_state: dict[str, Any] | None = None, card_i
             except ValueError:
                 return None, "cost_modelling_beyond_enumeration"
             if outcome["applies"] and outcome["amount"] > 0:
-                kept.append({k: v for k, v in modification.items() if k not in {"condition", "self_card"}}
+                kept.append({k: v for k, v in modification.items() if k not in {"condition", "per_each", "self_card"}}
                             | {"amount": outcome["amount"]})
         # 2026-09-27 package 6: a discount another permanent grants this card, as the payment reads it
         kept += play_transaction.granted_cost_discounts(effect_state, card_id, actor)
         if kept:
             cost["discounts"] = kept
+        # set 2 package A2 (Vex - Cheerless): an opponent's permanent's cost increases, as the payment reads them
+        raised = play_transaction.granted_cost_increases(effect_state, card_id, actor)
+        if raised:
+            cost["increases"] = list(cost.get("increases", []) or []) + raised
     try:
         skeleton = play_transaction.determine_total_cost(cost, {})
     except Exception:  # a shape the transaction itself will not read
@@ -536,8 +542,15 @@ def _enumerate_play_card(observation, timing_state, effect_state, actor):
                              "check": "timing"})
             continue
         printed = obj.get("printed_cost")
-        total, problem = _cost_total({"base": printed} if isinstance(printed, dict) else printed,
-                                     effect_state=effect_state, card_id=object_id, actor=actor)
+        # set 2 package A2 (Core 135.2.e.6.c): a dual-Domain card's Power may be split among its Domains - the one of its
+        # splits payable now, else the first
+        options = play_transaction.printed_base_options(printed) if isinstance(printed, dict) else [printed]
+        totals = [_cost_total({"base": option} if isinstance(option, dict) else option,
+                              effect_state=effect_state, card_id=object_id, actor=actor) for option in options]
+        total, problem = next(((t, p) for t, p in totals if t is not None
+                               and not play_transaction.affordability(resources, t, f"play_{object_kind}")["short"]),
+                              totals[0])
+        printed = options[totals.index((total, problem))] if (total, problem) in totals else printed
         if total is None:
             excluded.append({"object_id": object_id, "reason_code": problem, "check": "cost"})
             continue

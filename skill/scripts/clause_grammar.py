@@ -234,6 +234,11 @@ def _lower_object_keyword(params, slots):
     ast = {"node": "keyword", "keyword": keyword["keyword"],
            "value": int(value) if value is not None else None,
            "implemented": keyword["implemented"]}
+    if keyword["keyword"] == "unique":
+        # 2026-11-03 (ADR-0017 §6): Unique restricts deck construction only (Core 825.3, 825.4); nothing in play reads it,
+        # so the catalogue gives it no production. It is still a characteristic the card has (825.5): the object field
+        # effect_ir already validates, for deck validation to read.
+        return {"passive": {"object_fields": {"unique": True}}, "ast": ast}
     if not keyword["implemented"]:
         # DP-85: the catalogue names it, the engine does not implement it.
         # That is a known boundary, not a parse - it never becomes a program.
@@ -404,6 +409,12 @@ def _lower_banish_then_owner_plays(params):
                 {"node": "instruction", "op": "banish", "params": {"selector": "friendly unit"}},
                 {"node": "instruction", "op": "limited_play",
                  "params": {"linked": "ban", "player": "owner", "entry": "their base", "cost": "ignore_all"}}]}}
+
+
+def _lower_dont_deal_combat_damage(params):
+    # set 2 package A2 (Ezreal - Dashing): combat.available_combat_damage reads the field
+    return {"passive": {"object_fields": {"deals_no_combat_damage": True}},
+            "ast": {"node": "passive", "kind": "combat_damage_contribution", "params": {"contributes": 0}}}
 
 
 def _lower_assigned_combat_damage_last(params):
@@ -835,6 +846,38 @@ def _lower_self_cost_reduction_per_trash(params):
             "ast": {"node": "self_cost_reduction", "amount": amount, "per_each": {"zone": "trash"}}}
 
 
+def _lower_self_cost_reduction_per_card_played(params):
+    """Set 2 package A2 (Battering Ram): N Energy less per card its player has Finalized this turn, never below the
+    printed minimum (356.4, 356.4.e, 420.4.b)."""
+    amount, minimum = int(params["amount"]), int(params["minimum"])
+    per_each = {"kind": "cards_finalized_this_turn"}
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount, "per_each": per_each,
+                "minimum": minimum}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "per_each": per_each, "minimum": minimum}}
+
+
+def _lower_self_cost_reduction_per_mighty_unit(params):
+    """Set 2 package A2 (Jaull-Fish): N Energy less per Mighty Unit its player controls on the board (356.4, 708)."""
+    amount = int(params["amount"])
+    per_each = {"kind": "units_you_control", "mighty": True}
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount, "per_each": per_each}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "per_each": per_each}}
+
+
+def _lower_self_cost_reduction_per_hold_point(params):
+    """Set 2 package A2 (Needlessly Large Yordle): N Energy and one Power of a Domain less per point its player scored from
+    Holding this turn (Core 356.4, 471.2) - two printed reductions over the same count."""
+    amount, domain = int(params["amount"]), params["domain"]
+    per_each = {"kind": "points_scored_holding_this_turn"}
+    return {"object_fields": {"printed_cost_modifications": [
+                {"modification_id": "own-text-energy", "kind": "energy_reduction", "amount": amount, "per_each": per_each},
+                {"modification_id": "own-text-power", "kind": "power_reduction", "domain": domain, "amount": 1,
+                 "per_each": per_each}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "domain": domain, "per_each": per_each}}
+
+
 def _lower_self_cost_reduction_highest_might(params):
     """"This spell's Energy cost is reduced by the highest Might among units you control." -
     1 Energy per point of the highest Might among the Units its player controls on the board,
@@ -854,6 +897,33 @@ def _lower_self_cost_reduction_unit_died(params):
                 "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
                 "condition": dict(condition)}]},
             "ast": {"node": "self_cost_reduction", "amount": amount, "condition": dict(condition)}}
+
+
+def _lower_self_cost_reduction_control_tag(params):
+    """set 2 package A2 (Production Surge): "This costs N less if you control a <tag>." - the card's own text, a fixed
+    Energy amount, gated by its player controlling a Unit of that printed tag on the board (356.4, controls_units)."""
+    amount = int(params["amount"])
+    condition = {"kind": "controls_units", "count": 1, "tag": PRINTED_TAGS[params["tag"]]}
+    return {"object_fields": {"printed_cost_modifications": [{
+                "modification_id": "own-text", "kind": "energy_reduction", "amount": amount,
+                "condition": dict(condition)}]},
+            "ast": {"node": "self_cost_reduction", "amount": amount, "condition": dict(condition)}}
+
+
+# set 2 package A2 (Card Sharp): the catalogued Gold gear token (token card sfd-t03: "Kill this, [Exhaust]: [Reaction] -
+# [Add] [A]"), exhausted, in its player's Base - the overlay's eff_480 shape, its ability carried as play_token carries a
+# token's printed abilities ($token is the token itself)
+GOLD_TOKEN_ABILITY = {"a1": {"cost": {"energy": 0, "power": {}, "exhaust": True,
+                                      "additional": [{"cost_id": "kill-this", "mandatory": True,
+                                                      "payment": {"kind": "kill_this", "object_id": "$token"}}]},
+                             "effect_program_id": "add", "timing": "reaction", "ability_kind": "add"}}
+
+
+def _gold_token(effect_id, player):
+    return {"op": "play_token", "effect_id": effect_id, "owner": player, "controller": player, "token_kind": "gear",
+            "base_might": 0, "token_id": "gold", "object_id_ref": {"kind": "fresh"},
+            "destination": {"kind": "base", "player": player}, "event_modifiers": {"entry_state": "exhausted"},
+            "activated_abilities": copy.deepcopy(GOLD_TOKEN_ABILITY)}
 
 
 def _lower_empty(params):
@@ -978,6 +1048,12 @@ PRINTED_COST_WORDS = {
     # 2026-10-08 package 10 (Meditation): one friendly Unit on the board, chosen by the payer, exhausted as the cost is
     # paid (play_transaction.printed_cost_candidates: an exhausted unit cannot pay it, Core 203.3)
     "exhaust a friendly unit": {"kind": "exhaust", "amount": 1},
+    # set 2 package A2 (Zaun Punk): one friendly Gear on the board killed (Core 429.1.a.1)
+    "kill a friendly gear": {"kind": "kill", "amount": 1, "object_kind": "gear"},
+    # set 2 package A2 (Bard - Mercurial): its player's Legend, in their Legend Zone, exhausted (Core 107.4.d, 174.8)
+    "exhaust your legend": {"kind": "exhaust", "amount": 1, "object_kind": "legend"},
+    # set 2 package A2 (Legion Quartermaster): one friendly Gear on the board returned to its owner's hand
+    "return a friendly gear to its owner's hand": {"kind": "return_to_hand", "amount": 1, "object_kind": "gear"},
 }
 
 
@@ -1209,6 +1285,14 @@ def _lower_occupied_enemy_permission(params):
     }
 
 
+def _lower_attacking_permission(params):
+    """Set 2 package A2 (Rengar - Pouncing): the card prints that it may enter a Battlefield its player is attacking."""
+    return {
+        "object_fields": {"play_permissions": ["attacking_battlefield"]},
+        "ast": {"node": "passive", "kind": "play_permission", "params": {"permission": "attacking_battlefield"}},
+    }
+
+
 def _lower_open_permission(params):
     """Core 355.2.b, 170.11.c: the card prints that it may enter an open Battlefield."""
     return {
@@ -1276,6 +1360,18 @@ def _lower_recruit_tokens_here(params):
                                                                           "token_id": "recruit", "where": "here"}}}
 
 
+def _lower_sand_soldier_to_base(params):
+    """Set 2 package A2 (Azir - Emperor of the Sands): "Play a 2 [M] Sand Soldier unit token to your base." - one
+    catalogued Sand Soldier with the printed Might into its controller's Base; the entry's tags ride on the instruction
+    from the reviewed catalogue, as for the Recruit above."""
+    from token_catalog import carry_tags
+    effects = [{"op": "play_token", "effect_id": "tok", "owner": "$controller", "controller": "$controller",
+                "token_kind": "unit", "base_might": int(params["might"]), "token_id": "sand_soldier",
+                "object_id_ref": {"kind": "fresh"}, "destination": {"kind": "base", "player": "$controller"}}]
+    return {"program_effects": carry_tags(effects),
+            "ast": {"node": "instruction", "op": "play_token", "params": {"token": "sand_soldier", "to": "your_base"}}}
+
+
 def _lower_other_friendly_units_enter_ready(params):
     """Package 6 (2026-09-27): "Other friendly units enter ready." - a replacement the permanent
     applies, while it is on the board (365.1), to the entry of the other Units its side plays or
@@ -1326,6 +1422,29 @@ def _count_word(text: str) -> int:
     return COUNT_WORDS[text] if text in COUNT_WORDS else int(text)
 
 
+def _lower_tag_keyword_aura(params):
+    """Set 2 package A2: "Your Mechs have [A] and [B]." - one keyword aura per keyword, over the friendly Units carrying
+    the tag (Core 365.1, 479.3.b, 133.8)."""
+    keywords = _listed_keywords(params["keywords"])
+    tag = params["tag"].capitalize()
+    criteria = {"kind": "unit", "controller_relation": "friendly", "tag": tag}
+    if keywords is None:
+        return {"ast": {"node": "passive", "kind": "static_keyword_aura", "params": {"keywords": params["keywords"],
+                                                                                        "criteria": criteria}},
+                "known_unsupported": "keyword_not_implemented"}
+    return {"object_fields": {"static_auras": [{"aura_id": f"{tag.lower()}-{k}", "keyword": k, "criteria": dict(criteria)}
+                                               for k in keywords]},
+            "ast": {"node": "passive", "kind": "static_keyword_aura", "params": {"keywords": keywords, "criteria": criteria}}}
+
+
+def _lower_tag_might_aura(params):
+    """Set 2 package A2: "Your Mechs have +N [M]." - a Might aura over the friendly Units carrying the tag."""
+    amount, tag = int(params["amount"]), params["tag"].capitalize()
+    criteria = {"kind": "unit", "controller_relation": "friendly", "tag": tag}
+    return {"object_fields": {"static_auras": [{"aura_id": f"{tag.lower()}-might", "amount": amount, "criteria": criteria}]},
+            "ast": {"node": "passive", "kind": "static_aura", "params": {"amount": amount, "criteria": dict(criteria)}}}
+
+
 def _lower_keyword_aura(on, criteria):
     def lower(params):
         keyword = params["keyword"]
@@ -1339,6 +1458,52 @@ def _lower_keyword_aura(on, criteria):
 
 
 KEYWORD_LIST_ITEM = re.compile(r"\[([a-z]+)\]")
+
+
+GRANTED_MOVE_TO_BASE_PROGRAM_ID = "granted:when-i-conquer-you-may-move-me-to-my-base"
+GRANTED_MOVE_TO_BASE_EFFECTS = [{"op": "move_board_object", "effect_id": "mv", "object_id": {"object_ref": "program_source"},
+                                 "destination": {"kind": "base", "player_relation": "object_controller"}}]
+
+
+def _relentless_pursuit():
+    """Set 2 package A2 (Relentless Pursuit): the Move, the up-to-one attach, the this-turn grant; the granted ability's own
+    program under granted_programs."""
+    from effect_ir import CORE_RULESET, FAQ_AS_OF, PROGRAM_VERSION, hash_value
+    # no controller or source of its own: the ability belongs to whichever unit was given it, and the chain item it
+    # triggers as names both (resolution_bridge reads them from there)
+    program = {"schema_version": PROGRAM_VERSION, "ruleset": {"core": CORE_RULESET, "faq_as_of": FAQ_AS_OF},
+               "program_id": GRANTED_MOVE_TO_BASE_PROGRAM_ID, "effects": copy.deepcopy(GRANTED_MOVE_TO_BASE_EFFECTS)}
+    unit = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly"}
+    return {"program_effects": [
+                {"op": "move_board_object", "effect_id": "mv", "target": dict(unit), "destination": {"decision_ref": "dest"}},
+                {"op": "attach", "effect_id": "at", "target": dict(unit), "up_to_one": True,
+                 "object_target": {"decision_ref": "eq", "chosen_zone_class": "board", "kind": "gear",
+                                   "with_tag": "Equipment", "same_controller_as": "t"},
+                 "optional": {"decision_ref": "may-attach"}},
+                {"op": "grant_trigger", "effect_id": "gt", "target": dict(unit), "duration": "this_turn",
+                 "trigger_field": "conquer_triggers",
+                 "descriptor": {"effect_program_id": GRANTED_MOVE_TO_BASE_PROGRAM_ID,
+                                "effect_program_hash": hash_value(GRANTED_MOVE_TO_BASE_EFFECTS),
+                                "optional_at_finalize": True, "scope": "unit_here"}}],
+            "granted_programs": {GRANTED_MOVE_TO_BASE_PROGRAM_ID: program},
+            "ast": {"node": "instruction", "op": "move_attach_grant",
+                    "params": {"grant": "when i conquer, you may move me to my base", "duration": "this_turn"}}}
+
+
+def _lower_named_keyword_aura(params):
+    """Set 2 package A2: "Your Sand Soldiers have [Weaponmaster]." - one keyword aura per keyword over the friendly Units
+    of that name (effect_ir object_name)."""
+    keywords = _listed_keywords(params["keywords"])
+    name = " ".join(w.capitalize() for w in params["name"].split())
+    criteria = {"kind": "unit", "controller_relation": "friendly", "named": name}
+    if keywords is None:
+        return {"ast": {"node": "passive", "kind": "static_keyword_aura", "params": {"keywords": params["keywords"],
+                                                                                        "criteria": criteria}},
+                "known_unsupported": "keyword_not_implemented"}
+    slug = name.lower().replace(" ", "_")
+    return {"object_fields": {"static_auras": [{"aura_id": f"{slug}-{k}", "keyword": k, "criteria": dict(criteria)}
+                                               for k in keywords]},
+            "ast": {"node": "passive", "kind": "static_keyword_aura", "params": {"keywords": keywords, "criteria": criteria}}}
 
 
 def _listed_keywords(text: str) -> list[str] | None:
@@ -1387,6 +1552,16 @@ def _lower_conditional_enter_ready(condition_of):
                     {"replacement_id": "own-text", "mode": "entry_state", "value": "ready", "condition": condition}]},
                 "ast": {"node": "passive", "kind": "conditional_entry", "params": {"value": "ready", "condition": dict(condition)}}}
     return lower
+def _lower_controller_bonus_damage(params):
+    """Set 2 package A2: "Your spells and abilities deal N bonus damage." - the controller's sources deal N more (Core
+    713-715), the entry Annie - Fiery's pack passive carries, with N read off the text."""
+    amount = int(params["amount"])
+    return {"state_lists": {"damage_modifiers": [{
+                "modifier_id": "$clause_id", "source_object": "$source_object", "controller": "$controller",
+                "amount": amount, "scope": {"kind": "controller_sources"}}]},
+            "ast": {"node": "passive", "kind": "bonus_damage", "params": {"amount": amount, "scope": "controller_sources"}}}
+
+
 def _lower_battlefield_bonus_damage(params):
     """Core 713-715 (package 5, 2026-09-27): a Battlefield's printed Bonus Damage to the
     Units at it. effect_ir.bonus_damage reads a `location` scope on the affected Unit's current
@@ -1425,6 +1600,8 @@ LOWERINGS = {
     "units_cant_move_from_here_to_base": _lower_move_restriction,
     "you_may_play_me_to_an_occupied_enemy_battlefield": _lower_occupied_enemy_permission,
     "you_may_play_me_to_an_open_battlefield": _lower_open_permission,
+    # set 2 package A2 (Rengar - Pouncing)
+    "i_can_be_played_to_a_battlefield_youre_attacking": _lower_attacking_permission,
     "friendly_units_may_be_played_to_open_battlefields": _lower_granted_open_permission,
     "this_enters_exhausted": _lower_enters_exhausted,
     "other_friendly_units_have_might_here": _lower_aura_here,
@@ -1501,7 +1678,36 @@ LOWERINGS = {
     # 2026-09-27: keyword auras, conditional keywords and Might, Might per count
     "units_here_have_keyword": _lower_keyword_aura("battlefield", {"kind": "unit"}),
     "other_friendly_units_here_have_keyword": _lower_keyword_aura("object", AURA_HERE),
+    # set 2 package A2 (Shurelya's Requiem [Effect Text]): the source included
+    "your_units_here_have_keyword": _lower_keyword_aura("object", {"kind": "unit", "controller_relation": "friendly",
+                                                                   "at_source_battlefield": True}),
     "other_friendly_units_have_keyword": _lower_keyword_aura("object", AURA_OTHER_FRIENDLY),
+    # set 2 package A2 (Guardian Angel [Effect Text]): an Effect Text Replacement Effect about the Top-Most card - its death
+    # replaced by the Equipment's ($source) and its heal, exhaust and recall (effect_ir append_effect_text)
+    "if_i_would_die_kill_this_equipment_instead_heal_exhaust_recall_me": lambda params: {
+        "object_fields": {"effect_text": {"replacements": [{
+            "mode": "replace_with", "event_op": "kill", "optional": False, "uses_remaining": None,
+            "replacement_effects": [
+                {"op": "kill", "effect_id": "kill-self", "object_id": "$source"},
+                {"op": "heal_all_damage", "effect_id": "0:hl", "order": 0, "object_id": "$affected",
+                 "subject_identity": "$affected_identity"},
+                {"op": "exhaust", "effect_id": "1:ex", "order": 1, "object_id": "$affected",
+                 "subject_identity": "$affected_identity"},
+                {"op": "recall", "effect_id": "2:rc", "order": 2, "object_id": "$affected",
+                 "subject_identity": "$affected_identity"}]}]}},
+        "ast": {"node": "passive", "kind": "effect_text_replacement",
+                "params": {"event_op": "kill", "instead": ["kill this", "heal", "exhaust", "recall"], "name": params["name"]}}},
+    # set 2 package A2 (Gearhead): its attached Equipment's printed Might Bonus counted twice (effect_ir attached_might_bonus)
+    "each_equipment_attached_to_me_gives_double_its_base_might_bonus": lambda params: {
+        "object_fields": {"equipment_bonus_multiplier": 2},
+        "ast": {"node": "passive", "kind": "equipment_bonus_multiplier", "params": {"times": 2}}},
+    # set 2 package A2 (Jax - Unmatched): every Equipment of the controller's, in any zone, has Quick-Draw
+    "your_equipment_everywhere_have_quick_draw": lambda params: {
+        "object_fields": {"static_auras": [{"aura_id": "everywhere-quick_draw", "keyword": "quick_draw",
+                                            "criteria": {"kind": "gear", "tag": "Equipment", "controller_relation": "friendly",
+                                                         "everywhere": True}}]},
+        "ast": {"node": "passive", "kind": "static_keyword_aura",
+                "params": {"keyword": "quick_draw", "criteria": {"kind": "gear", "tag": "Equipment", "everywhere": True}}}},
     # 2026-10-08 package 10 (Spirit's Refuge)
     "friendly_buffed_units_have_keyword_if_they_didnt_already": lambda params: {
         "object_fields": {"static_auras": [{"aura_id": f"buffed-{params['keyword']}", "keyword": params["keyword"],
@@ -1517,6 +1723,60 @@ LOWERINGS = {
     "while_im_buffed_i_have_an_additional_might": _lower_while_buffed_might,
     "i_get_might_for_each_buffed_friendly_unit_at_my_battlefield": _lower_might_per("buffed_friendly_units_at_source_battlefield"),
     "my_might_is_increased_by_the_number_of_cards_in_your_trash": _lower_might_per("controller_trash_count", 1),
+    # set 2 package A2 (Ornn - Forge God)
+    "i_have_n_might_for_each_friendly_gear": _lower_might_per("friendly_gear_count"),
+    # set 2 package A2 (Undertitan): effect_ir.revealed_from_deck_adds reads it as a reveal reveals the card
+    "as_im_revealed_from_your_deck_add_energy": lambda params: {
+        "object_fields": {"revealed_from_deck_add_energy": int(params["amount"])},
+        "ast": {"node": "passive", "kind": "revealed_from_deck_add", "params": {"energy": int(params["amount"])}}},
+    # set 2 package A2 (Ornn's Forge): play_transaction.granted_cost_discounts reads it
+    "while_you_control_this_battlefield_the_first_friendly_non_token_gear_played_each_turn_costs_n_less": lambda params: {
+        "battlefield_fields": {"first_gear_cost_reduction": int(params["amount"])},
+        "ast": {"node": "passive", "kind": "first_gear_cost_reduction", "params": {"amount": int(params["amount"])}}},
+    # set 2 package A2 (GPT A2 ruling 16): "[1] or [A] less" - the payer chooses which component is reduced
+    # (play_transaction.resolve_either_discounts). Ezreal - Prodigy: each optional additional cost its controller pays
+    "optional_additional_costs_you_pay_cost_energy_or_any_power_less": lambda params: {
+        "object_fields": {"granted_cost_discounts": [{"discount_id": "$clause_id", "applies_to": "energy_or_power",
+                                                      "amount": 1, "scope": "optional_additional"}]},
+        "ast": {"node": "passive", "kind": "granted_cost_discount",
+                "params": {"applies_to": "energy_or_power", "amount": 1, "scope": "optional_additional"}}},
+    # Irelia - Graceful: each spell its controller plays that chooses it
+    "your_spells_that_choose_me_cost_energy_or_any_power_less": lambda params: {
+        "object_fields": {"granted_cost_discounts": [{"discount_id": "$clause_id", "applies_to": "energy_or_power",
+                                                      "amount": 1, "scope": "card", "card_kind": "spell",
+                                                      "chooses_source": True}]},
+        "ast": {"node": "passive", "kind": "granted_cost_discount",
+                "params": {"applies_to": "energy_or_power", "amount": 1, "scope": "card", "card_kind": "spell",
+                           "chooses_source": True}}},
+    # set 2 package A2 (Vex - Cheerless): play_transaction.granted_cost_discounts / granted_cost_increases read them
+    "while_im_in_combat_friendly_spells_cost_less_enemy_spells_cost_more": lambda params: {
+        "object_fields": {
+            "granted_cost_discounts": [
+                {"discount_id": "$clause_id", "applies_to": "energy", "amount": int(params["less"]),
+                 "minimum": int(params["minimum"]), "card_kind": "spell", "source_at": "combat"},
+                {"discount_id": "in-combat-power", "applies_to": "energy_or_power", "amount": 1, "scope": "card",
+                 "only": "power", "card_kind": "spell", "source_at": "combat"}],
+            "granted_cost_increases": [
+                {"increase_id": "in-combat-energy", "applies_to": "energy", "amount": int(params["more"]),
+                 "card_kind": "spell", "source_at": "combat"},
+                {"increase_id": "in-combat-power", "applies_to": "power_any", "amount": 1, "card_kind": "spell",
+                 "source_at": "combat"}]},
+        "ast": {"node": "passive", "kind": "granted_cost_modifications_in_combat",
+                "params": {"less": int(params["less"]), "minimum": int(params["minimum"]), "more": int(params["more"])}}},
+    # set 2 package A2 (Renata Glasc - Chem-Baroness): effect_ir.gold_add_bonus reads it as a Gold's Add resolves
+    "while_your_score_is_within_n_your_gold_add_an_additional_energy": lambda params: {
+        "object_fields": {"gold_add_bonus": {"energy": int(params["amount"]), "condition": {
+            "kind": "score_within_of_victory", "count": int(params["within"]), "who": "you"}}},
+        "ast": {"node": "passive", "kind": "gold_add_bonus",
+                "params": {"energy": int(params["amount"]), "within": int(params["within"])}}},
+    # set 2 package A2 (Marai Spire): play_transaction.discounted_repeat_offer reads it on each [Repeat] offer
+    "while_you_control_this_battlefield_friendly_repeat_costs_cost_n_less": lambda params: {
+        "battlefield_fields": {"repeat_cost_reduction": int(params["amount"])},
+        "ast": {"node": "passive", "kind": "repeat_cost_reduction", "params": {"amount": int(params["amount"])}}},
+    # set 2 package A2 (Tianna Crownguard): effect_ir.point_gain_prohibited_by reads it wherever a point would be gained
+    "while_im_at_a_battlefield_opponents_cant_gain_points": lambda params: {
+        "object_fields": {"opponents_cant_gain_points": "at_battlefield"},
+        "ast": {"node": "passive", "kind": "opponents_cant_gain_points", "params": {"while": "at_battlefield"}}},
     "if_an_opponents_score_is_within_n_i_enter_ready": _lower_conditional_enter_ready(
         lambda params: {"kind": "score_within_of_victory", "count": int(params["within"])}),
     "if_an_opponent_controls_a_battlefield_i_enter_ready": _lower_conditional_enter_ready(
@@ -1531,6 +1791,36 @@ LOWERINGS = {
                                               "count": _count_word(params["count"]) + 1}}),
     # set 2 (2026-10-29): a keyword aura over every friendly Unit, the source too when it is one
     "friendly_units_have_keyword": _lower_keyword_aura("object", AURA_FRIENDLY),
+    "your_tag_units_have_keywords": _lower_tag_keyword_aura,
+    # set 2 package A2 (Azir - Emperor of the Sands)
+    "your_named_units_have_keywords": _lower_named_keyword_aura,
+    "play_a_n_might_sand_soldier_unit_token_to_your_base": _lower_sand_soldier_to_base,
+    # set 2 package A2 (Forgotten Monument)
+    "players_cant_score_here_until_their_nth_turn": lambda params: {
+        "battlefield_fields": {"no_score_before_own_turn": {"second": 2, "third": 3, "fourth": 4}[params["nth"]]},
+        "ast": {"node": "passive", "kind": "score_restriction", "params": {"until_own_turn": params["nth"]}}},
+    # set 2 package A2 (Lucian - Purifier)
+    "your_equipment_each_give_assault": lambda params: {
+        "object_fields": {"equipment_each_give": ["assault"]},
+        "ast": {"node": "passive", "kind": "equipment_grant", "params": {"keyword": "assault"}}},
+    # set 2 package A2 (Perched Grimwyrm)
+    "play_me_only_to_a_battlefield_you_conquered_this_turn": lambda params: {
+        "object_fields": {"play_only_to_conquered_this_turn": True},
+        "ast": {"node": "passive", "kind": "entry_restriction", "params": {"only": "conquered_this_turn"}}},
+    # set 2 package A2 (Rockfall Path)
+    "units_cant_be_played_here": lambda params: {
+        "battlefield_fields": {"units_cannot_be_played_here": True},
+        "ast": {"node": "passive", "kind": "play_restriction", "params": {"on": "battlefield", "kind": "unit"}}},
+    # set 2 package A2 (Minotaur Reckoner)
+    "units_cant_move_to_base": lambda params: {
+        "object_fields": {"printed_move_restrictions": [{"affected_kind": "unit", "destination_kind": "base"}]},
+        "ast": {"node": "passive", "kind": "move_restriction", "params": {"affected_kind": "unit", "destination_kind": "base"}}},
+    # set 2 package A2 (Ruin Runner)
+    "i_cant_be_chosen_by_enemy_spells_and_abilities": lambda params: {
+        "object_fields": {"unchoosable_by_enemies": True},
+        "ast": {"node": "passive", "kind": "targeting_restriction", "params": {"by": "enemies"}}},
+    "your_tag_units_have_might": _lower_tag_might_aura,
+    "your_spells_and_abilities_deal_n_bonus_damage": _lower_controller_bonus_damage,
     "spells_and_abilities_deal_n_bonus_damage_to_units_here": _lower_battlefield_bonus_damage,
     "you_may_hide_an_additional_card_here": _lower_additional_facedown_card,
     "choose_an_opponent": _lower_choose_an_opponent,
@@ -1550,6 +1840,16 @@ LOWERINGS = {
     "kill_this": lambda params: {
         "program_effects": [{"op": "kill", "effect_id": "kill-self", "object_id": {"object_ref": "program_source"}}],
         "ast": {"node": "instruction", "op": "kill", "params": {"object": "program_source"}}},
+    # set 2 package A2 (Hard Bargain): effect_ir counter unless, the instead a pay_energy by the target's controller
+    "counter_a_spell_unless_its_controller_pays_energy": lambda params: {
+        "program_effects": [{"op": "counter", "effect_id": "ctr",
+                             "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain",
+                                        "kind": "spell"},
+                             "unless": {"decision_ref": "un", "instead": [
+                                 {"op": "pay_energy", "effect_id": "pay", "amount": int(params["energy"])}]}}],
+        "ast": {"node": "instruction", "op": "counter",
+                "params": {"unless": {"chosen_by": "target_controller", "instead": "pay_energy",
+                                      "energy": int(params["energy"])}}}},
     "counter_a_spell": lambda params: {
         "program_effects": [{"op": "counter", "effect_id": "ctr",
                              "target": {"decision_ref": "t", "chosen_zone_class": "non_board", "location": "chain",
@@ -1562,6 +1862,17 @@ LOWERINGS = {
         "ast": {"node": "passive", "kind": "replacement", "params": {"event": "combat_tie", "mode": "recall_all_units"}}},
     "you_may_pay_own_domain_power_as_additional_cost_to_play_me": _lower_card_self_offer,
     # 2026-10-08 package 10 (Clockwork Keeper)
+    # set 2 package A2: the same offer of Energy, or of Energy and one rune
+    "you_may_pay_energy_as_an_additional_cost_to_play_me": lambda params: {
+        "object_fields": {"optional_additional_costs": [
+            {"cost_offer_id": "$clause_id", "payment": {"kind": "energy", "amount": int(params["energy"])}}]},
+        "ast": {"node": "passive", "kind": "optional_additional_cost", "payment": {"energy": int(params["energy"])}}},
+    "you_may_pay_energy_and_a_rune_as_an_additional_cost_to_play_me": lambda params: {
+        "object_fields": {"optional_additional_costs": [
+            {"cost_offer_id": "$clause_id", "energy": int(params["energy"]),
+             "payment": {"kind": "power", "domain": params["domain"], "amount": 1}}]},
+        "ast": {"node": "passive", "kind": "optional_additional_cost",
+                "payment": {"energy": int(params["energy"]), "power": {params["domain"]: 1}}}},
     "you_may_pay_a_rune_as_an_additional_cost_to_play_me": lambda params: {
         "object_fields": {"optional_additional_costs": [
             {"cost_offer_id": "$clause_id", "payment": {"kind": "power", "domain": params["domain"], "amount": 1}}]},
@@ -1569,6 +1880,11 @@ LOWERINGS = {
                 "params": {"payment": "power", "domain": params["domain"], "amount": 1}}},
     # 2026-09-27 package 6: printed non-resource additional costs (Core 356.2.a.1, 356.2.b.1, 356.7)
     "as_an_additional_cost_to_play_me_kill_a_friendly_unit": _lower_printed_cost(True),
+    # set 2 package A2 (Legion Quartermaster)
+    "as_an_additional_cost_to_play_me_return_a_friendly_gear": _lower_printed_cost(True),
+    # set 2 package A2 (Zaun Punk)
+    "you_may_kill_a_friendly_gear_as_an_additional_cost_to_play_me": _lower_printed_cost(False),
+    "you_may_exhaust_your_legend_as_an_additional_cost_to_play_me": _lower_printed_cost(False),
     # 2026-10-08 package 10 (Meditation)
     "as_an_additional_cost_to_play_this_you_may_exhaust_a_friendly_unit": _lower_printed_cost(False),
     "as_you_play_me_you_may_pay_a_cost_as_an_additional_cost": _lower_printed_cost(False),
@@ -1580,11 +1896,66 @@ LOWERINGS = {
     "as_you_look_at_or_reveal_me_from_the_top_of_your_deck_banish_me_then_play_me_for_a": _lower_banish_when_seen,
     "i_can_have_any_number_of_buffs": _lower_any_number_of_buffs,
     "i_must_be_assigned_combat_damage_last": _lower_assigned_combat_damage_last,
+    "i_dont_deal_combat_damage": _lower_dont_deal_combat_damage,
     "deal_damage_equal_to_my_might_to_a_unit_at_a_battlefield": _lower_deal_my_might_to_unit_at_battlefield,
     "banish_a_friendly_unit_then_its_owner_plays_it_to_their_base_ignoring_its_cost": _lower_banish_then_owner_plays,
     "choose_a_friendly_unit_this_turn_increase_its_might_to_the_might_of_another_friendly_unit":
         _lower_raise_might_to_match,
     "choose_an_enemy_unit_deal_n_to_it_unless_its_controller_has_you_draw_n": _lower_choose_enemy_deal_unless_draw,
+    # set 2 package A2 (Card Sharp): each_player over all players in turn order from its controller, each its own optional
+    # Gold; then repeat_per the opponents who took one
+    "you_and_each_opponent_may_play_a_gold_gear_token_exhausted_for_each_opponent_who_did_you_play_one": lambda params: {
+        "program_effects": [
+            {"op": "each_player", "effect_id": "each", "players": "all", "order": "turn_order", "effects": [
+                {**_gold_token("gold", "$each_player"), "optional": {"decision_ref": "gold", "by": "$each_player"}}]},
+            {**_gold_token("more", "$controller"),
+             "repeat_per": {"kind": "each_player_applied", "effect_id": "each", "players": "opponents"}}],
+        "ast": {"node": "instruction", "op": "each_player_gold",
+                "params": {"each": "you and each opponent may", "then": "one per opponent who did"}}},
+    # set 2 package A2 (Strike Down): the two units are the pair op's two target slots chosen at play, one way; the detach
+    # reads the first slot's decision
+    "choose_an_equipped_friendly_unit_it_deals_damage_equal_to_its_might_to_an_enemy_unit_then_detach": lambda params: {
+        "program_effects": [
+            {"op": "mutual_damage_current_might", "effect_id": "strike", "one_way": True, "units": [
+                {"decision_ref": "u", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly",
+                 "equipped": True},
+                {"decision_ref": "e", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "enemy"}]},
+            {"op": "detach", "effect_id": "dt", "from": {"decision_ref": "u"}, "pick": {"decision_ref": "dt-card"}}],
+        "ast": {"node": "instruction", "op": "mutual_damage_current_might",
+                "params": {"one_way": True, "units": ["equipped friendly unit", "enemy unit"], "then": "detach"}}},
+    # set 2 package A2 (Angle Shot): the unit and the Equipment are the two target slots chosen at play (the Equipment's
+    # controller the unit's, same_controller_as); the attach-or-detach is the controller's option as it resolves
+    "choose_a_unit_and_an_equipment_with_the_same_controller_attach_or_detach_draw_n": lambda params: {
+        "program_effects": [
+            {"op": "choose_option", "effect_id": "pick", "by": "controller", "options": ["attach", "detach"],
+             "record": "attach-or-detach", "decision_ref": "attach-or-detach"},
+            {"op": "attach", "effect_id": "at",
+             "object_target": {"decision_ref": "eq", "chosen_zone_class": "board", "kind": "gear", "with_tag": "Equipment",
+                               "same_controller_as": "u"},
+             "target": {"decision_ref": "u", "chosen_zone_class": "board", "kind": "unit"},
+             "only_if_chose": {"record": "attach-or-detach", "option": "attach"}},
+            {"op": "detach", "effect_id": "dt",
+             "object_target": {"decision_ref": "eq", "chosen_zone_class": "board", "kind": "gear", "with_tag": "Equipment",
+                               "same_controller_as": "u"},
+             "from": {"decision_ref": "u"},
+             "only_if_chose": {"record": "attach-or-detach", "option": "detach"}},
+            {"op": "draw", "effect_id": "dr", "player": "$controller", "count": int(params["count"])}],
+        "ast": {"node": "instruction", "op": "attach_or_detach",
+                "params": {"targets": ["a unit", "an Equipment with the same controller"], "draw": int(params["count"])}}},
+    # set 2 package A2 (Marching Orders): the two choices are the pair's two target slots, chosen at play - the friendly
+    # one wherever it is on the board, the enemy one at a Battlefield
+    "choose_a_friendly_unit_anywhere_and_an_enemy_unit_at_a_battlefield_they_deal_damage_to_each_other": lambda params: {
+        "program_effects": [{"op": "mutual_damage_current_might", "effect_id": "duel", "units": [
+            {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly"},
+            {"decision_ref": "e", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "enemy",
+             "location": "battlefield"}]}],
+        "ast": {"node": "instruction", "op": "mutual_damage_current_might",
+                "params": {"units": ["friendly unit anywhere", "enemy unit at a battlefield"]}}},
+    # set 2 package A2 (Skyfall of Areion [Effect Text]): an Effect Text bundle - the Top-Most card's hold and conquer
+    # abilities each also work for the other kind of scoring
+    "my_hold_effects_are_also_conquer_effects_and_vice_versa": lambda params: {
+        "object_fields": {"effect_text": {"effects": [{"kind": "score_effects_interchangeable", "value": {}}]}},
+        "ast": {"node": "passive", "kind": "effect_text_score_interchangeable", "params": {}}},
     "when_any_unit_takes_damage_this_turn_kill_it": _lower_decree,
     # set 2 (2026-10-29, Rally the Troops)
     "when_a_friendly_unit_is_played_this_turn_buff_it_draw_n": _lower_rally,
@@ -1717,10 +2088,57 @@ LOWERINGS = {
     "draw_n_if_you_have_one_or_fewer_cards_in_your_hand": _lower_draw_if_few_in_hand,
     "deal_n_to_a_unit_at_a_battlefield": _lower_deal_unit_at_battlefield,
     "move_a_friendly_unit_at_a_battlefield_to_its_base": _lower_move_friendly_at_battlefield_to_its_base,
+    # set 2 package A2 (Relentless Pursuit): the granted ability's program travels with the lowering (granted_programs);
+    # its id is the grant's, its content bound by hash
+    "move_a_friendly_unit_attach_up_to_one_equipment_grant_conquer_move_to_base": lambda params: _relentless_pursuit(),
+    # set 2 package A2 (Azir - Ascendant): eff_174's signed pair (Tideturner) on a unit its controller controls, then the
+    # optional attach of one of that unit's Equipment to the source
+    "choose_a_unit_you_control_swap_with_me_attach_one_of_its_equipment_to_me": lambda params: {
+        "program_effects": [
+            {"op": "move_board_object", "effect_id": "mv1", "object_id": {"object_ref": "program_source"},
+             "destination": {"decision_ref": "d1", "restriction": "location_of_target", "target_ref": "t"}},
+            {"op": "move_board_object", "effect_id": "mv2",
+             "target": {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit", "controller_relation": "friendly"},
+             "destination": {"decision_ref": "d2", "restriction": "source_location"}},
+            {"op": "attach", "effect_id": "at", "from": {"decision_ref": "t"}, "pick": {"decision_ref": "eq"},
+             "to": {"object_ref": "program_source"}, "optional": {"decision_ref": "may-attach"}}],
+        "ast": {"node": "instruction", "op": "swap_then_attach",
+                "params": {"unit": "you control", "attach": "one of its equipment, optional"}}},
+    # set 2 package A2 (The Zero Drive): limited_play linked_set (effect_ir, Core 398)
+    "play_all_units_banished_with_this_ignoring_their_costs": lambda params: {
+        "program_effects": [{"op": "limited_play", "effect_id": "lp", "linked_set": {"from": "banishment", "kind": "unit"},
+                             "cost_basis": {"kind": "ignore_all"}}],
+        "ast": {"node": "instruction", "op": "limited_play", "params": {"linked_set": "banished with this"}}},
+    # set 2 package A2 (Ezreal - Dashing): the source to its controller's Base
+    "move_me_to_your_base": lambda params: {
+        "program_effects": [{"op": "move_board_object", "effect_id": "mv", "object_id": {"object_ref": "program_source"},
+                             "destination": {"kind": "base", "player_relation": "object_controller"}}],
+        "ast": {"node": "instruction", "op": "move_board_object", "params": {"object": "me", "destination": "your_base"}}},
     "move_a_unit_from_a_battlefield_to_its_base": _lower_move_unit_from_battlefield_to_its_base,
     "deal_n_to_all_enemy_units_at_a_battlefield": _lower_deal_all_enemy_at_battlefield,
     "deal_n_to_all_enemy_units_here": _lower_deal_all_enemy_here,
     "deal_n_to_an_enemy_unit_here": _lower_deal_enemy_unit_here,
+    # set 2 package A2 (Jax - Grandmaster At Arms): one Equipment its controller controls - detached, or attached - and
+    # one Unit its controller controls, both chosen as the ability is played (Core 355.5); the Equipment attached to it
+    # set 2 package A2 (Forge of the Fluft): a Battlefield's grant of "[Exhaust]: Attach an Equipment you control to a
+    # unit you control." to its controller's Legends while they control it
+    "while_you_control_this_battlefield_friendly_legends_have_exhaust_attach_an_equipment": lambda params: {
+        "battlefield_fields": {"legend_ability_grants": [{
+            "grant_id": "attach-equipment", "cost": {"energy": 0, "power": {}, "exhaust": True},
+            "effects": [{"op": "attach", "effect_id": "at",
+                         "object_target": {"decision_ref": "e", "chosen_zone_class": "board", "kind": "gear",
+                                           "with_tag": "Equipment", "controller_relation": "friendly"},
+                         "target": {"decision_ref": "u", "chosen_zone_class": "board", "kind": "unit",
+                                    "controller_relation": "friendly"}}]}]},
+        "ast": {"node": "passive", "grants": "friendly legends", "ability": "[exhaust]: attach an equipment"}},
+    "attach_a_detached_or_attached_equipment_you_control_to_a_unit_you_control": lambda params: {
+        "program_effects": [
+            {"op": "attach", "effect_id": "at",
+             "object_target": {"decision_ref": "e", "chosen_zone_class": "board", "kind": "gear", "with_tag": "Equipment",
+                               "controller_relation": "friendly", "attached": params["state"] == "attached"},
+             "target": {"decision_ref": "u", "chosen_zone_class": "board", "kind": "unit",
+                        "controller_relation": "friendly"}}],
+        "ast": {"node": "instruction", "op": "attach", "params": {"equipment": params["state"], "to": "a unit you control"}}},
     # 2026-10-13 package 11 (Mystic Reversal)
     "gain_control_of_a_spell_you_may_make_new_choices_for_it": lambda params: {
         "program_effects": [
@@ -1789,21 +2207,48 @@ LOWERINGS = {
     "units_you_play_this_turn_enter_ready": _lower_units_enter_ready,
     "opponents_cant_play_cards_this_turn": _lower_opponents_cant_play_cards,
     "the_next_spell_you_play_this_turn_costs_n_less": _lower_next_spell_discount,
+    # set 2 package A2 (Temporal Portal): the next spell its controller plays this turn offers a [Repeat] at its printed cost
+    "give_the_next_spell_you_play_this_turn_repeat_equal_to_its_cost": lambda params: {
+        "program_effects": [{"op": "grant_turn_effect", "effect_id": "grant", "turn_effect_kind": "next_spell_repeat",
+                             "value": "own_cost", "controller": "$controller", "source": "$chain_item"}],
+        "ast": {"node": "instruction", "op": "grant_turn_effect",
+                "params": {"turn_effect_kind": "next_spell_repeat", "value": "own_cost"}}},
     "the_next_spell_you_play_this_turn_deals_n_bonus_damage": _lower_next_spell_bonus_damage,
     "give_a_unit_at_a_battlefield_or_a_gear_temporary": _lower_temporary_unit_at_battlefield_or_gear,
     "the_next_unit_you_play_this_turn_enters_ready": _lower_next_unit_enters_ready,
     "no_rules_text": _lower_empty,
     "self_cost_reduction_score": _lower_self_cost_reduction,
     "self_cost_reduction_fixed": _lower_self_cost_reduction_fixed,
+    # set 2 package A2 (Brutalizer [Effect Text]): an Effect Text bundle - its "this" filled in when it is appended
+    "attached_this_turn_more_might": lambda params: {
+        "object_fields": {"effect_text": {"effects": [{
+            "kind": "might_arithmetic", "value": {"amount": int(params["amount"]), "mode": "delta"}, "sublayer": "increase",
+            "condition": {"kind": "attached_this_turn", "attached": "$effect_text_source"}}]}},
+        "ast": {"node": "passive", "kind": "effect_text_might",
+                "params": {"amount": int(params["amount"]), "condition": "attached_this_turn"}}},
+    # set 2 package A2 (Experimental Hexplate [Effect Text])
+    "i_am_a_tag": lambda params: {"object_fields": {"granted_tags": [params["tag"].title()]},
+                                  "ast": {"node": "passive", "kind": "granted_tag", "params": {"tag": params["tag"].title()}}},
+    # set 2 package A2 (Void Drone, Drag Under)
+    "self_cost_reduction_not_from_hand": lambda params: {
+        "object_fields": {"printed_cost_modifications": [{
+            "modification_id": "own-text", "kind": "energy_reduction", "amount": int(params["amount"]),
+            "origin": "not_hand"}]},
+        "ast": {"node": "self_cost_reduction", "amount": int(params["amount"]), "origin": "not_hand"}},
     "my_might_is_increased_by_your_points": _lower_might_by_points,
     "self_cost_reduction_per_trash_card": _lower_self_cost_reduction_per_trash,
     "self_cost_reduction_highest_might": _lower_self_cost_reduction_highest_might,
+    "self_cost_reduction_per_card_played": _lower_self_cost_reduction_per_card_played,
+    "self_cost_reduction_per_mighty_unit": _lower_self_cost_reduction_per_mighty_unit,
+    "self_cost_reduction_per_hold_point": _lower_self_cost_reduction_per_hold_point,
     "self_cost_reduction_unit_died": _lower_self_cost_reduction_unit_died,
+    "self_cost_reduction_control_tag": _lower_self_cost_reduction_control_tag,
 }
 
 # 2026-09-27 package 6: the tags a trigger condition may name, normalized -> as printed (Core 763.1).
 # A closed table: a word that is not a tag ("if you control a unit") never becomes one.
-PRINTED_TAGS = {"poro": "Poro", "dragon": "Dragon"}
+# set 2 package A2 (Breakneck Mech): "another Mech"
+PRINTED_TAGS = {"poro": "Poro", "dragon": "Dragon", "mech": "Mech"}
 
 # Productions that wrap another clause: "When you play me, <inner>."
 TRIGGER_WRAPPERS = {
@@ -1825,6 +2270,9 @@ TRIGGER_WRAPPERS = {
     # 2026-10-08 package 10 (Spirit's Refuge, Forge of the Future): a Gear's own play trigger - "this" is the card, as "me"
     # is a Unit's; collected as the play completes (Core 420.4.a), the same descriptor
     "when_you_play_this": ("play_triggers", "on-play", None),
+    # set 2 package A2 (Edge of Night): the card's own play trigger, met only on a play from facedown (read as it completes)
+    "when_you_play_this_from_face_down": ("play_triggers", "on-play-from-facedown",
+                                          {"condition": {"kind": "played_from_facedown"}}),
     "when_i_move": ("move_triggers", "on-move", None),
     # 2026-10-12 package 11 (Treasure Trove): however the card leaves the board (effect_ir.leave_board_triggers)
     "when_this_leaves_the_board": ("leave_board_triggers", "on-leave-board", None),
@@ -1845,9 +2293,14 @@ TRIGGER_WRAPPERS = {
     # scored. That is the engine's default scope for a conquer trigger; the
     # clause states it rather than relying on the default.
     "when_i_conquer": ("conquer_triggers", "on-conquer", {"scope": "unit_here"}),
+    # set 2 package A2 (Lucian - Merciless)
+    "the_first_time_i_conquer_each_turn": ("conquer_triggers", "on-first-conquer",
+                                           {"scope": "unit_here", "occurrence": "first_each_turn"}),
     # Core 383.4.d.2.a: a Unit's own Hold Effect fires when that Unit is at the Battlefield
     # its controller Holds - the same unit_here scope the Scoring Step already reads.
     "when_i_hold": ("hold_triggers", "on-hold", {"scope": "unit_here"}),
+    # set 2 package A2 (Last Rites [Effect Text]): one ability, the Unit's own conquer or hold (Core 383.4.c-d)
+    "when_i_conquer_or_hold": (("conquer_triggers", "hold_triggers"), "on-conquer-or-hold", {"scope": "unit_here"}),
     # Core 383.4.e: a Unit's own Attack Trigger. Unlike conquer/hold, this descriptor is
     # never read by a shared scoring pass across the whole board - open_combat's own
     # _designation_triggers reads it straight off the Unit that just gained the Attacker
@@ -1893,6 +2346,49 @@ TRIGGER_WRAPPERS = {
         "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "unit", "object_might_at_least": 5}}}),
     "when_you_play_a_card_on_an_opponents_turn": ("event_triggers", "on-play-opponents-turn", {"watch": {
         "kinds": ["played"], "scope": "actor", "filter": {"on_opponents_turn": True}}}),
+    # set 2 package A2 (Chemtech Cask): a spell the player plays on a turn that is not theirs (both filters)
+    "when_you_play_a_spell_on_an_opponents_turn": ("event_triggers", "on-play-spell-opponents-turn", {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"object_kind": "spell", "on_opponents_turn": True}}}),
+    # set 2 package A2 (Yordle Explorer): a card whose printed Power cost is N or more, of any Domains ([A] each)
+    "when_you_play_a_card_with_power_cost_n_or_more": ("event_triggers", "on-play-power-cost", lambda params: {"watch": {
+        "kinds": ["played"], "scope": "actor", "filter": {"printed_power_at_least": params["cost"].count("[a]")}}}),
+    # set 2 package A2: four watches on events the engine already emits
+    # set 2 package A2: a combat its controller won (Core 468.3.a) - once, however many of their Units are there; and the
+    # Unit's own (468.3.c)
+    "when_you_win_a_combat": ("event_triggers", "on-win-combat", {"watch": {
+        "kinds": ["won_combat"], "scope": "actor", "grouping": "one_or_more"}}),
+    "when_i_win_a_combat": ("event_triggers", "on-i-win-combat", {"watch": {
+        "kinds": ["won_combat"], "scope": "self", "grouping": "each"}}),
+    # set 2 package A2 (Draven - Audacious): the same watch, on the turn's first such event only (watchers first_each_turn)
+    "the_first_time_i_win_a_combat_each_turn": ("event_triggers", "on-i-win-combat-first", {"watch": {
+        "kinds": ["won_combat"], "scope": "self", "grouping": "each", "occurrence": "first_each_turn"}}),
+    # set 2 package A2 (Draven - Audacious): a death trigger met only when the card was in a Combat as it died
+    "when_i_die_in_combat": ("death_triggers", "on-die-in-combat", {"condition": {"kind": "died_in_combat"}}),
+    "when_you_attach_an_equipment_to_me": ("event_triggers", "on-attach-equipment-to-me", {"watch": {
+        "kinds": ["attached"], "scope": "actor", "filter": {"attached_to_source": True, "object_tagged": "Equipment"}}}),
+    "when_you_spend_a_buff": ("event_triggers", "on-spend-buff", {"watch": {
+        "kinds": ["buff_spent"], "scope": "actor", "grouping": "each"}}),
+    "when_you_recycle_a_rune": ("event_triggers", "on-recycle-rune", {"watch": {
+        "kinds": ["recycled"], "scope": "actor", "filter": {"object_kind": "rune"}, "grouping": "each"}}),
+    # set 2 package A2 (Fiora - Worthy, Fiora - Grand Duelist): each of its controller's Units that becomes Mighty
+    "when_a_unit_you_control_becomes_mighty": ("event_triggers", "on-becomes-mighty", {"watch": {
+        "kinds": ["became_mighty"], "scope": "controller", "filter": {"object_kind": "unit"}, "grouping": "each"}}),
+    # set 2 package A2: Targeting Effects (Core 383.4.b)
+    "when_you_choose_me_with_a_spell": ("event_triggers", "on-chosen-by-spell", {"watch": {
+        "kinds": ["targeted"], "scope": "actor", "filter": {"is_source": True, "chosen_by_spell": True}}}),
+    # set 2 package A2 (Irelia - Fervent)
+    "when_you_choose_or_ready_me": ("event_triggers", "on-chosen-or-readied", {"watch": {
+        "kinds": ["targeted", "readied"], "scope": "actor", "filter": {"is_source": True}, "grouping": "each"}}),
+    "when_you_choose_a_friendly_unit": ("event_triggers", "on-choose-friendly-unit", {"watch": {
+        "kinds": ["targeted"], "scope": "actor",
+        "filter": {"object_kind": "unit", "object_controller_relation": "friendly", "object_on_board": True},
+        "grouping": "each"}}),
+    # set 2 package A2 (Prize of Progress)
+    "when_you_use_an_activated_ability_of_a_gear": ("event_triggers", "on-use-gear-ability", {"watch": {
+        "kinds": ["ability_used"], "scope": "actor", "filter": {"object_kind": "gear"}}}),
+    "when_one_or_more_enemy_units_die": ("event_triggers", "on-enemy-deaths", {"watch": {
+        "kinds": ["died"], "scope": "any", "filter": {"object_kind": "unit", "object_controller_relation": "enemy"},
+        "grouping": "one_or_more"}}),
     "when_you_play_a_card_from_hidden": ("event_triggers", "on-play-from-hidden", {"watch": {
         "kinds": ["played"], "scope": "actor", "filter": {"from_hidden": True}}}),
     "when_you_stun_one_or_more_enemy_units": ("event_triggers", "on-stun-enemies", {"watch": {
@@ -1951,6 +2447,13 @@ TRIGGER_WRAPPERS = {
     # board object or a Legend in its Legend Zone (battlefield_control._score_triggers). Distinct
     # from a Unit's "When I conquer" (unit_here) and a Battlefield's "When you conquer here"
     "when_you_conquer": ("conquer_triggers", "on-you-conquer", {"scope": "controller"}),
+    # set 2 package A2 (Yone - Blademaster): the unit's own conquer, met only from an uncontrolled Battlefield
+    "when_i_conquer_a_battlefield_that_was_uncontrolled": ("conquer_triggers", "on-conquer", {
+        "scope": "unit_here", "condition": {"kind": "battlefield_was_uncontrolled"}}),
+    # set 2 package A2 (Renata Glasc - Chem-Baroness): the player-level Hold Effect, as "When you conquer" (383.4.d.2.b);
+    # "or an ally" kept in the scope - with no teams it is the controller's hold, with teams it is refused by name
+    # (battlefield_control._score_triggers; GPT's A2 review, reading 6)
+    "when_you_or_an_ally_hold": ("hold_triggers", "on-you-hold", {"scope": "controller_or_ally"}),
     # 2026-10-08 (package 10, Garen - Might of Demacia (Starter)): the conditional statement right after "When you
     # conquer" is part of the Trigger Condition (Core 383.2.a.1), read as the Conquer is processed - N or more units the
     # player controls at THAT battlefield, the one conquered (battlefield_control reads it with that Battlefield as here)
@@ -1989,6 +2492,12 @@ TRIGGER_WRAPPERS = {
     "when_an_enemy_unit_attacks_a_battlefield_you_control": ("event_triggers", "on-enemy-attacks-yours", {"watch": {
         "kinds": ["attacked"], "scope": "any",
         "filter": {"object_kind": "unit", "object_controller_relation": "enemy", "at_battlefield_you_control": True}}}),
+    # set 2 package A2 (Loyal Pup): a defence by its controller, one per combat (the designations of one action)
+    "when_you_defend_at_a_battlefield": ("event_triggers", "on-you-defend", {"watch": {
+        "kinds": ["defended"], "scope": "controller", "filter": {"object_kind": "unit"}, "grouping": "one_per_action"}}),
+    # set 2 package A2 (Fiora - Peerless): the card's own designation, one on one then (Core 740.2.b)
+    "when_i_attack_or_defend_one_on_one": ("event_triggers", "on-one-on-one", {"watch": {
+        "kinds": ["attacked", "defended"], "scope": "self", "filter": {"one_on_one": True}}}),
     # "attacks or defends alone": one ability, either designation, the Unit alone then (Core 740.2.a)
     "when_a_friendly_unit_attacks_or_defends_alone": ("event_triggers", "on-friendly-alone", {"watch": {
         "kinds": ["attacked", "defended"], "scope": "any",
@@ -2015,6 +2524,14 @@ BATTLEFIELD_TRIGGER_WRAPPERS = {"when_you_hold_here": ("hold_triggers", "on-hold
                                                                                     "kind": "controls_units",
                                                                                     "count": int(params["count"]),
                                                                                     "location": "here"}}),
+                                # set 2 package A2 (Sunken Temple, Core 383.2.a.1): read as the conquer is processed,
+                                # with the Battlefield conquered as its "here"
+                                "when_you_conquer_here_with_n_or_more_mighty_units": ("conquer_triggers", "on-conquer",
+                                                                                      lambda params: {"condition": {
+                                                                                          "kind": "controls_units",
+                                                                                          "count": _count_word(params["count"]),
+                                                                                          "location": "here",
+                                                                                          "mighty": True}}),
                                 "when_you_conquer_here": ("conquer_triggers", "on-conquer"),
                                 "when_you_defend_here": ("defend_triggers", "on-defend"),
                                 # 2026-09-28: a Unit's Move whose location before was this

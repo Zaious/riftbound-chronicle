@@ -21,7 +21,7 @@ carries that hash as `input_hash` so a caller knows what to decide against.
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import json
 import sys
 from pathlib import Path
@@ -79,7 +79,7 @@ def _validate_both(base: dict[str, Any], timing_state: dict[str, Any], effect_st
     if errors:
         return _invalid(base, errors)
     if is_terminal(timing_state):  # ADR-0010 §3: one guard for every two-state procedure
-        return _refuse(base, "game_over", f"the game ended ({timing_state['terminal']['reason']}); the snapshot is frozen (196)", ["Core 196"], terminal=copy.deepcopy(timing_state["terminal"]))
+        return _refuse(base, "game_over", f"the game ended ({timing_state['terminal']['reason']}); the snapshot is frozen (196)", ["Core 196"], terminal=state_copy.deepcopy(timing_state["terminal"]))
     return None
 
 
@@ -170,11 +170,11 @@ def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], eng
         selection = "showdown_battlefield"
     trace = {"considered": considered, "candidates": candidates}
     if not candidates:
-        next_timing = copy.deepcopy(timing_state)
+        next_timing = state_copy.deepcopy(timing_state)
         if existing is not None and existing["status"] == "staged":
             del next_timing["combat"]  # 463.2: a Combat that stopped being staged is not resolved
         trace.update({"chosen": None, "selection": selection, "outcome": "no_staged_combat"})
-        return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.8", "Core 463", "Core 463.2"])
+        return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace=trace, locators=["Core 323.8", "Core 463", "Core 463.2"])
     if len(candidates) == 1:
         chosen = candidates[0]
         selection = selection if selection != "none" else "sole_candidate"
@@ -201,10 +201,10 @@ def stage_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], eng
         "status": "staged", "attacker": None, "defender": None, "participants": sorted(present),
         "triggered_identities": {"attacker": [], "defender": []},
     }
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["combat"] = record
     trace.update({"chosen": chosen, "selection": selection, "outcome": "staged", "combat_id": record["combat_id"], "participants": record["participants"]})
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.8", "Core 323.12", "Core 463", "Core 463.1", "Core 464"])
+    return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace=trace, locators=["Core 323.8", "Core 323.12", "Core 463", "Core 463.1", "Core 464"])
 
 
 # --------------------------------------------------------------------- opening --
@@ -246,6 +246,17 @@ def _alone(effect_state: dict[str, Any], unit: str, battlefield_id: str) -> bool
     return True
 
 
+def _one_on_one(effect_state: dict[str, Any], unit: str, battlefield_id: str) -> bool:
+    """Core 740.2.b, in this engine's terms: it is alone (740.2.a) and exactly one Unit of the other side is there."""
+    if not _alone(effect_state, unit, battlefield_id):
+        return False
+    controller = effect_state["objects"][unit]["controller"]
+    enemies = [o for o in effect_state["battlefields"][battlefield_id]["objects"]
+               if (effect_state["objects"].get(o) or {}).get("kind") == "unit"
+               and not same_side(effect_state, effect_state["objects"][o].get("controller"), controller)]
+    return len(enemies) == 1
+
+
 def _designation_watchers(effect_state: dict[str, Any], record: dict[str, Any], battlefield_id: str,
                           gained_first: list[tuple[str, str, str]], *, batch_label: str, turn_player: str | None,
                           batch_of) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -261,7 +272,8 @@ def _designation_watchers(effect_state: dict[str, Any], record: dict[str, Any], 
     events = [game_events.designation_event(
         combat_id=record["combat_id"], role=role, unit=unit, identity=identity,
         controller=effect_state["objects"][unit]["controller"], battlefield=battlefield_id,
-        battlefield_controller=controller_now, alone=_alone(effect_state, unit, battlefield_id), turn_player=turn_player)
+        battlefield_controller=controller_now, alone=_alone(effect_state, unit, battlefield_id), turn_player=turn_player,
+        one_on_one=_one_on_one(effect_state, unit, battlefield_id))
         for unit, role, identity in gained_first]
     woken, counted = _watchers().schedule_live(effect_state, events, turn_id=effect_state.get("turn_id", "turn-0"),
                                                batch_label=batch_label, turn_player=turn_player)
@@ -304,8 +316,8 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
         opened_with, focus = "existing_showdown", showdown["focus"]
     else:
         opened_with, focus = "new_showdown", attacker
-    next_effect = copy.deepcopy(effect_state)
-    next_record = copy.deepcopy(record)
+    next_effect = state_copy.deepcopy(effect_state)
+    next_record = state_copy.deepcopy(record)
     next_record.update({"status": "open", "attacker": attacker, "defender": defender, "opened_with": opened_with})
     designations = []
     descriptors: list[dict[str, Any]] = []
@@ -361,7 +373,7 @@ def open_combat(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     failure = _settle_trigger_orders(descriptors, engine_decisions, base)
     if failure is not None:
         return failure
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["combat"] = next_record
     next_timing["showdown"] = {"active": True, "kind": "combat", "focus": focus, "battlefield": battlefield_id}
     next_timing["priority"] = focus
@@ -384,8 +396,8 @@ def sync_designations(record: dict[str, Any], effect_state: dict[str, Any], batc
     (or of another Combat) carry none. Newly designated Units raise their
     Attack/Defend triggers once per identity. Returns (next_effect, next_record,
     trace, descriptors)."""
-    next_effect = copy.deepcopy(effect_state)
-    next_record = copy.deepcopy(record)
+    next_effect = state_copy.deepcopy(effect_state)
+    next_record = state_copy.deepcopy(record)
     battlefield_id = record["battlefield"]
     roles = {record["attacker"]: "attacker", record["defender"]: "defender"}
     gained, lost, descriptors = [], [], []
@@ -440,7 +452,7 @@ def sync_combat_designations(timing_state: dict[str, Any], effect_state: dict[st
     failure = _settle_trigger_orders(descriptors, engine_decisions, base)
     if failure is not None:
         return failure
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["combat"] = next_record
     scheduled = schedule_triggered_items(next_timing, descriptors)
     if scheduled.get("applied") is not True:
@@ -471,14 +483,17 @@ def combat_sides(record: dict[str, Any], effect_state: dict[str, Any]) -> dict[s
 
 def available_combat_damage(effect_state: dict[str, Any], units: list[str]) -> tuple[int, list[dict[str, Any]]]:
     """Core 467.2.a–b: the side's Might summed, each Unit's rules-facing Might
-    read as at least 0 (143.2.c); a Stunned Unit contributes nothing (424.1.b)."""
+    read as at least 0 (143.2.c); a Stunned Unit contributes nothing (424.1.b), nor does one whose own text says it
+    deals no combat damage (set 2 package A2, Ezreal - Dashing: deals_no_combat_damage)."""
     from effect_ir import effective_might
     parts, total = [], 0
     for unit in units:
         might = effective_might(effect_state, unit)
         stunned = bool(effect_state["objects"][unit].get("stunned"))
-        contributed = 0 if stunned else might
-        parts.append({"unit": unit, "might": might, "stunned": stunned, "contributed": contributed})
+        silent = bool(effect_state["objects"][unit].get("deals_no_combat_damage"))
+        contributed = 0 if stunned or silent else might
+        parts.append({"unit": unit, "might": might, "stunned": stunned, "contributed": contributed,
+                      **({"deals_no_combat_damage": True} if silent else {})})
         total += contributed
     return total, parts
 
@@ -683,13 +698,13 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
     if timing_state["chain"]["items"] or timing_state["outstanding_tasks"]:
         return _refuse(base, "combat_requires_quiet_cleanup_boundary", "the chain and outstanding tasks must be finished before damage is assigned", ["Core 467.1"])
     sides = combat_sides(record, effect_state)
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_record = next_timing["combat"]
     if not sides["attacker"] or not sides["defender"]:
         next_record["status"] = "damage_dealt"
         next_record["assignments"] = None
         next_record["damage_step_skipped"] = True
-        return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"sides": sides, "damage_step": "skipped", "reason": "both Attacking and Defending Units must remain for the Combat Damage Step (467.1)"}, locators=["Core 467.1", "Core 468"])
+        return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace={"sides": sides, "damage_step": "skipped", "reason": "both Attacking and Defending Units must remain for the Combat Damage Step (467.1)"}, locators=["Core 467.1", "Core 468"])
     receipts: dict[str, Any] = {}
     trace_sides = {}
     for role in ("attacker", "defender"):
@@ -765,7 +780,7 @@ def assign_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, A
     # There is no window between assignment and Deal (467.2.c.1.a): the Deal
     # step must see exactly this effect state and exactly these receipts.
     next_record["assignment_snapshot"] = {"effect_state_hash": hash_value(effect_state), "receipts_hash": hash_value(receipts)}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace={"sides": sides, "assignments": trace_sides, "dealt": False, "assignment_snapshot": next_record["assignment_snapshot"]},
+    return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace={"sides": sides, "assignments": trace_sides, "dealt": False, "assignment_snapshot": next_record["assignment_snapshot"]},
                    locators=["Core 467.1", "Core 467.2.a", "Core 467.2.b", "Core 467.2.c", "Core 467.2.c.1", "Core 467.2.c.3", "Core 467.2.c.4", "Core 467.2.c.4.a", "Core 467.2.c.5", "Core 467.2.c.6", "Core 467.2.c.7", "Core 467.2.c.8", "Core 467.2.c.9", "Core 424.1.b", "Core 143.2.c"])
 
 
@@ -790,7 +805,7 @@ def deal_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any
     snapshot = record.get("assignment_snapshot") or {}
     if snapshot.get("effect_state_hash") != hash_value(effect_state) or snapshot.get("receipts_hash") != hash_value(record["assignments"]):
         return _invalid(base, ["stale assignment receipt: the effect state or the receipts changed after assignment; nothing may happen between assignment and Deal (467.2.c.1.a), so the assignment must be redone on the current state"])
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     dealt: dict[str, list[dict[str, Any]]] = {"attacker": [], "defender": []}
     consumed: list[dict[str, Any]] = []
     for role in ("attacker", "defender"):
@@ -812,7 +827,7 @@ def deal_combat_damage(timing_state: dict[str, Any], effect_state: dict[str, Any
             dealt[role].append({"unit": unit, "assigned": entry["raw_assigned"], "prevented": entry["prevented"], "applied": entry["applied"], "before": before, "after": obj["damage"],
                                 "sources": list(receipt["sources"]), "responsible_player": receipt["assigning_player"], "outcome": "applied" if entry["applied"] > 0 else "no_op"})
     next_effect["replacement_effects"] = [r for r in next_effect["replacement_effects"] if not (r.get("mode") == "reduce_damage" and r.get("prevent_remaining", 0) <= 0)]
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["combat"]["status"] = "damage_dealt"
     next_timing["combat"]["damage_dealt"] = {role: [{"unit": d["unit"], "applied": d["applied"]} for d in dealt[role]] for role in dealt}
     trace = {"simultaneous": True, "dealt": dealt, "consumed_replacements": consumed, "replacements_reapplied": False, "fepr_skipped": True}
@@ -921,7 +936,7 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     failure = _settle_trigger_orders(sync_triggers + death_triggers + watch_triggers, engine_decisions, base)
     if failure is not None:
         return failure
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["combat"] = next_record
     scheduled = schedule_triggered_items(next_timing, sync_triggers + death_triggers + watch_triggers)
     if scheduled.get("applied") is not True:
@@ -934,7 +949,8 @@ def combat_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], e
                    + (["Core 429.1.a.2"] if watch_triggers else []))
 
 
-def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> dict[str, Any]:
+def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str, Any],
+                            engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
     """Core 468.3, after every item the damage and the Cleanup raised has
     resolved (468.2): a player won if they hold a designation and are the
     only one with Units remaining here; lost if the only one without; No
@@ -963,7 +979,7 @@ def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str
     else:
         result = {"outcome": "no_result", "reason": "neither_remains", "winner": None, "loser": None}
     result["units_remaining"] = {record["attacker"]: present.get(record["attacker"], []), record["defender"]: present.get(record["defender"], [])}
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     locators = ["Core 468.2", "Core 468.3", "Core 468.3.a", "Core 468.3.b", "Core 468.3.c", "Core 468.3.d", "Core 468.3.d.1"]
     if result["outcome"] == "no_result":
         # 2026-10-12 package 11 (Symbol of the Solari; GPT 2026-10-12 ruling 14 of package 10): a tie - No Result after
@@ -992,9 +1008,41 @@ def determine_combat_result(timing_state: dict[str, Any], effect_state: dict[str
             result.update({"tie_replaced_by": sources, "recalled_all": here,
                            "units_remaining": {record["attacker"]: [], record["defender"]: []}})
             locators += ["Core 370.1", "Core 457", "Core 458.1"]
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["combat"]["status"] = "result_determined"
     next_timing["combat"]["result"] = result
+    # set 2 package A2: a won combat wakes its watchers ("When you win a combat", "When I win a combat"): one event per
+    # Unit of the winner's still here (Core 468.3.a, 468.3.c), their triggers put on the Chain before control is
+    # established (468.4: items the result raises resolve first; resolve_battlefield_control waits for them)
+    if result["outcome"] == "win":
+        import game_events
+        winner = result["winner"]
+        events = [game_events.won_combat_event(
+            combat_id=record["combat_id"], unit=unit, identity=object_identity(next_effect, unit) or f"{unit}@0",
+            controller=winner, battlefield=record["battlefield"], turn_player=timing_state.get("turn_player"))
+            for unit in result["units_remaining"].get(winner, [])]
+        try:
+            woken, next_effect = _watchers().schedule_live(next_effect, events, turn_id=next_effect.get("turn_id", "turn-0"),
+                                                           batch_label=f"combat:{record['combat_id']}:result",
+                                                           turn_player=timing_state.get("turn_player"))
+        except _watchers().WatchUnsupported as exc:
+            return _unsupported(base, exc.reason_code, str(exc), ["Core 383.1", "Core 468.3"])
+        if woken:
+            for trigger in woken:
+                trigger["batch_id"] = f"combat:{record['combat_id']}:result"
+                trigger["batch_sequence"] = 0 if trigger["controller"] == winner else 1
+            from resolution_bridge import _settle_trigger_orders  # local, as open_combat
+            failure = _settle_trigger_orders(woken, engine_decisions, base)
+            if failure is not None:
+                return failure
+            scheduled = schedule_triggered_items(next_timing, woken)
+            if scheduled.get("applied") is not True:
+                return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"),
+                               "; ".join(scheduled.get("errors", [])) or "the result's triggers could not be scheduled",
+                               ["Core 468.4"], trigger_result=scheduled)
+            next_timing = scheduled["next_state"]
+            result["triggers"] = [t["trigger_id"] for t in woken]
+            locators += ["Core 383.1", "Core 468.4"]
     return _commit(base, next_timing, next_effect, trace={"result": result}, locators=locators)
 
 
@@ -1028,7 +1076,7 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
     else:
         control_step = record["control"]["step"]
     from effect_ir import migrate_legacy_effects
-    next_effect = migrate_legacy_effects(copy.deepcopy(effect_state))
+    next_effect = migrate_legacy_effects(state_copy.deepcopy(effect_state))
     removed_designations, expired = [], []
     # ADR-0013 §1 / Core 468.7.c: the Combat's grants expire with it.
     kept_effects = []
@@ -1044,7 +1092,7 @@ def close_combat(timing_state: dict[str, Any], effect_state: dict[str, Any]) -> 
             del obj["combat_designation"]
             removed_designations.append(object_id)
 
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     del next_timing["combat"]
     next_timing["showdown"] = {"active": False, "kind": None, "focus": None}
     next_timing["priority"] = next_timing["turn_player"] if next_timing.get("phase") == "main" else None
@@ -1181,9 +1229,11 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
     for unit in units:
         restriction = move_restricted(effect_state, unit, move_destination)
         if restriction is not None:
+            # set 2 package A2: a permanent's own restriction (Minotaur Reckoner) names its source, not a Battlefield
+            by = (f"from {restriction['battlefield']} to a Base (the Battlefield forbids it)" if "battlefield" in restriction
+                  else f"to a Base ({restriction.get('source_object')!r} forbids it)")
             return _refuse(base, restriction["reason_code"],
-                           f"{unit!r} cannot move from {restriction['battlefield']} to a Base "
-                           "(the Battlefield forbids it); a Standard Move there is not an available action",
+                           f"{unit!r} cannot move {by}; a Standard Move there is not an available action",
                            restriction["rule_locators"])
     # the cost: every selected Unit exhausts, simultaneously (144.2, 144.3.c)
     exhausted = [unit for unit in units if effect_state["objects"][unit].get("exhausted")]
@@ -1194,10 +1244,10 @@ def standard_move(timing_state: dict[str, Any], effect_state: dict[str, Any], de
         return {**base, "valid": True, "committed": False, "reason_code": "cost_confirmation_required",
                 "reason": f"{actor} exhausts {units} as the cost of this Standard Move (144.2); the declaration must confirm the cost",
                 "decision_ids": ["standard_move:cost"], "decision_controller": actor, "rule_locators": ["Core 144.2", "Core 144.3.c"], "routes": routes}
-    working = copy.deepcopy(effect_state)
+    working = state_copy.deepcopy(effect_state)
     for unit in units:
         working["objects"][unit]["exhausted"] = True
-    program = {"schema_version": "riftbound-effect-program.v1", "ruleset": copy.deepcopy(effect_state["ruleset"]), "program_id": f"standard-move:{actor}:{_public_id(timing_state, effect_state, declaration)}",
+    program = {"schema_version": "riftbound-effect-program.v1", "ruleset": state_copy.deepcopy(effect_state["ruleset"]), "program_id": f"standard-move:{actor}:{_public_id(timing_state, effect_state, declaration)}",
                "controller": actor, "effects": [{"op": "move_board_object", "effect_id": f"mv:{unit}", "object_id": unit, "destination": dict(move_destination)} for unit in units]}
     moved = apply_program(working, program)
     if moved.get("committed") is not True:

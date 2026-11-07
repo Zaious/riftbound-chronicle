@@ -21,7 +21,7 @@ Rule locators use the 2026-10-09 numbering (RULE_NUMBERING; 2026-07-16 until C3)
 """
 from __future__ import annotations
 
-import copy
+import state_copy
 from typing import Any
 
 # --------------------------------------------------------------------------------------------- the kinds of action
@@ -92,7 +92,7 @@ def _notes_dropped(value: Any) -> Any:
         return {k: _notes_dropped(v) for k, v in sorted(value.items()) if k not in NOTE_KEYS}
     if isinstance(value, list):
         return [_notes_dropped(v) for v in value]
-    return copy.deepcopy(value)
+    return state_copy.deepcopy(value)
 
 
 def _decision_role(decision_id: Any, system_ids: tuple[str, ...]) -> Any:
@@ -133,7 +133,11 @@ def canonical_action_key(action: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(f"a {shape} declaration carries unclassified fields {unknown}")
         fields = {}
         for name, value in sorted(declaration.items()):
-            if classes[name] != CHOICE:
+            # set 2 package A2 (Jayce - Man of Progress): an override a turn effect grants is the player's choice - the
+            # play with it and without it are two actions (every other override follows from the permission, as before)
+            granted = name == "cost_override" and isinstance(value, dict) and str(value.get("source") or "").startswith(
+                "turn_effect:")
+            if classes[name] != CHOICE and not granted:
                 continue
             if isinstance(value, dict):
                 value = {k: v for k, v in value.items() if (name, k) not in SUBFIELD_SYSTEM}
@@ -255,12 +259,14 @@ def _broad_play(family: str, timing_state: dict[str, Any], effect_state: dict[st
             prog = program(card, "play", item)
             sources = [{"kind": "hand"}, {"kind": "champion_zone"}] + [{"kind": "facedown", "battlefield": bf} for bf in battlefields]
             locations = [None, {"kind": "base"}] + [{"kind": "battlefield", "battlefield": bf} for bf in battlefields]
-            for source, location, timing, targeting in product(sources, locations, [None, "ambush", "hidden"],
-                                                               [None, "restricted", "free_by_restriction"]):
+            # set 2 package A2 (Core 135.2.e.6.c): one skeleton per split of a dual-Domain card's Power
+            bases = play_transaction.printed_base_options(obj["printed_cost"])
+            for source, location, timing, targeting, printed_base in product(
+                    sources, locations, [None, "ambush", "hidden"], [None, "restricted", "free_by_restriction"], bases):
                 d = {"schema_version": play_transaction.DECLARATION_VERSION, "ruleset": ruleset, "play_id": f"broad:{card}",
                      "actor": actor, "card": card,
                      "chain_item": {"id": item, "object_kind": obj.get("kind"), "timing": obj.get("play_timing", "default")},
-                     "cost": {"base": dict(obj["printed_cost"])},
+                     "cost": {"base": state_copy.deepcopy(printed_base)},
                      "payment_context": {"add_window_closed": True, "confirmed_by": "broad"}}
                 if source["kind"] != "hand":
                     d["source"] = source
@@ -363,6 +369,37 @@ def _broad_play(family: str, timing_state: dict[str, Any], effect_state: dict[st
                         from itertools import permutations
                         work += [({**declaration, "cost": {**declaration["cost"], "discount_order": list(order)}}, prog)
                                  for order in permutations(got["discount_ids"])]
+                if got.get("reason_code") == "power_split_required" and got.get("power_split_options") \
+                        and not (declaration.get("cost") or {}).get("offer_power_splits"):
+                    # set 2 package A2 (Core 135.2.e.6.c): each split of a granted [Repeat]'s dual-Domain Power, declared
+                    options = got["power_split_options"]
+                    key = (declaration["play_id"], effect_ir.hash_value(declaration), "splits", effect_ir.hash_value(options))
+                    if key not in ordered:
+                        ordered.add(key)
+                        from itertools import product
+                        keys = sorted(options)
+                        combos = list(product(*[options[k] for k in keys]))
+                        if len(combos) > BROAD_CAP:
+                            raise OverCap(f"{len(combos)} Power splits exceed {BROAD_CAP}")
+                        work += [({**declaration, "cost": {**declaration["cost"],
+                                                           "offer_power_splits": dict(zip(keys, combo))}}, prog)
+                                 for combo in combos]
+                if got.get("reason_code") == "discount_choice_required" and got.get("discount_choice_options") \
+                        and not (declaration.get("cost") or {}).get("discount_choices"):
+                    # set 2 package A2 (GPT A2 ruling 16): each combination of the '[1] or [A] less' options, declared
+                    options = got["discount_choice_options"]
+                    key = (declaration["play_id"], effect_ir.hash_value(declaration), "choices",
+                           effect_ir.hash_value(options))
+                    if key not in ordered:
+                        ordered.add(key)
+                        from itertools import product
+                        keys = sorted(options)
+                        combos = list(product(*[options[k] for k in keys]))
+                        if len(combos) > BROAD_CAP:
+                            raise OverCap(f"{len(combos)} discount choices exceed {BROAD_CAP}")
+                        work += [({**declaration, "cost": {**declaration["cost"],
+                                                           "discount_choices": dict(zip(keys, combo))}}, prog)
+                                 for combo in combos]
                 asked = set(got.get("decision_ids") or []) if got.get("reason_code") in CONTRACT_REQUESTS else set()
                 deflect_id = f"power_any:{declaration['play_id']}"
                 if asked == {deflect_id} and deflect_id not in known:

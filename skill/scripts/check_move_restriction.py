@@ -221,15 +221,15 @@ def main() -> int:
         if not validate_state(broken):
             errors.append(f"a restriction with {why} was accepted; it should stay unparsed instead")
 
-    # --- 5. the four shapes this wave does not read ---------------------------------------------------------
+    # --- 5. the shapes this wave does not read ---------------------------------------------------------------
+    # ("Units can't move to base." is read since set 2 package A2, Minotaur Reckoner - check_move_to_base_restricted)
     grammar = cg.load_grammar()
     compiled = cg.compile_card([{"text": "Units can't move from here to base."}], grammar)
     if compiled["clauses"][0].get("unsupported"):
         errors.append(f"Vilemaw's Lair did not compile: {compiled['unsupported_clauses']}")
     elif compiled["passive"]["battlefield_fields"]["move_restrictions"] != LAIR:
         errors.append(f"the clause did not print the restriction: {compiled['passive']}")
-    for text, family_id in (("Units can't move to base.", "global_move_restriction"),
-                            ("I can't move to base.", "self_move_restriction"),
+    for text, family_id in (("I can't move to base.", "self_move_restriction"),
                             ("They can't move it this turn.", "timed_move_restriction"),
                             ("Units can't move from here to a battlefield.", "other_destination_restriction")):
         if not cg.compile_clause(text, grammar).get("unsupported"):

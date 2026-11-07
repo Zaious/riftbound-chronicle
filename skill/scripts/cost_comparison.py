@@ -106,7 +106,13 @@ def _printed(state: dict[str, Any], object_id: str) -> dict[str, Any] | None:
     printed = (state.get("objects") or {}).get(object_id, {}).get("printed_cost")
     if not isinstance(printed, dict):
         return None
-    return {"energy": printed.get("energy", 0), "power": dict(printed.get("power") or {})}
+    power = dict(printed.get("power") or {})
+    own = printed.get("power_of_domains")
+    if own:
+        # set 2 package A2 (Core 135.2.e.6.c): Power any of the card's Domains pays - its total is exact, its Domain is
+        # not one of them (UNSPECIFIED_DOMAIN, the key read_cost's per-Domain questions abstain on)
+        power[UNSPECIFIED_DOMAIN] = power.get(UNSPECIFIED_DOMAIN, 0) + own["amount"]
+    return {"energy": printed.get("energy", 0), "power": power}
 
 
 def _from_receipt(state: dict[str, Any], object_id: str, basis: str) -> dict[str, Any] | None:

@@ -16,7 +16,7 @@ Step itself is G2's `run_scoring_step`.
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import json
 import sys
 from pathlib import Path
@@ -156,7 +156,7 @@ def perform_mulligan(timing_state: dict[str, Any], effect_state: dict[str, Any],
                 "rule_locators": ["Core 117.1"]}
     except (IR.IllegalDecision, IR.IllegalOperation, ValueError) as exc:
         return _refuse(base, "mulligan_choice_illegal", str(exc), ["Core 117.1"])
-    working = copy.deepcopy(effect_state)
+    working = state_copy.deepcopy(effect_state)
     trace: dict[str, Any] = {"player": player, "set_aside": len(chosen)}
     if chosen:
         try:
@@ -169,7 +169,7 @@ def perform_mulligan(timing_state: dict[str, Any], effect_state: dict[str, Any],
                     "decision_ids": list(exc.decision_ids), "decision_controller": exc.controller, **IR.chance_fields(exc),
                     "rule_locators": ["Core 117.3", "Core 417.5"]}
         trace.update({"drawn": drawn.get("drawn") if isinstance(drawn, dict) else None, "recycle": recycled})
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["mulligans_pending"] = queue[1:]
     return _commit(base, next_timing, working, trace=trace, locators=["Core 117", "Core 117.1", "Core 117.2", "Core 117.3"])
 
@@ -227,13 +227,13 @@ def begin_turn(timing_state: dict[str, Any], effect_state: dict[str, Any], engin
             return _invalid(base, [problem["reason"]])
         return _unsupported(base, problem["code"], problem["reason"], problem["locators"], player=player)
     taken[player] = taken.get(player, 0) + 1
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing.update({"phase": "awaken", "turn_player": player, "priority": None, "turns_taken": taken,
                         "turn_progress": {"turn_id": next_turn_id, "first_turn": {"extra_channel": facts["extra_channel"], "skip_draw": facts["skip_draw"], "source": facts["source"]}},
                         "outstanding_tasks": [CLEANUP_TASK]})
     next_timing.pop("ending_step", None)
     next_timing["showdown"] = {"active": False, "kind": None, "focus": None}
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     next_effect["turn_id"] = next_turn_id
     if path == "additional_turn":
         # package 11: the Additional Turn leaves the queue as it is taken; the regular turn it follows is remembered
@@ -269,7 +269,7 @@ def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], 
     if _progress(timing_state).get("awaken_complete"):
         return _refuse(base, "step_already_complete", "the Awaken step already completed this turn", ["Core 315.1"])
     player = timing_state["turn_player"]
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     readied, already, blocked = [], [], []
     for object_id in sorted(next_effect["objects"]):
         obj = next_effect["objects"][object_id]
@@ -284,7 +284,7 @@ def run_awaken_step(timing_state: dict[str, Any], effect_state: dict[str, Any], 
             already.append(object_id)
     if blocked:
         return _unsupported(base, "ready_blocker_unknown", f"{blocked} carry a ready blocker (Stun, 424) whose complete rule this slice does not model; the Awaken step is not guessed around it", ["Core 315.1", "Core 416.1.b", "Core 424"], blocked=blocked)
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["turn_progress"] = {**_progress(timing_state), "awaken_complete": True}
     trace = {"player": player, "readied": readied, "already_ready": already, "simultaneous": True}
     # 2026-10-08 (package 10, Pirate's Haven): the Turn Player performs these Readies (Core 315.1.b, 416.3.a), so they
@@ -388,7 +388,7 @@ def enter_beginning_phase(timing_state: dict[str, Any], effect_state: dict[str, 
     failure = _settle_trigger_orders(descriptors, engine_decisions, base)
     if failure is not None:
         return failure
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["phase"] = "beginning"
     next_timing["priority"] = None
     next_timing["turn_progress"] = {**_progress(timing_state), "beginning_entered": True}
@@ -397,7 +397,7 @@ def enter_beginning_phase(timing_state: dict[str, Any], effect_state: dict[str, 
     if scheduled.get("applied") is not True:
         return _refuse(base, scheduled.get("reason_code", "trigger_schedule_failed"), "; ".join(scheduled.get("errors", [])) or "Beginning Step triggers could not be scheduled", ["Core 315.2.a"], trigger_result=scheduled)
     trace = {"player": player, "beginning_triggers": evaluated, "scheduled_triggers": [d["trigger_id"] for d in descriptors], "trigger_schedule": scheduled.get("transition"), "tasks": next_timing["outstanding_tasks"]}
-    return _commit(base, scheduled["next_state"], copy.deepcopy(effect_state), trace=trace, locators=["Core 315.2", "Core 315.2.a", "Core 315.2.a.1", "Core 315.2.b.1", "Core 319.2"])
+    return _commit(base, scheduled["next_state"], state_copy.deepcopy(effect_state), trace=trace, locators=["Core 315.2", "Core 315.2.a", "Core 315.2.a.1", "Core 315.2.b.1", "Core 319.2"])
 
 
 def run_channel_step(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -413,7 +413,7 @@ def run_channel_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
     player = timing_state["turn_player"]
     extra = 1 if (_progress(timing_state).get("first_turn") or {}).get("extra_channel") else 0
     count = 2 + extra
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     rune_deck = next_effect["players"][player]["zones"]["rune_deck"]
     taken = rune_deck[:count]
     del rune_deck[:count]
@@ -423,7 +423,7 @@ def run_channel_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
         next_effect["players"][player]["zones"]["base"].append(rune_id)
         from effect_ir import _bump_identity
         identities[rune_id] = _bump_identity(next_effect, rune_id)
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["phase"] = "channel"
     next_timing["turn_progress"] = {**_progress(timing_state), "channel_complete": True}
     next_timing["outstanding_tasks"] = [CLEANUP_TASK]
@@ -445,7 +445,7 @@ def run_draw_step(timing_state: dict[str, Any], effect_state: dict[str, Any], en
         return problem
     player = timing_state["turn_player"]
     turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     skip = bool((_progress(timing_state).get("first_turn") or {}).get("skip_draw"))
     event: dict[str, Any] | None = None
     if not skip:
@@ -460,7 +460,7 @@ def run_draw_step(timing_state: dict[str, Any], effect_state: dict[str, Any], en
             return _unsupported(base, "burn_out_unsupported", str(exc), ["Core 432"])
         except ValueError as exc:
             return _invalid(base, [str(exc)])
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["phase"] = "draw"
     terminal = (event or {}).get("terminal_event")
     if terminal is not None:
@@ -484,16 +484,16 @@ def enter_main_phase(timing_state: dict[str, Any], effect_state: dict[str, Any],
     if problem := _phase_refusal(base, timing_state, "draw", "draw_complete", ["Core 315.4", "Core 316.1"]):
         return problem
     player = timing_state["turn_player"]
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     emptied = {}
     for player_id, pl in next_effect["players"].items():
-        emptied[player_id] = copy.deepcopy(pl["resources"])
+        emptied[player_id] = state_copy.deepcopy(pl["resources"])
         pl["resources"] = {"energy": 0, "power": {}}
     descriptors, evaluated = _phase_triggers(next_effect, player, "main")
     failure = _settle_trigger_orders(descriptors, engine_decisions, base)
     if failure is not None:
         return failure
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["phase"] = "main"
     next_timing["priority"] = player
     next_timing["turn_progress"] = {**_progress(timing_state), "main_entered": True}
@@ -540,10 +540,10 @@ def run_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any], engi
     if tasks and tasks[0] != CLEANUP_TASK and CLEANUP_TASK in tasks:
         return _refuse(base, "task_order", f"the outstanding task {tasks[0]!r} precedes the Cleanup; tasks are handled in order", ["Core 318", "Core 319"])
     consumed = bool(tasks) and tasks[0] == CLEANUP_TASK
-    working_t = copy.deepcopy(timing_state)
+    working_t = state_copy.deepcopy(timing_state)
     if consumed:
         working_t["outstanding_tasks"] = tasks[1:]
-    working_e = copy.deepcopy(effect_state)
+    working_e = state_copy.deepcopy(effect_state)
     order_map, choice_map = _ed.replacement_maps(engine_decisions)
     iterations: list[dict[str, Any]] = []
     terminal_written = False

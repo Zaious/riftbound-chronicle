@@ -40,6 +40,194 @@ jobs:
       - name: A limited Might change is remembered, not recomputed (Core 479.4.b)
         run: python3 skill/scripts/check_might_limit_snapshot.py
 
+      - name: A token card's printed activated abilities are carried, listed and paid (the Gold gear token)
+        run: python3 skill/scripts/check_token_abilities.py
+
+      - name: A card's own Energy reduction per card played this turn or per Mighty unit, with a printed minimum (Core 356.4)
+        run: python3 skill/scripts/check_self_cost_counts.py
+
+      - name: A static aura over the friendly Units of one tag, the source included when it carries it (Core 133.8, 479.3.b)
+        run: python3 skill/scripts/check_tag_auras.py
+
+      - name: Two set-2 play watches - a spell on an opponent's turn, a card with Power cost N or more (Core 206)
+        run: python3 skill/scripts/check_set2_play_watches.py
+
+      - name: "Your spells and abilities deal N bonus damage" lowered with its printed N (Core 713-715)
+        run: python3 skill/scripts/check_set2_bonus_damage_text.py
+
+      - name: A won combat wakes the winner's and the winning units' watchers before control (Core 468.3.a, 468.3.c, 468.4)
+        run: python3 skill/scripts/check_combat_won.py
+
+      - name: A card's own optional Energy, or Energy and one rune, offer for its play (Core 356.2.b)
+        run: python3 skill/scripts/check_set2_energy_offers.py
+
+      - name: A Battlefield's Conquer trigger with N or more Mighty units here (Core 383.2.a.1, 708)
+        run: python3 skill/scripts/check_set2_conquer_mighty.py
+
+      - name: A card an opponent's spells and abilities cannot choose (Core 355.5)
+        run: python3 skill/scripts/check_unchoosable_by_enemies.py
+
+      - name: A permanent's 'Units can't move to base' restricts every such move while it is on the board (Core 359.3.e.6)
+        run: python3 skill/scripts/check_move_to_base_restricted.py
+
+      - name: A Battlefield where Units can't be played (Core 355.2)
+        run: python3 skill/scripts/check_units_not_played_here.py
+
+      - name: A Battlefield no player scores before their Nth turn (Core 471, 472)
+        run: python3 skill/scripts/check_no_score_before_turn.py
+
+      - name: Resource conversion - any amount of Energy or Power paid, that much added (Core 204.3.a, 430)
+        run: python3 skill/scripts/check_resource_conversion.py
+
+      - name: Each attached Equipment of the controller's gives its unit [Assault] (Core 807.2)
+        run: python3 skill/scripts/check_equipment_each_give.py
+
+      - name: A card played only to a battlefield its player conquered this turn (Core 355.2, 471.1)
+        run: python3 skill/scripts/check_conquered_only.py
+      - name: Became Mighty watch (set 2 A2, Fiora; Core 709)
+        run: python3 skill/scripts/check_became_mighty.py
+      - name: Targeting Effects - when you choose me with a spell, a friendly unit (set 2 A2; Core 383.4.b)
+        run: python3 skill/scripts/check_targeted_watch.py
+      - name: A card's own reduction for a play from outside the hand (set 2 A2; Core 356.4)
+        run: python3 skill/scripts/check_cost_not_from_hand.py
+      - name: When you use an activated ability of a gear (set 2 A2; Core 377.2)
+        run: python3 skill/scripts/check_ability_used_watch.py
+      - name: Your units here have a keyword, the source included (set 2 A2; Core 365.1)
+        run: python3 skill/scripts/check_units_here_aura.py
+      - name: A tag given by a card's own text or an Effect Text (set 2 A2; Core 133.8, 435.1.c)
+        run: python3 skill/scripts/check_tag_grant.py
+      - name: An Effect Text's Might while attached this turn (set 2 A2; Core 435.1.c)
+        run: python3 skill/scripts/check_attached_this_turn.py
+      - name: A printed additional cost paid by returning a friendly gear to hand (set 2 A2; Core 356.2.a.1)
+        run: python3 skill/scripts/check_return_cost.py
+      - name: A trigger's base cost returning a unit here to hand (set 2 A2; Core 383.3.b.1, 448.2)
+        run: python3 skill/scripts/check_trigger_return_cost.py
+      - name: An optional printed cost killing a friendly gear (set 2 A2; Core 356.2.b)
+        run: python3 skill/scripts/check_kill_gear_offer.py
+      - name: When I attack or defend one on one; a Might change this combat (set 2 A2; Core 740.2.b)
+        run: python3 skill/scripts/check_one_on_one.py
+      - name: When you defend at a battlefield, move me there (set 2 A2; Core 383.4.f)
+        run: python3 skill/scripts/check_defend_move_there.py
+      - name: The first time I conquer each turn (set 2 A2; Core 471.1, 383.1)
+        run: python3 skill/scripts/check_first_conquer.py
+      - name: An "other unit" set of targets, played plainly and copied by Repeat (set 2 A2; Core 820.1.d)
+        run: python3 skill/scripts/check_distinct_target_group.py
+      - name: Up to three units at the same location, a Battlefield or a Base (set 2 A2; Core 355.11, 198.1)
+        run: python3 skill/scripts/check_same_location_group.py
+      - name: Counter a spell unless its controller pays Energy (set 2 A2; Core 426.1, 355.10.e)
+        run: python3 skill/scripts/check_unless_pay.py
+      - name: A payment window's answers are every state the payer's Add Reactions reach (set 2 A2 review; Core 445.2.c)
+        run: python3 skill/scripts/check_payment_window_adds.py
+      - name: Move to a location where there is a unit with the same controller (set 2 A2; Core 355.4.a, 198.1)
+        run: python3 skill/scripts/check_move_same_controller.py
+      - name: Hold and conquer abilities interchangeable through an Effect Text (set 2 A2; Core 383.4.c-d, 435.1.c)
+        run: python3 skill/scripts/check_score_effects_interchangeable.py
+      - name: A friendly unit anywhere and an enemy unit at a battlefield deal their Mights to each other (set 2 A2)
+        run: python3 skill/scripts/check_pair_located.py
+      - name: When you choose or ready me (set 2 A2; Core 383.4.b, 416)
+        run: python3 skill/scripts/check_choose_or_ready_me.py
+      - name: Your Equipment everywhere have Quick-Draw (set 2 A2; Core 819.1.b, 819.1.d)
+        run: python3 skill/scripts/check_quick_draw_aura.py
+      - name: Each Equipment attached to me gives double its base Might bonus (set 2 A2; Core 159.1)
+        run: python3 skill/scripts/check_equipment_bonus_double.py
+      - name: When I conquer or hold - one ability, two trigger conditions (set 2 A2; Core 383.4.c-d)
+        run: python3 skill/scripts/check_conquer_or_hold.py
+      - name: An Effect Text replacement about its Top-Most card (set 2 A2; Core 370.1.b, 435.1.c)
+        run: python3 skill/scripts/check_effect_text_replacement.py
+      - name: The next spell you play this turn gets a Repeat at its own cost (set 2 A2; Core 392, 820.1)
+        run: python3 skill/scripts/check_next_spell_repeat.py
+      - name: A Recycle-from-trash cost limited to one card kind (set 2 A2; Core 417.3)
+        run: python3 skill/scripts/check_recycle_kind_cost.py
+      - name: I have +1 Might for each friendly gear (set 2 A2; Core 479.4.b)
+        run: python3 skill/scripts/check_might_per_gear.py
+      - name: While I'm at a battlefield, opponents can't gain points (set 2 A2; Core 054.1, 473.1)
+        run: python3 skill/scripts/check_opponents_cant_gain_points.py
+      - name: I can be played to a battlefield you're attacking (set 2 A2; Core 355.2.b)
+        run: python3 skill/scripts/check_play_to_attacking_battlefield.py
+      - name: Friendly Repeat costs cost less while you control this battlefield (set 2 A2; Core 356.4.c)
+        run: python3 skill/scripts/check_repeat_cost_discount.py
+      - name: The first friendly non-token gear played each turn costs less (set 2 A2; Core 356.4.b)
+        run: python3 skill/scripts/check_first_gear_discount.py
+      - name: When I die in combat; the first time I win a combat each turn (set 2 A2; Core 383.2.a.1, 468.3)
+        run: python3 skill/scripts/check_die_in_combat.py
+      - name: Choose an opponent; they score a point (set 2 A2; Core 473.1.a.1)
+        run: python3 skill/scripts/check_gain_point_chosen.py
+      - name: As I'm revealed from your deck, Add Energy (set 2 A2; Core 425, 430)
+        run: python3 skill/scripts/check_revealed_from_deck_add.py
+      - name: A reflexive trigger's base cost, paid at finalization (set 2 A2 Guards!; Core 388.4, 383.3.b)
+        run: python3 skill/scripts/check_reflexive_trigger_cost.py
+      - name: Cost [1] or [A] less, one component the payer chooses (set 2 A2; Core 356.4.c)
+        run: python3 skill/scripts/check_either_cost_discount.py
+      - name: Entry paths read the entry-state turn effects (set 2 A2 Bushwhack; boundary)
+        run: python3 skill/scripts/check_entry_paths.py
+      - name: A dual-Domain card's Power, any of its Domains (Core 135.2.e.6.c)
+        run: python3 skill/scripts/check_power_of_domains.py
+      - name: A card's own Energy reduction while its player controls a tagged Unit (Production Surge)
+        run: python3 skill/scripts/check_cost_control_tag.py
+      - name: Spells cost less / more while a permanent is in combat (Vex - Cheerless)
+        run: python3 skill/scripts/check_cost_in_combat.py
+      - name: A Gear played from hand ignoring its Energy cost this turn (Jayce - Man of Progress)
+        run: python3 skill/scripts/check_gear_play_ignoring_energy.py
+      - name: A Gold's Add bonus and the player-level hold trigger (Renata Glasc - Chem-Baroness)
+        run: python3 skill/scripts/check_gold_add_bonus.py
+      - name: Attach or detach a chosen Equipment of the chosen unit's controller (Angle Shot)
+        run: python3 skill/scripts/check_attach_or_detach.py
+      - name: An equipped unit deals its Might one way, then an Equipment detached (Strike Down)
+        run: python3 skill/scripts/check_strike_down.py
+      - name: A unit's conquer of an uncontrolled battlefield (Yone - Blademaster)
+        run: python3 skill/scripts/check_conquer_uncontrolled.py
+      - name: Exhaust your legend as an optional cost; a group move to an open battlefield (Bard - Mercurial)
+        run: python3 skill/scripts/check_bard_mercurial.py
+      - name: Each player's own optional Gold, one more per opponent who took one (Card Sharp)
+        run: python3 skill/scripts/check_card_sharp.py
+      - name: A token per Equipment you control; up to two of them readied (Arise!)
+        run: python3 skill/scripts/check_arise.py
+      - name: A unit that deals no combat damage adds nothing to its side (Ezreal - Dashing)
+        run: python3 skill/scripts/check_no_combat_damage.py
+      - name: Swap with a unit you control, attach one of its Equipment to me, once per turn (Azir - Ascendant)
+        run: python3 skill/scripts/check_azir_ascendant.py
+      - name: Sand Soldiers with Weaponmaster, a token's play keyword, played an Equipment this turn (Azir - Emperor)
+        run: python3 skill/scripts/check_azir_emperor.py
+      - name: Recycle another friendly unit to play a Mech from the trash, cheaper by its Might (Rumble - Hotheaded)
+        run: python3 skill/scripts/check_rumble_hotheaded.py
+      - name: Move, attach up to one Equipment, a conquer trigger granted this turn (Relentless Pursuit)
+        run: python3 skill/scripts/check_relentless_pursuit.py
+      - name: A triggered ability's mode chosen at finalization, not one chosen this turn (for Aphelios - Exalted)
+        run: python3 skill/scripts/check_modal_trigger.py
+      - name: Linked abilities - a granted Deathknell's banishment played by its granting card (The Zero Drive)
+        run: python3 skill/scripts/check_zero_drive.py
+      - name: If it was an enemy / friendly unit (linked_object_relation)
+        run: python3 skill/scripts/check_linked_object_relation.py
+      - name: If it's an Equipment, you may detach it (linked_object_has_tag, detach subject_ref)
+        run: python3 skill/scripts/check_detach_if_equipment.py
+      - name: Play a unit from hand to a battlefield you control (limited_play entry)
+        run: python3 skill/scripts/check_play_to_controlled_battlefield.py
+      - name: I cost less for each point you scored from holding this turn (hold ledger, power reduction)
+        run: python3 skill/scripts/check_cost_per_hold_point.py
+      - name: When you play this from face down, attach it to a unit you control (here)
+        run: python3 skill/scripts/check_attach_self_from_facedown.py
+      - name: Enemy units or gear chosen this turn with spells or unit abilities (ledger and condition)
+        run: python3 skill/scripts/check_enemy_choices.py
+      - name: Attach a detached / an attached Equipment you control to a unit you control (object_target)
+        run: python3 skill/scripts/check_attach_chosen_equipment.py
+      - name: A Battlefield's ability granted to its controller's Legends (legend_ability_grants)
+        run: python3 skill/scripts/check_granted_legend_ability.py
+
+      - name: Weaponmaster pays a chosen Equipment's Equip cost less one any-domain Power and attaches it (Core 821)
+        run: python3 skill/scripts/check_weaponmaster.py
+
+      - name: Quick-Draw plays an Equipment at Reaction timing and attaches it to a chosen unit you control (Core 819)
+        run: python3 skill/scripts/check_quick_draw.py
+
+      - name: Equip attaches an Equipment to a chosen unit you control, at any location (ADR-0017, Core 818)
+        run: python3 skill/scripts/check_equip.py
+
+      - name: An Equipment's Effect Text is its Top-Most card's, and its own rules text is Inactive while attached (ADR-0017)
+        run: python3 skill/scripts/check_equipment_text.py
+
+      - name: The engine's speed-ups answer as the engine did without them (state_copy, validation cache)
+        run: python3 skill/scripts/check_engine_speedups.py
+
       - name: A Buff counter contributes its +1 Might (Core 703)
         run: python3 skill/scripts/check_buff_contributes_might.py
 
@@ -1142,3 +1330,87 @@ jobs:
           python3 "$REPO/skill/scripts/check_set2_death_and_reveal_preludes.py"
           python3 "$REPO/skill/scripts/check_set2_counter_chain_item.py"
           python3 "$REPO/skill/scripts/check_set2_a1_review.py"
+          python3 "$REPO/skill/scripts/check_engine_speedups.py"
+          python3 "$REPO/skill/scripts/check_equipment_text.py"
+          python3 "$REPO/skill/scripts/check_equip.py"
+          python3 "$REPO/skill/scripts/check_quick_draw.py"
+          python3 "$REPO/skill/scripts/check_weaponmaster.py"
+          python3 "$REPO/skill/scripts/check_token_abilities.py"
+          python3 "$REPO/skill/scripts/check_self_cost_counts.py"
+          python3 "$REPO/skill/scripts/check_tag_auras.py"
+          python3 "$REPO/skill/scripts/check_set2_play_watches.py"
+          python3 "$REPO/skill/scripts/check_set2_bonus_damage_text.py"
+          python3 "$REPO/skill/scripts/check_combat_won.py"
+          python3 "$REPO/skill/scripts/check_set2_energy_offers.py"
+          python3 "$REPO/skill/scripts/check_set2_conquer_mighty.py"
+          python3 "$REPO/skill/scripts/check_unchoosable_by_enemies.py"
+          python3 "$REPO/skill/scripts/check_move_to_base_restricted.py"
+          python3 "$REPO/skill/scripts/check_units_not_played_here.py"
+          python3 "$REPO/skill/scripts/check_no_score_before_turn.py"
+          python3 "$REPO/skill/scripts/check_resource_conversion.py"
+          python3 "$REPO/skill/scripts/check_equipment_each_give.py"
+          python3 "$REPO/skill/scripts/check_conquered_only.py"
+          python3 "$REPO/skill/scripts/check_became_mighty.py"
+          python3 "$REPO/skill/scripts/check_targeted_watch.py"
+          python3 "$REPO/skill/scripts/check_cost_not_from_hand.py"
+          python3 "$REPO/skill/scripts/check_ability_used_watch.py"
+          python3 "$REPO/skill/scripts/check_units_here_aura.py"
+          python3 "$REPO/skill/scripts/check_tag_grant.py"
+          python3 "$REPO/skill/scripts/check_attached_this_turn.py"
+          python3 "$REPO/skill/scripts/check_return_cost.py"
+          python3 "$REPO/skill/scripts/check_trigger_return_cost.py"
+          python3 "$REPO/skill/scripts/check_kill_gear_offer.py"
+          python3 "$REPO/skill/scripts/check_one_on_one.py"
+          python3 "$REPO/skill/scripts/check_defend_move_there.py"
+          python3 "$REPO/skill/scripts/check_first_conquer.py"
+          python3 "$REPO/skill/scripts/check_distinct_target_group.py"
+          python3 "$REPO/skill/scripts/check_same_location_group.py"
+          python3 "$REPO/skill/scripts/check_unless_pay.py"
+          python3 "$REPO/skill/scripts/check_payment_window_adds.py"
+          python3 "$REPO/skill/scripts/check_move_same_controller.py"
+          python3 "$REPO/skill/scripts/check_score_effects_interchangeable.py"
+          python3 "$REPO/skill/scripts/check_pair_located.py"
+          python3 "$REPO/skill/scripts/check_choose_or_ready_me.py"
+          python3 "$REPO/skill/scripts/check_quick_draw_aura.py"
+          python3 "$REPO/skill/scripts/check_equipment_bonus_double.py"
+          python3 "$REPO/skill/scripts/check_conquer_or_hold.py"
+          python3 "$REPO/skill/scripts/check_effect_text_replacement.py"
+          python3 "$REPO/skill/scripts/check_next_spell_repeat.py"
+          python3 "$REPO/skill/scripts/check_recycle_kind_cost.py"
+          python3 "$REPO/skill/scripts/check_might_per_gear.py"
+          python3 "$REPO/skill/scripts/check_opponents_cant_gain_points.py"
+          python3 "$REPO/skill/scripts/check_play_to_attacking_battlefield.py"
+          python3 "$REPO/skill/scripts/check_repeat_cost_discount.py"
+          python3 "$REPO/skill/scripts/check_first_gear_discount.py"
+          python3 "$REPO/skill/scripts/check_die_in_combat.py"
+          python3 "$REPO/skill/scripts/check_gain_point_chosen.py"
+          python3 "$REPO/skill/scripts/check_revealed_from_deck_add.py"
+          python3 "$REPO/skill/scripts/check_reflexive_trigger_cost.py"
+          python3 "$REPO/skill/scripts/check_either_cost_discount.py"
+          python3 "$REPO/skill/scripts/check_entry_paths.py"
+          python3 "$REPO/skill/scripts/check_power_of_domains.py"
+          python3 "$REPO/skill/scripts/check_cost_control_tag.py"
+          python3 "$REPO/skill/scripts/check_cost_in_combat.py"
+          python3 "$REPO/skill/scripts/check_gear_play_ignoring_energy.py"
+          python3 "$REPO/skill/scripts/check_gold_add_bonus.py"
+          python3 "$REPO/skill/scripts/check_attach_or_detach.py"
+          python3 "$REPO/skill/scripts/check_strike_down.py"
+          python3 "$REPO/skill/scripts/check_conquer_uncontrolled.py"
+          python3 "$REPO/skill/scripts/check_bard_mercurial.py"
+          python3 "$REPO/skill/scripts/check_card_sharp.py"
+          python3 "$REPO/skill/scripts/check_arise.py"
+          python3 "$REPO/skill/scripts/check_no_combat_damage.py"
+          python3 "$REPO/skill/scripts/check_azir_ascendant.py"
+          python3 "$REPO/skill/scripts/check_azir_emperor.py"
+          python3 "$REPO/skill/scripts/check_rumble_hotheaded.py"
+          python3 "$REPO/skill/scripts/check_relentless_pursuit.py"
+          python3 "$REPO/skill/scripts/check_modal_trigger.py"
+          python3 "$REPO/skill/scripts/check_zero_drive.py"
+          python3 "$REPO/skill/scripts/check_linked_object_relation.py"
+          python3 "$REPO/skill/scripts/check_detach_if_equipment.py"
+          python3 "$REPO/skill/scripts/check_play_to_controlled_battlefield.py"
+          python3 "$REPO/skill/scripts/check_cost_per_hold_point.py"
+          python3 "$REPO/skill/scripts/check_attach_self_from_facedown.py"
+          python3 "$REPO/skill/scripts/check_enemy_choices.py"
+          python3 "$REPO/skill/scripts/check_attach_chosen_equipment.py"
+          python3 "$REPO/skill/scripts/check_granted_legend_ability.py"

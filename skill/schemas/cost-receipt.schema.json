@@ -227,9 +227,10 @@
               "pay_recall_self",
               "pay_banish_self",
               "pay_recycle_self",
+              "pay_return_to_hand",
               "pay_spend_xp",
               "pay_spend_buff",
-              "pay_disempower_self"
+              "pay_disempower_self", "pay_recycle_unit"
             ]
           },
           "amount": {

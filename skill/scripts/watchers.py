@@ -89,7 +89,8 @@ WATCH_SCOPES = {"self", "controller", "location", "any", "actor", "player", "res
 #   object_was_stunned       (2026-09-27) the object was stunned when the event happened (a death reads
 #                            the object as it was, as object_was_buffed does; Core 424)
 WATCH_FILTERS = {
-    "object_kind": {"spell", "unit", "gear"},
+    # set 2 package A2 (Sivir - Battle Mistress: "When you recycle a rune"): a rune too
+    "object_kind": {"spell", "unit", "gear", "rune"},
     "object_controller_relation": {"friendly", "enemy"},
     "exclude_source": {True},
     "on_opponents_turn": {True},
@@ -110,6 +111,23 @@ WATCH_FILTERS = {
     "destination_not_source_battlefield": {True},
     # set 2 (2026-10-29, Simian Ancestor: "When you buff me"): the event's actor is the watcher's controller
     "actor_is_controller": {True},
+    # set 2 package A2 (Yordle Explorer: "a card with Power cost [A][A] or more"): the object's PRINTED Power cost, every
+    # Domain's together, is at least N (Core 206: a card's cost for any purpose is its printed one)
+    "printed_power_at_least": set(range(1, 21)),
+    # set 2 package A2 (Aphelios - Exalted, Jax - Unrelenting: "When you attach an Equipment to me"): the attach's host
+    # is the watcher's own source (game_events attached: `to`), and the object attached carries the tag
+    "attached_to_source": {True},
+    "object_tagged": {"Equipment"},
+    # set 2 package A2 (Jae Medarda: "When you choose me with a spell"): the object is the watcher's own source, and what
+    # chose it was a spell (game_events targeted: `chosen_by`)
+    "is_source": {True},
+    "chosen_by_spell": {True},
+    # set 2 package A2 (Spirit Wheel, Irelia - Blade Dancer: "a friendly unit"): the object is on the board now - a unit
+    # card in a trash is not a unit (Core 355.10.a makes it a target; the watch is about units)
+    "object_on_board": {True},
+    # set 2 package A2 (Fiora - Peerless: "When I attack or defend one on one"): the designated Unit was one on one as
+    # the designation was gained (game_events designation: `one_on_one`, Core 740.2.b)
+    "one_on_one": {True},
 }
 # 2026-09-27 (package 6): where a triggered ability works when that is not the board. Core 385.1-385.2:
 # an ability of a card outside the board says where it works, and works there and nowhere else - a
@@ -131,6 +149,9 @@ BATTLEFIELD_WATCH_FIELDS = {"move_from_triggers": {"kinds": ["moved"], "object_k
 # matching events (a Standard Move's move_action, else their action_id) - one Standard Move of several units is one;
 # two Move instructions resolved in one batch are two (Core 144.3, 412.4)
 WATCH_GROUPINGS = {"each", "one_or_more", "one_per_action"}
+# the combat designation event kinds (game_events.DESIGNATION_EVENT_KINDS' values): a player's Attack / Defend trigger
+# reading them triggers once per combat (schedule_live)
+DESIGNATION_KINDS = {"attacked", "defended"}
 # "first_each_turn": only the first matching event of the turn triggers it ("The first time a
 # friendly unit dies each turn") - counted whether or not the trigger was performed, unlike
 # per_turn_limit (383.3.e), which counts performances.
@@ -194,7 +215,7 @@ def _watch_errors(watch: Any, path: str) -> list[str]:
             for key, value in event_filter.items():
                 # a count is an integer, never a boolean that happens to equal 1; a flag is `true`, never 1
                 # (2026-09-27)
-                counted = key in ("printed_energy_at_least", "object_might_at_least")
+                counted = key in ("printed_energy_at_least", "object_might_at_least", "printed_power_at_least")
                 flag = WATCH_FILTERS.get(key) == {True}
                 if key not in WATCH_FILTERS or value not in WATCH_FILTERS[key] or (counted and isinstance(value, bool)) \
                         or (flag and value is not True):
@@ -482,6 +503,35 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                                        "printed_cost_unknown")
             if printed < wanted:
                 return False
+        elif key == "is_source":
+            if subject != source_object:
+                return False
+        elif key == "chosen_by_spell":
+            if event.get("kind") != "targeted" or event.get("chosen_by") != "spell":
+                return False
+        elif key == "object_on_board":
+            from effect_ir import find_location, zone_class
+            if subject not in (state.get("objects") or {}) or zone_class(find_location(state, subject)) != "board":
+                return False
+        elif key == "attached_to_source":
+            if event.get("kind") != "attached" or event.get("to") != source_object:
+                return False
+        elif key == "object_tagged":
+            tags = event_object_tags(state, event)
+            if tags is None:
+                raise WatchUnsupported(f"{subject!r} carries no observed tags, so whether it is a {wanted} is "
+                                       f"not known (Core 133.8); refused rather than guessed", "object_tags_unknown")
+            if wanted not in tags:
+                return False
+        elif key == "printed_power_at_least":
+            power = (obj.get("printed_cost") or {}).get("power")
+            if not isinstance(power, dict) or any(not isinstance(v, int) or isinstance(v, bool) for v in power.values()):
+                raise WatchUnsupported(f"{subject!r} carries no printed Power cost to compare (Core 206)",
+                                       "printed_cost_unknown")
+            # set 2 package A2 (Core 135.2.e.6.c): a dual-Domain card's Power counts whichever Domain pays it
+            own = ((obj.get("printed_cost") or {}).get("power_of_domains") or {}).get("amount") or 0
+            if sum(power.values()) + own < wanted:
+                return False
         elif key == "card_played_ordinal":
             # the ordinal the play transaction stamped on its own `played` event (Core 420.4.b)
             if event.get("kind") != "played" or event.get("play_ordinal") != wanted:
@@ -505,6 +555,9 @@ def _filter_holds(state: dict[str, Any], event_filter: dict[str, Any], event: di
                 return False
         elif key == "alone":
             if event.get("alone") is not True:
+                return False
+        elif key == "one_on_one":
+            if event.get("one_on_one") is not True:
                 return False
         elif key == "object_might_at_least":
             # Core 708, 710: the Unit's current Might, every modifier included (effect_ir's own reader).
@@ -599,11 +652,11 @@ def record_performed(state: dict[str, Any], descriptor: dict[str, Any], turn_id:
     """Core 383.3.e.2.b: the use is spent when the ability was performed. A
     "you may" the controller declined at finalization was not performed, so it
     keeps its use."""
-    import copy
+    import state_copy
 
     if not performed or descriptor.get("per_turn_limit") is None:
         return state
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     uses = new_state.setdefault("trigger_uses", {})
     key = use_key(new_state, descriptor, turn_id)
     uses[key] = int(uses.get(key, 0)) + 1
@@ -612,7 +665,7 @@ def record_performed(state: dict[str, Any], descriptor: dict[str, Any], turn_id:
 
 def reset_turn_uses(state: dict[str, Any], turn_id: str) -> dict[str, Any]:
     """The counters are per turn, so the ledger keeps only this turn's rows."""
-    import copy
+    import state_copy
 
     uses = state.get("trigger_uses")
     if not uses:
@@ -620,7 +673,7 @@ def reset_turn_uses(state: dict[str, Any], turn_id: str) -> dict[str, Any]:
     kept = {key: count for key, count in uses.items() if key.rsplit("|", 1)[-1] == turn_id}
     if kept == uses:
         return state
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     if kept:
         new_state["trigger_uses"] = kept
     else:
@@ -681,9 +734,12 @@ def trigger_event_of(event: dict[str, Any]) -> dict[str, Any] | None:
 def schedule_watchers(state: dict[str, Any], events: list[dict[str, Any]], *, turn_id: str) -> list[dict[str, Any]]:
     """Every watcher this batch of events woke, in a deterministic order:
     by the object that carries it, then by the event that woke it."""
+    from effect_ir import object_triggers
     scheduled: list[dict[str, Any]] = []
     for object_id in sorted(state.get("objects") or {}):
-        for descriptor in state["objects"][object_id].get("event_triggers", []) or []:
+        # ADR-0017: printed watchers of an attached card are Inactive, and the Effect Text its Top-Most card got
+        # appended watches too - object_triggers gives exactly the ones that work
+        for descriptor in object_triggers(state, object_id, "event_triggers"):
             for event in events:
                 if not watch_matches(state, descriptor["watch"], event,
                                      source_object=descriptor["source_object"], controller=descriptor["controller"]):
@@ -707,6 +763,60 @@ def occurrence_nth(watch: dict[str, Any]) -> int | None:
     return None
 
 
+MIGHTY_LEDGER = "mighty_observed"
+
+
+def mighty_transitions(state: dict[str, Any], *, batch_label: str) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """set 2 package A2 (Fiora - Worthy, Fiora - Grand Duelist): Core 709 - the event is a crossing: a Unit below 5
+    Might that reaches 5 or more; Core 710 - a Unit on the board is read at its current Might.
+
+    Returns (the became_mighty events of this batch, the ledger to keep), or ([], None) when no watcher of the event
+    listens - the ledger is then dropped, so one that starts listening later starts from what it sees then. The ledger
+    is each board Unit's identity (Core 124) and whether it was Mighty when last observed. A Unit not in it - one that
+    has just entered the board, or every Unit when the ledger is new - is recorded and wakes nothing: its Might did not
+    change from less than 5 on the board, it arrived at what it is (GPT A2 ruling 2: approved for a Unit printed at 5 or
+    more). A Unit printed below 5 that has just entered at 5 or more - a continuous effect lifting it as it arrives - is
+    NOT answered either way (GPT A2 ruling 2: no rule says only a Unit already on the board can become Mighty; the
+    actual Might change and its timing decide, and are not yet read): WatchUnsupported became_mighty_on_entry_boundary."""
+    from effect_ir import effective_might, find_location, object_identity, object_triggers, zone_class
+    from game_events import EVENT_VERSION, EVENT_KINDS
+
+    listening = any(descriptor["watch"].get("kinds") and "became_mighty" in descriptor["watch"]["kinds"]
+                    and source_active(state, descriptor["source_object"], active_zones(descriptor))
+                    for object_id in sorted(state.get("objects") or {})
+                    for descriptor in object_triggers(state, object_id, "event_triggers"))
+    if not listening:
+        return [], None
+    kept = MIGHTY_LEDGER in state
+    before = state.get(MIGHTY_LEDGER) or {}
+    now: dict[str, bool] = {}
+    events: list[dict[str, Any]] = []
+    for object_id in sorted(state.get("objects") or {}):
+        obj = state["objects"][object_id]
+        location = find_location(state, object_id)
+        if obj.get("kind") != "unit" or zone_class(location) != "board":
+            continue
+        identity = object_identity(state, object_id) or f"{object_id}@0"
+        now[identity] = effective_might(state, object_id) >= 5
+        if kept and identity not in before and now[identity] and int(obj.get("base_might") or 0) < 5:
+            raise WatchUnsupported(
+                f"{object_id!r} (printed {obj.get('base_might')}) entered the board at {effective_might(state, object_id)} "
+                f"Might while a 'becomes [Mighty]' watcher listens - whether it became Mighty as it arrived is a boundary "
+                f"not yet read (GPT A2 ruling 2)", "became_mighty_on_entry_boundary")
+        if now[identity] and before.get(identity) is False:
+            place = ({"kind": "battlefield", "battlefield": location[1]} if location[0] == "battlefield"
+                     else {"kind": "player_zone", "player": location[1], "zone": location[2]})
+            events.append({"schema_version": EVENT_VERSION, "event_id": f"{batch_label}:mighty#{len(events) + 1}",
+                           "action_id": f"{batch_label}:mighty", "kind": "became_mighty",
+                           "source": {"object": None, "kind": "rule"}, "actor": None,
+                           "controller": obj.get("controller"), "object": object_id, "player": obj.get("owner"),
+                           "identity_before": identity, "identity_after": identity,
+                           "location_before": place, "location_after": place, "causal_parent": None,
+                           "visibility": {"fact": "public", "identity": "public"},
+                           "rule_locators": list(EVENT_KINDS["became_mighty"]["rules"])})
+    return events, now
+
+
 def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_id: str,
                   batch_label: str, turn_player: str | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """The watchers one batch of events wakes in real play (2026-09-24). Returns (the
@@ -719,11 +829,18 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
     its nth, counted whether or not it was performed; each
     scheduled trigger gets its own id, carries the program hash its descriptor names, and is
     bound to its source's identity now (Core 124)."""
-    import copy
+    import state_copy
     from effect_ir import object_identity
 
     scheduled: list[dict[str, Any]] = []
-    counted = copy.deepcopy(state)
+    counted = state_copy.deepcopy(state)
+    # set 2 package A2 (Fiora): the Units that became Mighty since the last batch (Core 709), while a watcher listens
+    mighty, ledger = mighty_transitions(state, batch_label=batch_label)
+    if ledger is None:
+        counted.pop(MIGHTY_LEDGER, None)
+    else:
+        counted[MIGHTY_LEDGER] = ledger
+        events = list(events) + mighty
     # package 9 (Kayn - Unleashed): every real Move of the batch, counted per object identity for the turn (Core 124:
     # a new object starts at zero); a Recall is its own event kind, not a moved one, and does not count
     moves = [e for e in events if e.get("kind") == "moved" and (e.get("identity_after") or e.get("identity_before"))]
@@ -733,14 +850,26 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
             identity = event.get("identity_after") or event.get("identity_before")
             ledger[identity] = int(ledger.get(identity, 0)) + 1
     occurrences = counted.setdefault("watch_occurrences", {})
+    from effect_ir import object_triggers
     for object_id in sorted(state.get("objects") or {}):
-        for descriptor in state["objects"][object_id].get("event_triggers", []) or []:
+        for descriptor in object_triggers(state, object_id, "event_triggers"):  # ADR-0017, as in schedule_watchers
             if not source_active(state, descriptor["source_object"], active_zones(descriptor)):
                 continue
             watch = descriptor["watch"]
             matched = [event for event in events
                        if watch_matches(state, watch, event, source_object=descriptor["source_object"],
                                         controller=descriptor["controller"])]
+            if watch.get("scope") == "controller" and set(watch.get("kinds") or []) <= DESIGNATION_KINDS:
+                # set 2 package A2 (Loyal Pup, "When you defend at a battlefield"): a player's Attack / Defend trigger
+                # triggers when that player gains the designation for the first time in a combat, its condition checked
+                # once per combat (Core 383.4.e, 383.4.e.2.a, 383.4.f, 383.4.f.2.a) - a Unit of theirs designated later in
+                # the same combat (one that moved in) does not trigger it again, whether or not the first time matched
+                firsts = {event.get("action_id") for event in events
+                          if event.get("kind") in watch["kinds"] and event.get("controller") == descriptor["controller"]}
+                once = {combat: f"{use_key(state, descriptor, turn_id)}|first_designation|{combat}" for combat in firsts}
+                matched = [event for event in matched if not occurrences.get(once.get(event.get("action_id"), ""))]
+                for mark in once.values():
+                    occurrences[mark] = 1
             if not matched:
                 continue
             key = use_key(state, descriptor, turn_id)
@@ -932,14 +1061,14 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
 def settle_delayed(state: dict[str, Any], fired: list[dict[str, Any]], dropped: list[dict[str, Any]]) -> dict[str, Any]:
     """Remove the delayed triggers that fired and the ones that lost their
     binding. Everything else waits."""
-    import copy
+    import state_copy
 
     repeating = {entry["delayed_id"] for entry in state.get("delayed_triggers") or [] if entry.get("repeats")}
     spent = {entry.get("delayed_id") for entry in fired if entry.get("delayed_id") not in repeating} \
         | {entry["delayed_id"] for entry in dropped}
     if not spent or not state.get("delayed_triggers"):
         return state
-    new_state = copy.deepcopy(state)
+    new_state = state_copy.deepcopy(state)
     remaining = [entry for entry in new_state["delayed_triggers"] if entry["delayed_id"] not in spent]
     if remaining:
         new_state["delayed_triggers"] = remaining

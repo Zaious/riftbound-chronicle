@@ -81,6 +81,9 @@ def main() -> int:
     dragon, base, hand, aura = fields_of(DRAGON), fields_of(BASE), fields_of(HAND), fields_of(AURA)
     expected = {
         "dragon": (dragon, {"kind": "controls_units", "count": 1, "tag": "Dragon", "other": True}),
+        # set 2 package A2 (Breakneck Mech): the same sentence over the Mech tag
+        "mech": (fields_of("I enter ready if you control another Mech."),
+                 {"kind": "controls_units", "count": 1, "tag": "Mech", "other": True}),
         "base": (base, {"kind": "controls_units", "count": 2, "location": "base", "other": True}),
         "hand": (hand, {"kind": "not", "of": {"kind": "zone_count_at_least", "zone": "hand", "count": 3}}),
     }

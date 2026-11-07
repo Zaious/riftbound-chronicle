@@ -14,7 +14,7 @@ victory condition (474) is reported as facts and never enacted (G3).
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import json
 import sys
 from pathlib import Path
@@ -25,7 +25,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 import engine_decisions as _ed  # noqa: E402
 from combat import IN_PROGRESS as COMBAT_IN_PROGRESS, _base as _combat_base, _commit, _invalid, _refuse, _unsupported, _validate_both, combined_input_hash, units_at  # noqa: E402
-from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, PlayerSelectionRequired, _bump_identity, battlefield_identity, find_location, hash_value, object_identity, perform_draw, same_side, team_state, zone_class  # noqa: E402
+from effect_ir import DEFAULT_TURN_ID, ExternalInputRequired, IllegalDecision, PlayerSelectionRequired, _bump_identity, battlefield_identity, find_location, hash_value, object_identity, perform_draw, same_side, team_state, zone_class, effects_for, object_triggers, point_gain_prohibited_by  # noqa: E402
 from rules_core import apply_terminal_event, schedule_triggered_items, state_hash  # noqa: E402
 
 CONTROL_STEP_VERSION = "riftbound-control-step-result.v1"
@@ -106,7 +106,7 @@ def assigned_excess(combat: dict[str, Any] | None, player: str, battlefield_id: 
 
 
 def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str,
-                    combat: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+                    combat: dict[str, Any] | None = None, previous_controller: Any = "unknown") -> list[dict[str, Any]]:
     """Core 473.2 / 383.4.c–d: a Unit's own trigger fires when that Unit, the
     scoring player's, is at the Battlefield scored (scope unit_here); a
     player-referencing trigger fires from any board object the scoring player
@@ -142,13 +142,38 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
                 descriptors.append(copied)
         if obj.get("controller") != player or not (zone_class(location) == "board" or in_legend_zone):
             continue
-        for descriptor in obj.get(field, []) or []:
+        # set 2 package A2 (Last Rites [Effect Text]): its printed abilities and those its attached cards' Effect Text gave
+        # it (effect_ir.object_triggers: an attached card's own printed text is inactive, Core 435.1.c, 721.2)
+        own = object_triggers(effect_state, object_id, field)
+        crossing = obj.get("kind") == "unit" and bool(
+            effects_for(effect_state, object_id, "score_effects_interchangeable", active_only=True))
+        if crossing:
+            # set 2 package A2 (Skyfall of Areion [Effect Text]): its abilities for the other kind of scoring work too -
+            # every one of them, a "first time ... each turn" one with its limit kept (GPT A2 ruling 10)
+            other = SCORE_TRIGGER_FIELDS["hold" if how == "conquer" else "conquer"]
+            own += [{**d, "_crossed": True} for d in object_triggers(effect_state, object_id, other)]
+        for descriptor in own:
             if descriptor.get("functions_from"):
                 continue   # it works only from the zone it names, never from the board (Core 385.2)
             scope = descriptor.get("scope", "unit_here")
+            if scope == "controller_or_ally":
+                # set 2 package A2 (Renata Glasc - Chem-Baroness, "When you or an ally hold"): an ally's hold triggers it
+                # too. With no teams there is no ally, and it is the controller's hold; teams are not modelled, so a state
+                # with teams is refused by name rather than read as the controller's alone (GPT's A2 review, reading 6)
+                if team_state(effect_state):
+                    raise ScoringUnsupported("ally_scope_unsupported",
+                                             f"{object_id}'s hold trigger also reads an ally's hold; teams are not modelled",
+                                             ["Core 383.4.d.2.b"])
+                scope = "controller"
             if scope == "unit_here" and (obj.get("kind") != "unit" or find_location(effect_state, object_id) != ("battlefield", battlefield_id, None)):
                 continue
-            if (descriptor.get("condition") or {}).get("kind") == "assigned_excess_after_attack":
+            if (descriptor.get("condition") or {}).get("kind") == "battlefield_was_uncontrolled":
+                # set 2 package A2 (Yone - Blademaster): part of the Trigger Condition (Core 383.2.a.1) - the Battlefield
+                # had no controller before this conquer (190.2.b); a conquer from an opponent does not meet it
+                if how != "conquer" or previous_controller is not None:
+                    continue
+                descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
+            elif (descriptor.get("condition") or {}).get("kind") == "assigned_excess_after_attack":
                 # package 12 (Tryndamere - Barbarian): part of the Trigger Condition (Core 383.2.a.1), read as the
                 # conquer is processed - from the Combat that ended in it
                 excess = assigned_excess(combat, player, battlefield_id)
@@ -165,7 +190,20 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
                 if not evaluate_condition(effect_state, descriptor["condition"], controller=player, object_id=battlefield_id):
                     continue
                 descriptor = {k: v for k, v in descriptor.items() if k != "condition"}
-            copied = {k: v for k, v in descriptor.items() if k != "scope"}
+            if descriptor.get("occurrence") == "first_each_turn":
+                # set 2 package A2 (Lucian - Merciless): only on this Unit's first conquer this turn (Core 383.1)
+                identity = object_identity(effect_state, object_id) or f"{object_id}@0"
+                done = ((effect_state["players"][player].get("unit_conquests_this_turn") or {}).get(turn_id) or {}).get(
+                    identity, 0)
+                # GPT A2 ruling 10: one usage record whichever kind of scoring met it - crossed to a hold by Skyfall of
+                # Areion it is the first time of either; a use recorded this turn ends it for both (383.3.e)
+                key = f"{identity}:{descriptor['trigger_id']}"
+                uses = (effect_state["players"][player].get("score_trigger_uses_this_turn") or {}).get(turn_id) or []
+                if key in uses or (how == "conquer" and done != 1) or (how != "conquer" and not crossing):
+                    continue
+                if crossing:
+                    effect_state["players"][player]["score_trigger_uses_this_turn"] = {turn_id: sorted(uses + [key])}
+            copied = {k: v for k, v in descriptor.items() if k not in ("scope", "occurrence", "_crossed")}
             copied.update({"trigger_kind": "triggered", "batch_id": batch_id, "batch_sequence": 0, "scored_battlefield": battlefield_id, "how": how, "scope": scope,
                            "source_identity": object_identity(effect_state, object_id) or f"{object_id}@0"})
             descriptors.append(copied)
@@ -188,7 +226,9 @@ def _score_triggers(effect_state: dict[str, Any], player: str, battlefield_id: s
 
 
 def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id: str, how: str, turn_id: str, decisions: dict[str, Any] | None = None,
-                      combat: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+                      combat: dict[str, Any] | None = None,
+                      turns_taken: dict[str, int] | None = None,
+                      previous_controller: Any = "unknown") -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     """Core 471–473 on a copy of the effect state: once per Battlefield per
     turn (472); up to one point (473.1); a Conquer that would reach the
     Victory Score gains the Final Point only if every Battlefield was scored
@@ -198,15 +238,34 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
     victory_score, problem = mode_of_play(effect_state)
     if problem is not None:
         raise problem
-    working = copy.deepcopy(effect_state)
+    working = state_copy.deepcopy(effect_state)
     ledger_before = scored_this_turn(working, player, turn_id)
     record: dict[str, Any] = {"player": player, "battlefield": battlefield_id, "how": how, "turn_id": turn_id, "points_before": points_of(working, player)}
     if battlefield_id in ledger_before:
         record.update({"scored": False, "reason": "already_scored_this_turn", "points_after": record["points_before"], "rule_locators": ["Core 472", "Core 473.2.c"]})
         return working, record, []
+    # set 2 package A2 (Forgotten Monument: "Players can't score here until their third turn."): a player who has not
+    # yet begun their Nth turn does not score here - no point, no Score trigger; control is established all the same
+    until = (working["battlefields"].get(battlefield_id) or {}).get("no_score_before_own_turn")
+    if until is not None:
+        taken = (turns_taken or {}).get(player)
+        if not isinstance(taken, int):
+            raise ScoringUnsupported("turns_taken_not_observed",
+                                     f"{battlefield_id!r} says a player can't score there until their turn {until}; "
+                                     f"{player}'s turns are not recorded", ["Core 471", "Core 472"])
+        if taken < until:
+            record.update({"scored": False, "reason": "cannot_score_here_yet", "points_after": record["points_before"],
+                           "turns_taken": taken, "rule_locators": ["Core 471", "Core 472", "Core 190.6"]})
+            return working, record, []
     ledger = ledger_before + [battlefield_id]
     working["players"][player]["scored_this_turn"] = {turn_id: ledger}
-    if how == "conquer" and record["points_before"] + 1 >= victory_score:
+    stopped = point_gain_prohibited_by(working, player)
+    if stopped is not None:
+        # set 2 package A2 (Tianna Crownguard): the Score happens - the battlefield is scored this turn and its Score
+        # abilities trigger - but its player can't gain the point (Core 054.1, 473.1)
+        record.update({"scored": True, "gain": "prohibited", "prohibited_by": stopped,
+                       "rule_locators": ["Core 471.1" if how == "conquer" else "Core 471.2", "Core 473.1", "Core 054.1"]})
+    elif how == "conquer" and record["points_before"] + 1 >= victory_score:
         if set(ledger) == set(working["battlefields"]):
             working["players"][player]["points"] = record["points_before"] + 1
             record.update({"scored": True, "gain": "final_point", "rule_locators": ["Core 471.1", "Core 473.1.b", "Core 473.1.b.1"]})
@@ -228,8 +287,16 @@ def score_battlefield(effect_state: dict[str, Any], player: str, battlefield_id:
     else:
         working["players"][player]["points"] = record["points_before"] + 1
         record.update({"scored": True, "gain": "point", "rule_locators": ["Core 471.1" if how == "conquer" else "Core 471.2", "Core 473.1"] + (["Core 473.1.a.1"] if how == "hold" else [])})
+        if how == "hold":
+            # set 2 package A2 (Needlessly Large Yordle): a point gained by Holding, counted for this turn - only in a game
+            # where some card reads the count, so every other game keeps the state it had
+            from effect_ir import reads_hold_points
+            if reads_hold_points(working):
+                held = int((working["players"][player].get("hold_points_this_turn") or {}).get(turn_id, 0))
+                working["players"][player]["hold_points_this_turn"] = {turn_id: held + 1}
     record["points_after"] = points_of(working, player)
-    triggers = _score_triggers(working, player, battlefield_id, how, turn_id, combat)  # 383.4.c.2.c: a replaced point still triggers
+    triggers = _score_triggers(working, player, battlefield_id, how, turn_id, combat,
+                               previous_controller=previous_controller)  # 383.4.c.2.c: a replaced point still triggers
     record["triggers"] = [t["trigger_id"] for t in triggers]
     return working, record, triggers
 
@@ -269,7 +336,7 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
     remaining = sorted(present)
     battlefield = effect_state["battlefields"][battlefield_id]
     turn_id = effect_state.get("turn_id", DEFAULT_TURN_ID)
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     scoring = None
     triggers: list[dict[str, Any]] = []
     if len(remaining) == 1:
@@ -278,9 +345,26 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
             control_step = "controller_unchanged"
         else:
             next_effect["battlefields"][battlefield_id]["controller"] = player
+            # set 2 package A2 (Perched Grimwyrm): the Battlefields this player conquered this turn (Core 471.1) - read by
+            # "play me only to a battlefield you conquered this turn", whether or not the conquer also scored
+            conquered = (next_effect["players"][player].get("conquered_this_turn") or {}).get(turn_id) or []
+            if battlefield_id not in conquered:
+                next_effect["players"][player]["conquered_this_turn"] = {turn_id: conquered + [battlefield_id]}
+            # set 2 package A2 (Lucian - Merciless): each of the player's Units there has conquered once more this turn,
+            # counted per identity (Core 124) - what "the first time I conquer each turn" reads
+            counts = dict((next_effect["players"][player].get("unit_conquests_this_turn") or {}).get(turn_id) or {})
+            for unit_id in sorted(next_effect["battlefields"][battlefield_id].get("objects") or []):
+                unit_obj = next_effect["objects"].get(unit_id) or {}
+                if unit_obj.get("kind") == "unit" and unit_obj.get("controller") == player:
+                    identity = object_identity(next_effect, unit_id) or f"{unit_id}@0"
+                    counts[identity] = int(counts.get(identity, 0)) + 1
+            next_effect["players"][player]["unit_conquests_this_turn"] = {turn_id: counts}
             try:
                 next_effect, scoring, triggers = score_battlefield(next_effect, player, battlefield_id, "conquer", turn_id, engine_decisions,
-                                                                   combat=record if source == "combat" else None)
+                                                                   combat=record if source == "combat" else None,
+                                                                   turns_taken=timing_state.get("turns_taken"),
+                                                                   # set 2 package A2 (Yone - Blademaster): who it replaced
+                                                                   previous_controller=battlefield.get("controller"))
             except ScoringUnsupported as exc:
                 return _unsupported(base, exc.code, exc.reason, exc.locators, source=source, would_establish_control=player)
             except ScoringDecisionRequired as exc:
@@ -306,7 +390,7 @@ def resolve_battlefield_control(timing_state: dict[str, Any], effect_state: dict
     failure = _settle_trigger_orders(triggers, engine_decisions, base) if terminal is None else None
     if failure is not None:
         return failure
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     if source == "combat":
         next_timing["combat"]["status"] = "control_resolved"
         next_timing["combat"]["control"] = {"step": control_step, "controller_after": next_effect["battlefields"][battlefield_id].get("controller"), "scoring": scoring}
@@ -391,11 +475,11 @@ def stage_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     if code := _cleanup_boundary(timing_state, within_cleanup):
         return _refuse(base, code, "Showdowns are staged during a Cleanup with nothing on the chain and no outstanding task (323.7)", ["Core 318", "Core 323.7"])
     candidates, considered = showdown_candidates(timing_state, effect_state)
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["staged_showdowns"] = candidates
     trace = {"considered": considered, "staged": [c["battlefield"] for c in candidates], "dropped": sorted({s["battlefield"] for s in timing_state.get("staged_showdowns", [])} - {c["battlefield"] for c in candidates}),
              "outcome": "staged" if candidates else "no_staged_showdown"}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 316.8.b", "Core 323.7", "Core 323.7.a", "Core 344.2"])
+    return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace=trace, locators=["Core 316.8.b", "Core 323.7", "Core 323.7.a", "Core 344.2"])
 
 
 def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, within_cleanup: bool = False) -> dict[str, Any]:
@@ -438,12 +522,12 @@ def open_showdown(timing_state: dict[str, Any], effect_state: dict[str, Any], en
         if entry["value"] not in options:
             return _invalid(base, [f"location_selection {SHOWDOWN_LOCATION_DECISION_ID} names {entry['value']!r}; the staged Showdowns are {options}"])
         chosen, selection = next(s for s in live if s["battlefield"] == entry["value"]), "turn_player_decision"
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["showdown"] = {"active": True, "kind": "non_combat", "focus": chosen["contested_by"], "battlefield": chosen["battlefield"], "focus_passes": []}
     next_timing["priority"] = chosen["contested_by"]
     next_timing["staged_showdowns"] = [s for s in live if s["battlefield"] != chosen["battlefield"]]
     trace = {"options": options, "chosen": chosen["battlefield"], "selection": selection, "focus": chosen["contested_by"], "still_staged": [s["battlefield"] for s in next_timing["staged_showdowns"]]}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 323.11", "Core 344.2", "Core 345", "Core 316.8.b.1.a"])
+    return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace=trace, locators=["Core 323.11", "Core 344.2", "Core 345", "Core 316.8.b.1.a"])
 
 
 # ----------------------------------------------------------- board Cleanup --
@@ -508,7 +592,7 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
         return _refuse(base, code, "the board Cleanup runs in an Open State with no outstanding task (323.5, 323.10)", ["Core 318", "Core 323.5", "Core 323.10"])
     if set(steps) - {"control_loss", "contested", "recall_remove"} or not steps:
         return _invalid(base, ["steps must be a non-empty subset of control_loss, recall_remove, contested"])
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     done_steps: list[dict[str, Any]] = []
     exempt: list[dict[str, Any]] = []
     removed: list[str] = []
@@ -583,7 +667,7 @@ def run_board_cleanup(timing_state: dict[str, Any], effect_state: dict[str, Any]
     trace = {"steps": done_steps, "requested_steps": list(steps), "exempt": exempt, "contested_removed": removed,
              "victory_check": victory_check(next_effect),
              **({"step_five": step_five} if step_five is not None else {})}
-    return _commit(base, copy.deepcopy(timing_state), next_effect, trace=trace,
+    return _commit(base, state_copy.deepcopy(timing_state), next_effect, trace=trace,
                    locators=["Core 190.4.a", "Core 190.4.c", "Core 323.5", "Core 323.6", "Core 323.10", "Core 323.10.a"])
 
 
@@ -616,12 +700,13 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
     controlled = sorted(b for b, bf in effect_state["battlefields"].items() if bf.get("controller") == player)
     already = scored_this_turn(effect_state, player, turn_id)
     to_hold = [b for b in controlled if b not in already]
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     records: list[dict[str, Any]] = []
     triggers: list[dict[str, Any]] = []
     try:
         for battlefield_id in to_hold:
-            next_effect, record, found = score_battlefield(next_effect, player, battlefield_id, "hold", turn_id, engine_decisions)
+            next_effect, record, found = score_battlefield(next_effect, player, battlefield_id, "hold", turn_id, engine_decisions,
+                                                           turns_taken=timing_state.get("turns_taken"))
             records.append(record)
             triggers += found
     except ScoringUnsupported as exc:
@@ -653,7 +738,7 @@ def run_scoring_step(timing_state: dict[str, Any], effect_state: dict[str, Any],
     failure = _settle_trigger_orders(triggers, engine_decisions, base)
     if failure is not None:
         return failure
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["outstanding_tasks"] = [t for t in next_timing["outstanding_tasks"] if t != SCORING_TASK]
     if "turn_progress" in next_timing:  # ADR-0010 §1: the Channel step reads this flag
         next_timing["turn_progress"] = {**next_timing["turn_progress"], "scoring_complete": True}
@@ -675,7 +760,7 @@ def report_victory_facts(timing_state: dict[str, Any], effect_state: dict[str, A
     facts = victory_check(effect_state)
     if not facts.get("available"):
         return _unsupported(base, facts["reason"], "the victory facts need the Mode of Play and no teams", ["Core 458.3", "Core 474"])
-    return _commit(base, copy.deepcopy(timing_state), copy.deepcopy(effect_state), trace={"victory_check": facts, "winner_declared": False, "terminal_state": "not_modelled (G3)"}, locators=["Core 474"])
+    return _commit(base, state_copy.deepcopy(timing_state), state_copy.deepcopy(effect_state), trace={"victory_check": facts, "winner_declared": False, "terminal_state": "not_modelled (G3)"}, locators=["Core 474"])
 
 
 # ------------------------------------------------------------------------ CLI --

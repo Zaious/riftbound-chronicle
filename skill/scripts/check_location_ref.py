@@ -333,11 +333,12 @@ def main() -> int:
     # each kind is approved by name, with its own gate - never a general relational-locator capability: GPT 2026-09-23 the
     # source's current Battlefield (this gate); GPT 2026-10-12 PACKAGE11 ruling 3 a death trigger's noted Battlefield
     # (check_noted_battlefield.py); GPT 2026-10-12 PACKAGE11 ruling 4 the destination of the move a reflexive trigger
-    # follows (check_reflexive_move.py)
+    # follows (check_reflexive_move.py); GPT A2 ruling 25 (2026-11-05) the Battlefield a card was played from facedown at,
+    # noted as its play trigger triggers (check_attach_self_from_facedown.py)
     if LOCATION_REF_KINDS != ("program_source_current_battlefield", "program_source_noted_battlefield",
-                              "trigger_event_destination"):
+                              "trigger_event_destination", "program_source_played_battlefield"):
         fail("capability stays narrow", f"LOCATION_REF_KINDS is {LOCATION_REF_KINDS}; only the kinds approved by name "
-                                        f"(GPT 2026-09-23, 2026-10-12 rulings 3 and 4) may exist")
+                                        f"(GPT 2026-09-23, 2026-10-12 rulings 3 and 4, A2 ruling 25) may exist")
 
     # --- the single-target, TARGETED path (Crackshot Corsair's shape: "deal 1 to an
     # enemy unit here"), end to end through schedule -> finalize_trigger -> resolve.

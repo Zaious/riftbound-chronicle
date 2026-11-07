@@ -31,7 +31,7 @@ this form, per ADR-0002's migration policy.
 
 from __future__ import annotations
 
-import copy
+import state_copy
 import hashlib
 import json
 import re
@@ -241,10 +241,10 @@ def from_cleanup_decisions(legacy: dict[str, Any] | None, *, input_hash: str, co
     decisions: list[dict[str, Any]] = []
     if legacy.get("replacement_event_order"):
         decisions.append({"decision_id": "legacy:replacement_event_order", "stage": "resolution", "kind": "replacement_order",
-                          "controller": controller, "value": copy.deepcopy(legacy["replacement_event_order"]), "provenance": LEGACY_CLEANUP_VERSION})
+                          "controller": controller, "value": state_copy.deepcopy(legacy["replacement_event_order"]), "provenance": LEGACY_CLEANUP_VERSION})
     if legacy.get("replacement_choices"):
         decisions.append({"decision_id": "legacy:replacement_choices", "stage": "resolution", "kind": "replacement_choice",
-                          "controller": controller, "value": copy.deepcopy(legacy["replacement_choices"]), "provenance": LEGACY_CLEANUP_VERSION})
+                          "controller": controller, "value": state_copy.deepcopy(legacy["replacement_choices"]), "provenance": LEGACY_CLEANUP_VERSION})
     return {"schema_version": DECISIONS_VERSION, "input_hash": input_hash, "decisions": decisions}
 
 
@@ -280,7 +280,7 @@ def replacement_maps(decisions: dict[str, Any] | None, iteration: int = 0
     choices: dict[str, dict[str, bool]] = {}
     for item in entries(decisions, kind="replacement_order", stage="resolution"):
         if cleanup_iteration_of(item["decision_id"]) == iteration:
-            order.update(copy.deepcopy(item["value"]))
+            order.update(state_copy.deepcopy(item["value"]))
     for item in entries(decisions, kind="replacement_choice", stage="resolution"):
         if cleanup_iteration_of(item["decision_id"]) == iteration:
             for replacement_id, by_event in item["value"].items():

@@ -93,7 +93,8 @@ def main() -> int:
     if early.get("committed"):
         fail("B6 at play", "an allocation made for the play stage paid the resolution's amount")
     for label, effects in (("an extra key on the op", [{**PAY, "amount": 2}, DEAL]),
-                           ("another resource", [{**PAY, "resource": "energy"}, DEAL]),
+                           # set 2 package A2: Energy is a resource pay_any_amount pays now; xp is not
+                           ("another resource", [{**PAY, "resource": "xp"}, DEAL]),
                            ("the paid amount naming no payment", [PAY, {**DEAL, "amount_ref": {"kind": "linked_paid_amount", "effect_id": "zz"}}]),
                            ("the paid amount on a deal to one unit", [PAY, {k: v for k, v in DEAL.items() if k != "affected"}])):
         if not validate_program(program(*effects)):

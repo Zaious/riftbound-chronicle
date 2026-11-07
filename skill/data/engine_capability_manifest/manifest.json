@@ -1,22 +1,22 @@
 {
   "schema_version": "engine-capability-manifest.v1",
-  "manifest_id": "capability-manifest:f225a42cf3d15063e0208a42",
-  "capability_set_id": "sha256:f225a42cf3d15063e0208a42735cd4343abf40d58af15d2f1b81db9bb7fa3c61",
+  "manifest_id": "capability-manifest:5eaa232552d892fc6947cc4b",
+  "capability_set_id": "sha256:5eaa232552d892fc6947cc4bfe8db7066c4a0cabe3d8618df650f67adb7481ab",
   "implementation": {
     "kind": "source_sha256",
-    "value": "sha256:07dbc00e1f04a220784b3477d372fd7f330d7623cb57d7e2d9c93de3ca9fdfab",
+    "value": "sha256:6a7823f499847e63581e56d537a4de8fd06e045c32d4f4b01614f400f0efd4ad",
     "files": [
       {
         "path": "rules_core.py",
-        "sha256": "sha256:b5e6e8d8ca7741044b83d2b0efb7bbd7b84ab45dac45b0f7067e07fd3bfe9a3a"
+        "sha256": "sha256:26578fb7a5a0a378c4de12a937f8aa35133685cb7165e151dda3213e4e62f3e2"
       },
       {
         "path": "effect_ir.py",
-        "sha256": "sha256:1bd484d74a6a5a040db2ebc510cab24cd9b1dca5d187e370d827b72718d7d597"
+        "sha256": "sha256:d0529a9a0d5c95db8e64dae2bf3df3cd3aa05918358610e0e650fae753767a20"
       },
       {
         "path": "resolution_bridge.py",
-        "sha256": "sha256:8b774769e7c6f31c1e15b3bbcec4274c60ff05418e14ea9743708fc89528a234"
+        "sha256": "sha256:8a64db58507b21ac53034636e3b54b8766cdb0af5c7b9ece671f81d58a1ce5ad"
       },
       {
         "path": "engine_check.py",
@@ -24,23 +24,23 @@
       },
       {
         "path": "combat.py",
-        "sha256": "sha256:d5ed2f28d7e8ba482c1c0e6878cda059ccf3789d6c80ce6d9f30ae2b570e5de6"
+        "sha256": "sha256:692c4277372e137e4e16a7824022102467e3ea819846c98ea630eeef5073d5ff"
       },
       {
         "path": "battlefield_control.py",
-        "sha256": "sha256:69f7f44341c042f1719e1593ed71f5ccbfef059a138a0502813d973c46538bc7"
+        "sha256": "sha256:88956a52e967acdf3b4f5cb7d52a6b73d30c67909a8eaac1d1dc2d7dcd952512"
       },
       {
         "path": "terminal.py",
-        "sha256": "sha256:e3940fab37eaf2a85c297dc11792d8653d50de8afd8e4b0d638f7786e0b3b7d3"
+        "sha256": "sha256:913f1d7d61f22514e5b8bc03f2e239629390e412dcf6fbf6d3f123035cc647af"
       },
       {
         "path": "turn_cycle.py",
-        "sha256": "sha256:6c40359a7a16fffcb9f02089357c9ad7ed195da802e2daa05563499858de37bc"
+        "sha256": "sha256:c56fadf92b3953ab1060750e9227d08f5f490d3f4b2ce33ac4c49c8f5785d896"
       },
       {
         "path": "hidden.py",
-        "sha256": "sha256:0afee5deabbfef2bc80156ac95a1e8751a3cb4647f045500ba79f6b37a85e31f"
+        "sha256": "sha256:239c2c305d04f07e710aaa3e1894d531cd78d5969edf2f4ba5e235616f382df8"
       }
     ]
   },
@@ -684,6 +684,14 @@
       ]
     },
     {
+      "id": "grant_trigger",
+      "rule_locators": [
+        "Core 479.3",
+        "Core 383",
+        "Core 364.3"
+      ]
+    },
+    {
       "id": "grant_turn_effect",
       "rule_locators": [
         "Core 369.3",
@@ -972,6 +980,15 @@
         "Core 404.1.b.1",
         "Core 405.2",
         "Core 740.4.a.2"
+      ]
+    },
+    {
+      "id": "weaponmaster_attach",
+      "rule_locators": [
+        "Core 821.1.b",
+        "Core 821.1.c",
+        "Core 821.1.c.5",
+        "Core 435.1.f"
       ]
     },
     {
@@ -1840,6 +1857,7 @@
     "Core 370–373",
     "Core 373.2",
     "Core 375",
+    "Core 383",
     "Core 383.1",
     "Core 383.2.a.1",
     "Core 383.2.c",
@@ -1936,6 +1954,7 @@
     "Core 432.3.c.1",
     "Core 432.3–432.3.c.1",
     "Core 435.1",
+    "Core 435.1.f",
     "Core 435.2",
     "Core 435.2.a",
     "Core 435.4",
@@ -2038,7 +2057,10 @@
     "Core 811",
     "Core 814.1.c–814.2",
     "Core 814.2",
-    "Core 815.1.b–815.1.c.2"
+    "Core 815.1.b–815.1.c.2",
+    "Core 821.1.b",
+    "Core 821.1.c",
+    "Core 821.1.c.5"
   ],
   "exclusions": [
     "activate_named_triggers",

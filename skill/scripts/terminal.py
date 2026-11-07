@@ -18,7 +18,7 @@ two-state validators refuse every procedure as `game_over`.
 from __future__ import annotations
 
 import argparse
-import copy
+import state_copy
 import json
 import sys
 from pathlib import Path
@@ -50,7 +50,7 @@ def check_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any], e
     facts = victory_check(effect_state)
     if not facts.get("available"):
         return _unsupported(base, facts["reason"], "the victory condition needs the Mode of Play and no teams (458.3, 471.1.a)", ["Core 194.3", "Core 474"])
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     if facts["strict_leader"] is not None:
         next_timing["terminal"] = terminal_record(effect_state, "victory_score", facts["strict_leader"], derived=True, extra={"immediate": False, "source": "cleanup_step_1"})
         outcome = "ended"
@@ -60,7 +60,7 @@ def check_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any], e
         outcome = "below_threshold"
     trace = {"outcome": outcome, "victory_check": facts, "winner": facts["strict_leader"], "frozen_chain_items": [i["id"] for i in timing_state["chain"]["items"]] if outcome == "ended" else [],
              "frozen_outstanding_tasks": list(timing_state["outstanding_tasks"]) if outcome == "ended" else []}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 194.2", "Core 194.2.a", "Core 194.2.b", "Core 196", "Core 323.1", "Core 474"])
+    return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace=trace, locators=["Core 194.2", "Core 194.2.a", "Core 194.2.b", "Core 196", "Core 323.1", "Core 474"])
 
 
 def declare_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_decisions: dict[str, Any] | None = None, *, declaration: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -93,10 +93,10 @@ def declare_terminal(timing_state: dict[str, Any], effect_state: dict[str, Any],
         if winner is not None and winner not in players:
             return _invalid(base, ["declaration.winner must be a player id or null"])
         extra = {"immediate": True, "source": "declared", "note": str(declaration.get("note", ""))[:200]}
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["terminal"] = terminal_record(effect_state, reason, winner, derived=False, extra=extra)
     trace = {"outcome": "ended", "reason": reason, "winner": winner, "derived": False, "frozen_chain_items": [i["id"] for i in timing_state["chain"]["items"]]}
-    return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=["Core 196"])
+    return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace=trace, locators=["Core 196"])
 
 
 
@@ -132,15 +132,15 @@ def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_d
     order = [p for p in timing_state["turn_order"] if p != player]
     if len(order) == 1:
         # 651.3: the one remaining player Wins. Recorded, never derived.
-        next_timing = copy.deepcopy(timing_state)
+        next_timing = state_copy.deepcopy(timing_state)
         next_timing["terminal"] = terminal_record(effect_state, "concession", order[0], derived=False,
                                                   extra={"immediate": True, "source": "declared", "declared_by": player})
         trace = {"outcome": "ended", "reason": "concession", "winner": order[0], "removed": player,
                  "remaining": order, "derived": False}
-        return _commit(base, next_timing, copy.deepcopy(effect_state), trace=trace, locators=REMOVAL_LOCATORS + ["Core 196"])
+        return _commit(base, next_timing, state_copy.deepcopy(effect_state), trace=trace, locators=REMOVAL_LOCATORS + ["Core 196"])
 
     # 652: the game continues, so the Removal of a Player runs in full.
-    next_effect = copy.deepcopy(effect_state)
+    next_effect = state_copy.deepcopy(effect_state)
     contributed = [bf for bf, entry in sorted(next_effect["battlefields"].items()) if entry.get("contributed_by") == player]
     if not contributed and any("contributed_by" not in entry for entry in next_effect["battlefields"].values()):
         return _unsupported(base, "contributed_battlefield_unknown",
@@ -218,7 +218,7 @@ def concede(timing_state: dict[str, Any], effect_state: dict[str, Any], engine_d
     next_effect["continuous_effects"] = [e for e in next_effect.get("continuous_effects", []) or []
                                          if (e.get("source") or {}).get("object") not in set(removed_cards)]
 
-    next_timing = copy.deepcopy(timing_state)
+    next_timing = state_copy.deepcopy(timing_state)
     next_timing["players"] = [p for p in timing_state["players"] if p != player]
     next_timing["turn_order"] = order
     was_turn_player = timing_state["turn_player"] == player

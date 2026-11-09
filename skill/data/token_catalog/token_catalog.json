@@ -7,6 +7,143 @@
   "status": "draft",
   "entries": [
     {
+      "token_id": "gold",
+      "name": "Gold",
+      "kind": "gear",
+      "base_might": 0,
+      "keywords": [],
+      "text": "Kill this, :rb_exhaust:: [Reaction] — [Add] :rb_rune_rainbow:. (Abilities that add resources can't be reacted to.)",
+      "source_cards": [
+        {
+          "name": "Black Market Broker",
+          "locator": "sfd-121-221"
+        },
+        {
+          "name": "Blood Money",
+          "locator": "sfd-162-221"
+        },
+        {
+          "name": "Bushwhack",
+          "locator": "sfd-004-221"
+        },
+        {
+          "name": "Card Sharp",
+          "locator": "sfd-081-221"
+        },
+        {
+          "name": "Chemtech Cask",
+          "locator": "sfd-063-221"
+        },
+        {
+          "name": "Draven - Vanquisher",
+          "locator": "sfd-020-221"
+        },
+        {
+          "name": "Draven - Vanquisher (Alternate Art)",
+          "locator": "sfd-020a-221"
+        },
+        {
+          "name": "Eminent Benefactor",
+          "locator": "sfd-152-221"
+        },
+        {
+          "name": "Fae Dragon",
+          "locator": "sfd-101-221"
+        },
+        {
+          "name": "Honest Broker",
+          "locator": "sfd-155-221"
+        },
+        {
+          "name": "Pickpocket",
+          "locator": "sfd-074-221"
+        },
+        {
+          "name": "Plundering Poro",
+          "locator": "sfd-069-221"
+        },
+        {
+          "name": "Renata Glasc - Chem-Baroness",
+          "locator": "sfd-201-221"
+        },
+        {
+          "name": "Renata Glasc - Chem-Baroness (Overnumbered)",
+          "locator": "sfd-249-221"
+        },
+        {
+          "name": "Sivir - Battle Mistress",
+          "locator": "sfd-203-221"
+        },
+        {
+          "name": "Sivir - Battle Mistress (Overnumbered)",
+          "locator": "sfd-250-221"
+        },
+        {
+          "name": "Treasure Hoard",
+          "locator": "sfd-220-221"
+        },
+        {
+          "name": "Treasure Hunter",
+          "locator": "sfd-130-221"
+        },
+        {
+          "name": "Trove Golem",
+          "locator": "sfd-174-221"
+        },
+        {
+          "name": "Wages of Pain",
+          "locator": "sfd-070-221"
+        }
+      ],
+      "review": {
+        "reviewer": "GPT",
+        "date": "2026-11-08",
+        "source": "riftcodex raw card data: token card sfd-t03 (Gold // Buff: supertype Token, Gear, no Might; its text is the activated ability); the twenty set-2 producers above (\"play ... Gold gear token(s)\"); re-derived by scripts/check_token_entries.py",
+        "note": "Set 2 package A2: a gear token with a printed activated ability (kill this, exhaust: Reaction, Add one any-domain Power), compiled from this text like any card's ability (engine: token abilities, check_token_abilities). The date is the approval's, written by the owner's sign-off script."
+      },
+      "text_sha256": "sha256:ddbf7516a2128b3ad78daa7797045a33d223bff2bf236fe99d30fbd33062798e"
+    },
+    {
+      "token_id": "mech",
+      "name": "Mech",
+      "kind": "unit",
+      "base_might": 3,
+      "keywords": [],
+      "text": "",
+      "tags": [
+        "Mech"
+      ],
+      "source_cards": [
+        {
+          "name": "Assembly Rig",
+          "locator": "sfd-019-221"
+        },
+        {
+          "name": "Ferrous Forerunner",
+          "locator": "sfd-021-221"
+        },
+        {
+          "name": "Production Surge",
+          "locator": "sfd-076-221"
+        },
+        {
+          "name": "Rumble - Scrapper",
+          "locator": "sfd-089-221"
+        },
+        {
+          "name": "Rumble - Scrapper (Alternate Art)",
+          "locator": "sfd-089a-221"
+        }
+      ],
+      "review": {
+        "reviewer": "GPT",
+        "date": "2026-11-08",
+        "source": "riftcodex raw card data has no Mech token card; its set-2 producers above all print \"a 3 [M] Mech unit token\" (two, or one) with no keyword and no text; re-derived by scripts/check_token_entries.py from the producers alone; its tag from Core 187.4 (no token card prints it)",
+        "note": "Set 2 package A2: a unit token with no token card in the data - kind, Might and the empty text are what every producer prints, and they agree. The date is the approval's, written by the owner's sign-off script."
+      },
+      "text_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
       "token_id": "recruit",
       "name": "Recruit",
       "kind": "unit",
@@ -90,6 +227,54 @@
           }
         }
       ]
+    },
+    {
+      "token_id": "sand_soldier",
+      "name": "Sand Soldier",
+      "kind": "unit",
+      "base_might": 2,
+      "keywords": [],
+      "text": "",
+      "tags": [
+        "Shurima"
+      ],
+      "source_cards": [
+        {
+          "name": "Arise!",
+          "locator": "sfd-198-221"
+        },
+        {
+          "name": "Azir - Emperor of the Sands",
+          "locator": "sfd-197-221"
+        },
+        {
+          "name": "Azir - Emperor of the Sands (Overnumbered)",
+          "locator": "sfd-247-221"
+        },
+        {
+          "name": "Desert's Call",
+          "locator": "sfd-031-221"
+        },
+        {
+          "name": "Emperor's Dais",
+          "locator": "sfd-207-221"
+        },
+        {
+          "name": "Guards!",
+          "locator": "sfd-154-221"
+        },
+        {
+          "name": "Royal Guard",
+          "locator": "sfd-157-221"
+        }
+      ],
+      "review": {
+        "reviewer": "GPT",
+        "date": "2026-11-08",
+        "source": "riftcodex raw card data has no Sand Soldier token card; its seven set-2 producers above all print \"a 2 [M] Sand Soldier unit token\" with no keyword and no text; re-derived by scripts/check_token_entries.py from the producers alone; its tag from Core 187.3 (no token card prints it)",
+        "note": "Set 2 package A2: a unit token with no token card in the data - kind, Might and the empty text are what every producer prints, and they agree. The date is the approval's, written by the owner's sign-off script."
+      },
+      "text_sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
       "token_id": "sprite",

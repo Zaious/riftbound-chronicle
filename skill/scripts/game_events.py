@@ -189,6 +189,7 @@ OP_PRIMARY: dict[str, str] = {
     "recycle_when_leaving_chain": "replacement_created",
     "take_additional_turn": "additional_turn_created",
     "gain_control": "control_changed",
+    "lose_control": "control_changed",
     "banish_one_looked": "banished",
     "gain_control_of_spell": "control_changed",
     "make_new_choices": "replacement_created",

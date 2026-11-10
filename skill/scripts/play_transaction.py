@@ -2110,18 +2110,33 @@ def _pay(working: dict[str, Any], declaration: dict[str, Any], skeleton: dict[st
 
 # ------------------------------------------------------------------- choices --
 
-def modes_chosen_this_turn(state: dict[str, Any], source: str, player: str) -> list[str]:
+def _mode_key(player: str, instance: str | None) -> str:
+    """set 2 package A3 (Aphelios - Exalted, official Spiritforged FAQ): each instance of the ability tracks its own
+    modes - the printed one under the player, a second instance (a copy of the text, Svellsongur) under player|instance."""
+    return player if instance is None else f"{player}|{instance}"
+
+
+def mode_instance(trigger_id: str | None) -> str | None:
+    """The instance a chain item's triggered ability is: None for the printed one, the copied ability's own trigger id
+    (effect_ir.copied_text_bundle: '<printed id>:copy:<copying card>:<lifecycle>') for a copy - each attach its own."""
+    base = str(trigger_id or "").split("@", 1)[0]
+    return base if ":copy:" in base else None
+
+
+def modes_chosen_this_turn(state: dict[str, Any], source: str, player: str, instance: str | None = None) -> list[str]:
     """The modes `player` has chosen this turn with this object's "choose one you've not chosen this turn" ability -
-    none when the record is another object's (an earlier identity) or another turn's."""
+    none when the record is another object's (an earlier identity) or another turn's. `instance`: which instance of the
+    ability (mode_instance), each tracked on its own."""
     obj = (state.get("objects") or {}).get(source) or {}
     record = obj.get("modes_chosen") or {}
     if record.get("identity") != (object_identity(state, source) or f"{source}@0") \
             or record.get("turn_id") != state.get("turn_id", "turn-0"):
         return []
-    return list((record.get("by") or {}).get(player) or [])
+    return list((record.get("by") or {}).get(_mode_key(player, instance)) or [])
 
 
-def record_mode_chosen(state: dict[str, Any], source: str, player: str, option_id: str) -> None:
+def record_mode_chosen(state: dict[str, Any], source: str, player: str, option_id: str,
+                       instance: str | None = None) -> None:
     obj = state["objects"].get(source)
     if obj is None:
         return
@@ -2130,7 +2145,8 @@ def record_mode_chosen(state: dict[str, Any], source: str, player: str, option_i
     if record.get("identity") != identity or record.get("turn_id") != turn:
         record = {"identity": identity, "turn_id": turn, "by": {}}
     by = {k: list(v) for k, v in record["by"].items()}
-    by[player] = sorted(set(by.get(player, [])) | {option_id})
+    key = _mode_key(player, instance)
+    by[key] = sorted(set(by.get(key, [])) | {option_id})
     obj["modes_chosen"] = {"identity": identity, "turn_id": turn, "by": by}
 
 

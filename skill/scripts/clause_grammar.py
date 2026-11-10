@@ -329,6 +329,55 @@ def _lower_choose_enemy_deal_unless_draw(params):
                                "unless": {"chosen_by": "target_controller", "instead": "draw", "count": int(params["draw"])}}}}
 
 
+def _lower_hostile_takeover():
+    # set 2 package A3 (Hostile Takeover: "Take control of an enemy unit at a battlefield. Ready it. Lose control of that
+    # unit and recall it at end of turn."): one enemy Unit at a Battlefield chosen at play (Core 355.5); a control effect
+    # (479.2.a) that the delayed trigger made with it ends at the end of this turn - then the unit is recalled to the base
+    # of whoever controls it then (457). Bound to that unit: if it became a new object the trigger is dropped (124); made
+    # during this turn's Ending Phase it is not generated (359.3.e.16). The official Spiritforged FAQ: taken where no
+    # other enemy unit is, a non-combat showdown, not a conquer at once (190.3.a.2, 190.3.c)
+    taken = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "unit"}
+    return {"program_effects": [
+                {"op": "gain_control", "effect_id": "gc", "player": "$controller", "duration": "until_ended",
+                 "control_id": "hostile-takeover",
+                 "target": {**taken, "controller_relation": "enemy", "location": "battlefield"}},
+                {"op": "ready", "effect_id": "rd", "target": dict(taken), "depends_on": "gc",
+                 "dependency_mode": "unless_ignored"},
+                {"op": "create_delayed_trigger", "effect_id": "dt", "target": dict(taken), "depends_on": "gc",
+                 "dependency_mode": "unless_ignored",
+                 "delayed": {"delayed_id": "hostile-takeover", "controller": "$controller", "source_object": "$source_object",
+                             "target_object": "$own_target",
+                             "waits_for": {"kind": "turn", "moment": "end_of_turn", "turn": "this_turn"},
+                             "effect_program_id": "hostile-takeover-end", "optional_at_finalize": False,
+                             "controller_order": 0},
+                 "effects": [{"op": "lose_control", "effect_id": "lc", "control_id": "hostile-takeover",
+                              "object_id": {"object_ref": "trigger_event_object"}},
+                             {"op": "recall", "effect_id": "rc", "object_id": {"object_ref": "trigger_event_object"}}]}],
+            "ast": {"node": "instruction", "op": "sequence",
+                    "params": {"take_control": "an enemy unit at a battlefield", "then": ["ready it"],
+                               "at_end_of_turn": ["lose control of it", "recall it"]}}}
+
+
+def _lower_akshan_take_gear():
+    # set 2 package A3 (Akshan - Mischievous: "move an enemy gear to your base. You control it until I leave the board.
+    # If it's an Equipment, attach it to me."): one enemy gear chosen as the trigger is finalized (Core 355.5), moved to
+    # the trigger controller's base; controlled while the source stays on the board (a delayed
+    # passive, 359.3.e.16, 479.2.a); an Equipment attached to the source. The source gone before it resolves: no control
+    # (its duration ended before it was generated)
+    gear = {"decision_ref": "t", "chosen_zone_class": "board", "kind": "gear"}
+    return {"program_effects": [
+                {"op": "move_board_object", "effect_id": "mv", "target": {**gear, "controller_relation": "enemy"},
+                 "destination": {"kind": "base", "player": "$controller"}},
+                {"op": "gain_control", "effect_id": "gc", "player": "$controller", "duration": "while_source_on_board",
+                 "control_id": "akshan", "target": dict(gear), "depends_on": "mv", "dependency_mode": "unless_ignored"},
+                {"op": "attach", "effect_id": "at", "object_target": dict(gear), "to": {"object_ref": "program_source"},
+                 "predicate": {"kind": "linked_object_has_tag", "effect_id": "gc", "tag": "Equipment"},
+                 "depends_on": "gc", "dependency_mode": "unless_ignored"}],
+            "ast": {"node": "instruction", "op": "sequence",
+                    "params": {"move": "an enemy gear to your base",
+                               "control": "until I leave the board", "if_equipment": "attach it to me"}}}
+
+
 def _lower_decree(params):
     # 2026-10-08 package 10 (Imperial Decree): a delayed trigger that waits, for the rest of this turn, for ANY unit to take
     # damage - every time - and kills that unit (effect_ir create_delayed_trigger: event wait, repeats, until end_of_turn)
@@ -1701,6 +1750,10 @@ LOWERINGS = {
     "each_equipment_attached_to_me_gives_double_its_base_might_bonus": lambda params: {
         "object_fields": {"equipment_bonus_multiplier": 2},
         "ast": {"node": "passive", "kind": "equipment_bonus_multiplier", "params": {"times": 2}}},
+    # set 2 package A3 (Svellsongur): effect_ir.copied_text_bundle builds the copy as it is attached (Core 479.1.d)
+    "as_this_is_attached_copy_that_units_text_to_its_effect_text": lambda params: {
+        "object_fields": {"effect_text_copy": "top_most_printed_text"},
+        "ast": {"node": "passive", "kind": "effect_text_copy", "params": {"of": "top_most_printed_text"}}},
     # set 2 package A2 (Jax - Unmatched): every Equipment of the controller's, in any zone, has Quick-Draw
     "your_equipment_everywhere_have_quick_draw": lambda params: {
         "object_fields": {"static_auras": [{"aura_id": "everywhere-quick_draw", "keyword": "quick_draw",
@@ -2167,6 +2220,20 @@ LOWERINGS = {
              "depends_on": "gc", "dependency_mode": "unless_ignored"}],
         "ast": {"node": "instruction", "op": "sequence",
                 "params": {"choose": "an enemy unit at a battlefield", "then": ["take control of it", "recall it"]}}},
+    # set 2 package A3 (Hostile Takeover): a control effect until the delayed trigger it makes ends it at the end of this
+    # turn (Core 479.2.a, 359.3.e.16); taken at a Battlefield it applies Contested there (190.3.a.2)
+    "take_control_of_an_enemy_unit_at_a_battlefield_ready_it_lose_control_of_that_unit_and_recall_it_at_end_of_turn":
+        lambda params: _lower_hostile_takeover(),
+    # set 2 package A3 (Akshan - Mischievous): the gear moved to its controller's base, controlled while the source stays
+    # on the board (359.3.e.16), attached to it if it is an Equipment
+    "move_an_enemy_gear_to_your_base_you_control_it_until_i_leave_the_board_if_its_an_equipment_attach_it_to_me":
+        lambda params: _lower_akshan_take_gear(),
+    # set 2 package A3 (Akshan - Mischievous): two Power of one printed Domain as an optional additional cost
+    "you_may_pay_two_runes_as_an_additional_cost_to_play_me": lambda params: {
+        "object_fields": {"optional_additional_costs": [
+            {"cost_offer_id": "$clause_id", "payment": {"kind": "power", "domain": params["domain"], "amount": 2}}]},
+        "ast": {"node": "passive", "kind": "optional_additional_cost",
+                "params": {"payment": "power", "domain": params["domain"], "amount": 2}}},
     # 2026-10-13 package 11 (Mageseeker Warden)
     "while_im_at_a_battlefield_opponents_can_only_play_units_to_their_base": lambda params: {
         "passive": {"object_fields": {"restricts_opponent_units_to_base": True}},

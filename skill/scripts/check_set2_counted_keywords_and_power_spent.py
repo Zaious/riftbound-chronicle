@@ -8,6 +8,11 @@ whose value is a count read as the board is now (Core 365.1, 807.2, 479.4.b).
   A1 two enemies here     the card at bf1 with two enemy Units there has Assault 2
   A2 none                 no enemy Unit there: no Assault; in its Base: none
   A3 friendly units       friendly Units there are not counted
+  A4 base                 set 2 A3: "here" is its own Location (Core 359.3.f.1), a Base too - an enemy Unit in the Base it is
+                          in counts (Assault 1); with no enemy Unit there it has no Assault (the reading of 0: no instance,
+                          807.3 - no source; the alternative "Assault 0" is open)
+  A5 live                 one enemy leaves the Battlefield: the value drops at once (a passive, 364.2)
+  A6 attacker             +2 Might while it is an attacker with two enemies there (807.1.c); not an attacker, none
 
 "If you've spent at least [A][A] this turn, I have +2 [M] and [Ganking]." (Sivir - Mercenary) - a condition on the
 controller's per-turn Power ledger, which every Power payment writes.
@@ -91,6 +96,23 @@ def main() -> int:
         got = characteristics(state, "wm")["keywords"].get("assault")
         if got != want:
             fail(label, f"Assault {got}, expected {want}")
+    # set 2 A3: "here" is its own Location, a Base too (Core 359.3.f.1, 198.1) - an enemy Unit in the Base it is in counts
+    in_base = warmonger_board(0, where="base")
+    in_base["objects"]["eb"] = unit("p2")
+    in_base["players"]["p1"]["zones"]["base"].append("eb")
+    if characteristics(in_base, "wm")["keywords"].get("assault") != 1:
+        fail("A4 base", f"Assault {characteristics(in_base, 'wm')['keywords'].get('assault')} with an enemy Unit in its Base")
+    # A5 live: a passive read as the board is now (364.2) - one enemy leaves bf1, the value drops at once
+    live = warmonger_board(2)
+    live["battlefields"]["bf1"]["objects"].remove("e1")
+    live["players"]["p2"]["zones"]["trash"].append("e1")
+    if characteristics(live, "wm")["keywords"].get("assault") != 1:
+        fail("A5 live", f"Assault {characteristics(live, 'wm')['keywords'].get('assault')} after one enemy left")
+    # A6 attacker: +X Might while it is an attacker (807.1.c) - 3 base, two enemies there: 5; not an attacker: 3
+    attacking = warmonger_board(2)
+    attacking["objects"]["wm"]["combat_designation"] = {"combat_id": "c1", "role": "attacker"}
+    if effective_might(attacking, "wm") != 5 or effective_might(warmonger_board(2), "wm") != 3:
+        fail("A6 attacker", f"Might {effective_might(attacking, 'wm')} attacking, {effective_might(warmonger_board(2), 'wm')} not")
     for label, state, might, ganking in (("S1", sivir_board(1), 4, False), ("S2", sivir_board(2), 6, True),
                                          ("S3", sivir_board(2, turn="turn-earlier"), 4, False)):
         problems = validate_state(state)
@@ -141,7 +163,7 @@ def main() -> int:
         for e in errors:
             print("  - " + e)
         return 1
-    print("OK: Assault equal to the enemy Units here, read as the board is now (none in a Base, friends not counted); "
+    print("OK: Assault equal to the enemy Units here, read as the board is now (at its own Location, a Base too; live; +X Might as an attacker; friends not counted); "
           "+2 Might and Ganking once two Power were spent this turn, off the ledger every Power payment writes")
     return 0
 

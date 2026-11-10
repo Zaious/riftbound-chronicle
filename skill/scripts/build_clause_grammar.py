@@ -1391,6 +1391,19 @@ LITERAL = [
      ["Each Equipment attached to me gives double its base Might bonus."],
      ["each equipment attached to me gives its base might bonus", "each equipment you control gives double its base "
       "might bonus", "each gear attached to me gives double its base might bonus"]),
+    # set 2 package A3 (Svellsongur): its Effect Text a copy of its Top-Most card's printed text while attached
+    ("as_this_is_attached_copy_that_units_text_to_its_effect_text",
+     r"as this is attached to a unit, copy that unit's text to this equipment's effect text for as long as this is "
+     r"attached to it",
+     ["Core 435.1", "Core 479.1.b", "Core 479.1.d", "Core 479.3.c"], "passive", ["layer_engine"],
+     ("The card's own text: while it is attached, its Effect Text is a copy of its Top-Most card's printed text (copyable "
+      "traits only - nothing appended or granted, not Might), appended back to that card. A copy of another object, of "
+      "traits other than text, or one that outlasts the attachment is a different clause."),
+     ["As this is attached to a unit, copy that unit's text to this Equipment's effect text for as long as this is "
+      "attached to it."],
+     ["as this is attached to a unit, copy that unit's might to this equipment", "copy that unit's text to this "
+      "equipment's effect text", "as this is attached to a unit, copy that unit's text to this equipment's effect text "
+      "this turn"]),
     # set 2 package A2 (Jax - Unmatched): Quick-Draw given to the controller's Equipment wherever each is
     ("your_equipment_everywhere_have_quick_draw",
      r"your equipment everywhere have \[quick-draw\]",
@@ -1746,6 +1759,16 @@ LITERAL = [
      ["You may pay :rb_energy_1::rb_rune_fury: as an additional cost to play me."],
      ["you may pay :rb_energy_1: as an additional cost to play me",
       "you may pay :rb_energy_1::rb_rune_fury: as an additional cost to play another unit"]),
+    # set 2 package A3 (Akshan - Mischievous: [Body][Body]): two Power of one printed Domain, the same optional offer
+    ("you_may_pay_two_runes_as_an_additional_cost_to_play_me",
+     r"you may pay \[rune:(?P<domain>[a-z]+)\]\[rune:(?P=domain)\] as an additional cost to play me",
+     ["Core 356.2.b", "Core 356.2.b.1"], "passive", ["card_self_optional_cost"],
+     ("The card offers two Power of the printed Domain together as one optional additional cost for its own play; "
+      "paying it is the controller's choice as the card is played (355.1.a)."),
+     ["You may pay [rune:body][rune:body] as an additional cost to play me."],
+     ["you may pay [rune:body] as an additional cost to play me",
+      "you may pay [rune:body][rune:calm] as an additional cost to play me",
+      "you may pay [rune:body][rune:body] as an additional cost to play another unit"]),
     ("you_may_pay_a_rune_as_an_additional_cost_to_play_me",
      r"you may pay \[rune:(?P<domain>[a-z]+)\] as an additional cost to play me",
      ["Core 356.2.b", "Core 356.2.b.1"], "passive", ["card_self_optional_cost"],
@@ -1910,6 +1933,34 @@ LITERAL = [
      ["Choose an enemy unit at a battlefield. Take control of it and recall it."],
      ["choose an enemy unit. take control of it and recall it", "choose an enemy unit at a battlefield. take control of it",
       "choose an enemy unit at a battlefield. recall it"]),
+    # set 2 package A3 (Hostile Takeover): a control effect ended by the delayed trigger made with it, at the end of this
+    # turn; the unit then recalled to its controller's base
+    ("take_control_of_an_enemy_unit_at_a_battlefield_ready_it_lose_control_of_that_unit_and_recall_it_at_end_of_turn",
+     r"take control of an enemy unit at a battlefield\. ready it\. lose control of that unit and recall it at end of turn",
+     ["Core 189", "Core 190.3.a.2", "Core 355.5", "Core 359.3.e.16", "Core 457", "Core 479.2.a"], "instruction",
+     ["gain_control", "ready", "create_delayed_trigger", "lose_control", "recall", "targeting"],
+     "One enemy Unit at a Battlefield, chosen as the spell is played: its controller becomes the spell's controller "
+     "until the end of this turn (a control effect; Contested applied there when the new controller does not control "
+     "it), and it is readied. At the end of the turn a delayed trigger bound to that unit ends the control effect and "
+     "recalls it to the base of whoever controls it then; a unit that left the board meanwhile is a new object, and the "
+     "trigger is dropped. Made during this turn's Ending Phase, it is not generated.",
+     ["Take control of an enemy unit at a battlefield. Ready it. Lose control of that unit and recall it at end of turn."],
+     ["take control of an enemy unit at a battlefield. ready it",
+      "take control of an enemy unit. ready it. lose control of that unit and recall it at end of turn",
+      "take control of an enemy unit at a battlefield. lose control of that unit and recall it at end of turn"]),
+    # set 2 package A3 (Akshan - Mischievous): the gear moved to the controller's base and controlled while the source
+    # stays on the board; an Equipment attached to the source
+    ("move_an_enemy_gear_to_your_base_you_control_it_until_i_leave_the_board_if_its_an_equipment_attach_it_to_me",
+     r"move an enemy gear to your base\. you control it until i leave the board\. if it's an equipment, attach it to me",
+     ["Core 355.5", "Core 359.3.e.16", "Core 435", "Core 479.2.a", "Core 719.5"], "instruction",
+     ["move_board_object", "gain_control", "attach", "targeting"],
+     "One enemy gear on the board, chosen as the trigger is finalized, moved to the base of the trigger's controller; the trigger's "
+     "controller controls it while the source stays on the board (when the source leaves, control reverts), and if it "
+     "is an Equipment it is attached to the source. The source gone before this resolves: no control is gained.",
+     ["Move an enemy gear to your base. You control it until I leave the board. If it's an Equipment, attach it to me."],
+     ["move an enemy gear to your base. you control it until i leave the board",
+      "move an enemy unit to your base. you control it until i leave the board. if it's an equipment, attach it to me",
+      "move a friendly gear to your base. you control it until i leave the board. if it's an equipment, attach it to me"]),
     # 2026-10-13 package 11 (Reckoner's Arena, GPT ruling 15): Core 383.4.g.1's own example
     ("activate_the_conquer_effects_of_units_here",
      r"activate the conquer effects of units here",

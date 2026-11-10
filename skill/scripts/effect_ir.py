@@ -183,7 +183,7 @@ CONDITIONAL_KEYWORD_CONDITIONS = {"is_buffed", "might_at_least", "cards_discarde
                                   "power_spent_this_turn_at_least"}
 # set 2 (2026-10-29, Ancient Warmonger: "I have [Assault] equal to the number of enemy units here."): a printed summed
 # keyword whose value is a count read as the board is now (Core 365.1, 807.2; a passive, no snapshot, 479.4.b) - the
-# enemy Units at the Battlefield the card is at, none in a Base. A value of 0 grants no instance
+# enemy Units at the card's own Location, a Battlefield or (set 2 A3) the Base it is in. A value of 0 grants no instance
 KEYWORD_PER_KINDS = {"enemy_units_at_source_battlefield"}
 # set 2 (2026-10-29, Rek'Sai - Breacher: "Friendly units played from anywhere other than a player's hand have
 # [Accelerate]."): a permanent's grant to the Units its side plays from a zone other than a hand, while the card is being
@@ -425,7 +425,12 @@ CONDITIONAL_TRIGGER_KINDS = {"caused_kill",
                              # then recycle it. Do one of the following based on its domain:"): the Reflexive Trigger
                              # of one Domain goes on the Chain when the rune the named reveal showed was of it (Core
                              # 388.1.b), read off what the reveal noted - recycling the rune does not change it
-                             "revealed_domain"}
+                             "revealed_domain",
+                             # set 2 A3 (Rell - Magnetic: "you may play an Equipment ... If you do, then do this: Attach it
+                             # to me."): "If you do" (Core 388.2, 388.3) - the Reflexive Trigger is added only when the
+                             # named instruction was performed; for now a limited_play, whose card is handed to the trigger
+                             # as "it" in the identity its play gives it on the board (resolution_bridge)
+                             "performed"}
 # ADR-0012 §5: a Legend lives in the Legend Zone, which is not a Location.
 OBJECT_KINDS = {"unit", "gear", "spell", "rune", "legend"}
 SUPPORTED_OPS = {
@@ -499,6 +504,9 @@ SUPPORTED_OPS = {
     # 2026-10-13 package 11 (Possession, GPT ruling 12): "Take control of it" - a permanent's controller changes, its owner
     # does not (Core 189, 191.4); nothing else about it changes
     "gain_control",
+    # set 2 package A3 (Hostile Takeover: "Lose control of that unit"): a control effect with a duration ends - the
+    # controller is again whoever controls it without that effect (Core 479.2.a: Controller is a layer-2 trait)
+    "lose_control",
     # 2026-10-13 package 11 (Reckoner's Arena, GPT ruling 15): "activate the conquer effects of units here" (Core
     # 383.4.g.1) - each unit's conquer effect checked as if it had conquered, put on the Chain if the rest holds
     "activate_conquer_effects",
@@ -1104,6 +1112,7 @@ OP_RULES = {
     "recycle_when_leaving_chain": ["Core 391.3.a", "Core 417", "Core 124"],
     "take_additional_turn": ["Core 735", "Core 736", "Core 737", "Core 738"],
     "gain_control": ["Core 188", "Core 189", "Core 191.4", "Core 191.5.b"],
+    "lose_control": ["Core 189", "Core 479.2.a", "Core 359.3.e.16"],
     "activate_conquer_effects": ["Core 383.4.g", "Core 383.4.g.1", "Core 383.4.c", "Core 383.2.a.1"],
     "banish_one_looked": ["Core 425.1", "Core 428.1", "Core 124"],
     "gain_control_of_spell": ["Core 191.3", "Core 191.5.b", "Core 359.3.f.4"],
@@ -1179,7 +1188,9 @@ LIMITED_PLAY_ZONES = {"trash"}
 # (Core 355.10.a); it is chosen as the effect resolves, and a player cannot be made to take a card of a named
 # type or quality from a hidden zone (128.6), so the choice is of at most one card
 LIMITED_PLAY_CHOICE_ZONES = {"hand"}
-LIMITED_PLAY_CARD_FILTER = {"kind", "hidden"}
+# set 2 A3 (Rell - Magnetic: "play an Equipment with Energy cost no more than [2]"): with_tag (the card's tags, Core 133.8)
+# and printed_energy_at_most (its printed Energy cost, read in the hand - Core 356.1)
+LIMITED_PLAY_CARD_FILTER = {"kind", "hidden", "with_tag", "printed_energy_at_most"}
 LIMITED_PLAY_KINDS = {"unit", "gear", "spell"}
 LIMITED_PLAY_RECORD_FIELDS = {"granted_by", "program_id", "effect_id", "source_zone", "zone_owner", "zone_index",
                               "identity_before", "controller_before", "cost_basis"}
@@ -1419,6 +1430,12 @@ def validate_state_uncached(state: Any) -> list[str]:
                 not isinstance(k, str) or not k or not isinstance(v, int) or isinstance(v, bool) or v < 0
                 for k, v in enemy_choices.items())):
             errors.append(f"players.{player_id}.enemy_choices_this_turn must map turn ids to non-negative counts")
+        # set 2 A3: the enemy targets a spell's Reflexive Trigger chose, kept apart (record_enemy_choices)
+        unresolved_choices = player.get("enemy_choices_unresolved_this_turn")
+        if unresolved_choices is not None and (not isinstance(unresolved_choices, dict) or any(
+                not isinstance(k, str) or not k or not isinstance(v, int) or isinstance(v, bool) or v < 0
+                for k, v in unresolved_choices.items())):
+            errors.append(f"players.{player_id}.enemy_choices_unresolved_this_turn must map turn ids to non-negative counts")
         # set 2 package A2 (Needlessly Large Yordle): per turn, the points gained by Holding (Core 471.2, 473.1)
         held = player.get("hold_points_this_turn")
         if held is not None and (not isinstance(held, dict) or any(
@@ -2491,6 +2508,17 @@ def validate_state_uncached(state: Any) -> list[str]:
         recall = obj.get("pending_recall")
         if recall is not None and (not isinstance(recall, dict) or set(recall) - {"reason", "battlefield"} or recall.get("reason") != "detached_gear_at_battlefield" or recall.get("battlefield") not in battlefields):
             errors.append(f"objects.{object_id}.pending_recall must be {{reason: detached_gear_at_battlefield, battlefield}} (Core 436.4.a)")
+        # set 2 package A3: control effects with a duration (Core 479.2.a) - the newest one's player controls it, and
+        # controller_beneath is who controls it without them; the two come and go together
+        control_effects = obj.get("control_effects")
+        if control_effects is not None or "controller_beneath" in obj:
+            if not isinstance(control_effects, list) or not control_effects \
+                    or obj.get("controller_beneath") not in players \
+                    or any(not isinstance(e, dict) or e.get("player") not in players
+                           or e.get("duration") not in CONTROL_DURATIONS | {"permanent"} for e in control_effects) \
+                    or obj.get("controller") != control_effects[-1].get("player"):
+                errors.append(f"objects.{object_id}.control_effects is a non-empty list of {{control_id, player, duration}} "
+                              f"beside controller_beneath, the newest one's player its controller (Core 479.2.a)")
         if not isinstance(obj.get("is_token", False), bool):
             errors.append(f"objects.{object_id}.is_token must be boolean when supplied")
         # 2026-09-27 (package 6): the tags the object has (Core 133.8), when they were observed -
@@ -2504,6 +2532,27 @@ def validate_state_uncached(state: Any) -> list[str]:
         effect_text = obj.get("effect_text")
         if effect_text is not None:
             errors.extend(f"objects.{object_id}.effect_text{e}" for e in effect_text_errors(effect_text))
+        # set 2 package A3 (Svellsongur): an Effect Text that is a copy of the Top-Most card's printed text - in place of
+        # one of its own
+        if "copy_lifecycle" in obj and ("effect_text_copy" not in obj or not isinstance(obj["copy_lifecycle"], int)
+                                        or isinstance(obj["copy_lifecycle"], bool) or obj["copy_lifecycle"] < 1):
+            errors.append(f"objects.{object_id}.copy_lifecycle counts a copying card's attaches: a positive integer, on a "
+                          f"card with effect_text_copy")
+        if "effect_text_copy" in obj and (obj["effect_text_copy"] != EFFECT_TEXT_COPY or effect_text is not None):
+            errors.append(f"objects.{object_id}.effect_text_copy must be {EFFECT_TEXT_COPY!r}, on a card with no "
+                          f"effect_text of its own (Core 479.1.d)")
+        # ... and on its Top-Most card, what each such copy wrote beside the printed text: {attached card: {rows, keys,
+        # values}}, the attached card attached to this one
+        copied_text = obj.get("copied_text")
+        if copied_text is not None and (
+                not isinstance(copied_text, dict) or not copied_text
+                or any(not isinstance(r, dict) or set(r) != {"rows", "keys", "values"}
+                       or set(r["rows"]) - set(COPIED_ROW_FIELDS) or set(r["keys"]) - set(COPIED_KEYED_FIELDS)
+                       or set(r["values"]) - set(COPIED_ADDITIVE_FIELDS)
+                       or ((state.get("objects") or {}).get(a) or {}).get("attached_to") != object_id
+                       for a, r in copied_text.items())):
+            errors.append(f"objects.{object_id}.copied_text must map each attached copying card to {{rows, keys, values}} "
+                          f"of the copied fields (Core 479.3.c)")
         seen = obj.get("banish_when_seen")
         if seen is not None and (not isinstance(seen, dict) or set(seen) != {"play_for_power_any"}
                                  or not isinstance(seen["play_for_power_any"], int) or isinstance(seen["play_for_power_any"], bool)
@@ -2803,17 +2852,19 @@ def gold_add_bonus(state: dict[str, Any], source_object: str | None) -> dict[str
         return None
     controller, energy, sources = obj.get("controller"), 0, []
     for object_id, other in sorted((state.get("objects") or {}).items()):
-        bonus = other.get("gold_add_bonus")
+        # set 2 package A3 (Svellsongur): a copy of the text on the card is a second instance, adding its own Energy
+        bonuses = ([other["gold_add_bonus"]] if other.get("gold_add_bonus") else []) + copied_values(other, "gold_add_bonus")
         # where its abilities work: the board, or a Legend in its Legend Zone (Core 107.4.d, 365.1)
-        if not bonus or other.get("controller") != controller or not source_active(state, object_id):
+        if not bonuses or other.get("controller") != controller or not source_active(state, object_id):
             continue
-        try:
-            holds = evaluate_condition(state, bonus["condition"], controller=controller, object_id=object_id)
-        except ConditionUnsupported:
-            holds = False
-        if holds:
-            energy += int(bonus["energy"])
-            sources.append(object_id)
+        for bonus in bonuses:
+            try:
+                holds = evaluate_condition(state, bonus["condition"], controller=controller, object_id=object_id)
+            except ConditionUnsupported:
+                holds = False
+            if holds:
+                energy += int(bonus["energy"])
+                sources.append(object_id)
     return {"energy": energy, "sources": sources} if energy else None
 
 
@@ -3071,8 +3122,13 @@ def _limited_play_errors(effect: dict[str, Any]) -> list[str]:
                           f"{sorted(LIMITED_PLAY_CHOICE_ZONES)}, private to the chooser")
         card_filter = effect.get("card_filter", {})
         if (not isinstance(card_filter, dict) or set(card_filter) - LIMITED_PLAY_CARD_FILTER
-                or card_filter.get("kind", "unit") not in LIMITED_PLAY_KINDS or card_filter.get("hidden", True) is not True):
-            errors.append(f"card_filter is over {sorted(LIMITED_PLAY_CARD_FILTER)}: a kind, and hidden (the card has [Hidden])")
+                or card_filter.get("kind", "unit") not in LIMITED_PLAY_KINDS or card_filter.get("hidden", True) is not True
+                or ("with_tag" in card_filter and (not isinstance(card_filter["with_tag"], str) or not card_filter["with_tag"]))
+                or ("printed_energy_at_most" in card_filter and (not isinstance(card_filter["printed_energy_at_most"], int)
+                                                                 or isinstance(card_filter["printed_energy_at_most"], bool)
+                                                                 or card_filter["printed_energy_at_most"] < 0))):
+            errors.append(f"card_filter is over {sorted(LIMITED_PLAY_CARD_FILTER)}: a kind, hidden (the card has [Hidden]), "
+                          f"with_tag (a non-empty tag) and printed_energy_at_most (a non-negative integer)")
         if not isinstance(effect.get("decision_ref"), str) or not effect.get("decision_ref"):
             errors.append("a choice names its decision_ref")
         return errors
@@ -3194,6 +3250,11 @@ def validate_program(program: Any) -> list[str]:
                                  and e.get("effect_id") == cond.get("effect_id")), None) != "reveal"):
                     errors.append(f"conditional_triggers[{i}].condition revealed_domain names a Domain and a reveal of "
                                   f"this program (Core 388.1.b)")
+                if isinstance(cond, dict) and cond.get("kind") == "performed" and next(
+                        (e.get("op") for e in program.get("effects") or [] if isinstance(e, dict)
+                         and e.get("effect_id") == cond.get("effect_id")), None) != "limited_play":
+                    errors.append(f"conditional_triggers[{i}].condition performed names a limited_play of this program "
+                                  f"(set 2 A3: the only reviewed 'If you do' after a play)")
                 if not isinstance(cond, dict) or cond.get("kind") not in CONDITIONAL_TRIGGER_KINDS or set(cond) != keys:
                     errors.append(f"conditional_triggers[{i}].condition must be {{kind, effect_id}} with kind in "
                                   f"{sorted(CONDITIONAL_TRIGGER_KINDS)}")
@@ -3355,6 +3416,16 @@ def validate_program(program: Any) -> list[str]:
                 errors.append(f"effects[{index}].activate_conquer_effects names the Battlefield by location_ref (Core 383.4.g.1)")
             if effect.get("op") == "gain_control" and not isinstance(effect.get("player"), str):
                 errors.append(f"effects[{index}].gain_control names the player who takes control (Core 189)")
+            # set 2 package A3: a control effect with a duration names it and its id (Hostile Takeover: until a later
+            # instruction ends it; Akshan - Mischievous: while the program's source stays on the board)
+            if effect.get("op") == "gain_control" and ("duration" in effect or "control_id" in effect) and (
+                    effect.get("duration") not in CONTROL_DURATIONS or not isinstance(effect.get("control_id"), str)
+                    or not effect.get("control_id")):
+                errors.append(f"effects[{index}].gain_control with a duration names it ({sorted(CONTROL_DURATIONS)}) "
+                              f"and a non-empty control_id (Core 479.2.a)")
+            if effect.get("op") == "lose_control" and (not isinstance(effect.get("control_id"), str)
+                                                       or not effect.get("control_id")):
+                errors.append(f"effects[{index}].lose_control names the control effect it ends (control_id)")
             if effect.get("op") == "take_additional_turn":
                 if set(effect) - {"op", "effect_id", "player", "depends_on", "dependency_mode", "_execution"} \
                         or not isinstance(effect.get("player"), str):
@@ -3788,6 +3859,10 @@ def validate_program(program: Any) -> list[str]:
                                       f"from {{decision_ref}}")
                 # set 2 package A2 (Edge of Night): an attach of the program's own source ("attach it", "it" the card)
                 self_attach = op_name == "attach" and effect.get("object_id") == {"object_ref": "program_source"}
+                # set 2 A3 (Rell - Magnetic: "If you do, then do this: Attach it to me."): the card the instruction before
+                # the Reflexive Trigger played ("it", the trigger's referent) attached to the program's own source ("me")
+                event_attach = op_name == "attach" and effect.get("object_id") == {"object_ref": "trigger_event_object"} \
+                    and effect.get("to") == {"object_ref": "program_source"}
                 # set 2 package A2 (Jax - Grandmaster At Arms): the card attached is itself chosen (object_target)
                 chosen_attach = op_name == "attach" and isinstance(effect.get("object_target"), dict) and "object_id" not in effect
                 if chosen_attach:
@@ -3805,7 +3880,9 @@ def validate_program(program: Any) -> list[str]:
                                   f"pick {{decision_ref}}")
                 if "from" in effect and not chosen_detach and not from_choice:
                     errors.append(f"effects[{index}].from belongs to a detach of a chosen card")
-                if not linked_subject and not self_attach and not chosen_attach and not chosen_detach and not from_choice and (not isinstance(effect.get("object_id"), str) or not effect.get("object_id")):
+                if event_attach and set(effect) - {"op", "effect_id", "object_id", "to", "depends_on", "dependency_mode", "_execution"}:
+                    errors.append(f"effects[{index}].attach of the trigger's referent to its source takes only object_id and to")
+                if not linked_subject and not self_attach and not event_attach and not chosen_attach and not chosen_detach and not from_choice and (not isinstance(effect.get("object_id"), str) or not effect.get("object_id")):
                     errors.append(f"effects[{index}].{op_name} needs the object it links or unlinks")
                 if op_name == "attach" and isinstance(effect.get("pick"), dict):
                     # set 2 package A2 (Azir - Ascendant: "attach one of its Equipment to me"): one Equipment attached to
@@ -3815,11 +3892,15 @@ def validate_program(program: Any) -> list[str]:
                             or "object_id" in effect or "target" in effect:
                         errors.append(f"effects[{index}].attach of one of a chosen unit's Equipment names from {{decision_ref}}, "
                                       f"pick {{decision_ref}} and to {{object_ref: program_source}}")
-                elif op_name == "attach":
+                elif op_name == "attach" and not event_attach:
                     literal = isinstance(effect.get("to"), str) and bool(effect.get("to"))
                     chosen = isinstance(effect.get("target"), dict)
+                    # set 2 A3 (Akshan - Mischievous: "If it's an Equipment, attach it to me."): the card attached is the
+                    # chosen one (object_target) and its Top-Most card the program's own source, typed as "me" (Core
+                    # 053.1) - resolved as the instruction executes, ignored when the source has left (359.3.e.6)
+                    to_me = chosen_attach and effect.get("to") == {"object_ref": "program_source"} and not chosen
                     # ADR-0017 §3: Equip's host is a Target chosen as the ability is played (Core 818.1.b.1)
-                    if literal == chosen:
+                    if literal == chosen and not to_me:
                         errors.append(f"effects[{index}].attach names its Top-Most card once: `to` (an object) or "
                                       f"`target` (a chosen one) (Core 435.1.b, 818.1.b.1)")
                 if op_name == "detach" and "to" in effect:
@@ -4366,6 +4447,10 @@ TRIGGER_EVENT_OBJECT = "trigger_event_object"
 # 2026-10-08 (package 10, Mistfall: "When you buff a friendly unit, ... ready it"): `ready` adopted, its fixture in engine
 # check_ready_buff_watch.py (T1-T2)
 TRIGGER_EVENT_OBJECT_OPS = {"modify_might", "ready",
+                            # set 2 package A3 (Hostile Takeover: "Lose control of that unit and recall it at end of
+                            # turn"): the unit the delayed trigger is bound to; its fixture is engine
+                            # check_hostile_takeover.py
+                            "lose_control", "recall",
                             # 2026-10-08 package 10 (Noxian Guillotine, Imperial Decree): "kill it" - the damaged unit
                             "kill",
                             # 2026-10-12 package 11 (Dragon's Rage: "They deal damage ... to each other"): the moved
@@ -4373,7 +4458,10 @@ TRIGGER_EVENT_OBJECT_OPS = {"modify_might", "ready",
                             "mutual_damage_current_might",
                             # set 2 (2026-10-29, Rally the Troops: "When a friendly unit is played this turn, buff it."):
                             # the played unit; its fixture is engine check_set2_rally.py
-                            "buff"}
+                            "buff",
+                            # set 2 A3 (Rell - Magnetic: "Attach it to me."): the Equipment the play before the Reflexive
+                            # Trigger put on the board; its fixture is engine check_reflexive_after_play.py
+                            "attach"}
 OBJECT_REF_NO_TRIGGER_EVENT = "object_ref_no_trigger_event"
 OBJECT_REF_REFERENT_ABSENT = "object_ref_referent_absent"
 OBJECT_REF_REFERENT_IDENTITY_CHANGED = "object_ref_referent_identity_changed"
@@ -5327,7 +5415,203 @@ def drop_effect_text(state: dict[str, Any], attached_id: str, host_id: str) -> l
     replaced = [r["replacement_id"] for r in state.get("replacement_effects") or [] if str(r.get("replacement_id")).startswith(prefix)]
     if replaced:
         state["replacement_effects"] = [r for r in state["replacement_effects"] if r["replacement_id"] not in set(replaced)]
+    # set 2 package A3 (Svellsongur): and the rows, abilities and values its copy of the text wrote on the Top-Most card
+    _erase_copied_text(state, attached_id, host_id)
     return sorted(gone | set(replaced))
+
+
+# set 2 package A3 (Svellsongur: "As this is attached to a unit, copy that unit's text to this Equipment's effect text for
+# as long as this is attached to it."): an attached card whose Effect Text is a copy of its Top-Most card's printed text
+# (Core 479.1.b, 479.1.b.1, 479.1.d) - copyable traits only: what is printed, never what is appended or granted, and not
+# Might (the card copies text). The copy is appended back to the Top-Most card (479.3.c): each printed ability there twice,
+# each working on its own (official Spiritforged FAQ, 2026-01-14: a copied ability is a new instance).
+EFFECT_TEXT_COPY = "top_most_printed_text"
+# the trigger fields and the keywords with their values: appended as an Effect Text bundle (ability_append, keyword_grant)
+COPIED_TEXT_FIELDS = set(APPENDABLE_TRIGGER_FIELDS) | {"keywords", "assault_value", "shield_value", "deflect_value"}
+# printed board text the engine reads as rows of the card itself: the second instance is the same rows written beside
+# the printed ones (each row's id, where it has one, made its own), read by every reader as the card's; recorded in
+# `copied_text` and taken out again when the link ends (drop_effect_text)
+COPIED_ROW_FIELDS = {"conditional_keywords": "modifier_id", "conditional_might": "modifier_id",
+                     "dynamic_keywords": "modifier_id", "dynamic_might": "modifier_id", "static_auras": "aura_id",
+                     "granted_cost_discounts": "discount_id", "granted_cost_increases": "increase_id",
+                     "granted_entry_states": "replacement_id", "played_unit_keyword_grants": "grant_id",
+                     "granted_play_permissions": None, "printed_might_auras": None, "printed_damage_modifiers": None,
+                     "move_restrictions": None, "printed_move_restrictions": None}
+# activated abilities by id, and their own activation conditions: each copied ability its own id, cost and use
+COPIED_KEYED_FIELDS = ("activated_abilities", "ability_conditions")
+# printed board text whose second instance adds to the first: read through copied_values beside the printed value
+COPIED_ADDITIVE_FIELDS = ("deathknell_extra_times", "gold_add_bonus", "equipment_each_give")
+# printed board text a second instance of which changes nothing the rules read - each with its reason (GPT's A3 review: a
+# field is here only for what it says, never for being a bool or a single value):
+#   any_number_of_buffs                    "I can have any number of buffs" (Lee Sin - Ascetic): lifts the one-Buff limit
+#                                          (Core 702.3); lifted twice it is lifted - nothing counts the permission
+#   deals_no_combat_damage                 "I don't deal combat damage" (Ezreal - Dashing): a prohibition; a forbidding
+#                                          effect supersedes a permitting one (054.1), and two forbid the same once
+#   unchoosable_by_enemies                 can't be chosen by enemy spells and abilities: a prohibition, as above (054.1)
+#   prevents_opponent_hidden_reveals_here  opponents' hidden cards can't be revealed here (Noxus Saboteur): as above
+#   prevents_ready_enemy_units_gear        enemy units and gear can't be readied: as above (054.1)
+#   restricts_opponent_units_to_base       opponents can only play units to their base: an "only" restriction (054.2);
+#                                          the same "only" twice leaves the same one place
+#   opponents_cant_gain_points             opponents can't gain points while I'm at a battlefield: a prohibition (054.1)
+#   granted_tags                           "I am a <tag>": a tag is a category the object belongs to (133.8, 133.8.a) -
+#                                          belonging twice is belonging; nothing counts a tag's instances
+# NOT here, refused by name instead (COPY_UNMODELLED_FIELDS): equipment_bonus_multiplier (Gearhead: "Each Equipment
+# attached to me gives double its base Might bonus." - two instances double the base twice; Core 433.1 defines doubling as
+# increasing by the current value, which does not settle whether the second doubles the base or the doubled bonus) and
+# has_exhaust_abilities_of (Heimerdinger - Inventor: a second instance is a second set of ability identities, each with
+# its own uses; the model gives a borrowed ability no identity or use record of its own)
+COPIED_SAME_TWICE_FIELDS = {"any_number_of_buffs", "deals_no_combat_damage", "unchoosable_by_enemies",
+                            "prevents_opponent_hidden_reveals_here", "prevents_ready_enemy_units_gear",
+                            "restricts_opponent_units_to_base", "opponents_cant_gain_points", "granted_tags"}
+# printed text that works only while the card is played, hidden or entering, seen in a deck or in deckbuilding: copied onto
+# a card already on the board it never applies, so nothing is appended for it
+COPIED_PLAY_ONLY_FIELDS = {"unique", "hidden", "hide_alternative_energy", "optional_additional_costs",
+                           "printed_additional_costs", "printed_cost_modifications", "offer_linked_cost_modifications",
+                           "play_permissions", "play_only_to_conquered_this_turn", "entry_replacements",
+                           "revealed_from_deck_add_energy", "banish_when_seen"}
+# printed replacement effects: a second Replacement Effect, the Top-Most card its source (as materialize_printed_replacements
+# makes the first)
+COPIED_REPLACEMENT_FIELD = "printed_replacements"
+# what no unit prints, or what is not a unit's own text - and the two printed fields whose second instance no rule or
+# model settles (see COPIED_SAME_TWICE_FIELDS): a copy of a card carrying it is refused by name
+COPY_UNMODELLED_FIELDS = {"combat_tie_replacement", "move_from_triggers", "effect_text", "effect_text_copy", "facedown",
+                          "equipment_bonus_multiplier", "has_exhaust_abilities_of"}
+
+
+class CopyTextUnsupported(NotImplementedError):
+    """A copy of a Top-Most card's printed text (EFFECT_TEXT_COPY) over printed text this model does not append twice."""
+
+
+def _without_copies(host: dict[str, Any], field: str) -> list[Any]:
+    """The rows of `field` the card prints - its own, without the rows a copy of its text wrote beside them."""
+    rows = list(host.get(field) or [])
+    for record in (host.get("copied_text") or {}).values():
+        for row in (record.get("rows") or {}).get(field) or []:
+            if row in rows:
+                rows.remove(row)
+    return rows
+
+
+def copied_values(obj: dict[str, Any], field: str) -> list[Any]:
+    """The values of an additive field (COPIED_ADDITIVE_FIELDS) the copies of the card's text added beside its own."""
+    return [record["values"][field] for record in (obj.get("copied_text") or {}).values()
+            if field in (record.get("values") or {})]
+
+
+def copied_text_bundle(state: dict[str, Any], attached_id: str, host_id: str, lifecycle: int = 1) -> dict[str, Any]:
+    """Svellsongur (set 2 package A3): the Top-Most card's printed text, every kind the engine runs on the card itself -
+    trigger lists (each descriptor a second instance: its own trigger id, `copied_by` the attached card) and keywords as an
+    Effect Text bundle; board rows (COPIED_ROW_FIELDS), activated abilities with their conditions (COPIED_KEYED_FIELDS),
+    additive values (COPIED_ADDITIVE_FIELDS) and printed replacements in `copy`, written on the card by append_effect_text.
+    Never what is appended, granted or copied onto it. Refused by name: a card carrying text no unit prints
+    (COPY_UNMODELLED_FIELDS), a Top-Most card that is itself a copy (479.1.b.1), or one whose printed text is inactive."""
+    host = state["objects"][host_id]
+    unmodelled = sorted(k for k in host if k in COPY_UNMODELLED_FIELDS and host.get(k))
+    copied_on_host = [e["effect_id"] for e in effects_for(state, host_id, "copy_traits", active_only=True)]
+    if unmodelled or copied_on_host or rules_text_inactive(state, host_id):
+        raise CopyTextUnsupported(
+            f"{attached_id} copies the printed text of {host_id}, which carries "
+            f"{unmodelled or copied_on_host or 'inactive printed text'}; the model does not append a second instance of "
+            f"it (Core 479.1.b, 479.3.c) (unsupported: copy_text_unmodelled)")
+    # each attach makes new instances (Vendetta FAQ, 2026-08-14: detached and attached again, the copied abilities are
+    # refreshed): the suffix names the copying card and this attach's lifecycle, so a new copy keeps no record (modes
+    # chosen, uses) of an earlier one, and an earlier copy still on the Chain keeps its own
+    suffix = f":copy:{attached_id}:{int(lifecycle)}"
+    triggers: dict[str, list[dict[str, Any]]] = {}
+    for field in APPENDABLE_TRIGGER_FIELDS:
+        for descriptor in host.get(field) or []:
+            copied = state_copy.deepcopy(descriptor)
+            copied["trigger_id"] = f"{descriptor['trigger_id']}{suffix}"
+            copied["copied_by"] = attached_id
+            triggers.setdefault(field, []).append(copied)
+    keywords = []
+    for keyword in host.get("keywords") or []:
+        value = host.get(f"{keyword}_value")
+        keywords.append({"keyword": keyword, **({"value": int(value)} if isinstance(value, int) and value > 1 else {})})
+    copy_record: dict[str, Any] = {"rows": {}, "keys": {}, "values": {}}
+    for field, id_key in sorted(COPIED_ROW_FIELDS.items()):
+        rows = []
+        for row in _without_copies(host, field):
+            row = state_copy.deepcopy(row)
+            if id_key is not None and isinstance(row, dict) and isinstance(row.get(id_key), str):
+                row[id_key] = f"{row[id_key]}{suffix}"
+            rows.append(row)
+        if rows:
+            copy_record["rows"][field] = rows
+    copied_keys = {k for record in (host.get("copied_text") or {}).values()
+                   for keys in (record.get("keys") or {}).values() for k in keys}
+    for field in COPIED_KEYED_FIELDS:
+        own = {k: v for k, v in (host.get(field) or {}).items() if k not in copied_keys}
+        if own:
+            keyed = {}
+            for k, v in sorted(own.items()):
+                v = state_copy.deepcopy(v)
+                # an activation condition that names its own ability ("Use only once per turn": ability_uses_this_turn_below)
+                # names the copy's ability - each instance counts its own uses, this lifecycle's only
+                if field == "ability_conditions" and isinstance(v, dict) and v.get("ability") == k:
+                    v["ability"] = f"{k}{suffix}"
+                keyed[f"{k}{suffix}"] = v
+            copy_record["keys"][field] = keyed
+    for field in COPIED_ADDITIVE_FIELDS:
+        if host.get(field):
+            copy_record["values"][field] = state_copy.deepcopy(host[field])
+    replacements = []
+    for index, template in enumerate(host.get(COPIED_REPLACEMENT_FIELD) or []):
+        entry = _bind_source_object(state_copy.deepcopy(template), host_id)
+        for key in ("replacement_id", "controller", "source_object"):
+            entry.pop(key, None)
+        replacements.append(entry)
+    return {"triggers": triggers, "keywords": keywords, "effects": [], "replacements": [],
+            "copy": copy_record, "copy_replacements": replacements}
+
+
+def _write_copied_text(state: dict[str, Any], attached_id: str, host_id: str, record: dict[str, Any],
+                       replacements: list[dict[str, Any]]) -> list[str]:
+    """Svellsongur: the copy's board rows, activated abilities and values written on the Top-Most card beside its own
+    (recorded in its `copied_text` under the attached card), and its printed replacements as Replacement Effects of the
+    Top-Most card. Returns the replacement ids (drop_effect_text takes all of it out again)."""
+    host = state["objects"][host_id]
+    for field, rows in record["rows"].items():
+        host[field] = list(host.get(field) or []) + state_copy.deepcopy(rows)
+    for field, keyed in record["keys"].items():
+        host[field] = {**(host.get(field) or {}), **state_copy.deepcopy(keyed)}
+    host.setdefault("copied_text", {})[attached_id] = {
+        "rows": state_copy.deepcopy(record["rows"]),
+        "keys": {field: sorted(keyed) for field, keyed in record["keys"].items()},
+        "values": state_copy.deepcopy(record["values"])}
+    made = []
+    for index, template in enumerate(replacements):
+        rid = f"effect_text:{attached_id}:{host_id}:replacement:copy:{index}"
+        state.setdefault("replacement_effects", []).append(
+            {**state_copy.deepcopy(template), "replacement_id": rid, "controller": host.get("controller"),
+             "source_object": host_id})
+        made.append(rid)
+    return made
+
+
+def _erase_copied_text(state: dict[str, Any], attached_id: str, host_id: str) -> None:
+    """Svellsongur: the link ended - the rows, abilities and values its copy wrote on the Top-Most card go."""
+    host = (state.get("objects") or {}).get(host_id)
+    record = ((host or {}).get("copied_text") or {}).pop(attached_id, None) if host else None
+    if record is None:
+        return
+    for field, rows in (record.get("rows") or {}).items():
+        kept = list(host.get(field) or [])
+        for row in rows:
+            if row in kept:
+                kept.remove(row)
+        if kept:
+            host[field] = kept
+        else:
+            host.pop(field, None)
+    for field, keys in (record.get("keys") or {}).items():
+        kept = {k: v for k, v in (host.get(field) or {}).items() if k not in set(keys)}
+        if kept:
+            host[field] = kept
+        else:
+            host.pop(field, None)
+    if not host.get("copied_text"):
+        host.pop("copied_text", None)
 
 
 def append_effect_text(state: dict[str, Any], attached_id: str, host_id: str) -> list[str]:
@@ -5336,7 +5620,19 @@ def append_effect_text(state: dict[str, Any], attached_id: str, host_id: str) ->
     applied to it - for as long as the link holds. A card with no `effect_text` and the earlier fallback (its printed
     trigger fields, optionally filtered by `effect_text_fields`) keeps the ADR-0013 behaviour. Returns the effect ids."""
     obj, host = state["objects"][attached_id], state["objects"][host_id]
-    if "effect_text" in obj:
+    copied_replacements: list[str] = []
+    if obj.get("effect_text_copy") == EFFECT_TEXT_COPY:
+        # set 2 package A3 (Svellsongur): its Effect Text is a copy of the Top-Most card's printed text; this attach is
+        # the copying card's next lifecycle (copy_lifecycle counts its attaches; never reused)
+        lifecycle = int(obj.get("copy_lifecycle") or 0) + 1
+        bundle = copied_text_bundle(state, attached_id, host_id, lifecycle)
+        obj["copy_lifecycle"] = lifecycle
+        for rows in bundle["triggers"].values():
+            for descriptor in rows:
+                descriptor["source_object"] = host_id
+                descriptor["controller"] = host.get("controller")
+        copied_replacements = _write_copied_text(state, attached_id, host_id, bundle["copy"], bundle["copy_replacements"])
+    elif "effect_text" in obj:
         bundle = effect_text_bundle(state_copy.deepcopy(obj["effect_text"]))
         for rows in bundle["triggers"].values():
             for descriptor in rows:
@@ -5382,7 +5678,7 @@ def append_effect_text(state: dict[str, Any], attached_id: str, host_id: str) ->
             **state_copy.deepcopy(template), "replacement_id": rid, "controller": obj.get("controller"),
             "source_object": attached_id, "target_object_id": host_id})
         replaced.append(rid)
-    return [e["effect_id"] for e in made] + replaced
+    return [e["effect_id"] for e in made] + replaced + copied_replacements
 
 
 def rules_text_inactive(state: dict[str, Any], object_id: str) -> bool:
@@ -6758,6 +7054,15 @@ def detach_records(state: dict[str, Any], host_id: str, host_location: dict[str,
             record["pending_recall"] = dict(obj["pending_recall"])
             record["rule_locators"] = record["rule_locators"] + ["Core 436.4.a"]
         records.append(record)
+    if host_left_board:
+        # set 2 package A3 (Akshan - Mischievous: "You control it until I leave the board"): the control effects this
+        # object made last while it stays on the board; it left, so they end - after its attached cards detached where
+        # it was (719.5, 436.4.b). A gear left in another player's base, or at a battlefield, is recalled to its
+        # controller's base by the next Cleanup (149.3, 459.1)
+        records.extend(end_source_bound_control(state, host_id))
+        # and the leaving object becomes a new object (Core 124): the control effects on it do not follow it
+        leaving.pop("control_effects", None)
+        leaving.pop("controller_beneath", None)
     return records
 
 
@@ -7236,13 +7541,61 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         if zone_class(find_location(new_state, object_id)) != "board" or obj["kind"] not in {"unit", "gear"}:
             raise IllegalOperation(f"gain_control takes a permanent on the board; {object_id!r} is not one")
         before = obj["controller"]
-        obj["controller"] = player
-        follow_controller(new_state, object_id, player)
-        trace.update({"object_id": object_id, "controller_before": before, "controller_after": player,
+        duration = effect.get("duration")
+        if duration is None and not obj.get("control_effects"):
+            obj["controller"] = player
+            follow_controller(new_state, object_id, player)
+        else:
+            # set 2 package A3: a control effect in timestamp order (Core 479.2.a). One with no duration over an object
+            # that already has some is the newest of them, and stays when they end
+            source = effect.get("_source_object")
+            if duration == "while_source_on_board" and (
+                    source not in new_state["objects"] or zone_class(find_location(new_state, source)) != "board"
+                    or object_identity(new_state, source) != effect.get("_source_identity")):
+                # Akshan left the board before his play trigger resolved: its duration ended before the effect
+                # was generated, so no control is gained even for a moment (Core 359.3.e.16)
+                trace.update({"object_id": object_id, "controller_before": before, "controller_after": before,
+                              "outcome": "no_op", "not_generated": True,
+                              "reason": "the control effect's source left the board before it was generated",
+                              "rule_locators": OP_RULES[op] + ["Core 359.3.e.16"]})
+                return new_state, trace
+            obj.setdefault("controller_beneath", before)
+            entry = {"control_id": effect.get("control_id"), "player": player, "duration": duration or "permanent",
+                     "created_turn": new_state.get("turn_id", DEFAULT_TURN_ID)}
+            if duration == "while_source_on_board":
+                entry.update({"source_object": source, "source_identity": effect.get("_source_identity")})
+            obj.setdefault("control_effects", []).append(entry)
+            recompute_controller(new_state, object_id)
+            trace.update({"control_effect": dict(entry), "rule_locators": OP_RULES[op] + ["Core 479.2.a"]
+                          + (["Core 190.3.a.2"] if (find_location(new_state, object_id) or ("",))[0] == "battlefield" else [])})
+        trace.update({"object_id": object_id, "controller_before": before, "controller_after": obj["controller"],
                       "owner": obj["owner"], "retained": {"damage": obj["damage"], "exhausted": obj["exhausted"],
                                                          "buffed": bool(obj.get("buffed"))}})
-        if before == player:
+        if before == obj["controller"]:
             trace["outcome"] = "no_op"
+
+    elif op == "lose_control":
+        # set 2 package A3 (Hostile Takeover: "Lose control of that unit"): the control effect this names ends - the
+        # oldest of that id whose player is the instruction's controller; the controller is again the newest remaining
+        # effect's player, else whoever controls it without them (Core 479.2.a). None to end: nothing happens
+        object_id = effect.get("object_id")
+        if object_id not in new_state["objects"]:
+            raise ValueError("lose_control requires a known object")
+        obj = new_state["objects"][object_id]
+        before = obj.get("controller")
+        effects = obj.get("control_effects") or []
+        ending = next((i for i, e in enumerate(effects) if e.get("control_id") == effect.get("control_id")
+                       and e.get("player") == controller), None)
+        trace.update({"object_id": object_id, "control_id": effect.get("control_id"), "controller_before": before})
+        if ending is None or zone_class(find_location(new_state, object_id)) != "board":
+            trace.update({"controller_after": before, "outcome": "no_op",
+                          "reason": "no control effect of that id by this player on a permanent on the board"})
+        else:
+            obj["control_effects"] = effects[:ending] + effects[ending + 1:]
+            _, after = recompute_controller(new_state, object_id)
+            trace["controller_after"] = after
+            if after == before:
+                trace["controller_unchanged"] = True
 
     elif op == "recall":
         # DP-06 / Q2: relocation to the current controller's Base (457); not a
@@ -7873,7 +8226,7 @@ def _apply_one(state: dict[str, Any], effect: dict[str, Any], decisions: dict[st
         # board (a token ceases to exist below, 186.1, and still died)
         died_as_unit = characteristics(new_state, object_id).get("kind") == "unit"
         controller_at_death = obj.get("controller")
-        extra_at_death = obj.get(DEATHKNELL_EXTRA_FIELD)
+        extra_at_death = deathknell_extra(obj) or None
         # 2026-10-04 (package 8, GPT ruling 7): the Might it had as it died, for an instruction that compares with "the
         # killed unit" afterwards (Core 359.3.e.12: information about an object that changed zones is its last known)
         might_at_death = effective_might(new_state, object_id) if died_as_unit else None
@@ -8734,6 +9087,51 @@ def leave_board_triggers(state: dict[str, Any], object_id: str) -> list[dict[str
 SOURCE_LISTS = ("damage_modifiers", "might_auras", "replacement_effects")
 
 
+# set 2 package A3: control effects with a duration (Core 479.2.a: Controller is a layer-2 trait, its effects applied in
+# timestamp order). "until_ended": until an instruction ends it (Hostile Takeover's delayed "Lose control of that unit");
+# "while_source_on_board": while the object that made it stays on the board (Akshan - Mischievous, "You control it until
+# I leave the board"). The object keeps control_effects (oldest first) and controller_beneath - who controls it without
+# any of them; its controller is the newest effect's player, else controller_beneath.
+CONTROL_DURATIONS = {"until_ended", "while_source_on_board"}
+
+
+def recompute_controller(state: dict[str, Any], object_id: str) -> tuple[str | None, str | None]:
+    """The controller after the object's control effects changed: the newest effect's player, else the controller
+    beneath them (the effects gone, both fields are dropped). Its abilities follow (191.5.a), and a Unit at a Battlefield
+    whose controller changed applies Contested there (190.3.a.2). Returns (before, after)."""
+    obj = state["objects"][object_id]
+    before = obj.get("controller")
+    effects = obj.get("control_effects") or []
+    after = effects[-1]["player"] if effects else obj.get("controller_beneath", before)
+    if not effects:
+        obj.pop("control_effects", None)
+        obj.pop("controller_beneath", None)
+    obj["controller"] = after
+    if after != before:
+        follow_controller(state, object_id, after)
+        where = find_location(state, object_id)
+        if where is not None and where[0] == "battlefield":
+            apply_arrival_contested(state, where[1], object_id)
+    return before, after
+
+
+def end_source_bound_control(state: dict[str, Any], source_id: str) -> list[dict[str, Any]]:
+    """set 2 package A3 (Akshan - Mischievous): the source of "while_source_on_board" control effects left the board -
+    each such effect ends (a delayed passive, Core 359.3.e.16) and the object's controller is recomputed. Records."""
+    records = []
+    for object_id, obj in sorted((state.get("objects") or {}).items()):
+        effects = obj.get("control_effects") or []
+        keep = [e for e in effects if not (e.get("duration") == "while_source_on_board" and e.get("source_object") == source_id)]
+        if len(keep) == len(effects):
+            continue
+        obj["control_effects"] = keep
+        before, after = recompute_controller(state, object_id)
+        records.append({"object_id": object_id, "control_ended": "source_left_board", "source_object": source_id,
+                        "controller_before": before, "controller_after": after,
+                        "rule_locators": ["Core 359.3.e.16", "Core 479.2.a"]})
+    return records
+
+
 def follow_controller(state: dict[str, Any], object_id: str, player: str) -> None:
     """Core 191.5.a: an ability's controller is its source's - so when a permanent changes controller, its own triggered
     abilities (the printed descriptors) and the state-level entries it adds as its source become the new controller's.
@@ -8869,7 +9267,8 @@ def _printed_aura_effects(state: dict[str, Any]) -> list[dict[str, Any]]:
         obj = state["objects"][object_id]
         # set 2 package A2 (Lucian - Purifier): "Your Equipment each give [Assault]." - one grant to the unit per Equipment
         # of the source's controller attached to it, while the source is on the board (it is read where it is active)
-        for keyword in obj.get("equipment_each_give") or []:
+        # set 2 package A3 (Svellsongur): a copy of the text on the card gives its own grant as well
+        for keyword in list(obj.get("equipment_each_give") or []) + [k for v in copied_values(obj, "equipment_each_give") for k in v]:
             where_source = find_location(state, object_id)
             # on the board, or a Legend in its Legend Zone, where its abilities work (Core 107.4; Lucian - Purifier is one)
             if zone_class(where_source) != "board" and not (where_source and where_source[0] == "player"
@@ -9138,11 +9537,19 @@ def per_count(state: dict[str, Any], source_id: str, kind: str) -> int:
         return sum(1 for other, obj in state["objects"].items() if obj.get("kind") == "gear"
                    and zone_class(find_location(state, other)) == "board" and same_side(state, controller, obj.get("controller")))
     if kind == "enemy_units_at_source_battlefield":
-        # set 2 (Ancient Warmonger): enemy Units at the source's Battlefield, either designation; none from a Base
+        # set 2 (Ancient Warmonger): enemy Units "here" - at the source's own Location (Core 359.3.f.1), either
+        # designation. set 2 A3: a Base is a Location too (198.1) - enemy Units in the Base the card is in count (one there
+        # is rare: a Unit an opponent controls stays in another player's Base only until the next Cleanup, 149.3)
         at = find_location(state, source_id)
-        if at is None or at[0] != "battlefield":
+        if at is None:
             return 0
-        return sum(1 for other in state["battlefields"][at[1]].get("objects", []) or []
+        if at[0] == "battlefield":
+            here = state["battlefields"][at[1]].get("objects", []) or []
+        elif at[0] == "player" and at[2] == "base":
+            here = ((state["players"].get(at[1]) or {}).get("zones") or {}).get("base", []) or []
+        else:
+            return 0
+        return sum(1 for other in here
                    if (state["objects"].get(other) or {}).get("kind") == "unit"
                    and not same_side(state, controller, state["objects"][other].get("controller")))
     if kind == "buffed_friendly_units_at_source_battlefield":
@@ -9451,8 +9858,16 @@ def evaluate_condition(state: dict[str, Any], condition: dict[str, Any], *, cont
         player = condition.get("player", controller)
         if player is None:
             raise ConditionUnsupported("enemy_choices_this_turn_at_least needs to know whose choices to read")
-        ledger = (state["players"].get(player) or {}).get("enemy_choices_this_turn") or {}
-        return int(ledger.get(state.get("turn_id", DEFAULT_TURN_ID), 0)) >= condition["count"]
+        turn_id = state.get("turn_id", DEFAULT_TURN_ID)
+        counted = int(((state["players"].get(player) or {}).get("enemy_choices_this_turn") or {}).get(turn_id, 0))
+        unresolved = int(((state["players"].get(player) or {}).get("enemy_choices_unresolved_this_turn") or {})
+                         .get(turn_id, 0))
+        if counted < condition["count"] <= counted + unresolved:
+            # set 2 A3 (GPT's A3 review): the answer hangs on targets a spell's Reflexive Trigger chose - whether that
+            # new ability (Core 389.1) chooses "with a spell" has no source; never counted, named instead
+            raise ConditionUnsupported(f"enemy_choices_unresolved: {counted} counted, {unresolved} more chosen by a "
+                                       f"spell's Reflexive Trigger, whose kind no source settles")
+        return counted >= condition["count"]
     if kind == "power_spent_this_turn_at_least":
         player = condition.get("player", controller)
         if player is None:
@@ -9595,25 +10010,43 @@ def reads_enemy_choices(state: dict[str, Any]) -> bool:
 
 def record_enemy_choices(state: dict[str, Any], player: str, chosen: list[str], chooser_kind: str,
                          source: str | None) -> None:
-    """set 2 package A2 (Ezreal - Prodigal Explorer): a spell, or an ability whose source is a Unit, that `player` has just
-    finalized choosing at least one enemy Unit or Gear on the board (Core 355.5) counts once for this turn. Changes `state`
-    in place; only in a game where some card reads the count (reads_enemy_choices), so every other game keeps its state."""
+    """set 2 package A2 (Ezreal - Prodigal Explorer): each time a spell, or an ability whose source is a Unit, that `player`
+    has just finalized TARGETS an enemy Unit or Gear on the board (Core 355.5, 355.7) counts for this turn - set 2 A3:
+    once per target, so one spell targeting two enemies is two (the community rulings agree, RiftJudge #276, #3169; no
+    Riot document), counted at finalization even if the item is later countered. `chosen` lists every time an object was
+    chosen as a target (play_transaction._check_play_targets). A card picked in a private zone as an item resolves is no
+    target and is never passed here. A Reflexive Trigger a spell created (Core 389.1) is a new ability whose source is that
+    spell - whether it chooses "with spells" no source settles (GPT's A3 review): its enemy targets are kept apart
+    (enemy_choices_unresolved_this_turn), never counted, and an activation whose legality hangs on them is refused by name
+    (evaluate_condition, enemy_choices_unresolved). The same object in two target slots is two targets; a [Repeat]'s
+    execution makes its own choices at play (Core 820.2), counted with the rest; targets remade for a spell (make_new_choices,
+    Core 751-753; chooser_kind "new_choices") are kept apart like a Reflexive Trigger's - no source says whether remaking a
+    spell's choices is choosing "with spells".
+    Changes `state` in place; only in a game where some card reads the count (reads_enemy_choices), so every other game
+    keeps its state."""
     if player not in (state.get("players") or {}) or not reads_enemy_choices(state):
         return
-    if chooser_kind == "ability":
-        if (characteristics(state, source).get("kind") if source in (state.get("objects") or {}) else None) != "unit":
+    reflexive_of_spell = chooser_kind == "new_choices"      # remade targets: kept apart, as below
+    if chooser_kind == "new_choices":
+        pass
+    elif chooser_kind == "ability":
+        kind = characteristics(state, source).get("kind") if source in (state.get("objects") or {}) else None
+        if kind == "spell":
+            reflexive_of_spell = True
+        elif kind != "unit":
             return
     elif chooser_kind != "spell":
         return
-    enemy = [o for o in dict.fromkeys(chosen) if o in state["objects"]
+    enemy = [o for o in chosen if o in state["objects"]
              and state["objects"][o].get("kind") in ("unit", "gear")
              and zone_class(find_location(state, o)) == "board"
              and not same_side(state, player, state["objects"][o].get("controller"))]
     if not enemy:
         return
     turn_id = state.get("turn_id", DEFAULT_TURN_ID)
-    so_far = int((state["players"][player].get("enemy_choices_this_turn") or {}).get(turn_id, 0))
-    state["players"][player]["enemy_choices_this_turn"] = {turn_id: so_far + 1}
+    ledger = "enemy_choices_unresolved_this_turn" if reflexive_of_spell else "enemy_choices_this_turn"
+    so_far = int((state["players"][player].get(ledger) or {}).get(turn_id, 0))
+    state["players"][player][ledger] = {turn_id: so_far + len(enemy)}
 
 
 def power_spent_this_turn(state: dict[str, Any], player: str) -> int:
@@ -10089,6 +10522,12 @@ def _extra_times(value: Any) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 1 else 0
 
 
+def deathknell_extra(obj: dict[str, Any]) -> int:
+    """The additional times this card's statics make Deathknell effects trigger: its own and, set 2 package A3
+    (Svellsongur), each copy of its text on it - a second instance adds its own (copied_values)."""
+    return _extra_times(obj.get(DEATHKNELL_EXTRA_FIELD)) + sum(_extra_times(v) for v in copied_values(obj, DEATHKNELL_EXTRA_FIELD))
+
+
 def group_pending_triggers(events: list[dict[str, Any]], after: dict[str, Any]) -> list[dict[str, Any]]:
     """2026-10-12 package 11 (Karthus - Eternal: "Your [Deathknell] effects trigger an additional time."; GPT PACKAGE11
     ruling 1). `events` are the events of ONE game action - deaths from one instruction or one Cleanup are simultaneous
@@ -10109,8 +10548,8 @@ def group_pending_triggers(events: list[dict[str, Any]], after: dict[str, Any]) 
             died[event.get("object_id")] = record
     for oid in sorted(set(after.get("objects") or {}) | set(died)):
         obj = (after.get("objects") or {}).get(oid)
-        if obj is not None and zone_class(find_location(after, oid)) == "board" and _extra_times(obj.get(DEATHKNELL_EXTRA_FIELD)):
-            sources.append((oid, obj.get("controller"), obj[DEATHKNELL_EXTRA_FIELD]))
+        if obj is not None and zone_class(find_location(after, oid)) == "board" and deathknell_extra(obj):
+            sources.append((oid, obj.get("controller"), deathknell_extra(obj)))
         elif oid in died:
             sources.append((oid, died[oid].get("controller"), died[oid]["extra_times"]))
     every = []
@@ -12889,6 +13328,23 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                             "failed_effect_index": index, "trace": trace}
                 picked = entry["value"][0]
             effect = {**{k: v for k, v in effect.items() if k not in ("pick", "from")}, "object_id": picked}
+        if effect.get("op") == "attach" and effect.get("to") == {"object_ref": "program_source"} and "pick" not in effect:
+            # set 2 A3 (Rell - Magnetic: "Attach it to me."): "me" is the program's source (Core 053.1), still the object
+            # the ability came from and on the board; gone, or a new object at its id (Core 124), the attach cannot be
+            # followed and is ignored, the rest resolving (359.3.e.6). "it" was resolved above (trigger_event_object)
+            host = program.get("source_object")
+            declared = program.get("source_identity")
+            if not isinstance(host, str) or host not in current["objects"] \
+                    or (isinstance(declared, str) and object_identity(current, host) != declared) \
+                    or zone_class(find_location(current, host)) != "board":
+                event = {"index": index, "effect_id": effect_id, "op": "attach", "outcome": SOURCE_UNAVAILABLE_OUTCOME,
+                         "completion": "none", "reason": "attach_source_unavailable", "source_object": host,
+                         "rule_locators": list(SOURCE_UNAVAILABLE_RULES), "before_state_hash": before_hash,
+                         "after_state_hash": before_hash}
+                trace.append(event)
+                outcomes[effect_id] = event["outcome"]
+                continue
+            effect = {**effect, "to": host}
         if effect.get("op") == "attach" and isinstance(effect.get("pick"), dict) and isinstance(effect.get("from"), dict):
             # set 2 package A2 (Azir - Ascendant): the unit chosen for `from` as the ability was played, still on the board;
             # one Equipment attached to it now, its controller's pick when there are several (a card_selection as it
@@ -13530,6 +13986,11 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 entry["played_targets"] = played
             else:
                 entry.pop("played_targets", None)   # a mode with no target choices (validate_state wants none, not [])
+            # set 2 A3 (Ezreal - Prodigal Explorer; GPT's A3 review): targets remade for a spell (Core 751-753) - whether
+            # the chooser thereby chose them "with spells" no source settles; kept apart, never counted
+            new_targets = [v for r in remade if "target" in r for v in r["now"]]
+            if new_targets and reads_enemy_choices(current):
+                record_enemy_choices(current, chooser, new_targets, "new_choices", None)
             event = {**base_event, "outcome": "applied" if remade else "no_op", "completion": "full" if remade else "none",
                      "remade": remade, "costs_incurred_ignored": True, "after_state_hash": hash_value(current)}
             trace.append(event)
@@ -13748,7 +14209,13 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
                 candidates = [c for c in current["players"][controller]["zones"][effect["choice"]["from"]]
                               if (current["objects"].get(c) or {}).get("kind") in LIMITED_PLAY_KINDS
                               and ("kind" not in criteria or current["objects"][c]["kind"] == criteria["kind"])
-                              and (not criteria.get("hidden") or current["objects"][c].get("hidden") is True)]
+                              and (not criteria.get("hidden") or current["objects"][c].get("hidden") is True)
+                              # set 2 A3 (Rell - Magnetic): an Equipment, its printed Energy no more than N
+                              and ("with_tag" not in criteria
+                                   or criteria["with_tag"] in (object_tags(current, c) or []))
+                              and ("printed_energy_at_most" not in criteria
+                                   or int(((current["objects"][c].get("printed_cost") or {}).get("energy")) or 0)
+                                   <= criteria["printed_energy_at_most"])]
                 try:
                     chosen, choice_meta = resolve_choice(current, effect["choice"], decision_ref=effect.get("decision_ref"),
                                                          decisions=decisions, controller=controller, candidates=candidates,
@@ -14902,6 +15369,26 @@ def apply_program(state: dict[str, Any], program: dict[str, Any], *, decisions: 
             # Core 811.1.d.5 (GPT 2026-09-27): a unit this hidden card makes its controller play is
             # played at the battlefield it was hidden at
             effect = {**effect, "hidden_battlefield": context["hidden_battlefield"]}
+        if effect.get("op") == "attach" and effect.get("to") is not None and effect.get("to") == program.get("source_object") \
+                and program.get("source_identity") is not None and (
+                    effect["to"] not in current["objects"] or zone_class(find_location(current, effect["to"])) != "board"
+                    or object_identity(current, effect["to"]) != program["source_identity"]):
+            # set 2 package A3 (Akshan - Mischievous: "attach it to me"): "me" left the board before this resolved - a
+            # new object, or gone; the attach cannot be followed and is ignored (Core 124, 359.3.e.6)
+            event = {"index": index, "effect_id": effect_id, "op": "attach", "outcome": "ignored_subject_changed",
+                     "completion": "none", "reason": "attach_to_source_left_board", "object_id": effect["to"],
+                     "rule_locators": ["Core 124", "Core 359.3.e.6"],
+                     "before_state_hash": hash_value(current), "after_state_hash": hash_value(current)}
+            trace.append(event)
+            outcomes[effect_id] = event["outcome"]
+            continue
+        if effect.get("op") == "gain_control" and effect.get("duration") == "while_source_on_board":
+            # set 2 package A3 (Akshan - Mischievous): the control lasts while the program's source stays on the board -
+            # the source as the chain item recorded it (its identity then; else as it is now)
+            source = program.get("source_object")
+            effect = {**effect, "_source_object": source,
+                      "_source_identity": program.get("source_identity") or (
+                          object_identity(current, source) if source in current["objects"] else None)}
         prior = current
         try:
             current, event = _apply_one(current, effect, decisions=decisions,

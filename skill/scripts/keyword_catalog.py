@@ -102,7 +102,9 @@ def engine_keywords() -> dict[str, dict[str, Any]]:
     # which is which, so a new permission cannot be quietly left out of either.
     carryable |= effect_ir.PLAY_PERMISSIONS - effect_ir.SENTENCE_PLAY_PERMISSIONS
     carryable |= {"hidden", "unique", "repeat"}
-    declarations = ("OBJECT_KEYWORDS", "GRANTABLE_KEYWORDS", "PLAY_PERMISSIONS")
+    # set 2 A3 (Svellsongur): COPIED_PLAY_ONLY_FIELDS names the printed fields a copy never appends - a classification,
+    # like a validator's allow-list, not a procedure acting on the keyword
+    declarations = ("OBJECT_KEYWORDS", "GRANTABLE_KEYWORDS", "PLAY_PERMISSIONS", "COPIED_PLAY_ONLY_FIELDS")
     found: dict[str, dict[str, Any]] = {}
     for keyword in sorted(carryable):
         acted_on: list[str] = []

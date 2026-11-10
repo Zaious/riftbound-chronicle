@@ -744,6 +744,9 @@ def schedule_watchers(state: dict[str, Any], events: list[dict[str, Any]], *, tu
                 if not watch_matches(state, descriptor["watch"], event,
                                      source_object=descriptor["source_object"], controller=descriptor["controller"]):
                     continue
+                if descriptor.get("copied_by") and event.get("kind") == "attached" \
+                        and event.get("object") == descriptor["copied_by"]:
+                    continue  # set 2 package A3 (Svellsongur): not on the attach that made the copy (schedule_live)
                 if at_limit(state, descriptor, turn_id):
                     # 383.3.e: performed its allowance already, so it does not
                     # trigger at all — not "triggers and does nothing".
@@ -859,6 +862,12 @@ def schedule_live(state: dict[str, Any], events: list[dict[str, Any]], *, turn_i
             matched = [event for event in events
                        if watch_matches(state, watch, event, source_object=descriptor["source_object"],
                                         controller=descriptor["controller"])]
+            if descriptor.get("copied_by"):
+                # set 2 package A3 (Svellsongur): a copied ability is not there when the attach that made the copy
+                # executes (Vendetta FAQ, 2026-08-14), so it never triggers on that attach - the only attach of its
+                # copying card while the copy exists
+                matched = [event for event in matched
+                           if not (event.get("kind") == "attached" and event.get("object") == descriptor["copied_by"])]
             if watch.get("scope") == "controller" and set(watch.get("kinds") or []) <= DESIGNATION_KINDS:
                 # set 2 package A2 (Loyal Pup, "When you defend at a battlefield"): a player's Attack / Defend trigger
                 # triggers when that player gains the designation for the first time in a combat, its condition checked
@@ -1021,6 +1030,13 @@ def delayed_matches(state: dict[str, Any], events: list[dict[str, Any]] | None =
                                                    "source_identity_now": source_now,
                                                    **({"effect_program_hash": entry["effect_program_hash"]}
                                                       if entry.get("effect_program_hash") else {})}))
+                if entry.get("target_object") is not None:
+                    # set 2 package A3 (Hostile Takeover: "Lose control of that unit and recall it at end of turn"):
+                    # the unit it was bound to as it was created is its "it" (Core 359.3.f.3.a) - checked above to be
+                    # that same object still (124)
+                    scheduled[-1]["trigger_event"] = {"event_id": f"delayed:{entry['delayed_id']}", "kind": "delayed_bound",
+                                                      "object": entry["target_object"],
+                                                      "identity": entry["target_identity"]}
             continue
         matched_but_unbound: dict[str, Any] | None = None
         fired = 0

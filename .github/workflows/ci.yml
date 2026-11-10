@@ -108,6 +108,8 @@ jobs:
         run: python3 skill/scripts/check_one_on_one.py
       - name: When you defend at a battlefield, move me there (set 2 A2; Core 383.4.f)
         run: python3 skill/scripts/check_defend_move_there.py
+      - name: If you do, then do this - attach the card a play put on the board (set 2 A3; Core 388.2, 337.2)
+        run: python3 skill/scripts/check_reflexive_after_play.py
       - name: The first time I conquer each turn (set 2 A2; Core 471.1, 383.1)
         run: python3 skill/scripts/check_first_conquer.py
       - name: An "other unit" set of targets, played plainly and copied by Repeat (set 2 A2; Core 820.1.d)
@@ -194,6 +196,8 @@ jobs:
         run: python3 skill/scripts/check_relentless_pursuit.py
       - name: A triggered ability's mode chosen at finalization, not one chosen this turn (for Aphelios - Exalted)
         run: python3 skill/scripts/check_modal_trigger.py
+      - name: Svellsongur's copy of its Top-Most card's printed text, and Aphelios's modes per instance (set 2 A3)
+        run: python3 skill/scripts/check_copy_text_and_modes.py
       - name: Linked abilities - a granted Deathknell's banishment played by its granting card (The Zero Drive)
         run: python3 skill/scripts/check_zero_drive.py
       - name: If it was an enemy / friendly unit (linked_object_relation)
@@ -911,6 +915,10 @@ jobs:
         run: python3 skill/scripts/check_battlefield_restrictions.py
       - name: Taking control of a permanent (package 11, Possession)
         run: python3 skill/scripts/check_gain_control.py
+      - name: Control until the end of the turn, ended by its delayed trigger (set 2 A3, Hostile Takeover; Core 479.2.a, 359.3.e.16)
+        run: python3 skill/scripts/check_hostile_takeover.py
+      - name: Control while the source stays on the board (set 2 A3, Akshan - Mischievous; Core 359.3.e.16, 719.5)
+        run: python3 skill/scripts/check_akshan_mischievous.py
       - name: printed statics work once a card is played
         run: python3 skill/scripts/check_printed_statics.py
       - name: Activating the conquer effects of units at a Battlefield (package 11, Reckoner's Arena)
@@ -1238,6 +1246,8 @@ jobs:
           python3 "$REPO/skill/scripts/check_revealed_domain.py"
           python3 "$REPO/skill/scripts/check_battlefield_restrictions.py"
           python3 "$REPO/skill/scripts/check_gain_control.py"
+          python3 "$REPO/skill/scripts/check_hostile_takeover.py"
+          python3 "$REPO/skill/scripts/check_akshan_mischievous.py"
           python3 "$REPO/skill/scripts/check_printed_statics.py"
           python3 "$REPO/skill/scripts/check_activate_conquer.py"
           python3 "$REPO/skill/scripts/check_copied_abilities.py"
@@ -1362,6 +1372,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_kill_gear_offer.py"
           python3 "$REPO/skill/scripts/check_one_on_one.py"
           python3 "$REPO/skill/scripts/check_defend_move_there.py"
+          python3 "$REPO/skill/scripts/check_reflexive_after_play.py"
           python3 "$REPO/skill/scripts/check_first_conquer.py"
           python3 "$REPO/skill/scripts/check_distinct_target_group.py"
           python3 "$REPO/skill/scripts/check_same_location_group.py"
@@ -1405,6 +1416,7 @@ jobs:
           python3 "$REPO/skill/scripts/check_rumble_hotheaded.py"
           python3 "$REPO/skill/scripts/check_relentless_pursuit.py"
           python3 "$REPO/skill/scripts/check_modal_trigger.py"
+          python3 "$REPO/skill/scripts/check_copy_text_and_modes.py"
           python3 "$REPO/skill/scripts/check_zero_drive.py"
           python3 "$REPO/skill/scripts/check_linked_object_relation.py"
           python3 "$REPO/skill/scripts/check_detach_if_equipment.py"

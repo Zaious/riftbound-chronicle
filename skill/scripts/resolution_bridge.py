@@ -228,9 +228,18 @@ def finalize_trigger(
         if modal.get("timing") != "trigger_finalization":
             return {**base, "valid": False, "committed": False, "stage": "mode_selection", "item_id": item["id"],
                     "reason": "mode_timing_mismatch", "rule_locators": ["Core 403.2"]}
-        taken = modes_chosen_this_turn(effect_state, item.get("source_object"), item["controller"]) \
+        from play_transaction import mode_instance
+        # set 2 package A3 (Aphelios - Exalted with Svellsongur): each instance of the ability tracks its own modes
+        taken = modes_chosen_this_turn(effect_state, item.get("source_object"), item["controller"],
+                                       mode_instance(item.get("id"))) \
             if modal.get("not_chosen_this_turn") else []
         open_options = [o for o in modal["options"] if o["option_id"] not in taken]
+        # set 2 package A3 (Aphelios - Exalted: "Ready 2 runes."): a mode is a legal choice only when its own choices
+        # can be made (Core 403.2); with legal options the controller must choose among them (403.4.b), and with none
+        # the ability leaves the Chain (403.4) - a mode whose targets are not there is never offered
+        open_options = [o for o in open_options if not _lacking_choices(
+            effect_state, item["controller"], {**{k: v for k, v in program.items() if k != "modal"},
+                                               "effects": list(o["effects"])})]
         if not open_options:
             removal = remove_chain_item(timing_state, item["id"], reason="no_legal_choices")
             if removal.get("applied") is not True:
@@ -241,7 +250,7 @@ def finalize_trigger(
                     "next_effect_state": effect_state, "next_effect_state_hash": hash_value(effect_state),
                     "finalized_targets": [], "lacking_choices": [modal["decision_ref"]],
                     "transition": {"type": "no_legal_choices", "item_id": item["id"], "never_finalized": True,
-                                   "countered": False, "why": "every mode was chosen this turn"},
+                                   "countered": False, "why": "no mode left: each was chosen this turn or has no legal choices"},
                     "rule_locators": ["Core 403.2", "Core 403.4", "Core 403.4.a"]}
         mode_entry = _ed.mode_selection(engine_decisions, modal["decision_ref"])
         if mode_entry is None:
@@ -351,9 +360,10 @@ def finalize_trigger(
         next_effect = paid["state"]
     if mode_entry is not None and (program.get("modal") or {}).get("not_chosen_this_turn"):
         # set 2 package A2 (Aphelios - Exalted): this object's ability chose this mode this turn
-        from play_transaction import record_mode_chosen
+        from play_transaction import mode_instance, record_mode_chosen
         next_effect = state_copy.deepcopy(next_effect)
-        record_mode_chosen(next_effect, item.get("source_object"), item["controller"], mode_entry["value"])
+        record_mode_chosen(next_effect, item.get("source_object"), item["controller"], mode_entry["value"],
+                           mode_instance(item.get("id")))
     # set 2 package A2: Targeting Effects (Core 383.4.b.2) - each object this ability chose wakes its watchers. GPT A2
     # ruling 3(b): they become Pending Items above it in the SAME batch as what its cost woke, their controller ordering
     # them (383.3.d) - not a fixed later batch of their own
@@ -459,6 +469,38 @@ def _unconditional_reflexive(ct: dict[str, Any], event: dict[str, Any], program:
     conditional_trace.append({"trigger_id": ct["trigger_id"], "condition": dict(ct["condition"]), "held": True,
                               "action_performed": bool(moved or played or group), **bound,
                               "rule_locators": ["Core 388.2", "Core 389.1"]})
+    return descriptor
+
+
+def _performed_reflexive(ct: dict[str, Any], event: dict[str, Any], program: dict[str, Any],
+                         after_effect: dict[str, Any], conditional_trace: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """set 2 A3 (Rell - Magnetic: "you may play an Equipment ... ignoring its cost. If you do, then do this: Attach it to
+    me."): a Reflexive Trigger whose condition is "If you do" (Core 388.2, 388.3) - added only when the named limited_play
+    was performed, i.e. a card was put on the Chain to be played (Core 420.3); declined, or nothing eligible, nothing is
+    added and the trace says why by name. "it" is the card that play put on the Chain, bound in the identity it takes when
+    the play resolves and it enters the board (one zone change after the Chain, Core 124): a Unit or Gear resolves
+    immediately once finalized (Core 337.2), and it is finalized before this trigger, the older Pending item (337.1.b). So
+    when the trigger resolves, "it" is that permanent - or, if it left the board since, or never got there, a new object
+    the attach ignores (resolve_trigger_event_object, Core 359.3.e.6)."""
+    performed = event.get("op") == "limited_play" and action_performed(event) and isinstance(event.get("object_id"), str)
+    card = event.get("object_id") if performed else None
+    on_chain = event.get("identity_after") if performed else None
+    if not (isinstance(card, str) and isinstance(on_chain, str) and card in after_effect.get("objects", {})):
+        conditional_trace.append({"trigger_id": ct["trigger_id"], "condition": dict(ct["condition"]), "held": False,
+                                  "why": "nothing_played", "rule_locators": ["Core 388.2", "Core 388.3"]})
+        return None
+    base_id, _, generation = on_chain.rpartition("@")
+    on_board = f"{base_id or card}@{int(generation) + 1 if generation.isdigit() else 1}"
+    descriptor = {k: ct[k] for k in ("trigger_id", "controller", "source_object", "controller_order", "effect_program_id",
+                                     "optional_at_finalize")}
+    bound = {"trigger_event": {"event_id": f"{program.get('program_id')}:{event.get('effect_id')}", "kind": "played_card",
+                               "object": card, "identity": on_board}}
+    descriptor.update({"trigger_kind": "reflexive", "batch_sequence": event.get("index", 0),
+                       "batch_id": f"{program.get('program_id')}:{ct['condition']['effect_id']}",
+                       "condition": dict(ct["condition"]), **bound})
+    conditional_trace.append({"trigger_id": ct["trigger_id"], "condition": dict(ct["condition"]), "held": True,
+                              "action_performed": True, "played_chain_item": event.get("chain_item_id"), **bound,
+                              "rule_locators": ["Core 388.2", "Core 388.3", "Core 389.1", "Core 337.2"]})
     return descriptor
 
 
@@ -1129,6 +1171,12 @@ def _resolve_with_program(
         event = events.get(ct["condition"]["effect_id"], {})
         if ct["condition"]["kind"] == "revealed_domain":
             got = _domain_reflexive(ct, event, program, conditional_trace, after_effect)
+            if got is not None:
+                conditional_triggers.append(got)
+            continue
+        if ct["condition"]["kind"] == "performed":
+            # set 2 A3 (Rell - Magnetic): "If you do, then do this:" - added only when the play was performed
+            got = _performed_reflexive(ct, event, program, after_effect, conditional_trace)
             if got is not None:
                 conditional_triggers.append(got)
             continue

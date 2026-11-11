@@ -4,13 +4,21 @@ Status: active implementation ledger
 
 Baseline: Core Rules 2026-10-09 (written against 2026-07-16; its locators renumbered to 2026-10-09 in C3); FAQ as of 2026-08-14
 
-Last reconciled: 2026-09-08
+Last reconciled: 2026-11-04 (every open item re-audited against the engine history and the private overlay's packages 9-20; see the note below)
 
 This is the single completion ledger for Chronicle's sovereign rules engine and
 four user-facing systems. A checked item means an implementation, contract, and
 executable regression exist in the repository. A written design or prototype
 alone does not count as implementation. A bounded checked item makes no claim
 about mechanics outside the stated scope.
+
+**Reconciliation 2026-11-04.** The 100 open items were re-audited against the
+engine history and the private overlay's packages 9-20. Checked items here must
+exist in this repository; work delivered only in the private overlay is noted
+under its item ("Status 2026-11-04") and stays open, except the R5-P and S-05
+rows, which this ledger has always tracked as private deliveries. Each status
+note names its evidence. Items with no note have no delivery found since
+2026-09-09.
 
 ## Ownership labels
 
@@ -38,9 +46,12 @@ unlabelled because ownership is relevant to remaining work.
   verification flow, bilingual demo, and supported/abstaining regressions.
 - [ ] `[JOINT]` Integrate behavior coverage and verified lines into Deck Coach.
 - [ ] `[JOINT]` Build and validate a bounded R3 card-program pack.
+  (Status 2026-11-04: delivered for set 1 in the private overlay (all 348 set-1 cards assembled as whole-card programs and gated, overlay packages 12-14); this repository carries only the 34-card seed, so the item stays open here.)
 - [ ] `[CODEX-CONTEXT]` Pass the R4 state-completeness and legal-action gates.
+  (Status 2026-11-04: passed only for the private set-1 closed environment (legal-action sets certified per state at run time, overlay package 15); the section 5 items for real P2-A observations remain open.)
 - [ ] `[JOINT]` Implement and route Match Analyst; routing remains
   `[CODEX-CONTEXT]`.
+  (Status 2026-11-04: implementation started on a branch; nothing merged.)
 
 ## 1. Shared evidence and source layer
 
@@ -56,6 +67,7 @@ contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
 - [x] Page-addressable bilingual SQLite rules index.
 - [x] Default masking of superseded sources.
 - [x] Bundled card snapshot and errata overlay with provenance/freshness checks.
+  (Note 2026-11-04: the bundled overlay's quotes are condensed. It records which cards have errata, not their effective text; the private corpus resolves the effective text (2026-09-27 ruling).)
 - [ ] **Errata resolution is a service-layer hard rule (Codex ruling, 2026-09-09).**
   Before card text is compiled, cited, semantically bound, profiled, or used for
   deck legality, resolve the current errata overlay against the source snapshot.
@@ -66,15 +78,19 @@ contract is `[JOINT]` because it must match R3 and `engine-check.v1`.
   (Measured 2026-09-09: of 63 errata entries, 60 match a snapshot card and 54 of
   those are stale, so the bundled mirror carries pre-errata wording for most
   errata'd cards; three errata'd cards are absent from the mirror entirely.)
+  (Status 2026-11-04: partial. The private card-program corpus compiles errata-resolved text with pinned hashes and fails closed; this repository still has no `errata_status` or per-card `printed_text_hash`.)
 - [x] Format/region/set-pool environment registry for Deck Coach.
 - [x] Read-only source refresh planner/capture/reporter with ignored output,
   registry immutability, public-DNS/redirect guards, and offline analysis.
 - [ ] Human-reviewed official-source refresh and baseline-versioning workflow.
+  (Status 2026-11-04: one reviewed baseline migration done (Core 2026-07-16 to 2026-10-09, C3, e5f513d, `check_semantics_version.py`); no reusable refresh workflow yet.)
 - [ ] Cross-language clause alignment and disagreement reporting.
 - [ ] Card-text-to-effect-program provenance manifest shared by all systems.
+  (Status 2026-11-04: partial. The private set-1 catalogue binds programs per card, but carries no text hash and is not shared with Deck Coach or Rule Consult.)
 - [ ] `[CLAUDE-READY; due 2026-10-23]` Re-run Tier 2 verification after the
   Radiance release, review all 53 Global Vendetta rows currently forecast to
   become stale, and update each row's evidence date or abstention status.
+  (Status 2026-11-04: overdue. `check_tier2_freshness.py` is unchanged since 2026-08-18, and the Vendetta environment is still `scheduled_freeze` past its freeze date. Owner's ruling 2026-11-04: scheduled after set 2 is finished; the freeze needs the ban list in force on 2026-10-22.)
 
 ## 2. R1 — Timing, permissions, and Chain structure
 
@@ -112,6 +128,7 @@ frozen, fixture expansion and official-example encoding become
   (C-38/C-39: `cleanup` and `scoring_step` tasks, the Scoring task waiting
   for the Beginning Step's chain, `run_cleanup` consuming the first
   Cleanup task; a general catalog remains.)
+  (Status 2026-11-04: partial. `game_loop.py` (package 14) queues a Cleanup after every 319.1-.8 transition; still only two task kinds, `cleanup` and `scoring_step`.)
 - [ ] Complete Showdown and Combat procedure state, not only timing labels.
   (C-26/C-30: one `combat` record on the timing state — staged, open,
   showdown_closed, damage_assigned, damage_dealt, cleanup_done,
@@ -120,6 +137,7 @@ frozen, fixture expansion and official-example encoding become
   C-33/C-34: `control_resolved`, `showdown.closing`, `staged_showdowns`;
   a Non-Combat Showdown every player passed reports
   `control_resolution_pending`.)
+  (Status 2026-11-04: partial. `engine_check.py` still lists start/end-of-combat, take-damage triggers, multiplayer and non-Prevent replacements as unsupported.)
 - [ ] Official conformance corpus covering every R1 clause and adverse ordering
   combination.
 
@@ -251,7 +269,7 @@ Claude may implement one bounded operation plus tests at a time.
 - [x] Channel and Rune-specific entry, ready/exhaust, and zone behavior.
   (C-16: `channel_rune` with entry state, partial completion per 431.3, new
   identity per 124.)
-- [ ] Create/copy predefined tokens from a versioned token catalog.
+- [x] Create/copy predefined tokens from a versioned token catalog.
   (C-48, ADR-0012 §6: `token-catalog.v1` with its schema, the promotion tool
   and its gate are in place, and `play_token` records the `token_id` it was
   compiled from; the catalogue ships **empty** because Codex's G-1 ruling on
@@ -263,6 +281,7 @@ Claude may implement one bounded operation plus tests at a time.
   and a copy that would need a name, tag, printed cost or domain is refused
   by name rather than half-applied. The item stays open for the catalogue's
   own contents.)
+  (Status 2026-11-04, bounded to set 1: Recruit and Sprite reviewed (2026-09-22/25; tags amended 2026-10-03) in `token_catalog.json`, whose file status still reads `draft`. Set-2 tokens (Gold, Mech, Sand Soldier) are drafts in set 2 package A2.)
 - [ ] Score, conquer, hold, battlefield control, and Victory Score operations.
   (C-33..C-35, bounded slice per ADR-0009: control established after a
   Combat or a Non-Combat Showdown and lost in Cleanup; Conquer and Hold once
@@ -271,26 +290,31 @@ Claude may implement one bounded operation plus tests at a time.
   Still open: team scoring, Hidden (468.5.c), non-Conquer/Hold point
   sources, "activate" of named triggers, the Beginning Phase machine, the
   terminal state and Burn Out.)
+  (Status 2026-11-04: partial. Added since 2026-09-09: score 1 point (c781122, 471.1), 383.4.g activation (`check_activate_conquer.py`), `win_game` (302c804). Team scoring is still refused (41f2e8b).)
 - [ ] Burn Out and its complete loss/continuation semantics.
   (C-37: the Draw path — recycle by an external randomization receipt, the
   beneficiary's point, the empty-Trash sequence with the immediate victory
   from the second Burn Out and a score-derived bound, the terminal written
   by every Draw entry's two-state commit; Burn Out from non-Draw
   instructions (432.1.b) and the Predict / look / reveal exceptions remain.)
+  (Status 2026-11-04: partial. Burn Out outside a Draw is not modelled, nor teammates.)
 
 ### Conditions, targets, and instruction grammar still required
 
 Default ownership: `[CODEX-CONTEXT]`; these forms affect every later card
 program and cannot be safely inferred from isolated examples.
 
-- [ ] Open-ended target choice and target groups.
+- [x] Open-ended target choice and target groups.
+  (Status 2026-11-04: target groups per Core 355.11 and "any number ... total Might N or less" (package 10); gate `check_target_group.py`.)
 - [ ] Location-relative targets such as “here” and “another location.”
   (C-20: "at a battlefield" as a Battlefield target with criteria expansion,
   "here" as a location-scoped Bonus Damage source; C-22: "there" as the
   referent's current location. "another location" remains.)
+  (Status 2026-11-04: "here" is done (a2a3686, 46a8097); "another location" is still open.)
 - [ ] Last-known information and objects that change identity or zone.
   (C-14: object identity across non-board zone changes with selector
   revalidation; last-known information remains.)
+  (Status 2026-11-04: specific readings only (`might_at_death`, 359.3.e.12; `died_alone`; `was_mighty`); no general mechanism.)
 - [x] Conditions over Might, damage, tags, domains, types, counts, and events.
   (C-21: "while you have N+ runes" as `runes_at_least`, 364.3; C-22: "the only
   unit you control there" as a named predicate; C-50, ADR-0013 §3:
@@ -301,6 +325,7 @@ program and cannot be safely inferred from isolated examples.
   answered. C-56 adds `same_location_as`, `might_less_than` and `object_kind`,
   which the Core's own replacement wording needs. Tags and domains are not
   modelled characteristics yet, so conditions over them stay refused.)
+  (Note 2026-11-04: tags are now modelled (d4a84d9, 0135adc).)
 - [ ] General typed forms for “if,” “if you do,” “if this kills,” “then,”
   “then do this,” “for each,” “instead,” and “up to.”
   (C-15/C-17: “if you do” / “otherwise” via cost predicates, “if you can't”
@@ -308,10 +333,13 @@ program and cannot be safely inferred from isolated examples.
   conditional reflexive triggers, “up to N” via bounded targets; C-22/C-24:
   “then” as sequence order with a named condition, “instead” for one granted
   next-death replacement; “for each” and the general forms remain.)
+  (Status 2026-11-04: specific cases only (`only_if_chose`, 604fd13; per-object for-each; set-2 `instead`); no general typed form.)
 - [ ] Impossible-instruction continuation beyond the bounded linked gate.
+  (Status 2026-11-04: partial. A source gone as it executes ignores the instruction (7723901) and a negated Move continues; Burn and Burn Out still raise `NotImplementedError`.)
 - [ ] Simultaneous multi-object Move, Deal, Recycle, Kill, and token creation.
   (C-20: area Deal over criteria-found units, each with its own Bonus Damage,
   715.2; the rest remain.)
+  (Status 2026-11-04: simultaneous Recycle (a26f510, 417.5) and the Kill batch exist; simultaneous multi-object Move and token creation do not.)
 - [x] Player-targeted and uncontrolled-Battlefield replacement ordering.
   (C-56, ADR-0014 §3: the player controlling the affected object picks the
   order of the Replacement Effects on that event, an affected player picks
@@ -346,7 +374,8 @@ accepted is `[CLAUDE-READY]`.
   finalization was not performed, so it keeps its use, 383.3.e.2.b. The
   counters are pruned by the turn transition. C-56 gives Replacement Effects
   the same treatment under 372.)
-- [ ] Instruction-level optional choices made during resolution.
+- [x] Instruction-level optional choices made during resolution.
+  (Status 2026-11-04: an instruction its controller may perform, decided as it resolves (efebe85, Core 355.12); gate `check_optional_instruction.py`.)
 - [x] Complete continuous-effect dependency/layer system.
   (C-49, ADR-0013 §1–2: six legacy representations collapsed into one
   canonical `continuous_effects[]`, and a real Core 478–482 engine over it —
@@ -363,6 +392,7 @@ accepted is `[CLAUDE-READY]`.
   `this_combat` and `until_detached` as first-class durations, with the source
   activity and the identity binding checked on every read and the dead ones
   pruned with their reason. Next-event and Cleanup durations remain.)
+  (Status 2026-11-04: durations are `permanent`, `this_turn`, `this_combat`, `while_source_active` and `until_detached`, plus one-use "next time" prevention; no next-event or Cleanup kind.)
 - [x] Multiple simultaneous replacement descriptors controlled by one player.
   (C-56, ADR-0014 §3: a batch with several descriptors used to fail closed and
   now resolves. A controller with more than one Replacement Effect in the
@@ -388,6 +418,7 @@ accepted is `[CLAUDE-READY]`.
   Replacement Effect that only becomes applicable after another sequence is
   not in it.)
 - [ ] `All` prevention, duration, and allocation choices.
+  (Status 2026-11-04: "Prevent all spell and ability damage this turn" via `create_turn_replacement` (package 9); allocation choices are open.)
 - [ ] General Core 375 inheritance beyond the token subset.
 
 ### Game procedures still required
@@ -409,6 +440,7 @@ Dependency milestones are defined in
   player-level Attack/Defend triggers, take-damage triggers, damage
   exemption sources, non-Prevent assignment replacements, Combats between
   more than two players.)
+  (Status 2026-11-04: partial, as in section 2; the 467.2.c.10 exemption was added in package 14 (`combat.py`).)
 - [ ] **G2 — Battlefield control, Conquer, and Scoring.** Complete control,
   point, and scoring semantics.
   (ADR-0009 fixes the state, procedure and scoring contracts; C-33 through
@@ -425,6 +457,7 @@ Dependency milestones are defined in
   that stays facedown is never named in the public trace.
   Still open: team scoring, non-Conquer/Hold point sources, 383.4.g
   "activate", the Beginning Phase state machine.)
+  (Status 2026-11-04: partial; see the scoring item above. Team scoring is still unsupported.)
 - [ ] **G3 — Victory and Terminal State.** Complete Victory Score, ties,
   simultaneous terminal events, Burn Out, terminal reasons, and reward adapter.
   (ADR-0010 fixes the contracts; C-36 through C-39 implement the bounded
@@ -443,6 +476,7 @@ Dependency milestones are defined in
   available player in Turn Order.
   Still open: non-Draw Burn Out, Setup, Match / Best-of and team modes,
   ready blockers, the facedown reveal at game end.)
+  (Status 2026-11-04: partial. The Mulligan was added (`decision_space.py`, package 15); non-Draw Burn Out, Match/best-of, team modes and `setup_procedure` remain unsupported.)
 
 - [x] Complete normal Cleanup steps 1–10a.
   (C-58 closes step 5, the last step that failed the whole run closed; the
@@ -457,6 +491,7 @@ Dependency milestones are defined in
 - [ ] Special, Combat, and End-of-Turn Cleanup additions.
   (C-21: the Ending Special Cleanup; C-31: the Combat Special Cleanup —
   heal all Units, Recall Attackers if Defenders remain.)
+  (Status 2026-11-04: unchanged; only the Ending and Combat Special Cleanups.)
 - [x] Attack declaration, attacker/defender designations, and legal defenders.
   (C-26: attacker = the player who applied Contested, defender the other
   participant, never guessed; designations on opening and by Cleanup; Core
@@ -467,6 +502,7 @@ Dependency milestones are defined in
   previewed and consumed once, receipts bound to the effect-state snapshot,
   Units as sources; damage-exemption sources (467.2.c.10) and non-Prevent
   assignment replacements remain unsupported, so Tank clauses stay partial.)
+  (Status 2026-11-04: the exemption was added (`combat.py`); non-Prevent replacements are still `assignment_replacement_not_previewable`.)
 - [x] Showdown staging, opening, action cycle, resolution, and closure.
   (C-26/C-30/C-31: staging, opening with Focus, Focus passes closing a
   Combat Showdown, result and closure for Combats; C-34: Non-Combat
@@ -491,6 +527,7 @@ Dependency milestones are defined in
 - [x] Complete turn start/main/ending phase transitions.
   (C-21: `begin_ending_step` and `run_expiration_step` as two procedures,
   317; the Beginning and Main phases remain caller-supplied facts.)
+  (Note 2026-11-04: the Beginning and Main phases are no longer caller-supplied facts; C-38 (section 2) replaced them.)
 - [ ] Multi-player edge cases and Turn Order changes.
 
 ### Engine quality gates still required
@@ -501,16 +538,20 @@ migrations are `[CODEX-CONTEXT]`.
 
 - [ ] State schema covering every mechanic in the bounded R3 pack without prose
   escape hatches.
+  (Status 2026-11-04: delivered for the private set-1 closed environment (overlay `check_closed_environment.py` E3/E4); not in this repository.)
 - [ ] Property/fuzz tests for rollback, determinism, ordering, and recursion.
+  (Status 2026-11-04: `check_effect_ir_properties.py` covers purity, determinism, atomicity and hash portability; no ordering or recursion fuzzing.)
 - [ ] Golden official examples encoded as conformance fixtures.
+  (Status 2026-11-04: individual examples only (Core 481, 370.2, 374, 467.2, 383.4.g.1) and a five-ruling bench; no systematic corpus.)
 - [ ] Differential tests against independent implementations where semantics
   overlap, without giving those engines authority.
 - [x] Version migration policy for state, program, trace, and decision schemas
   accepted in ADR-0002; migration tooling remains to implement.
 - [x] Clause-level card behavior coverage manifest, not merely operation-name
   coverage.
-- [x] Implement a capability manifest that identifies exact supported
+- [ ] Implement a capability manifest that identifies exact supported
   operations, procedures, clauses, exclusions, and implementation identity.
+  (Unchecked 2026-11-04: the manifest still lists `gear_rune_recall_cleanup`, `non_conquer_point_sources`, `activate_named_triggers` and `damage_exemption_sources` as unsupported, though all four are implemented. It needs a refresh before this can be checked again. The manifest is derived, so the fix is in `engine_check.py`'s declared unsupported scope; owner's ruling 2026-11-04: the first engine change after set 2, sooner if a consumer is refused one of the four.)
 
 ## 4. R3 — Bounded card-program packs
 
@@ -533,7 +574,9 @@ collect/normalize card clauses and implement assigned cards.
   harness. That harness is now R5-P in section 13, planned internal research
   rather than a service-v0 gate; the verification itself is still open.)
 - [ ] Define the first `taiwan-origins-v1` release/legality/localization overlay.
+  (Status 2026-11-04: the overlay is still `planned` in `global-core-origins-v1/selection.json`; release and legality exist instead as `taiwan-set1-banned` and a frozen snapshot; no localization.)
 - [ ] Freeze applicable card text, errata, ruleset, global pack, and overlay.
+  (Status 2026-11-04: the snapshot `taiwan-set1-banlist-2026-07-24` pins errata and text hashes but still says `ruleset_core_version: 2026-07-16`, while the engine is on Core 2026-10-09. The snapshot is frozen and records the rules in force when it was taken; owner's ruling 2026-11-04: a new Taiwan snapshot (sets 1 and 2, Core 2026-10-09) is taken when set 2 enters the Taiwan environment.)
 - [x] Define `card-behavior-manifest.v1` using canonical rules identity,
   current-text hash, printing provenance, clause status, programs, and tests.
 - [ ] Compile every relevant card clause into typed effects and conditions.
@@ -544,16 +587,20 @@ collect/normalize card clauses and implement assigned cards.
   Burn Out on Draw (43 full, 5 partial); the Tank and mutual-damage clauses stay partial while damage
   exemption and non-Prevent replacement modes are unsupported; Vision stays
   unsupported; activation remains an ADR-0004 gate.)
+  (Status 2026-11-04: set 1 done in the private overlay (348/348 whole-card programs, Hallowed Tomb's boundary named); the public R3 manifest is still the 34-card draft. Set 2: package A1 signed 2026-11-03, A2 under way.)
 - [x] Label every selected Wave-A card and clause `unsupported` or `stale` in
   the R3-A0 draft; `full`/`partial` remain recommendations until tested programs exist.
 - [ ] Attach an official locator to every implemented clause.
+  (Status 2026-11-04: the public manifest's 48 clauses carry locators; the private 348-card catalogue's programs have no per-clause locator.)
 - [ ] Add positive, negative, replacement, timing, and impossible-action tests
   for every implemented card.
+  (Status 2026-11-04: every op-mapping row carries a positive source example and a nearest negative, and each card is played in a check; no per-card coverage of all five kinds.)
 - [ ] Add cross-card fixtures for every deck's core lines.
 - [ ] Reconcile those lines with Deck Coach primers and expert review.
 - [ ] Publish machine-readable pack coverage and abstention reasons.
   (C-18: `r3a1_behavior_manifest.json` derived from fixtures, still draft;
   pack-wide coverage awaits the later batches.)
+  (Status 2026-11-04: the public manifest is still `draft` and covers 34 cards; the set-1 catalogue is private and reaches the engine only at run time.)
 - [ ] Require pack-level conformance before P2-A or Match Analyst may claim
   executable support for that environment.
 
@@ -571,10 +618,12 @@ normalization and adversarial fixtures become `[CLAUDE-READY]`.
 - [x] Separate public, own-private, inferred, later-revealed, and unknown facts.
 - [ ] Normalize complete and partial logs into stable source event ids.
 - [ ] Reconstruct timing and supported effect state at every event.
+  (Status 2026-11-04: done for simulator records only, in the private overlay (a replay must reproduce every recorded state hash); external logs are open.)
 - [x] Phase A: classify user-supplied candidates from supported structured state.
 - [ ] Filter candidates by targets, costs, and effect prerequisites.
   (C-57: cost and timing are filtered for the enumerated families; targets and
   effect prerequisites are still Phase A's `unsupported_check`.)
+  (Status 2026-11-04: with a catalogue, Phase B enumerates full declarations including targets (package 15); Phase A classification still checks timing only.)
 - [ ] Explain every included/excluded action and its coverage.
   (C-57: every enumerated candidate carries the checks that produced it and
   the facts it needed, and every family carries its exclusions by reason; the
@@ -595,6 +644,7 @@ normalization and adversarial fixtures become `[CLAUDE-READY]`.
   observation does not carry is `printed_cost_not_observed`, never assumed
   free. The opponent's hand is in the same observed state and never reaches a
   candidate.)
+  (Note 2026-11-04: since package 13 (32c5d99), given a catalogue, `activate_ability` enumerates; without one it still abstains. `complete_action_set` stays false here, but `action_certificate.py` sets it true for each state certified in the private closed environment (package 15), a separate per-state scope.)
 - [x] Prove Player 1 hidden information cannot enter Player 2's Phase-A query/results.
 - [x] Add sourced fixtures for legal and illegal response windows within R1 coverage.
 - [ ] Bind P2-A ranking to supported candidates without moving legality or
@@ -641,20 +691,25 @@ gates remain `[CODEX-CONTEXT]`.
 
 - [ ] **R5-A:** deterministic batch runner for states, programs, decisions, and
   replays.
+  (Status 2026-11-04: private only (overlay runner and parallel corpus build, package 17); the public engine has a one-transition `game_loop.py`.)
 - [ ] **R5-A:** versioned replay corpus with train/eval separation and provenance.
+  (Status 2026-11-04: the private corpus has provenance and a two-layer binding (package 18); no train/eval split.)
 - [x] **R5-A:** exact-locator fixture-exercise, unsupported-rate, and fixture-conformance
   metrics. These are not correctness or whole-rule-family coverage scores.
 - [x] **R5-A:** abstention metrics split by missing state, unsupported mechanic, source
   conflict, stale data, and decision requirement.
 - [ ] **R5-A:** policy evaluation separating legality, strategy, and outcome quality.
+  (Status 2026-11-04: the private evaluation design separates legality (per-state certificates), policy and outcome (package 19); the main evaluation waits until set 2 is finished.)
 - [ ] **R5-A:** model/Skill/version primer battles and blinded expert preference tests.
 - [ ] **R5-A:** Match-review correction loop into conformance fixtures.
 - [ ] **R5-B:** bounded local search only after state ownership, R4 legal
   actions, deterministic transitions, and G3 terminal-state conformance.
-- [ ] **R5-C:** P2-S/public simulation/RL remains outside the active roadmap
+  (Status 2026-11-04: its preconditions are met for the private closed environment (packages 15, 17); not started.)
+- [x] **R5-C:** P2-S/public simulation/RL remains outside the active roadmap
   until a separate authorization and product decision. (Private, non-public
   simulation research is R5-P in section 13; it is planned, not cancelled, and
   it is not a public-service gate.)
+  (Status 2026-11-04: reaffirmed 2026-10-29 (0563f21): `PRODUCT_SCOPE.md` says P2-S is not part of this repository.)
 
 ## 7. Shared `engine-check.v1` integration layer
 
@@ -708,6 +763,7 @@ Default ownership: `[JOINT]`. Pipeline/evaluation/UI work is
 - [ ] Validate core loops, lines, mulligan rationale, and mistakes against
   executable card programs where supported.
 - [ ] Separate heuristic roles from expert-confirmed deck identity.
+  (Status 2026-11-04: roles carry `method: text heuristic`; there is no expert-confirmed identity channel.)
 - [ ] Expand expert cases across decks, regions, levels, and stale data.
 - [ ] Add blinded player/expert preference results to the eval suite.
 - [x] Expose unsupported/stale/uncovered behavior counts in output and demo
@@ -744,6 +800,7 @@ migration lands.
 - [x] Add sourced effect-layer and replacement-effect consultation fixtures.
 - [ ] Add supported Combat-engine consultation fixtures and expert rulings;
   current source-only Combat questions do not satisfy this item.
+  (Status 2026-11-04: combat cases CR-007 and CR-008 exist; no expert rulings are attached.)
 - [x] Add an engine-check panel to demo and export.
 
 ## 10. Player 2 Agent
@@ -772,7 +829,8 @@ and confirmation semantics; demo/UI work is `[CLAUDE-READY]` afterward.
 - [ ] Add a bounded policy/candidate ranker and expert scenario suite.
 - [ ] Store opt-in sessions and measure confirmation latency/disagreement.
 - [x] Add effect coverage and decision-required UI to the demo.
-- [ ] Keep every physical state transition human-confirmed in P2-A.
+- [x] Keep every physical state transition human-confirmed in P2-A.
+  (Status 2026-11-04: a standing rule, held by `p2a_session.py` and restated in 0563f21 (a proposal stays unverified until the human confirms it).)
 
 ## 11. Match Analyst
 
@@ -804,6 +862,7 @@ fixtures, projection formatting, and the demo.
 - [ ] Obtain expert review of the first bounded replay corpus.
 - [ ] Add runner, evaluation suite, and bilingual demo.
 - [ ] Re-check the applicable Riot product boundary.
+  (Status 2026-11-04: the 2026-10-29/11-01 Riot-policy re-read (for R5-P) listed post-match analysis as a paid service; no Match-Analyst-specific review yet.)
 - [ ] Route Match Analyst only after every activation gate passes.
 
 ## 12. UI, packaging, and release
@@ -861,7 +920,11 @@ Claude without relying on the full conversation.
 
 ### Shared-working-tree protocol
 
-Chronicle currently uses one shared working tree and one local `main`; therefore
+(Historical, 2026-11-04: work now runs on branches and worktrees; each package
+is reviewed by the external reviewer and signed by the owner's script. The
+protocol below no longer applies.)
+
+Chronicle used one shared working tree and one local `main`; therefore
 delegated work uses a **no-commit handoff**, not an unpushed commit:
 
 1. Codex confirms the working tree and records any pre-existing user changes.
@@ -960,7 +1023,7 @@ real artifact migration should establish the presentation semantics first.
 | X-05 — selection completed 2026-09-03 | R3 pack selection and acceptance gate | ADR-0004 plus R3 selection fix Annie/Master Yi Wave A and Lux/Garen Wave B; physical list verification and pack activation remain open |
 | X-06 — architecture completed 2026-09-02 | R4 observation and legal-action architecture | ADR-0003 fixes Phase A/B, information sets, completeness, hidden-data safety, and abstention |
 | X-07 | Match Analyst normalization/review contract and router activation | Must keep Review/Commentary consistent and satisfy all gates |
-| X-08 | Riot authorization interpretation and P2-S boundary | Product authority cannot be inferred from an isolated coding task |
+| X-08 | Riot authorization interpretation and P2-S boundary | Product authority cannot be inferred from an isolated coding task. 2026-10-29: the owner's ruling and 0563f21 set the P2-S boundary (private use only, not in this repository) |
 
 ### Round H — 2026-09-07/08 reconciliation
 
@@ -996,31 +1059,41 @@ judge corpus. Section 9 below still holds for all four.
 (**Partly superseded, 2026-09-08.** The state builder has since been delivered
 as S-01; see the service-layer section below. The other three are still
 undelivered, and section 9 still holds for them.)
+(**Superseded, 2026-11-04.** S-01 to S-05 are all delivered; see below.)
 
 ### R5-P — Private simulation / Proving Grounds research
 
-Status: **planned internal research**. Not cancelled, not descoped, and not a
-public-service v0 gate. It supersedes the original Proving Grounds harness
+Status (2026-11-04): **active internal research**. Entry gates 1-6 approved by
+the external reviewer, gates 2 and 3 in bounded scopes; gate 7 closed by the
+owner's ruling. Policy research started. Not a public-service v0 gate. It supersedes the original Proving Grounds harness
 schedule, which assumed a Wave B that took a different shape (see the
 superseded rows in section 4).
 
-- [ ] **R5-P:** specification — purpose, scope, admissible outputs, and the
+- [x] **R5-P:** specification — purpose, scope, admissible outputs, and the
   seven entry conditions. Private overlay only. The hard boundaries are: no
   user-facing automated player, no public automated play, no public endpoint,
-  and no published win rate, Tier, meta, or official-rules claim. Internal
+  no retained or published play rates, win rates or matchup percentages, and
+  no official-rules claim (`PRODUCT_SCOPE.md`, revised 2026-10-29). Internal
   versioned policy runners are permitted only after all seven entry gates
   pass; they are research instruments, not a user-facing Player 2 agent or a
   public gameplay feature.
+  (Status 2026-11-04: the private specification exists (2026-09-08, revised 2026-10-29).)
 - [ ] **R5-P:** a complete legal-action set proved for the closed environment.
   The current bounded enumeration keeps `complete_action_set: false` and may
   not stand in for it.
+  (Status 2026-11-04: approved in a narrower scope: per state, certified at run time, stopping on failure (private package 15); no claim for every set-1 state.)
 - [ ] **R5-P:** deterministic transitions over every reachable state, or an
   explicit unsupported stop.
-- [ ] **R5-P:** seed, receipt, and replay for draw, shuffle, and every other
+  (Status 2026-11-04: approved for the states actually reached, not every reachable state (private package 17).)
+- [x] **R5-P:** seed, receipt, and replay for draw, shuffle, and every other
   random event.
-- [ ] **R5-P:** terminal-state and reward/observation contract.
-- [ ] **R5-P:** a fixed, versionable policy interface.
-- [ ] **R5-P:** a fresh Riot boundary review before any external exposure.
+  (Status 2026-11-04: approved by the external reviewer (private package 17).)
+- [x] **R5-P:** terminal-state and reward/observation contract.
+  (Status 2026-11-04: approved by the external reviewer (private package 17); truncated or stopped games carry no reward.)
+- [x] **R5-P:** a fixed, versionable policy interface.
+  (Status 2026-11-04: approved for reviewed internal policies pinned by source hash (private package 17); a new policy needs its own review.)
+- [x] **R5-P:** a fresh Riot boundary review before any external exposure.
+  (Status 2026-11-04: closed by the owner's ruling (2026-11-01); the external reviewer's objection is recorded in the private overlay. Re-review if conclusions would reach a service as numbers, or if Riot's policy changes.)
 
 ### S-01 to S-05 — Public service layer
 
@@ -1029,6 +1102,9 @@ public Rule Consult service is five service-layer packages, in this order:
 S-01 -> S-02 -> S-03 -> S-04 / S-05. They are listed here so that the four
 components section 9 still calls missing are visible as work rather than as an
 absence. Each row names its gate; a row without one is not a completed row.
+(2026-11-04: all five are delivered. On the service path the private overlay's
+answer layer later took the place of S-01 and S-02, step 1 was frozen on
+2026-09-19, and the site's answer endpoint was merged on 2026-11-03.)
 
 - [x] **S-01:** minimum state builder — `state-assumption.v1`. A producer's
   state draft is read against a closed slot vocabulary: a key outside it
@@ -1042,6 +1118,7 @@ absence. Each row names its gate; a row without one is not a completed row.
   Gate: `check_state_builder.py` — 24 labelled cases, 8 that build and 16 that
   refuse, covering all five question kinds, all eleven slots and all seven
   downgrade reasons.
+  (Measured 2026-11-04: 54 cases, 17 slots, 9 question kinds and 8 downgrade reasons.)
 - [x] **S-02:** fact-ledger gate — `fact-ledger.v1`. Every mechanical
   conclusion sentence resolves to one of four sources: a verified engine check
   that reached a verdict, a locator that hits the index, a present card
@@ -1063,6 +1140,7 @@ absence. Each row names its gate; a row without one is not a completed row.
   source-status forgeries each shown to pass structural validation and be
   refused by verification. It runs in CI; the service-side half of the v0
   gate-1 wording waits on S-03, since there is no service to run it in yet.
+  (Measured 2026-11-04: 19 cases and 11 violation codes.)
 - [x] **S-03:** one Rule Consult command over the timing, effect, combat-step,
   control-step and legal-action entries — `consultation-run.v1`. The pipeline is
   fixed: S-01 builds every state the run uses, one engine entry runs, an
@@ -1135,11 +1213,15 @@ absence. Each row names its gate; a row without one is not a completed row.
   rather than `effect` alone. `resolution`, `play`, `cleanup`, `turn_step`,
   `hide_step` and `standard_move` remain outside the verifier and are refused
   by name.)
-- [ ] **S-05:** Deck Coach regression corpus, with general primer cases and
+  (Note 2026-11-04: the approved registry has held 64 readings since 2026-09-15, and locators were renumbered to Core 2026-10-09; the 52/8 run above was not re-measured.)
+- [x] **S-05:** Deck Coach regression corpus, with general primer cases and
   engine-closed cases stored and verified separately, and no win rate, Tier,
   keep-rule or match-simulation claim admissible in either.
+  (Status 2026-11-04: delivered in the private overlay (6011e58, 2026-09-11): 13 general primer cases and 2 engine-closed cases, gated by the overlay's `check_taiwan_deck_primers.py`; contract in this repository (6177ea7).)
 
 ## Claude handoff template
+
+(Historical, 2026-11-04: see the note on the shared-working-tree protocol.)
 
 Every delegated package should include:
 

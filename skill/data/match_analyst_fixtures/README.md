@@ -1,13 +1,14 @@
 # Match Analyst example logs and uncertainty fixtures
 
-Match Analyst is **specified, not implemented, and not routed**. See
+Match Analyst is **implemented as a development preview and not routed**. See
 [`../../../docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md`](../../../docs/match-analyst/MATCH_ANALYST_PRODUCT_SPEC.md),
-including its activation gate. Nothing in this directory says the system exists;
-these are the logs a future implementation will be held to, written first so the
-hard cases are fixed before anything can be tuned to pass them.
+including its activation gate. These logs were written before the implementation,
+so the hard cases were fixed before anything could be tuned to pass them.
 
 [`../../scripts/check_match_analyst_fixtures.py`](../../scripts/check_match_analyst_fixtures.py)
 validates them, and fails if `SKILL.md` starts routing the mode.
+[`../../scripts/check_match_analyst.py`](../../scripts/check_match_analyst.py)
+runs the implementation over them and holds it to each `expected_analysis_boundary`.
 
 | Fixture | Kind | What it defends against |
 | --- | --- | --- |

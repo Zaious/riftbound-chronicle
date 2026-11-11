@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hant" data-locale="zh-Hant" data-system="match-analyst">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="符文戰場 Riftbound 雙語非官方賽後分析示範：同一條時間線產出覆盤與講評" />
+    <title>賽後分析 Match Analyst · Riftbound Chronicle</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="../shared/theme.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top"><span class="mark">RC</span><span><strong>符文戰場編年史</strong><small>Riftbound Chronicle · Assistant Lab</small></span></a>
+      <nav aria-label="Assistant systems">
+        <a href="../deck-coach/index.html" data-i18n="nav.deck">牌組教練</a>
+        <a href="../rule-consult/index.html" data-i18n="nav.rule">規則諮詢</a>
+        <a href="../p2a/index.html" data-i18n="nav.p2a">二號玩家代理</a>
+        <a class="active" href="#top" data-i18n="nav.ma">賽後分析</a>
+      </nav>
+      <div class="topbar-actions"><span class="system-status" data-i18n="status.unofficial">非官方</span><span class="system-status" data-i18n="status.preview">開發預覽・未啟用</span><button class="language-toggle" id="language-toggle" type="button">EN</button></div>
+    </header>
+
+    <main id="top">
+      <section class="hero ma-hero">
+        <div>
+          <p class="eyebrow" data-i18n="hero.eyebrow">一條時間線 · 兩種投影</p>
+          <h1 data-i18n-html="hero.title">把一局整理成時間線，<br /><em>再分成覆盤與講評。</em></h1>
+          <p data-i18n="hero.body">對局紀錄或引擎重播先整理成帶來源編號的事件序列，依選定視角遮掉看不到的資訊，接上引擎重建；覆盤只用每個決定當下已知的事件，講評不推測動機也不判失誤。兩者必須對同一份確認過的局面一致。</p>
+        </div>
+        <div class="hero-contract">
+          <span class="contract-kicker" data-i18n="hero.pick">選一場</span>
+          <ol id="match-list" class="match-list"></ol>
+        </div>
+      </section>
+
+      <section class="ma-shell">
+        <div id="match-head" class="match-head"></div>
+        <div class="ma-tabs" role="tablist">
+          <button type="button" class="active" data-tab="commentary" data-i18n="tab.commentary">講評</button>
+          <button type="button" data-tab="review" data-i18n="tab.review">覆盤</button>
+          <button type="button" data-tab="timeline" data-i18n="tab.timeline">時間線</button>
+          <button type="button" data-tab="boundary" data-i18n="tab.boundary">資訊邊界</button>
+        </div>
+        <div id="panel" class="ma-panel"></div>
+      </section>
+    </main>
+
+    <script src="demo-data.js"></script>
+    <script>
+      // A local-only game (for example one replayed from a private record) may sit beside the page; it is never committed.
+      document.write('<script src="local-data.js" onerror="void 0"><\/script>');
+    </script>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,6 +1,8 @@
 # Match Analyst Product Specification
 
-Status: planned; depends on sovereign rules-core R2/R4
+Status: development preview, not routed (2026-11-04: `skill/scripts/match_analyst.py`,
+`match_trace.py`, `match_analyst_runner.py`, schemas `skill/schemas/match-*.schema.json`,
+demo `prototype/match-analyst/`); the activation gate below still applies
 Date: 2026-08-30
 
 ## Purpose

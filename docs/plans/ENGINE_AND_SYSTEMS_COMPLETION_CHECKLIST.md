@@ -848,19 +848,37 @@ Default ownership: `[JOINT]`. Codex owns normalization/reconstruction contracts,
 review classifications, and activation. Claude may implement frozen schemas,
 fixtures, projection formatting, and the demo.
 
-- [ ] Add `match-analysis.v1`, `match-review.v1`, and
-  `match-commentary.v1` schemas.
-- [ ] Build deterministic log/replay normalization with source-event ids.
-- [ ] Bind normalized events to `engine-check.v1` and R4 reconstruction.
-- [ ] Implement observed/inferred/unknown/hindsight-only ledger.
-- [ ] Implement decision-point and turning-point extraction.
-- [ ] Implement Review with mandatory unsupported abstention.
-- [ ] Implement Commentary over the same confirmed timeline.
-- [ ] Prove Review and Commentary agree on confirmed state.
+(2026-11-04, owner's ruling: Claude implements it now, without waiting for a
+Codex contract. Branch `match-analyst/v1`; development preview, not routed.)
+
+- [x] Add `match-analysis.v1`, `match-review.v1`, and
+  `match-commentary.v1` schemas. (`skill/schemas/match-*.schema.json`)
+- [x] Build deterministic log/replay normalization with source-event ids.
+  (`match_analyst.normalize_log` / `normalize_trace`; a private event with a
+  public side also yields a public shadow event, so a perspective sees that
+  something happened without the private event's id or content.)
+- [x] Bind normalized events to `engine-check.v1` and R4 reconstruction.
+  (An engine trace — `match_trace.trace_record` — replays a recorded game with
+  the engine's own transitions and R4 enumeration, every state hash checked
+  against the record. A hand record has no executable state, so each
+  discretionary action in it gets an `engine-check.v1` timing check on the
+  timing state the record describes, with the assumptions it needed.)
+- [x] Implement observed/inferred/unknown/hindsight-only ledger.
+- [x] Implement decision-point and turning-point extraction.
+- [x] Implement Review with mandatory unsupported abstention. (There is no
+  strategy evaluator, so `strategic_misplay` is never produced.)
+- [x] Implement Commentary over the same confirmed timeline.
+- [x] Prove Review and Commentary agree on confirmed state.
+  (`agreement_problems`, held by `check_match_analyst.py`.)
 - [x] Add complete, partial, contradictory, and perspective-limited fixtures
   with independently re-derived contradiction/redaction boundaries.
 - [ ] Obtain expert review of the first bounded replay corpus.
-- [ ] Add runner, evaluation suite, and bilingual demo.
+- [x] Add runner, evaluation suite, and bilingual demo.
+  (`match_analyst_runner.py` trace / analyze / demo; `check_match_analyst.py`;
+  `prototype/match-analyst/`. The demo carries the four synthetic fixture logs
+  and one full set-1 R5-P research game, published by the owner's decision of
+  2026-11-04: card names and what happened only, never the card catalogue,
+  the policies, or the seeds.)
 - [ ] Re-check the applicable Riot product boundary.
   (Status 2026-11-04: the 2026-10-29/11-01 Riot-policy re-read (for R5-P) listed post-match analysis as a paid service; no Match-Analyst-specific review yet.)
 - [ ] Route Match Analyst only after every activation gate passes.
